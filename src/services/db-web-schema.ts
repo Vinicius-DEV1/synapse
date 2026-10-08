@@ -30,6 +30,7 @@ import type {
 } from '../types/library';
 import type { Session, Alarm } from '../components/focus/types';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
+import type { QuizBattery, QuizQuestion, QuizAttempt, QuizPageLink } from '../types/quiz';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -95,16 +96,16 @@ export interface CadernoDBSchema extends DBSchema {
     indexes: { module: string };
   };
   diagrams: { key: string; value: any };
-  quiz_batteries: { key: string; value: any; indexes: { page_id: string; parent_id?: string } };
-  quiz_questions: { key: string; value: any; indexes: { battery_id: string } };
+  quiz_batteries: { key: string; value: QuizBattery; indexes: { page_id: string; parent_id?: string } };
+  quiz_questions: { key: string; value: QuizQuestion; indexes: { battery_id: string } };
   quiz_attempts: {
     key: string;
-    value: any;
+    value: QuizAttempt;
     indexes: { question_id: string; battery_id: string };
   };
   quiz_page_links: {
     key: string;
-    value: any;
+    value: QuizPageLink;
     indexes: { battery_id: string; page_id: string };
   };
   link_metadata_cache: { key: string; value: any };

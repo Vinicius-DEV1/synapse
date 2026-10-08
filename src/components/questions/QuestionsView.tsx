@@ -1,32 +1,22 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { CheckSquare, LayoutDashboard, Compass, Sparkles, Plus } from 'lucide-react';
-import { QuestionsDashboard } from './QuestionsDashboard';
-import { QuestionsExplorer } from './QuestionsExplorer';
-import { QuestionsPlaylists } from './QuestionsPlaylists';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { QuestionsHeader } from './QuestionsHeader';
+import { QuestionsMainContent } from './QuestionsMainContent';
 import { QuizSequentialFocusModal } from '../editor-extensions/quiz/components/sequential/QuizSequentialFocusModal';
 import { QuizEditorModal } from '../editor-extensions/quiz/components/QuizEditorModal';
-import { useQuizEvaluation } from '../editor-extensions/quiz/hooks/useQuizEvaluation';
+import { useQuestionsData, resetQuestionsViewCache } from './hooks/useQuestionsData';
+import { useQuestionsFocusSession } from './hooks/useQuestionsFocusSession';
 import {
-  getDescendantQuestions,
   getAvailableParentOptions,
   getBatteryBreadcrumb,
 } from '../../services/quiz/quizHierarchy';
 import { useStore } from '../../store/useStore';
-import type { BatteryWithQuestions, QuizStats } from '../../types/quiz';
+import type { BatteryWithQuestions } from '../../types/quiz';
 import type { QuestionItem } from '../editor-extensions/quiz/types';
-import type { GeneratedStudySession } from '../../services/quiz/quizSimulator';
+
+export { resetQuestionsViewCache };
 
 interface QuestionsViewProps {
   tabId?: string;
-}
-
-// In-memory module cache for instant SWR transitions (0ms perceived latency)
-let cachedBatteries: BatteryWithQuestions[] | null = null;
-let cachedStats: QuizStats | null = null;
-
-export function resetQuestionsViewCache() {
-  cachedBatteries = null;
-  cachedStats = null;
 }
 
 export default function QuestionsView({ tabId }: QuestionsViewProps) {
@@ -34,65 +24,39 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
 
   const [activeTabSection, setActiveTabSection] = useState<'explorer' | 'dashboard' | 'playlists'>('explorer');
-  const [batteries, setBatteries] = useState<BatteryWithQuestions[]>(() => cachedBatteries || []);
-  const [stats, setStats] = useState<QuizStats>(
-    () =>
-      cachedStats || {
-        totalBatteries: 0,
-        totalQuestions: 0,
-        answeredQuestions: 0,
-        correctAnswers: 0,
-        incorrectAnswers: 0,
-        accuracyRate: 0,
-        tagStats: {},
-      }
-  );
-  const [isLoading, setIsLoading] = useState(() => !cachedBatteries);
 
-  // Playing session state (Focus Mode)
-  const [activePlayingSession, setActivePlayingSession] = useState<{
-    title: string;
-    batteryId?: string;
-    questions: QuestionItem[];
-  } | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Core data hooks
+  const {
+    batteries,
+    stats,
+    isLoading,
+    allAvailableTags,
+    loadData,
+    handleDeleteBattery,
+    handleMoveBattery,
+    handleSaveBattery,
+  } = useQuestionsData();
+
+  // Focus mode session orchestration
+  const {
+    activePlayingSession,
+    setActivePlayingSession,
+    activeIndex,
+    setActiveIndex,
+    handlePlayBattery,
+    handleStartGeneratedSession,
+    updateSingleQuestionInFocus,
+    updateQuestionsInFocus,
+    evaluatingIds,
+    handleEvaluateOpenAnswer,
+    handleDeleteQuestionInFocus,
+  } = useQuestionsFocusSession(batteries, () => loadData(true));
 
   // Editing / Creation state
   const [editingBattery, setEditingBattery] = useState<BatteryWithQuestions | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [creationParentId, setCreationParentId] = useState<string | null>(null);
   const [editorInitialAi, setEditorInitialAi] = useState(false);
-  const isFetchingRef = useRef(false);
-
-  // Load all batteries, questions and stats in parallel with single-tick queries
-  const loadData = useCallback(async (silent = false) => {
-    if (!window.api?.quiz || isFetchingRef.current) return;
-    isFetchingRef.current = true;
-    if (!silent && !cachedBatteries) {
-      setIsLoading(true);
-    }
-    try {
-      const [enrichedBatteries, globalStats] = await Promise.all([
-        window.api.quiz.getAllBatteriesEnriched(),
-        window.api.quiz.getStats(),
-      ]);
-
-      cachedBatteries = enrichedBatteries;
-      cachedStats = globalStats;
-
-      setBatteries(enrichedBatteries);
-      setStats(globalStats);
-    } catch (err) {
-      console.error('[QuestionsView] Falha ao carregar dados do módulo de questões:', err);
-    } finally {
-      setIsLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData(Boolean(cachedBatteries));
-  }, [loadData]);
 
   // Check if a specific batteryId or creation mode was passed via tab moduleState
   useEffect(() => {
@@ -132,155 +96,6 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     }
   }, [activeTab?.moduleState, batteries]);
 
-  // Aggregate all tags
-  const allAvailableTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    batteries.forEach((b) => {
-      (b.tags || []).forEach((t) => tagSet.add(t.trim()));
-      b.questions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t.trim())));
-    });
-    return Array.from(tagSet).filter(Boolean);
-  }, [batteries]);
-
-  // Launch battery in Focus Mode (cumulatively if battery has sub-batteries)
-  const handlePlayBattery = useCallback(
-    (battery: BatteryWithQuestions) => {
-      const allQuestions = getDescendantQuestions(battery.id, batteries);
-
-      // Build quick lookup for latest attempts across all descendant batteries
-      const attemptLookup = new Map();
-      for (const b of batteries) {
-        if (b.latestAttempts) {
-          for (const [qid, attempt] of Object.entries(b.latestAttempts)) {
-            attemptLookup.set(qid, attempt);
-          }
-        }
-      }
-
-      const mapped: QuestionItem[] = allQuestions.map((q) => {
-        const attempt = attemptLookup.get(q.id) || battery.latestAttempts?.[q.id];
-        return {
-          id: q.id,
-          type: q.type,
-          question: q.question,
-          options: q.options || [],
-          correctIndex: q.correct_index,
-          tags: q.tags || [],
-          selectedIndex: attempt?.selected_index !== undefined ? attempt.selected_index : null,
-          userTypedAnswer: attempt?.user_typed_answer || '',
-          aiFeedback: attempt?.ai_feedback || null,
-          expectedAnswer: q.expected_answer || '',
-          explanation: q.explanation || '',
-          showExplanation: Boolean(attempt),
-          answered: Boolean(attempt),
-          batteryId: q.battery_id || battery.id,
-        };
-      });
-
-      setActiveIndex(0);
-      setActivePlayingSession({
-        title: battery.title,
-        batteryId: battery.id,
-        questions: mapped,
-      });
-    },
-    [batteries]
-  );
-
-  // Launch generated study session (Caderno de Erros or Simulado)
-  const handleStartGeneratedSession = useCallback((session: GeneratedStudySession) => {
-    const mapped: QuestionItem[] = session.questions.map((q) => ({
-      id: q.id,
-      type: q.type,
-      question: q.question,
-      options: q.options || [],
-      correctIndex: q.correct_index,
-      tags: q.tags || [],
-      selectedIndex: null,
-      userTypedAnswer: '',
-      aiFeedback: null,
-      expectedAnswer: q.expected_answer || '',
-      explanation: q.explanation || '',
-      showExplanation: false,
-      answered: false,
-      batteryId: q.battery_id,
-    }));
-
-    setActiveIndex(0);
-    setActivePlayingSession({
-      title: session.battery.title,
-      batteryId: session.battery.id,
-      questions: mapped,
-    });
-  }, []);
-
-  // Stable reference buffer to avoid stale closures & unnecessary re-render thrashing
-  const activePlayingSessionRef = useRef(activePlayingSession);
-  activePlayingSessionRef.current = activePlayingSession;
-
-  // Update single question answer in focus mode (with atomic database attempt save)
-  const updateSingleQuestionInFocus = useCallback(
-    async (qId: string, partial: Partial<QuestionItem>) => {
-      const currentSession = activePlayingSessionRef.current;
-      if (!currentSession) return;
-
-      setActivePlayingSession((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          questions: prev.questions.map((q) => (q.id === qId ? { ...q, ...partial } : q)),
-        };
-      });
-
-      // Save attempt directly to database only upon genuine completion (prevent keystroke spam on open questions)
-      const q = currentSession.questions.find((x) => x.id === qId);
-      if (q && window.api?.quiz) {
-        const updatedType = q.type;
-        const isAttemptUpdate =
-          (updatedType === 'multiple_choice' && partial.selectedIndex !== undefined && partial.selectedIndex !== null) ||
-          (updatedType === 'open' && ((partial.aiFeedback !== undefined && partial.aiFeedback !== null) || partial.answered === true));
-
-        if (isAttemptUpdate) {
-          const updatedIndex = partial.selectedIndex !== undefined ? partial.selectedIndex : q.selectedIndex;
-          const updatedTyped = partial.userTypedAnswer !== undefined ? partial.userTypedAnswer : q.userTypedAnswer;
-          const updatedFeedback = partial.aiFeedback !== undefined ? partial.aiFeedback : q.aiFeedback;
-
-          const isCorrect =
-            updatedType === 'multiple_choice'
-              ? updatedIndex === q.correctIndex
-              : updatedFeedback?.verdict === 'Correto';
-
-          try {
-            await window.api.quiz.saveAttempt({
-              question_id: qId,
-              battery_id: q.batteryId || currentSession.batteryId || 'generated',
-              type: updatedType,
-              selected_index: updatedIndex,
-              user_typed_answer: updatedTyped,
-              is_correct: isCorrect,
-              ai_feedback: updatedFeedback,
-            });
-          } catch (err) {
-            console.error('[QuestionsView] Falha ao gravar tentativa no banco:', err);
-          }
-        }
-      }
-    },
-    []
-  );
-
-  const updateQuestionsInFocus = useCallback((newQuestions: QuestionItem[]) => {
-    setActivePlayingSession((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        questions: newQuestions,
-      };
-    });
-  }, []);
-
-  const { evaluatingIds, handleEvaluateOpenAnswer } = useQuizEvaluation(updateSingleQuestionInFocus);
-
   // Navigate directly to note in Caderno
   const handleNavigateToPage = useCallback(
     (pageId: string) => {
@@ -296,20 +111,6 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
       });
     },
     [dispatch, tabId, activeTab]
-  );
-
-  // Delete battery handler
-  const handleDeleteBattery = useCallback(
-    async (batteryId: string) => {
-      if (!window.api?.quiz) return;
-      try {
-        await window.api.quiz.deleteBattery(batteryId);
-        await loadData();
-      } catch (err) {
-        console.error('[QuestionsView] Falha ao mover bateria para lixeira:', err);
-      }
-    },
-    [loadData]
   );
 
   // Resolve live page title from store
@@ -351,82 +152,12 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     }
   }, [activeTab, tabId, dispatch]);
 
-  // Save edited / newly created battery
-  const handleSaveBatteryModal = useCallback(
+  const onSaveBatteryModal = useCallback(
     async (newTitle: string, newDesc: string, newQuestions: QuestionItem[], parentId?: string | null) => {
-      if (!window.api?.quiz) return;
-
-      const tagSet = new Set<string>();
-      newQuestions.forEach((q) => (q.tags || []).forEach((t) => tagSet.add(t)));
-      const tags = Array.from(tagSet);
-
-      const targetId = editingBattery?.id || undefined;
-      const targetParentId = parentId !== undefined ? parentId : (editingBattery?.parent_id ?? creationParentId);
-
-      const saved = await window.api.quiz.saveBattery({
-        id: targetId,
-        title: newTitle,
-        description: newDesc,
-        tags,
-        parent_id: targetParentId,
-      });
-
-      // Reconcile and soft-delete questions removed during editing
-      if (targetId) {
-        try {
-          const existingInDb = await window.api.quiz.getQuestionsByBattery(targetId);
-          const incomingIds = new Set(newQuestions.map((q) => q.id));
-          for (const eq of existingInDb) {
-            if (!incomingIds.has(eq.id)) {
-              await window.api.quiz.deleteQuestion(eq.id);
-            }
-          }
-        } catch (err) {
-          console.warn('[QuestionsView] Falha ao conciliar questões excluídas:', err);
-        }
-      }
-
-      const records = newQuestions.map((q, idx) => ({
-        id: q.id,
-        battery_id: saved.id,
-        type: q.type,
-        question: q.question,
-        options: q.options,
-        correct_index: q.correctIndex,
-        expected_answer: q.expectedAnswer,
-        explanation: q.explanation,
-        tags: q.tags || [],
-        sort_order: idx + 1,
-      }));
-
-      await window.api.quiz.saveQuestionsBatch(records);
-      await loadData();
+      await handleSaveBattery(editingBattery, creationParentId, newTitle, newDesc, newQuestions, parentId);
       handleCloseEditor();
     },
-    [editingBattery, creationParentId, loadData, handleCloseEditor]
-  );
-
-  // Move battery to another group or root
-  const handleMoveBattery = useCallback(
-    async (batteryId: string, newParentId: string | null) => {
-      if (!window.api?.quiz) return;
-      try {
-        const target = batteries.find((b) => b.id === batteryId);
-        if (!target) return;
-        await window.api.quiz.saveBattery({
-          id: target.id,
-          title: target.title,
-          description: target.description,
-          tags: target.tags,
-          page_id: target.page_id,
-          parent_id: newParentId,
-        });
-        await loadData(true);
-      } catch (err) {
-        console.error('[QuestionsView] Falha ao mover bateria de grupo:', err);
-      }
-    },
-    [batteries, loadData]
+    [handleSaveBattery, editingBattery, creationParentId, handleCloseEditor]
   );
 
   const availableParentOptions = useMemo(
@@ -470,7 +201,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
               }))
             : []
         }
-        onSave={handleSaveBatteryModal}
+        onSave={onSaveBatteryModal}
       />
     );
   }
@@ -478,135 +209,47 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   return (
     <div className="w-full h-full bg-dark-bg text-zinc-100 overflow-y-auto custom-scrollbar select-none relative">
       <div className="max-w-5xl mx-auto flex flex-col min-h-full">
-        {/* Top Header (Scrolls away) */}
-        <header className="px-5 md:px-8 pt-8 pb-6 flex flex-wrap items-end justify-between gap-6 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-xs">
-              <CheckSquare size={28} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Central de Questões</h1>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400">
-                  {stats.totalQuestions} questões
-                </span>
-              </div>
-              <p className="text-sm text-zinc-400 mt-1">
-                Pratique exercícios, acompanhe sua taxa de acerto e monte simulados sob medida.
-              </p>
-            </div>
-          </div>
-        </header>
+        <QuestionsHeader
+          totalQuestions={stats.totalQuestions}
+          activeTabSection={activeTabSection}
+          onSelectTabSection={setActiveTabSection}
+          onNewBattery={() => {
+            setCreationParentId(null);
+            setIsCreatingNew(true);
+          }}
+        />
 
-        {/* Action Controls (Sticky) */}
-        <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
-          {/* Section Switcher Tabs */}
-          <div className="flex items-center bg-dark-card/50 p-1 rounded-xl border border-white/5 text-xs">
-            <button
-              onClick={() => setActiveTabSection('explorer')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTabSection === 'explorer'
-                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Compass size={14} />
-              <span>Explorador</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTabSection('dashboard')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTabSection === 'dashboard'
-                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <LayoutDashboard size={14} />
-              <span>Métricas</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTabSection('playlists')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTabSection === 'playlists'
-                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Sparkles size={14} />
-              <span>Simulados & Erros</span>
-            </button>
-          </div>
-
-          {/* New Battery Button */}
-          <button
-            onClick={() => {
-              setCreationParentId(null);
-              setIsCreatingNew(true);
-            }}
-            className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
-          >
-            <Plus size={15} />
-            <span>Nova Bateria</span>
-          </button>
-        </div>
-
-        {/* Main Content Viewport */}
         <main className="flex-1 p-5 md:p-8">
           <div className="max-w-full">
-          {isLoading && batteries.length === 0 ? (
-            <div className="py-24 flex flex-col items-center justify-center gap-3 text-zinc-500">
-              <div className="w-6 h-6 border-2 border-brand-500/30 border-t-brand-400 rounded-full animate-spin" />
-              <p className="text-xs font-medium">Carregando questões...</p>
-            </div>
-          ) : (
-            <>
-              {activeTabSection === 'explorer' && (
-                <QuestionsExplorer
-                  batteries={batteries}
-                  onPlayBattery={handlePlayBattery}
-                  onEditBattery={(b) => setEditingBattery(b)}
-                  onDeleteBattery={handleDeleteBattery}
-                  onNavigateToPage={handleNavigateToPage}
-                  allAvailableTags={allAvailableTags}
-                  getPageTitle={getPageTitle}
-                  highlightedBatteryId={
-                    typeof activeTab?.moduleState?.selectedBatteryId === 'string'
-                      ? activeTab.moduleState.selectedBatteryId
-                      : undefined
-                  }
-                  onCreateSubgroup={(parentBatteryId) => {
-                    setCreationParentId(parentBatteryId);
-                    setIsCreatingNew(true);
-                  }}
-                  onMoveBattery={handleMoveBattery}
-                />
-              )}
-
-              {activeTabSection === 'dashboard' && (
-                <QuestionsDashboard
-                  stats={stats}
-                  onLaunchErrorNotebook={() => setActiveTabSection('playlists')}
-                  onLaunchQuickSimulation={() => setActiveTabSection('playlists')}
-                  onCreateBattery={() => setIsCreatingNew(true)}
-                />
-              )}
-
-              {activeTabSection === 'playlists' && (
-                <QuestionsPlaylists
-                  onStartSession={handleStartGeneratedSession}
-                  availableTags={allAvailableTags}
-                  errorCount={stats.incorrectAnswers}
-                />
-              )}
-            </>
-          )}
+            <QuestionsMainContent
+              isLoading={isLoading}
+              batteries={batteries}
+              stats={stats}
+              activeTabSection={activeTabSection}
+              allAvailableTags={allAvailableTags}
+              highlightedBatteryId={
+                typeof activeTab?.moduleState?.selectedBatteryId === 'string'
+                  ? activeTab.moduleState.selectedBatteryId
+                  : undefined
+              }
+              onPlayBattery={handlePlayBattery}
+              onEditBattery={(b) => setEditingBattery(b)}
+              onDeleteBattery={handleDeleteBattery}
+              onNavigateToPage={handleNavigateToPage}
+              getPageTitle={getPageTitle}
+              onCreateSubgroup={(parentBatteryId) => {
+                setCreationParentId(parentBatteryId);
+                setIsCreatingNew(true);
+              }}
+              onMoveBattery={handleMoveBattery}
+              onSelectTabSection={setActiveTabSection}
+              onCreateBattery={() => setIsCreatingNew(true)}
+              onStartSession={handleStartGeneratedSession}
+            />
           </div>
         </main>
       </div>
 
-      {/* Zen Focus Mode Player (Mounted via Portal) */}
       {activePlayingSession && (
         <QuizSequentialFocusModal
           isOpen={Boolean(activePlayingSession)}
@@ -631,26 +274,9 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
               setEditingBattery(b);
             }
           }}
-          onDeleteQuestion={async (qId) => {
-            if (activePlayingSession) {
-              const updated = activePlayingSession.questions.filter((q) => q.id !== qId);
-              setActivePlayingSession({
-                ...activePlayingSession,
-                questions: updated,
-              });
-              if (activePlayingSession.batteryId && window.api?.quiz) {
-                try {
-                  await window.api.quiz.deleteQuestion(qId);
-                  await loadData(true);
-                } catch (err) {
-                  console.error('[QuestionsView] Falha ao excluir questão:', err);
-                }
-              }
-            }
-          }}
+          onDeleteQuestion={handleDeleteQuestionInFocus}
         />
       )}
-
     </div>
   );
 }

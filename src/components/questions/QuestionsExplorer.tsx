@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, Tag, FileText, HelpCircle, Zap, Trash2 } from 'lucide-react';
-import { Portal } from '../ui/Portal';
+import { HelpCircle } from 'lucide-react';
 import { BatteryTreeItem } from './BatteryTreeItem';
 import { BatteryMoveModal } from './BatteryMoveModal';
+import { BatteryDeleteModal } from './BatteryDeleteModal';
+import { QuestionsExplorerFilters } from './QuestionsExplorerFilters';
 import {
   buildBatteryHierarchy,
   filterBatteryHierarchy,
@@ -42,19 +43,6 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   const [expandedBatteryIds, setExpandedBatteryIds] = useState<Set<string>>(new Set());
   const [batteryPendingDelete, setBatteryPendingDelete] = useState<BatteryWithQuestions | null>(null);
   const [batteryToMove, setBatteryToMove] = useState<BatteryWithQuestions | null>(null);
-
-  // Tecla Esc para fechar o modal de exclusão
-  useEffect(() => {
-    if (!batteryPendingDelete) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setBatteryPendingDelete(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [batteryPendingDelete]);
 
   // Expand highlighted battery and its ancestors
   useEffect(() => {
@@ -164,112 +152,17 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Search and Filters Bar */}
-      <div className="bg-dark-card/50 border border-white/5 rounded-2xl p-4 space-y-3">
-        {/* Search Input */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por título, enunciado, tag ou comentário..."
-            className="w-full pl-10 pr-4 py-2 bg-dark-bg/60 border border-white/5 focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 rounded-xl text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
-          />
-        </div>
-
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          {/* Origin Filter */}
-          <div className="flex items-center gap-1 bg-dark-bg/50 p-1 rounded-xl border border-white/5 text-xs">
-            <button
-              onClick={() => setSelectedOrigin('all')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                selectedOrigin === 'all' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={() => setSelectedOrigin('linked')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
-                selectedOrigin === 'linked' ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium' : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <FileText size={12} />
-              <span>Do Caderno</span>
-            </button>
-            <button
-              onClick={() => setSelectedOrigin('standalone')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
-                selectedOrigin === 'standalone' ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium' : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Zap size={12} />
-              <span>Avulsas</span>
-            </button>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-dark-bg/50 p-1 rounded-xl border border-white/5 text-xs">
-            <button
-              onClick={() => setSelectedStatus('all')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                selectedStatus === 'all' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Qualquer Status
-            </button>
-            <button
-              onClick={() => setSelectedStatus('pending')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                selectedStatus === 'pending' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Pendentes
-            </button>
-            <button
-              onClick={() => setSelectedStatus('errors')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-rose-300 ${
-                selectedStatus === 'errors' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20 font-medium' : 'hover:text-rose-200'
-              }`}
-            >
-              Com Erros
-            </button>
-          </div>
-        </div>
-
-        {/* Tag Pills */}
-        {allAvailableTags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/5">
-            <span className="text-[11px] text-zinc-500 mr-1 flex items-center gap-1">
-              <Tag size={12} />
-              <span>Tags:</span>
-            </span>
-            {selectedTag && (
-              <button
-                onClick={() => setSelectedTag(null)}
-                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border border-brand-500/30 cursor-pointer transition-colors"
-              >
-                Limpar ({selectedTag}) ✕
-              </button>
-            )}
-            {allAvailableTags.slice(0, 10).map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedTag(selectedTag === t ? null : t)}
-                className={`text-[10px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
-                  selectedTag === t
-                    ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm'
-                    : 'bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5'
-                }`}
-              >
-                #{t}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <QuestionsExplorerFilters
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        selectedOrigin={selectedOrigin}
+        onSelectedOriginChange={setSelectedOrigin}
+        selectedStatus={selectedStatus}
+        onSelectedStatusChange={setSelectedStatus}
+        selectedTag={selectedTag}
+        onSelectedTagChange={setSelectedTag}
+        allAvailableTags={allAvailableTags}
+      />
 
       {/* Batteries List (Tree View) */}
       <div className="space-y-3">
@@ -317,56 +210,12 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
       )}
 
       {/* Delete Confirmation Modal */}
-      {batteryPendingDelete && (
-        <Portal>
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4"
-            onClick={() => setBatteryPendingDelete(null)}
-          >
-            <div
-              className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-scale-in"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-rose-500/10 text-rose-400 shrink-0">
-                  <Trash2 size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-white">Excluir Bateria</h3>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Deseja realmente mover a bateria <strong className="text-zinc-200">"{batteryPendingDelete.title || 'Sem título'}"</strong> ({batteryPendingDelete.questions.length} questões) para a lixeira?
-                  </p>
-                  {batteries.some((b) => b.parent_id === batteryPendingDelete.id) && (
-                    <p className="text-[11px] text-zinc-400 mt-2 bg-white/5 p-2 rounded-lg border border-white/5">
-                      ℹ️ Os subgrupos desta bateria não serão excluídos; eles serão mantidos e movidos para o nível principal.
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2.5 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setBatteryPendingDelete(null)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const id = batteryPendingDelete.id;
-                    setBatteryPendingDelete(null);
-                    onDeleteBattery(id);
-                  }}
-                  className="px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
-                >
-                  Excluir Bateria
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <BatteryDeleteModal
+        battery={batteryPendingDelete}
+        hasSubgroups={Boolean(batteryPendingDelete && batteries.some((b) => b.parent_id === batteryPendingDelete.id))}
+        onClose={() => setBatteryPendingDelete(null)}
+        onConfirmDelete={onDeleteBattery}
+      />
     </div>
   );
 });
