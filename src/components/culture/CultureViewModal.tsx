@@ -1,18 +1,15 @@
-import { useState, useEffect } from 'react';
-import { X, ExternalLink, Target, CheckCircle, Play, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { X, ExternalLink, Target, CheckCircle, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
 import { Portal } from '../ui/Portal';
 import { CultureMetaGrid } from './ui/CultureMetaGrid';
 import { CultureTrailerSection } from './ui/CultureTrailerSection';
-import {
-  fetchImdbMovies,
-  fetchImdbSeries,
-  fetchJikan,
-  fetchGoogleBooks,
-  fetchCinemetaMetadata,
-  type CultureSearchResult,
-} from '../../services/culture/culture-apis';
+import { CultureEpisodesSection } from './ui/CultureEpisodesSection';
+import { CultureModalPoster } from './ui/CultureModalPoster';
+import { useCultureMetadataRefresh } from './hooks/useCultureMetadataRefresh';
+
+import { getStatusInfo, typeLabel } from './cards/culture-status';
 
 interface Props {
   item: CultureItem;
@@ -22,43 +19,17 @@ interface Props {
   onEdit?: (item: CultureItem) => void;
 }
 
-function getStatusInfo(status?: string) {
-  if (!status) return null;
-  const s = status.toLowerCase();
-  if (s.includes('airing') || s.includes('running') || s.includes('releasing') || s.includes('currently') || s === 'ongoing') {
-    return { label: 'Em produção', dot: 'bg-green-400', text: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
-  }
-  if (s.includes('finished') || s.includes('ended') || s.includes('complete')) {
-    return { label: 'Finalizado', dot: 'bg-white/30', text: 'text-white/50', bg: 'bg-white/5 border-white/10' };
-  }
-  if (s.includes('cancel')) {
-    return { label: 'Cancelado', dot: 'bg-red-400', text: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
-  }
-  if (s.includes('hiatus') || s.includes('determined') || s.includes('tba')) {
-    return { label: 'Em hiatus', dot: 'bg-yellow-400', text: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' };
-  }
-  return null;
-}
-
-function typeLabel(type: string) {
-  const map: Record<string, string> = {
-    anime: 'Anime', filme: 'Filme', 'série': 'Série', hq: 'HQ / Comic',
-    manga: 'Mangá', livro: 'Livro', novel: 'Novel',
-  };
-  return map[type] || type;
-}
-
 export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEdit }: Props) {
   const [currentItem, setCurrentItem] = useState<CultureItem>(item);
   const [episodes, setEpisodes] = useState<CultureEpisode[]>([]);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCurrentItem(item);
-  }, [item]);
+  const {
+    refreshing,
+    feedbackMessage,
+    setFeedbackMessage,
+    handleRefreshMetadata,
+  } = useCultureMetadataRefresh(currentItem, setCurrentItem, onUpdate);
 
   const handleLoadEpisodes = async () => {
     if (episodes.length > 0) { setShowEpisodes(v => !v); return; }
@@ -67,7 +38,7 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
       const eps = await CultureService.getEpisodes(currentItem.id);
       setEpisodes(eps);
       setShowEpisodes(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[CultureViewModal] Erro ao carregar episódios:', err);
     } finally {
       setLoadingEpisodes(false);
@@ -86,58 +57,8 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
       onUpdate?.();
       setFeedbackMessage(newProgress > 0 ? 'Obra marcada como concluída!' : 'Progresso reiniciado.');
       setTimeout(() => setFeedbackMessage(null), 3000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[CultureViewModal] Erro ao alternar conclusão:', err);
-    }
-  };
-
-  const handleRefreshMetadata = async () => {
-    setRefreshing(true);
-    setFeedbackMessage(null);
-    try {
-      let match: CultureSearchResult | null = null;
-      if (currentItem.type === 'filme') {
-        const res = await fetchImdbMovies(currentItem.title);
-        match = res[0] || null;
-      } else if (currentItem.type === 'série') {
-        const res = await fetchImdbSeries(currentItem.title);
-        match = res[0] || null;
-      } else if (currentItem.type === 'anime') {
-        const res = await fetchJikan(currentItem.title, 'anime');
-        match = res[0] || null;
-      } else if (currentItem.type === 'livro') {
-        const res = await fetchGoogleBooks(currentItem.title);
-        match = res[0] || null;
-      }
-
-      if (match && (match.cover || match.synopsis || match.api_id)) {
-        let extraCinemeta: Partial<CultureSearchResult> | null = null;
-        if (match.api_id?.startsWith('tt')) {
-          extraCinemeta = await fetchCinemetaMetadata(match.api_id, currentItem.type === 'série' ? 'series' : 'movie');
-        }
-
-        const updatedFields: Partial<CultureItem> = {
-          cover_image: match.cover || currentItem.cover_image,
-          synopsis: (match.synopsis && match.synopsis.length > 20) ? match.synopsis : currentItem.synopsis,
-          api_id: match.api_id || currentItem.api_id,
-          api_source: (match.api_source as CultureItem['api_source']) || currentItem.api_source,
-          trailer_url: extraCinemeta?.trailer_url || match.trailer_url || currentItem.trailer_url,
-          trailer_yt_id: extraCinemeta?.trailer_yt_id || match.trailer_yt_id || currentItem.trailer_yt_id,
-        };
-
-        await CultureService.updateItem(currentItem.id, { ...currentItem, ...updatedFields });
-        setCurrentItem(prev => ({ ...prev, ...updatedFields }));
-        setFeedbackMessage('Capa e dados oficiais atualizados!');
-        onUpdate?.();
-      } else {
-        setFeedbackMessage('Nenhuma informação nova encontrada para este título.');
-      }
-    } catch (err) {
-      console.error('[CultureViewModal] Erro ao sincronizar metadados:', err);
-      setFeedbackMessage('Erro ao consultar bases externas.');
-    } finally {
-      setRefreshing(false);
-      setTimeout(() => setFeedbackMessage(null), 3500);
     }
   };
 
@@ -180,25 +101,11 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
           onClick={e => e.stopPropagation()}
         >
           {/* Poster / Cover */}
-          <div className="w-52 hidden sm:flex flex-shrink-0 relative bg-black/60 flex-col">
-            {currentItem.cover_image ? (
-              <img
-                src={currentItem.cover_image}
-                alt={currentItem.title}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/20 text-4xl">📖</div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-            <div className="absolute bottom-3 left-3">
-              <span className="px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
-                {typeLabel(currentItem.type)}
-              </span>
-            </div>
-          </div>
+          <CultureModalPoster
+            coverImage={currentItem.cover_image}
+            title={currentItem.title}
+            type={currentItem.type}
+          />
 
           {/* Content */}
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -351,45 +258,15 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
               )}
 
               {/* Episodes section */}
-              {hasEpisodesFeature && currentItem.api_id && (
-                <div className="space-y-2">
-                  <button
-                    onClick={handleLoadEpisodes}
-                    disabled={loadingEpisodes}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 hover:border-brand-500/40 rounded-xl text-sm font-semibold text-brand-400 transition-all duration-200 disabled:opacity-50"
-                  >
-                    <Play size={15} className={loadingEpisodes ? 'animate-pulse' : ''} />
-                    {loadingEpisodes
-                      ? 'Carregando...'
-                      : showEpisodes
-                      ? 'Ocultar lista'
-                      : item.type === 'manga' || item.type === 'hq' || item.type === 'novel'
-                      ? `Ver Capítulos ${episodes.length > 0 ? `(${episodes.length})` : ''}`
-                      : `Ver Episódios ${episodes.length > 0 ? `(${episodes.length})` : ''}`
-                    }
-                  </button>
-
-                  {showEpisodes && episodes.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto scrollbar-custom space-y-1 p-2 rounded-xl bg-black/30 border border-white/5">
-                      {episodes.map(ep => (
-                        <div
-                          key={ep.id}
-                          className={`flex items-center justify-between p-2 rounded-lg text-xs ${
-                            ep.is_watched ? 'text-white/40 bg-white/[0.02]' : 'text-white/80 bg-white/[0.04]'
-                          }`}
-                        >
-                          <span className="truncate flex-1 pr-2">
-                            {ep.episode_number ? `Ep. ${ep.episode_number}: ` : ''}{ep.title}
-                          </span>
-                          {ep.is_watched && (
-                            <span className="text-[10px] text-emerald-400 font-semibold flex-shrink-0">Visto</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <CultureEpisodesSection
+                hasEpisodesFeature={hasEpisodesFeature}
+                apiId={currentItem.api_id}
+                itemType={item.type}
+                loadingEpisodes={loadingEpisodes}
+                showEpisodes={showEpisodes}
+                episodes={episodes}
+                onToggleEpisodes={handleLoadEpisodes}
+              />
             </div>
 
             {/* Footer */}

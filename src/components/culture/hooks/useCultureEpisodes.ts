@@ -46,7 +46,7 @@ export function useCultureEpisodes({ item, isOpen, onUpdateProgress }: UseCultur
         });
         if (isMounted.current) setEpisodes(synced);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro na sincronização:', err);
       if (isMounted.current) setError('Falha ao sincronizar episódios. Tente novamente.');
     } finally {

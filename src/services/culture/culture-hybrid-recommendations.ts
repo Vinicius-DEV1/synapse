@@ -4,6 +4,7 @@ import type {
   RecommendationProgressUpdate,
   RawAIRecommendation
 } from '../../types/culture-recommendations';
+import type { CultureType } from '../../types/culture';
 import { CultureService } from '../culture';
 import { CultureEdgeAI } from './culture-edge-ai';
 import { CultureAlgorithmicScorer } from './culture-algorithmic-scorer';
@@ -182,7 +183,7 @@ class CultureHybridRecommendationsImpl {
     console.log(`[CultureHybridRecommendations] Vectorizing and saving ${newCluster.items.length} items to Local Database...`);
     
     // 3. Vectorize and save to local IDB so Edge AI gets smarter
-    const db = await (CultureLocalDatabase as any).initDB();
+    const db = await CultureLocalDatabase.initDB();
     const tx = db.transaction('media', 'readwrite');
     
     for (const item of newCluster.items) {
@@ -195,7 +196,7 @@ class CultureHybridRecommendationsImpl {
         await tx.store.put({
           id: item.api_id || item.id,
           title: item.title,
-          type: item.type as any,
+          type: item.type as CultureType,
           year: item.year || new Date().getFullYear(),
           popularity: item.rating ? item.rating * 10 : 50,
           genres: item.genres || [],

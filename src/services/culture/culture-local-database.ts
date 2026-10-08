@@ -37,7 +37,7 @@ class CultureLocalDatabaseImpl {
   private dbPromise: Promise<IDBPDatabase<CultureEdgeDBSchema>> | null = null;
   public isInitialized = false;
 
-  private initDB() {
+  public initDB(): Promise<IDBPDatabase<CultureEdgeDBSchema>> {
     if (!this.dbPromise) {
       this.dbPromise = openDB<CultureEdgeDBSchema>('culture-edge-db', 1, {
         upgrade(db) {

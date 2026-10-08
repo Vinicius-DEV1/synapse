@@ -80,7 +80,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       triggerToast('O título da obra é obrigatório.', 'error');
       return;
     }
-    if (formData.type === ('todos' as any)) {
+    if (String(formData.type) === 'todos') {
       triggerToast("Por favor, selecione um tipo de mídia específico (Anime, Filme, etc) antes de salvar.", "error");
       return;
     }
@@ -96,9 +96,10 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao salvar:', err);
-      triggerToast(err.message || 'Erro ao salvar obra.', 'error');
+      const message = err instanceof Error ? err.message : 'Erro ao salvar obra.';
+      triggerToast(message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -112,9 +113,10 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       triggerToast('Obra excluída.', 'info');
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      triggerToast(err.message || 'Erro ao excluir obra.', 'error');
+      const message = err instanceof Error ? err.message : 'Erro ao excluir obra.';
+      triggerToast(message, 'error');
     } finally {
       setIsSaving(false);
     }

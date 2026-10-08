@@ -231,11 +231,7 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
       const useEdge = localStorage.getItem('culture_rec_use_edge') === 'true';
       const Service = useEdge ? CultureHybridRecommendationsService : CultureRecommendationsService;
       
-      // The Hybrid service currently returns a full list, so we might need to cast or extend its signature
-      // for full cluster expansion later. For now, fallback to legacy if not implemented.
-      const updated = await (Service as any).expandCluster 
-        ? await (Service as any).expandCluster(clusterId, clusters)
-        : await CultureRecommendationsService.expandCluster(clusterId, clusters);
+      const updated = await Service.expandCluster(clusterId, clusters);
       if (isMountedRef.current) {
         setClusters(updated);
       }

@@ -7,6 +7,7 @@ import type {
   RecentRecommendedTitlesEntry,
   AiCulturalDnaProfile,
 } from '../types/culture-recommendations';
+import type { CultureItem, CultureEpisode } from '../types/culture';
 
 
 import type { SharedPageConfig } from '../types/sharing';
@@ -60,8 +61,8 @@ export interface CadernoDBSchema extends DBSchema {
   youtube_watched: { key: string; value: any; indexes: { video_id: string } };
   youtube_summaries: { key: string; value: any; indexes: { video_id: string } };
   lofis: { key: string; value: any };
-  culture_items: { key: string; value: any };
-  culture_episodes: { key: string; value: any; indexes: { item_id: string } };
+  culture_items: { key: string; value: CultureItem };
+  culture_episodes: { key: string; value: CultureEpisode; indexes: { item_id: string } };
   focus_sessions: { key: string; value: Session };
   alarms: { key: number; value: Alarm };
   activity_logs: { key: string; value: any };

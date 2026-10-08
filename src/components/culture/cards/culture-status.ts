@@ -22,3 +22,16 @@ export function getStatusInfo(status?: string): CultureStatusInfo | null {
   }
   return null;
 }
+
+export function typeLabel(type: string): string {
+  const map: Record<string, string> = {
+    anime: 'Anime',
+    filme: 'Filme',
+    'série': 'Série',
+    hq: 'HQ / Comic',
+    manga: 'Mangá',
+    livro: 'Livro',
+    novel: 'Novel',
+  };
+  return map[type] || type;
+}

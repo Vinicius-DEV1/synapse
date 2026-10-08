@@ -9,7 +9,7 @@ export interface CultureItem {
   access_link?: string;
   progress: number;
   total_progress: number;
-  is_goal: boolean;
+  is_goal: boolean | number;
   goal_note?: string;
   api_id?: string;
   api_source?: 'jikan' | 'itunes' | 'tvmaze' | 'books' | 'imdb' | 'anilist' | 'kitsu' | 'openlibrary';
@@ -23,6 +23,7 @@ export interface CultureItem {
   trailer_yt_id?: string;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 }
 
 export interface CultureEpisode {
@@ -33,9 +34,11 @@ export interface CultureEpisode {
   episode_in_season?: number;
   title: string;
   synopsis: string;
-  is_watched: boolean;
+  is_watched: boolean | number;
   aired_at?: string;
+  created_at?: string;
   updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export type EnrichedEpisode = CultureEpisode & {
