@@ -6,6 +6,7 @@ import type { Page } from '../../types';
 
 vi.mock('../../store/useStore', () => ({
   useStore: vi.fn(),
+  getNotesKey: vi.fn(() => undefined),
 }));
 
 describe('PageHeader Component', () => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import type { Editor } from '@tiptap/react';
-import { selectEntireTable } from './tableSelectionUtils';
+import { selectEntireTable, selectColumnAtIndex } from './tableSelectionUtils';
 import TableColumnGrip, { type ColumnGrip, type DragState } from './TableColumnGrip';
 import TableRowGrip, { type RowGrip } from './TableRowGrip';
 import TableDropIndicator from './TableDropIndicator';
@@ -200,9 +200,7 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
         if (colIdx >= 0) {
           e.preventDefault();
           e.stopPropagation();
-          import('./tableSelectionUtils').then(({ selectColumnAtIndex }) => {
-            selectColumnAtIndex(editor, colIdx);
-          });
+          selectColumnAtIndex(editor, colIdx);
         }
       }
     };
