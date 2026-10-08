@@ -11,8 +11,7 @@ import { useSlashCommand } from './editor/hooks/useSlashCommand';
 import { useEditorExtensions } from './editor/hooks/useEditorExtensions';
 import { useEditorModals } from './editor/hooks/useEditorModals';
 import { useEditorDropPaste } from './editor/hooks/useEditorDropPaste';
-import { useBlockHandle } from './editor/hooks/useBlockHandle';
-import BlockHandle from './editor/components/BlockHandle';
+import EditorBlockHandleHost from './editor/components/EditorBlockHandleHost';
 import EditorModalHost from './editor/components/EditorModalHost';
 import TableExcelGrips from './editor/components/table/TableExcelGrips';
 import { useTableCellValidation } from './editor/hooks/useTableCellValidation';
@@ -30,32 +29,6 @@ interface EditorProps {
   ) => void;
   onCreateLinkedPage?: (title: string) => Promise<string | null>;
   isActive?: boolean;
-}
-
-function EditorBlockHandleHost({
-  editor,
-  wrapperRef,
-}: {
-  editor: TipTapEditor | null;
-  wrapperRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const blockHandle = useBlockHandle(editor, wrapperRef);
-  if (!blockHandle.anchor) return null;
-
-  return (
-    <BlockHandle
-      x={blockHandle.anchor.x}
-      y={blockHandle.anchor.y}
-      onDragStart={blockHandle.onDragStart}
-      onDragEnd={blockHandle.onDragEnd}
-      onDelete={blockHandle.onDelete}
-      onMoveUp={blockHandle.onMoveUp}
-      onMoveDown={blockHandle.onMoveDown}
-      onAddBelow={blockHandle.onAddBelow}
-      onMenuOpenChange={blockHandle.onMenuOpenChange}
-      onChangeColor={blockHandle.onChangeColor}
-    />
-  );
 }
 
 export default function Editor({
