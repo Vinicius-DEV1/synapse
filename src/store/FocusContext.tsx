@@ -41,7 +41,7 @@ export interface FocusActionsContextType {
   handleStartTimer: (tag: string, description: string, targetTime: number, explicitId?: string) => string | void;
   handleAddTimeFromSuccess: (minutes: number) => void;
   handleAddTotalTime: (minutes: number) => void;
-  handleDeleteSession: (id: number) => Promise<void>;
+  handleDeleteSession: (id: number | string) => Promise<void>;
   handleSaveAlarm: (alarm: Alarm) => Promise<void>;
   handleToggleAlarm: (id: number, isActive: boolean) => Promise<void>;
   handleDeleteAlarm: (id: number) => Promise<void>;
@@ -143,7 +143,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (window.api?.focus) {
       try {
         const data = await window.api.focus.getSessions();
-        const formattedData: Session[] = (data || []).map((s: { created_at?: string; [key: string]: unknown }) => {
+        const formattedData: Session[] = (data || []).map((s: Session) => {
           let iso = s.created_at;
           if (iso && !iso.includes('T')) {
             iso = iso.replace(' ', 'T') + 'Z';
@@ -151,7 +151,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           return {
             ...s,
             created_at: iso ? new Date(iso).toISOString() : undefined
-          } as Session;
+          };
         });
         setSessions(formattedData);
         if (window.api.focus.getAlarms) {
@@ -178,7 +178,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => window.removeEventListener('caderno-sync-complete', handleSyncComplete);
   }, [loadLofis, loadData]);
 
-  const handleDeleteSession = useCallback(async (id: number) => {
+  const handleDeleteSession = useCallback(async (id: number | string) => {
     if (window.api?.focus) {
       await window.api.focus.deleteSessions({ type: 'specific', id });
       loadData();

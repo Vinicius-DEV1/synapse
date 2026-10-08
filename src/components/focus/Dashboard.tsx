@@ -11,7 +11,7 @@ interface DashboardProps {
   onOpenAlarms: () => void;
   onOpenLofi: () => void;
   onOpenStats: () => void;
-  onDeleteSession: (id: number) => void;
+  onDeleteSession: (id: number | string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings, onOpenAlarms, onOpenLofi, onOpenStats, onDeleteSession }) => {
@@ -255,10 +255,18 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
   );
 };
 
-const StatCard = ({ title, value, icon, color, bg }: { title: string, value: any, icon: React.ReactNode, color: string, bg: string }) => (
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactElement<{ className?: string }>;
+  color: string;
+  bg: string;
+}
+
+const StatCard = ({ title, value, icon, color, bg }: StatCardProps) => (
   <div className="bg-dark-card rounded-xl p-2 sm:p-3 border border-white/5 shadow-md flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
     <div className={`p-1.5 rounded-lg shrink-0 ${bg} ${color}`}>
-      {React.cloneElement(icon as React.ReactElement<any>, { className: "w-4 h-4" })}
+      {React.cloneElement(icon, { className: 'w-4 h-4' })}
     </div>
     <div className="min-w-0 flex-1">
       <p className="text-dark-subtext text-[10px] sm:text-xs font-medium mb-0.5 truncate">{title}</p>

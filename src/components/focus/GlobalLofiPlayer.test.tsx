@@ -3,13 +3,21 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import { GlobalLofiPlayer } from './GlobalLofiPlayer';
 import * as lofiManager from '../../services/lofi-manager';
 import * as toastContext from '../ui/ToastContext';
+import type { LofiItem } from '../../types';
 
 vi.mock('../ui/ToastContext', () => ({
   triggerToast: vi.fn(),
 }));
 
-const mockContext = {
-  activeLofi: null as any,
+const mockContext: {
+  activeLofi: LofiItem | null;
+  setActiveLofi: ReturnType<typeof vi.fn>;
+  isPlayingLofi: boolean;
+  setIsPlayingLofi: ReturnType<typeof vi.fn>;
+  lofiVolume: number;
+  setLofiVolume: ReturnType<typeof vi.fn>;
+} = {
+  activeLofi: null,
   setActiveLofi: vi.fn(),
   isPlayingLofi: true,
   setIsPlayingLofi: vi.fn(),

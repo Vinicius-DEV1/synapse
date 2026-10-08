@@ -1,5 +1,5 @@
 export interface Session {
-  id?: number;
+  id?: number | string;
   tag: string;
   description: string;
   target_time_minutes: number;
@@ -7,6 +7,8 @@ export interface Session {
   justification?: string | null;
   summary?: string | null;
   created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Stats {
@@ -22,4 +24,6 @@ export interface Alarm {
   label?: string | null;
   is_active: boolean | number;
   created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }

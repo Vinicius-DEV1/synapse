@@ -142,7 +142,16 @@ export default function FocusStatsView({ onBack }: FocusStatsViewProps) {
   );
 }
 
-function TopCard({ title, icon, color, bg, item, formatDuration }: any) {
+interface TopCardProps {
+  title: string;
+  icon: React.ReactNode;
+  color: string;
+  bg: string;
+  item: { title: string; duration: number } | null;
+  formatDuration: (minutes: number) => string;
+}
+
+function TopCard({ title, icon, color, bg, item, formatDuration }: TopCardProps) {
   return (
     <div className="bg-dark-card border border-white/5 p-4 md:p-6 rounded-2xl flex flex-col justify-between shadow-lg">
       <div className="flex items-center gap-3 mb-2">

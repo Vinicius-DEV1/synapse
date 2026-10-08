@@ -27,6 +27,7 @@ import type {
   ReadingSession,
   OcrCacheEntry,
 } from '../types/library';
+import type { Session, Alarm } from '../components/focus/types';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -61,8 +62,8 @@ export interface CadernoDBSchema extends DBSchema {
   lofis: { key: string; value: any };
   culture_items: { key: string; value: any };
   culture_episodes: { key: string; value: any; indexes: { item_id: string } };
-  focus_sessions: { key: string; value: any };
-  alarms: { key: number; value: any };
+  focus_sessions: { key: string; value: Session };
+  alarms: { key: number; value: Alarm };
   activity_logs: { key: string; value: any };
   calendar_events: { key: string; value: any };
   notifications: { key: string; value: any };

@@ -61,10 +61,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
 
   const handleDelete = async (type: 'today' | 'last7days' | 'all') => {
     if (window.api?.focus) {
-      // ``deleteSessions` (ICadernoAPI, src/api/types.ts) only declares filters
-      // 'specific' | 'all', but the actual filter accepted by implementations
-      // (src/api/web/focus.ts, src/api/tauri/focus.ts) is broader.
-      await window.api.focus.deleteSessions({ type } as { type: 'specific'; id: number } | { type: 'all' });
+      await window.api.focus.deleteSessions({ type });
       onRefresh();
       setConfirmDelete(null);
     }
@@ -129,11 +126,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
           <div>
             <h3 className="text-sm font-bold text-dark-subtext uppercase tracking-widest mb-4">Data Management</h3>
             <div className="space-y-3">
-              {[
-                { type: 'today', label: 'Clear Today\'s Data', desc: 'Deletes all sessions from today' },
-                { type: 'last7days', label: 'Clear Last 7 Days', desc: 'Deletes sessions from the past week' },
-                { type: 'all', label: 'Factory Reset', desc: 'Deletes all sessions completely', danger: true },
-              ].map((item) => (
+              {(
+                [
+                  { type: 'today' as const, label: "Clear Today's Data", desc: 'Deletes all sessions from today', danger: false },
+                  { type: 'last7days' as const, label: 'Clear Last 7 Days', desc: 'Deletes sessions from the past week', danger: false },
+                  { type: 'all' as const, label: 'Factory Reset', desc: 'Deletes all sessions completely', danger: true },
+                ]
+              ).map((item) => (
                 <div key={item.type} className={`p-4 rounded-xl border ${item.danger ? 'bg-rose-500/5 border-rose-500/20' : 'bg-dark-bg border-white/5'}`}>
                   {confirmDelete === item.type ? (
                     <div className="flex flex-col gap-3 animate-in fade-in">
@@ -145,7 +144,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                         <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 rounded-lg bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition-colors">
                           Cancel
                         </button>
-                        <button onClick={() => handleDelete(item.type as any)} className="flex-1 py-2 rounded-lg bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20">
+                        <button onClick={() => handleDelete(item.type)} className="flex-1 py-2 rounded-lg bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20">
                           Confirm Delete
                         </button>
                       </div>
@@ -157,7 +156,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                         <p className="text-xs text-dark-subtext">{item.desc}</p>
                       </div>
                       <button 
-                        onClick={() => setConfirmDelete(item.type as any)}
+                        onClick={() => setConfirmDelete(item.type)}
                         className={`p-2 rounded-lg transition-colors ${item.danger ? 'text-rose-400 hover:bg-rose-500/20' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
                       >
                         <Trash2 size={18} />

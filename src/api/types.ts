@@ -22,6 +22,7 @@ import type { DiagramMeta, DiagramContent } from '../types/diagrams';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
 import type { IQuizApi } from './contracts/quiz';
 import type { IHabitsApi } from '../types/habits';
+import type { Session, Alarm } from '../components/focus/types';
 
 export interface FilesApi {
   getAll: () => Promise<FileItem[]>;
@@ -255,12 +256,12 @@ export interface ICadernoAPI {
   };
 
   focus?: {
-    getSessions: () => Promise<any[]>;
-    createSession: (session: any) => Promise<{ success: boolean; id?: number }>;
-    deleteSessions: (options: { type: 'specific'; id: number } | { type: 'all' }) => Promise<{ success: boolean; error?: string }>;
-    getAlarms: () => Promise<any[]>;
-    createAlarm: (alarm: any) => Promise<{ success: boolean; id?: number }>;
-    updateAlarm: (id: number, alarm: any) => Promise<{ success: boolean }>;
+    getSessions: () => Promise<Session[]>;
+    createSession: (session: Partial<Session>) => Promise<{ success: boolean; id?: number | string }>;
+    deleteSessions: (options: { type: 'specific'; id: number | string } | { type: 'all' } | { type: 'today' } | { type: 'last7days' }) => Promise<{ success: boolean; error?: string }>;
+    getAlarms: () => Promise<Alarm[]>;
+    createAlarm: (alarm: Partial<Alarm>) => Promise<{ success: boolean; id?: number }>;
+    updateAlarm: (id: number, alarm: Partial<Alarm>) => Promise<{ success: boolean }>;
     deleteAlarm: (id: number) => Promise<{ success: boolean }>;
   };
 
