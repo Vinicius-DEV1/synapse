@@ -29,7 +29,7 @@ interface CultureEdgeDBSchema extends DBSchema {
   };
   metadata: {
     key: string;
-    value: any;
+    value: unknown;
   };
 }
 
@@ -65,12 +65,12 @@ class CultureLocalDatabaseImpl {
     
     try {
       // 1. Check last sync cursor
-      const lastSync = await db.get('metadata', 'last_sync_timestamp') as number || 0;
+      const lastSync = (await db.get('metadata', 'last_sync_timestamp')) as number || 0;
       
       // 2. Fetch delta update only if remote endpoint is explicitly configured
-      const syncUrl = (import.meta as any).env?.VITE_CULTURE_SYNC_URL;
+      const syncUrl = import.meta.env.VITE_CULTURE_SYNC_URL as string | undefined;
       if (syncUrl) {
-        console.log(`[CultureLocalDB] Verificando novos filmes desde ${new Date(lastSync).toISOString()}...`);
+        console.log(`[CultureLocalDB] Checking new media updates since ${new Date(lastSync).toISOString()}...`);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for background sync
         
@@ -85,7 +85,7 @@ class CultureLocalDatabaseImpl {
             const deltaItems: LocalMediaItem[] = await response.json();
 
             if (deltaItems.length > 0) {
-              console.log(`[CultureLocalDB] Baixado ${deltaItems.length} novos itens. Injetando...`);
+              console.log(`[CultureLocalDB] Downloaded ${deltaItems.length} new items. Injecting into local database...`);
               const tx = db.transaction('media', 'readwrite');
               for (const item of deltaItems) {
                 await tx.store.put(item);
@@ -98,13 +98,13 @@ class CultureLocalDatabaseImpl {
         }
       }
     } catch (err) {
-      console.warn('[CultureLocalDB] API de sync inacessível no momento. Usando base local offline.', err);
+      console.warn('[CultureLocalDB] Sync API unreachable at this time. Using local offline database.', err);
     }
 
     // --- Local Fallback: If DB is completely empty (first boot), inject initial catalog ---
     const count = await db.count('media');
     if (count === 0) {
-      console.log('[CultureLocalDB] Base local completamente vazia. Semeando catálogo inicial de 48 bytes (384 dimensões)...');
+      console.log('[CultureLocalDB] Local database completely empty. Seeding initial catalog with 48-byte vectors (384 dimensions)...');
       const seedData: LocalMediaItem[] = [
         {
           id: 'seed-1',

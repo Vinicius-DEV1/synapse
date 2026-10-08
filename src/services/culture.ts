@@ -1,4 +1,5 @@
 import type { CultureItem, CultureEpisode } from '../types';
+import { syncTvMazeEpisodes, syncJikanEpisodes } from './culture/culture-episodes-sync';
 
 declare module '../api/types' {
   interface CultureApi {
@@ -53,7 +54,6 @@ export const CultureService = {
   },
 
   async syncOngoingItems(items: CultureItem[]): Promise<void> {
-    const { syncTvMazeEpisodes, syncJikanEpisodes } = await import('./culture/culture-episodes-sync');
     const ONE_DAY = 24 * 60 * 60 * 1000;
     const now = new Date().getTime();
 
