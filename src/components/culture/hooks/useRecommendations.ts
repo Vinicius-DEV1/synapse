@@ -7,6 +7,7 @@ import type {
   AiCulturalDnaProfile,
 } from '../../../types/culture-recommendations';
 import { CultureRecommendationsService } from '../../../services/culture/culture-recommendations';
+import { CultureHybridRecommendationsService } from '../../../services/culture/culture-hybrid-recommendations';
 import { CultureFeedbackStorage } from '../../../services/culture/culture-feedback-storage';
 
 export function useRecommendations(onLibraryUpdated?: () => void) {
@@ -78,7 +79,11 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
         setError(null);
       }
 
-      const result = await CultureRecommendationsService.getRecommendationsProgressive(
+      // DO NOT REMOVE: Legacy AI Direct Match Engine. See CultureHybridRecommendationsService for the new local hybrid engine.
+      const useEdge = localStorage.getItem('culture_rec_use_edge') === 'true';
+      const Service = useEdge ? CultureHybridRecommendationsService : CultureRecommendationsService;
+
+      const result = await Service.getRecommendationsProgressive(
         forceRefresh,
         mode,
         (update) => {
@@ -221,7 +226,14 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
     setExpandingClusterId(clusterId);
     setExpandError(null);
     try {
-      const updated = await CultureRecommendationsService.expandCluster(clusterId, clusters);
+      const useEdge = localStorage.getItem('culture_rec_use_edge') === 'true';
+      const Service = useEdge ? CultureHybridRecommendationsService : CultureRecommendationsService;
+      
+      // The Hybrid service currently returns a full list, so we might need to cast or extend its signature
+      // for full cluster expansion later. For now, fallback to legacy if not implemented.
+      const updated = await (Service as any).expandCluster 
+        ? await (Service as any).expandCluster(clusterId, clusters)
+        : await CultureRecommendationsService.expandCluster(clusterId, clusters);
       if (isMountedRef.current) {
         setClusters(updated);
       }

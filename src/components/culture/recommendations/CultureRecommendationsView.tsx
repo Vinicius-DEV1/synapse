@@ -117,6 +117,23 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
             </button>
           </div>
 
+          {/* Edge AI / Hybrid Engine Toggle */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 text-xs px-2.5">
+            <span className="text-zinc-400 font-medium" title="Usa motor local WebGPU em vez de IA na Nuvem">Edge AI</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                defaultChecked={localStorage.getItem('culture_rec_use_edge') === 'true'}
+                onChange={(e) => {
+                  localStorage.setItem('culture_rec_use_edge', e.target.checked.toString());
+                  window.location.reload(); // Reload to re-mount hook with new service
+                }}
+              />
+              <div className="w-7 h-4 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
           {lastGeneratedAt && (
             <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-zinc-500">
               <Clock size={12} />
