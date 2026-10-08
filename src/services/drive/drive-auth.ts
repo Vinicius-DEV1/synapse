@@ -95,8 +95,8 @@ export async function refreshToken(refresh_token: string): Promise<DriveToken> {
     let errorData: { error?: string; error_description?: string } = {};
     try {
       errorData = (await res.json()) as { error?: string; error_description?: string };
-    } catch {
-      // Ignored if not valid json
+    } catch (parseErr: unknown) {
+      console.debug('[Drive Auth] Failed to parse OAuth error response as JSON:', parseErr);
     }
     const message =
       errorData.error_description ||
@@ -157,7 +157,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
           let parsed;
           try {
             parsed = JSON.parse(val);
-          } catch {
+          } catch (jsonErr: unknown) {
+            console.debug('[Drive Auth] Credential is encrypted, decrypting with in-memory master key:', jsonErr);
             if (_inMemoryMasterKey) {
               const decrypted = await decryptText(val, _inMemoryMasterKey);
               parsed = JSON.parse(decrypted);
@@ -190,7 +191,8 @@ export async function getDriveCredentials(): Promise<{ token: DriveToken | null 
         let parsed;
         try {
           parsed = JSON.parse(val);
-        } catch {
+        } catch (jsonErr: unknown) {
+          console.debug('[Drive Auth Web] Credential is encrypted, decrypting with in-memory master key:', jsonErr);
           if (_inMemoryMasterKey) {
             const decrypted = await decryptText(val, _inMemoryMasterKey);
             parsed = JSON.parse(decrypted);

@@ -21,8 +21,8 @@ export async function decryptDriveFileId(fileId: string): Promise<string> {
          if (decrypted && !decrypted.includes(':')) {
            return decrypted;
          }
-       } catch (e) {
-         // Ignore and try next key
+       } catch (err: unknown) {
+         console.debug(`[Drive decryptDriveFileId] Module key trial failed for ${mod}:`, err);
        }
     }
   }
