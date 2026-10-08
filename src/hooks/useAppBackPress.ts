@@ -9,13 +9,16 @@ export function useAppBackPress(
   pageHistoryRef: React.MutableRefObject<string[]>
 ) {
   const stateRef = useRef(state);
-  stateRef.current = state;
   const dispatchRef = useRef(dispatch);
-  dispatchRef.current = dispatch;
   const floatingPageIdRef = useRef(floatingPageId);
-  floatingPageIdRef.current = floatingPageId;
   const setFloatingPageIdRef = useRef(setFloatingPageId);
-  setFloatingPageIdRef.current = setFloatingPageId;
+
+  useEffect(() => {
+    stateRef.current = state;
+    dispatchRef.current = dispatch;
+    floatingPageIdRef.current = floatingPageId;
+    setFloatingPageIdRef.current = setFloatingPageId;
+  });
 
   useEffect(() => {
     const handleBack = (): boolean => {
