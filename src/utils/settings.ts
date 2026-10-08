@@ -1,3 +1,5 @@
+import type { CultureType } from '../types/culture';
+
 export interface AppSettings {
   autoLockOnSuspend: boolean;
   inactivityTimeoutMinutes: number; // 0 = disabled
@@ -32,6 +34,12 @@ export interface AppSettings {
   compactPinnedTabs?: boolean;
   /** Maximum width in px for unpinned tabs (default: 400) */
   tabMaxWidth?: number;
+  /** Density & assertiveness level for cultural recommendations: 'standard' (3-4 collections, 14-18 items), 'expanded' (4-5 collections, 20-24 items), 'quadruple' (4-5 dense & doubled collections, 28-36 items) */
+  cultureRecommendationsVolume?: 'standard' | 'expanded' | 'quadruple';
+  /** Formats to strictly exclude from cultural recommendations (e.g. ['livro', 'anime']) */
+  cultureExcludedTypes?: CultureType[];
+  /** Custom genres, themes, or keywords to strictly exclude from cultural recommendations (e.g. ['terror', 'gore']) */
+  cultureExcludedThemes?: string[];
 }
 
 export function getSettings(): AppSettings {
@@ -59,8 +67,12 @@ export function getSettings(): AppSettings {
     videoPlaybackPreference: 'auto',
     videoDefaultWebQuality: '720p',
     compactPinnedTabs: true,
-    tabMaxWidth: 400
+    tabMaxWidth: 400,
+    cultureRecommendationsVolume: 'quadruple',
+    cultureExcludedTypes: [],
+    cultureExcludedThemes: [],
   };
+
   
   try {
     const s = localStorage.getItem('appSettings');

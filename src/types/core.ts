@@ -4,6 +4,7 @@ export * from './notes';
 export * from './finance';
 export * from './library';
 export * from './culture';
+export * from './culture-recommendations';
 export * from './calendar';
 export * from './notifications';
 export * from './anki';

@@ -44,4 +44,22 @@ describe('settings utils', () => {
     const s = getSettings();
     expect(s.fontSize).toBe('text-base');
   });
+
+  it('persists and retrieves culture recommendation exclusions', () => {
+    const s = getSettings();
+    expect(s.cultureExcludedTypes).toEqual([]);
+    expect(s.cultureExcludedThemes).toEqual([]);
+
+    const updated: AppSettings = {
+      ...s,
+      cultureExcludedTypes: ['livro', 'anime'],
+      cultureExcludedThemes: ['terror', 'gore'],
+    };
+
+    saveSettings(updated);
+    const retrieved = getSettings();
+
+    expect(retrieved.cultureExcludedTypes).toEqual(['livro', 'anime']);
+    expect(retrieved.cultureExcludedThemes).toEqual(['terror', 'gore']);
+  });
 });

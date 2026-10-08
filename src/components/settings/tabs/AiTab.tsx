@@ -378,17 +378,17 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
               className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
             >
               <option className="bg-dark-bg text-white" value="quadruple">
-                Volume Máximo (4 coleções com 14 a 18 obras cada — 56 a 70 sugestões em 3 fileiras) — Recomendado
+                Volume Máximo Dobrado (4 a 5 coleções com 28 a 36 obras cada — 120 a 160+ sugestões) — Recomendado
               </option>
               <option className="bg-dark-bg text-white" value="expanded">
-                Volume Expandido (4 coleções com 10 a 12 obras cada — 40 a 48 sugestões)
+                Volume Expandido (4 a 5 coleções com 20 a 24 obras cada — 80 a 100+ sugestões)
               </option>
               <option className="bg-dark-bg text-white" value="standard">
-                Volume Moderado (3 a 4 coleções com 6 a 8 obras cada — 20 a 30 sugestões)
+                Volume Moderado (3 a 4 coleções com 14 a 18 obras cada — 45 a 65 sugestões)
               </option>
             </select>
             <p className="text-[11px] text-dark-subtext leading-relaxed">
-              Gera coleções densas e assertivas (14 a 18 obras por coleção, formando 3 fileiras completas de cards) mantendo estritamente 4 coleções temáticas com geração rápida e fluida.
+              Dobra a quantidade de obras recomendadas (28 a 36 obras por coleção, formando 5 a 6 fileiras completas de cards) mantendo estritamente entre 4 e 5 coleções temáticas sem poluí-las.
             </p>
           </div>
 
