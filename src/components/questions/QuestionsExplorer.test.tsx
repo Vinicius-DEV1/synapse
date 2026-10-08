@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import { QuestionsExplorer } from './QuestionsExplorer';
 import type { BatteryWithQuestions } from '../../types/quiz';
 
@@ -252,6 +252,94 @@ describe('QuestionsExplorer Component', () => {
 
     expect(getByText('Direito Constitucional I')).toBeDefined();
     expect(queryByText('Ver no Caderno')).toBeNull();
+  });
+
+  it('renders nested sub-batteries under parent group and triggers onCreateSubgroup', () => {
+    const hierarchicalBatteries: BatteryWithQuestions[] = [
+      {
+        id: 'parent-js',
+        title: 'JAVASCRIPT',
+        description: 'Grupo Principal JS',
+        layout: 'sequential',
+        tags: ['javascript'],
+        created_at: '2026-09-08T00:00:00.000Z',
+        updated_at: '2026-09-08T00:00:00.000Z',
+        questions: [],
+        latestAttempts: {},
+        linkedPages: [],
+      },
+      {
+        id: 'child-basics',
+        parent_id: 'parent-js',
+        title: 'js-básico',
+        description: 'Conceitos fundamentais',
+        layout: 'sequential',
+        tags: ['javascript'],
+        created_at: '2026-09-08T00:00:00.000Z',
+        updated_at: '2026-09-08T00:00:00.000Z',
+        questions: [],
+        latestAttempts: {},
+        linkedPages: [],
+      },
+    ];
+
+    const onCreateSubgroup = vi.fn();
+
+    const { getByText, getAllByTitle } = render(
+      <QuestionsExplorer
+        batteries={hierarchicalBatteries}
+        onPlayBattery={vi.fn()}
+        onEditBattery={vi.fn()}
+        onDeleteBattery={vi.fn()}
+        onNavigateToPage={vi.fn()}
+        allAvailableTags={['javascript']}
+        onCreateSubgroup={onCreateSubgroup}
+      />
+    );
+
+    expect(getByText('JAVASCRIPT')).toBeDefined();
+    expect(getByText('1 subgrupo')).toBeDefined();
+
+    // Click Subgrupo quick button
+    const addSubgroupBtn = getAllByTitle('Adicionar subgrupo dentro de "JAVASCRIPT"')[0];
+    fireEvent.click(addSubgroupBtn);
+
+    expect(onCreateSubgroup).toHaveBeenCalledWith('parent-js');
+  });
+
+  it('opens BatteryMoveModal and allows moving battery to another parent', async () => {
+    const onMoveBattery = vi.fn().mockResolvedValue(undefined);
+
+    const { getAllByTitle, getByText, getAllByText, getByRole } = render(
+      <QuestionsExplorer
+        batteries={mockBatteries}
+        onPlayBattery={vi.fn()}
+        onEditBattery={vi.fn()}
+        onDeleteBattery={vi.fn()}
+        onNavigateToPage={vi.fn()}
+        allAvailableTags={['redes', 'algoritmos']}
+        onMoveBattery={onMoveBattery}
+      />
+    );
+
+    // Open move modal on first battery
+    const moveBtn = getAllByTitle('Mover para outro grupo')[0];
+    fireEvent.click(moveBtn);
+
+    // Modal title should appear
+    expect(getByText('Mover Bateria para Grupo')).toBeDefined();
+
+    // Select "Bateria de Algoritmos" as parent inside the modal
+    const targetParentOption = getAllByText('Bateria de Algoritmos')[1];
+    fireEvent.click(targetParentOption);
+
+    // Confirm move
+    const confirmBtn = getByRole('button', { name: 'Confirmar' });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(onMoveBattery).toHaveBeenCalledWith('bat-1', 'bat-2');
+    });
   });
 });
 

@@ -1,6 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Tag, Play, Edit3, Trash2, FileText, ChevronDown, ChevronRight, CheckCircle2, XCircle, HelpCircle, ExternalLink, Zap } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Search, Tag, FileText, HelpCircle, Zap, Trash2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { BatteryTreeItem } from './BatteryTreeItem';
+import { BatteryMoveModal } from './BatteryMoveModal';
+import {
+  buildBatteryHierarchy,
+  filterBatteryHierarchy,
+  getBatteryBreadcrumb,
+} from '../../services/quiz/quizHierarchy';
 import type { BatteryWithQuestions } from '../../types/quiz';
 
 interface QuestionsExplorerProps {
@@ -12,6 +19,8 @@ interface QuestionsExplorerProps {
   allAvailableTags: string[];
   getPageTitle?: (pageId: string) => string | null;
   highlightedBatteryId?: string;
+  onCreateSubgroup?: (parentBatteryId: string) => void;
+  onMoveBattery?: (batteryId: string, newParentId: string | null) => Promise<void>;
 }
 
 export const QuestionsExplorer = React.memo(function QuestionsExplorer({
@@ -23,6 +32,8 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   allAvailableTags,
   getPageTitle,
   highlightedBatteryId,
+  onCreateSubgroup,
+  onMoveBattery,
 }: QuestionsExplorerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrigin, setSelectedOrigin] = useState<'all' | 'linked' | 'standalone'>('all');
@@ -30,6 +41,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'errors'>('all');
   const [expandedBatteryIds, setExpandedBatteryIds] = useState<Set<string>>(new Set());
   const [batteryPendingDelete, setBatteryPendingDelete] = useState<BatteryWithQuestions | null>(null);
+  const [batteryToMove, setBatteryToMove] = useState<BatteryWithQuestions | null>(null);
 
   // Tecla Esc para fechar o modal de exclusão
   useEffect(() => {
@@ -44,9 +56,12 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [batteryPendingDelete]);
 
+  // Expand highlighted battery and its ancestors
   useEffect(() => {
     if (highlightedBatteryId) {
-      setExpandedBatteryIds((prev) => new Set([...prev, highlightedBatteryId]));
+      const breadcrumb = getBatteryBreadcrumb(highlightedBatteryId, batteries);
+      const ancestorIds = breadcrumb.map((b) => b.id);
+      setExpandedBatteryIds((prev) => new Set([...prev, ...ancestorIds, highlightedBatteryId]));
       const timer = setTimeout(() => {
         const el = document.getElementById(`battery-card-${highlightedBatteryId}`);
         if (el) {
@@ -55,22 +70,46 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [highlightedBatteryId]);
+  }, [highlightedBatteryId, batteries]);
 
-  const toggleExpand = (id: string) => {
+  const toggleExpand = useCallback((id: string) => {
     setExpandedBatteryIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  // Filter logic
-  const filteredBatteries = useMemo(() => {
+  const handlePlay = useCallback(
+    (node: BatteryWithQuestions) => {
+      const original = batteries.find((b) => b.id === node.id) || node;
+      onPlayBattery(original);
+    },
+    [batteries, onPlayBattery]
+  );
+
+  const handleEdit = useCallback(
+    (node: BatteryWithQuestions) => {
+      const original = batteries.find((b) => b.id === node.id) || node;
+      onEditBattery(original);
+    },
+    [batteries, onEditBattery]
+  );
+
+  // Build hierarchical tree
+  const batteryTree = useMemo(() => buildBatteryHierarchy(batteries), [batteries]);
+
+  // Filter hierarchy preserving parent/child relations
+  const { filteredTree, autoExpandedIds } = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
+    const isFiltering = Boolean(term || selectedOrigin !== 'all' || selectedTag || selectedStatus !== 'all');
 
-    return batteries.filter((b) => {
+    if (!isFiltering) {
+      return { filteredTree: batteryTree, autoExpandedIds: new Set<string>() };
+    }
+
+    return filterBatteryHierarchy(batteryTree, (b) => {
       // 1. Origin filter
       const isLinked = Boolean(b.page_id || (b.linkedPages && b.linkedPages.length > 0));
       if (selectedOrigin === 'linked' && !isLinked) return false;
@@ -116,7 +155,12 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
       return true;
     });
-  }, [batteries, searchTerm, selectedOrigin, selectedTag, selectedStatus, getPageTitle]);
+  }, [batteryTree, searchTerm, selectedOrigin, selectedTag, selectedStatus, getPageTitle]);
+
+  const effectiveExpandedIds = useMemo(() => {
+    if (autoExpandedIds.size === 0) return expandedBatteryIds;
+    return new Set([...expandedBatteryIds, ...autoExpandedIds]);
+  }, [expandedBatteryIds, autoExpandedIds]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -227,9 +271,9 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
         )}
       </div>
 
-      {/* Batteries List */}
+      {/* Batteries List (Tree View) */}
       <div className="space-y-3">
-        {filteredBatteries.length === 0 ? (
+        {filteredTree.length === 0 ? (
           <div className="bg-dark-card/30 border border-dashed border-white/5 rounded-2xl p-10 text-center space-y-2">
             <HelpCircle size={24} className="mx-auto text-zinc-500" />
             <h4 className="text-sm font-medium text-zinc-300">Nenhuma bateria de questões encontrada</h4>
@@ -238,209 +282,39 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             </p>
           </div>
         ) : (
-          filteredBatteries.map((b) => {
-            const isExpanded = expandedBatteryIds.has(b.id);
-            const totalQ = b.questions.length;
-            const answeredQ = b.questions.filter((q) => b.latestAttempts?.[q.id]).length;
-            const correctQ = b.questions.filter((q) => b.latestAttempts?.[q.id]?.is_correct).length;
-            const accuracy = answeredQ > 0 ? Math.round((correctQ / answeredQ) * 100) : 0;
-
-            const isHighlighted = b.id === highlightedBatteryId;
-
-            return (
-              <div
-                key={b.id}
-                id={`battery-card-${b.id}`}
-                className={`group rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${
-                  isHighlighted
-                    ? 'bg-dark-card border border-brand-500/50 ring-1 ring-brand-500/40'
-                    : 'bg-dark-card/60 hover:bg-dark-card/90 border border-white/5 hover:border-brand-500/30'
-                }`}
-                style={{ contentVisibility: 'auto', containIntrinsicSize: '160px' }}
-              >
-                {/* Header Row */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <button
-                      onClick={() => toggleExpand(b.id)}
-                      className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 transition-colors mt-0.5 cursor-pointer shrink-0"
-                      title={isExpanded ? 'Recolher questões' : 'Expandir questões'}
-                    >
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </button>
-
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="text-sm sm:text-base font-semibold text-zinc-100 truncate">
-                          {b.title}
-                        </h4>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                          {totalQ} {totalQ === 1 ? 'questão' : 'questões'}
-                        </span>
-                      </div>
-
-                      {b.description && (
-                        <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{b.description}</p>
-                      )}
-
-                      {/* Origin Pages & Tags Row */}
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        {/* Page Link */}
-                        {b.linkedPages && b.linkedPages.length > 0 ? (
-                          b.linkedPages.map((p) => {
-                            const pageTitle = getPageTitle?.(p.id) || p.title || 'Caderno';
-                            return (
-                              <button
-                                key={p.id}
-                                onClick={() => onNavigateToPage(p.id)}
-                                className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
-                                title={`Abrir página "${pageTitle}" no Caderno`}
-                              >
-                                <FileText size={11} />
-                                <span className="truncate max-w-xs">{pageTitle}</span>
-                                <ExternalLink size={10} className="opacity-70" />
-                              </button>
-                            );
-                          })
-                        ) : b.page_id ? (
-                          <button
-                            onClick={() => onNavigateToPage(b.page_id!)}
-                            className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
-                            title={`Abrir página "${getPageTitle?.(b.page_id) || 'Caderno'}" no Caderno`}
-                          >
-                            <FileText size={11} />
-                            <span className="truncate max-w-xs">{getPageTitle?.(b.page_id) || 'Caderno'}</span>
-                            <ExternalLink size={10} className="opacity-70" />
-                          </button>
-                        ) : (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-1">
-                            <Zap size={10} className="text-amber-400" />
-                            <span>Bateria Avulsa</span>
-                          </span>
-                        )}
-
-                        {/* Tags */}
-                        {(b.tags || []).slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions (Right) */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => onPlayBattery(b)}
-                      className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-                      title="Praticar no Modo Foco"
-                    >
-                      <Play size={13} className="fill-brand-300" />
-                      <span className="hidden sm:inline">Praticar</span>
-                    </button>
-
-                    <button
-                      onClick={() => onEditBattery(b)}
-                      className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                      title="Editar bateria"
-                    >
-                      <Edit3 size={15} />
-                    </button>
-
-                    <button
-                      onClick={() => setBatteryPendingDelete(b)}
-                      className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                      title="Mover para lixeira"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Progress Mini Bar */}
-                {totalQ > 0 && (
-                  <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center justify-between text-xs font-mono text-zinc-400">
-                    <div className="flex items-center gap-3">
-                      <span>
-                        {answeredQ}/{totalQ} respondidas
-                      </span>
-                      {answeredQ > 0 && (
-                        <span className={accuracy >= 70 ? 'text-emerald-400' : 'text-amber-400'}>
-                          • {accuracy}% acertos
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Expanded Questions Details */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-2.5">
-                    {b.questions.map((q, idx) => {
-                      const attempt = b.latestAttempts?.[q.id];
-                      const isAnswered = Boolean(attempt);
-                      const isCorrect = attempt ? attempt.is_correct : false;
-
-                      return (
-                        <div
-                          key={q.id}
-                          className="p-3 rounded-xl bg-dark-bg/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-start gap-2.5 min-w-0">
-                            <span className="font-mono text-zinc-500 text-[11px] shrink-0 mt-0.5">
-                              #{idx + 1}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-zinc-200 leading-relaxed font-medium">
-                                {q.question || 'Questão sem enunciado cadastrado'}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] text-zinc-400">
-                                <span className="font-mono uppercase bg-white/5 px-1.5 py-0.5 rounded">
-                                  {q.type === 'multiple_choice' ? 'Múltipla Escolha' : 'Discursiva'}
-                                </span>
-                                {(q.tags || []).map((t) => (
-                                  <span key={t} className="text-zinc-500">
-                                    #{t}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="shrink-0">
-                            {isAnswered ? (
-                              isCorrect ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
-                                  <CheckCircle2 size={11} />
-                                  <span>Acertou</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/25">
-                                  <XCircle size={11} />
-                                  <span>Errou</span>
-                                </span>
-                              )
-                            ) : (
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 text-zinc-500 border border-white/10">
-                                Pendente
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
+          filteredTree.map((rootNode) => (
+            <BatteryTreeItem
+              key={rootNode.id}
+              node={rootNode}
+              depth={0}
+              onPlayBattery={handlePlay}
+              onEditBattery={handleEdit}
+              onDeleteBattery={(id) => {
+                const b = batteries.find((item) => item.id === id);
+                if (b) setBatteryPendingDelete(b);
+              }}
+              onNavigateToPage={onNavigateToPage}
+              onCreateSubgroup={onCreateSubgroup}
+              onOpenMoveModal={(b) => setBatteryToMove(b)}
+              getPageTitle={getPageTitle}
+              highlightedBatteryId={highlightedBatteryId}
+              expandedBatteryIds={effectiveExpandedIds}
+              onToggleExpand={toggleExpand}
+            />
+          ))
         )}
       </div>
+
+      {/* Move Battery to Group Modal */}
+      {batteryToMove && onMoveBattery && (
+        <BatteryMoveModal
+          isOpen={Boolean(batteryToMove)}
+          onClose={() => setBatteryToMove(null)}
+          battery={batteryToMove}
+          allBatteries={batteries}
+          onConfirmMove={onMoveBattery}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {batteryPendingDelete && (
@@ -462,6 +336,11 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
                   <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
                     Deseja realmente mover a bateria <strong className="text-zinc-200">"{batteryPendingDelete.title || 'Sem título'}"</strong> ({batteryPendingDelete.questions.length} questões) para a lixeira?
                   </p>
+                  {batteries.some((b) => b.parent_id === batteryPendingDelete.id) && (
+                    <p className="text-[11px] text-zinc-400 mt-2 bg-white/5 p-2 rounded-lg border border-white/5">
+                      ℹ️ Os subgrupos desta bateria não serão excluídos; eles serão mantidos e movidos para o nível principal.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2.5 mt-6">

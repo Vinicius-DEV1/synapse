@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { X, Sparkles, Upload, Check, ArrowLeft } from 'lucide-react';
+import { X, Sparkles, Upload, Check, ArrowLeft, Folder } from 'lucide-react';
 import { triggerToast } from '../../../ui/ToastContext';
 import QuizEditor from './QuizEditor';
 import QuizAIAssistant from './QuizAIAssistant';
@@ -15,8 +15,11 @@ interface QuizEditorModalProps {
   batteryTitle: string;
   batteryDescription?: string;
   initialQuestions: QuestionItem[];
-  onSave: (title: string, description: string, questions: QuestionItem[]) => Promise<void>;
+  onSave: (title: string, description: string, questions: QuestionItem[], parentId?: string | null) => Promise<void>;
   initialShowAiAssistant?: boolean;
+  initialParentId?: string | null;
+  availableParentOptions?: Array<{ id: string; title: string; depth: number }>;
+  breadcrumbs?: Array<{ id: string; title: string }>;
 }
 
 export function QuizEditorModal({
@@ -27,9 +30,13 @@ export function QuizEditorModal({
   initialQuestions,
   onSave,
   initialShowAiAssistant = false,
+  initialParentId = null,
+  availableParentOptions,
+  breadcrumbs,
 }: QuizEditorModalProps) {
   const [title, setTitle] = useState(batteryTitle);
   const [description, setDescription] = useState(batteryDescription);
+  const [parentId, setParentId] = useState<string | null>(initialParentId ?? null);
   const [questions, setQuestions] = useState<QuestionItem[]>(() =>
     initialQuestions.length > 0 ? initialQuestions : [createDefaultQuestion(1)]
   );
@@ -127,7 +134,13 @@ export function QuizEditorModal({
   const handleConfirmSave = async () => {
     setIsSaving(true);
     try {
-      await onSave(title, description, questions);
+      if (parentId !== null && parentId !== undefined) {
+        await onSave(title, description, questions, parentId);
+      } else if (initialParentId !== null && initialParentId !== undefined && parentId === null) {
+        await onSave(title, description, questions, null);
+      } else {
+        await onSave(title, description, questions);
+      }
       onClose();
     } catch (err) {
       console.error('[QuizEditorModal] Falha ao salvar alterações:', err);
@@ -154,6 +167,17 @@ export function QuizEditorModal({
           </button>
 
           <div className="flex-1 max-w-xl min-w-0">
+            {breadcrumbs && breadcrumbs.length > 0 && (
+              <div className="flex items-center gap-1 text-[11px] text-zinc-400 mb-0.5 truncate">
+                <Folder size={11} className="text-brand-400 shrink-0" />
+                {breadcrumbs.map((crumb, idx) => (
+                  <span key={crumb.id} className="flex items-center gap-1">
+                    {idx > 0 && <span className="text-zinc-600">/</span>}
+                    <span className="truncate max-w-[120px]">{crumb.title}</span>
+                  </span>
+                ))}
+              </div>
+            )}
             <input
               type="text"
               value={title}
@@ -216,6 +240,30 @@ export function QuizEditorModal({
       {/* Page Body */}
       <main className="flex-1 overflow-y-auto custom-scrollbar py-6 sm:py-8 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto space-y-6">
+          {/* Parent Group Selector (if options available) */}
+          {availableParentOptions && availableParentOptions.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-dark-card/60 border border-white/5 text-xs text-zinc-300">
+              <div className="flex items-center gap-2">
+                <Folder size={15} className="text-brand-400 shrink-0" />
+                <span className="font-medium text-zinc-200">Grupo de Questões:</span>
+                <span className="text-[11px] text-zinc-500 hidden sm:inline">
+                  (Organize esta bateria dentro de um grupo)
+                </span>
+              </div>
+              <select
+                value={parentId || ''}
+                onChange={(e) => setParentId(e.target.value || null)}
+                className="bg-dark-bg/90 text-zinc-200 border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-brand-500/50 cursor-pointer max-w-xs transition-colors"
+              >
+                <option value="">Nenhum (Nível Raiz)</option>
+                {availableParentOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {'\u00A0'.repeat(opt.depth * 3)}{opt.depth > 0 ? '↳ ' : ''}{opt.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <QuizEditor
             questions={questions}
             onUpdateQuestion={updateSingleQuestion}
@@ -255,7 +303,10 @@ export function QuizEditorModal({
           if (importMode === 'replace') {
             setQuestions(imported);
           } else {
-            const base = questions.length === 1 && !String(questions[0]?.question || '').trim() ? [] : questions;
+            // Filter out any blank draft questions so they don't linger as empty cards
+            const base = questions.filter(
+              (q) => String(q.question || '').trim().length > 0
+            );
             setQuestions([...base, ...imported]);
           }
         }}

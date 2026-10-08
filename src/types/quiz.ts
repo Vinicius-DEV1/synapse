@@ -3,11 +3,13 @@ export type QuizLayout = 'list' | 'sequential';
 
 export interface QuizBattery {
   id: string;
+  parent_id?: string | null;
   page_id?: string | null;
   title: string;
   description?: string;
   layout: QuizLayout;
   tags: string[];
+  sort_order?: number;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
@@ -70,4 +72,12 @@ export interface BatteryWithQuestions extends QuizBattery {
   questions: QuizQuestion[];
   latestAttempts?: Record<string, QuizAttempt>;
   linkedPages?: { id: string; title: string; icon?: string }[];
+}
+
+export interface BatteryTreeNode extends BatteryWithQuestions {
+  children: BatteryTreeNode[];
+  totalDescendantQuestionsCount: number;
+  totalDescendantAnsweredCount: number;
+  totalDescendantCorrectCount: number;
+  aggregateAccuracyRate: number;
 }

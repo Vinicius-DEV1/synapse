@@ -17,6 +17,7 @@ import {
   buildDocumentToQuizPrompt,
   buildRefineImportedQuestionsPrompt,
   getCadernoQuizJsonSchemaPrompt,
+  formatQuestionsForAiContext,
 } from './quiz-prompts';
 import {
   validateCandidateQuizQuestions,
@@ -26,7 +27,10 @@ import {
 
 export {
   sanitizeExpectedAnswer,
+  cleanJsonBlock,
+  repairMalformedJson,
   getCadernoQuizJsonSchemaPrompt,
+  formatQuestionsForAiContext,
   validateCandidateQuizQuestions,
 };
 export type { CandidateQuestionAction, QuizValidationResult };

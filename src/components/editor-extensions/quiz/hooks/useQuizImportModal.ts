@@ -146,11 +146,27 @@ export function useQuizImportModal({
         throw new Error('Cole o JSON ou selecione um arquivo (.json, .md, .pdf) para continuar.');
       }
 
-      // Detect if pasted content is raw Markdown instead of JSON
       const trimmed = importJsonText.trim();
-      const looksLikeJson = trimmed.startsWith('[') || trimmed.startsWith('{') || trimmed.startsWith('```json');
 
-      if (!looksLikeJson && (trimmed.includes('#') || trimmed.includes('-') || trimmed.length > 50)) {
+      // Fast-path: attempt local zero-latency JSON extraction first (even if wrapped in AI chat or markdown code blocks)
+      try {
+        const directQuestions = parseJsonToQuestions(trimmed);
+        if (!mountedRef.current) return;
+        if (directQuestions.length > 0) {
+          setImportPreview(directQuestions);
+          return;
+        }
+      } catch {
+        // Direct JSON parse failed; check if the input is unstructured notes/markdown needing AI synthesis
+      }
+
+      // If direct parse failed, check if pasted content is raw unstructured Markdown/Notes
+      const looksLikeUnstructuredNotes =
+        !trimmed.startsWith('[') &&
+        !trimmed.startsWith('{') &&
+        (trimmed.includes('#') || trimmed.includes('-') || trimmed.length > 50);
+
+      if (looksLikeUnstructuredNotes) {
         setIsProcessingAi(true);
         setAiStatusMessage('Analisando texto colado com IA...');
         const aiQuestions = await promptGeminiToParseDocumentToQuizJSON(
@@ -162,6 +178,9 @@ export function useQuizImportModal({
         );
         if (!mountedRef.current) return;
         const mapped = mapParsedToQuestionItems(aiQuestions as unknown as Array<Record<string, unknown>>);
+        if (mapped.length === 0) {
+          throw new Error('A IA não encontrou questões legíveis nas anotações fornecidas.');
+        }
         setImportPreview(mapped);
         return;
       }

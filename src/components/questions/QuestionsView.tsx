@@ -6,6 +6,11 @@ import { QuestionsPlaylists } from './QuestionsPlaylists';
 import { QuizSequentialFocusModal } from '../editor-extensions/quiz/components/sequential/QuizSequentialFocusModal';
 import { QuizEditorModal } from '../editor-extensions/quiz/components/QuizEditorModal';
 import { useQuizEvaluation } from '../editor-extensions/quiz/hooks/useQuizEvaluation';
+import {
+  getDescendantQuestions,
+  getAvailableParentOptions,
+  getBatteryBreadcrumb,
+} from '../../services/quiz/quizHierarchy';
 import { useStore } from '../../store/useStore';
 import type { BatteryWithQuestions, QuizStats } from '../../types/quiz';
 import type { QuestionItem } from '../editor-extensions/quiz/types';
@@ -55,6 +60,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   // Editing / Creation state
   const [editingBattery, setEditingBattery] = useState<BatteryWithQuestions | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [creationParentId, setCreationParentId] = useState<string | null>(null);
   const [editorInitialAi, setEditorInitialAi] = useState(false);
   const isFetchingRef = useRef(false);
 
@@ -136,35 +142,50 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     return Array.from(tagSet).filter(Boolean);
   }, [batteries]);
 
-  // Launch battery in Focus Mode
-  const handlePlayBattery = useCallback((battery: BatteryWithQuestions) => {
-    const mapped: QuestionItem[] = battery.questions.map((q) => {
-      const attempt = battery.latestAttempts?.[q.id];
-      return {
-        id: q.id,
-        type: q.type,
-        question: q.question,
-        options: q.options || [],
-        correctIndex: q.correct_index,
-        tags: q.tags || [],
-        selectedIndex: attempt?.selected_index !== undefined ? attempt.selected_index : null,
-        userTypedAnswer: attempt?.user_typed_answer || '',
-        aiFeedback: attempt?.ai_feedback || null,
-        expectedAnswer: q.expected_answer || '',
-        explanation: q.explanation || '',
-        showExplanation: Boolean(attempt),
-        answered: Boolean(attempt),
-        batteryId: battery.id,
-      };
-    });
+  // Launch battery in Focus Mode (cumulatively if battery has sub-batteries)
+  const handlePlayBattery = useCallback(
+    (battery: BatteryWithQuestions) => {
+      const allQuestions = getDescendantQuestions(battery.id, batteries);
 
-    setActiveIndex(0);
-    setActivePlayingSession({
-      title: battery.title,
-      batteryId: battery.id,
-      questions: mapped,
-    });
-  }, []);
+      // Build quick lookup for latest attempts across all descendant batteries
+      const attemptLookup = new Map();
+      for (const b of batteries) {
+        if (b.latestAttempts) {
+          for (const [qid, attempt] of Object.entries(b.latestAttempts)) {
+            attemptLookup.set(qid, attempt);
+          }
+        }
+      }
+
+      const mapped: QuestionItem[] = allQuestions.map((q) => {
+        const attempt = attemptLookup.get(q.id) || battery.latestAttempts?.[q.id];
+        return {
+          id: q.id,
+          type: q.type,
+          question: q.question,
+          options: q.options || [],
+          correctIndex: q.correct_index,
+          tags: q.tags || [],
+          selectedIndex: attempt?.selected_index !== undefined ? attempt.selected_index : null,
+          userTypedAnswer: attempt?.user_typed_answer || '',
+          aiFeedback: attempt?.ai_feedback || null,
+          expectedAnswer: q.expected_answer || '',
+          explanation: q.explanation || '',
+          showExplanation: Boolean(attempt),
+          answered: Boolean(attempt),
+          batteryId: q.battery_id || battery.id,
+        };
+      });
+
+      setActiveIndex(0);
+      setActivePlayingSession({
+        title: battery.title,
+        batteryId: battery.id,
+        questions: mapped,
+      });
+    },
+    [batteries]
+  );
 
   // Launch generated study session (Caderno de Erros or Simulado)
   const handleStartGeneratedSession = useCallback((session: GeneratedStudySession) => {
@@ -305,6 +326,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     const returnPageId = activeTab?.moduleState?.returnPageId;
     setEditingBattery(null);
     setIsCreatingNew(false);
+    setCreationParentId(null);
     setEditorInitialAi(false);
 
     if (returnPageId && typeof returnPageId === 'string') {
@@ -331,7 +353,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
 
   // Save edited / newly created battery
   const handleSaveBatteryModal = useCallback(
-    async (newTitle: string, newDesc: string, newQuestions: QuestionItem[]) => {
+    async (newTitle: string, newDesc: string, newQuestions: QuestionItem[], parentId?: string | null) => {
       if (!window.api?.quiz) return;
 
       const tagSet = new Set<string>();
@@ -339,12 +361,14 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
       const tags = Array.from(tagSet);
 
       const targetId = editingBattery?.id || undefined;
+      const targetParentId = parentId !== undefined ? parentId : (editingBattery?.parent_id ?? creationParentId);
 
       const saved = await window.api.quiz.saveBattery({
         id: targetId,
         title: newTitle,
         description: newDesc,
         tags,
+        parent_id: targetParentId,
       });
 
       // Reconcile and soft-delete questions removed during editing
@@ -379,8 +403,41 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
       await loadData();
       handleCloseEditor();
     },
-    [editingBattery, loadData, handleCloseEditor]
+    [editingBattery, creationParentId, loadData, handleCloseEditor]
   );
+
+  // Move battery to another group or root
+  const handleMoveBattery = useCallback(
+    async (batteryId: string, newParentId: string | null) => {
+      if (!window.api?.quiz) return;
+      try {
+        const target = batteries.find((b) => b.id === batteryId);
+        if (!target) return;
+        await window.api.quiz.saveBattery({
+          id: target.id,
+          title: target.title,
+          description: target.description,
+          tags: target.tags,
+          page_id: target.page_id,
+          parent_id: newParentId,
+        });
+        await loadData(true);
+      } catch (err) {
+        console.error('[QuestionsView] Falha ao mover bateria de grupo:', err);
+      }
+    },
+    [batteries, loadData]
+  );
+
+  const availableParentOptions = useMemo(
+    () => getAvailableParentOptions(editingBattery?.id, batteries),
+    [editingBattery?.id, batteries]
+  );
+
+  const activeBreadcrumbs = useMemo(() => {
+    const parentId = editingBattery ? editingBattery.parent_id : creationParentId;
+    return parentId ? getBatteryBreadcrumb(parentId, batteries) : [];
+  }, [editingBattery, creationParentId, batteries]);
 
   // Full-Page Question Editor View (Preserving Caderno's TabBar and Sidebar)
   if (editingBattery || isCreatingNew) {
@@ -391,6 +448,9 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
         initialShowAiAssistant={editorInitialAi}
         batteryTitle={editingBattery?.title || ''}
         batteryDescription={editingBattery?.description || ''}
+        initialParentId={editingBattery ? editingBattery.parent_id : creationParentId}
+        availableParentOptions={availableParentOptions}
+        breadcrumbs={activeBreadcrumbs}
         initialQuestions={
           editingBattery
             ? editingBattery.questions.map((q) => ({
@@ -481,7 +541,10 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
 
           {/* New Battery Button */}
           <button
-            onClick={() => setIsCreatingNew(true)}
+            onClick={() => {
+              setCreationParentId(null);
+              setIsCreatingNew(true);
+            }}
             className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
           >
             <Plus size={15} />
@@ -513,6 +576,11 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
                       ? activeTab.moduleState.selectedBatteryId
                       : undefined
                   }
+                  onCreateSubgroup={(parentBatteryId) => {
+                    setCreationParentId(parentBatteryId);
+                    setIsCreatingNew(true);
+                  }}
+                  onMoveBattery={handleMoveBattery}
                 />
               )}
 

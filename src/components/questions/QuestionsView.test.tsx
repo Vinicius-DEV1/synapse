@@ -142,5 +142,40 @@ describe('QuestionsView Component', () => {
       expect(getByText('Explorador')).toBeDefined();
     });
   });
+
+  it('allows creating a sub-battery directly from parent battery and saves with parent_id', async () => {
+    const saveBatteryMock = vi.fn().mockResolvedValue({ id: 'bat-child-new', title: 'Subgrupo Redes' });
+    const saveQuestionsBatchMock = vi.fn().mockResolvedValue(undefined);
+
+    window.api.quiz.saveBattery = saveBatteryMock;
+    window.api.quiz.saveQuestionsBatch = saveQuestionsBatchMock;
+
+    const { getByText, getByTitle, getByPlaceholderText } = render(<QuestionsView />);
+
+    await waitFor(() => {
+      expect(getByText('Bateria Redes')).toBeDefined();
+    });
+
+    // Click "Subgrupo" button on the parent battery
+    const subBtn = getByTitle('Adicionar subgrupo dentro de "Bateria Redes"');
+    fireEvent.click(subBtn);
+
+    // Editor should be open
+    const titleInput = getByPlaceholderText('Título da Bateria...');
+    fireEvent.change(titleInput, { target: { value: 'TCP em Detalhes' } });
+
+    // Save changes
+    const saveBtn = getByText('Salvar Alterações');
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(saveBatteryMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'TCP em Detalhes',
+          parent_id: 'bat-1',
+        })
+      );
+    });
+  });
 });
 

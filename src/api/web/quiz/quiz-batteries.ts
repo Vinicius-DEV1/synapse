@@ -33,11 +33,13 @@ export function createQuizBatteriesApi(db: IDBPDatabase<CadernoDBSchema>, genera
 
       const record: QuizBattery = {
         id: battery.id || existing?.id || generateId(),
+        parent_id: battery.parent_id !== undefined ? battery.parent_id : (existing?.parent_id ?? null),
         page_id: battery.page_id !== undefined ? battery.page_id : (existing?.page_id ?? null),
         title: (battery.title || '').trim() || 'Bateria de Exercícios',
         description: battery.description !== undefined ? battery.description : (existing?.description || ''),
         layout: battery.layout || existing?.layout || 'sequential',
         tags: Array.isArray(battery.tags) ? battery.tags : (existing?.tags || []),
+        sort_order: battery.sort_order !== undefined ? battery.sort_order : (existing?.sort_order ?? 0),
         created_at: existing?.created_at || battery.created_at || now,
         updated_at: now,
         deleted_at: battery.deleted_at !== undefined ? battery.deleted_at : (existing?.deleted_at ?? null),

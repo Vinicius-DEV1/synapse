@@ -372,11 +372,91 @@ TASK:
 Do NOT use markdown code wrappers (\`\`\`json). Return raw JSON array only.`;
 }
 
+export interface CleanQuizExportQuestion {
+  type: 'multiple_choice' | 'open';
+  question: string;
+  options?: string[];
+  correct_option?: number;
+  expected_answer?: string;
+  tags?: string[];
+  explanation?: string;
+}
+
+/**
+ * Sanitizes and formats an array of existing questions for inclusion as clean,
+ * distraction-free reference context in AI prompts, filtering out blank draft questions
+ * and stripping internal React/UI runtime state.
+ */
+export function formatQuestionsForAiContext(questions?: unknown[]): CleanQuizExportQuestion[] {
+  if (!Array.isArray(questions)) return [];
+
+  const validQuestions: CleanQuizExportQuestion[] = [];
+
+  for (const q of questions) {
+    if (!q || typeof q !== 'object') continue;
+    const item = q as Record<string, unknown>;
+
+    const questionText = String(item.question || item.enunciado || '').trim();
+    // Exclude draft or blank questions that have no statement
+    if (!questionText) continue;
+
+    const rawType = String(item.type || '').toLowerCase();
+    const isOpen =
+      rawType.includes('open') ||
+      rawType.includes('aberta') ||
+      rawType.includes('discursiva');
+
+    const tags = Array.isArray(item.tags)
+      ? item.tags.map((t) => String(t).trim()).filter(Boolean)
+      : [];
+
+    const explanation = String(item.explanation || item.explicacao || '').trim();
+
+    if (isOpen) {
+      const expectedAnswer = String(
+        item.expectedAnswer || item.expected_answer || item.gabarito || ''
+      ).trim();
+
+      validQuestions.push({
+        type: 'open',
+        question: questionText,
+        ...(expectedAnswer ? { expected_answer: expectedAnswer } : {}),
+        ...(tags.length > 0 ? { tags } : {}),
+        ...(explanation ? { explanation } : {}),
+      });
+    } else {
+      let options: string[] = [];
+      if (Array.isArray(item.options)) {
+        options = item.options
+          .map((o) => (o !== null && o !== undefined ? String(o).trim() : ''))
+          .filter(Boolean);
+      }
+
+      let correctIndex = 0;
+      const rawCorrect = item.correctIndex ?? item.correct_option ?? item.correct_index;
+      if (typeof rawCorrect === 'number' && !isNaN(rawCorrect)) {
+        correctIndex = rawCorrect;
+      }
+
+      validQuestions.push({
+        type: 'multiple_choice',
+        question: questionText,
+        options: options.length >= 2 ? options : ['Opção A', 'Opção B', 'Opção C', 'Opção D'],
+        correct_option: correctIndex,
+        ...(tags.length > 0 ? { tags } : {}),
+        ...(explanation ? { explanation } : {}),
+      });
+    }
+  }
+
+  return validQuestions;
+}
+
 /**
  * Generates the standardized Caderno Quiz JSON schema and prompt template for use in external AI chatbots.
  */
 export function getCadernoQuizJsonSchemaPrompt(currentQuestions?: unknown[]): string {
-  let prompt = `Atue como um Professor e Especialista em Criação de Questões Educacionais.
+  let prompt = `Atue como um Professor e Especialista Pedagógico na Criação de Questões Educacionais.
 
 Gere uma bateria de questões de estudo no formato JSON estrito aceito pelo aplicativo Caderno, seguindo exatamente o esquema abaixo:
 
@@ -384,35 +464,49 @@ Gere uma bateria de questões de estudo no formato JSON estrito aceito pelo apli
 [
   {
     "type": "multiple_choice",
-    "question": "Enunciado claro e objetivo da questão",
+    "question": "Enunciado claro, contextualizado e objetivo da questão",
     "options": [
-      "Alternativa A",
-      "Alternativa B",
-      "Alternativa C",
-      "Alternativa D"
+      "Alternativa A (clara e concisa)",
+      "Alternativa B (distrator plausível baseado em equívoco comum)",
+      "Alternativa C (distrator plausível)",
+      "Alternativa D (distrator plausível)"
     ],
     "correct_option": 0,
     "tags": ["Tópico Principal", "Subtópico"],
-    "explanation": "Explicação pedagógica detalhada justificando a alternativa correta."
+    "explanation": "Explicação pedagógica detalhada justificando por que a alternativa correta está certa e por que os distratores estão incorretos."
   },
   {
     "type": "open",
-    "question": "Enunciado da questão discursiva/aberta",
-    "expected_answer": "Gabarito e critérios essenciais esperados na resposta do estudante.",
-    "tags": ["Tópico Principal"],
-    "explanation": "Comentários pedagógicos sobre os pontos-chave da resposta."
+    "question": "Enunciado da questão discursiva/aberta propondo um problema prático ou reflexão conceitual",
+    "expected_answer": "Gabarito detalhado com os critérios essenciais, conceitos e termos técnicos esperados na resposta do estudante.",
+    "tags": ["Tópico Principal", "Subtópico"],
+    "explanation": "Comentários didáticos e critérios de correção para autoavaliação."
   }
 ]
 \`\`\`
 
-REGRAS OBRIGATÓRIAS:
-1. O campo "correct_option" para múltipla escolha deve ser o índice numérico baseado em 0 (0 para a primeira opção, 1 para a segunda, etc.) ou a letra correspondente ("A", "B", "C", "D").
-2. Sempre forneça 4 alternativas para questões de múltipla escolha.
-3. Retorne APENAS o JSON válido (sem textos introdutórios antes ou depois).`;
+REGRAS OBRIGATÓRIAS DE QUALIDADE E FORMATO:
+1. NÃO REPETIR: É estritamente proibido repetir ou criar variações redundantes de questões já existentes no contexto. Não repita os mesmos enunciados, exemplos de código ou situações-problema.
+2. COMPLEMENTAR E EXPANDIR: Analise a temática das questões de contexto e explore novos ângulos, subtemas não cobertos, casos práticos, boas práticas, exceções, pegadinhas comuns e cenários aplicados do mundo real.
+3. ESTRUTURA DE MÚLTIPLA ESCOLHA:
+   - Forneça sempre exatamente 4 alternativas ("options").
+   - Apenas UMA alternativa deve ser inequivocamente correta.
+   - Os 3 distratores devem ser plausíveis, baseados em equívocos conceituais comuns (sem alternativas absurdas ou "todas as anteriores").
+   - O campo "correct_option" deve ser o índice numérico baseado em 0 (0 para a primeira opção, 1 para a segunda, etc.) ou a letra ("A", "B", "C", "D").
+4. ESTRUTURA DE QUESTÃO ABERTA:
+   - Forneça um enunciado claro com situação-problema ou desafio técnico.
+   - O campo "expected_answer" deve conter o gabarito de referência com os pontos-chave obrigatórios.
+5. EXPLICAÇÃO DIDÁTICA: O campo "explanation" é obrigatório e deve ser rico, detalhado e explicativo.
+6. FORMATO DE SAÍDA INFALÍVEL:
+   - Retorne EXCLUSIVAMENTE o array JSON válido \`[ ... ]\`.
+   - NÃO inclua textos de saudação antes nem despedidas depois (ex: "Aqui estão suas questões...", "Bons estudos!").
+   - NÃO inclua vírgulas soltas (trailing commas). Garanta sintaxe JSON estrita e válida.`;
 
-  if (currentQuestions && currentQuestions.length > 0) {
-    prompt += `\n\nCONTEXTO / QUESTÕES ATUAIS DO WIDGET:\nUse as questões abaixo como referência temática para complementar, expandir ou gerar novas variações:\n\`\`\`json\n${JSON.stringify(
-      currentQuestions,
+  const cleanContextQuestions = formatQuestionsForAiContext(currentQuestions);
+
+  if (cleanContextQuestions.length > 0) {
+    prompt += `\n\nCONTEXTO / QUESTÕES ATUAIS DO WIDGET:\nAs questões abaixo já estão cadastradas nesta bateria. Use-as como referência temática para entender o escopo do assunto e o nível de profundidade, MAS NÃO AS REPITA. Crie questões complementares que expandam o aprendizado cobrindo novos aspectos:\n\`\`\`json\n${JSON.stringify(
+      cleanContextQuestions,
       null,
       2
     )}\n\`\`\``;
