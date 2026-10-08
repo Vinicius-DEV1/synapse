@@ -213,20 +213,15 @@ export function useStoreSelector<T>(
   selector: (state: AppState) => T,
   equalityFn: (prev: T, next: T) => boolean = Object.is
 ): T {
-  const selectorRef = useRef(selector);
-  const equalityFnRef = useRef(equalityFn);
-  selectorRef.current = selector;
-  equalityFnRef.current = equalityFn;
-
   const currentSelectionRef = useRef<T>(selector(_storeStateRef));
 
   const getSnapshot = useCallback(() => {
-    const nextSelection = selectorRef.current(_storeStateRef);
-    if (!equalityFnRef.current(currentSelectionRef.current, nextSelection)) {
+    const nextSelection = selector(_storeStateRef);
+    if (!equalityFn(currentSelectionRef.current, nextSelection)) {
       currentSelectionRef.current = nextSelection;
     }
     return currentSelectionRef.current;
-  }, []);
+  }, [selector, equalityFn]);
 
   return useSyncExternalStore(subscribeToStore, getSnapshot);
 }

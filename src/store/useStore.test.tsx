@@ -10,6 +10,7 @@ import {
   usePages,
   useTabs,
   getCultureKey,
+  getNotesKey,
   syncLayoutFromDb,
 } from './useStore';
 
@@ -64,18 +65,20 @@ describe('useStore & StoreProvider (store/useStore)', () => {
     });
   });
 
-  it('getCultureKey returns key from global state reference', () => {
+  it('getCultureKey and getNotesKey return keys from global state reference', () => {
     const { result } = renderHook(() => useStore(), { wrapper });
-    const mockKey = {} as CryptoKey;
+    const mockCultureKey = {} as CryptoKey;
+    const mockNotesKey = {} as CryptoKey;
 
     act(() => {
       result.current.dispatch({
         type: 'SET_MODULE_KEYS',
-        keys: { culture: mockKey },
+        keys: { culture: mockCultureKey, notes: mockNotesKey },
       });
     });
 
-    expect(getCultureKey()).toBe(mockKey);
+    expect(getCultureKey()).toBe(mockCultureKey);
+    expect(getNotesKey()).toBe(mockNotesKey);
   });
 
   it('provides identity-stable useStoreDispatch and updates state', () => {
