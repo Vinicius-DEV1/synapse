@@ -15,7 +15,7 @@ export interface ResolveCanonicalOptions {
 
 /**
  * Resolves local file across multiple canonical paths in AppData.
- * Tolera caminhos antigos gravados em outro SO (Windows C:\ vs Linux /home/...).
+ * Tolerates legacy paths recorded in different OS formats (Windows C:\ vs Linux /home/...).
  */
 export async function findLocalCanonicalPath(
   moduleName: string,
@@ -43,19 +43,17 @@ export async function findLocalCanonicalPath(
     candidates.push(await join(dataDir, moduleName, `${id}.enc`));
     candidates.push(await join(dataDir, moduleName, id));
 
-    console.log(`[CanonicalResolver] Candidatos iniciais para ${moduleName}/${id}:`, candidates);
-
     // 2. Candidates derived from savedPath (if present)
     if (savedPath && !savedPath.startsWith('drive:') && !savedPath.startsWith('http')) {
       const cleanPath = savedPath.replace(/^file:\/\//, '');
       const filename = cleanPath.split(/[/\\]/).pop();
 
       if (cleanPath.startsWith('/') || cleanPath.match(/^[a-zA-Z]:/)) {
-        // Caminho absoluto no SO atual
+        // Absolute path in current OS
         candidates.push(cleanPath);
         if (!cleanPath.endsWith('.enc')) candidates.push(`${cleanPath}.enc`);
       } else {
-        // Caminho relativo ao AppData
+        // Relative path to AppData
         candidates.push(await join(dataDir, cleanPath));
         if (!cleanPath.endsWith('.enc')) candidates.push(await join(dataDir, `${cleanPath}.enc`));
       }
@@ -67,24 +65,18 @@ export async function findLocalCanonicalPath(
       }
     }
 
-    console.log(`[CanonicalResolver] Lista final de candidatos:`, candidates);
-
     // Returns the first existing candidate path
     for (const candidate of candidates) {
       try {
-        console.log(`[CanonicalResolver] Verificando existência de: ${candidate}`);
         if (await exists(candidate)) {
-          console.log(`[CanonicalResolver] => ARQUIVO ENCONTRADO NO DISCO: ${candidate}`);
           return candidate;
-        } else {
-          console.log(`[CanonicalResolver] -> Não encontrado: ${candidate}`);
         }
       } catch (e) {
-        console.log(`[CanonicalResolver] -> Erro ao verificar ${candidate}:`, e);
+        console.warn(`[CanonicalResolver] Error verifying path candidate ${candidate}:`, e);
       }
     }
   } catch (err) {
-    console.warn(`[CanonicalResolver] Erro ao verificar caminhos locais para ${moduleName}/${id}:`, err);
+    console.warn(`[CanonicalResolver] Error verifying local canonical paths for ${moduleName}/${id}:`, err);
   }
 
   return null;
@@ -128,53 +120,37 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
 
   // 1. Attempt local resolution
   if (platform.canReadLocalFilesystem) {
-    console.log(`[CanonicalResolver] Iniciando busca local para ${moduleName}/${id}`);
     const localFound = await findLocalCanonicalPath(moduleName, id, savedPath, extHint);
     if (localFound) {
-      console.log(`[CanonicalResolver] Encontrado caminho local: ${localFound}`);
       const assetUrl = buildEncryptedAssetUrl(moduleName, localFound);
-      console.log(`[CanonicalResolver] Asset URL gerada: ${assetUrl}`);
       arrayBuffer = await fetchEncryptedStreamBuffer(assetUrl);
-      if (arrayBuffer) {
-         console.log(`[CanonicalResolver] Stream carregado via custom protocol com sucesso! (Tamanho: ${arrayBuffer.byteLength} bytes)`);
-      } else {
-         console.log(`[CanonicalResolver] FALHA ao carregar via custom protocol (retornou null).`);
-      }
       if (arrayBuffer && onUpdateSavedPath) {
         const canonicalRelPath = extHint ? `${moduleName}/${id}.${extHint}.enc` : `${moduleName}/${id}.enc`;
         onUpdateSavedPath(canonicalRelPath);
       }
-    } else {
-      console.log(`[CanonicalResolver] Nenhum caminho local válido encontrado para ${moduleName}/${id}`);
     }
   }
 
-  // 2. Fallback: getBookFile nativo se for biblioteca
+  // 2. Fallback: native getBookFile for library module
   if (!arrayBuffer && moduleName === 'library' && window.api?.library?.getBookFile) {
-    console.log(`[CanonicalResolver] arrayBuffer vazio, acionando Fallback nativo: getBookFile(${id})`);
     try {
       const res = await window.api.library.getBookFile(id);
       if (res) {
-        console.log(`[CanonicalResolver] Fallback getBookFile retornou dados!`);
         const rawRes: unknown = res;
         if (rawRes instanceof ArrayBuffer) {
           arrayBuffer = rawRes;
-          console.log(`[CanonicalResolver] Fallback getBookFile arrayBuffer (Tamanho: ${arrayBuffer.byteLength})`);
         } else if (typeof res === 'string') {
           const binaryString = atob(res);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
           arrayBuffer = bytes.buffer;
-          console.log(`[CanonicalResolver] Fallback getBookFile convertido de string (Tamanho: ${arrayBuffer?.byteLength})`);
         }
         if (arrayBuffer && onUpdateSavedPath && (!savedPath || savedPath.startsWith('drive:'))) {
           onUpdateSavedPath(`indexeddb://${id}`);
         }
-      } else {
-        console.log(`[CanonicalResolver] Fallback getBookFile retornou NULL.`);
       }
     } catch (apiErr) {
-      console.warn(`[CanonicalResolver] Fallback getBookFile falhou:`, apiErr);
+      console.warn(`[CanonicalResolver] Fallback getBookFile failed:`, apiErr);
     }
   }
 
@@ -182,10 +158,9 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
   const targetDriveId = driveFileId || (savedPath?.startsWith('drive://') ? savedPath.replace('drive://', '') : null);
 
   if (!arrayBuffer && targetDriveId) {
-    console.log(`[CanonicalResolver] Baixando ${moduleName}/${id} do Google Drive:`, targetDriveId);
     const token = await getValidAccessToken();
     if (!token) {
-      throw new Error("Você precisa conectar sua conta do Google Drive para baixar este arquivo.");
+      throw new Error("Please connect your Google Drive account to download this file.");
     }
 
     const encryptedData = await downloadFromDrive(token, targetDriveId, (p) => {
@@ -212,7 +187,7 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
           onUpdateSavedPath(canonicalRelPath);
         }
       } catch (cacheErr) {
-        console.warn(`[CanonicalResolver] Não foi possível salvar cache local:`, cacheErr);
+        console.warn(`[CanonicalResolver] Could not save local cache:`, cacheErr);
       }
     } else if (moduleName === 'library') {
       try {
@@ -223,7 +198,7 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
           onUpdateSavedPath(`indexeddb://${id}`);
         }
       } catch (cacheErr) {
-        console.warn(`[CanonicalResolver] Não foi possível salvar cache no IndexedDB:`, cacheErr);
+        console.warn(`[CanonicalResolver] Could not save cache in IndexedDB:`, cacheErr);
       }
     }
 
