@@ -29,6 +29,7 @@ import type {
   OcrCacheEntry,
 } from '../types/library';
 import type { Session, Alarm } from '../components/focus/types';
+import type { FileItem, FileFolder, FilePageLink } from '../types/files';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -84,9 +85,9 @@ export interface CadernoDBSchema extends DBSchema {
   anki_srs_state: { key: string; value: AnkiSrsState };
   anki_reviews: { key: string; value: AnkiReviewRecord; indexes: { card_id: string } };
   anki_deck_settings: { key: string; value: AnkiDeckSettings; indexes: { deck_id: string } };
-  files: { key: string; value: any };
-  file_folders: { key: string; value: any };
-  file_page_links: { key: string; value: any; indexes: { file_id: string; page_id: string } };
+  files: { key: string; value: FileItem };
+  file_folders: { key: string; value: FileFolder };
+  file_page_links: { key: string; value: FilePageLink; indexes: { file_id: string; page_id: string } };
   ai_logs: { key: string; value: any; indexes: { module: string } };
   ai_prompts: {
     key: string;

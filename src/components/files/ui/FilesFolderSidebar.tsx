@@ -1,18 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Folder,
   FolderPlus,
   Home,
   Clock,
   Cloud,
-  ChevronRight,
-  ChevronDown,
   Layers,
   HardDrive,
 } from 'lucide-react';
 import type { FileFolder, FileItem } from '../../../types';
 import type { FileSectionType } from '../hooks/useFilesExplorer';
-import { buildFolderTree, calculateStorageStats, type FolderTreeNode } from '../utils/filesHierarchy';
+import { buildFolderTree, calculateStorageStats } from '../utils/filesHierarchy';
+import { FilesFolderTreeItem } from './components/FilesFolderTreeItem';
 
 interface FilesFolderSidebarProps {
   folders: FileFolder[];
@@ -86,90 +84,7 @@ export const FilesFolderSidebar: React.FC<FilesFolderSidebarProps> = ({
     onDropOnFolder(id, payload);
   };
 
-  // Render a folder node recursively in the tree
-  const renderTreeNode = (node: FolderTreeNode, depth = 0) => {
-    const hasChildren = node.children.length > 0;
-    const isExpanded = expandedFolders.has(node.folder.id);
-    const isSelected = activeSection === 'folders' && selectedFolderId === node.folder.id;
-    const isDragTarget = dragOverFolderId === node.folder.id;
 
-    return (
-      <div key={node.folder.id} className="select-none">
-        <div
-          onDragOver={(e) => handleDragOver(e, node.folder.id)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, node.folder.id)}
-          onClick={() => {
-            onSelectFolder(node.folder.id);
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            onContextMenu(e, node.folder);
-          }}
-          className={`group flex items-center gap-1.5 py-1.5 px-2 rounded-lg text-xs transition-colors cursor-pointer relative ${
-            isDragTarget
-              ? 'bg-brand-500/20 ring-1 ring-brand-500 text-brand-300'
-              : isSelected
-              ? 'bg-brand-500/15 text-brand-300 font-medium'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
-          }`}
-          style={{ paddingLeft: `${Math.max(8, depth * 14 + 8)}px` }}
-        >
-          {/* Chevron expand/collapse */}
-          {hasChildren ? (
-            <button
-              type="button"
-              onClick={(e) => toggleExpand(node.folder.id, e)}
-              className="p-0.5 -ml-1 text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            </button>
-          ) : (
-            <span className="w-3.5" />
-          )}
-
-          {/* Folder Icon */}
-          <Folder
-            size={14}
-            className="shrink-0"
-            style={{ color: node.folder.color || '#6366f1' }}
-          />
-
-          {/* Name */}
-          <span className="truncate flex-1" title={node.folder.name}>
-            {node.folder.name}
-          </span>
-
-          {/* Item Count */}
-          {node.itemCount > 0 && (
-            <span className="text-[10px] text-zinc-500 font-mono group-hover:hidden">
-              {node.itemCount}
-            </span>
-          )}
-
-          {/* Quick Subfolder Creation */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onNewFolder(node.folder.id);
-            }}
-            className="hidden group-hover:flex p-0.5 text-zinc-400 hover:text-white rounded hover:bg-white/10 transition-colors"
-            title="Criar subpasta"
-          >
-            <FolderPlus size={12} />
-          </button>
-        </div>
-
-        {/* Render children if expanded */}
-        {hasChildren && isExpanded && (
-          <div className="space-y-0.5">
-            {node.children.map((child) => renderTreeNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   if (!isOpen) {
     return null;
@@ -266,7 +181,23 @@ export const FilesFolderSidebar: React.FC<FilesFolderSidebarProps> = ({
               Nenhuma pasta criada.
             </p>
           ) : (
-            folderTree.map((node) => renderTreeNode(node))
+            folderTree.map((node) => (
+              <FilesFolderTreeItem
+                key={node.folder.id}
+                node={node}
+                expandedFolders={expandedFolders}
+                dragOverFolderId={dragOverFolderId}
+                activeSection={activeSection}
+                selectedFolderId={selectedFolderId}
+                onSelectFolder={onSelectFolder}
+                toggleExpand={toggleExpand}
+                onNewFolder={onNewFolder}
+                onContextMenu={onContextMenu}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              />
+            ))
           )}
         </div>
       </div>

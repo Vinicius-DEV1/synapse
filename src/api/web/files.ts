@@ -1,7 +1,9 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web-schema';
 import type { FilesApi } from '../types';
 import type { FileFolder, FileItem, FilePageLink } from '../../types/files';
 
-export const webFilesApi = (db: any, generateId: () => string): FilesApi => {
+export const webFilesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string): FilesApi => {
   return {
     getAll: async (): Promise<FileItem[]> => {
       const all: FileItem[] = (await db.getAll('files')) || [];

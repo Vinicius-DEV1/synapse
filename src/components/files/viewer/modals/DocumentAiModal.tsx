@@ -1,19 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Sparkles,
-  X,
-  Send,
-  Loader2,
-  FileDiff,
-  MessageSquare,
-  AlertTriangle,
-  Settings,
-  Layers,
-  AtSign,
-} from 'lucide-react';
+import { X, AlertTriangle, Settings, Layers, AtSign } from 'lucide-react';
 import { Portal } from '../../../ui/Portal';
 import { DocumentDiffViewer } from '../components/DocumentDiffViewer';
-import { QuizQuestionsGeneratedCard } from './components/QuizQuestionsGeneratedCard';
 import { useQuizBatteryMentions } from '../../../editor-extensions/quiz/hooks/useQuizBatteryMentions';
 import { appendQuestionsToBattery } from '../services/quizBatteryAppender';
 import {
@@ -21,6 +9,9 @@ import {
   type DocumentAiMessage,
 } from '../services/documentAiService';
 import type { QuestionItem, ReferencedBattery } from '../../../editor-extensions/quiz/types';
+import { DocumentAiHeader } from './components/DocumentAiHeader';
+import { DocumentAiMessageList } from './components/DocumentAiMessageList';
+import { DocumentAiInputBar } from './components/DocumentAiInputBar';
 
 interface DocumentAiModalProps {
   isOpen: boolean;
@@ -29,14 +20,6 @@ interface DocumentAiModalProps {
   documentText: string;
   onApplyChanges: (newText: string) => Promise<boolean>;
 }
-
-const QUICK_SUGGESTIONS = [
-  '🔍 Aprofundar o tópico principal',
-  '✍️ Melhorar clareza e estilo',
-  '✂️ Remover redundâncias e simplificar',
-  '📝 Adicionar introdução e conclusão',
-  '📊 Estruturar em tópicos e tabelas',
-];
 
 export function DocumentAiModal({
   isOpen,
@@ -156,66 +139,13 @@ export function DocumentAiModal({
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
         <div className="relative flex flex-col w-full max-w-4xl h-[85vh] bg-dark-card/95 border border-brand-500/30 rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-dark-bg/60">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-brand-500/20 text-brand-400 rounded-xl">
-                <Sparkles size={18} />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold text-sm flex items-center gap-2">
-                  <span>Assistente IA:</span>
-                  <span className="text-brand-300 font-mono text-xs">{documentTitle}</span>
-                </h3>
-                <p className="text-[11px] text-dark-subtext">
-                  Contexto ativo do documento • Digite @ para referenciar baterias de exercícios
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Tabs Switcher */}
-              <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('chat')}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                    activeTab === 'chat' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white'
-                  }`}
-                >
-                  <MessageSquare size={14} />
-                  <span>Chat</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('diff')}
-                  disabled={!proposedMarkdown}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                    activeTab === 'diff'
-                      ? 'bg-brand-500 text-white'
-                      : proposedMarkdown
-                      ? 'text-brand-300 hover:text-white hover:bg-white/10'
-                      : 'text-dark-subtext/40 cursor-not-allowed'
-                  }`}
-                >
-                  <FileDiff size={14} />
-                  <span>Revisão (Diff)</span>
-                  {proposedMarkdown && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-                  )}
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-xl transition-colors"
-                title="Fechar assistente"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
+          <DocumentAiHeader
+            documentTitle={documentTitle}
+            activeTab={activeTab}
+            proposedMarkdown={proposedMarkdown}
+            onSelectTab={setActiveTab}
+            onClose={onClose}
+          />
 
           {/* Body Content */}
           <div className="flex-1 overflow-hidden relative">
@@ -229,92 +159,18 @@ export function DocumentAiModal({
             ) : (
               <div className="flex flex-col h-full">
                 {/* Chat Messages */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                  {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto text-dark-subtext">
-                      <div className="p-4 bg-brand-500/10 text-brand-400 rounded-2xl mb-3">
-                        <Sparkles size={32} />
-                      </div>
-                      <h4 className="text-white font-medium text-base mb-1">
-                        Como posso ajudar com este documento?
-                      </h4>
-                      <p className="text-xs leading-relaxed mb-6">
-                        Peça análises, aprofundamento de tópicos ou digite <strong className="text-brand-300">@</strong> para marcar uma bateria de questões e pedir novas questões baseadas no texto.
-                      </p>
-
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {QUICK_SUGGESTIONS.map((sug) => (
-                          <button
-                            key={sug}
-                            type="button"
-                            onClick={() => handleSendMessage(sug)}
-                            className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-brand-500/20 hover:border-brand-500/40 text-xs text-gray-300 hover:text-white transition-all text-left"
-                          >
-                            {sug}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed shadow-md ${
-                          msg.role === 'user'
-                            ? 'bg-brand-600 text-white rounded-tr-sm'
-                            : 'bg-dark-bg/80 border border-white/10 text-gray-200 rounded-tl-sm'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap">{msg.text}</p>
-
-                        {/* Generated Questions Card */}
-                        {msg.generatedQuestions && msg.targetBattery && (
-                          <QuizQuestionsGeneratedCard
-                            battery={msg.targetBattery}
-                            questions={msg.generatedQuestions}
-                            isAdded={addedQuestionMessageIndices.has(idx)}
-                            onAdd={(bat, qList) => handleAddQuestions(bat, qList, idx)}
-                          />
-                        )}
-
-                        {/* Proposed Markdown Diff Button */}
-                        {msg.proposedMarkdown && (
-                          <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                            <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                              ✓ Nova versão do documento gerada
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProposedMarkdown(msg.proposedMarkdown || null);
-                                setActiveTab('diff');
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold transition-colors flex items-center gap-1"
-                            >
-                              <FileDiff size={13} />
-                              <span>Ver Alterações (Diff)</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-dark-bg/80 border border-white/10 text-brand-400 text-xs shadow-md">
-                        <Loader2 size={15} className="animate-spin" />
-                        <span>Analisando documento e formulando resposta...</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </div>
+                <DocumentAiMessageList
+                  messages={messages}
+                  isLoading={isLoading}
+                  addedQuestionMessageIndices={addedQuestionMessageIndices}
+                  messagesEndRef={messagesEndRef}
+                  onSelectSuggestion={handleSendMessage}
+                  onViewDiff={(markdown) => {
+                    setProposedMarkdown(markdown);
+                    setActiveTab('diff');
+                  }}
+                  onAddQuestions={handleAddQuestions}
+                />
 
                 {/* Error Banner */}
                 {error && (
@@ -378,74 +234,19 @@ export function DocumentAiModal({
                 )}
 
                 {/* Prompt Input Bar with Autocomplete Dropdown */}
-                <div className="p-4 border-t border-white/10 bg-dark-bg/60 relative">
-                  {/* Mention Autocomplete Dropdown */}
-                  {showMentionMenu && (
-                    <div className="absolute bottom-full left-4 right-4 mb-2 bg-dark-card border border-brand-500/40 rounded-xl shadow-2xl overflow-hidden z-50 max-h-56 overflow-y-auto animate-fade-in">
-                      <div className="px-3 py-1.5 border-b border-white/10 bg-dark-bg/80 text-[11px] font-semibold text-brand-400 flex items-center gap-1.5">
-                        <Layers size={13} />
-                        <span>Baterias de Questões Disponíveis</span>
-                      </div>
-                      {filteredBatteries.length === 0 ? (
-                        <div className="p-3 text-xs text-dark-subtext text-center">
-                          Nenhuma bateria encontrada com "{mentionQuery}"
-                        </div>
-                      ) : (
-                        filteredBatteries.map((bat, idx) => (
-                          <button
-                            key={bat.id}
-                            type="button"
-                            onClick={() => handleAttachBattery(bat)}
-                            className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between transition-colors ${
-                              idx === mentionSelectedIndex
-                                ? 'bg-brand-500/20 text-white'
-                                : 'hover:bg-white/5 text-gray-300'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Layers size={14} className="text-brand-400 shrink-0" />
-                              <div className="truncate">
-                                <span className="font-medium text-white">{bat.title}</span>
-                                <span className="text-[10px] text-dark-subtext ml-2">Página: {bat.pageTitle}</span>
-                              </div>
-                            </div>
-                            <span className="text-[11px] text-dark-subtext shrink-0 ml-2 font-mono">
-                              {bat.questionCount} {bat.questionCount === 1 ? 'questão' : 'questões'}
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={inputPrompt}
-                      onChange={handleInputChange}
-                      onKeyDown={handleMentionKeyDown}
-                      placeholder="Peça à IA para editar o texto ou digite @ para marcar uma bateria de questões..."
-                      disabled={isLoading}
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-xs text-white placeholder:text-dark-subtext outline-none transition-colors"
-                    />
-
-                    <button
-                      type="submit"
-                      disabled={!inputPrompt.trim() || isLoading}
-                      className="p-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:hover:bg-brand-500 text-white transition-all shadow-lg shadow-brand-950/40 active:scale-95"
-                      title="Enviar instrução"
-                    >
-                      {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                    </button>
-                  </form>
-                </div>
+                <DocumentAiInputBar
+                  inputPrompt={inputPrompt}
+                  isLoading={isLoading}
+                  inputRef={inputRef}
+                  showMentionMenu={showMentionMenu}
+                  mentionQuery={mentionQuery}
+                  mentionSelectedIndex={mentionSelectedIndex}
+                  filteredBatteries={filteredBatteries}
+                  onInputChange={handleInputChange}
+                  onKeyDown={handleMentionKeyDown}
+                  onAttachBattery={handleAttachBattery}
+                  onSubmit={handleSendMessage}
+                />
               </div>
             )}
           </div>
