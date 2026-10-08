@@ -123,7 +123,7 @@ export const createWebApiMock = async () => {
           return null;
         }
       },
-      saveMetadata: async (entry: any) => {
+      saveMetadata: async (entry: { url: string; [key: string]: unknown }) => {
         try {
           await db.put('link_metadata_cache', { ...entry, updated_at: new Date().toISOString() });
           return true;

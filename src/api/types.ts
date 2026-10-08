@@ -296,8 +296,8 @@ export interface ICadernoAPI {
   files?: FilesApi;
 
   links?: {
-    getMetadata: (url: string) => Promise<any | null>;
-    saveMetadata: (entry: any) => Promise<boolean>;
+    getMetadata: (url: string) => Promise<Record<string, unknown> | null>;
+    saveMetadata: (entry: { url: string; [key: string]: unknown }) => Promise<boolean>;
   };
 
   vault?: {

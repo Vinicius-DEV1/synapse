@@ -127,7 +127,7 @@ export const createTauriApi = async () => {
           return null;
         }
       },
-      saveMetadata: async (entry: any) => {
+      saveMetadata: async (entry: { url: string; [key: string]: unknown }) => {
         try {
           await tauriSyncApi.upsertRow('link_metadata_cache', { ...entry, id: entry.url, updated_at: new Date().toISOString() });
           return true;

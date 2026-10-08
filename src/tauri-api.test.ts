@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createTauriApi } from './tauri-api';
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn().mockImplementation((cmd: string, args: any) => {
+  invoke: vi.fn().mockImplementation((cmd: string, args?: Record<string, unknown>) => {
     if (cmd === 'notes_get_all_pages') return Promise.resolve([{ id: 'p1', title: 'Test Page' }]);
     if (cmd === 'sync_get_table') return Promise.resolve([]);
     if (cmd === 'notes_create_page') return Promise.resolve({ id: 'p-new', ...args?.page });
