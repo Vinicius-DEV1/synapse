@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Portal } from '../ui/Portal';
 import CardEditor from './CardEditor';
 import DeckSettingsPanel from './DeckSettingsPanel';
@@ -8,6 +8,7 @@ import { useDecks } from './hooks/useDecks';
 import { useDeckCards } from './hooks/useDeckCards';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useCardSelection } from './hooks/useCardSelection';
+import { useCardHoverTooltip } from './hooks/useCardHoverTooltip';
 
 import { DeckToolbar } from './browser/DeckToolbar';
 import type { DeckFilters } from './browser/DeckToolbar';
@@ -49,25 +50,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const [viewMode, setViewMode] = useState<'table' | 'grid' | 'list'>('table');
   const [showFilters, setShowFilters] = useState(true);
 
-  const [hoverState, setHoverState] = useState<{ id: string, type: 'front' | 'back', content: string, x: number, y: number } | null>(null);
-  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const handleMouseEnter = (e: React.MouseEvent, id: string, type: 'front' | 'back', content: string) => {
-    const x = e.clientX;
-    const y = e.clientY;
-    if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    hoverTimer.current = setTimeout(() => {
-      setHoverState({ id, type, content, x, y });
-    }, 1500);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-    setHoverState(null);
-  };
+  const { hoverState, handleMouseEnter, handleMouseLeave } = useCardHoverTooltip();
 
   const filteredCards = useMemo(() => {
     return cards.filter(c => {
@@ -113,10 +96,6 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prevOverflow;
-      if (hoverTimer.current) {
-        clearTimeout(hoverTimer.current);
-        hoverTimer.current = null;
-      }
     };
   }, []);
 

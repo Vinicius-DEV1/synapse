@@ -1,19 +1,32 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { AnkiNoteRecord, AnkiCardRecord, AnkiCard } from '../../../types/anki';
 import { generateCardsForNote } from './anki-cards-generator';
 import { collectDescendantDeckIds } from './utils/deck-tree';
 import { joinCardsWithNotes } from './utils/card-note-join';
 
-export async function getNote(db: any, noteId: string) {
+export async function getNote(
+  db: IDBPDatabase<CadernoDBSchema>,
+  noteId: string
+): Promise<AnkiNoteRecord | undefined> {
   return await db.get('anki_notes', noteId);
 }
 
-export async function getCard(db: any, cardId: string) {
+export async function getCard(
+  db: IDBPDatabase<CadernoDBSchema>,
+  cardId: string
+): Promise<AnkiCardRecord | undefined> {
   return await db.get('anki_cards', cardId);
 }
 
-export async function saveNote(db: any, generateId: () => string, noteData: any) {
+export async function saveNote(
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string,
+  noteData: Partial<AnkiNoteRecord> & { deck_id: string; front: string; back: string }
+): Promise<{ success: boolean; note_id: string }> {
   const noteId = noteData.id || generateId();
   const now = new Date().toISOString();
-  const note = {
+  const note: AnkiNoteRecord = {
     ...noteData,
     id: noteId,
     created_at: noteData.created_at || now,
@@ -24,14 +37,23 @@ export async function saveNote(db: any, generateId: () => string, noteData: any)
   return { success: true, note_id: noteId };
 }
 
-export async function saveCard(db: any, generateId: () => string, cardData: any) {
+export async function saveCard(
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string,
+  cardData: Partial<AnkiNoteRecord> & { deck_id: string; front: string; back: string }
+): Promise<{ success: boolean; note_id: string }> {
   return await saveNote(db, generateId, cardData);
 }
 
-export async function updateNote(db: any, generateId: () => string, noteId: string, noteData: any) {
+export async function updateNote(
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string,
+  noteId: string,
+  noteData: Partial<AnkiNoteRecord>
+): Promise<{ success: boolean; error?: string }> {
   const existing = await db.get('anki_notes', noteId);
   if (existing) {
-    const updated = { ...existing, ...noteData, updated_at: new Date().toISOString() };
+    const updated: AnkiNoteRecord = { ...existing, ...noteData, updated_at: new Date().toISOString() };
     await db.put('anki_notes', updated);
     await generateCardsForNote(db, updated, generateId);
     return { success: true };
@@ -39,7 +61,12 @@ export async function updateNote(db: any, generateId: () => string, noteId: stri
   return { success: false, error: 'Note not found' };
 }
 
-export async function updateCard(db: any, generateId: () => string, cardId: string, data: any) {
+export async function updateCard(
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string,
+  cardId: string,
+  data: Partial<AnkiNoteRecord>
+): Promise<{ success: boolean; error?: string }> {
   const card = await db.get('anki_cards', cardId);
   if (card && card.note_id) {
     // If deck_id is being updated on the card, update the note and card deck_id together
@@ -56,7 +83,10 @@ export async function updateCard(db: any, generateId: () => string, cardId: stri
   return { success: false, error: 'Card not found' };
 }
 
-export async function deleteNote(db: any, noteId: string) {
+export async function deleteNote(
+  db: IDBPDatabase<CadernoDBSchema>,
+  noteId: string
+): Promise<{ success: boolean; error?: string }> {
   const note = await db.get('anki_notes', noteId);
   if (!note) {
     return { success: false, error: 'Note not found' };
@@ -65,7 +95,7 @@ export async function deleteNote(db: any, noteId: string) {
   const now = new Date().toISOString();
   await db.put('anki_notes', { ...note, deleted_at: now, updated_at: now });
 
-  let cards: any[] = [];
+  let cards: AnkiCardRecord[] = [];
   try {
     if (typeof db.getAllFromIndex === 'function') {
       const indexed = await db.getAllFromIndex('anki_cards', 'note_id', noteId);
@@ -77,12 +107,12 @@ export async function deleteNote(db: any, noteId: string) {
 
   if (cards.length === 0) {
     const allCards = (await db.getAll('anki_cards')) || [];
-    cards = allCards.filter((c: any) => c.note_id === noteId);
+    cards = allCards.filter((c) => c.note_id === noteId);
   }
 
   const cardPromises = cards
-    .filter((c: any) => !c.deleted_at)
-    .map((c: any) =>
+    .filter((c) => !c.deleted_at)
+    .map((c) =>
       db.put('anki_cards', { ...c, deleted_at: now, updated_at: now })
     );
 
@@ -90,7 +120,11 @@ export async function deleteNote(db: any, noteId: string) {
   return { success: true };
 }
 
-export async function deleteCard(db: any, _generateId: () => string, cardId: string) {
+export async function deleteCard(
+  db: IDBPDatabase<CadernoDBSchema>,
+  _generateId: () => string,
+  cardId: string
+): Promise<{ success: boolean; error?: string }> {
   const card = await db.get('anki_cards', cardId);
   if (card && card.note_id) {
     return await deleteNote(db, card.note_id);
@@ -98,26 +132,32 @@ export async function deleteCard(db: any, _generateId: () => string, cardId: str
   return { success: false, error: 'Card not found' };
 }
 
-export async function getAllCards(db: any, deckId?: string) {
-  const allCards: any[] = (await db.getAll('anki_cards')) || [];
-  const allNotes: any[] = (await db.getAll('anki_notes')) || [];
+export async function getAllCards(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId?: string
+): Promise<{ success: boolean; cards: AnkiCard[] }> {
+  const allCards = (await db.getAll('anki_cards')) || [];
+  const allNotes = (await db.getAll('anki_notes')) || [];
 
-  let validCards = allCards.filter((c: any) => !c.deleted_at);
+  let validCards = allCards.filter((c) => !c.deleted_at);
 
   if (deckId) {
     const allDecks = (await db.getAll('anki_decks')) || [];
-    const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
+    const activeDecks = allDecks.filter((d) => !d.deleted_at);
     const deckIds = collectDescendantDeckIds(activeDecks, deckId);
-    validCards = validCards.filter((c: any) => deckIds.has(c.deck_id));
+    validCards = validCards.filter((c) => deckIds.has(c.deck_id));
   }
 
   const joinedCards = joinCardsWithNotes(validCards, allNotes);
   return { success: true, cards: joinedCards };
 }
 
-export async function deleteCardsBulk(db: any, cardIds: string[]) {
+export async function deleteCardsBulk(
+  db: IDBPDatabase<CadernoDBSchema>,
+  cardIds: string[]
+): Promise<{ success: boolean }> {
   const cardIdSet = new Set(cardIds);
-  const allCards: any[] = (await db.getAll('anki_cards')) || [];
+  const allCards = (await db.getAll('anki_cards')) || [];
   const targetNotes = new Set<string>();
 
   for (const c of allCards) {
@@ -136,8 +176,8 @@ export async function deleteCardsBulk(db: any, cardIds: string[]) {
   });
 
   const cardPromises = allCards
-    .filter((c: any) => targetNotes.has(c.note_id) && !c.deleted_at)
-    .map((c: any) =>
+    .filter((c) => targetNotes.has(c.note_id) && !c.deleted_at)
+    .map((c) =>
       db.put('anki_cards', { ...c, deleted_at: now, updated_at: now })
     );
 

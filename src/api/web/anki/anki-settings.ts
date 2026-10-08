@@ -1,6 +1,11 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
 import type { AnkiDeckSettings } from '../../../types/anki';
 
-export async function getDeckSettings(db: any, deckId: string): Promise<AnkiDeckSettings> {
+export async function getDeckSettings(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId: string
+): Promise<AnkiDeckSettings> {
   let settings: AnkiDeckSettings | undefined;
 
   try {
@@ -16,7 +21,7 @@ export async function getDeckSettings(db: any, deckId: string): Promise<AnkiDeck
 
   if (!settings) {
     const allSettings = (await db.getAll('anki_deck_settings')) || [];
-    settings = allSettings.find((s: any) => s.deck_id === deckId);
+    settings = allSettings.find((s) => s.deck_id === deckId);
   }
 
   if (settings) return settings;
@@ -36,11 +41,11 @@ export async function getDeckSettings(db: any, deckId: string): Promise<AnkiDeck
 }
 
 export async function updateDeckSettings(
-  db: any,
+  db: IDBPDatabase<CadernoDBSchema>,
   generateId: () => string,
   deckId: string,
   settings: Partial<AnkiDeckSettings>
-) {
+): Promise<{ success: boolean }> {
   let existing: AnkiDeckSettings | undefined;
   try {
     if (typeof db.getAllFromIndex === 'function') {
@@ -55,7 +60,7 @@ export async function updateDeckSettings(
 
   if (!existing) {
     const allSettings = (await db.getAll('anki_deck_settings')) || [];
-    existing = allSettings.find((s: any) => s.deck_id === deckId);
+    existing = allSettings.find((s) => s.deck_id === deckId);
   }
 
   const now = new Date().toISOString();

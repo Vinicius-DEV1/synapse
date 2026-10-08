@@ -10,6 +10,14 @@ import type {
 
 
 import type { SharedPageConfig } from '../types/sharing';
+import type {
+  AnkiDeckRecord,
+  AnkiNoteRecord,
+  AnkiCardRecord,
+  AnkiSrsState,
+  AnkiReviewRecord,
+  AnkiDeckSettings,
+} from '../types/anki';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -59,12 +67,12 @@ export interface CadernoDBSchema extends DBSchema {
   tutor_sessions: { key: string; value: any };
   tutor_messages: { key: string; value: any; indexes: { session_id: string } };
   tutor_memories: { key: string; value: any };
-  anki_decks: { key: string; value: any };
-  anki_notes: { key: string; value: any; indexes: { deck_id: string } };
-  anki_cards: { key: string; value: any; indexes: { deck_id: string; note_id: string } };
-  anki_srs_state: { key: string; value: any };
-  anki_reviews: { key: string; value: any; indexes: { card_id: string } };
-  anki_deck_settings: { key: string; value: any; indexes: { deck_id: string } };
+  anki_decks: { key: string; value: AnkiDeckRecord };
+  anki_notes: { key: string; value: AnkiNoteRecord; indexes: { deck_id: string } };
+  anki_cards: { key: string; value: AnkiCardRecord; indexes: { deck_id: string; note_id: string } };
+  anki_srs_state: { key: string; value: AnkiSrsState };
+  anki_reviews: { key: string; value: AnkiReviewRecord; indexes: { card_id: string } };
+  anki_deck_settings: { key: string; value: AnkiDeckSettings; indexes: { deck_id: string } };
   files: { key: string; value: any };
   file_folders: { key: string; value: any };
   file_page_links: { key: string; value: any; indexes: { file_id: string; page_id: string } };

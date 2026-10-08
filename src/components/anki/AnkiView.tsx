@@ -1,15 +1,17 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Play, Plus,   Settings, BrainCircuit,  Layers, HelpCircle, BarChart2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, BrainCircuit, HelpCircle, BarChart2 } from 'lucide-react';
 import StudySession from './StudySession';
 import DeckBrowser from './DeckBrowser';
 import AnkiStats from './AnkiStats';
 import CreateDeckModal from './CreateDeckModal';
 import AnkiHelpModal from './AnkiHelpModal';
+import { DeckListItem } from './DeckListItem';
+import type { Deck, DeckTreeNode } from './types';
 
 export default function AnkiView() {
-  const [decks, setDecks] = useState<any[]>([]);
+  const [decks, setDecks] = useState<Deck[]>([]);
   const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
-  const [managingDeck, setManagingDeck] = useState<any | null>(null);
+  const [managingDeck, setManagingDeck] = useState<Deck | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -111,93 +113,16 @@ export default function AnkiView() {
   };
 
   // Build tree structure from flat deck list
-  const buildDeckTree = (flatDecks: any[], parentId: string | null = null): any[] => {
+  const buildDeckTree = (flatDecks: Deck[], parentId: string | null = null): DeckTreeNode[] => {
     return flatDecks
-      .filter((deck: any) => deck.parent_id === parentId)
-      .map((deck: any) => ({
+      .filter((deck) => (deck.parent_id || null) === parentId)
+      .map((deck) => ({
         ...deck,
         children: buildDeckTree(flatDecks, deck.id)
       }));
   };
 
   const deckTree = useMemo(() => buildDeckTree(decks), [decks]);
-
-  const renderDeckCard = (deck: any, depth: number = 0) => {
-    const isCollapsed = collapsedDecks.has(deck.id);
-    const hasChildren = deck.children && deck.children.length > 0;
-
-    return (
-      <div key={deck.id} className="flex flex-col w-full">
-        <div
-          className="bg-dark-card p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group"
-          style={{ marginLeft: `${depth * 24}px`, marginTop: depth > 0 ? '8px' : '16px' }}
-        >
-          <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
-            {hasChildren ? (
-              <button 
-                onClick={(e) => { e.stopPropagation(); toggleDeckCollapse(deck.id); }}
-                className="p-1 rounded hover:bg-white/10 text-dark-subtext transition-colors"
-                title={isCollapsed ? "Expandir" : "Recolher"}
-              >
-                {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
-              </button>
-            ) : (
-              <div className="w-[26px]"></div>
-            )}
-            <Layers className="text-indigo-400 shrink-0" size={20} />
-            <div>
-              <h3 className="text-lg font-semibold text-white/90 group-hover:text-white transition-colors truncate">{deck.name}</h3>
-              {deck.description && (
-                <p className="text-dark-subtext text-xs mt-1 truncate">{deck.description}</p>
-              )}
-            </div>
-          </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-6 shrink-0">
-          <div className="flex gap-3 text-xs font-medium bg-dark-bg px-3 py-1.5 rounded-lg border border-white/5">
-            <div className="text-blue-400/80 flex items-center gap-1" title="Novos Cartões">
-              <span className="w-2 h-2 rounded-full bg-blue-400/50"></span>
-              {deckStats[deck.id]?.novos || 0}
-            </div>
-            <div className="text-orange-400/80 flex items-center gap-1" title="Aprendendo">
-              <span className="w-2 h-2 rounded-full bg-orange-400/50"></span>
-              {deckStats[deck.id]?.aprender || 0}
-            </div>
-            <div className="text-green-400/80 flex items-center gap-1" title="A Revisar Hoje">
-              <span className="w-2 h-2 rounded-full bg-green-400/50"></span>
-              {deckStats[deck.id]?.revisar || 0}
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={(e) => { e.stopPropagation(); handleCreateSubDeck(deck.id); }}
-              className="flex items-center justify-center p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
-              title="Criar Subbaralho"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setManagingDeck(deck)}
-              className="flex items-center justify-center p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
-              title="Gerenciar Baralho"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setStudyingDeckId(deck.id)}
-              className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-sm transition-all font-medium"
-            >
-              <Play className="w-3 h-3 fill-white" />
-              Estudar
-            </button>
-          </div>
-        </div>
-      </div>
-      {!isCollapsed && hasChildren && deck.children.map((child: any) => renderDeckCard(child, depth + 1))}
-    </div>
-  );
-  };
 
   return (
     <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto relative" style={{ height: '100dvh' }}>
@@ -251,7 +176,18 @@ export default function AnkiView() {
             </div>
           )}
 
-          {deckTree.map((deck: any) => renderDeckCard(deck))}
+          {deckTree.map((deck) => (
+            <DeckListItem
+              key={deck.id}
+              deck={deck}
+              collapsedDecks={collapsedDecks}
+              toggleDeckCollapse={toggleDeckCollapse}
+              deckStats={deckStats}
+              onCreateSubDeck={handleCreateSubDeck}
+              onManageDeck={setManagingDeck}
+              onStudyDeck={setStudyingDeckId}
+            />
+          ))}
 
           {deckTree.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center text-dark-subtext bg-dark-card border border-white/5 rounded-2xl">

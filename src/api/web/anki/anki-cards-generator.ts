@@ -1,10 +1,18 @@
-export async function generateCardsForNote(db: any, note: any, generateId: () => string) {
-  let existingCards: any[] = [];
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { AnkiNoteRecord, AnkiCardRecord } from '../../../types/anki';
+
+export async function generateCardsForNote(
+  db: IDBPDatabase<CadernoDBSchema>,
+  note: AnkiNoteRecord,
+  generateId: () => string
+): Promise<void> {
+  let existingCards: AnkiCardRecord[] = [];
   try {
     if (typeof db.getAllFromIndex === 'function') {
       const indexed = await db.getAllFromIndex('anki_cards', 'note_id', note.id);
       if (Array.isArray(indexed)) {
-        existingCards = indexed.filter((c: any) => !c.deleted_at);
+        existingCards = indexed.filter((c) => !c.deleted_at);
       }
     }
   } catch {
@@ -13,7 +21,7 @@ export async function generateCardsForNote(db: any, note: any, generateId: () =>
 
   if (existingCards.length === 0) {
     const allCards = (await db.getAll('anki_cards')) || [];
-    existingCards = allCards.filter((c: any) => c.note_id === note.id && !c.deleted_at);
+    existingCards = allCards.filter((c) => c.note_id === note.id && !c.deleted_at);
   }
 
   let requiredOrds = [0];
@@ -37,11 +45,11 @@ export async function generateCardsForNote(db: any, note: any, generateId: () =>
   }
 
   const now = new Date().toISOString();
-  const operations: Promise<any>[] = [];
+  const operations: Promise<string>[] = [];
 
   // Create missing cards
   for (const ord of requiredOrds) {
-    if (!existingCards.some((c: any) => c.ord === ord)) {
+    if (!existingCards.some((c) => c.ord === ord)) {
       const newCard = {
         id: generateId(),
         note_id: note.id,

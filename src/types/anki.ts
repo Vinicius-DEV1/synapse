@@ -3,6 +3,25 @@ export type AnkiValidationMode = 'exact' | 'ai';
 export type AnkiStateNumeric = 0 | 1 | 2 | 3; // 0: new, 1: learning, 2: review, 3: relearning
 export type AnkiStateString = 'new' | 'learning' | 'review' | 'relearning';
 
+export interface AnkiDeckRecord {
+  id: string;
+  name: string;
+  description?: string;
+  parent_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface AnkiReviewRecord {
+  id: string;
+  card_id: string;
+  rating: number;
+  reviewed_at: string;
+  deleted_at?: string | null;
+  updated_at?: string;
+}
+
 export interface AnkiDeckSettings {
   id: string;
   deck_id: string;

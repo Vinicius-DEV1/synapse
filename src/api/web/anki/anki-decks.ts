@@ -1,18 +1,22 @@
-export async function getDecks(db: any) {
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { AnkiDeckRecord } from '../../../types/anki';
+
+export async function getDecks(db: IDBPDatabase<CadernoDBSchema>): Promise<{ success: boolean; decks: AnkiDeckRecord[] }> {
   const all = (await db.getAll('anki_decks')) || [];
   const decks = all
-    .filter((d: any) => !d.deleted_at)
-    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .filter((d) => !d.deleted_at)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   return { success: true, decks };
 }
 
 export async function createDeck(
-  db: any,
+  db: IDBPDatabase<CadernoDBSchema>,
   generateId: () => string,
   name: string,
   description?: string,
   parentId?: string | null
-) {
+): Promise<{ success: boolean; id: string }> {
   const now = new Date().toISOString();
   const deck = {
     id: generateId(),
@@ -37,10 +41,15 @@ export async function createDeck(
   };
   await db.put('anki_deck_settings', settings);
 
-  return { success: true };
+  return { success: true, id: deck.id };
 }
 
-export async function updateDeck(db: any, deckId: string, name: string, description?: string) {
+export async function updateDeck(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId: string,
+  name: string,
+  description?: string
+): Promise<{ success: boolean; error?: string }> {
   const existing = await db.get('anki_decks', deckId);
   if (existing) {
     const updated = { ...existing, name, description, updated_at: new Date().toISOString() };
@@ -50,7 +59,10 @@ export async function updateDeck(db: any, deckId: string, name: string, descript
   return { success: false, error: 'Deck not found' };
 }
 
-export async function deleteDeck(db: any, deckId: string) {
+export async function deleteDeck(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId: string
+): Promise<{ success: boolean; error?: string }> {
   const deck = await db.get('anki_decks', deckId);
   if (!deck) {
     return { success: false, error: 'Deck not found' };
@@ -61,15 +73,15 @@ export async function deleteDeck(db: any, deckId: string) {
 
   const allNotes = (await db.getAllFromIndex('anki_notes', 'deck_id', deckId)) || [];
   const notePromises = allNotes
-    .filter((note: any) => !note.deleted_at)
-    .map((note: any) =>
+    .filter((note) => !note.deleted_at)
+    .map((note) =>
       db.put('anki_notes', { ...note, deleted_at: now, updated_at: now })
     );
 
   const allCards = (await db.getAllFromIndex('anki_cards', 'deck_id', deckId)) || [];
   const cardPromises = allCards
-    .filter((card: any) => !card.deleted_at)
-    .map((card: any) =>
+    .filter((card) => !card.deleted_at)
+    .map((card) =>
       db.put('anki_cards', { ...card, deleted_at: now, updated_at: now })
     );
 
@@ -77,12 +89,15 @@ export async function deleteDeck(db: any, deckId: string) {
   return { success: true };
 }
 
-export async function resetDeckProgress(db: any, deckId: string) {
+export async function resetDeckProgress(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId: string
+): Promise<{ success: boolean }> {
   const now = new Date().toISOString();
   const allCards = (await db.getAllFromIndex('anki_cards', 'deck_id', deckId)) || [];
-  const cardIdsInDeck = new Set<string>(allCards.map((c: any) => c.id));
+  const cardIdsInDeck = new Set<string>(allCards.map((c) => c.id));
 
-  const cardUpdates = allCards.map((card: any) =>
+  const cardUpdates = allCards.map((card) =>
     db.put('anki_cards', {
       ...card,
       srs_state: null,
@@ -98,8 +113,8 @@ export async function resetDeckProgress(db: any, deckId: string) {
 
   const allReviews = (await db.getAll('anki_reviews')) || [];
   const reviewUpdates = allReviews
-    .filter((r: any) => cardIdsInDeck.has(r.card_id) && !r.deleted_at)
-    .map((review: any) =>
+    .filter((r) => cardIdsInDeck.has(r.card_id) && !r.deleted_at)
+    .map((review) =>
       db.put('anki_reviews', {
         ...review,
         deleted_at: now,

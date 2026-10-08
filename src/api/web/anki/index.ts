@@ -1,3 +1,5 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
 import { migrateToNotes } from './anki-migration';
 import { exportDeckRecursive, importDeck } from './anki-import-export';
 import { getDecks, createDeck, updateDeck, deleteDeck, resetDeckProgress } from './anki-decks';
@@ -16,7 +18,7 @@ import {
 import { getReviews, getDueCards, reviewCard, getCardIntervals, getTotalDueCount } from './anki-reviews';
 import { getDeckSettings, updateDeckSettings } from './anki-settings';
 
-export const webAnkiApi = (db: any, generateId: () => string) => ({
+export const webAnkiApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
   migrateToNotes: () => migrateToNotes(db, generateId),
   exportDeckRecursive: (deckId: string) => exportDeckRecursive(db, deckId),
   importDeck: (payload: any) => importDeck(db, payload),

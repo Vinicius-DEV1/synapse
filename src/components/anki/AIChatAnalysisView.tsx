@@ -7,6 +7,10 @@ import { getErrorMessage } from '../../utils/error';
 import { ChatSetupForm } from './ai-chat/ChatSetupForm';
 import { ChatSuggestionsReview } from './ai-chat/ChatSuggestionsReview';
 import { AIChatMessageItem } from './ai-chat/AIChatMessageItem';
+import { useAIChatSessions, type ChatSession } from './hooks/useAIChatSessions';
+
+export type { ChatSession };
+
 interface AIChatAnalysisViewProps {
   deckId: string;
   prompt: string;
@@ -26,21 +30,20 @@ interface AIChatAnalysisViewProps {
   setFooterState: (state: any) => void;
 }
 
-export interface ChatSession {
-  id: string;
-  date: string;
-  history: ChatMessage[];
-}
-
 export default function AIChatAnalysisView({
   deckId, prompt, setPrompt, selectedModel, models, setSelectedModel,
   includeContext, setIncludeContext, getContextData,
   loading, setLoading, error, setError,
   onAddCards, isGeneratingRef, setFooterState
 }: AIChatAnalysisViewProps) {
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const {
+    sessions,
+    activeSessionId,
+    setActiveSessionId,
+    chatHistory,
+    setChatHistory,
+    clearChat,
+  } = useAIChatSessions(deckId);
   const [chatPrompt, setChatPrompt] = useState('');
   const [activeReviewAction, setActiveReviewAction] = useState<{ msgIdx: number, actIdx: number } | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]); // review mode suggestions
@@ -66,65 +69,7 @@ export default function AIChatAnalysisView({
     };
   }, [deckId]);
 
-  useEffect(() => {
-    const savedSessions = localStorage.getItem(`ai_chat_sessions_${deckId}`);
-    let loadedSessions: ChatSession[] = [];
-    if (savedSessions) {
-      try { loadedSessions = JSON.parse(savedSessions); } catch(e) {
-        console.warn('[AIChatAnalysisView] Failed to parse saved sessions:', e);
-      }
-    } else {
-      // Migrate old format
-      const oldChat = localStorage.getItem(`ai_chat_${deckId}`);
-      if (oldChat) {
-        try {
-           const history = JSON.parse(oldChat);
-           if (Array.isArray(history) && history.length > 0) {
-              loadedSessions = [{ id: Date.now().toString(), date: new Date().toISOString(), history }];
-              localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(loadedSessions));
-           }
-        } catch(e) {
-          console.warn('[AIChatAnalysisView] Failed to parse old chat history:', e);
-        }
-      }
-    }
-    setSessions(loadedSessions);
-    if (loadedSessions.length > 0) {
-       setActiveSessionId(loadedSessions[loadedSessions.length - 1].id);
-       setChatHistory(loadedSessions[loadedSessions.length - 1].history);
-    } else {
-       setActiveSessionId(null);
-       setChatHistory([]);
-    }
-  }, [deckId]);
 
-  const safeSaveSessions = (dId: string, sess: ChatSession[]) => {
-    try {
-      const pruned = sess.slice(-20);
-      localStorage.setItem(`ai_chat_sessions_${dId}`, JSON.stringify(pruned));
-    } catch (e) {
-      console.warn('[AIChat] Failed to persist chat sessions to localStorage:', e);
-    }
-  };
-
-  useEffect(() => {
-    if (!activeSessionId && chatHistory.length > 0) {
-      const newId = Date.now().toString();
-      const newSession = { id: newId, date: new Date().toISOString(), history: chatHistory };
-      setSessions(prev => {
-        const next = [...prev, newSession];
-        safeSaveSessions(deckId, next);
-        return next;
-      });
-      setActiveSessionId(newId);
-    } else if (activeSessionId) {
-      setSessions(prev => {
-        const next = prev.map(s => s.id === activeSessionId ? { ...s, history: chatHistory } : s);
-        safeSaveSessions(deckId, next);
-        return next;
-      });
-    }
-  }, [chatHistory, activeSessionId, deckId]);
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -194,17 +139,7 @@ export default function AIChatAnalysisView({
   };
 
   const handleClearChat = () => {
-    if (activeSessionId) {
-      setSessions(prev => {
-        const next = prev.filter(s => s.id !== activeSessionId);
-        localStorage.setItem(`ai_chat_sessions_${deckId}`, JSON.stringify(next));
-        return next;
-      });
-      setActiveSessionId(null);
-    } else {
-      localStorage.removeItem(`ai_chat_sessions_${deckId}`);
-    }
-    setChatHistory([]);
+    clearChat();
     setActionStatus({});
     setPrompt('');
   };

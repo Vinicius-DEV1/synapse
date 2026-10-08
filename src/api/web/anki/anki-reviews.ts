@@ -1,35 +1,43 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { AnkiReviewRecord, AnkiCard } from '../../../types/anki';
 import { processReview, previewIntervals } from '../../../services/fsrs';
 import { collectDescendantDeckIds } from './utils/deck-tree';
 import { joinCardsWithNotes } from './utils/card-note-join';
 
-export async function getReviews(db: any) {
+export async function getReviews(
+  db: IDBPDatabase<CadernoDBSchema>
+): Promise<{ success: boolean; reviews: AnkiReviewRecord[] }> {
   const all = (await db.getAll('anki_reviews')) || [];
-  const reviews = all.filter((r: any) => !r.deleted_at);
+  const reviews = all.filter((r) => !r.deleted_at);
   return { success: true, reviews };
 }
 
-export async function getDueCards(db: any, deckId: string) {
+export async function getDueCards(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId: string
+): Promise<AnkiCard[]> {
   const allDecks = (await db.getAll('anki_decks')) || [];
-  const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
+  const activeDecks = allDecks.filter((d) => !d.deleted_at);
 
   const deckIds = collectDescendantDeckIds(activeDecks, deckId);
 
-  const allCards: any[] = (await db.getAll('anki_cards')) || [];
-  const allNotes: any[] = (await db.getAll('anki_notes')) || [];
+  const allCards = (await db.getAll('anki_cards')) || [];
+  const allNotes = (await db.getAll('anki_notes')) || [];
 
   const now = new Date().toISOString();
   const allSettings = (await db.getAll('anki_deck_settings')) || [];
-  const deckSettings = allSettings.find((s: any) => s.deck_id === deckId) || {
+  const deckSettings = allSettings.find((s) => s.deck_id === deckId) || {
     new_limit: 20,
     review_limit: 200,
   };
 
-  const validCards = allCards.filter((c: any) => !c.deleted_at && deckIds.has(c.deck_id));
+  const validCards = allCards.filter((c) => !c.deleted_at && deckIds.has(c.deck_id));
   const joinedCards = joinCardsWithNotes(validCards, allNotes);
 
-  let newCards: any[] = [];
-  const learningCards: any[] = [];
-  let reviewCards: any[] = [];
+  let newCards: AnkiCard[] = [];
+  const learningCards: AnkiCard[] = [];
+  let reviewCards: AnkiCard[] = [];
 
   for (const c of joinedCards) {
     const state = Number(c.state) || 0;
@@ -63,15 +71,15 @@ export async function getDueCards(db: any, deckId: string) {
 }
 
 export async function reviewCard(
-  db: any,
+  db: IDBPDatabase<CadernoDBSchema>,
   generateId: () => string,
   cardId: string,
   rating: number
-) {
+): Promise<{ success: boolean; error?: string }> {
   const card = await db.get('anki_cards', cardId);
   if (card) {
     const allSettings = (await db.getAll('anki_deck_settings')) || [];
-    const deckSettings = allSettings.find((s: any) => s.deck_id === card.deck_id);
+    const deckSettings = allSettings.find((s) => s.deck_id === card.deck_id);
 
     const fsrsCardState = processReview(card, rating, deckSettings);
 
@@ -91,7 +99,7 @@ export async function reviewCard(
 
     await db.put('anki_cards', updated);
 
-    const review = {
+    const review: AnkiReviewRecord = {
       id: generateId(),
       card_id: cardId,
       rating,
@@ -104,11 +112,14 @@ export async function reviewCard(
   return { success: false, error: 'Card not found' };
 }
 
-export async function getCardIntervals(db: any, cardId: string) {
+export async function getCardIntervals(
+  db: IDBPDatabase<CadernoDBSchema>,
+  cardId: string
+): Promise<{ success: boolean; intervals?: string[]; error?: string }> {
   const card = await db.get('anki_cards', cardId);
   if (card) {
     const allSettings = (await db.getAll('anki_deck_settings')) || [];
-    const deckSettings = allSettings.find((s: any) => s.deck_id === card.deck_id);
+    const deckSettings = allSettings.find((s) => s.deck_id === card.deck_id);
 
     const intervals = previewIntervals(card, deckSettings);
     return { success: true, intervals };
@@ -116,9 +127,9 @@ export async function getCardIntervals(db: any, cardId: string) {
   return { success: false, error: 'Card not found' };
 }
 
-export async function getTotalDueCount(db: any): Promise<number> {
-  const allCards: any[] = (await db.getAll('anki_cards')) || [];
-  const allSettings: any[] = (await db.getAll('anki_deck_settings')) || [];
+export async function getTotalDueCount(db: IDBPDatabase<CadernoDBSchema>): Promise<number> {
+  const allCards = (await db.getAll('anki_cards')) || [];
+  const allSettings = (await db.getAll('anki_deck_settings')) || [];
   const settingsMap = new Map<string, { new_limit: number; review_limit: number }>();
   for (const s of allSettings) {
     if (s.deck_id) {

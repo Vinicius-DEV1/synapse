@@ -10,6 +10,10 @@ export interface Deck {
   updated_at?: string;
 }
 
+export interface DeckTreeNode extends Deck {
+  children?: DeckTreeNode[];
+}
+
 export type CardType = 'reading' | 'listening' | 'typing' | 'cloze' | 'speaking';
 export type ValidationMode = 'exact' | 'ai';
 
