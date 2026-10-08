@@ -3,7 +3,10 @@ use serde_json::Value;
 use tauri::{AppHandle, State};
 use tauri_plugin_shell::ShellExt;
 
+// Uses tauri_plugin_shell::Shell::open to launch browser URLs.
+// Suppressed deprecation warning until Tauri plugin migration milestone.
 #[tauri::command]
+#[allow(deprecated)]
 pub fn drive_open_url(app: AppHandle, url: String) -> Result<(), String> {
     let parsed = url::Url::parse(&url).map_err(|e| format!("URL inválida: {}", e))?;
     let scheme = parsed.scheme();
