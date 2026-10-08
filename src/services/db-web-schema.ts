@@ -31,6 +31,7 @@ import type {
 import type { Session, Alarm } from '../components/focus/types';
 import type { FileItem, FileFolder, FilePageLink } from '../types/files';
 import type { QuizBattery, QuizQuestion, QuizAttempt, QuizPageLink } from '../types/quiz';
+import type { Transaction, WishlistItem, Account } from '../types/finance';
 
 export interface SharedPageKeyRecord {
   shareId: string;
@@ -45,9 +46,9 @@ export interface SharedPageKeyRecord {
 export interface CadernoDBSchema extends DBSchema {
   pages: { key: string; value: any; indexes: { parent_id: string } };
   page_history: { key: string; value: any; indexes: { page_id: string } };
-  transactions: { key: string; value: any; indexes: { date: string } };
-  wishlist: { key: string; value: any };
-  finance_accounts: { key: string; value: any };
+  transactions: { key: string; value: Transaction; indexes: { date: string } };
+  wishlist: { key: string; value: WishlistItem };
+  finance_accounts: { key: string; value: Account };
   library_books: { key: string; value: LibraryBook; indexes: { reading_status: string } };
   library_highlights: { key: string; value: LibraryHighlight; indexes: { book_id: string } };
   library_bookmarks: { key: string; value: LibraryBookmark; indexes: { book_id: string } };

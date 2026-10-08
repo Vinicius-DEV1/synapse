@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { Plus, Loader2, Building2 } from 'lucide-react';
 import type { Transaction, WishlistItem, Tab } from '../../types';
-import TransactionModal from './TransactionModal';
-import WishlistModal from './WishlistModal';
-import PaymentModal from './PaymentModal';
 import { useFinance } from './hooks/useFinance';
 import { useFinanceMetrics } from './hooks/useFinanceMetrics';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
@@ -12,9 +9,7 @@ import { DashboardMetrics } from './ui/DashboardMetrics';
 import { TransactionList } from './ui/TransactionList';
 import { LoansTab } from './ui/LoansTab';
 import { WishlistTab } from './ui/WishlistTab';
-import { WishlistDetailsModal } from './ui/WishlistDetailsModal';
-import { AccountManagerModal } from './ui/AccountManagerModal';
-import { DeleteTransactionModal } from './ui/DeleteTransactionModal';
+import { FinanceModalsHost } from './ui/FinanceModalsHost';
 
 type FinanceSection = 'dashboard' | 'transactions' | 'loans' | 'wishlist';
 
@@ -182,9 +177,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 selectedAccountId={selectedAccountId}
                 onSelectAccount={setSelectedAccountId}
                 onOpenAccountManager={() => setShowAccountModal(true)}
-                onNavigateToLoans={() => {
-                  /* Loans navigation is handled by the sidebar */
-                }}
+                onNavigateToLoans={() => {}}
               />
             )}
 
@@ -237,81 +230,45 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
         </div>
       </div>
 
-      {showTxModal && (
-        <TransactionModal
-          initialData={txToEdit}
-          accounts={accounts}
-          defaultAccountId={selectedAccountId !== 'all' ? selectedAccountId : undefined}
-          onClose={() => {
-            setShowTxModal(false);
-            setTxToEdit(null);
-          }}
-          onSave={handleSaveTransaction}
-        />
-      )}
-
-      {showWishlistModal && (
-        <WishlistModal
-          initialData={wishlistToEdit}
-          onClose={() => {
-            setShowWishlistModal(false);
-            setWishlistToEdit(null);
-          }}
-          onSave={handleSaveWishlist}
-        />
-      )}
-
-      {selectedTxForPayment && (
-        <PaymentModal
-          transaction={selectedTxForPayment}
-          accounts={accounts}
-          onClose={() => setSelectedTxForPayment(null)}
-          onSave={updateTransaction}
-          onPayLoanWithAccount={payLoanWithAccount}
-        />
-      )}
-
-      {showAccountModal && (
-        <AccountManagerModal
-          accounts={accounts}
-          onClose={() => setShowAccountModal(false)}
-          onCreateAccount={createAccount}
-          onUpdateAccount={updateAccount}
-          onDeleteAccount={deleteAccount}
-        />
-      )}
-
-      {txToDelete && (
-        <DeleteTransactionModal
-          transaction={txToDelete}
-          linkedPaymentsCount={
-            (txToDelete.type === 'loan_made' || txToDelete.type === 'loan_taken')
-              ? transactions.filter((t) => t.linked_loan_id === txToDelete.id).length
-              : 0
-          }
-          linkedPaymentsTotal={
-            (txToDelete.type === 'loan_made' || txToDelete.type === 'loan_taken')
-              ? transactions
-                  .filter((t) => t.linked_loan_id === txToDelete.id)
-                  .reduce((sum, p) => sum + Number(p.amount || 0), 0)
-              : 0
-          }
-          onClose={() => setTxToDelete(null)}
-          onConfirm={deleteTransaction}
-        />
-      )}
-
-      <WishlistDetailsModal
-        item={selectedWishlistDetails}
-        onClose={() => setSelectedWishlistDetails(null)}
-        onEdit={(item) => {
+      <FinanceModalsHost
+        showTxModal={showTxModal}
+        txToEdit={txToEdit}
+        accounts={accounts}
+        selectedAccountId={selectedAccountId}
+        onCloseTxModal={() => {
+          setShowTxModal(false);
+          setTxToEdit(null);
+        }}
+        onSaveTransaction={handleSaveTransaction}
+        showWishlistModal={showWishlistModal}
+        wishlistToEdit={wishlistToEdit}
+        onCloseWishlistModal={() => {
+          setShowWishlistModal(false);
+          setWishlistToEdit(null);
+        }}
+        onSaveWishlist={handleSaveWishlist}
+        selectedTxForPayment={selectedTxForPayment}
+        onClosePaymentModal={() => setSelectedTxForPayment(null)}
+        onUpdateTransaction={updateTransaction}
+        onPayLoanWithAccount={payLoanWithAccount}
+        showAccountModal={showAccountModal}
+        onCloseAccountModal={() => setShowAccountModal(false)}
+        onCreateAccount={createAccount}
+        onUpdateAccount={updateAccount}
+        onDeleteAccount={deleteAccount}
+        txToDelete={txToDelete}
+        transactions={transactions}
+        onCloseDeleteModal={() => setTxToDelete(null)}
+        onConfirmDeleteTransaction={deleteTransaction}
+        selectedWishlistDetails={selectedWishlistDetails}
+        onCloseWishlistDetails={() => setSelectedWishlistDetails(null)}
+        onEditWishlistItem={(item) => {
           setWishlistToEdit(item);
           setShowWishlistModal(true);
           setSelectedWishlistDetails(null);
         }}
-        onDelete={handleDeleteWishlist}
+        onDeleteWishlistItem={handleDeleteWishlist}
       />
     </div>
   );
 }
-
