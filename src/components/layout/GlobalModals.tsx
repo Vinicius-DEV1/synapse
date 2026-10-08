@@ -8,9 +8,10 @@ import { UploadProgressModal } from '../library/ui/UploadProgressModal';
 import SyncErrorModal from '../modals/SyncErrorModal';
 import type { Page } from '../../types';
 
+import RenamePageModal from '../modals/RenamePageModal';
+
 // Lazy load heavy and conditional modals to keep initial bundle ultra-light
 const ConfirmModal = lazy(() => import('../modals/ConfirmModal'));
-const RenamePageModal = lazy(() => import('../modals/RenamePageModal'));
 const MovePageModal = lazy(() => import('../modals/MovePageModal'));
 const FloatingPageModal = lazy(() => import('../modals/FloatingPageModal'));
 const DriveAuthModal = lazy(() => import('../library/modals/DriveAuthModal'));
