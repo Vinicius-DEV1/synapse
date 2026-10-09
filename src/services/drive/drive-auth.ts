@@ -53,10 +53,12 @@ export async function exchangeCodeForToken(
 ): Promise<DriveToken> {
   const params = new URLSearchParams();
   params.append('client_id', DRIVE_CLIENT_ID);
-  params.append('client_secret', DRIVE_CLIENT_SECRET);
+  if (DRIVE_CLIENT_SECRET) {
+    params.append('client_secret', DRIVE_CLIENT_SECRET);
+  }
   params.append('code', code);
   params.append('grant_type', 'authorization_code');
-  params.append('redirect_uri', 'http://localhost:5173');
+  params.append('redirect_uri', import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:5173');
   params.append('code_verifier', codeVerifier);
 
   const res = await resilientFetch('https://oauth2.googleapis.com/token', {
@@ -81,7 +83,9 @@ export async function exchangeCodeForToken(
 export async function refreshToken(refresh_token: string): Promise<DriveToken> {
   const params = new URLSearchParams();
   params.append('client_id', DRIVE_CLIENT_ID);
-  params.append('client_secret', DRIVE_CLIENT_SECRET);
+  if (DRIVE_CLIENT_SECRET) {
+    params.append('client_secret', DRIVE_CLIENT_SECRET);
+  }
   params.append('refresh_token', refresh_token);
   params.append('grant_type', 'refresh_token');
 
