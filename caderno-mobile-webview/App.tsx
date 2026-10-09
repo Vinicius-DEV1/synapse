@@ -10,7 +10,8 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
+import { WebView } from 'react-native-webview';
+import type { WebViewErrorEvent, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
@@ -113,7 +114,7 @@ function MainWebView() {
     setCanGoBack(navState.canGoBack);
   };
 
-  const handleError = (syntheticEvent: any) => {
+  const handleError = (syntheticEvent: WebViewErrorEvent) => {
     const { nativeEvent } = syntheticEvent;
     console.warn('[WebView Error]', nativeEvent);
     setHasError(true);
