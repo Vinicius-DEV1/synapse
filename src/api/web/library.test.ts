@@ -24,9 +24,9 @@ describe('webLibraryApi Unit Tests', () => {
       getAll: async (table: string) => [...(inMemoryDb[table] || [])],
       get: async (table: string, id: string) =>
         inMemoryDb[table]?.find((item) => item.id === id) || null,
-      put: async (table: string, item: any) => {
+      put: async (table: string, item: { id: string; [key: string]: unknown }) => {
         if (!inMemoryDb[table]) inMemoryDb[table] = [];
-        const index = inMemoryDb[table].findIndex((i) => i.id === item.id);
+        const index = inMemoryDb[table].findIndex((i) => (i as { id: string }).id === item.id);
         if (index >= 0) {
           inMemoryDb[table][index] = item;
         } else {
@@ -35,11 +35,11 @@ describe('webLibraryApi Unit Tests', () => {
       },
       delete: async (table: string, id: string) => {
         if (inMemoryDb[table]) {
-          inMemoryDb[table] = inMemoryDb[table].filter((item) => item.id !== id);
+          inMemoryDb[table] = inMemoryDb[table].filter((item) => (item as { id: string }).id !== id);
         }
       },
       getAllFromIndex: async (table: string, indexKey: string, indexValue: string) => {
-        return (inMemoryDb[table] || []).filter((item: any) => item[indexKey] === indexValue);
+        return (inMemoryDb[table] || []).filter((item) => (item as Record<string, unknown>)[indexKey] === indexValue);
       },
     } as unknown as IDBPDatabase<CadernoDBSchema>;
   };

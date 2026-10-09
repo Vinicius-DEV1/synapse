@@ -1,11 +1,19 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
+import type {
+  LibraryBook,
+  LibraryCollection,
+  LibraryHighlight,
+  LibraryBookmark,
+  OcrCacheEntry,
+  ReadingSession,
+  GlobalReadingStats,
+  BookReadingStats,
+} from '../../types/library';
 
 export const tauriLibraryApi = {
-
-
-  importBook: async () => {
+  importBook: async (): Promise<LibraryBook[] | null> => {
     try {
       const selected = await open({
         multiple: true,
@@ -14,7 +22,7 @@ export const tauriLibraryApi = {
       if (selected) {
         const paths = Array.isArray(selected) ? selected : [selected];
         if (paths.length === 0) return null;
-        const importedBooks = [];
+        const importedBooks: LibraryBook[] = [];
         for (const filePath of paths) {
           const bookId = crypto.randomUUID();
           const ext = (filePath.split('.').pop() || 'pdf').toLowerCase();
@@ -27,7 +35,7 @@ export const tauriLibraryApi = {
           
           const cleanFileName = filePath.split(/[/\\]/).pop() || 'Livro';
           const title = cleanFileName.replace(/\.(pdf|epub)$/i, '') || 'Livro';
-          const book = {
+          const book: LibraryBook = {
             id: bookId,
             title,
             original_name: cleanFileName,
@@ -38,6 +46,7 @@ export const tauriLibraryApi = {
             current_page: 0,
             last_read_page: ext === 'epub' ? '' : '1',
             reading_status: 'not_started',
+            last_read_at: null,
             is_local: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -122,12 +131,12 @@ export const tauriLibraryApi = {
       return buffer.buffer;
     } catch(e) { console.error("Error getting book file", e); return null; }
   },
-  getBooks: async () => await invoke('library_get_books'),
-  getBook: async (id: string) => await invoke('library_get_book', { id }),
-  addBook: async (b: any) => await invoke('library_add_book', { book: b }),
-  updateBook: async (b: any) => await invoke('library_update_book', { book: b }),
-  deleteBook: async (id: string) => await invoke('library_delete_book', { id }),
-  evictBookLocalCache: async (id: string) => {
+  getBooks: async (): Promise<LibraryBook[]> => await invoke<LibraryBook[]>('library_get_books'),
+  getBook: async (id: string): Promise<LibraryBook | null> => await invoke<LibraryBook | null>('library_get_book', { id }),
+  addBook: async (b: Partial<LibraryBook>): Promise<void> => await invoke<void>('library_add_book', { book: b }),
+  updateBook: async (b: Partial<LibraryBook> & { id: string }): Promise<number> => await invoke<number>('library_update_book', { book: b }),
+  deleteBook: async (id: string): Promise<boolean> => await invoke<boolean>('library_delete_book', { id }),
+  evictBookLocalCache: async (id: string): Promise<boolean> => {
     try {
       await invoke('library_evict_book_local_cache', { id });
       return true;
@@ -136,7 +145,7 @@ export const tauriLibraryApi = {
       return false;
     }
   },
-  reattachBookFile: async (bookId: string) => {
+  reattachBookFile: async (bookId: string): Promise<string | null> => {
     try {
       const selected = await open({
         multiple: false,
@@ -153,15 +162,15 @@ export const tauriLibraryApi = {
         });
 
         // Retrieve existing book to prevent wiping metadata
-        const books = await invoke<any[]>('library_get_books');
-        const existing = books.find((b: any) => b.id === bookId) || { id: bookId, title: 'Livro' };
+        const books = await invoke<LibraryBook[]>('library_get_books');
+        const existing = books.find((b) => b.id === bookId);
 
         await invoke('library_update_book', {
           book: {
             title: 'Livro',
             total_pages: 0,
             current_page: 0,
-            ...existing,
+            ...(existing || { id: bookId }),
             file_path: localPath,
             updated_at: new Date().toISOString()
           }
@@ -174,42 +183,42 @@ export const tauriLibraryApi = {
     }
     return null;
   },
-  getCollections: async () => await invoke('library_get_collections'),
-  addCollection: async (c: any) => await invoke('library_add_collection', { collection: c }),
-  updateCollection: async (c: any) => await invoke('library_update_collection', { collection: c }),
-  deleteCollection: async (id: string) => await invoke('library_delete_collection', { id }),
-  addBookToCollection: async (bookId: string, collectionId: string) => await invoke('library_add_book_to_collection', { bookId, collectionId }),
-  removeBookFromCollection: async (bookId: string, collectionId: string) => await invoke('library_remove_book_from_collection', { bookId, collectionId }),
-  getBookCollections: async (bookId: string) => await invoke('library_get_book_collections', { bookId }),
-  getAllBookCollections: async (): Promise<Record<string, string[]>> => await invoke('library_get_all_book_collections'),
-  setBookCollections: async (bookId: string, collectionIds: string[]) => await invoke('library_set_book_collections', { bookId, collectionIds }),
-  createCollection: async (c: any) => await invoke('library_create_collection', { collection: c }),
-  getHighlights: async (bookId: string) => await invoke('library_get_highlights', { bookId }),
-  createHighlight: async (h: any) => await invoke('library_create_highlight', { highlight: h }),
-  updateHighlight: async (h: any) => await invoke('library_update_highlight', { highlight: h }),
-  deleteHighlight: async (id: string) => await invoke('library_delete_highlight', { id }),
-  getBookmarks: async (bookId: string) => await invoke('library_get_bookmarks', { bookId }),
-  createBookmark: async (b: any) => await invoke('library_create_bookmark', { bookmark: b }),
-  updateBookmark: async (b: any) => await invoke('library_update_bookmark', { bookmark: b }),
-  deleteBookmark: async (id: string) => await invoke('library_delete_bookmark', { id }),
-  getOcrCache: async (bookId: string, pageNumber: number) => await invoke('library_get_ocr_cache', { bookId, pageNumber }),
-  saveOcrCache: async (cache: any) => await invoke('library_save_ocr_cache', { cache }),
-  startReadingSession: async (data: any) => await invoke('library_start_reading_session', { session: data }),
-  endReadingSession: async (data: any) => await invoke('library_end_reading_session', { session: data }),
-  getReadingStats: async (): Promise<{ bookStats?: any; globalStats: any }> => {
+  getCollections: async (): Promise<LibraryCollection[]> => await invoke<LibraryCollection[]>('library_get_collections'),
+  addCollection: async (c: Partial<LibraryCollection>): Promise<LibraryCollection> => await invoke<LibraryCollection>('library_add_collection', { collection: c }),
+  updateCollection: async (c: Partial<LibraryCollection> & { id: string }): Promise<number> => await invoke<number>('library_update_collection', { collection: c }),
+  deleteCollection: async (id: string): Promise<boolean> => await invoke<boolean>('library_delete_collection', { id }),
+  addBookToCollection: async (bookId: string, collectionId: string): Promise<boolean> => await invoke<boolean>('library_add_book_to_collection', { bookId, collectionId }),
+  removeBookFromCollection: async (bookId: string, collectionId: string): Promise<boolean> => await invoke<boolean>('library_remove_book_from_collection', { bookId, collectionId }),
+  getBookCollections: async (bookId: string): Promise<LibraryCollection[]> => await invoke<LibraryCollection[]>('library_get_book_collections', { bookId }),
+  getAllBookCollections: async (): Promise<Record<string, string[]>> => await invoke<Record<string, string[]>>('library_get_all_book_collections'),
+  setBookCollections: async (bookId: string, collectionIds: string[]): Promise<boolean> => await invoke<boolean>('library_set_book_collections', { bookId, collectionIds }),
+  createCollection: async (c: Partial<LibraryCollection>): Promise<LibraryCollection> => await invoke<LibraryCollection>('library_create_collection', { collection: c }),
+  getHighlights: async (bookId: string): Promise<LibraryHighlight[]> => await invoke<LibraryHighlight[]>('library_get_highlights', { bookId }),
+  createHighlight: async (h: Partial<LibraryHighlight>): Promise<LibraryHighlight> => await invoke<LibraryHighlight>('library_create_highlight', { highlight: h }),
+  updateHighlight: async (h: Partial<LibraryHighlight> & { id: string }): Promise<number> => await invoke<number>('library_update_highlight', { highlight: h }),
+  deleteHighlight: async (id: string): Promise<boolean> => await invoke<boolean>('library_delete_highlight', { id }),
+  getBookmarks: async (bookId: string): Promise<LibraryBookmark[]> => await invoke<LibraryBookmark[]>('library_get_bookmarks', { bookId }),
+  createBookmark: async (b: Partial<LibraryBookmark>): Promise<LibraryBookmark> => await invoke<LibraryBookmark>('library_create_bookmark', { bookmark: b }),
+  updateBookmark: async (b: Partial<LibraryBookmark> & { id: string }): Promise<number> => await invoke<number>('library_update_bookmark', { bookmark: b }),
+  deleteBookmark: async (id: string): Promise<boolean> => await invoke<boolean>('library_delete_bookmark', { id }),
+  getOcrCache: async (bookId: string, pageNumber: number): Promise<OcrCacheEntry | null> => await invoke<OcrCacheEntry | null>('library_get_ocr_cache', { bookId, pageNumber }),
+  saveOcrCache: async (cache: Partial<OcrCacheEntry>): Promise<boolean> => await invoke<boolean>('library_save_ocr_cache', { cache }),
+  startReadingSession: async (data: Partial<ReadingSession>): Promise<ReadingSession> => await invoke<ReadingSession>('library_start_reading_session', { session: data }),
+  endReadingSession: async (data: Partial<ReadingSession> & { id: string }): Promise<boolean> => await invoke<boolean>('library_end_reading_session', { session: data }),
+  getReadingStats: async (): Promise<{ bookStats?: BookReadingStats; globalStats: GlobalReadingStats }> => {
     try {
-      const res: any = await invoke('library_get_reading_stats');
-      const g = res?.globalStats || res?.global_stats || res || {};
+      const res = await invoke<{ globalStats: GlobalReadingStats }>('library_get_reading_stats');
+      const g = res?.globalStats;
       return {
         globalStats: {
-          totalBooksStarted: g.totalBooksStarted ?? g.total_books_started ?? 0,
-          totalBooksFinished: g.totalBooksFinished ?? g.total_books_finished ?? 0,
-          totalTimeMinutes: g.totalTimeMinutes ?? g.total_time_minutes ?? 0,
-          totalPagesRead: g.totalPagesRead ?? g.total_pages_read ?? 0,
-          totalHighlights: g.totalHighlights ?? g.total_highlights ?? 0,
-          currentStreak: g.currentStreak ?? g.current_streak ?? 0,
-          longestStreak: g.longestStreak ?? g.longest_streak ?? 0,
-          readingDays: g.readingDays ?? g.reading_days ?? [],
+          totalBooksStarted: g?.totalBooksStarted ?? 0,
+          totalBooksFinished: g?.totalBooksFinished ?? 0,
+          totalTimeMinutes: g?.totalTimeMinutes ?? 0,
+          totalPagesRead: g?.totalPagesRead ?? 0,
+          totalHighlights: g?.totalHighlights ?? 0,
+          currentStreak: g?.currentStreak ?? 0,
+          longestStreak: g?.longestStreak ?? 0,
+          readingDays: g?.readingDays ?? [],
         }
       };
     } catch (e) {
