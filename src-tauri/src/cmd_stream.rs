@@ -78,10 +78,15 @@ pub async fn start_stream_server(app: AppHandle) -> Result<u16, String> {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .map_err(|e| e.to_string())?;
-    let port = listener.local_addr().unwrap().port();
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("Failed to get listener local addr: {}", e))?
+        .port();
 
     tokio::spawn(async move {
-        axum::serve(listener, app_router).await.unwrap();
+        if let Err(e) = axum::serve(listener, app_router).await {
+            eprintln!("[StreamServer] Axum server error: {}", e);
+        }
     });
 
     Ok(port)
