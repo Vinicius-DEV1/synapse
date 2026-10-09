@@ -1,3 +1,6 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web-schema';
+import type { AuthApi } from '../types';
 import { clearWebVaultKey } from './vault';
 
 async function hashLocalPassword(password: string): Promise<string> {
@@ -8,13 +11,13 @@ async function hashLocalPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export const webAuthApi = (db: any) => ({
-  status: async () => {
+export const webAuthApi = (db: IDBPDatabase<CadernoDBSchema>): AuthApi & { forceUpdateKeychain: (_password: string, _keys?: Record<string, string>) => Promise<{ success: boolean }> } => ({
+  status: async (): Promise<{ status: 'new' | 'encrypted' | 'unencrypted' }> => {
     const config = await db.get('config', 'masterHash');
     if (!config) return { status: 'new' };
     return { status: 'encrypted' };
   },
-  login: async (password: string) => {
+  login: async (password: string): Promise<{ success: boolean; error?: string }> => {
     const stored = await db.get('config', 'masterHash');
     if (!stored) return { success: false, error: 'Banco não configurado' };
     
@@ -32,12 +35,12 @@ export const webAuthApi = (db: any) => ({
     
     return { success: false, error: 'Senha incorreta' };
   },
-  setup: async (password: string, _existingKeys?: any) => {
+  setup: async (password: string, _existingKeys?: { library?: string; finance?: string; notes?: string }): Promise<{ success: boolean; error?: string }> => {
     const hash = await hashLocalPassword(password);
     await db.put('config', { id: 'masterHash', value: hash });
     return { success: true };
   },
-  forceUpdateKeychain: async (_password: string, _keys: any) => {
+  forceUpdateKeychain: async (_password: string, _keys?: Record<string, string>): Promise<{ success: boolean }> => {
     // In Web mode, keys are not saved to a local keychain table, only kept in memory and saved to Firebase.
     return { success: true };
   },

@@ -7,11 +7,11 @@ export const tauriAuthApi = {
   login: async (password: string) => {
     return await invoke('auth_login', { password });
   },
-  setup: async (password: string, existingKeys?: any) => {
-    return await invoke('auth_setup', { password, existingKeys });
+  setup: async (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => {
+    return await invoke<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>('auth_setup', { password, existingKeys });
   },
-  forceUpdateKeychain: async (password: string, keys: any) => {
-    return await invoke('auth_force_update_keychain', { password, keys });
+  forceUpdateKeychain: async (password: string, keys: Record<string, string>) => {
+    return await invoke<{ success: boolean }>('auth_force_update_keychain', { password, keys });
   },
   changePassword: async () => ({ success: false, error: "Not implemented in Tauri yet" }),
   getVisitors: async () => [],

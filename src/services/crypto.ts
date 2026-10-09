@@ -100,6 +100,11 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
 export async function decryptText(encryptedBase64: string, masterKey: CryptoKey): Promise<string> {
   const combinedBuffer = base64ToUint8Array(encryptedBase64);
 
+  // AES-GCM requires a 12-byte IV and at least a 16-byte authentication tag
+  if (combinedBuffer.length < IV_LENGTH + 16) {
+    throw new Error('Invalid ciphertext payload: buffer too short for AES-GCM IV and authentication tag');
+  }
+
   // Extract IV (first IV_LENGTH bytes)
   const iv = combinedBuffer.slice(0, IV_LENGTH);
   const encryptedData = combinedBuffer.slice(IV_LENGTH);

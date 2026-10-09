@@ -49,8 +49,8 @@ describe('canonical-resolver', () => {
   });
 
   it('downloads from drive when local filesystem is unavailable', async () => {
-    (drive.getValidAccessToken as any).mockResolvedValue('test-token');
-    (drive.downloadFromDrive as any).mockResolvedValue(new ArrayBuffer(100));
+    vi.mocked(drive.getValidAccessToken).mockResolvedValue('test-token');
+    vi.mocked(drive.downloadFromDrive).mockResolvedValue(new ArrayBuffer(100));
 
     const buffer = await resolveCanonicalBuffer({
       moduleName: 'library',
@@ -69,8 +69,8 @@ describe('canonical-resolver', () => {
     const originalFetch = global.fetch;
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      arrayBuffer: () => Promise.resolve(testBuf)
-    } as any);
+      arrayBuffer: () => Promise.resolve(testBuf),
+    } as unknown as Response);
 
     const buffer = await resolveCanonicalBuffer({
       moduleName: 'library',

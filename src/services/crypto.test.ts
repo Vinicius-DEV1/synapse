@@ -76,4 +76,15 @@ describe('crypto service (E2EE)', () => {
     const tampered = cipher.slice(0, -4) + 'AAAA';
     await expect(decryptText(tampered, key)).rejects.toThrow();
   });
+
+  it('rejects short or truncated ciphertexts before WebCrypto invocation', async () => {
+    const hex = '99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa';
+    const key = await importHexKey(hex);
+
+    // Truncated base64 (fewer than 28 bytes)
+    const truncatedBase64 = 'AAAA';
+    await expect(decryptText(truncatedBase64, key)).rejects.toThrow(
+      'Invalid ciphertext payload: buffer too short for AES-GCM IV and authentication tag'
+    );
+  });
 });
