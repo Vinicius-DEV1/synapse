@@ -2,14 +2,18 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { VaultBreachBadge } from './VaultBreachBadge';
+import type { ICadernoAPI } from '../../api/types';
 
 describe('VaultBreachBadge component', () => {
+  const mockCheckBreach = vi.fn();
+
   beforeEach(() => {
-    (window as any).api = {
+    mockCheckBreach.mockReset();
+    window.api = {
       vault: {
-        checkBreach: vi.fn(),
+        checkBreach: mockCheckBreach,
       },
-    };
+    } as unknown as ICadernoAPI;
   });
 
   it('renders nothing when password is empty or null', () => {
@@ -18,7 +22,7 @@ describe('VaultBreachBadge component', () => {
   });
 
   it('shows safe badge when password has no breaches', async () => {
-    (window as any).api.vault.checkBreach.mockResolvedValue({
+    mockCheckBreach.mockResolvedValue({
       breached: false,
       count: 0,
     });
@@ -34,7 +38,7 @@ describe('VaultBreachBadge component', () => {
   });
 
   it('shows breach warning when password was found in data breaches', async () => {
-    (window as any).api.vault.checkBreach.mockResolvedValue({
+    mockCheckBreach.mockResolvedValue({
       breached: true,
       count: 145000,
     });

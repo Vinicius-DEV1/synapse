@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVault } from './useVault';
 import type { VaultGroup, VaultItem } from '../../../types/vault';
+import type { ICadernoAPI } from '../../../api/types';
 
 describe('useVault hook', () => {
   const mockGroups: VaultGroup[] = [
@@ -55,7 +56,7 @@ describe('useVault hook', () => {
   ];
 
   beforeEach(() => {
-    (window as any).api = {
+    window.api = {
       vault: {
         getGroups: vi.fn().mockResolvedValue(mockGroups),
         getItems: vi.fn().mockResolvedValue(mockItems),
@@ -64,7 +65,7 @@ describe('useVault hook', () => {
         deleteGroup: vi.fn().mockResolvedValue(undefined),
         deleteItem: vi.fn().mockResolvedValue(undefined),
       },
-    };
+    } as unknown as ICadernoAPI;
   });
 
   it('loads groups and items on initial mount', async () => {
@@ -109,7 +110,7 @@ describe('useVault hook', () => {
 
   it('reorders items manually and persists position updates', async () => {
     const reorderItemsMock = vi.fn().mockResolvedValue(undefined);
-    (window as any).api.vault.reorderItems = reorderItemsMock;
+    window.api.vault.reorderItems = reorderItemsMock;
 
     const { result } = renderHook(() => useVault());
 
@@ -134,7 +135,7 @@ describe('useVault hook', () => {
 
   it('opens group modal and creates group with custom color', async () => {
     const upsertGroupMock = vi.fn().mockResolvedValue(undefined);
-    (window as any).api.vault.upsertGroup = upsertGroupMock;
+    window.api.vault.upsertGroup = upsertGroupMock;
 
     const { result } = renderHook(() => useVault());
 

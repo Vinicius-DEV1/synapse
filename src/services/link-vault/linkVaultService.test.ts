@@ -18,7 +18,7 @@ vi.mock('../platform', () => ({
 }));
 
 // Mock db-web with table separation
-const mockTables: Record<string, Map<string, any>> = {
+const mockTables: Record<string, Map<string, unknown>> = {
   config: new Map(),
   pages: new Map(),
 };
@@ -26,7 +26,7 @@ const mockTables: Record<string, Map<string, any>> = {
 vi.mock('../db-web', () => ({
   getWebDb: vi.fn(async () => ({
     get: vi.fn(async (table: string, key: string) => mockTables[table]?.get(key) || null),
-    put: vi.fn(async (table: string, val: any) => {
+    put: vi.fn(async (table: string, val: { id: string }) => {
       if (!mockTables[table]) mockTables[table] = new Map();
       mockTables[table].set(val.id, val);
       return val.id;

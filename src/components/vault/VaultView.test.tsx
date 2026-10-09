@@ -4,6 +4,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import VaultView from './VaultView';
 import { VaultItemDetails } from './VaultItemDetails';
 import type { VaultGroup, VaultItem } from '../../types/vault';
+import type { ICadernoAPI } from '../../api/types';
 
 describe('VaultView component', () => {
   const mockGroup: VaultGroup = {
@@ -36,7 +37,7 @@ describe('VaultView component', () => {
   };
 
   beforeEach(() => {
-    (window as any).api = {
+    window.api = {
       vault: {
         getGroups: vi.fn().mockResolvedValue([mockGroup]),
         getItems: vi.fn().mockResolvedValue([mockItem]),
@@ -52,7 +53,7 @@ describe('VaultView component', () => {
         checkBreach: vi.fn().mockResolvedValue({ breached: false, count: 0 }),
         checkStrength: vi.fn().mockResolvedValue(4),
       },
-    };
+    } as unknown as ICadernoAPI;
   });
 
   it('renders vault groups sidebar and items list', async () => {
