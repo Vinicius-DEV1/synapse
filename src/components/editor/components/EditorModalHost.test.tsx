@@ -14,8 +14,12 @@ vi.mock('../../PageSearchMenu', () => ({
 }));
 
 describe('EditorModalHost Component', () => {
-  let mockEditor: any;
-  let defaultProps: any;
+  type HostProps = React.ComponentProps<typeof EditorModalHost>;
+  let mockEditor: HostProps['editor'] & {
+    state: { doc: { content: { size: number } }; selection: { $head: { pos: number } } };
+    commands: { deleteRange: ReturnType<typeof vi.fn> };
+  };
+  let defaultProps: HostProps;
   const setPageSearchMenu = vi.fn();
   const setSlashMenu = vi.fn();
   const onCreateLinkedPage = vi.fn().mockResolvedValue('new-page-id');
@@ -23,7 +27,7 @@ describe('EditorModalHost Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    const chainObj: any = {
+    const chainObj: Record<string, unknown> = {
       focus: vi.fn().mockReturnThis(),
       setTextSelection: vi.fn().mockReturnThis(),
       insertContent: vi.fn().mockReturnThis(),

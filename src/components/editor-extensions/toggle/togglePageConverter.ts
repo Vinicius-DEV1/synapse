@@ -1,8 +1,14 @@
-import { DOMSerializer } from 'prosemirror-model';
+import { DOMSerializer, type Node as ProseMirrorNode } from 'prosemirror-model';
+import type { Editor } from '@tiptap/react';
+import type { Page } from '../../../types';
 import { getStoreState, getStoreDispatch } from '../../../store/useStore';
 import { getEditorBackupMap } from '../../editor/hooks/editorBackupStore';
 
-export async function convertToggleNodeToPage(editor: any, node: any, getPos: () => number | undefined) {
+export async function convertToggleNodeToPage(
+  editor: Editor | null | undefined,
+  node: ProseMirrorNode,
+  getPos: () => number | undefined
+): Promise<void> {
   if (typeof getPos !== 'function' || !editor) return;
 
   const rawTitle = node.attrs?.title;
@@ -27,7 +33,7 @@ export async function convertToggleNodeToPage(editor: any, node: any, getPos: ()
     const activeTab = storeState.tabs.find((t) => t.id === storeState.activeTabId);
     const parentId = activeTab?.pageId || null;
 
-    let newPage: any = null;
+    let newPage: Page | null = null;
     if (window.api) {
       newPage = await window.api.createPage({ parentId, title });
       if (newPage && newPage.id) {

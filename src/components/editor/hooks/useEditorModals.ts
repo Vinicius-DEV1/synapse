@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Node as PMNode } from '@tiptap/pm/model';
 
+import type { Editor as TipTapEditor } from '@tiptap/react';
+
 export interface UseEditorModalsOptions {
-  editorRef?: React.RefObject<any>;
+  editorRef?: React.RefObject<TipTapEditor | null>;
   isActive?: boolean;
 }
 

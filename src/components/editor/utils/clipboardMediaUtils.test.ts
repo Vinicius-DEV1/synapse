@@ -126,7 +126,7 @@ describe('clipboardMediaUtils', () => {
     it('reads file via native Tauri invoke when successful', async () => {
       vi.mocked(platform.isDesktopApp).mockReturnValue(true);
       const core = await import('@tauri-apps/api/core');
-      vi.mocked(core.invoke).mockResolvedValue(new Uint8Array([1, 2, 3]) as any);
+      vi.mocked(core.invoke).mockResolvedValue(new Uint8Array([1, 2, 3]) as unknown as number[]);
 
       const res = await readLocalImageAsFile('/home/user/test.png');
       expect(res).not.toBeNull();
@@ -139,7 +139,7 @@ describe('clipboardMediaUtils', () => {
       const core = await import('@tauri-apps/api/core');
       vi.mocked(core.invoke).mockRejectedValue(new Error('IPC error'));
       const fsModule = await import('@tauri-apps/plugin-fs');
-      vi.mocked(fsModule.readFile).mockResolvedValue(new Uint8Array([1, 2, 3]) as any);
+      vi.mocked(fsModule.readFile).mockResolvedValue(new Uint8Array([1, 2, 3]));
 
       const res = await readLocalImageAsFile('/home/user/test.jpg');
       expect(res).not.toBeNull();

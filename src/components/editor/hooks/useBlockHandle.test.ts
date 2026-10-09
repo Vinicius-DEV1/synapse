@@ -9,8 +9,8 @@ vi.mock('../../editor-extensions/moveBlockCommands', () => ({
 }));
 
 describe('useBlockHandle Hook', () => {
-  let mockEditor: any;
-  let containerRef: any;
+  let mockEditor: Parameters<typeof useBlockHandle>[0];
+  let containerRef: { current: HTMLDivElement | null };
 
   beforeEach(() => {
     vi.clearAllMocks();

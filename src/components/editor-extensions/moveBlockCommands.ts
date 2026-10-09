@@ -5,7 +5,7 @@
 
 import type { EditorView } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { NodeSelection, TextSelection } from '@tiptap/pm/state';
+import { NodeSelection, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { getSpecForGroup } from './group-layout/groupSpecs';
 import { pruneGroupsInTransaction, removeGroupChildInTr } from './group-layout/groupCommands';
 import { triggerToast } from '../ui/ToastContext';
@@ -21,7 +21,7 @@ function cloneNodeForMove(node: PMNode): PMNode {
   return node.type.create(node.attrs, node.content, node.marks);
 }
 
-function safeSetSelection(tr: any, node: PMNode, targetPos: number) {
+function safeSetSelection(tr: Transaction, node: PMNode, targetPos: number) {
   if (shouldSelectAsNode(node)) {
     try {
       tr.setSelection(NodeSelection.create(tr.doc, targetPos));

@@ -299,7 +299,7 @@ export function useEditorDropPaste({
           const files = Array.from(event.dataTransfer.files);
           let imageDropped = false;
 
-          const nodesToInsert: any[] = [];
+          const nodesToInsert: EditorImageNodeJSON[] = [];
           const readers: Promise<{ src: string }>[] = [];
           const coordinates = view.posAtCoords({
             left: event.clientX,
@@ -375,7 +375,7 @@ export function useEditorDropPaste({
               y: event.clientY,
             });
 
-            const insertNodes = (nodes: any[]) => {
+            const insertNodes = (nodes: EditorImageNodeJSON[]) => {
               if (!currentEditor || nodes.length === 0) return;
 
               try {

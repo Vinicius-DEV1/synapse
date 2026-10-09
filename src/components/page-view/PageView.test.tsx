@@ -11,7 +11,7 @@ vi.mock('../../store/useStore', () => ({
 }));
 
 vi.mock('../Editor', () => ({
-  default: ({ initialContent }: any) => <div data-testid="editor-mock">{initialContent}</div>,
+  default: ({ initialContent }: { initialContent?: string }) => <div data-testid="editor-mock">{initialContent}</div>,
 }));
 
 vi.mock('./PageCover', () => ({
@@ -42,9 +42,13 @@ describe('PageView Component', () => {
     is_locked: 0,
   };
 
+  type ApiWithGetContent = {
+    getPageContent: ReturnType<typeof vi.fn>;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as any).api = {
+    (window as unknown as { api: ApiWithGetContent }).api = {
       getPageContent: vi.fn().mockResolvedValue({
         content: '<p>Conteúdo da página</p>',
         encrypted_content: null,
@@ -61,7 +65,8 @@ describe('PageView Component', () => {
     render(<PageView page={mockPage} {...dummyProps} />);
 
     await waitFor(() => {
-      expect((window as any).api.getPageContent).toHaveBeenCalledWith('page_123');
+      const api = (window as unknown as { api: ApiWithGetContent }).api;
+      expect(api.getPageContent).toHaveBeenCalledWith('page_123');
       expect(screen.getByTestId('editor-mock')).toBeDefined();
       expect(screen.getByText('<p>Conteúdo da página</p>')).toBeDefined();
     });
@@ -74,7 +79,8 @@ describe('PageView Component', () => {
       expect(screen.getByTestId('editor-mock')).toBeDefined();
     });
 
-    (window as any).api.getPageContent.mockResolvedValueOnce({
+    const api = (window as unknown as { api: ApiWithGetContent }).api;
+    api.getPageContent.mockResolvedValueOnce({
       content: '<p>Conteúdo atualizado de outra aba</p>',
       encrypted_content: null,
     });
@@ -84,7 +90,7 @@ describe('PageView Component', () => {
     });
 
     await waitFor(() => {
-      expect((window as any).api.getPageContent).toHaveBeenCalledTimes(2);
+      expect(api.getPageContent).toHaveBeenCalledTimes(2);
     });
   });
 });

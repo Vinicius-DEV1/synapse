@@ -11,7 +11,10 @@ describe('useSlashCommand Hook', () => {
   const setCalendarEventModal = vi.fn();
   const setMediaSelectModal = vi.fn();
 
-  let mockEditor: any;
+  let mockEditor: Parameters<ReturnType<typeof useSlashCommand>['executeSlashCommand']>[1] & {
+    state: Record<string, unknown>;
+    view: Record<string, unknown>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();

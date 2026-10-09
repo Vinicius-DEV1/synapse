@@ -9,8 +9,13 @@ describe('useEditorExtensions', () => {
 
     // Find the codeBlock / codeBlockLowlight extension
     const codeBlockExt = extensions.find(
-      (ext: any) => ext.name === 'codeBlock' || ext.name === 'codeBlockLowlight'
-    ) as any;
+      (ext) => ext.name === 'codeBlock' || ext.name === 'codeBlockLowlight'
+    ) as unknown as {
+      name: string;
+      config: {
+        addKeyboardShortcuts?: () => Record<string, (args: { editor: typeof mockInsideEditor }) => boolean>;
+      };
+    };
 
     expect(codeBlockExt).toBeDefined();
 
@@ -20,7 +25,7 @@ describe('useEditorExtensions', () => {
       : null;
 
     expect(shortcuts).toBeDefined();
-    expect(shortcuts['Shift-Enter']).toBeDefined();
+    expect(shortcuts?.['Shift-Enter']).toBeDefined();
 
     // Test Shift-Enter execution when inside code block
     const mockScrollIntoView = vi.fn();

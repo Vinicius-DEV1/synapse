@@ -11,8 +11,8 @@ vi.mock('../../../utils/yjs-utils', () => ({
 }));
 
 describe('useEditorSync Hook', () => {
-  let onSaveRef: any;
-  let latestContentRef: any;
+  let onSaveRef: { current: ReturnType<typeof vi.fn> };
+  let latestContentRef: { current: { html: string; crdt: string } | null };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -72,9 +72,11 @@ describe('useEditorSync Hook', () => {
     );
   });
 
+  type PageSavedHandler = Parameters<typeof pageBroadcast.onPageSaved>[0];
+
   it('receives cross-tab broadcast updates and applies CRDT to active page', () => {
-    let savedCallback: any;
-    vi.spyOn(pageBroadcast, 'onPageSaved').mockImplementation((cb: any) => {
+    let savedCallback: PageSavedHandler | undefined;
+    vi.spyOn(pageBroadcast, 'onPageSaved').mockImplementation((cb) => {
       savedCallback = cb;
       return () => {};
     });
@@ -89,7 +91,7 @@ describe('useEditorSync Hook', () => {
     );
 
     act(() => {
-      savedCallback({
+      savedCallback?.({
         type: 'PAGE_SAVED',
         pageId: 'page_123',
         crdtState: 'cross_tab_crdt_state_12345678',
@@ -113,8 +115,8 @@ describe('useEditorSync Hook', () => {
   });
 
   it('updates editor backup when cross-tab update arrives for a different page', () => {
-    let savedCallback: any;
-    vi.spyOn(pageBroadcast, 'onPageSaved').mockImplementation((cb: any) => {
+    let savedCallback: PageSavedHandler | undefined;
+    vi.spyOn(pageBroadcast, 'onPageSaved').mockImplementation((cb) => {
       savedCallback = cb;
       return () => {};
     });
@@ -129,7 +131,7 @@ describe('useEditorSync Hook', () => {
     );
 
     act(() => {
-      savedCallback({
+      savedCallback?.({
         type: 'PAGE_SAVED',
         pageId: 'page_other',
         crdtState: 'crdt_other_page_long_string',
@@ -151,8 +153,8 @@ describe('useEditorSync Hook', () => {
   });
 
   it('ignores broadcast updates from the same sender instance', () => {
-    let savedCallback: any;
-    vi.spyOn(pageBroadcast, 'onPageSaved').mockImplementation((cb: any) => {
+    let savedCallback: PageSavedHandler | undefined;
+    vi.spyOn(pageBroadcast, 'onPageSaved').mockImplementation((cb) => {
       savedCallback = cb;
       return () => {};
     });
@@ -168,7 +170,7 @@ describe('useEditorSync Hook', () => {
     );
 
     act(() => {
-      savedCallback({
+      savedCallback?.({
         type: 'PAGE_SAVED',
         pageId: 'page_123',
         crdtState: 'cross_tab_crdt_state_12345678',
@@ -183,10 +185,11 @@ describe('useEditorSync Hook', () => {
   });
 
   it('checks DB and applies state on window focus / visibility visible', async () => {
-    (window as any).api = {
-      getAllPages: vi.fn().mockResolvedValue([
-        { id: 'page_123', crdt_state: 'new_crdt_from_db_123456' },
-      ]),
+    const mockGetAllPages = vi.fn().mockResolvedValue([
+      { id: 'page_123', crdt_state: 'new_crdt_from_db_123456' },
+    ]);
+    (window as unknown as { api: { getAllPages: typeof mockGetAllPages } }).api = {
+      getAllPages: mockGetAllPages,
     };
 
     renderHook(() =>
@@ -202,7 +205,7 @@ describe('useEditorSync Hook', () => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    expect((window as any).api.getAllPages).toHaveBeenCalled();
+    expect(mockGetAllPages).toHaveBeenCalled();
     expect(yjsUtils.applyBase64StateToYDoc).toHaveBeenCalledWith(
       expect.anything(),
       'new_crdt_from_db_123456'

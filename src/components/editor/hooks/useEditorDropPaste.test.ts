@@ -19,10 +19,11 @@ vi.mock('../../../services/image-drive', () => ({
 }));
 
 describe('useEditorDropPaste Hook', () => {
-  let mockEditor: any;
-  let mockViewerState: any;
-  let setViewerState: any;
-  let mockNode: any;
+  type DropPasteProps = Parameters<typeof useEditorDropPaste>[0];
+  let mockEditor: DropPasteProps['editor'] & Record<string, unknown>;
+  let mockViewerState: DropPasteProps['viewerState'];
+  let setViewerState: DropPasteProps['setViewerState'];
+  let mockNode: { type: { name: string }; attrs: Record<string, unknown>; nodeSize: number };
 
   beforeEach(() => {
     vi.clearAllMocks();

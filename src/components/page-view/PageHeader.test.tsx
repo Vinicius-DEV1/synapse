@@ -46,10 +46,10 @@ describe('PageHeader Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useStore as any).mockReturnValue({
+    vi.mocked(useStore).mockReturnValue({
       state: {
         pages: mockPages,
-      },
+      } as unknown as ReturnType<typeof useStore>['state'],
       dispatch: mockDispatch,
     });
   });

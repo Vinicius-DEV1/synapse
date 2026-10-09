@@ -26,13 +26,13 @@ vi.mock('@tiptap/react', () => ({
     isDestroyed: false,
     options,
   })),
-  EditorContent: ({ editor }: any) => (
+  EditorContent: ({ editor }: { editor: unknown }) => (
     <div data-testid="editor-content">{editor ? 'Editor Rendered' : 'No Editor'}</div>
   ),
 }));
 
 vi.mock('@tiptap/react/menus', () => ({
-  BubbleMenu: ({ children }: any) => <div data-testid="bubble-menu">{children}</div>,
+  BubbleMenu: ({ children }: { children: React.ReactNode }) => <div data-testid="bubble-menu">{children}</div>,
 }));
 
 vi.mock('./editor/components/FloatingToolbar', () => ({
