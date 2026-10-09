@@ -3,6 +3,7 @@ import type { Tab, Page } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
 // Helper to auto-retry chunk download or reload if new version was deployed
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function lazyWithRetry<T extends ComponentType<any>>(
   componentImport: () => Promise<{ default: T }>
 ) {

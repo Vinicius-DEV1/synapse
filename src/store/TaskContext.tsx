@@ -28,6 +28,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<BackgroundTask[]>([]);
   const tasksRef = useRef(tasks);
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const removalTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Sync ref with state for callbacks
   useEffect(() => {
@@ -42,13 +43,23 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const clearRemovalTimeout = (id: string) => {
+    const existing = removalTimeoutsRef.current.get(id);
+    if (existing) {
+      clearTimeout(existing);
+      removalTimeoutsRef.current.delete(id);
+    }
+  };
+
   const removeTask = useCallback((id: string) => {
     clearTaskTimeout(id);
+    clearRemovalTimeout(id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const failTask = useCallback((id: string, error: string) => {
     clearTaskTimeout(id);
+    clearRemovalTimeout(id);
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'error', errorMessage: error } : t))
     );
@@ -56,17 +67,21 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const completeTask = useCallback((id: string) => {
     clearTaskTimeout(id);
+    clearRemovalTimeout(id);
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'completed', progress: 100 } : t))
     );
     // Auto-remove after 5 seconds
-    setTimeout(() => {
+    const removalTimer = setTimeout(() => {
+      removalTimeoutsRef.current.delete(id);
       removeTask(id);
     }, 5000);
+    removalTimeoutsRef.current.set(id, removalTimer);
   }, [removeTask]);
 
   const cancelTask = useCallback((id: string) => {
     clearTaskTimeout(id);
+    clearRemovalTimeout(id);
     const task = tasksRef.current.find(t => t.id === id);
     if (task && task.abortController) {
       task.abortController.abort();
@@ -75,13 +90,16 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       prev.map((t) => (t.id === id ? { ...t, status: 'cancelled' } : t))
     );
     // Auto-remove after a few seconds
-    setTimeout(() => {
+    const removalTimer = setTimeout(() => {
+      removalTimeoutsRef.current.delete(id);
       removeTask(id);
     }, 3000);
+    removalTimeoutsRef.current.set(id, removalTimer);
   }, [removeTask]);
 
   const addTask = useCallback((id: string, title: string, abortController?: AbortController, timeoutMs?: number) => {
     clearTaskTimeout(id);
+    clearRemovalTimeout(id);
     setTasks((prev) => [
       ...prev,
       { id, title, progress: 0, status: 'running', abortController, timeoutMs },
@@ -108,9 +126,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const timeouts = timeoutsRef.current;
+    const removalTimeouts = removalTimeoutsRef.current;
     return () => {
       timeouts.forEach(timer => clearTimeout(timer));
       timeouts.clear();
+      removalTimeouts.forEach(timer => clearTimeout(timer));
+      removalTimeouts.clear();
     };
   }, []);
 

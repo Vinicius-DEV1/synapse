@@ -6,7 +6,7 @@ import { StoreProvider } from '../../store/useStore';
 
 describe('TabBar component', () => {
   beforeEach(() => {
-    (window as any).api = {
+    (window as unknown as { api: { notifications: { getUnreadCount: () => Promise<number>; getNotifications: () => Promise<unknown[]> } } }).api = {
       notifications: {
         getUnreadCount: vi.fn().mockResolvedValue(0),
         getNotifications: vi.fn().mockResolvedValue([]),

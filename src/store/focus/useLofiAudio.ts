@@ -23,8 +23,8 @@ export function useLofiAudio() {
   const loadLofis = useCallback(async () => {
     if (window.api?.sync) {
       try {
-        const rows = await window.api.sync.getTable('lofis');
-        setLofis((rows || []).filter((r: any) => !r.deleted_at));
+        const rows = (await window.api.sync.getTable('lofis')) as unknown as LofiItem[];
+        setLofis((rows || []).filter((r) => !r.deleted_at));
       } catch (err) {
         console.error('Failed to load lofis', err);
       }
