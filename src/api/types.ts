@@ -2,6 +2,14 @@ import type { Page, PageHistoryEntry, PageMeta } from '../types/notes';
 import type { Transaction, WishlistItem, Account } from '../types/finance';
 import type { CultureItem, CultureEpisode } from '../types/culture';
 import type {
+  AnkiDeckRecord,
+  AnkiCard,
+  AnkiCardRecord,
+  AnkiNoteRecord,
+  AnkiDeckSettings,
+  AnkiReviewRecord,
+} from '../types/anki';
+import type {
   LibraryBook,
   LibraryCollection,
   LibraryHighlight,
@@ -129,6 +137,34 @@ export interface SyncApi {
   push?: (type: string) => void;
 }
 
+export interface AnkiApi {
+  getDecks: () => Promise<{ success: boolean; decks: AnkiDeckRecord[]; error?: string }>;
+  createDeck: (name: string, desc?: string, parentId?: string | null) => Promise<{ success: boolean; id?: string; error?: string }>;
+  saveCard: (cardData: Partial<AnkiCardRecord> & { deck_id: string; front: string; back: string }) => Promise<{ success: boolean; id?: string; note_id?: string; error?: string }>;
+  saveNote: (noteData: Partial<AnkiNoteRecord> & { deck_id: string; front: string; back: string }) => Promise<{ success: boolean; note_id?: string; id?: string; error?: string }>;
+  getDueCards: (deckId: string) => Promise<AnkiCard[]>;
+  getTotalDueCount?: () => Promise<number>;
+  reviewCard: (cardId: string, rating: number) => Promise<{ success: boolean; error?: string }>;
+  getAllCards: (deckId?: string) => Promise<{ success: boolean; cards: AnkiCard[]; error?: string }>;
+  deleteCard: (cardId: string) => Promise<{ success: boolean; error?: string }>;
+  deleteNote: (noteId: string) => Promise<{ success: boolean; error?: string }>;
+  deleteCardsBulk: (cardIds: string[]) => Promise<{ success: boolean; error?: string }>;
+  updateCard: (cardId: string, data: Partial<AnkiCard>) => Promise<{ success: boolean; error?: string }>;
+  updateNote: (noteId: string, data: Partial<AnkiNoteRecord>) => Promise<{ success: boolean; error?: string }>;
+  moveCards: (cardIds: string[], newDeckId: string) => Promise<{ success: boolean; error?: string }>;
+  updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
+  deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
+  resetDeckProgress: (deckId: string) => Promise<{ success: boolean; error?: string }>;
+  migrateToNotes?: () => Promise<{ success: boolean; migratedCount?: number; error?: string }>;
+  updateDeckSettings?: (deckId: string, settings: Partial<AnkiDeckSettings>) => Promise<{ success: boolean; error?: string }>;
+  getDeckSettings?: (deckId: string) => Promise<AnkiDeckSettings>;
+  importDeck?: (payload: { decks?: AnkiDeckRecord[]; notes?: AnkiNoteRecord[]; cards?: AnkiCardRecord[] } | unknown) => Promise<{ success: boolean; stats?: any; error?: string }>;
+  exportDeckRecursive?: (deckId: string) => Promise<{ success: boolean; payload?: { decks: AnkiDeckRecord[]; notes: AnkiNoteRecord[]; cards: AnkiCardRecord[] }; error?: string }>;
+  getReviews?: (deckId?: string, limit?: number) => Promise<{ success: boolean; reviews: AnkiReviewRecord[]; error?: string }>;
+  getCardIntervals?: (cardId: string) => Promise<{ success: boolean; intervals?: string[]; error?: string }>;
+  getCard?: (cardId: string) => Promise<AnkiCard | undefined>;
+}
+
 export interface ICadernoAPI {
   app: {
     getDbPath: () => Promise<string>;
@@ -226,34 +262,7 @@ export interface ICadernoAPI {
     showInFolder?: (pathOrName: string) => Promise<boolean>;
   };
 
-  anki?: {
-    getDecks: () => Promise<{ success: boolean; decks?: any[]; error?: string }>;
-    createDeck: (name: string, desc?: string, parentId?: string | null) => Promise<{ success: boolean; id?: string; error?: string }>;
-    saveCard: (cardData: any) => Promise<{ success: boolean; id?: string; error?: string }>;
-    saveNote: (noteData: any) => Promise<{ success: boolean; note_id?: string; error?: string }>;
-    getDueCards: (deckId: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
-    getTotalDueCount?: () => Promise<number>;
-    reviewCard: (cardId: string, rating: number) => Promise<{ success: boolean; error?: string }>;
-    getAllCards: (deckId?: string) => Promise<{ success: boolean; cards?: any[]; error?: string }>;
-    deleteCard: (cardId: string) => Promise<{ success: boolean; error?: string }>;
-    deleteNote: (noteId: string) => Promise<{ success: boolean; error?: string }>;
-    deleteCardsBulk: (cardIds: string[]) => Promise<{ success: boolean; error?: string }>;
-    updateCard: (cardId: string, data: any) => Promise<{ success: boolean; error?: string }>;
-    updateNote: (noteId: string, data: any) => Promise<{ success: boolean; error?: string }>;
-    moveCards: (cardIds: string[], newDeckId: string) => Promise<{ success: boolean; error?: string }>;
-    updateDeck: (deckId: string, name: string, description: string) => Promise<{ success: boolean; error?: string }>;
-    deleteDeck: (deckId: string) => Promise<{ success: boolean; error?: string }>;
-    resetDeckProgress: (deckId: string) => Promise<{ success: boolean; error?: string }>;
-    // Extended Anki methods (present in Tauri/Web implementations)
-    migrateToNotes?: () => Promise<{ success: boolean; error?: string }>;
-    updateDeckSettings?: (deckId: string, settings: any) => Promise<{ success: boolean; error?: string }>;
-    getDeckSettings?: (deckId: string) => Promise<any>;
-    importDeck?: (payload: any) => Promise<{ success: boolean; stats?: any; error?: string }>;
-    exportDeckRecursive?: (deckId: string) => Promise<{ success: boolean; payload?: any; error?: string }>;
-    getReviews?: (deckId?: string, limit?: number) => Promise<{ success: boolean; reviews?: any[]; error?: string }>;
-    getCardIntervals?: (cardId: string) => Promise<{ success: boolean; intervals?: any[]; error?: string }>;
-    getCard?: (cardId: string) => Promise<any>;
-  };
+  anki?: AnkiApi;
 
   focus?: {
     getSessions: () => Promise<Session[]>;

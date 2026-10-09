@@ -63,10 +63,8 @@ export function useStudySession(deckId: string) {
       if (window.api?.anki) {
         const res = await window.api.anki.getDueCards(deckId);
         if (!isMountedRef.current) return;
-        if (res && res.success && res.cards) {
-          setCards(res.cards);
-        } else if (Array.isArray(res)) {
-          setCards(res);
+        if (Array.isArray(res)) {
+          setCards(res as Card[]);
         }
       }
     } catch (err) {

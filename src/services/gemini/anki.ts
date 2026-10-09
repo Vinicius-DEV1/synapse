@@ -73,12 +73,53 @@ export const DEFAULT_CARD_GENERATION_PROMPT = "Você é um especialista em cria�
 "6. Se você adicionar uma explicação ou exemplo no verso do cartão, separe-os da resposta principal usando quebras de linha (\\n\\n).\n" +
 "7. Jamais use blocos markdown (```json). Retorne APENAS o JSON válido.";
 
+export interface GeneratedCardSuggestion {
+  front: string;
+  back: string;
+  type: 'reading' | 'cloze' | 'typing' | 'speaking' | 'listening';
+  tags: string[];
+  suggested_deck_id?: string;
+  [key: string]: unknown;
+}
+
+export interface ChatActionCreate {
+  type: 'create';
+  cards: GeneratedCardSuggestion[];
+}
+
+export interface ChatActionEdit {
+  type: 'edit';
+  card_id: string;
+  new_front?: string;
+  new_back?: string;
+  new_tags?: string[];
+}
+
+export interface ChatActionDeleteBulk {
+  type: 'delete_bulk';
+  cards_to_delete: Array<{ card_id: string; reason?: string }>;
+}
+
+export type ChatAction = ChatActionCreate | ChatActionEdit | ChatActionDeleteBulk;
+
+export interface AIChatTokens {
+  promptTokenCount: number;
+  candidatesTokenCount: number;
+  totalTokenCount: number;
+}
+
+export interface AIChatAnalysisResponse {
+  message: string;
+  actions?: ChatAction[];
+  _usage?: AIChatTokens;
+}
+
 export async function promptGeminiForCardSuggestions(
   userPrompt: string,
   maxCards: number,
-  contextData?: any,
+  contextData?: Record<string, unknown>,
   customModelId?: string
-): Promise<any[]> {
+): Promise<GeneratedCardSuggestion[]> {
   let systemInstruction = await getAiPrompt('anki_card_suggestions') || DEFAULT_CARD_GENERATION_PROMPT;
   systemInstruction = systemInstruction.replace('{{maxCards}}', maxCards.toString());
 
@@ -96,13 +137,18 @@ export async function promptGeminiForCardSuggestions(
       
       // POST-PROCESSING: Extra safety guard to strip redundant tags
       if (Array.isArray(parsed) && contextData) {
-        const rootDeckName = (contextData.deck_name || '').toLowerCase();
-        const subdecksMap = new Map();
+        const rootDeckName = (typeof contextData.deck_name === 'string' ? contextData.deck_name : '').toLowerCase();
+        const subdecksMap = new Map<string, string>();
         if (Array.isArray(contextData.subdecks)) {
-          contextData.subdecks.forEach((s: any) => subdecksMap.set(s.id, (s.name || '').toLowerCase()));
+          contextData.subdecks.forEach((s: unknown) => {
+            if (s && typeof s === 'object' && 'id' in s) {
+              const item = s as { id: string; name?: string };
+              subdecksMap.set(item.id, (item.name || '').toLowerCase());
+            }
+          });
         }
         
-        parsed = parsed.map(card => {
+        parsed = (parsed as GeneratedCardSuggestion[]).map(card => {
           if (Array.isArray(card.tags)) {
             const targetDeckName = card.suggested_deck_id ? subdecksMap.get(card.suggested_deck_id) : rootDeckName;
             card.tags = card.tags.filter((t: string) => {
@@ -171,10 +217,10 @@ Não retorne NADA ALÉM do JSON válido.`;
 
 export async function promptGeminiForChatAnalysis(
   userPrompt: string,
-  history: any[] = [],
-  contextData?: any,
+  history: Array<{ role: string; parts: Array<{ text: string }> }> = [],
+  contextData?: Record<string, unknown>,
   customModelId?: string
-): Promise<any> {
+): Promise<AIChatAnalysisResponse> {
   const systemInstruction = await getAiPrompt('anki_chat_analysis') || DEFAULT_CHAT_ANALYSIS_PROMPT;
   const contextStr = contextData ? `\n--- CONTEXTO DO BARALHO (USE OS IDs PARA EDIT/DELETE) ---\n${JSON.stringify(contextData)}\n--------------------------------\n` : '';
 
@@ -205,16 +251,22 @@ export async function promptGeminiForChatAnalysis(
       const parsed = JSON.parse(cleanedText);
       
       // PROGRAMMATIC POST-PROCESSING: Extra safety guard for tags
-      if (typeof parsed === 'object' && parsed.actions && Array.isArray(parsed.actions) && contextData) {
-        const rootDeckName = (contextData.deck_name || '').toLowerCase();
-        const subdecksMap = new Map();
+      if (typeof parsed === 'object' && parsed !== null && 'actions' in parsed && Array.isArray((parsed as { actions: unknown }).actions) && contextData) {
+        const rootDeckName = (typeof contextData.deck_name === 'string' ? contextData.deck_name : '').toLowerCase();
+        const subdecksMap = new Map<string, string>();
         if (Array.isArray(contextData.subdecks)) {
-          contextData.subdecks.forEach((s: any) => subdecksMap.set(s.id, (s.name || '').toLowerCase()));
+          contextData.subdecks.forEach((s: unknown) => {
+            if (s && typeof s === 'object' && 'id' in s) {
+              const item = s as { id: string; name?: string };
+              subdecksMap.set(item.id, (item.name || '').toLowerCase());
+            }
+          });
         }
         
-        parsed.actions.forEach((action: any) => {
+        const actions = (parsed as { actions: ChatAction[] }).actions;
+        actions.forEach((action) => {
           if (action.type === 'create' && Array.isArray(action.cards)) {
-            action.cards.forEach((card: any) => {
+            action.cards.forEach((card) => {
               if (Array.isArray(card.tags)) {
                 const targetDeckName = card.suggested_deck_id ? subdecksMap.get(card.suggested_deck_id) : rootDeckName;
                 card.tags = card.tags.filter((t: string) => {
@@ -236,16 +288,17 @@ export async function promptGeminiForChatAnalysis(
         });
       }
 
-      if (response.usage && typeof parsed === 'object') {
-         parsed._usage = response.usage;
+      if (response.usage && typeof parsed === 'object' && parsed !== null) {
+         (parsed as Record<string, unknown>)._usage = response.usage as AIChatTokens;
       }
-      return parsed;
+      return parsed as AIChatAnalysisResponse;
     } catch (parseError) {
       console.error('Failed to parse Gemini response as JSON:', parseError, responseText);
       return { message: "Desculpe, ocorreu um erro ao processar o formato da resposta. " + responseText };
     }
-  } catch (e: any) {
-    logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, null, e.message);
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    logAIApiCall('anki_chat_analysis', customModelId || 'default', fullLogPrompt, null, errorMsg);
     throw e;
   }
 }

@@ -85,8 +85,9 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   const groupedCards = useMemo(() => {
     const groups = new Map<string, Card[]>();
     for (const c of filteredCards) {
-      if (!groups.has(c.note_id)) groups.set(c.note_id, []);
-      groups.get(c.note_id)!.push(c);
+      const groupKey = c.note_id || c.id;
+      if (!groups.has(groupKey)) groups.set(groupKey, []);
+      groups.get(groupKey)!.push(c);
     }
     return Array.from(groups.values());
   }, [filteredCards]);

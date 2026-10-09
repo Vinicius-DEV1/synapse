@@ -4,7 +4,7 @@ import AIAssistantModal from './AIAssistantModal';
 import { TagInput } from './editor/TagInput';
 import { AudioPreview } from './editor/AudioPreview';
 import { useCardEditorForm } from './hooks/useCardEditorForm';
-import type { CardDraft } from './types';
+import type { CardDraft, CardType } from './types';
 
 export type { CardDraft };
 
@@ -89,7 +89,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
                 <select 
                   value={cardType}
                   onChange={(e) => {
-                    const val = e.target.value as any;
+                    const val = e.target.value as CardType;
                     setCardType(val);
                     if (val === 'speaking') {
                       setValidationMode('ai');
@@ -167,7 +167,7 @@ export default function CardEditor({ draft, onClose, onSaveSuccess, editingCardI
 
             <TagInput tags={tags} setTags={setTags} />
             
-            <AudioPreview draft={draft as any} mediaUrl={mediaUrl} generatingAudio={generatingAudio} />
+            <AudioPreview draft={draft} mediaUrl={mediaUrl} generatingAudio={generatingAudio} />
           </div>
 
           <footer className="px-6 py-4 border-t border-dark-border bg-dark-bg/50 flex justify-between items-center gap-3">

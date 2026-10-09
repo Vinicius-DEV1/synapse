@@ -71,7 +71,7 @@ export function useHomeDashboard() {
                   return 0;
                 })
               );
-              const total = counts.reduce((acc, count) => acc + count, 0);
+              const total = counts.reduce((acc: number, count: number) => acc + count, 0);
               setDueCardsCount(total);
             }
           }

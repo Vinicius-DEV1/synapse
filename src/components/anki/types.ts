@@ -2,7 +2,7 @@ export interface Deck {
   id: string;
   name: string;
   description?: string;
-  parent_id?: string;
+  parent_id?: string | null;
   new_limit?: number;
   review_limit?: number;
   fsrs_weights?: string;
@@ -19,7 +19,7 @@ export type ValidationMode = 'exact' | 'ai';
 
 export interface Card {
   id: string;
-  note_id: string;
+  note_id?: string;
   deck_id: string;
   front: string;
   back: string;

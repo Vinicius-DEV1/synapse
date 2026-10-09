@@ -15,8 +15,34 @@ export async function getNote(
 export async function getCard(
   db: IDBPDatabase<CadernoDBSchema>,
   cardId: string
-): Promise<AnkiCardRecord | undefined> {
-  return await db.get('anki_cards', cardId);
+): Promise<AnkiCard | undefined> {
+  const card = await db.get('anki_cards', cardId);
+  if (!card) return undefined;
+  const note = card.note_id ? await db.get('anki_notes', card.note_id) : undefined;
+  return {
+    id: card.id,
+    deck_id: card.deck_id,
+    note_id: card.note_id,
+    ord: card.ord,
+    state: card.state,
+    due_date: card.due_date,
+    stability: card.stability,
+    difficulty: card.difficulty,
+    elapsed_days: card.elapsed_days,
+    scheduled_days: card.scheduled_days,
+    reps: card.reps,
+    lapses: card.lapses,
+    last_review: card.last_review,
+    front: note?.front || '',
+    back: note?.back || '',
+    extra_note: note?.extra_note,
+    tags: note?.tags || [],
+    card_type: note?.card_type,
+    validation_mode: note?.validation_mode,
+    media_url: note?.media_url,
+    created_at: card.created_at,
+    updated_at: card.updated_at,
+  };
 }
 
 export async function saveNote(

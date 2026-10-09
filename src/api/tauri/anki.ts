@@ -1,34 +1,77 @@
 import { invoke } from '@tauri-apps/api/core';
+import type {
+  AnkiDeckRecord,
+  AnkiCard,
+  AnkiNoteRecord,
+  AnkiCardRecord,
+  AnkiDeckSettings,
+  AnkiReviewRecord,
+} from '../../types/anki';
 import { processReview } from '../../services/fsrs';
 
 export const tauriAnkiApi = {
-  getDecks: async () => await invoke('anki_get_decks'),
-  getReviews: async () => {
+  getDecks: async (): Promise<{ success: boolean; decks: AnkiDeckRecord[]; error?: string }> => {
     try {
-      const res: any = await invoke('anki_get_reviews');
+      const raw = await invoke<AnkiDeckRecord[]>('anki_get_decks');
+      const decks = Array.isArray(raw) ? raw : [];
+      return { success: true, decks };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Tauri SRS] Failed to fetch decks:', err);
+      return { success: false, decks: [], error: message };
+    }
+  },
+
+  getReviews: async (): Promise<{ success: boolean; reviews: AnkiReviewRecord[] }> => {
+    try {
+      const res = await invoke<AnkiReviewRecord[]>('anki_get_reviews');
       return { success: true, reviews: res || [] };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[Tauri SRS] Failed to fetch reviews:', err);
       return { success: true, reviews: [] };
     }
   },
-  createDeck: async (name: string, desc?: string, parentId?: string) =>
-    await invoke('anki_create_deck', { name, description: desc, parent_id: parentId }),
-  saveCard: async (c: any) => await invoke('anki_save_card', { card: c }),
-  saveNote: async (n: any) => await invoke('anki_save_card', { card: n }),
 
-  getDueCards: async (deckId: string) => {
-    const allCards: any[] = (await invoke('anki_get_all_cards', { deckId })) || [];
-    const settings: any =
-      (await invoke('anki_get_deck_settings', { deckId }).catch(() => null)) || {
-        new_limit: 20,
-        review_limit: 200,
-      };
+  createDeck: async (
+    name: string,
+    desc?: string,
+    parentId?: string
+  ): Promise<{ success: boolean; id: string }> => {
+    const id = await invoke<string>('anki_create_deck', {
+      name,
+      description: desc,
+      parent_id: parentId,
+    });
+    return { success: true, id };
+  },
+
+  saveCard: async (
+    c: Partial<AnkiCardRecord> & { deck_id: string; front: string; back: string }
+  ): Promise<{ success: boolean; id: string; note_id: string }> => {
+    const id = await invoke<string>('anki_save_card', { card: c });
+    return { success: true, id, note_id: id };
+  },
+
+  saveNote: async (
+    n: Partial<AnkiNoteRecord> & { deck_id: string; front: string; back: string }
+  ): Promise<{ success: boolean; id: string; note_id: string }> => {
+    const id = await invoke<string>('anki_save_card', { card: n });
+    return { success: true, id, note_id: id };
+  },
+
+  getDueCards: async (deckId: string): Promise<AnkiCard[]> => {
+    const allCards = (await invoke<AnkiCard[]>('anki_get_all_cards', { deckId })) || [];
+    const settings = (await invoke<AnkiDeckSettings>('anki_get_deck_settings', { deckId }).catch(
+      () => null
+    )) || {
+      new_limit: 20,
+      review_limit: 200,
+    };
 
     const now = new Date().toISOString();
-    let newCards = [];
-    const learningCards = [];
-    let reviewCards = [];
+    let newCards: AnkiCard[] = [];
+    const learningCards: AnkiCard[] = [];
+    let reviewCards: AnkiCard[] = [];
 
     for (const c of allCards) {
       const state = Number(c.state) || 0;
@@ -61,13 +104,13 @@ export const tauriAnkiApi = {
     return await invoke<number>('anki_get_total_due_count');
   },
 
-  reviewCard: async (cardId: string, rating: number) => {
-    const card: any = await invoke('anki_get_card', { cardId });
-    if (!card) return false;
+  reviewCard: async (cardId: string, rating: number): Promise<{ success: boolean; error?: string }> => {
+    const card = await invoke<AnkiCard>('anki_get_card', { cardId });
+    if (!card) return { success: false, error: 'Card not found' };
 
-    const settings: any = await invoke('anki_get_deck_settings', { deckId: card.deck_id }).catch(
-      () => null
-    );
+    const settings = await invoke<AnkiDeckSettings>('anki_get_deck_settings', {
+      deckId: card.deck_id,
+    }).catch(() => null);
 
     const fsrsState = processReview(card, rating, settings);
 
@@ -83,27 +126,33 @@ export const tauriAnkiApi = {
       last_review: fsrsState.last_review?.toISOString() || new Date().toISOString(),
     };
 
-    return await invoke('anki_review_card_fsrs', { cardId, rating, state: stateObj });
+    await invoke('anki_review_card_fsrs', { cardId, rating, state: stateObj });
+    return { success: true };
   },
 
-  getCardIntervals: async (cardId: string) => {
+  getCardIntervals: async (
+    cardId: string
+  ): Promise<{ success: boolean; intervals?: string[]; error?: string }> => {
     try {
-      const card: any = await invoke('anki_get_card', { cardId });
+      const card = await invoke<AnkiCard>('anki_get_card', { cardId });
       if (!card) return { success: false, error: 'Card not found' };
-      const settings: any = await invoke('anki_get_deck_settings', { deckId: card.deck_id }).catch(
-        () => null
-      );
+      const settings = await invoke<AnkiDeckSettings>('anki_get_deck_settings', {
+        deckId: card.deck_id,
+      }).catch(() => null);
       const { previewIntervals } = await import('../../services/fsrs');
       const intervals = previewIntervals(card, settings);
       return { success: true, intervals };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
     }
   },
 
-  getAllCards: async (deckId?: string) => {
+  getAllCards: async (
+    deckId?: string
+  ): Promise<{ success: boolean; cards: AnkiCard[]; error?: string }> => {
     try {
-      const cards: any = await invoke('anki_get_all_cards', { deckId });
+      const cards = await invoke<AnkiCard[]>('anki_get_all_cards', { deckId });
       return { success: true, cards: Array.isArray(cards) ? cards : [] };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -111,32 +160,92 @@ export const tauriAnkiApi = {
       return { success: false, error: message, cards: [] };
     }
   },
-  deleteCard: async (cardId: string) => await invoke('anki_delete_card', { cardId }),
-  deleteNote: async (noteId: string) => {
-    try {
-      return await invoke('anki_delete_note', { noteId });
-    } catch {
-      return await invoke('anki_delete_card', { cardId: noteId });
-    }
+
+  deleteCard: async (cardId: string): Promise<{ success: boolean }> => {
+    await invoke('anki_delete_card', { cardId });
+    return { success: true };
   },
-  deleteCardsBulk: async (cardIds: string[]) => {
+
+  deleteNote: async (noteId: string): Promise<{ success: boolean }> => {
+    try {
+      await invoke('anki_delete_note', { noteId });
+    } catch {
+      await invoke('anki_delete_card', { cardId: noteId });
+    }
+    return { success: true };
+  },
+
+  deleteCardsBulk: async (cardIds: string[]): Promise<{ success: boolean }> => {
     await Promise.all(cardIds.map((id) => invoke('anki_delete_card', { cardId: id })));
+    return { success: true };
   },
-  updateCard: async (cardId: string, c: any) =>
-    await invoke('anki_update_card', { cardId, card: c }),
-  updateNote: async (noteId: string, n: any) => {
+
+  updateCard: async (
+    cardId: string,
+    c: Partial<AnkiCard>
+  ): Promise<{ success: boolean }> => {
+    await invoke('anki_update_card', { cardId, card: c });
+    return { success: true };
+  },
+
+  updateNote: async (
+    noteId: string,
+    n: Partial<AnkiNoteRecord>
+  ): Promise<{ success: boolean }> => {
     try {
-      return await invoke('anki_update_note', { noteId, note: n });
+      await invoke('anki_update_note', { noteId, note: n });
     } catch {
-      return await invoke('anki_update_card', { cardId: noteId, card: n });
+      await invoke('anki_update_card', { cardId: noteId, card: n });
+    }
+    return { success: true };
+  },
+
+  moveCards: async (): Promise<{ success: boolean }> => ({ success: true }),
+
+  updateDeck: async (
+    deckId: string,
+    name: string,
+    description: string
+  ): Promise<{ success: boolean }> => {
+    await invoke('anki_update_deck', { deckId, name, description });
+    return { success: true };
+  },
+
+  deleteDeck: async (deckId: string): Promise<{ success: boolean }> => {
+    await invoke('anki_delete_deck', { deckId });
+    return { success: true };
+  },
+
+  resetDeckProgress: async (
+    deckId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await invoke('anki_reset_deck', { deckId });
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
     }
   },
-  moveCards: async () => {}, // mock
-  updateDeck: async (deckId: string, name: string, description: string) =>
-    await invoke('anki_update_deck', { deckId, name, description }),
-  deleteDeck: async (deckId: string) => await invoke('anki_delete_deck', { deckId }),
-  resetDeckProgress: async (deckId: string) => await invoke('anki_reset_deck', { deckId }),
-  getDeckSettings: async (deckId: string) => await invoke('anki_get_deck_settings', { deckId }),
-  updateDeckSettings: async (deckId: string, settings: any) =>
-    await invoke('anki_update_deck_settings', { deckId, settings }),
+
+  getDeckSettings: async (deckId: string): Promise<AnkiDeckSettings> => {
+    return await invoke<AnkiDeckSettings>('anki_get_deck_settings', { deckId });
+  },
+
+  updateDeckSettings: async (
+    deckId: string,
+    settings: Partial<AnkiDeckSettings>
+  ): Promise<{ success: boolean }> => {
+    await invoke('anki_update_deck_settings', { deckId, settings });
+    return { success: true };
+  },
+
+  getCard: async (cardId: string): Promise<AnkiCard | undefined> => {
+    try {
+      const card = await invoke<AnkiCard>('anki_get_card', { cardId });
+      return card || undefined;
+    } catch {
+      return undefined;
+    }
+  },
 };

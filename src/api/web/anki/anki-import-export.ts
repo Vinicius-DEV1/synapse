@@ -1,19 +1,33 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { AnkiDeckRecord, AnkiNoteRecord, AnkiCardRecord } from '../../../types/anki';
 import { collectDescendantDeckIds } from './utils/deck-tree';
 
-export async function exportDeckRecursive(db: any, deckId: string) {
+export async function exportDeckRecursive(
+  db: IDBPDatabase<CadernoDBSchema>,
+  deckId: string
+): Promise<{
+  success: boolean;
+  payload?: {
+    decks: AnkiDeckRecord[];
+    notes: AnkiNoteRecord[];
+    cards: AnkiCardRecord[];
+  };
+  error?: string;
+}> {
   const allDecks = (await db.getAll('anki_decks')) || [];
-  const activeDecks = allDecks.filter((d: any) => !d.deleted_at);
+  const activeDecks = allDecks.filter((d) => !d.deleted_at);
 
   const deckIds = collectDescendantDeckIds(activeDecks, deckId);
 
-  const exportedDecks = activeDecks.filter((d: any) => deckIds.has(d.id));
+  const exportedDecks = activeDecks.filter((d) => deckIds.has(d.id));
 
   const allNotes = (await db.getAll('anki_notes')) || [];
-  const exportedNotes = allNotes.filter((n: any) => !n.deleted_at && deckIds.has(n.deck_id));
-  const noteIds = new Set(exportedNotes.map((n: any) => n.id));
+  const exportedNotes = allNotes.filter((n) => !n.deleted_at && deckIds.has(n.deck_id));
+  const noteIds = new Set(exportedNotes.map((n) => n.id));
 
   const allCards = (await db.getAll('anki_cards')) || [];
-  const exportedCards = allCards.filter((c: any) => !c.deleted_at && noteIds.has(c.note_id));
+  const exportedCards = allCards.filter((c) => !c.deleted_at && noteIds.has(c.note_id));
 
   const payload = {
     decks: exportedDecks,
@@ -56,13 +70,34 @@ function areRecordsEqual(
   return true;
 }
 
-export async function importDeck(db: any, payload: any) {
+export interface ImportDeckPayload {
+  decks?: AnkiDeckRecord[];
+  notes?: AnkiNoteRecord[];
+  cards?: AnkiCardRecord[];
+}
+
+export interface ImportDeckStats {
+  decksCreated: number;
+  decksUpdated: number;
+  decksIgnored: number;
+  notesCreated: number;
+  notesUpdated: number;
+  notesIgnored: number;
+  cardsCreated: number;
+  cardsUpdated: number;
+  cardsIgnored: number;
+}
+
+export async function importDeck(
+  db: IDBPDatabase<CadernoDBSchema>,
+  payload: unknown
+): Promise<{ success: boolean; stats?: ImportDeckStats; error?: string }> {
   try {
     if (typeof payload !== 'object' || payload === null) {
       throw new Error('Invalid import payload');
     }
 
-    const { decks = [], notes = [], cards = [] } = payload;
+    const { decks = [], notes = [], cards = [] } = payload as ImportDeckPayload;
 
     if (!Array.isArray(decks) || !Array.isArray(notes) || !Array.isArray(cards)) {
       throw new Error('Corrupted format: decks, notes or cards are not valid lists');
@@ -150,8 +185,9 @@ export async function importDeck(db: any, payload: any) {
     await tx.done;
 
     return { success: true, stats };
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
     console.error('Import error:', e);
-    return { success: false, error: e.message };
+    return { success: false, error: message };
   }
 }

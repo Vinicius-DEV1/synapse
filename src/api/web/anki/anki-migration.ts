@@ -1,7 +1,24 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../../services/db-web-schema';
+import type { AnkiCardRecord, AnkiNoteRecord } from '../../../types/anki';
 import { generateCardsForNote } from './anki-cards-generator';
 
-export async function migrateToNotes(db: any, generateId: () => string) {
-  const allCards = (await db.getAll('anki_cards')) || [];
+interface LegacyCardRecord extends AnkiCardRecord {
+  front?: string;
+  back?: string;
+  extra_note?: string;
+  media_url?: string;
+  card_type?: string;
+  validation_mode?: string;
+  source_module?: string;
+  source_id?: string;
+}
+
+export async function migrateToNotes(
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string
+): Promise<{ success: boolean; migratedCount: number }> {
+  const allCards = ((await db.getAll('anki_cards')) || []) as LegacyCardRecord[];
   let migratedCount = 0;
 
   for (const card of allCards) {
@@ -18,7 +35,7 @@ export async function migrateToNotes(db: any, generateId: () => string) {
     }
 
     const now = new Date().toISOString();
-    const note = {
+    const note: AnkiNoteRecord = {
       id: noteId,
       deck_id: card.deck_id,
       front: newFront,
@@ -36,7 +53,7 @@ export async function migrateToNotes(db: any, generateId: () => string) {
 
     await db.put('anki_notes', note);
 
-    const updatedCard = { ...card };
+    const updatedCard: LegacyCardRecord = { ...card };
     updatedCard.note_id = noteId;
     updatedCard.ord = 0;
     updatedCard.updated_at = now;
@@ -50,7 +67,7 @@ export async function migrateToNotes(db: any, generateId: () => string) {
     delete updatedCard.source_module;
     delete updatedCard.source_id;
 
-    await db.put('anki_cards', updatedCard);
+    await db.put('anki_cards', updatedCard as AnkiCardRecord);
 
     // If it's cloze with multiple cX, generate other cards
     await generateCardsForNote(db, note, generateId);

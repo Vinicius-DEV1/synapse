@@ -22,7 +22,7 @@ export function AudioPreview({ draft, mediaUrl, generatingAudio }: AudioPreviewP
            ) : mediaUrl ? (
              <p>Áudio pronto! O arquivo será salvo junto ao cartão.</p>
            ) : (
-             <p>Um clipe de áudio será {(draft as any).video_clip ? 'extraído do vídeo' : 'gerado via Edge TTS'}.</p>
+             <p>Um clipe de áudio será {draft.video_clip ? 'extraído do vídeo' : 'gerado via Edge TTS'}.</p>
            )}
          </div>
        </div>

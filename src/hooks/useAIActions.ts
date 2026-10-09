@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { triggerToast } from '../components/ui/ToastContext';
 
-declare module '../api/types' {
-  interface AnkiApi {
-    getCard?: (id: string) => Promise<any>;
-  }
-}
 
 export interface ChatMessage {
   role: 'user' | 'model';

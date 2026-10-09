@@ -36,15 +36,14 @@ export function useAnkiStats() {
 
       if (window.api?.anki) {
         const revRes = await window.api.anki.getReviews?.();
-        if (revRes?.success && revRes.reviews) allReviews = revRes.reviews;
-        else if (Array.isArray(revRes)) allReviews = revRes;
+        if (revRes?.success && revRes.reviews) {
+          allReviews = revRes.reviews;
+        }
 
         // Fetch all cards globally in one pass
         const cRes = await window.api.anki.getAllCards();
         if (cRes?.success && cRes.cards) {
           allCards = cRes.cards;
-        } else if (Array.isArray(cRes)) {
-          allCards = cRes;
         }
       }
 

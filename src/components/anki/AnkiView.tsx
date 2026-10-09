@@ -47,11 +47,11 @@ export default function AnkiView() {
     try {
       if (window.api?.anki) {
         const res = await window.api.anki.getDecks();
-        let loadedDecks = [];
+        let loadedDecks: Deck[] = [];
         if (res.success && res.decks) {
           loadedDecks = res.decks;
         } else if (Array.isArray(res)) {
-          loadedDecks = res;
+          loadedDecks = res as Deck[];
         }
         setDecks(loadedDecks);
         loadStats(loadedDecks);
@@ -61,23 +61,21 @@ export default function AnkiView() {
     }
   };
 
-  const loadStats = async (decksToLoad: any[]) => {
+  const loadStats = async (decksToLoad: Deck[]) => {
     const ankiApi = window.api?.anki;
     if (!ankiApi || !decksToLoad?.length) return;
-    const stats: Record<string, any> = {};
+    const stats: Record<string, { novos: number; aprender: number; revisar: number }> = {};
     await Promise.all(
       decksToLoad.map(async (d) => {
         try {
           const dueRes = await ankiApi.getDueCards(d.id);
-          let dueCards: any[] = [];
-          if (dueRes && dueRes.success && dueRes.cards) dueCards = dueRes.cards;
-          else if (Array.isArray(dueRes)) dueCards = dueRes;
+          const dueCards = Array.isArray(dueRes) ? dueRes : [];
 
           let novos = 0;
           let aprender = 0;
           let revisar = 0;
 
-          dueCards.forEach((c: any) => {
+          dueCards.forEach((c) => {
             const state = Number(c.state) || 0;
             if (state === 0) novos++;
             else if (state === 1 || state === 3) aprender++;

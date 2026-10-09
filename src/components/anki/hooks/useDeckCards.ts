@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { Card } from '../types';
 
 export function useDeckCards(deckId: string) {
-  const [cards, setCards] = useState<any[]>([]);
+  const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const isMountedRef = useRef(true);
@@ -21,14 +22,16 @@ export function useDeckCards(deckId: string) {
       if (window.api?.anki) {
         const res = await window.api.anki.getAllCards(deckId);
         if (!isMountedRef.current) return;
-        if (res?.success && res.cards) {
-          setCards(res.cards);
+        if (res && typeof res === 'object' && 'cards' in res && Array.isArray((res as { cards: Card[] }).cards)) {
+          setCards((res as { cards: Card[] }).cards);
         } else if (Array.isArray(res)) {
-          setCards(res);
+          setCards(res as Card[]);
         }
       }
-    } catch (err: any) {
-      if (isMountedRef.current) setError(err);
+    } catch (err: unknown) {
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err : new Error(String(err)));
+      }
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
