@@ -29,15 +29,17 @@ describe('HabitHeatmapModal', () => {
     },
   ];
 
+  const mockHabitsApi = {
+    getHabit: vi.fn().mockResolvedValue(mockHabit),
+    getLogs: vi.fn().mockResolvedValue(mockLogs),
+    toggleDayLog: vi.fn().mockResolvedValue({ completed: true }),
+    updateHabit: vi.fn().mockResolvedValue({ success: true }),
+    deleteHabit: vi.fn().mockResolvedValue(true),
+  };
+
   beforeEach(() => {
-    (window as any).api = {
-      habits: {
-        getHabit: vi.fn().mockResolvedValue(mockHabit),
-        getLogs: vi.fn().mockResolvedValue(mockLogs),
-        toggleDayLog: vi.fn().mockResolvedValue({ completed: true }),
-        updateHabit: vi.fn().mockResolvedValue({ success: true }),
-        deleteHabit: vi.fn().mockResolvedValue(true),
-      },
+    (window as unknown as { api: { habits: typeof mockHabitsApi } }).api = {
+      habits: mockHabitsApi,
     };
   });
 
@@ -95,7 +97,7 @@ describe('HabitHeatmapModal', () => {
     fireEvent.click(cell);
 
     await waitFor(() => {
-      expect((window as any).api.habits.toggleDayLog).toHaveBeenCalledWith(
+      expect(mockHabitsApi.toggleDayLog).toHaveBeenCalledWith(
         'habit-1',
         '2026-09-25'
       );

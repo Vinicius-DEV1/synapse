@@ -6,7 +6,7 @@ import { StoreProvider } from '../../store/useStore';
 
 describe('CalendarView component', () => {
   beforeEach(() => {
-    (window as any).api = {
+    (window as unknown as { api: unknown }).api = {
       calendar: {
         getEvents: vi.fn().mockResolvedValue([
           {

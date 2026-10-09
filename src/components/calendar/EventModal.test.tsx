@@ -3,7 +3,7 @@ import { render, fireEvent } from '@testing-library/react';
 import EventModal from './EventModal';
 
 vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: any) => <div data-testid="event-portal">{children}</div>,
+  Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="event-portal">{children}</div>,
 }));
 
 vi.mock('../../store/useStore', () => ({
@@ -22,7 +22,7 @@ vi.mock('./ui/EventFormReminders', () => ({
 }));
 
 vi.mock('./ui/EventModalFooter', () => ({
-  EventModalFooter: ({ onCancel }: any) => (
+  EventModalFooter: ({ onCancel }: { onCancel?: () => void }) => (
     <div data-testid="event-footer">
       <button onClick={onCancel}>Cancelar</button>
       <button type="submit">Salvar</button>

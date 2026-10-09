@@ -37,7 +37,7 @@ describe('useEventForm Hook', () => {
       result.current.setEndTime('11:00');
     });
 
-    const mockEventObj = { preventDefault: vi.fn() } as any;
+    const mockEventObj = { preventDefault: vi.fn() } as unknown as React.FormEvent;
 
     act(() => {
       result.current.handleSubmit(mockEventObj);

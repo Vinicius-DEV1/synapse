@@ -233,6 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
                       <div className="text-[10px] text-dark-subtext">
                         {(() => {
                           const endTime = new Date(session.created_at || '');
+                          if (isNaN(endTime.getTime())) return '';
                           if (session.status === 'completed') {
                             const startTime = new Date(endTime.getTime() - (session.target_time_minutes * 60000));
                             return `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;

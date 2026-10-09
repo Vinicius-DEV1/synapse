@@ -17,7 +17,7 @@ function makeTab(pageId: string | null = null): Tab {
 
 describe('FinanceView component', () => {
   beforeEach(() => {
-    (window as any).api = {
+    (window as unknown as { api: unknown }).api = {
       finance: {
         getTransactions: vi.fn().mockResolvedValue([
           {

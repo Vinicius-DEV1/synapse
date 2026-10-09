@@ -67,7 +67,7 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
 
       const newEndDate = parseEventDate(activeEvent.end_date);
       const diff = newEndDate.getTime() - parseEventDate(activeEvent.start_date).getTime();
-      newEndDate.setTime(newStartDate.getTime() + diff);
+      newEndDate.setTime(newStartDate.getTime() + (isNaN(diff) || diff < 0 ? 3600000 : diff));
 
       onUpdateEvent(activeEvent.id, {
         start_date: newStartDate.toISOString(),

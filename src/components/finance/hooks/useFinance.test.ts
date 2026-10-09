@@ -53,23 +53,25 @@ describe('useFinance Hook', () => {
     },
   ];
 
+  const mockFinanceApi = {
+    getTransactions: vi.fn().mockResolvedValue(mockTransactions),
+    getWishlist: vi.fn().mockResolvedValue(mockWishlist),
+    getAccounts: vi.fn().mockResolvedValue(mockAccounts),
+    createTransaction: vi.fn().mockResolvedValue({ id: 'tx_2' }),
+    updateTransaction: vi.fn().mockResolvedValue({ success: true }),
+    deleteTransaction: vi.fn().mockResolvedValue(true),
+    createAccount: vi.fn().mockResolvedValue({ id: 'acc_3' }),
+    updateAccount: vi.fn().mockResolvedValue({ success: true }),
+    deleteAccount: vi.fn().mockResolvedValue(true),
+    createWishlist: vi.fn().mockResolvedValue({ id: 'wish_2' }),
+    updateWishlist: vi.fn().mockResolvedValue({ success: true }),
+    deleteWishlist: vi.fn().mockResolvedValue(true),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as any).api = {
-      finance: {
-        getTransactions: vi.fn().mockResolvedValue(mockTransactions),
-        getWishlist: vi.fn().mockResolvedValue(mockWishlist),
-        getAccounts: vi.fn().mockResolvedValue(mockAccounts),
-        createTransaction: vi.fn().mockResolvedValue({ id: 'tx_2' }),
-        updateTransaction: vi.fn().mockResolvedValue({ success: true }),
-        deleteTransaction: vi.fn().mockResolvedValue(true),
-        createAccount: vi.fn().mockResolvedValue({ id: 'acc_3' }),
-        updateAccount: vi.fn().mockResolvedValue({ success: true }),
-        deleteAccount: vi.fn().mockResolvedValue(true),
-        createWishlist: vi.fn().mockResolvedValue({ id: 'wish_2' }),
-        updateWishlist: vi.fn().mockResolvedValue({ success: true }),
-        deleteWishlist: vi.fn().mockResolvedValue(true),
-      },
+    (window as unknown as { api: { finance: typeof mockFinanceApi } }).api = {
+      finance: mockFinanceApi,
     };
   });
 
@@ -165,7 +167,7 @@ describe('useFinance Hook', () => {
       },
     ];
 
-    (window as any).api.finance.getTransactions = vi.fn().mockResolvedValue(loanWithPayments);
+    mockFinanceApi.getTransactions = vi.fn().mockResolvedValue(loanWithPayments);
 
     const { result } = renderHook(() => useFinance());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -192,7 +194,7 @@ describe('useFinance Hook', () => {
       is_paid: 0,
     };
 
-    (window as any).api.finance.getTransactions = vi.fn().mockResolvedValue([loan]);
+    mockFinanceApi.getTransactions = vi.fn().mockResolvedValue([loan]);
 
     const { result } = renderHook(() => useFinance());
     await waitFor(() => expect(result.current.isLoading).toBe(false));

@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react';
 import TransactionModal from './TransactionModal';
 
 vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: any) => <div data-testid="tx-portal">{children}</div>,
+  Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="tx-portal">{children}</div>,
 }));
 
 describe('TransactionModal Component', () => {

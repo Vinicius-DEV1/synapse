@@ -22,21 +22,23 @@ describe('HabitSelectModal', () => {
     },
   ];
 
+  const mockHabitsApi = {
+    getHabits: vi.fn().mockResolvedValue(mockHabits),
+    createHabit: vi.fn().mockImplementation((data: { title: string; color?: string }) =>
+      Promise.resolve({
+        id: 'h3',
+        title: data.title,
+        color: 'emerald',
+        created_at: '2026-01-01',
+        updated_at: '2026-01-01',
+        deleted_at: null,
+      })
+    ),
+  };
+
   beforeEach(() => {
-    (window as any).api = {
-      habits: {
-        getHabits: vi.fn().mockResolvedValue(mockHabits),
-        createHabit: vi.fn().mockImplementation((data) =>
-          Promise.resolve({
-            id: 'h3',
-            title: data.title,
-            color: 'emerald',
-            created_at: '2026-01-01',
-            updated_at: '2026-01-01',
-            deleted_at: null,
-          })
-        ),
-      },
+    (window as unknown as { api: { habits: typeof mockHabitsApi } }).api = {
+      habits: mockHabitsApi,
     };
   });
 
@@ -100,7 +102,7 @@ describe('HabitSelectModal', () => {
     fireEvent.click(createBtn);
 
     await waitFor(() => {
-      expect((window as any).api.habits.createHabit).toHaveBeenCalledWith({
+      expect(mockHabitsApi.createHabit).toHaveBeenCalledWith({
         title: 'Meditar 20 min',
         color: 'emerald',
       });

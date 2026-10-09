@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react';
 import WishlistModal from './WishlistModal';
 
 vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: any) => <div data-testid="wish-portal">{children}</div>,
+  Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="wish-portal">{children}</div>,
 }));
 
 describe('WishlistModal Component', () => {
