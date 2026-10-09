@@ -71,8 +71,10 @@ Desktop.ini
 docs/audit/
 audit_report_*.md
 .worktrees/
-scripts/
+/scripts/
 
-# Agent Customizations & Claude Metadata (Never Commit)
-.agents/
+# Agent Customizations (Skills & Rules are committed; internal metadata is not)
+.agents/.cache/
+.agents/.state/
+.agents/plugins/
 .claude/
