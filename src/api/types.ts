@@ -83,7 +83,7 @@ export interface CultureApi {
   updateProgress: (id: string, progress: number) => Promise<{ success: boolean; id: string }>;
   deleteItem: (id: string) => Promise<{ success: boolean }>;
   getEpisodes: (itemId: string) => Promise<CultureEpisode[]>;
-  saveEpisodes: (itemId: string, episodes: any[]) => Promise<{ success: boolean; count: number }>;
+  saveEpisodes: (itemId: string, episodes: Partial<CultureEpisode>[]) => Promise<{ success: boolean; count: number }>;
   toggleEpisodeWatched: (episodeId: string, isWatched: boolean) => Promise<{ success: boolean }>;
 }
 

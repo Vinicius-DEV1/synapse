@@ -40,13 +40,13 @@ export const webCultureApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () 
     return { success: true, id };
   },
 
-  updateProgress: async (id: string, progress: number): Promise<{ success: boolean }> => {
+  updateProgress: async (id: string, progress: number): Promise<{ success: boolean; id: string }> => {
     const existing = await db.get('culture_items', id);
-    if (!existing) return { success: false };
+    if (!existing) return { success: false, id };
     existing.progress = progress;
     existing.updated_at = new Date().toISOString();
     await db.put('culture_items', existing);
-    return { success: true };
+    return { success: true, id };
   },
 
   deleteItem: async (id: string): Promise<{ success: boolean }> => {
@@ -66,7 +66,7 @@ export const webCultureApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () 
       .sort((a, b) => a.episode_number - b.episode_number);
   },
 
-  saveEpisodes: async (itemId: string, episodes: Partial<CultureEpisode>[]): Promise<{ success: boolean }> => {
+  saveEpisodes: async (itemId: string, episodes: Partial<CultureEpisode>[]): Promise<{ success: boolean; count: number }> => {
     const existing = (await db.getAllFromIndex('culture_episodes', 'item_id', itemId)) || [];
     const incomingIds = episodes.map((e) => e.id).filter((id): id is string => Boolean(id));
 
@@ -94,7 +94,7 @@ export const webCultureApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () 
       };
       await db.put('culture_episodes', epToSave);
     }
-    return { success: true };
+    return { success: true, count: episodes.length };
   },
 
   toggleEpisodeWatched: async (episodeId: string, isWatched: boolean): Promise<{ success: boolean }> => {
