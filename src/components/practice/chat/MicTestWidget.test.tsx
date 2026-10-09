@@ -6,14 +6,14 @@ import { MicTestWidget } from './MicTestWidget';
 describe('MicTestWidget component', () => {
   beforeEach(() => {
     class MockMediaRecorder {
-      ondataavailable: ((e: any) => void) | null = null;
+      ondataavailable: ((e: { data: Blob }) => void) | null = null;
       onstop: (() => void) | null = null;
       start = vi.fn();
       stop = vi.fn().mockImplementation(() => {
         if (this.onstop) this.onstop();
       });
     }
-    (window as any).MediaRecorder = MockMediaRecorder;
+    window.MediaRecorder = MockMediaRecorder as unknown as typeof MediaRecorder;
 
     Object.defineProperty(navigator, 'mediaDevices', {
       writable: true,

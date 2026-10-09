@@ -24,6 +24,12 @@ export interface AiChatMessagePart {
 export interface AiChatMessage {
   role: 'user' | 'model' | 'system' | string;
   parts: AiChatMessagePart[];
+  tokens?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 

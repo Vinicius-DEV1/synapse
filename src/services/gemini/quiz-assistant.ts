@@ -7,13 +7,13 @@ import {
   extractPartialSuggestedActions,
   type CandidateQuestionAction,
 } from './quiz-parser';
-import { buildQuizAssistantPrompt } from './quiz-prompts';
+import { buildQuizAssistantPrompt, type PromptQuizQuestionItem } from './quiz-prompts';
 import { validateCandidateQuizQuestions } from './quiz-validator';
 
 // Interactive AI Pedagogical Quiz Assistant
 export async function promptGeminiQuizAssistant(
   chatHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
-  currentQuestions: unknown[],
+  currentQuestions: PromptQuizQuestionItem[],
   userMessage: string,
   contextText?: string,
   blockTitle?: string,
@@ -22,7 +22,7 @@ export async function promptGeminiQuizAssistant(
     title: string;
     pageTitle?: string;
     questionCount?: number;
-    questions: unknown[];
+    questions: PromptQuizQuestionItem[];
   }>,
   onProgress?: (step: 'generating' | 'validating', model: string) => void
 ): Promise<{

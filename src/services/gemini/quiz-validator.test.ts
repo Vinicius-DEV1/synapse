@@ -60,7 +60,7 @@ describe('quiz-validator Unit Tests', () => {
         ],
         validationSummary: 'Corrigida imprecisão na questão 1 sobre hooks do React 19.',
       }),
-    } as any);
+    });
 
     const result = await validateCandidateQuizQuestions(
       candidateActions,
@@ -114,7 +114,7 @@ describe('quiz-validator Unit Tests', () => {
       text: JSON.stringify({
         validatedQuestions: [],
       }),
-    } as any);
+    });
 
     const candidateActions: CandidateQuestionAction[] = [
       {

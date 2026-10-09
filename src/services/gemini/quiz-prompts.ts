@@ -113,9 +113,21 @@ Do NOT use markdown code block wrappers (\`\`\`json). Return raw JSON only.`;
   return customPrompt;
 }
 
+export interface PromptQuizQuestionItem {
+  id?: string;
+  type?: string;
+  question?: string;
+  options?: string[];
+  correctIndex?: number;
+  correct_index?: number;
+  expectedAnswer?: string;
+  expected_answer?: string;
+  explanation?: string;
+}
+
 export function buildQuizAssistantPrompt(
   chatHistory: Array<{ role: 'user' | 'assistant'; text: string }>,
-  currentQuestions: any[],
+  currentQuestions: PromptQuizQuestionItem[],
   userMessage: string,
   contextText?: string,
   blockTitle?: string,
@@ -124,7 +136,7 @@ export function buildQuizAssistantPrompt(
     title: string;
     pageTitle?: string;
     questionCount?: number;
-    questions: any[];
+    questions: PromptQuizQuestionItem[];
   }>
 ): string {
   let customPrompt = `You are the "AI Study Questions Assistant" in the Caderno app. You help students create, analyze, balance, refine, and upgrade interactive study quiz batteries.\n\n`;
@@ -150,9 +162,9 @@ export function buildQuizAssistantPrompt(
         q.type === 'open' ? 'Open-ended' : 'Multiple Choice'
       }): "${q.question}"\n`;
       if (q.type === 'multiple_choice' && q.options) {
-        customPrompt += `  Options: ${q.options.join(' | ')} (Correct: ${
-          q.options[q.correctIndex] || ''
-        })\n`;
+        const correctIdx = q.correctIndex ?? q.correct_index;
+        const correctLabel = typeof correctIdx === 'number' && correctIdx >= 0 ? q.options[correctIdx] || '' : '';
+        customPrompt += `  Options: ${q.options.join(' | ')} (Correct: ${correctLabel})\n`;
       } else if (q.expectedAnswer) {
         customPrompt += `  Model Answer: "${q.expectedAnswer}"\n`;
       }
@@ -173,14 +185,14 @@ export function buildQuizAssistantPrompt(
         rb.pageTitle || 'Notebook'
       }") ---\n`;
       if (rb.questions && rb.questions.length > 0) {
-        rb.questions.forEach((q: any, qIdx: number) => {
+        rb.questions.forEach((q: PromptQuizQuestionItem, qIdx: number) => {
           customPrompt += `  - Ref Q${qIdx + 1} (${
             q.type === 'open' ? 'Open-ended' : 'Multiple Choice'
           }): "${q.question}"\n`;
           if (q.type === 'multiple_choice' && q.options) {
-            customPrompt += `    Options: ${q.options.join(' | ')} (Correct: ${
-              q.options[q.correctIndex] || ''
-            })\n`;
+            const correctIdx = q.correctIndex ?? q.correct_index;
+            const correctLabel = typeof correctIdx === 'number' && correctIdx >= 0 ? q.options[correctIdx] || '' : '';
+            customPrompt += `    Options: ${q.options.join(' | ')} (Correct: ${correctLabel})\n`;
           } else if (q.expectedAnswer) {
             customPrompt += `    Model Answer: "${q.expectedAnswer}"\n`;
           }

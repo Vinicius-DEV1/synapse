@@ -259,7 +259,7 @@ export function useGeminiLiveSession({
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [session.custom_prompt, memories, globalSystemPrompt, handleWsMessage]
+    [session, memories, globalSystemPrompt, handleWsMessage]
   );
 
   const disconnectWebSocket = useCallback(() => {

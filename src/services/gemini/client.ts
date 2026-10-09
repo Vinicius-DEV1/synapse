@@ -5,7 +5,20 @@ import {
   updateGeminiKeyStatus,
   getRotatedActiveKeys,
 } from './keys';
-import type { GeminiModel } from './types';
+import type {
+  GeminiModel,
+  GeminiContentPart,
+  GeminiContentTurn,
+  GeminiTokenUsage,
+  GeminiRequestBody,
+} from './types';
+
+interface RawGeminiModel {
+  name?: string;
+  version?: string;
+  displayName?: string;
+  description?: string;
+}
 
 export async function fetchGeminiModels(): Promise<GeminiModel[]> {
   const keys = await getGeminiKeys();
@@ -47,19 +60,21 @@ export async function fetchGeminiModels(): Promise<GeminiModel[]> {
       }
 
       // Filter only valid models for our use case
-      return (data.models as any[])
-        .filter((m: any) => m.name && m.name.startsWith('models/gemini'))
-        .map((m: any) => ({
+      const models = Array.isArray(data.models) ? (data.models as RawGeminiModel[]) : [];
+      return models
+        .filter((m): m is RawGeminiModel & { name: string } => typeof m.name === 'string' && m.name.startsWith('models/gemini'))
+        .map((m) => ({
           name: m.name,
           version: m.version || '',
           displayName: m.displayName || m.name,
           description: m.description || '',
         }));
-    } catch (error: any) {
-      lastError = error;
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      lastError = err;
       console.warn(
         `[fetchGeminiModels] Falha na chave ${currentKeyEntry.key.slice(0, 4)}...:`,
-        error.message
+        err.message
       );
     }
   }
@@ -86,12 +101,12 @@ function isKeyAuthenticationError(message?: string): boolean {
 export async function promptGemini(
   prompt: string,
   mediaBase64?: string | string[],
-  history: any[] = [],
+  history: GeminiContentTurn[] = [],
   customModelId?: string,
   customSystemInstruction?: string,
   timeoutMs = 45000,
   tools?: Array<Record<string, unknown>>
-): Promise<{ text: string; usage?: any }> {
+): Promise<{ text: string; usage?: GeminiTokenUsage }> {
   const keys = await getGeminiKeys();
   const activeKeys = getRotatedActiveKeys(keys);
 
@@ -109,17 +124,17 @@ export async function promptGemini(
 
   const fullModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
 
-  const contents: any[] = [];
+  const contents: GeminiContentTurn[] = [];
 
   if (history && history.length > 0) {
-    const formattedHistory = history.map((msg: any) => ({
+    const formattedHistory: GeminiContentTurn[] = history.map((msg) => ({
       role: msg.role,
-      parts: msg.parts
+      parts: msg.parts,
     }));
     contents.push(...formattedHistory);
   }
 
-  const userParts: any[] = [{ text: prompt }];
+  const userParts: GeminiContentPart[] = [{ text: prompt }];
   if (mediaBase64) {
     const mediaList = Array.isArray(mediaBase64) ? mediaBase64 : [mediaBase64];
     for (const mediaItem of mediaList) {
@@ -138,7 +153,7 @@ export async function promptGemini(
   }
   contents.push({ role: 'user', parts: userParts });
 
-  const requestBody: any = { 
+  const requestBody: GeminiRequestBody = { 
     contents,
     generationConfig: { maxOutputTokens: 65536 }
   };
@@ -225,15 +240,16 @@ export async function promptGemini(
         return { text, usage: data.usageMetadata };
       }
       return { text: '' };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string; name?: string };
       if (
-        error.message?.includes('Tempo limite') ||
-        error.message?.includes('Failed to fetch') ||
-        error.name === 'AbortError'
+        err.message?.includes('Tempo limite') ||
+        err.message?.includes('Failed to fetch') ||
+        err.name === 'AbortError'
       ) {
-        console.warn(`[GeminiPool] Erro de rede ou timeout na chave. Tentando próxima chave...`, error.message);
+        console.warn(`[GeminiPool] Erro de rede ou timeout na chave. Tentando próxima chave...`, err.message);
         allServerErrors = false;
-        lastErrorMsg = error.message;
+        lastErrorMsg = err.message || 'Falha de rede na requisição';
         continue;
       }
 

@@ -51,13 +51,13 @@ vi.mock('./chat/hooks/usePushToTalk', () => ({
 }));
 
 vi.mock('./chat/PracticeChatHeader', () => ({
-  PracticeChatHeader: ({ session }: any) => (
+  PracticeChatHeader: ({ session }: { session: TutorSession }) => (
     <div data-testid="practice-chat-header">{session.title}</div>
   ),
 }));
 
 vi.mock('./chat/ChatTranscript', () => ({
-  ChatTranscript: ({ messages }: any) => (
+  ChatTranscript: ({ messages }: { messages: TutorMessage[] }) => (
     <div data-testid="chat-transcript">Mensagens: {messages.length}</div>
   ),
 }));

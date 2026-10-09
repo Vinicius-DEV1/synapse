@@ -4,7 +4,7 @@ import { ChatTranscript } from './ChatTranscript';
 import type { TutorMessage } from '../../../types';
 
 vi.mock('./AudioMessagePlayer', () => ({
-  AudioMessagePlayer: ({ src }: any) => <div data-testid="audio-player">{src}</div>,
+  AudioMessagePlayer: ({ src }: { src: string }) => <div data-testid="audio-player">{src}</div>,
 }));
 
 describe('ChatTranscript Component', () => {

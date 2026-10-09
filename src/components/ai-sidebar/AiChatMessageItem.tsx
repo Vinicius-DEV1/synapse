@@ -1,15 +1,16 @@
 import { FileText, Sparkles, Plus } from 'lucide-react';
 import { AiChatMarkdown } from './AiChatMarkdown';
+import type { AiChatMessage } from '../../types';
 
 interface AiChatMessageItemProps {
-  msg: any;
+  msg: AiChatMessage;
   idx: number;
   onInsert: (text: string) => void;
 }
 
 export function AiChatMessageItem({ msg, idx, onInsert }: AiChatMessageItemProps) {
   const isUser = msg.role === 'user';
-  const textContent = msg.parts.find((p: any) => p.text)?.text || '';
+  const textContent = msg.parts.find((p) => p.text)?.text || '';
   const isQuestionJson = textContent.includes('"enunciado"') && textContent.includes('"opcoes"');
   
   let displayUserText = textContent;

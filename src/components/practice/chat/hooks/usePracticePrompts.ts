@@ -28,6 +28,10 @@ export function usePracticePrompts(session: TutorSession) {
     loadPresets();
   }, []);
 
+  useEffect(() => {
+    setCustomPrompt(session.custom_prompt || '');
+  }, [session.id, session.custom_prompt]);
+
   const saveGlobalPrompt = (newPrompt: string) => {
     setGlobalSystemPrompt(newPrompt);
     localStorage.setItem('globalSystemPrompt', newPrompt);
@@ -40,7 +44,11 @@ export function usePracticePrompts(session: TutorSession) {
         ...session,
         custom_prompt: val,
       });
-      session.custom_prompt = val;
+      try {
+        session.custom_prompt = val;
+      } catch {
+        // Safe fallback if session is a frozen object
+      }
     } catch (err) {
       console.error('Failed to update session prompt', err);
     }

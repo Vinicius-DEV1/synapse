@@ -68,7 +68,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
           opcoes: ['Tipagem estática', 'Mais rápido em runtime', 'Sem compilação', 'Apenas para backend'],
           correta: 0,
         }),
-      } as any);
+      });
 
       const result = await promptGeminiForQuestion('Gere uma questão sobre TypeScript');
       expect(result.enunciado).toBe('Qual a principal vantagem de usar TypeScript?');
@@ -83,7 +83,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
           options: ['Static typing', 'Faster runtime', 'No compilation', 'Backend only'],
           correctIndex: 0,
         }),
-      } as any);
+      });
 
       const result = await promptGeminiForQuestion('Generate a question about TypeScript');
       expect(result.enunciado).toBe('What is the main feature of TypeScript?');
@@ -99,7 +99,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
           verdict: 'Correto',
           feedback: 'Excelente resposta demonstrando compreensão clara.',
         }),
-      } as any);
+      });
 
       const result = await promptGeminiForOpenQuestionEvaluation(
         'Explique o que é JSX.',
@@ -117,7 +117,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
           verdict: 'Partial',
           feedback: 'You explained the concept well but missed mention of the call stack.',
         }),
-      } as any);
+      });
 
       const partialRes = await promptGeminiForOpenQuestionEvaluation(
         'Explain event loop',
@@ -131,7 +131,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
           verdict: 'Incorrect',
           feedback: 'The answer is mistaken.',
         }),
-      } as any);
+      });
 
       const incorrectRes = await promptGeminiForOpenQuestionEvaluation(
         'Explain event loop',
@@ -150,7 +150,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
           respostaEsperada: 'O aluno deve explicar que Docker é uma plataforma de conteinerização.',
           explicacao: 'Containers isolam processos e dependências.',
         }),
-      } as any);
+      });
 
       const result = await promptGeminiToGenerateBlockQuestion('Docker', 'open');
       expect(result.enunciado).toBe('O que é Docker?');
@@ -175,7 +175,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             explanation: 'Commits registram o histórico de modificações.',
           },
         ]),
-      } as any);
+      });
 
       const result = await promptGeminiToGenerateBatchQuestions('Git básico', 2);
       expect(result).toHaveLength(2);
@@ -209,7 +209,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             },
           ],
         }),
-      } as any);
+      });
 
       const result = await promptGeminiQuizAssistant([], [], 'Adicione questões de SOLID', undefined, 'Arquitetura', 'Princípios SOLID');
       expect(result.message).toContain('Aqui estão 2 questões');
@@ -225,7 +225,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
     it('recovers gracefully from raw text with embedded JSON', async () => {
       vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
         text: '```json\n{"message": "Analisei sua bateria com sucesso.", "suggestedActions": []}\n```',
-      } as any);
+      });
 
       const result = await promptGeminiQuizAssistant([], [], 'Analise a bateria');
       expect(result.message).toBe('Analisei sua bateria com sucesso.');
@@ -246,7 +246,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             },
           ],
         }),
-      } as any);
+      });
 
       const referencedBatteries = [
         {
@@ -260,7 +260,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
               question: 'O que é TCP?',
               options: ['Protocolo', 'Hardware'],
               correctIndex: 0,
-            } as any,
+            },
           ],
         },
       ];
@@ -316,7 +316,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
               },
             ],
           }),
-        } as any)
+        })
         // Call 2: IA 2 validates & corrects
         .mockResolvedValueOnce({
           text: JSON.stringify({
@@ -333,7 +333,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             ],
             validationSummary: 'Fatos verificados e corrigidos com sucesso.',
           }),
-        } as any);
+        });
 
       const result = await promptGeminiQuizAssistant(
         [],
@@ -377,7 +377,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             },
           ],
         }),
-      } as any);
+      });
 
       const progressSteps: string[] = [];
       const result = await promptGeminiQuizAssistant(
@@ -412,7 +412,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
     it('throws descriptive error when question generation returns invalid JSON', async () => {
       vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
         text: 'Não consegui gerar o formato solicitado.',
-      } as any);
+      });
 
       await expect(
         promptGeminiForQuestion('Gere uma questão')
@@ -440,7 +440,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             explanation: 'Alta coesão é um objetivo de bom design.',
           },
         ]),
-      } as any);
+      });
 
       const result = await promptGeminiToParseDocumentToQuizJSON(
         '# Documento de Estudo sobre POO',
@@ -468,7 +468,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
     it('throws error when no questions are extracted', async () => {
       vi.spyOn(clientModule, 'promptGemini').mockResolvedValueOnce({
         text: '[]',
-      } as any);
+      });
 
       await expect(
         promptGeminiToParseDocumentToQuizJSON('texto sem questões', 'pdf')
@@ -488,7 +488,7 @@ describe('Quiz Service & Prompt Unit Tests', () => {
             explanation: 'Explicacao',
           },
         ]),
-      } as any);
+      });
 
       const result = await promptGeminiToRefineImportedQuestions(
         [{ question: 'Questão repetida 1' }, { question: 'Questão repetida 1' }],
