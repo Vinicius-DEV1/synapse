@@ -9,7 +9,8 @@ export function isUiSoundEnabled(): boolean {
     }
     localStorage.setItem(UI_SOUND_STORAGE_KEY, 'true');
     return true;
-  } catch {
+  } catch (err) {
+    console.debug('[UiSounds] localStorage get error:', err);
     return true;
   }
 }
@@ -18,8 +19,8 @@ export function setUiSoundEnabled(enabled: boolean): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(UI_SOUND_STORAGE_KEY, String(enabled));
-  } catch {
-    // Ignore localStorage access restrictions
+  } catch (err) {
+    console.warn('[UiSounds] Failed to persist ui sound preference:', err);
   }
 }
 
@@ -42,8 +43,8 @@ function withAudioContext(callback: (ctx: AudioContext) => void): void {
         if (ctx.state !== 'closed') {
           ctx.close().catch(() => {});
         }
-      } catch {
-        // safe
+      } catch (closeErr) {
+        console.debug('[UiSounds] AudioContext close error:', closeErr);
       }
     }, 2000);
   } catch (err) {

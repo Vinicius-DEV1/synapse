@@ -66,7 +66,8 @@ export function formatDateTime(dateStr?: string | null): string {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     }).format(d);
-  } catch {
+  } catch (err) {
+    console.warn('[formatDateTime] Invalid date formatting:', err);
     return String(dateStr);
   }
 }
@@ -83,7 +84,8 @@ export function formatDateTimeWithSeconds(dateStr?: string | null): string {
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     }).format(d);
-  } catch {
+  } catch (err) {
+    console.warn('[formatDateTimeWithSeconds] Invalid date formatting:', err);
     return String(dateStr);
   }
 }
@@ -97,7 +99,8 @@ export function formatDayMonth(dateStr?: string | null, fallback: string = 'Rece
     const d = parseEventDate(dateStr);
     if (isNaN(d.getTime())) return fallback;
     return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(d);
-  } catch {
+  } catch (err) {
+    console.warn('[formatDayMonth] Invalid date formatting:', err);
     return fallback;
   }
 }
