@@ -16,25 +16,30 @@ describe('usePushToTalk Hook', () => {
     });
   });
 
-  it('initializes in non-recording state', () => {
+  it('initializes in non-recording state', async () => {
     const wsRef = { current: null };
     const saveMessage = vi.fn();
     const setLiveTranscript = vi.fn();
     const setError = vi.fn();
 
-    const { result } = renderHook(() =>
-      usePushToTalk({
-        isConnected: true,
-        isInCall: true,
-        isMobile: false,
-        wsRef,
-        saveMessage,
-        setLiveTranscript,
-        setError,
-      })
-    );
+    let hookResult: ReturnType<typeof renderHook<ReturnType<typeof usePushToTalk>, unknown>>;
+    await import('@testing-library/react').then(async ({ act }) => {
+      await act(async () => {
+        hookResult = renderHook(() =>
+          usePushToTalk({
+            isConnected: true,
+            isInCall: true,
+            isMobile: false,
+            wsRef,
+            saveMessage,
+            setLiveTranscript,
+            setError,
+          })
+        );
+      });
+    });
 
-    expect(result.current.isRecording).toBe(false);
-    expect(result.current.micButtonRef).toBeDefined();
+    expect(hookResult!.result.current.isRecording).toBe(false);
+    expect(hookResult!.result.current.micButtonRef).toBeDefined();
   });
 });
