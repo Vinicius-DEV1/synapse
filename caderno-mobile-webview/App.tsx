@@ -132,8 +132,8 @@ function MainWebView() {
   const targetUri = AppConfig.getWebUrl();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" translucent={true} />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#0f0e17" translucent={true} />
 
       {hasError ? (
         <View style={styles.errorContainer}>
@@ -178,6 +178,8 @@ function MainWebView() {
           }}
           javaScriptEnabled={true}
           domStorageEnabled={true}
+          allowFileAccess={true}
+          nestedScrollEnabled={true}
           bounces={false}
           overScrollMode="never"
           allowsBackForwardNavigationGestures={true}
@@ -190,7 +192,7 @@ function MainWebView() {
           androidLayerType="hardware"
           renderLoading={() => (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
+              <ActivityIndicator size="large" color="#8b5cf6" />
             </View>
           )}
         />
@@ -210,11 +212,11 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0e17',
   },
   webView: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0e17',
   },
   loadingContainer: {
     position: 'absolute',
@@ -224,24 +226,24 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0e17',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f0e17',
   },
   errorTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#f8fafc',
+    color: '#fffffe',
     marginBottom: 12,
   },
   errorText: {
     fontSize: 16,
-    color: '#94a3b8',
+    color: '#a7a9be',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -258,7 +260,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#7c3aed',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

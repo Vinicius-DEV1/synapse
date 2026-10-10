@@ -7,16 +7,16 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0f172a",
+    "backgroundColor": "#0f0e17",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#0f0e17"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.caderno.app",
-      "backgroundColor": "#0f172a",
+      "backgroundColor": "#0f0e17",
       "infoPlist": {
         "NSCameraUsageDescription": "O Caderno precisa de acesso à câmera para fotografar e anexar documentos.",
         "NSPhotoLibraryUsageDescription": "O Caderno precisa de acesso às suas fotos para anexar imagens e arquivos.",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.caderno.app",
-      "backgroundColor": "#0f172a",
+      "backgroundColor": "#0f0e17",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "INTERNET",
@@ -35,7 +35,7 @@
         "RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a",
+        "backgroundColor": "#0f0e17",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false
@@ -47,7 +47,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0f172a"
+          "backgroundColor": "#0f0e17"
         }
       ]
     ],

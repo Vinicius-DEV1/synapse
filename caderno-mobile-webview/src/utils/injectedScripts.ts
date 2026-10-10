@@ -19,13 +19,16 @@ export function getInjectedJavaScript(insets: EdgeInsets): string {
         * {
           -webkit-tap-highlight-color: transparent !important;
         }
+        button, a, [role="button"], input[type="button"], input[type="submit"] {
+          touch-action: manipulation;
+        }
         body, html {
-          -webkit-touch-callout: none !important;
-          overscroll-behavior-y: none !important;
+          -webkit-touch-callout: none;
+          overscroll-behavior-y: none;
           -webkit-user-select: none;
           user-select: none;
         }
-        input, textarea, [contenteditable="true"], .selectable, .ProseMirror, .ProseMirror * {
+        input, textarea, [contenteditable="true"], .selectable, .select-text, .select-text *, [data-selectable="true"], .ProseMirror, .ProseMirror * {
           -webkit-user-select: text !important;
           user-select: text !important;
         }
