@@ -13,7 +13,7 @@ vi.mock('../services/sync', () => ({
 // Mock BroadcastChannel
 class MockBroadcastChannel {
   name: string;
-  onmessage: any = null;
+  onmessage: ((ev: MessageEvent) => void) | null = null;
   constructor(name: string) {
     this.name = name;
   }
@@ -21,7 +21,7 @@ class MockBroadcastChannel {
   close = vi.fn();
 }
 
-(global as any).BroadcastChannel = MockBroadcastChannel;
+(globalThis as unknown as { BroadcastChannel: typeof MockBroadcastChannel }).BroadcastChannel = MockBroadcastChannel;
 
 describe('useSync Hook', () => {
   const mockMasterKeys: Record<string, CryptoKey> = {
@@ -54,6 +54,7 @@ describe('useSync Hook', () => {
       expect(loadPages).toHaveBeenCalled();
       expect(syncService.pushAllToCloud).toHaveBeenCalledWith(mockMasterKeys);
       expect(syncService.syncPdfsToCloud).toHaveBeenCalledWith(mockMasterKeys);
+      expect(result.current.syncStatus).toBe('success');
     });
   });
 
@@ -71,8 +72,8 @@ describe('useSync Hook', () => {
   });
 
   it('responds to cloud sync signal from remote device', async () => {
-    let signalCallback: any = null;
-    (syncService.listenForCloudSyncSignal as any).mockImplementation((cb: any) => {
+    let signalCallback: ((signalDeviceId?: string) => void) | null = null;
+    vi.mocked(syncService.listenForCloudSyncSignal).mockImplementation((cb) => {
       signalCallback = cb;
       return () => {};
     });
