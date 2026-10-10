@@ -6,6 +6,8 @@ import PracticeChat from './PracticeChat';
 import { NewPracticeSessionModal } from './modals/NewPracticeSessionModal';
 import { InterviewSetupModal } from './modals/InterviewSetupModal';
 
+import { isMobileScreen } from '../../services/platform';
+
 export default function PracticeView() {
   const [sessions, setSessions] = useState<TutorSession[]>([]);
   const [activeSession, setActiveSession] = useState<TutorSession | null>(null);
@@ -29,11 +31,10 @@ export default function PracticeView() {
     loadSessions();
   }, []);
 
-  // Detect mobile device
+  // Detect mobile device capability
   useEffect(() => {
     const checkMobile = () => {
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                            window.innerWidth < 768;
+      const isMobileDevice = isMobileScreen();
       setIsMobile(isMobileDevice);
       if (isMobileDevice) {
         setShowSidebar(false); // Hide sidebar by default on mobile
@@ -44,6 +45,23 @@ export default function PracticeView() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Handle hardware back press on Android
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (showSidebar) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowSidebar(false);
+      } else if (activeSession && isMobile) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveSession(null);
+      }
+    };
+    window.addEventListener('caderno-back-press', handleBack);
+    return () => window.removeEventListener('caderno-back-press', handleBack);
+  }, [showSidebar, activeSession, isMobile]);
 
   const handleCreateFreeSession = async () => {
     setIsNewModalOpen(false);

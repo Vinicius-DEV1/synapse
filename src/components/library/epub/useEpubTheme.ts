@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useEpub } from './EpubContext';
+import { isMobileScreen } from '../../../services/platform';
 
 export function useEpubTheme(
   globalLastHighlightClickRef: React.MutableRefObject<number>,
@@ -113,7 +114,7 @@ export function useEpubTheme(
       const colors = getEpubThemeColors(readingMode);
       const themeName = `custom-${readingMode}-${fontFamily}`;
       
-      const isMobileView = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      const isMobileView = isMobileScreen() || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       const bottomPadding = isMobileView ? '60px' : '16px';
 
       const themeCss: any = {

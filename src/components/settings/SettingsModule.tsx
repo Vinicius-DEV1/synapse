@@ -46,15 +46,15 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
   return (
     <div className="w-full h-full flex bg-dark-bg text-dark-text overflow-hidden">
       {/* Main Content Area */}
-      <div className="flex-1 h-full overflow-y-auto bg-dark-bg p-8 custom-scrollbar">
+      <div className="flex-1 h-full overflow-y-auto bg-dark-bg p-4 sm:p-6 md:p-8 custom-scrollbar">
         <div className="max-w-4xl mx-auto">
           
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">{tabs.find(t => t.id === activeTab)?.label}</h1>
-            <p className="text-dark-subtext">Gerencie suas preferências de {tabs.find(t => t.id === activeTab)?.label.toLowerCase()}.</p>
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{tabs.find(t => t.id === activeTab)?.label}</h1>
+            <p className="text-dark-subtext text-sm sm:text-base">Gerencie suas preferências de {tabs.find(t => t.id === activeTab)?.label.toLowerCase()}.</p>
           </div>
 
-          <form onSubmit={handleSaveSettings} className="bg-dark-card border border-white/5 rounded-2xl p-8 shadow-xl">
+          <form onSubmit={handleSaveSettings} className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl">
             {activeTab === 'general' && !isChangingPassword && (
               <GeneralTab appSettings={appSettings} setAppSettings={setAppSettings} />
             )}

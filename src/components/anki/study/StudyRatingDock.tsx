@@ -22,7 +22,7 @@ export function StudyRatingDock({
   onRating,
 }: StudyRatingDockProps) {
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 lg:translate-x-0 lg:left-auto lg:top-1/2 lg:-translate-y-1/2 lg:right-8 z-20 flex flex-col items-center lg:items-end gap-4 pointer-events-none w-[92%] max-w-md lg:w-auto">
+    <div className="absolute bottom-[calc(1.5rem+var(--safe-area-bottom,0px))] left-1/2 -translate-x-1/2 lg:translate-x-0 lg:left-auto lg:top-1/2 lg:-translate-y-1/2 lg:right-8 z-20 flex flex-col items-center lg:items-end gap-4 pointer-events-none w-[92%] max-w-md lg:w-auto">
       {!showingAnswer ? (
         <button
           onClick={() => {

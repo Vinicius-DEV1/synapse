@@ -17,6 +17,7 @@ import {
 import type { TutorSession } from '../../types';
 import { parseInterviewConfig } from '../../types';
 import { InterviewFeedbackModal } from './chat/InterviewFeedbackModal';
+import { isMobileScreen } from '../../services/platform';
 
 interface PracticeChatProps {
   session: TutorSession;
@@ -48,15 +49,12 @@ export default function PracticeChat({ session }: PracticeChatProps) {
   const [isInCall, setIsInCall] = useState(false);
   const [callStartTime, setCallStartTime] = useState<number | null>(null);
 
-  // Detect mobile device
+  // Detect mobile device capability
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
-      const isMobileDevice =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-        window.innerWidth < 768;
-      setIsMobile(isMobileDevice);
+      setIsMobile(isMobileScreen());
     };
 
     checkMobile();

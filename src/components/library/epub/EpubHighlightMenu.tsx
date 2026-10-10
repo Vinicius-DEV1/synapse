@@ -8,10 +8,12 @@ import { useEpubHighlightActions } from './hooks/useEpubHighlightActions';
 import { EpubHighlightColorBar } from './ui/EpubHighlightColorBar';
 import { EpubHighlightNoteEditor } from './ui/EpubHighlightNoteEditor';
 import { getHighlightMenuTheme } from './ui/highlightMenuTheme';
+import { isMobileScreen } from '../../../services/platform';
 
-const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+const getIsMobile = () => typeof window !== 'undefined' && (isMobileScreen() || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
 
 export default function EpubHighlightMenu() {
+  const isMobile = getIsMobile();
   const { dispatch } = useStore();
   const { readingMode } = useEpub();
   const {

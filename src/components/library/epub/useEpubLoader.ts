@@ -5,6 +5,7 @@ import { resolveCanonicalBuffer } from '../../../services/storage/canonical-reso
 import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
 import { createAssetEmbedder } from './utils/epubAssetManager';
+import { isMobileScreen } from '../../../services/platform';
 
 declare global {
   interface Window {
@@ -248,7 +249,7 @@ export function useEpubLoader(
               }
            });
            
-           const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+           const isMobileDevice = isMobileScreen() || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
            newRendition.on('click', () => {
              setShowSettings(false);
