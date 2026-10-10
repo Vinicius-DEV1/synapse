@@ -42,6 +42,7 @@ interface JikanItem {
   chapters?: number;
   volumes?: number;
   status?: string;
+  duration?: string;
 }
 
 interface GoogleBookVolume {
@@ -94,6 +95,8 @@ interface ITunesItem {
   artworkUrl100?: string;
   artistName?: string;
   kind?: string;
+  country?: string;
+  primaryGenreName?: string;
 }
 
 
