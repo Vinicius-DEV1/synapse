@@ -122,13 +122,20 @@ function CultureMediaCard({
 
   const handleDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Tem certeza que deseja excluir '${item.title}'?`)) {
-      try { 
-        await CultureService.deleteItem(item.id); 
-        onUpdate(); 
-      } catch (err) { 
-        console.error(err); 
-      }
+    const msg = `Tem certeza que deseja excluir '${item.title}'?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Obra Cultural',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
+    try { 
+      await CultureService.deleteItem(item.id); 
+      onUpdate(); 
+    } catch (err) { 
+      console.error(err); 
     }
   }, [item.id, item.title, onUpdate]);
 

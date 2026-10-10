@@ -29,12 +29,15 @@ export const tauriAppApi = {
     return file?.name || '';
   },
 
-  showConfirm: async (message: string): Promise<number> => {
+  showConfirm: async (optionsOrMessage: string | { message: string; title?: string; kind?: 'info' | 'warning' | 'error' }): Promise<number> => {
+    const message = typeof optionsOrMessage === 'string' ? optionsOrMessage : optionsOrMessage.message;
+    const title = typeof optionsOrMessage === 'string' ? 'Confirmação' : optionsOrMessage.title || 'Confirmação';
+    const kind = typeof optionsOrMessage === 'string' ? 'warning' : optionsOrMessage.kind || 'warning';
     try {
       const { confirm } = await import('@tauri-apps/plugin-dialog');
       const confirmed = await confirm(message, {
-        title: 'Confirmação',
-        kind: 'warning',
+        title,
+        kind,
       });
       return confirmed ? 1 : 0;
     } catch (err) {

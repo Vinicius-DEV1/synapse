@@ -184,7 +184,7 @@ export interface ICadernoAPI {
     minimize: () => void;
     maximize: () => void;
     getPathForFile: (file: File) => string;
-    showConfirm: (message: string) => Promise<number>;
+    showConfirm: (optionsOrMessage: string | { message: string; title?: string; kind?: 'info' | 'warning' | 'error' }) => Promise<number>;
     openFocusWindow: () => Promise<void>;
     /** Toggles fullscreen mode (Tauri only). Optional on web builds. */
     toggleFullScreen?: () => void;

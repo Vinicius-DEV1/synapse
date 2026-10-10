@@ -21,7 +21,8 @@ export const createWebAppApi = () => ({
     return file?.name || '';
   },
 
-  showConfirm: async (message: string): Promise<number> => {
+  showConfirm: async (optionsOrMessage: string | { message: string; title?: string; kind?: 'info' | 'warning' | 'error' }): Promise<number> => {
+    const message = typeof optionsOrMessage === 'string' ? optionsOrMessage : optionsOrMessage.message;
     if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
       return window.confirm(message) ? 1 : 0;
     }
