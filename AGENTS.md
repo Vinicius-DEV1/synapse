@@ -88,6 +88,12 @@ Every module, class, hook, and function must embody the **SOLID** software engin
    - Never mutate state objects or arrays in-place (`array.push()`, `obj.field = ...`). Always use immutable updates (`[...array]`, `{ ...obj }`).
 6. **Premature Complexity vs Algorithmic Inefficiency**:
    - Use $O(1)$ lookups (`Map`, `Set`, lookup tables) when handling large datasets (notes, tags, flashcards) inside frequent render or search loops.
+7. **Raw Browser Confirms & Unconfirmed Deletions**:
+   - Never use raw `window.confirm(...)` which freezes the WebView thread and breaks dark theme aesthetics. Route all confirmations through `window.api.app.showConfirm` or `ConfirmDialog`. Never execute destructive deletions without explicit, user-confirmed intent or fallback to silent approval.
+8. **Unsandboxed Iframes**:
+   - All embedded `<iframe>` elements (document previews, video frames, external media) must include explicit `sandbox` attributes (e.g., `sandbox="allow-scripts allow-forms"` or `sandbox="allow-scripts allow-presentation allow-same-origin"`) and descriptive `title` attributes for defense-in-depth against XSS and context escalation.
+9. **Unprotected Double-Submissions**:
+   - Asynchronous mutation actions (vault credential saving, page renaming, uploads) must track processing state (`isSaving` / `isSubmitting`), disable trigger buttons while running, and render spinners to prevent duplicate records or race conditions.
 
 ---
 
@@ -112,14 +118,14 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 ## 7. Testing Standards & Execution Performance
 
 - **Targeted Test Execution First (Sub-Second Feedback)**:
-  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)**, as running all 237 files takes over 2 minutes and severely halts productivity.
+  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)**, as running all 310 files takes over 2 minutes and severely halts productivity.
   - **Always use Targeted Testing**:
     - Specific module directory: `npx vitest run src/path/to/module/` (~1-3s).
     - Or related dependency runner: `npx vitest related --run <modified_files>` (~2-3s).
 - **Type Checking over Full Test Sweeps**:
   - To verify cross-project contract integrity quickly without running heavy DOM/worker runners, use `npx tsc -b --noEmit`.
 - **Full Regression Suite (`npm test`) Reservation**:
-  - Run the global suite (`npm test`, all 237 test files) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
+  - Run the global suite (`npm test`, all 310 test files) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
 - **Meaningful and Well-Elaborated Tests**: All tests must validate actual business logic, state changes, UI interactions, error recovery, and component integrations using Vitest and React Testing Library.
 - **Avoid Useless Tests**: Do not write excessive, redundant, or shallow tests that serve no practical purpose (e.g., trivially asserting a static `div` renders without validating behavior). Tests must provide genuine confidence in application resilience.
 - **Mocking Platform Boundaries**: Mock external boundaries (Tauri IPC, IndexedDB, Firebase, FFmpeg, Tesseract) cleanly at the adapter interface level without polluting tests with brittle DOM implementation details.
