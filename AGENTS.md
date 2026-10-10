@@ -220,3 +220,31 @@ To ensure study, reading, and review experiences achieve absolute focus without 
   - Exit: `Escape`.
 - **Subtle Visual Cues**: Display clean, understated shortcut badges (e.g., `[Enter]`, `[Esc]`, `A`) adjacent to actions to build muscle memory without cluttering the interface.
 
+---
+
+## 11. Mobile WebView & Responsive Adaptation Standards
+
+To guarantee that Caderno delivers a first-class native Android experience inside the `caderno-mobile-webview` shell while maintaining 100% functional and visual parity across desktop (Tauri) and browser web environments, code must strictly adhere to these standards:
+
+### 11.1. Native Shell & Token Consistency
+- **Unified Canvas Palette**: Native status bars, navigation bars, splash screens, and adaptive backgrounds must strictly align with Caderno's primary canvas token `#0f0e17` (`bg-dark-bg`), eliminating visual cut seams.
+- **Single Source of Safe Area Insets**: Safe area insets (`--safe-area-top`, `--safe-area-bottom`, etc.) must be handled cleanly via CSS environment variables and injected CSS custom properties. Never apply native double-padding (e.g. native container `paddingBottom` combined with injected CSS `safe-area-bottom`).
+
+### 11.2. Viewport & Layout Discipline (Zero Gambiarra)
+- **Viewport Dimensioning**: Avoid rigid `w-screen` which triggers horizontal scrollbars on mobile browsers and WebViews due to overlay scrollbars or navigation gutters; use `w-full max-w-full overflow-hidden`.
+- **Dynamic Viewport Height**: Use dynamic viewport units (`100dvh` / `100svh`) instead of legacy `100vh` to prevent mobile address bar and virtual keyboard layout crushing.
+- **Adaptive Padding**: Avoid rigid desktop paddings (`p-8`, `p-12`) that consume excessive horizontal space on 360-412px viewports. Employ mobile-first responsive scale steps (e.g., `p-4 sm:p-6 md:p-8`).
+
+### 11.3. Android Hardware Back Navigation Pipeline
+- **Unified Event Pipeline**: All dismissible overlays (modals, drawers, dropdowns, floating pages, active chat sessions) must listen to the custom `caderno-back-press` event dispatched by `useAppBackPress`.
+- **Hierarchical Interception**: Sub-components must intercept back navigation progressively (e.g., in chat: active conversation → chat session list → close sidebar) using `e.preventDefault()`, preventing accidental app exits.
+
+### 11.4. Responsive Master-Detail & Capability Detection
+- **Mobile Split Overlays**: High-density side-by-side layouts (e.g., Calendar + TaskFeed, Vault 3-panel list/detail) must transition gracefully to responsive tabs or master-detail drill-downs guarded by `md:` breakpoints on mobile screens.
+- **Capability Detection over User-Agent Sniffing**: Never rely on fragile, scattered `navigator.userAgent` regexes for UI layout decisions. Use capability helpers `isTouchScreen()` and `isMobileScreen()` or responsive CSS media queries (`@media (max-width: 767px)`, `@media (pointer: coarse)`).
+
+### 11.5. WebView Security & Touch Optimization
+- **Touch Responsiveness**: Use `touch-action: manipulation` globally to eliminate the 300ms tap delay while preserving pinch-to-zoom on image canvases.
+- **Text Selection Isolation**: Apply `-webkit-user-select: none` to chrome and navigation elements, while strictly whitelisting editable and study content (`.select-text`, `[data-selectable="true"]`, TipTap editor surfaces).
+- **Hardened WebView Isolation**: Never expose unrestricted JavaScript interfaces or sensitive storage keys across unvalidated origins. Keep file access strictly bounded and all IPC communication validated.
+
