@@ -61,20 +61,23 @@ export default function GlobalSearchModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-start justify-center pt-[10vh] animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-start justify-center pt-2 sm:pt-[10vh] p-2 sm:p-4 animate-fade-in"
       onClick={() => setIsOpen(false)}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Busca Global"
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-dark-bg/65 backdrop-blur-sm" />
 
       {/* Modal */}
       <div
-        className="relative w-[640px] max-w-[95vw] max-h-[75vh] bg-dark-bg/95 border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scale-in"
+        className="relative w-[640px] max-w-full max-h-[88dvh] sm:max-h-[75vh] bg-dark-bg/95 border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
         onKeyDown={handleKeyDownList}
       >
         {/* Search Header */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/5 shrink-0 bg-dark-card/40">
+        <div className="flex items-center gap-3 px-3.5 sm:px-4 py-3 sm:py-3.5 border-b border-white/5 shrink-0 bg-dark-card/40">
           <Search size={20} className="text-brand-400 shrink-0" />
           <input
             ref={inputRef}
@@ -82,10 +85,19 @@ export default function GlobalSearchModal() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Buscar por título, pasta ou conteúdo..."
-            className="flex-1 bg-transparent text-base text-dark-text placeholder-dark-subtext/70 outline-none font-medium"
+            className="flex-1 bg-transparent text-sm sm:text-base text-dark-text placeholder-dark-subtext/70 outline-none font-medium"
             autoFocus
           />
-          <kbd className="text-[10px] font-mono text-dark-subtext bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shadow-sm">
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="sm:hidden p-1.5 text-dark-subtext hover:text-white rounded-lg active:scale-95 transition-all"
+            aria-label="Fechar"
+            data-testid="modal-close"
+          >
+            <span className="text-xs font-medium">Cancelar</span>
+          </button>
+          <kbd className="hidden sm:inline-block text-[10px] font-mono text-dark-subtext bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shadow-sm">
             ESC
           </kbd>
         </div>

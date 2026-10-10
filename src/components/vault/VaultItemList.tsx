@@ -1,5 +1,6 @@
 import { Search, Plus, Key, Star, GripVertical } from 'lucide-react';
-import type { VaultItem } from '../../types';
+import type { VaultItem, VaultGroup } from '../../types';
+import { isMobileScreen } from '../../services/platform';
 import { GoogleGIcon } from './ui/GoogleGIcon';
 import {
   DndContext,
@@ -25,6 +26,10 @@ interface VaultItemListProps {
   handleSelectItem: (item: VaultItem) => void;
   onReorderItems?: (sourceIndex: number, targetIndex: number) => void;
   onNewItem: () => void;
+  groups?: VaultGroup[];
+  selectedGroupId?: string | null;
+  onSelectGroup?: (id: string | null) => void;
+  className?: string;
 }
 
 interface SortableVaultItemProps {
@@ -112,6 +117,10 @@ export function VaultItemList({
   handleSelectItem,
   onReorderItems,
   onNewItem,
+  groups,
+  selectedGroupId,
+  onSelectGroup,
+  className = '',
 }: VaultItemListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -134,18 +143,59 @@ export function VaultItemList({
   const isDragDisabled = Boolean(searchQuery.trim());
 
   return (
-    <div className="w-80 border-r border-white/5 bg-dark-card/50 flex flex-col relative">
-      <div className="p-4 border-b border-white/5 flex flex-col gap-3">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-dark-bg border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-500 transition-colors"
-          />
+    <div className={`w-full md:w-80 border-r-0 md:border-r border-white/5 bg-dark-card/50 flex flex-col relative ${className}`}>
+      <div className="p-3 sm:p-4 border-b border-white/5 flex flex-col gap-2.5">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" />
+            <input
+              type="text"
+              placeholder="Buscar itens..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-dark-bg border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-500 transition-colors"
+            />
+          </div>
+          <button
+            onClick={onNewItem}
+            className="md:hidden flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shrink-0 active:scale-95 transition-all"
+            title="Novo Item"
+          >
+            <Plus size={14} />
+            <span>Novo</span>
+          </button>
         </div>
+
+        {/* Mobile Group Filter Chips */}
+        {isMobileScreen() && groups && groups.length > 0 && (
+          <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+            <button
+              type="button"
+              onClick={() => onSelectGroup?.(null)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                selectedGroupId === null
+                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 shadow-sm'
+                  : 'text-dark-subtext hover:text-white bg-white/5'
+              }`}
+            >
+              Todos
+            </button>
+            {groups.map(g => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => onSelectGroup?.(g.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  selectedGroupId === g.id
+                    ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 shadow-sm'
+                    : 'text-dark-subtext hover:text-white bg-white/5'
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">

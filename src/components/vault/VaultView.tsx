@@ -45,8 +45,20 @@ export default function VaultView() {
     return () => window.removeEventListener('click', handleClick);
   }, [setGroupContextMenu]);
 
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (selectedItem || isEditingItem) {
+        e.preventDefault();
+        setSelectedItem(null);
+        setIsEditingItem(false);
+      }
+    };
+    window.addEventListener('caderno-back-press', handleBack);
+    return () => window.removeEventListener('caderno-back-press', handleBack);
+  }, [selectedItem, isEditingItem, setSelectedItem, setIsEditingItem]);
+
   return (
-    <div className="flex h-full bg-dark-bg text-dark-text font-sans" onClick={() => setGroupContextMenu(null)}>
+    <div className="flex h-full bg-dark-bg text-dark-text font-sans overflow-hidden" onClick={() => setGroupContextMenu(null)}>
       {/* PAINEL 1: Grupos (Esquerda) */}
       <VaultSidebar
         groups={groups}
@@ -78,10 +90,34 @@ export default function VaultView() {
               setSelectedItem(null);
               setIsEditingItem(true);
             }}
+            groups={groups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={setSelectedGroupId}
+            className={selectedItem || isEditingItem ? 'hidden md:flex' : 'flex'}
           />
 
           {/* PAINEL 3: Detalhes do Item (Direita) */}
-          <div className="flex-1 flex flex-col bg-dark-bg overflow-y-auto relative">
+          <div className={`flex-1 flex flex-col bg-dark-bg overflow-y-auto relative ${
+            !selectedItem && !isEditingItem ? 'hidden md:flex' : 'flex'
+          }`}>
+            {/* Mobile Back Button to list */}
+            {(selectedItem || isEditingItem) && (
+              <div className="flex md:hidden items-center justify-between p-3 border-b border-white/5 shrink-0 bg-dark-card/40">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedItem(null);
+                    setIsEditingItem(false);
+                  }}
+                  className="text-xs text-brand-400 font-medium hover:underline flex items-center gap-1 active:scale-95"
+                >
+                  ← Voltar para lista
+                </button>
+                <span className="text-xs text-dark-subtext font-medium truncate max-w-[200px]">
+                  {selectedItem?.label || (isEditingItem ? 'Novo Item' : '')}
+                </span>
+              </div>
+            )}
             {!selectedItem && !isEditingItem ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-dark-subtext">
                 <Shield size={64} className="mb-4 opacity-20" />

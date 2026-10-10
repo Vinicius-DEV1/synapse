@@ -11,6 +11,9 @@ export default function CalendarView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [mobileTab, setMobileTab] = useState<'calendar' | 'feed'>('calendar');
+
+  const pendingTasksCount = events.filter(e => e.status !== 'completed').length;
 
   const loadEvents = async () => {
     if (window.api?.calendar) {
@@ -120,24 +123,50 @@ export default function CalendarView() {
   };
 
   return (
-    <div className="flex h-full bg-dark-bg text-dark-text">
+    <div className="flex flex-col md:flex-row h-full bg-dark-bg text-dark-text overflow-hidden">
       {/* Main Calendar Area */}
-      <div className="flex-1 flex flex-col p-6 overflow-hidden">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold font-serif text-dark-text">Calendário</h1>
+      <div className={`flex-1 flex flex-col p-3 sm:p-6 overflow-hidden ${mobileTab === 'feed' ? 'hidden md:flex' : 'flex'}`}>
+        <div className="flex justify-between items-center mb-3 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold font-serif text-dark-text">Calendário</h1>
           <button
             onClick={() => {
               setEditingEvent(null);
               setSelectedDay(null);
               setIsModalOpen(true);
             }}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-medium transition-colors"
+            className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-95"
           >
             + Novo
           </button>
         </div>
+
+        {/* Mobile Tab Switcher */}
+        <div className="flex md:hidden items-center bg-dark-card/60 p-1 rounded-xl border border-white/5 mb-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileTab('calendar')}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              mobileTab === 'calendar'
+                ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 shadow-sm'
+                : 'text-dark-subtext hover:text-white'
+            }`}
+          >
+            Calendário
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('feed')}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              mobileTab === 'feed'
+                ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 shadow-sm'
+                : 'text-dark-subtext hover:text-white'
+            }`}
+          >
+            Tarefas ({pendingTasksCount})
+          </button>
+        </div>
         
-        <div className="flex-1 bg-dark-hover rounded-xl border border-dark-border overflow-hidden">
+        <div className="flex-1 bg-dark-hover rounded-xl border border-dark-border overflow-hidden min-h-0">
           <CalendarGrid 
             events={events} 
             onEditEvent={(ev) => {
@@ -156,20 +185,33 @@ export default function CalendarView() {
       </div>
 
       {/* Task Feed Sidebar */}
-      <div className="w-80 border-l border-dark-border bg-dark-bg flex flex-col">
-        <TaskFeed 
-          events={events} 
-          onUpdateEvent={async (id, data) => {
-            if (window.api?.calendar) {
-              await window.api.calendar.updateEvent(id, data);
-              loadEvents();
-            }
-          }}
-          onEditEvent={(ev) => {
-             setEditingEvent(ev);
-             setIsModalOpen(true);
-          }}
-        />
+      <div className={`w-full md:w-80 border-t md:border-t-0 md:border-l border-dark-border bg-dark-bg flex flex-col ${mobileTab === 'calendar' ? 'hidden md:flex' : 'flex-1 md:flex-none'}`}>
+        {/* Mobile Header for Feed */}
+        <div className="flex md:hidden items-center justify-between p-3 border-b border-dark-border shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileTab('calendar')}
+            className="text-xs text-brand-400 font-medium hover:underline flex items-center gap-1"
+          >
+            ← Voltar ao Calendário
+          </button>
+          <span className="text-xs text-dark-subtext font-medium">Tarefas & Compromissos</span>
+        </div>
+        <div className="flex-1 overflow-hidden min-h-0">
+          <TaskFeed 
+            events={events} 
+            onUpdateEvent={async (id, data) => {
+              if (window.api?.calendar) {
+                await window.api.calendar.updateEvent(id, data);
+                loadEvents();
+              }
+            }}
+            onEditEvent={(ev) => {
+               setEditingEvent(ev);
+               setIsModalOpen(true);
+            }}
+          />
+        </div>
       </div>
 
       {isModalOpen && (

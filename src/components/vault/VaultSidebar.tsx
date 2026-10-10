@@ -27,7 +27,7 @@ export function VaultSidebar({
   handleDeleteGroup,
 }: VaultSidebarProps) {
   return (
-    <div className="w-64 border-r border-white/5 bg-dark-card/30 flex flex-col">
+    <div className="hidden md:flex w-64 border-r border-white/5 bg-dark-card/30 flex-col shrink-0">
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-brand-400 font-semibold">
           <Shield size={20} />

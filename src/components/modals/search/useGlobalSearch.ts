@@ -57,11 +57,20 @@ export function useGlobalSearch() {
       }
     };
 
+    const handleBack = (e: Event) => {
+      if (isOpen) {
+        e.preventDefault();
+        setIsOpen(false);
+      }
+    };
+
     window.addEventListener('open-global-search', handleOpen);
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBack);
     return () => {
       window.removeEventListener('open-global-search', handleOpen);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBack);
     };
   }, [isOpen]);
 

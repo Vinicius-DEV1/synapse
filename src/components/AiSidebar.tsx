@@ -50,6 +50,21 @@ export default function AiSidebar() {
     scrollToBottom();
   }, [state.activeAiChatId, state.aiChatSessions, loading]);
 
+  useEffect(() => {
+    if (!state.showAiSidebar) return;
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (state.activeAiChatId) {
+        dispatch({ type: 'OPEN_AI_CHAT', chatId: null });
+      } else {
+        dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
+      }
+    };
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => window.removeEventListener('caderno-back-press', handleBackPress);
+  }, [state.showAiSidebar, state.activeAiChatId, dispatch]);
+
   if (!state.showAiSidebar) return null;
 
   const handleNavigate = (pageId: string, contextText?: string) => {
@@ -97,14 +112,16 @@ export default function AiSidebar() {
     triggerToast('Texto copiado! Pressione Ctrl+V no editor para inserir.', 'success');
   };
 
+  const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 640;
+
   return (
     <div 
-      className="bg-dark-card border-l border-white/5 flex flex-col h-full absolute right-0 top-0 z-50 shadow-2xl animate-slide-in-right"
-      style={{ width }}
+      className="bg-dark-card border-l border-white/5 flex flex-col h-full absolute right-0 top-0 z-50 shadow-2xl animate-slide-in-right w-full sm:w-auto max-w-full"
+      style={{ width: isSmallScreen ? '100%' : width }}
     >
-      {/* Drag Handle */}
+      {/* Drag Handle (desktop only) */}
       <div 
-        className="absolute left-0 top-0 w-1 h-full cursor-col-resize hover:bg-brand-500 z-50 transition-colors"
+        className="hidden sm:block absolute left-0 top-0 w-1 h-full cursor-col-resize hover:bg-brand-500 z-50 transition-colors"
         onMouseDown={handleMouseDown}
         onDoubleClick={handleResetWidth}
         title="Arraste para redimensionar (Duplo clique para restaurar)"
