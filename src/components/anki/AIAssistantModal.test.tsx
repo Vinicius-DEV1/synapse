@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import AIAssistantModal from './AIAssistantModal';
 
 vi.mock('../../services/gemini', () => ({
@@ -15,7 +16,7 @@ vi.mock('../../utils/settings', () => ({
 }));
 
 vi.mock('../ui/Portal', () => ({
-  Portal: ({ children }: any) => <div data-testid="anki-ai-portal">{children}</div>,
+  Portal: ({ children }: { children: ReactNode }) => <div data-testid="anki-ai-portal">{children}</div>,
 }));
 
 vi.mock('./AIGenerationView', () => ({
@@ -29,7 +30,7 @@ vi.mock('./AIChatAnalysisView', () => ({
 describe('AIAssistantModal Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as any).api = {
+    (window as unknown as { api: unknown }).api = {
       anki: {
         getDecks: vi.fn().mockResolvedValue([{ id: 'deck_1', name: 'Inglês Avançado' }]),
         getAllCards: vi.fn().mockResolvedValue({ cards: [] }),
@@ -37,20 +38,27 @@ describe('AIAssistantModal Component', () => {
     };
   });
 
-  it('renders modal with generation view and allows switching to analysis view', () => {
+  it('renders modal with generation view and allows switching to analysis view', async () => {
     const onClose = vi.fn();
     const onAddCards = vi.fn();
 
-    const { getByText, getByTestId } = render(
-      <AIAssistantModal deckId="deck_1" onClose={onClose} onAddCards={onAddCards} />
-    );
+    let renderResult: ReturnType<typeof render>;
+    await act(async () => {
+      renderResult = render(
+        <AIAssistantModal deckId="deck_1" onClose={onClose} onAddCards={onAddCards} />
+      );
+    });
+
+    const { getByText, getByTestId } = renderResult!;
 
     expect(getByText(/Assistente IA de Cartões/i)).toBeDefined();
     expect(getByTestId('ai-generation-view')).toBeDefined();
 
     // Switch to Chat & Analysis mode
     const analyzeTabBtn = getByText(/Analisar Baralho \(Chat\)/i);
-    fireEvent.click(analyzeTabBtn);
+    await act(async () => {
+      fireEvent.click(analyzeTabBtn);
+    });
 
     expect(getByTestId('ai-chat-analysis-view')).toBeDefined();
   });
