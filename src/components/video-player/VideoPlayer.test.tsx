@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import VideoPlayer from './VideoPlayer';
 import type { VideoItem } from '../../types';
 
@@ -20,15 +20,19 @@ describe('VideoPlayer Component', () => {
     updated_at: 1000,
   };
 
-  it('renders video player container with provided title', () => {
-    const { container } = render(
-      <VideoPlayer
-        src="blob:http://localhost/mock-video"
-        video={mockVideo}
-        title="Learn English in 10 Minutes"
-        onClose={vi.fn()}
-      />
-    );
+  it('renders video player container with provided title', async () => {
+    let container!: HTMLElement;
+    await act(async () => {
+      const res = render(
+        <VideoPlayer
+          src="blob:http://localhost/mock-video"
+          video={mockVideo}
+          title="Learn English in 10 Minutes"
+          onClose={vi.fn()}
+        />
+      );
+      container = res.container;
+    });
 
     const videoEl = container.querySelector('video');
     expect(videoEl).toBeDefined();
