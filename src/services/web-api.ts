@@ -119,7 +119,8 @@ export const createWebApiMock = async () => {
         try {
           const row = await db.get('link_metadata_cache', url);
           return row || null;
-        } catch {
+        } catch (err) {
+          console.warn('[WebApi] Failed to get link metadata cache for url:', url, err);
           return null;
         }
       },
@@ -127,7 +128,8 @@ export const createWebApiMock = async () => {
         try {
           await db.put('link_metadata_cache', { ...entry, updated_at: new Date().toISOString() });
           return true;
-        } catch {
+        } catch (err) {
+          console.warn('[WebApi] Failed to save link metadata cache for entry:', entry.url, err);
           return false;
         }
       },

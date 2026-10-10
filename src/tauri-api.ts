@@ -123,7 +123,8 @@ export const createTauriApi = async () => {
       getMetadata: async (url: string) => {
         try {
           return await tauriSyncApi.getRow('link_metadata_cache', url);
-        } catch {
+        } catch (err) {
+          console.warn('[TauriApi] Failed to get link metadata cache for url:', url, err);
           return null;
         }
       },
@@ -131,7 +132,8 @@ export const createTauriApi = async () => {
         try {
           await tauriSyncApi.upsertRow('link_metadata_cache', { ...entry, id: entry.url, updated_at: new Date().toISOString() });
           return true;
-        } catch {
+        } catch (err) {
+          console.warn('[TauriApi] Failed to save link metadata cache for entry:', entry.url, err);
           return false;
         }
       },

@@ -48,4 +48,14 @@ describe('tauri-api bridge (Desktop Native IPC)', () => {
     window.dispatchEvent(new CustomEvent('app-sync-trigger'));
     expect(callback).toHaveBeenCalledTimes(1);
   });
+
+  it('handles links metadata get and save operations including error fallbacks', async () => {
+    const api = await createTauriApi();
+
+    const saveSuccess = await api.links.saveMetadata({ url: 'https://example.com', title: 'Example' });
+    expect(saveSuccess).toBe(true);
+
+    const metadata = await api.links.getMetadata('https://example.com');
+    expect(metadata).toBeDefined();
+  });
 });

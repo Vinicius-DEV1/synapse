@@ -41,4 +41,18 @@ describe('web-api service (IndexedDB implementation)', () => {
     const updatedPages = await api.getAllPages();
     expect(updatedPages[0].title).toBe('Updated Web Test Page');
   });
+
+  it('handles links metadata get and save in web API IndexedDB storage', async () => {
+    const api = await createWebApiMock();
+
+    const saveSuccess = await api.links.saveMetadata({ url: 'https://synapse.dev', title: 'Synapse' });
+    expect(saveSuccess).toBe(true);
+
+    const metadata = await api.links.getMetadata('https://synapse.dev');
+    expect(metadata).toBeDefined();
+    expect(metadata?.title).toBe('Synapse');
+
+    const nonExistent = await api.links.getMetadata('https://non-existent-url.local');
+    expect(nonExistent).toBeNull();
+  });
 });
