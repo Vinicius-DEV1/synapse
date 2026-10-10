@@ -55,7 +55,8 @@ export function parseVaultCustomFields(jsonString: string | null | undefined): V
     const parsed: unknown = JSON.parse(jsonString);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isVaultCustomField);
-  } catch {
+  } catch (err) {
+    console.warn('[parseVaultCustomFields] Failed to parse custom fields JSON:', err);
     return [];
   }
 }

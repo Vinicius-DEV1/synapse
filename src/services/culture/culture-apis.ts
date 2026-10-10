@@ -23,6 +23,80 @@ export interface CultureSearchResult {
   trailer_yt_id?: string;
 }
 
+interface CinemetaTrailer {
+  type?: string;
+  source?: string;
+}
+
+interface JikanItem {
+  mal_id: number | string;
+  title: string;
+  synopsis?: string;
+  score?: number;
+  studios?: { name: string }[];
+  authors?: { name: string }[];
+  genres?: { name: string }[];
+  trailer?: { youtube_id?: string; url?: string };
+  images?: { jpg?: { large_image_url?: string } };
+  episodes?: number;
+  chapters?: number;
+  volumes?: number;
+  status?: string;
+}
+
+interface GoogleBookVolume {
+  id: string;
+  volumeInfo?: {
+    title?: string;
+    description?: string;
+    averageRating?: number;
+    publisher?: string;
+    authors?: string[];
+    pageCount?: number;
+    imageLinks?: { thumbnail?: string };
+    categories?: string[];
+  };
+}
+
+interface TVMazeShowItem {
+  show?: {
+    id: number | string;
+    name: string;
+    summary?: string;
+    rating?: { average?: number };
+    webChannel?: { name?: string; country?: { name?: string } };
+    network?: { name?: string; country?: { name?: string } };
+    averageRuntime?: number;
+    runtime?: number;
+    image?: { medium?: string };
+    status?: string;
+    genres?: string[];
+  };
+}
+
+interface ImdbSuggestItem {
+  id?: string;
+  l?: string;
+  y?: number;
+  s?: string;
+  qid?: string;
+  q?: string;
+  i?: { imageUrl?: string };
+}
+
+interface ITunesItem {
+  trackId: number | string;
+  trackName?: string;
+  releaseDate?: string;
+  trackTimeMillis?: number;
+  longDescription?: string;
+  shortDescription?: string;
+  artworkUrl100?: string;
+  artistName?: string;
+  kind?: string;
+}
+
+
 const cultureApiCache = new Map<string, { timestamp: number; data: CultureSearchResult[] }>();
 const cinemetaCache = new Map<string, { timestamp: number; data: Partial<CultureSearchResult> }>();
 const CACHE_TTL_MS = 15 * 60 * 1000;
@@ -66,8 +140,8 @@ export async function fetchCinemetaMetadata(
       ? meta.cast.slice(0, 4).join(', ')
       : undefined;
 
-    const trailers = Array.isArray(meta.trailers) ? meta.trailers : [];
-    const mainTrailer = trailers.find((t: any) => t && t.type === 'Trailer') || trailers[0];
+    const trailers: CinemetaTrailer[] = Array.isArray(meta.trailers) ? meta.trailers : [];
+    const mainTrailer = trailers.find((t) => t && t.type === 'Trailer') || trailers[0];
     const rawTrailer = mainTrailer?.source || (typeof meta.trailer === 'string' ? meta.trailer : undefined);
     let trailer_yt_id: string | undefined = undefined;
     if (typeof rawTrailer === 'string') {
@@ -92,7 +166,8 @@ export async function fetchCinemetaMetadata(
 
     cinemetaCache.set(cacheKey, { timestamp: Date.now(), data: result });
     return result;
-  } catch {
+  } catch (err) {
+    console.warn('[CultureAPI] Erro ao buscar meta no Cinemeta:', err);
     return null;
   } finally {
     clearTimeout(timer);
@@ -148,11 +223,11 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
       return [];
     }
     const data = await res.json();
-    const results: CultureSearchResult[] = (data?.data || []).map((item: any) => {
+    const results: CultureSearchResult[] = ((data?.data || []) as JikanItem[]).map((item) => {
       const rawScore = item.score;
       const rating = typeof rawScore === 'number' && !isNaN(rawScore) ? rawScore : undefined;
       const platform = item.studios?.[0]?.name || item.authors?.[0]?.name || undefined;
-      const genres = Array.isArray(item.genres) ? item.genres.map((g: any) => g.name).filter(Boolean) : undefined;
+      const genres = Array.isArray(item.genres) ? item.genres.map((g: { name: string }) => g.name).filter(Boolean) : undefined;
 
       const trailerYtId = item.trailer?.youtube_id || undefined;
       const trailer_yt_id = trailerYtId && /^[a-zA-Z0-9_-]{11}$/.test(trailerYtId) ? trailerYtId : undefined;
@@ -186,7 +261,8 @@ export async function fetchJikan(q: string, t: 'anime' | 'manga'): Promise<Cultu
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
-  } catch {
+  } catch (err) {
+    console.warn('[CultureAPI] Erro ao buscar no Jikan:', err);
     return [];
   }
 }
@@ -214,7 +290,7 @@ export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise
       return [];
     }
     const data = await res.json();
-    const results: CultureSearchResult[] = (data.items || []).map((item: any) => {
+    const results: CultureSearchResult[] = ((data.items || []) as GoogleBookVolume[]).map((item) => {
       const vInfo = item.volumeInfo || {};
       const rawRating = vInfo.averageRating;
       const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : undefined;
@@ -242,7 +318,8 @@ export async function fetchGoogleBooks(q: string, targetType = 'livro'): Promise
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
-  } catch {
+  } catch (err) {
+    console.warn('[CultureAPI] Erro ao buscar no Google Books:', err);
     return [];
   }
 }
@@ -261,8 +338,8 @@ export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
     const res = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(q)}`);
     if (!res.ok) return [];
     const data = await res.json();
-    const results: CultureSearchResult[] = (data || []).slice(0, 3).map((item: any) => {
-      const show = item.show || {};
+    const results: CultureSearchResult[] = ((data || []) as TVMazeShowItem[]).slice(0, 3).map((item) => {
+      const show = item.show || { id: '', name: '' };
       const rawRating = show.rating?.average;
       const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : undefined;
       const platform = show.webChannel?.name || show.network?.name || undefined;
@@ -293,7 +370,8 @@ export async function fetchTVMaze(q: string): Promise<CultureSearchResult[]> {
 
     cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
     return results;
-  } catch {
+  } catch (err) {
+    console.warn('[CultureAPI] Erro ao buscar no TVMaze:', err);
     return [];
   }
 }
@@ -332,8 +410,8 @@ export async function fetchImdbMovies(q: string): Promise<CultureSearchResult[]>
 
     if (!res.ok) return [];
     const data = await res.json();
-    const items = (data?.d || [])
-      .filter((item: any) => {
+    const items = ((data?.d || []) as ImdbSuggestItem[])
+      .filter((item) => {
         return (
           item.qid === 'movie' ||
           item.q === 'feature' ||
@@ -343,21 +421,21 @@ export async function fetchImdbMovies(q: string): Promise<CultureSearchResult[]>
       })
       .slice(0, 6);
 
-    const enriched: CultureSearchResult[] = items.map((item: any) => {
+    const enriched: CultureSearchResult[] = items.map((item) => {
       let cover = '';
       if (item.i?.imageUrl) {
         cover = item.i.imageUrl.replace(/_V1_.*\.jpg/, '_V1_UX600_.jpg');
       }
 
       return {
-        title: item.l,
+        title: item.l || '',
         year: item.y || null,
         synopsis: '', // IMDb autocomplete API does not provide plot synopses
         cast: item.s || undefined,
         cover,
         total: 0,
         type: 'filme',
-        api_id: item.id,
+        api_id: item.id || '',
         api_source: 'imdb',
         status: 'finished' as const,
       };
@@ -404,8 +482,8 @@ export async function fetchImdbSeries(q: string): Promise<CultureSearchResult[]>
 
     if (!res.ok) return [];
     const data = await res.json();
-    const items = (data?.d || [])
-      .filter((item: any) => {
+    const items = ((data?.d || []) as ImdbSuggestItem[])
+      .filter((item) => {
         return (
           item.qid === 'tvSeries' ||
           item.qid === 'tvMiniSeries' ||
@@ -415,21 +493,21 @@ export async function fetchImdbSeries(q: string): Promise<CultureSearchResult[]>
       })
       .slice(0, 6);
 
-    const enriched: CultureSearchResult[] = items.map((item: any) => {
+    const enriched: CultureSearchResult[] = items.map((item) => {
       let cover = '';
       if (item.i?.imageUrl) {
         cover = item.i.imageUrl.replace(/_V1_.*\.jpg/, '_V1_UX600_.jpg');
       }
 
       return {
-        title: item.l,
+        title: item.l || '',
         year: item.y || null,
         synopsis: '',
         cast: item.s || undefined,
         cover,
         total: 0,
         type: 'série',
-        api_id: item.id,
+        api_id: item.id || '',
         api_source: 'imdb',
         status: 'finished' as const,
       };
@@ -451,24 +529,24 @@ export async function fetchITunesMovies(q: string): Promise<CultureSearchResult[
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=movie&entity=movie&limit=10`);
     if (!res.ok) return [];
     const data = await res.json();
-    let movies = (data?.results || []).filter((r: any) => r.kind === 'feature-movie' || r.trackName).slice(0, 5);
+    let movies = ((data?.results || []) as ITunesItem[]).filter((r) => r.kind === 'feature-movie' || r.trackName).slice(0, 5);
 
     if (movies.length === 0) {
       const fallbackRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&limit=30`);
       if (fallbackRes.ok) {
         const fallbackData = await fallbackRes.json();
-        movies = (fallbackData?.results || []).filter((r: any) => r.kind === 'feature-movie').slice(0, 5);
+        movies = ((fallbackData?.results || []) as ITunesItem[]).filter((r) => r.kind === 'feature-movie').slice(0, 5);
       }
     }
 
-    return movies.map((item: any) => {
+    return movies.map((item) => {
       const releaseYear = item.releaseDate ? new Date(item.releaseDate).getFullYear() : null;
       const durationMs = item.trackTimeMillis;
       const durationMin = durationMs ? Math.round(durationMs / 60000) : null;
       const duration = durationMin ? `${durationMin} min` : undefined;
 
       return {
-        title: item.trackName,
+        title: item.trackName || '',
         year: releaseYear,
         synopsis: item.longDescription || item.shortDescription || '',
         cover: item.artworkUrl100?.replace('100x100bb', '600x600bb') || '',
