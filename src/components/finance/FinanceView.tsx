@@ -103,7 +103,15 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
 
   const handleDeleteWishlist = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (!window.confirm('Tem certeza que deseja apagar este desejo?')) return;
+    const msg = 'Tem certeza que deseja apagar este desejo?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Item dos Desejos',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     await deleteWishlistItem(id);
     if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
   };

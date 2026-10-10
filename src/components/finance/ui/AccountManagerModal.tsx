@@ -99,7 +99,15 @@ export function AccountManagerModal({
       triggerToast('Você precisa manter ao menos uma conta cadastrada.', 'error');
       return;
     }
-    if (!window.confirm(`Deseja arquivar a conta "${acc.name}"? Ela deixará de aparecer em novas transações, mas seu histórico permanecerá salvo.`)) {
+    const msg = `Deseja arquivar a conta "${acc.name}"? Ela deixará de aparecer em novas transações, mas seu histórico permanecerá salvo.`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Arquivar Conta',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) {
       return;
     }
     await onDeleteAccount(acc.id);

@@ -168,10 +168,15 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
 
     const isDesktop = !!window.api?.video;
     if (!isDesktop && webQuality !== 'original' && videoFile.size > 500 * 1024 * 1024) {
-      const confirm = window.confirm(
-        "Atenção: Converter vídeos maiores que 500MB na versão Web pode causar lentidão severa ou travamento da aba por falta de memória. Recomenda-se usar o Desktop para conversão ou marcar a qualidade como 'Original'.\n\nDeseja continuar mesmo assim?"
-      );
-      if (!confirm) {
+      const msg = "Atenção: Converter vídeos maiores que 500MB na versão Web pode causar lentidão severa ou travamento da aba por falta de memória. Recomenda-se usar o Desktop para conversão ou marcar a qualidade como 'Original'.\n\nDeseja continuar mesmo assim?";
+      const confirmed = window.api?.app?.showConfirm
+        ? (await window.api.app.showConfirm({
+            title: 'Aviso de Desempenho (Web)',
+            message: msg,
+            kind: 'warning',
+          })) === 1
+        : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      if (!confirmed) {
         setIsUploading(false);
         return;
       }

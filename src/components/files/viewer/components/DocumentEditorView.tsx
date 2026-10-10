@@ -30,12 +30,17 @@ export function DocumentEditorView({
     }
   }, [content, isSaving, onSave]);
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
     if (isDirty) {
-      const confirmDiscard = window.confirm(
-        'Você possui alterações não salvas neste documento. Deseja realmente descartá-las e voltar à visualização?'
-      );
-      if (!confirmDiscard) return;
+      const msg = 'Você possui alterações não salvas neste documento. Deseja realmente descartá-las e voltar à visualização?';
+      const confirmed = window.api?.app?.showConfirm
+        ? (await window.api.app.showConfirm({
+            title: 'Descartar Alterações',
+            message: msg,
+            kind: 'warning',
+          })) === 1
+        : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      if (!confirmed) return;
     }
     onCancel();
   }, [isDirty, onCancel]);
