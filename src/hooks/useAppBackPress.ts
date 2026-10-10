@@ -27,6 +27,13 @@ export function useAppBackPress(
       const curFloatingId = floatingPageIdRef.current;
       const curSetFloating = setFloatingPageIdRef.current;
 
+      // 0. Dispatch customizable back event allowing active subviews/modals to intercept
+      const backEvt = new CustomEvent('caderno-back-press', { cancelable: true });
+      window.dispatchEvent(backEvt);
+      if (backEvt.defaultPrevented) {
+        return true;
+      }
+
       // 1. Close floating page modal if open
       if (curFloatingId) {
         curSetFloating(null);
@@ -55,7 +62,7 @@ export function useAppBackPress(
       // 6. Check if any open modal close button exists in DOM
       if (typeof document !== 'undefined') {
         const openModalCloseBtn = document.querySelector<HTMLElement>(
-          '[role="dialog"] [aria-label="Close"], [role="dialog"] button.close-btn, .modal-close-btn, [data-testid="modal-close"]'
+          '[role="dialog"] [aria-label="Close"], [role="dialog"] [aria-label="Fechar"], [role="dialog"] button.close-btn, .modal-close-btn, [data-testid="modal-close"], [data-close-modal="true"]'
         );
         if (openModalCloseBtn) {
           openModalCloseBtn.click();

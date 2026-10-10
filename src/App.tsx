@@ -174,7 +174,7 @@ function AppContent() {
 
   if (authStatus === null) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-dark-bg text-dark-subtext relative" style={{ height: '100dvh' }}>
+      <div className="w-full max-w-full h-full flex items-center justify-center bg-dark-bg text-dark-subtext relative overflow-hidden" style={{ height: '100dvh' }}>
         <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none">
           <WindowControls />
         </div>
@@ -188,7 +188,7 @@ function AppContent() {
   }
 
   return (
-    <div className="w-screen h-screen flex bg-dark-bg text-dark-text overflow-hidden" style={{ height: '100dvh' }}>
+    <div className="w-full max-w-full h-full flex bg-dark-bg text-dark-text overflow-hidden" style={{ height: '100dvh' }}>
       {/* Sidebar */}
       {!state.isReadingModeFullScreen && (
         <Sidebar

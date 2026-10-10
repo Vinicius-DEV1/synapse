@@ -36,6 +36,9 @@ input,
 textarea,
 [contenteditable="true"],
 .selectable,
+.select-text,
+.select-text *,
+[data-selectable="true"],
 .ProseMirror,
 .ProseMirror * {
   -webkit-user-select: text !important;
@@ -55,6 +58,20 @@ aside,
   overscroll-behavior-y: contain;
 }
 
+/* Safe area utilities */
+.safe-top {
+  padding-top: max(var(--safe-area-top), env(safe-area-inset-top, 0px));
+}
+.safe-bottom {
+  padding-bottom: max(var(--safe-area-bottom), env(safe-area-inset-bottom, 0px));
+}
+.safe-left {
+  padding-left: max(var(--safe-area-left), env(safe-area-inset-left, 0px));
+}
+.safe-right {
+  padding-right: max(var(--safe-area-right), env(safe-area-inset-right, 0px));
+}
+
 /* 120Hz GPU-accelerated drawer & modal transitions */
 .animate-slide-right,
 .animate-slide-in-right,
@@ -66,8 +83,20 @@ aside,
   backface-visibility: hidden;
 }
 
-/* Tactile micro-animation on press */
+/* Discrete scrollbars and tactile micro-animation on touch screens */
 @media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+  }
+
   button:active,
   .btn-active:active {
     transform: scale(0.97);

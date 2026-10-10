@@ -67,3 +67,17 @@ export function isDesktopApp(): boolean {
 export function isMobileWebView(): boolean {
   return checkIsMobileWebView();
 }
+
+export function isTouchScreen(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    'ontouchstart' in window ||
+    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
+    (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches)
+  );
+}
+
+export function isMobileScreen(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth < 768;
+}
