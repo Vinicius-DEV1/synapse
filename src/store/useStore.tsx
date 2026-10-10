@@ -250,7 +250,7 @@ export async function syncLayoutFromDb(dispatch: React.Dispatch<Action>) {
   try {
     const dbState = await window.api.config.get('appLayoutState');
     if (dbState && typeof dbState === 'object') {
-      dispatch({ type: 'MERGE_DB_STATE', payload: dbState });
+      dispatch({ type: 'MERGE_DB_STATE', payload: dbState as Partial<AppState> });
     }
   } catch (err) {
     console.error('Failed to load layout from DB:', err);

@@ -3,8 +3,8 @@ import type { Tab, Page } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
 // Helper to auto-retry chunk download or reload if new version was deployed
-function lazyWithRetry<T extends ComponentType<any>>(
-  componentImport: () => Promise<{ default: T }>
+function lazyWithRetry<P = Record<string, unknown>>(
+  componentImport: () => Promise<{ default: ComponentType<P> }>
 ) {
   return lazy(async () => {
     try {
@@ -15,7 +15,7 @@ function lazyWithRetry<T extends ComponentType<any>>(
       if (!isRefreshed) {
         sessionStorage.setItem('chunk_retry_' + window.location.pathname, 'true');
         window.location.reload();
-        return new Promise<{ default: T }>(() => {}); // Never resolves as reload is triggered
+        return new Promise<{ default: ComponentType<P> }>(() => {}); // Never resolves as reload is triggered
       }
       throw error;
     }
@@ -26,7 +26,7 @@ type ModuleId = Tab['module'];
 
 const HomeView = lazyWithRetry(() => import('./home/HomeView'));
 const PageView = lazyWithRetry(() => import('./page-view/PageView'));
-const FinanceView = lazyWithRetry<ComponentType<{ tab?: Tab }>>(() => import('./finance/FinanceView'));
+const FinanceView = lazyWithRetry<{ tab?: Tab }>(() => import('./finance/FinanceView'));
 const LibraryView = lazyWithRetry(() => import('./library/LibraryView'));
 const CultureView = lazyWithRetry(() => import('./culture/CultureView'));
 const VideoView = lazyWithRetry(() => import('./video-player/VideoView'));

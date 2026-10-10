@@ -10,12 +10,29 @@ export default function WindowControls() {
     if (!windowService.isSupported()) return;
     setIsDesktop(true);
 
-    windowService.isMaximized().then(setIsMaximized).catch(() => {});
+    let isMounted = true;
+    windowService
+      .isMaximized()
+      .then((maximized) => {
+        if (isMounted) setIsMaximized(maximized);
+      })
+      .catch((err) => {
+        console.warn('[WindowControls] Failed to query maximized state on mount:', err);
+      });
+
     const cleanup = windowService.onResized(() => {
-      windowService.isMaximized().then(setIsMaximized).catch(() => {});
+      windowService
+        .isMaximized()
+        .then((maximized) => {
+          if (isMounted) setIsMaximized(maximized);
+        })
+        .catch((err) => {
+          console.warn('[WindowControls] Failed to query maximized state on resize:', err);
+        });
     });
 
     return () => {
+      isMounted = false;
       cleanup();
     };
   }, []);
