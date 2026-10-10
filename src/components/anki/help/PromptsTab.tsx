@@ -32,25 +32,35 @@ export function PromptsTab() {
     try {
       await saveAiPrompt(activePromptModule, 'anki', promptContent);
       triggerToast('Prompt salvo com sucesso! O sistema usará essa instrução a partir de agora.', 'success');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      triggerToast(e.message || 'Erro ao salvar prompt.', 'error');
+      const msg = e instanceof Error ? e.message : 'Erro ao salvar prompt.';
+      triggerToast(msg, 'error');
     } finally {
       setIsSavingPrompt(false);
     }
   };
 
   const handleRestorePrompt = async () => {
-    if (!confirm('Deseja realmente restaurar o prompt padrão? Todas as suas edições para este módulo serão perdidas.')) return;
+    const msg = 'Deseja realmente restaurar o prompt padrão? Todas as suas edições para este módulo serão perdidas.';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Restaurar Prompt Padrão',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     setIsSavingPrompt(true);
     try {
       const db = await getWebDb();
       await db.delete('ai_prompts', activePromptModule);
       await loadPrompt();
       triggerToast('Prompt restaurado para o padrão de fábrica.', 'info');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      triggerToast(e.message || 'Erro ao restaurar prompt.', 'error');
+      const msg = e instanceof Error ? e.message : 'Erro ao restaurar prompt.';
+      triggerToast(msg, 'error');
     } finally {
       setIsSavingPrompt(false);
     }

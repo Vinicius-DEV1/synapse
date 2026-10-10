@@ -178,7 +178,13 @@ export function useVault() {
   }, [selectedGroupId, loadData]);
 
   const handleDeleteGroup = useCallback(async (group: VaultGroup) => {
-    if (window.confirm(`Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`)) {
+    const msg = `Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm(msg)) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function'
+      ? window.confirm(msg)
+      : false;
+    if (confirmed) {
       await deleteGroup(group.id);
     }
   }, [deleteGroup]);
@@ -190,17 +196,22 @@ export function useVault() {
   }, []);
 
   const handleDeleteItem = useCallback(async (id: string) => {
-    if (window.confirm('Tem certeza que deseja apagar este item?')) {
-      try {
-        await window.api?.vault?.deleteItem(id);
-        setSelectedItem(null);
-        triggerToast('Item excluído do cofre.', 'info');
-        await loadData();
-      } catch (error: unknown) {
-        const message = getErrorMessage(error, 'Erro ao excluir item do cofre');
-        console.error('[Vault] Error deleting item:', error);
-        triggerToast(message, 'error');
-      }
+    const msg = 'Tem certeza que deseja apagar este item do cofre?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm(msg)) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function'
+      ? window.confirm(msg)
+      : false;
+    if (!confirmed) return;
+    try {
+      await window.api?.vault?.deleteItem(id);
+      setSelectedItem(null);
+      triggerToast('Item excluído do cofre.', 'info');
+      await loadData();
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, 'Erro ao excluir item do cofre');
+      console.error('[Vault] Error deleting item:', error);
+      triggerToast(message, 'error');
     }
   }, [loadData]);
 

@@ -1,34 +1,48 @@
 import { useState, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 
 interface RenamePageModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentTitle: string;
-  onRename: (newTitle: string) => void;
+  onRename: (newTitle: string) => void | Promise<void>;
 }
 
 export default function RenamePageModal({ isOpen, onClose, currentTitle, onRename }: RenamePageModalProps) {
   const [newTitle, setNewTitle] = useState(currentTitle);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setNewTitle(currentTitle);
+      setIsSubmitting(false);
     }
   }, [isOpen, currentTitle]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const trimmed = newTitle.trim();
     if (trimmed && trimmed !== currentTitle) {
-      onRename(trimmed);
+      try {
+        setIsSubmitting(true);
+        const res = onRename(trimmed);
+        if (res instanceof Promise) {
+          await res;
+        }
+      } catch (err) {
+        console.error('[RenamePageModal] Error renaming page:', err);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
     onClose();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && !isSubmitting) {
       onClose();
     }
   };
@@ -73,17 +87,27 @@ export default function RenamePageModal({ isOpen, onClose, currentTitle, onRenam
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={!newTitle.trim()}
+              disabled={isSubmitting || !newTitle.trim()}
               className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
             >
-              <Check size={16} />
-              Renomear
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Renomeando...
+                </>
+              ) : (
+                <>
+                  <Check size={16} />
+                  Renomear
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -19,6 +19,7 @@ import { tauriDiagramsApi } from './api/tauri/diagrams';
 import { tauriNotificationsApi } from './api/tauri/notifications';
 import { tauriQuizApi } from './api/tauri/quiz';
 import { tauriHabitsApi } from './api/tauri/habits';
+import { tauriAppApi } from './api/tauri/app';
 
 const syncCallbacks = new Set<() => void>();
 let isGlobalSyncTriggerAttached = false;
@@ -46,6 +47,9 @@ export const createTauriApi = async () => {
         syncCallbacks.delete(callback);
       };
     },
+
+    // --- APP & WINDOWS ---
+    app: tauriAppApi,
 
     // --- AUTH ---
     auth: tauriAuthApi,

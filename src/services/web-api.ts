@@ -21,6 +21,7 @@ import { createWebConfigApi } from '../api/web/config';
 import { createWebNotesApi } from '../api/web/notes';
 import { webQuizApi } from '../api/web/quiz';
 import { webHabitsApi } from '../api/web/habits';
+import { createWebAppApi } from '../api/web/app';
 
 // Helper function for ID generation
 const generateId = () => crypto.randomUUID();
@@ -63,6 +64,9 @@ export const createWebApiMock = async () => {
         syncCallbacks = syncCallbacks.filter(cb => cb !== callback);
       };
     },
+
+    // --- APP & WINDOWS ---
+    app: createWebAppApi(),
 
     // --- CONFIG ---
     config: createWebConfigApi(db),

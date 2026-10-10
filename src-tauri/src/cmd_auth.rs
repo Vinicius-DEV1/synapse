@@ -112,18 +112,24 @@ pub async fn auth_login(
                 core_enc: row.get::<_, Option<String>>(11).unwrap_or(None),
             })
         }) {
-            Ok(r) => r,
-            Err(rusqlite::Error::QueryReturnedNoRows) => {
-                return Ok(LoginResponse {
-                    success: false,
-                    error: Some("Senha incorreta".into()),
-                    modules: vec![],
-                    keys: None,
-                });
-            }
+            Ok(r) => Some(r),
+            Err(rusqlite::Error::QueryReturnedNoRows) => None,
             Err(e) => return Err(e.to_string()),
         }
     }; // guard dropped here
+
+    let keychain_row = match keychain_row {
+        Some(r) => r,
+        None => {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            return Ok(LoginResponse {
+                success: false,
+                error: Some("Senha incorreta".into()),
+                modules: vec![],
+                keys: None,
+            });
+        }
+    };
 
     let auth_hash = hash_auth_password(&password);
     let modern_key = derive_key_from_password(&password);
@@ -147,6 +153,7 @@ pub async fn auth_login(
     }
 
     if !is_valid {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         return Ok(LoginResponse {
             success: false,
             error: Some("Senha incorreta".into()),

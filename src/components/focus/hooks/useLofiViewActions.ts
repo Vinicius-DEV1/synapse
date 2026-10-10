@@ -143,7 +143,15 @@ export function useLofiViewActions({
 
   const handleDeleteCompletely = async (lofi: LofiItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Tem certeza que deseja mover para a Lixeira o lofi "${lofi.title}"?`)) {
+    const msg = `Tem certeza que deseja mover para a Lixeira o lofi "${lofi.title}"?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Mover para a Lixeira',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) {
       setDeletingId(null);
       return;
     }
@@ -166,7 +174,15 @@ export function useLofiViewActions({
 
   const handleDeleteLocal = async (lofi: LofiItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Tem certeza que deseja apagar LOCALMENTE o lofi "${lofi.title}"?`)) {
+    const msg = `Tem certeza que deseja apagar LOCALMENTE o lofi "${lofi.title}"?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Apagar Arquivo Local',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) {
       setDeletingId(null);
       return;
     }

@@ -9,8 +9,8 @@ export function triggerHaptic(style: HapticStyle = 'light'): void {
   try {
     if (typeof window === 'undefined') return;
 
-    if ((window as any).ReactNativeWebView?.postMessage) {
-      (window as any).ReactNativeWebView.postMessage(
+    if (window.ReactNativeWebView?.postMessage) {
+      window.ReactNativeWebView.postMessage(
         JSON.stringify({
           type: 'HAPTIC',
           payload: { style },

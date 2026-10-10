@@ -272,6 +272,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           <iframe
             src={objectUrl}
             title={item.name}
+            sandbox="allow-scripts allow-forms"
             className="w-full h-full border-none bg-white"
           />
         ) : (

@@ -70,7 +70,15 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
 
   const handleBulkDelete = async () => {
     if (!window.api?.library || selectedIds.size === 0) return;
-    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.size} livros?`)) return;
+    const msg = `Tem certeza que deseja excluir ${selectedIds.size} livros?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Livros',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     try {
       const count = selectedIds.size;
       for (const id of selectedIds) {

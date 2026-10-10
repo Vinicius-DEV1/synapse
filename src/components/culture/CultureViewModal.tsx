@@ -63,14 +63,21 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
   };
 
   const handleDelete = async () => {
-    if (confirm(`Tem certeza que deseja excluir "${currentItem.title}" do seu acervo?`)) {
-      try {
-        await CultureService.deleteItem(currentItem.id);
-        onUpdate?.();
-        onClose();
-      } catch (err) {
-        console.error('[CultureViewModal] Erro ao excluir:', err);
-      }
+    const msg = `Tem certeza que deseja excluir "${currentItem.title}" do seu acervo?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Obra Cultural',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
+    try {
+      await CultureService.deleteItem(currentItem.id);
+      onUpdate?.();
+      onClose();
+    } catch (err) {
+      console.error('[CultureViewModal] Erro ao excluir:', err);
     }
   };
 

@@ -12,19 +12,29 @@ export function BackupAndWipeSection() {
           triggerToast('Erro ao salvar backup: ' + (res.error || 'Falha'), 'error');
         }
       }
-    } catch (err: any) {
-      triggerToast('Erro inesperado: ' + err.message, 'error');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Falha desconhecida';
+      triggerToast('Erro inesperado: ' + errorMsg, 'error');
     }
   };
 
   const handleWipeLocalData = async () => {
-    if (!confirm('ATENÇÃO: Deseja realmente apagar TODOS os dados locais (banco de dados e arquivos de mídia)?\n\nIsso NÃO apagará seus dados da nuvem. O aplicativo será reiniciado e fará o download de tudo novamente.')) return;
+    const msg = 'ATENÇÃO: Deseja realmente apagar TODOS os dados locais (banco de dados e arquivos de mídia)?\n\nIsso NÃO apagará seus dados da nuvem. O aplicativo será reiniciado e fará o download de tudo novamente.';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Apagar Dados Locais',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     try {
       if (window.api?.auth?.wipeLocalData) {
         await window.api.auth.wipeLocalData();
       }
-    } catch (err: any) {
-      triggerToast('Erro ao limpar dados locais: ' + err.message, 'error');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Falha ao limpar dados';
+      triggerToast('Erro ao limpar dados locais: ' + errorMsg, 'error');
     }
   };
 

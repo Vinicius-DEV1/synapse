@@ -35,12 +35,19 @@ export function AnnotationsTab({
   onDelete,
   onNavigate,
 }: AnnotationsTabProps) {
-  const handleRestorePdf = () => {
-    if (confirm('Tem certeza de que deseja apagar TODAS as anotações deste PDF? Isso restaurará o PDF ao seu estado original.')) {
-      groupedHighlights.forEach(items => {
-        items.forEach(h => onDelete(h.id));
-      });
-    }
+  const handleRestorePdf = async () => {
+    const msg = 'Tem certeza de que deseja apagar TODAS as anotações deste PDF? Isso restaurará o PDF ao seu estado original.';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Restaurar PDF Original',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
+    groupedHighlights.forEach(items => {
+      items.forEach(h => onDelete(h.id));
+    });
   };
 
   return (

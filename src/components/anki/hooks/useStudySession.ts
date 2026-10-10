@@ -121,7 +121,15 @@ export function useStudySession(deckId: string) {
   const handleDeleteCard = useCallback(async () => {
     const card = cards[currentIndex];
     if (!card) return;
-    if (window.confirm('Tem certeza que deseja excluir este cartão definitivamente?')) {
+    const msg = 'Tem certeza que deseja excluir este cartão definitivamente?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Cartão',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (confirmed) {
       if (window.api?.anki) {
         await window.api.anki.deleteCard(card.id);
         loadDueCards();

@@ -42,7 +42,7 @@ export function ScrapDeleteModal({
       onConfirmDelete();
       triggerToast('Snapshot web excluído com sucesso.', 'success');
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[ScrapDeleteModal] Erro ao excluir snapshot:', err);
       // Mesmo com erro parcial no drive, remove da nota para não travar o usuário
       onConfirmDelete();

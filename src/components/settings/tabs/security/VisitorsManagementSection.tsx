@@ -59,16 +59,25 @@ export function VisitorsManagementSection() {
           triggerToast(res.error || 'Erro ao criar visitante', 'error');
         }
       }
-    } catch (err: any) {
-      setPwdError(err.message);
-      triggerToast(err.message || 'Erro ao criar visitante', 'error');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao criar visitante';
+      setPwdError(errorMsg);
+      triggerToast(errorMsg, 'error');
     } finally {
       setVisitorLoading(false);
     }
   };
 
   const handleDeleteVisitor = async (id: string) => {
-    if (!confirm('Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.')) return;
+    const msg = 'Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Senha Extra',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     try {
       const res = await window.api.auth.deleteVisitor(id);
       if (res.success) {
@@ -77,8 +86,9 @@ export function VisitorsManagementSection() {
       } else {
         triggerToast(res.error || 'Erro ao deletar visitante', 'error');
       }
-    } catch (err: any) {
-      triggerToast(err.message || 'Erro ao deletar visitante', 'error');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao deletar visitante';
+      triggerToast(errorMsg, 'error');
     }
   };
 

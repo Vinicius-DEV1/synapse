@@ -1,4 +1,4 @@
-import { Save, RefreshCw, Star, Eye, EyeOff } from 'lucide-react';
+import { Save, RefreshCw, Star, Eye, EyeOff, Loader2 } from 'lucide-react';
 import type { VaultItem, VaultGroup } from '../../types';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultCustomFieldsEditor } from './ui/VaultCustomFieldsEditor';
@@ -44,6 +44,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
     checkStrength,
     generatePassword,
     handleSave,
+    isSaving,
   } = useVaultItemFormLogic({ item, groupId, onSave });
 
   return (
@@ -63,7 +64,8 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
             <button 
               type="button"
               onClick={() => setIsFavorite(!isFavorite)}
-              className={`p-2 rounded-xl border transition-colors ${isFavorite ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-black/20 border-white/5 text-dark-subtext hover:text-dark-text'}`}
+              disabled={isSaving}
+              className={`p-2 rounded-xl border transition-colors ${isFavorite ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-black/20 border-white/5 text-dark-subtext hover:text-dark-text'} disabled:opacity-50`}
               title={isFavorite ? "Remover dos Favoritos" : "Marcar como Favorito"}
             >
               <Star size={18} fill={isFavorite ? "currentColor" : "none"} />
@@ -71,16 +73,28 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
             <button 
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 bg-dark-card border border-white/5 hover:bg-white/5 text-dark-text rounded-xl text-sm transition-colors"
+              disabled={isSaving}
+              className="px-4 py-2 bg-dark-card border border-white/5 hover:bg-white/5 text-dark-text rounded-xl text-sm transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button 
               type="button"
               onClick={handleSave}
-              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2"
+              disabled={isSaving || !label.trim()}
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2"
             >
-              <Save size={16} /> Salvar
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  <span>Salvar</span>
+                </>
+              )}
             </button>
           </div>
         </div>

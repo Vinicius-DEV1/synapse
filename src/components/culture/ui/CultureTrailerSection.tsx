@@ -147,6 +147,7 @@ export const CultureTrailerSection = memo(function CultureTrailerSection({
           <iframe
             src={getYoutubeEmbedUrl(trailer.youtubeId, true)}
             title={`Trailer oficial de ${title}`}
+            sandbox="allow-scripts allow-presentation allow-same-origin"
             className="w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen

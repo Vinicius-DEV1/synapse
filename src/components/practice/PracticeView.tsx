@@ -80,9 +80,11 @@ export default function PracticeView() {
     e.stopPropagation();
     if (!window.api?.practice) return;
     
-    const isConfirm = window.api.app?.showConfirm
-      ? (await window.api.app.showConfirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados)')) === 1
-      : confirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados do disco)');
+    const isConfirm = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados do disco)')) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function'
+      ? window.confirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados do disco)')
+      : false;
     
     if (!isConfirm) return;
 

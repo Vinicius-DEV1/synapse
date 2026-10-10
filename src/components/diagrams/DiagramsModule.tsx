@@ -48,17 +48,24 @@ export default function DiagramsModule() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm("Tem certeza que deseja apagar este diagrama?")) {
-      if (window.api?.diagrams) {
-        try {
-          await window.api.diagrams.delete(id);
-          if (activeDiagram?.id === id) setActiveDiagram(null);
-          loadDiagrams();
-          triggerToast('Diagrama excluído com sucesso.', 'info');
-        } catch (e: unknown) {
-          console.error(e);
-          triggerToast(e instanceof Error ? e.message : 'Erro ao excluir diagrama', 'error');
-        }
+    const msg = 'Tem certeza que deseja apagar este diagrama?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Diagrama',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
+    if (window.api?.diagrams) {
+      try {
+        await window.api.diagrams.delete(id);
+        if (activeDiagram?.id === id) setActiveDiagram(null);
+        loadDiagrams();
+        triggerToast('Diagrama excluído com sucesso.', 'info');
+      } catch (e: unknown) {
+        console.error(e);
+        triggerToast(e instanceof Error ? e.message : 'Erro ao excluir diagrama', 'error');
       }
     }
   };

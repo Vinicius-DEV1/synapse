@@ -7,7 +7,9 @@ declare global {
     __TAURI__?: unknown;
     __TAURI_IPC__?: unknown;
     __CADERNO_MOBILE_WEBVIEW__?: boolean;
-    ReactNativeWebView?: unknown;
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
   }
 }
 

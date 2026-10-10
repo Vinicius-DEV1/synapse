@@ -137,6 +137,18 @@ export interface SyncApi {
   push?: (type: string) => void;
 }
 
+export interface AnkiImportStats {
+  decksCreated: number;
+  decksUpdated: number;
+  decksIgnored: number;
+  notesCreated: number;
+  notesUpdated: number;
+  notesIgnored: number;
+  cardsCreated: number;
+  cardsUpdated: number;
+  cardsIgnored: number;
+}
+
 export interface AnkiApi {
   getDecks: () => Promise<{ success: boolean; decks: AnkiDeckRecord[]; error?: string }>;
   createDeck: (name: string, desc?: string, parentId?: string | null) => Promise<{ success: boolean; id?: string; error?: string }>;
@@ -158,7 +170,7 @@ export interface AnkiApi {
   migrateToNotes?: () => Promise<{ success: boolean; migratedCount?: number; error?: string }>;
   updateDeckSettings?: (deckId: string, settings: Partial<AnkiDeckSettings>) => Promise<{ success: boolean; error?: string }>;
   getDeckSettings?: (deckId: string) => Promise<AnkiDeckSettings>;
-  importDeck?: (payload: { decks?: AnkiDeckRecord[]; notes?: AnkiNoteRecord[]; cards?: AnkiCardRecord[] } | unknown) => Promise<{ success: boolean; stats?: any; error?: string }>;
+  importDeck?: (payload: { decks?: AnkiDeckRecord[]; notes?: AnkiNoteRecord[]; cards?: AnkiCardRecord[] } | unknown) => Promise<{ success: boolean; stats?: AnkiImportStats; error?: string }>;
   exportDeckRecursive?: (deckId: string) => Promise<{ success: boolean; payload?: { decks: AnkiDeckRecord[]; notes: AnkiNoteRecord[]; cards: AnkiCardRecord[] }; error?: string }>;
   getReviews?: (deckId?: string, limit?: number) => Promise<{ success: boolean; reviews: AnkiReviewRecord[]; error?: string }>;
   getCardIntervals?: (cardId: string) => Promise<{ success: boolean; intervals?: string[]; error?: string }>;
@@ -172,7 +184,7 @@ export interface ICadernoAPI {
     minimize: () => void;
     maximize: () => void;
     getPathForFile: (file: File) => string;
-    showConfirm: (message: string) => Promise<number>;
+    showConfirm: (optionsOrMessage: string | { message: string; title?: string; kind?: 'info' | 'warning' | 'error' }) => Promise<number>;
     openFocusWindow: () => Promise<void>;
     /** Toggles fullscreen mode (Tauri only). Optional on web builds. */
     toggleFullScreen?: () => void;

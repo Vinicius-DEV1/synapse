@@ -136,7 +136,15 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
   };
 
   const handleRemoveSubtitle = async (trackId: string, label: string) => {
-    if (!window.confirm(`Deseja realmente remover a legenda "${label}"?`)) return;
+    const msg = `Deseja realmente remover a legenda "${label}"?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Remover Legenda',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
 
     try {
       setIsProcessingSub(true);

@@ -62,7 +62,15 @@ export function useTrash() {
   }, [dispatch]);
 
   const handleHardDelete = useCallback(async (item: TrashItem) => {
-    if (!confirm(`Excluir permanentemente "${item.title}"? Esta ação não pode ser desfeita.`)) return;
+    const msg = `Excluir permanentemente "${item.title}"? Esta ação não pode ser desfeita.`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Permanentemente',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     
     setProcessingId(item.id);
     try {

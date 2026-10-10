@@ -101,7 +101,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   }, []);
 
   const handleDeleteSelected = async () => {
-    if (!window.confirm(`Tem certeza que deseja excluir ${selectedIds.size} cartões?`)) return;
+    const msg = `Tem certeza que deseja excluir ${selectedIds.size} cartões?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Cartões',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     if (window.api?.anki) {
       await window.api.anki.deleteCardsBulk(Array.from(selectedIds));
       clearSelection();
@@ -110,7 +118,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   };
 
   const handleMoveSelected = async (targetDeckId: string) => {
-    if (!window.confirm(`Mover ${selectedIds.size} cartões para o baralho selecionado?`)) return;
+    const msg = `Mover ${selectedIds.size} cartões para o baralho selecionado?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Mover Cartões',
+          message: msg,
+          kind: 'info',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     const ankiApi = window.api?.anki;
     if (ankiApi) {
       await Promise.all(
@@ -124,7 +140,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   };
 
   const handleDeleteCard = async (id: string) => {
-    if (!window.confirm('ATENÇÃO: A exclusão de um cartão do tipo "Completar" (Cloze) apagará também todos os outros cartões criados a partir do mesmo texto original.\n\nDeseja excluir a nota original inteira?')) return;
+    const msg = 'ATENÇÃO: A exclusão de um cartão do tipo "Completar" (Cloze) apagará também todos os outros cartões criados a partir do mesmo texto original.\n\nDeseja excluir a nota original inteira?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Cartão',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     if (window.api?.anki) {
       await window.api.anki.deleteCard(id);
       loadCards();
@@ -147,7 +171,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   };
 
   const handleDeleteDeck = async () => {
-    if (!window.confirm(`ATENÇÃO! Tem certeza que deseja excluir o baralho "${deck.name}" e TODOS os seus cartões?`)) return;
+    const msg = `ATENÇÃO! Tem certeza que deseja excluir o baralho "${deck.name}" e TODOS os seus cartões?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Baralho',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     if (window.api?.anki) {
       await window.api.anki.deleteDeck(deck.id);
       triggerToast(`Baralho "${deck.name}" excluído.`, 'info');
@@ -156,7 +188,15 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
   };
 
   const handleResetProgress = async () => {
-    if (!window.confirm(`ATENÇÃO! Isso apagará o histórico de estudos e voltará TODOS os cartões para o estado "Novo". Deseja realmente resetar o progresso do baralho "${deck.name}"?`)) return;
+    const msg = `ATENÇÃO! Isso apagará o histórico de estudos e voltará TODOS os cartões para o estado "Novo". Deseja realmente resetar o progresso do baralho "${deck.name}"?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Resetar Progresso',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     if (window.api?.anki?.resetDeckProgress) {
       const res = await window.api.anki.resetDeckProgress(deck.id);
       if (res.success) {

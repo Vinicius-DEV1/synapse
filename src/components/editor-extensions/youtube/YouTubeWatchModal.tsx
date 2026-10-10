@@ -194,6 +194,8 @@ export default function YouTubeWatchModal({
             {isUsingEmbedFallback && videoId && (
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+                title="Player do YouTube"
+                sandbox="allow-scripts allow-presentation allow-same-origin"
                 className="w-full h-full border-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

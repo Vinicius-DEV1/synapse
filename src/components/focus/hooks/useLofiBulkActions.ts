@@ -93,7 +93,15 @@ export function useLofiBulkActions({
   };
 
   const handleBulkDeleteCompletely = async () => {
-    if (!confirm(`Tem certeza que deseja mover para a Lixeira ${selectedIds.size} lofi(s)?`)) return;
+    const msg = `Tem certeza que deseja mover para a Lixeira ${selectedIds.size} lofi(s)?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Mover Lofis para a Lixeira',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     const ids = Array.from(selectedIds);
     let count = 0;
     for (const id of ids) {
@@ -120,7 +128,15 @@ export function useLofiBulkActions({
   };
 
   const handleBulkDeleteLocal = async () => {
-    if (!confirm(`Tem certeza que deseja apagar LOCALMENTE ${selectedIds.size} lofi(s)?`)) return;
+    const msg = `Tem certeza que deseja apagar LOCALMENTE ${selectedIds.size} lofi(s)?`;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Apagar Lofis Locais',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) return;
     const ids = Array.from(selectedIds);
     let count = 0;
     for (const id of ids) {

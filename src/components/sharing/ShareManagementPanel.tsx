@@ -79,7 +79,15 @@ export const ShareManagementPanel: React.FC = () => {
   };
 
   const handleDelete = async (shareId: string) => {
-    if (!window.confirm('Tem certeza de que deseja excluir definitivamente este link de compartilhamento?')) {
+    const msg = 'Tem certeza de que deseja excluir definitivamente este link de compartilhamento?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Excluir Link Compartilhado',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) {
       return;
     }
     try {
@@ -92,7 +100,15 @@ export const ShareManagementPanel: React.FC = () => {
   };
 
   const handleRevokeAll = async () => {
-    if (!window.confirm('Atenção: deseja pausar/revogar TODOS os seus links de compartilhamento ativos?')) {
+    const msg = 'Atenção: deseja pausar/revogar TODOS os seus links de compartilhamento ativos?';
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm({
+          title: 'Revogar Todos os Links',
+          message: msg,
+          kind: 'warning',
+        })) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+    if (!confirmed) {
       return;
     }
     try {
