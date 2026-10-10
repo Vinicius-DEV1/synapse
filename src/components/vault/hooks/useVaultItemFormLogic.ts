@@ -47,12 +47,16 @@ export function useVaultItemFormLogic({
     }
   }, [item?.password, checkStrength]);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleSave = async () => {
+    if (isSaving) return;
     if (!label.trim()) {
       triggerToast('O item precisa de um nome (Rótulo).', 'error');
       return;
     }
 
+    setIsSaving(true);
     try {
       const isGoogle = loginType === 'google';
       const itemToSave: VaultItem = {
@@ -82,6 +86,8 @@ export function useVaultItemFormLogic({
       const message = err instanceof Error ? err.message : 'Erro ao salvar item no cofre.';
       console.error('[Vault] Error saving vault item:', err);
       triggerToast(message, 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -131,5 +137,6 @@ export function useVaultItemFormLogic({
     checkStrength,
     generatePassword,
     handleSave,
+    isSaving,
   };
 }

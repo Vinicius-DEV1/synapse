@@ -5,6 +5,9 @@ declare global {
     api: ICadernoAPI;
     __TAURI_INTERNALS__?: Record<string, unknown>;
     __cadernoModuleKeys?: Record<string, unknown>;
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
     /**
      * Pending encrypted image files waiting for upload to finish, keyed by
      * temporary ID (`uploading_...`). Populated in `useEditorDropPaste` and

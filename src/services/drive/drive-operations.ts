@@ -11,12 +11,14 @@ const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploa
  */
 export async function decryptDriveFileId(fileId: string): Promise<string> {
   if (fileId && fileId.includes(':') && fileId.split(':').length === 3) {
-    const keys = (window as any).__cadernoModuleKeys;
+    const keys = window.__cadernoModuleKeys as Record<string, CryptoKey | string> | undefined;
     if (!keys) return fileId;
     
     for (const mod of Object.keys(keys)) {
        try {
-         const hex = await exportKeyToHex(keys[mod]);
+         const keyVal = keys[mod];
+         if (!keyVal) continue;
+         const hex = typeof keyVal === 'string' ? keyVal : await exportKeyToHex(keyVal);
          const decrypted = await decryptVaultField(fileId, hex);
          if (decrypted && !decrypted.includes(':')) {
            return decrypted;

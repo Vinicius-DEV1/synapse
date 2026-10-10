@@ -100,6 +100,7 @@ function FloatingPdfViewerContent({ item, onClose, onExpand }: FloatingPdfViewer
               src={`${objectUrl}#toolbar=0&navpanes=0&scrollbar=1`} 
               className="w-full h-full border-none bg-white"
               title={item.name}
+              sandbox="allow-scripts allow-forms"
             />
           )}
         </div>

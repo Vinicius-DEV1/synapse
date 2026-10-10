@@ -11,6 +11,8 @@ describe('web-api service (IndexedDB implementation)', () => {
   it('creates and returns the full web API mock implementation', async () => {
     const api = await createWebApiMock();
 
+    expect(api.app).toBeDefined();
+    expect(typeof api.app.showConfirm).toBe('function');
     expect(api.finance).toBeDefined();
     expect(api.library).toBeDefined();
     expect(api.culture).toBeDefined();

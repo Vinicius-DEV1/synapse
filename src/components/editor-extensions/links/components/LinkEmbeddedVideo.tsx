@@ -22,6 +22,8 @@ export default function LinkEmbeddedVideo({ url }: LinkEmbeddedVideoProps) {
     >
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0${origin}`}
+        title="Vídeo incorporado do YouTube"
+        sandbox="allow-scripts allow-presentation allow-same-origin"
         className="w-full h-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen

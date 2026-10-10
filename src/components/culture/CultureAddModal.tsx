@@ -106,7 +106,13 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
   };
 
   const handleDelete = async () => {
-    if (!itemToEdit || !window.confirm('Tem certeza que deseja excluir esta obra?')) return;
+    if (!itemToEdit) return;
+    const confirmed = window.api?.app?.showConfirm
+      ? (await window.api.app.showConfirm(`Tem certeza que deseja excluir "${itemToEdit.title}"?`)) === 1
+      : typeof window !== 'undefined' && typeof window.confirm === 'function'
+      ? window.confirm(`Tem certeza que deseja excluir "${itemToEdit.title}"?`)
+      : false;
+    if (!confirmed) return;
     setIsSaving(true);
     try {
       await CultureService.deleteItem(itemToEdit.id);

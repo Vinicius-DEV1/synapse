@@ -14,6 +14,8 @@ describe('tauri-api bridge (Desktop Native IPC)', () => {
   it('creates Tauri API client with all domain sub-APIs', async () => {
     const api = await createTauriApi();
 
+    expect(api.app).toBeDefined();
+    expect(typeof api.app.showConfirm).toBe('function');
     expect(api.auth).toBeDefined();
     expect(api.finance).toBeDefined();
     expect(api.library).toBeDefined();

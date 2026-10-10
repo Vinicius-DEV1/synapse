@@ -159,7 +159,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const handleDeleteLocal = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
       await window.api.app.showConfirm(`Deseja excluir '${video.title}' apenas deste computador? O vídeo permanecerá seguro no seu Google Drive.`) 
-      : 1;
+      : 0;
       
     if (confirm !== 1) return;
 
@@ -187,7 +187,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const handleDeleteCloud = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
       await window.api.app.showConfirm(`Tem certeza que deseja excluir totalmente '${video.title}'? Todos os arquivos do computador (vídeo, áudios, legendas) e do Google Drive serão apagados permanentemente.`) 
-      : 1;
+      : 0;
 
     if (confirm !== 1) return;
 
