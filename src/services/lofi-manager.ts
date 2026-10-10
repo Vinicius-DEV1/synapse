@@ -200,8 +200,8 @@ export function revokeLofiUrl(url: string): void {
   if (url && url.startsWith('blob:')) {
     try {
       URL.revokeObjectURL(url);
-    } catch {
-      // Ignore revocation errors if URL is already released
+    } catch (err) {
+      console.warn('[lofi-manager] Failed to revoke blob URL:', err);
     }
   }
 }

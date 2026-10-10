@@ -142,7 +142,8 @@ export const webFinanceApi = (db: IDatabaseDriver, generateId: () => string): Fi
     let all: SoftDeletable<Account>[];
     try {
       all = await db.getAll<SoftDeletable<Account>>('finance_accounts');
-    } catch {
+    } catch (err) {
+      console.warn('[webFinanceApi] Failed to load finance_accounts, falling back to empty list:', err);
       all = [];
     }
     const nonDeleted = all.filter((a): a is SoftDeletable<Account> => Boolean(a && !a.deleted_at));
@@ -161,7 +162,8 @@ export const webFinanceApi = (db: IDatabaseDriver, generateId: () => string): Fi
       try {
         await db.put<SoftDeletable<Account>>('finance_accounts', defaultAccount);
         return [defaultAccount];
-      } catch {
+      } catch (err) {
+        console.warn('[webFinanceApi] Failed to persist default finance account:', err);
         return [defaultAccount];
       }
     }

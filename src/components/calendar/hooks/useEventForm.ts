@@ -35,7 +35,8 @@ export function useEventForm(
       } else if (typeof event.reminders === 'string') {
         try {
           remArray = JSON.parse(event.reminders);
-        } catch {
+        } catch (err) {
+          console.warn('[useEventForm] Failed to parse reminders JSON, falling back to defaults:', err);
           remArray = [1440, 120, 15];
         }
       }
