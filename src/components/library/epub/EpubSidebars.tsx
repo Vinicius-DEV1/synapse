@@ -39,10 +39,16 @@ export default function EpubSidebars() {
           if (typeof locCfi === 'string') {
             const excl = locCfi.indexOf('!');
             if (excl !== -1) {
-              const base = locCfi.slice(8, excl + 1); // strip "epubcfi("
-              if (!cfiBaseToPage.has(base)) {
-                cfiBaseToPage.set(base, i + 1);
-              }
+              const rawBase = locCfi.slice(8, excl); // strip "epubcfi(" up to "!"
+              const norm = rawBase.replace(/!$/, '');
+              const withExcl = `${norm}!`;
+              const noId = norm.replace(/\[.*?\]/g, '');
+              const noIdWithExcl = `${noId}!`;
+
+              if (!cfiBaseToPage.has(norm)) cfiBaseToPage.set(norm, i + 1);
+              if (!cfiBaseToPage.has(withExcl)) cfiBaseToPage.set(withExcl, i + 1);
+              if (!cfiBaseToPage.has(noId)) cfiBaseToPage.set(noId, i + 1);
+              if (!cfiBaseToPage.has(noIdWithExcl)) cfiBaseToPage.set(noIdWithExcl, i + 1);
             }
           }
         }
@@ -60,12 +66,14 @@ export default function EpubSidebars() {
           spine?.spineItems?.find(s => s.href && (s.href === cleanHref || cleanHref.endsWith(s.href) || s.href.endsWith(cleanHref)));
 
         if (section?.cfiBase) {
-          const mapped = cfiBaseToPage.get(section.cfiBase);
+          const norm = section.cfiBase.replace(/!$/, '');
+          const noId = norm.replace(/\[.*?\]/g, '');
+          const mapped = cfiBaseToPage.get(norm) ?? cfiBaseToPage.get(noId) ?? cfiBaseToPage.get(`${norm}!`);
           if (mapped !== undefined) {
             page = mapped;
           } else {
             try {
-              const fullCfi = `epubcfi(${section.cfiBase}/2/1:0)`;
+              const fullCfi = `epubcfi(${norm}!/4/2/1:0)`;
               const loc = epubBook.locations.locationFromCfi(fullCfi);
               if (typeof loc === 'number' && loc >= 0) {
                 page = loc + 1;
