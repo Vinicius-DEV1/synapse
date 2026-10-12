@@ -155,6 +155,16 @@ function AppContent() {
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
   }, [state.activeTabId]);
 
+  // If user switches away from a book in the library, ensure reading mode fullscreen is exited
+  useEffect(() => {
+    const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+    if (!currentTab || currentTab.module !== 'library' || !currentTab.bookTitle) {
+      if (state.isReadingModeFullScreen) {
+        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
+      }
+    }
+  }, [state.activeTabId, state.tabs, state.isReadingModeFullScreen, dispatch]);
+
   const pageHistoryRef = useRef<string[]>([]);
   const lastPageIdRef = useRef<string | null>(null);
 

@@ -7,11 +7,20 @@ vi.mock('epubjs', () => ({
   default: vi.fn(),
 }));
 
+const mockDispatch = vi.fn();
+
 vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(() => ({
     state: { isReadingModeFullScreen: false },
-    dispatch: vi.fn(),
+    dispatch: mockDispatch,
   })),
+}));
+
+vi.mock('../../../services/platform', () => ({
+  isMobileScreen: vi.fn(() => false),
+  platform: {
+    platform: 'web',
+  },
 }));
 
 vi.mock('../../../utils/settings', () => ({
@@ -86,5 +95,29 @@ describe('EpubReader Component', () => {
     expect(getByTestId('epub-top-bar')).toBeDefined();
     expect(getByTestId('epub-sidebars')).toBeDefined();
     expect(getByTestId('epub-highlight-menu')).toBeDefined();
+  });
+
+  it('dispatches reading mode fullscreen on mobile to hide tabs and bars for immersive reading', async () => {
+    const { isMobileScreen } = await import('../../../services/platform');
+    vi.mocked(isMobileScreen).mockReturnValue(true);
+
+    const onBack = vi.fn();
+    const onUpdateBook = vi.fn();
+
+    const { unmount } = render(
+      <EpubReader book={mockBook} onBack={onBack} onUpdateBook={onUpdateBook} />
+    );
+
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'SET_READING_MODE_FULLSCREEN',
+      isFullScreen: true,
+    });
+
+    unmount();
+
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'SET_READING_MODE_FULLSCREEN',
+      isFullScreen: false,
+    });
   });
 });

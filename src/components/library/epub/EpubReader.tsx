@@ -19,6 +19,7 @@ import { useEpubTheme } from './useEpubTheme';
 import { useEpubContinuousBookmarks } from './hooks/useEpubContinuousBookmarks';
 import { useTimeTracker } from '../../../hooks/useTimeTracker';
 import EpubBottomBar from './components/EpubBottomBar';
+import { isMobileScreen, platform } from '../../../services/platform';
 
 interface EpubReaderProps {
   book: LibraryBook;
@@ -177,7 +178,23 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   };
 
   useEffect(() => {
+    const handleSyncFullscreen = () => {
+      const isMobile = isMobileScreen() || platform.platform === 'mobile-webview';
+      if (isMobile) {
+        dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: !showMobileTools });
+      }
+    };
+
+    handleSyncFullscreen();
+    window.addEventListener('resize', handleSyncFullscreen);
     return () => {
+      window.removeEventListener('resize', handleSyncFullscreen);
+    };
+  }, [showMobileTools, dispatch]);
+
+  useEffect(() => {
+    return () => {
+      if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
       dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
     };
   }, [dispatch]);
@@ -347,7 +364,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         className={`
         transition-all duration-300 z-30
         ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
-        ${state.isReadingModeFullScreen ? 'hidden' : ''}
+        ${state.isReadingModeFullScreen ? 'md:hidden' : ''}
         absolute md:relative top-0 left-0 right-0
       `}
       >
