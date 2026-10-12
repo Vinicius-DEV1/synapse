@@ -3,7 +3,7 @@ import { Minus, Square, Copy, X } from 'lucide-react';
 import { windowService } from '../../services/windowService';
 
 export default function WindowControls() {
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => windowService.isSupported());
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {

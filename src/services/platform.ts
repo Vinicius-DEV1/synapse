@@ -50,7 +50,7 @@ export const platform: PlatformCapabilities = {
     return checkIsDesktop() ? 'desktop' : checkIsMobileWebView() ? 'mobile-webview' : 'web';
   },
   get canReadLocalFilesystem() {
-    return checkIsDesktop() || checkIsMobileWebView();
+    return checkIsDesktop();
   },
   get useNativeTitleBar() {
     return checkIsDesktop();
@@ -61,7 +61,7 @@ export const platform: PlatformCapabilities = {
 };
 
 export function isDesktopApp(): boolean {
-  return checkIsDesktop() || (typeof window !== 'undefined' && !!window.api);
+  return checkIsDesktop();
 }
 
 export function isMobileWebView(): boolean {
