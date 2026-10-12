@@ -94,4 +94,37 @@ describe('gemini keys service', () => {
     expect(retrieved[0].status).toBe('active');
     expect(retrieved[0].errorMessage).toBeUndefined();
   });
+
+  it('safely heals when geminiApiKeys config was stored as a raw string', async () => {
+    const { getWebDb } = await import('../db-web');
+    const db = await getWebDb();
+    await db.put('config', {
+      id: 'geminiApiKeys',
+      value: 'AIzaSyRawStringKey' as unknown,
+      updated_at: new Date().toISOString()
+    });
+
+    const retrieved = await getGeminiKeys();
+    expect(Array.isArray(retrieved)).toBe(true);
+    expect(retrieved).toHaveLength(1);
+    expect(retrieved[0].key).toBe('AIzaSyRawStringKey');
+    expect(retrieved[0].status).toBe('active');
+  });
+
+  it('safely heals when geminiApiKeys config was stored as an array of strings', async () => {
+    const { getWebDb } = await import('../db-web');
+    const db = await getWebDb();
+    await db.put('config', {
+      id: 'geminiApiKeys',
+      value: ['AIzaSyStringKey1', 'AIzaSyStringKey2'] as unknown,
+      updated_at: new Date().toISOString()
+    });
+
+    const retrieved = await getGeminiKeys();
+    expect(Array.isArray(retrieved)).toBe(true);
+    expect(retrieved).toHaveLength(2);
+    expect(retrieved[0].key).toBe('AIzaSyStringKey1');
+    expect(retrieved[1].key).toBe('AIzaSyStringKey2');
+    expect(retrieved[0].status).toBe('active');
+  });
 });

@@ -18,17 +18,82 @@ export function isConfirmedKeyRevocation(errorMessage?: string): boolean {
   );
 }
 
+export function normalizeKeyEntries(raw: unknown): { keys: GeminiKeyEntry[]; needsSave: boolean } {
+  let needsSave = false;
+  const result: GeminiKeyEntry[] = [];
+
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (!item) continue;
+      if (typeof item === 'string' && item.trim().length > 0) {
+        result.push({
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString(36).substring(2, 6),
+          key: item.trim(),
+          status: 'active',
+          addedAt: Date.now(),
+        });
+        needsSave = true;
+      } else if (typeof item === 'object' && 'key' in item && typeof (item as { key: unknown }).key === 'string') {
+        const entry = item as Partial<GeminiKeyEntry>;
+        result.push({
+          id: entry.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString(36).substring(2, 6)),
+          key: entry.key!.trim(),
+          status: entry.status === 'exhausted' || entry.status === 'error' ? entry.status : 'active',
+          disabledUntil: typeof entry.disabledUntil === 'number' ? entry.disabledUntil : undefined,
+          addedAt: typeof entry.addedAt === 'number' ? entry.addedAt : Date.now(),
+          errorMessage: typeof entry.errorMessage === 'string' ? entry.errorMessage : undefined,
+        });
+      }
+    }
+  } else if (typeof raw === 'string' && raw.trim().length > 0) {
+    result.push({
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+      key: raw.trim(),
+      status: 'active',
+      addedAt: Date.now(),
+    });
+    needsSave = true;
+  } else if (raw && typeof raw === 'object' && 'key' in raw && typeof (raw as { key: unknown }).key === 'string') {
+    const entry = raw as Partial<GeminiKeyEntry>;
+    result.push({
+      id: entry.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString()),
+      key: entry.key!.trim(),
+      status: entry.status === 'exhausted' || entry.status === 'error' ? entry.status : 'active',
+      disabledUntil: typeof entry.disabledUntil === 'number' ? entry.disabledUntil : undefined,
+      addedAt: typeof entry.addedAt === 'number' ? entry.addedAt : Date.now(),
+      errorMessage: typeof entry.errorMessage === 'string' ? entry.errorMessage : undefined,
+    });
+    needsSave = true;
+  }
+
+  // Fallback: Check localStorage if no keys found
+  if (result.length === 0 && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const lsKey = window.localStorage.getItem('geminiApiKey');
+      if (lsKey && lsKey.trim().length > 0) {
+        result.push({
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+          key: lsKey.trim(),
+          status: 'active',
+          addedAt: Date.now(),
+        });
+        needsSave = true;
+      }
+    } catch {
+      // Ignore localStorage access restrictions
+    }
+  }
+
+  return { keys: result, needsSave };
+}
+
 export async function getGeminiKeys(): Promise<GeminiKeyEntry[]> {
   const db = await getWebDb();
   const doc = await db.get('config', 'geminiApiKeys');
-  let keys: GeminiKeyEntry[] | null = doc?.value || null;
-  
-  if (!keys) {
-    keys = [];
-  }
+  const { keys, needsSave: initialNeedsSave } = normalizeKeyEntries(doc?.value);
+  let needsSave = initialNeedsSave;
   
   // Reactivate keys if disabled time has passed or if falsely marked as error
-  let needsSave = false;
   const now = Date.now();
   for (const k of keys) {
     if (k.status === 'exhausted' && k.disabledUntil && k.disabledUntil < now) {
@@ -86,17 +151,13 @@ export async function updateGeminiKeyStatus(
 ): Promise<void> {
   const db = await getWebDb();
   const doc = await db.get('config', 'geminiApiKeys');
-  const keys: GeminiKeyEntry[] = doc?.value || [];
+  const { keys } = normalizeKeyEntries(doc?.value);
   const target = keys.find(k => k.id === keyId);
   if (target) {
     target.status = status;
     target.disabledUntil = disabledUntil;
     target.errorMessage = errorMessage;
-    await db.put('config', {
-      id: 'geminiApiKeys',
-      value: keys,
-      updated_at: new Date().toISOString()
-    });
+    await saveGeminiKeys(keys);
   }
 }
 
