@@ -24,6 +24,9 @@ export interface AppSettings {
   defaultReadingMode: 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
   defaultTextWidth: 'narrow' | 'medium' | 'full';
   defaultScrollMode?: boolean;
+  defaultLineHeight?: 'compact' | 'normal' | 'relaxed';
+  defaultTextAlign?: 'justify' | 'left';
+  defaultParagraphSpacing?: 'compact' | 'spaced';
   aiDictionaryLanguage: 'bilingual' | 'english_only';
   enableStudySfx: boolean;
   enableStudy3DFlip: boolean;
@@ -62,6 +65,9 @@ export function getSettings(): AppSettings {
     defaultReadingMode: 'light',
     defaultTextWidth: 'medium',
     defaultScrollMode: false,
+    defaultLineHeight: 'normal',
+    defaultTextAlign: 'justify',
+    defaultParagraphSpacing: 'compact',
     aiDictionaryLanguage: 'bilingual',
     enableStudySfx: true,
     enableStudy3DFlip: true,

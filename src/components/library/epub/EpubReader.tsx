@@ -41,6 +41,9 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     epubBook,
     fontFamily,
     scrollMode,
+    lineHeight,
+    textAlign,
+    paragraphSpacing,
     setCurrentSectionHref,
   } = useEpub();
 
@@ -55,7 +58,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   });
 
   useEffect(() => {
-    const prefs = { fontSize, readingMode, fontFamily, textWidth, scrollMode };
+    const prefs = { fontSize, readingMode, fontFamily, textWidth, scrollMode, lineHeight, textAlign, paragraphSpacing };
     const str = JSON.stringify(prefs);
     if (str !== book.reading_preferences) {
       const timeout = setTimeout(() => {
@@ -64,7 +67,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       }, 1000);
       return () => clearTimeout(timeout);
     }
-  }, [fontSize, readingMode, fontFamily, textWidth, scrollMode, book, onUpdateBook]);
+  }, [fontSize, readingMode, fontFamily, textWidth, scrollMode, lineHeight, textAlign, paragraphSpacing, book, onUpdateBook]);
 
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState<{percent: number, stage: string} | null>(null);

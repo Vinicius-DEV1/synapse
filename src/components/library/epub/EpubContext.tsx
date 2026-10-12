@@ -10,6 +10,10 @@ export interface TocItem {
   subitems?: TocItem[];
 }
 
+export type EpubLineHeight = 'compact' | 'normal' | 'relaxed';
+export type EpubTextAlign = 'justify' | 'left';
+export type EpubParagraphSpacing = 'compact' | 'spaced';
+
 interface EpubContextType {
   book: LibraryBook;
   rendition: Rendition | null;
@@ -32,6 +36,12 @@ interface EpubContextType {
   setScrollMode: React.Dispatch<React.SetStateAction<boolean>>;
   textWidth: 'narrow' | 'medium' | 'full';
   setTextWidth: (w: 'narrow' | 'medium' | 'full' | ((prev: 'narrow' | 'medium' | 'full') => 'narrow' | 'medium' | 'full')) => void;
+  lineHeight: EpubLineHeight;
+  setLineHeight: (lh: EpubLineHeight | ((prev: EpubLineHeight) => EpubLineHeight)) => void;
+  textAlign: EpubTextAlign;
+  setTextAlign: (ta: EpubTextAlign | ((prev: EpubTextAlign) => EpubTextAlign)) => void;
+  paragraphSpacing: EpubParagraphSpacing;
+  setParagraphSpacing: (ps: EpubParagraphSpacing | ((prev: EpubParagraphSpacing) => EpubParagraphSpacing)) => void;
   
   // Progress & Navigation
   progress: number;
@@ -84,6 +94,9 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
     fontFamily?: 'sans' | 'serif' | 'opendyslexic' | 'original';
     scrollMode?: boolean;
     textWidth?: 'narrow' | 'medium' | 'full';
+    lineHeight?: EpubLineHeight;
+    textAlign?: EpubTextAlign;
+    paragraphSpacing?: EpubParagraphSpacing;
   }
 
   let prefs: EpubReadingPrefs = {};
@@ -114,7 +127,11 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       }
     }, 0);
   };
-  const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic' | 'original'>('original');
+  const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic' | 'original'>(
+    prefs.fontFamily && ['sans', 'serif', 'opendyslexic', 'original'].includes(prefs.fontFamily)
+      ? prefs.fontFamily
+      : 'original'
+  );
   const [originalFontName, setOriginalFontName] = useState<string | null>(null);
   const [detectedFontSizePx, setDetectedFontSizePx] = useState<string | null>(null);
   const [scrollMode, setScrollModeState] = useState<boolean>(
@@ -150,6 +167,60 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       }
     }, 0);
   };
+
+  const [lineHeightState, setLineHeightState] = useState<EpubLineHeight>(
+    prefs.lineHeight && ['compact', 'normal', 'relaxed'].includes(prefs.lineHeight)
+      ? prefs.lineHeight
+      : (getSettings().defaultLineHeight || 'normal')
+  );
+  const setLineHeight = (lh: EpubLineHeight | ((prev: EpubLineHeight) => EpubLineHeight)) => {
+    let newLhValue: EpubLineHeight;
+    setLineHeightState(prev => {
+      newLhValue = typeof lh === 'function' ? lh(prev) : lh;
+      return newLhValue;
+    });
+    setTimeout(() => {
+      if (newLhValue) {
+        saveSettings({ ...getSettings(), defaultLineHeight: newLhValue });
+      }
+    }, 0);
+  };
+
+  const [textAlignState, setTextAlignState] = useState<EpubTextAlign>(
+    prefs.textAlign && ['justify', 'left'].includes(prefs.textAlign)
+      ? prefs.textAlign
+      : (getSettings().defaultTextAlign || 'justify')
+  );
+  const setTextAlign = (ta: EpubTextAlign | ((prev: EpubTextAlign) => EpubTextAlign)) => {
+    let newTaValue: EpubTextAlign;
+    setTextAlignState(prev => {
+      newTaValue = typeof ta === 'function' ? ta(prev) : ta;
+      return newTaValue;
+    });
+    setTimeout(() => {
+      if (newTaValue) {
+        saveSettings({ ...getSettings(), defaultTextAlign: newTaValue });
+      }
+    }, 0);
+  };
+
+  const [paragraphSpacingState, setParagraphSpacingState] = useState<EpubParagraphSpacing>(
+    prefs.paragraphSpacing && ['compact', 'spaced'].includes(prefs.paragraphSpacing)
+      ? prefs.paragraphSpacing
+      : (getSettings().defaultParagraphSpacing || 'compact')
+  );
+  const setParagraphSpacing = (ps: EpubParagraphSpacing | ((prev: EpubParagraphSpacing) => EpubParagraphSpacing)) => {
+    let newPsValue: EpubParagraphSpacing;
+    setParagraphSpacingState(prev => {
+      newPsValue = typeof ps === 'function' ? ps(prev) : ps;
+      return newPsValue;
+    });
+    setTimeout(() => {
+      if (newPsValue) {
+        saveSettings({ ...getSettings(), defaultParagraphSpacing: newPsValue });
+      }
+    }, 0);
+  };
   
   const [progress, setProgress] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
@@ -182,6 +253,9 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       detectedFontSizePx, setDetectedFontSizePx,
       scrollMode, setScrollMode,
       textWidth: textWidthState, setTextWidth,
+      lineHeight: lineHeightState, setLineHeight,
+      textAlign: textAlignState, setTextAlign,
+      paragraphSpacing: paragraphSpacingState, setParagraphSpacing,
       progress, setProgress,
       currentPage, setCurrentPage,
       totalPages, setTotalPages,

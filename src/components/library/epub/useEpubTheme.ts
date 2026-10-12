@@ -7,7 +7,7 @@ export function useEpubTheme(
   clearSelectionTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
 ) {
   const {
-    rendition, fontSize, fontFamily, readingMode, scrollMode, highlights, setSelection, setNoteMode, setNoteText
+    rendition, fontSize, fontFamily, readingMode, scrollMode, lineHeight, textAlign, paragraphSpacing, highlights, setSelection, setNoteMode, setNoteText
   } = useEpub();
 
   useEffect(() => {
@@ -112,7 +112,8 @@ export function useEpubTheme(
       };
 
       const colors = getEpubThemeColors(readingMode);
-      const themeName = `custom-${readingMode}-${fontFamily}`;
+      const lineHeightVal = lineHeight === 'compact' ? '1.4' : lineHeight === 'relaxed' ? '1.9' : '1.65';
+      const themeName = `custom-${readingMode}-${fontFamily}-${textAlign}-${lineHeight}-${paragraphSpacing}`;
       
       const isMobileView = isMobileScreen() || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       const bottomPadding = scrollMode ? '80px' : isMobileView ? '60px' : '16px';
@@ -121,28 +122,65 @@ export function useEpubTheme(
         [`body.${themeName}`]: { 
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`,
+          'line-height': `${lineHeightVal} !important`,
+          'text-rendering': 'optimizeLegibility !important',
+          '-webkit-font-smoothing': 'antialiased !important',
           'padding-bottom': `${bottomPadding} !important`,
-          'padding-left': `20px !important`,
-          'padding-right': `20px !important`,
-          'margin-bottom': `0px !important`
+          'padding-left': '20px !important',
+          'padding-right': '20px !important',
+          'margin-bottom': '0px !important'
         },
         [`.${themeName} body`]: { 
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`,
+          'line-height': `${lineHeightVal} !important`,
+          'text-rendering': 'optimizeLegibility !important',
+          '-webkit-font-smoothing': 'antialiased !important',
           'padding-bottom': `${bottomPadding} !important`,
-          'padding-left': `20px !important`,
-          'padding-right': `20px !important`,
-          'margin-bottom': `0px !important`
+          'padding-left': '20px !important',
+          'padding-right': '20px !important',
+          'margin-bottom': '0px !important'
         },
         // Paragraphs & Structural Text
         [`body.${themeName} p, body.${themeName} div:not([class*="epubjs"]), body.${themeName} li, body.${themeName} dt, body.${themeName} dd, body.${themeName} section, body.${themeName} article`]: {
           'color': `${colors.text} !important`,
-          'background-color': 'transparent !important'
+          'background-color': 'transparent !important',
+          'line-height': `${lineHeightVal} !important`
+        },
+        // Dedicated Paragraph Typography & Layout
+        [`body.${themeName} p, body.${themeName} p[class]`]: {
+          'line-height': `${lineHeightVal} !important`,
+          'text-align': `${textAlign === 'justify' ? 'justify' : 'left'} !important`,
+          ...(textAlign === 'justify' ? {
+            'text-justify': 'inter-word !important',
+            'hyphens': 'auto !important',
+            '-webkit-hyphens': 'auto !important',
+          } : {
+            'hyphens': 'manual !important',
+            '-webkit-hyphens': 'manual !important',
+          }),
+          ...(paragraphSpacing === 'spaced' ? {
+            'text-indent': '0 !important',
+            'margin-top': '0 !important',
+            'margin-bottom': '0.9em !important',
+          } : {
+            'text-indent': '1.5em !important',
+            'margin-top': '0 !important',
+            'margin-bottom': '0.25em !important',
+          }),
+        },
+        // Editorial Standard: First paragraph following a title or section break never has an indent
+        [`body.${themeName} h1 + p, body.${themeName} h2 + p, body.${themeName} h3 + p, body.${themeName} h4 + p, body.${themeName} h5 + p, body.${themeName} h6 + p, body.${themeName} hr + p`]: {
+          'text-indent': '0 !important',
         },
         // Headings
         [`body.${themeName} h1, body.${themeName} h2, body.${themeName} h3, body.${themeName} h4, body.${themeName} h5, body.${themeName} h6`]: {
           'color': `${colors.heading} !important`,
-          'background-color': 'transparent !important'
+          'background-color': 'transparent !important',
+          'line-height': '1.28 !important',
+          'margin-top': '1.4em !important',
+          'margin-bottom': '0.5em !important',
+          'text-indent': '0 !important'
         },
         // Links
         [`body.${themeName} a, body.${themeName} a:link, body.${themeName} a:visited`]: {
@@ -156,7 +194,9 @@ export function useEpubTheme(
           'color': `${colors.codeText} !important`,
           'border': `1px solid ${colors.codeBorder} !important`,
           'border-radius': '4px !important',
-          'font-family': 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important'
+          'font-family': 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important',
+          'text-align': 'left !important',
+          'text-indent': '0 !important'
         },
         [`body.${themeName} code, body.${themeName} kbd, body.${themeName} samp`]: {
           'padding': '0.15em 0.35em !important'
@@ -172,7 +212,12 @@ export function useEpubTheme(
           'margin-left': '0px !important',
           'color': `${colors.text} !important`,
           'opacity': '0.92 !important',
-          'background-color': 'transparent !important'
+          'background-color': 'transparent !important',
+          'line-height': `${lineHeightVal} !important`,
+          'text-indent': '0 !important'
+        },
+        [`body.${themeName} blockquote p`]: {
+          'text-indent': '0 !important'
         },
         // Tables & Table Banners (Topic / Recipe / Tip)
         [`body.${themeName} table, body.${themeName} table.arr-recipe, body.${themeName} table.arr-tip, body.${themeName} tbody, body.${themeName} tr`]: {
@@ -235,11 +280,13 @@ export function useEpubTheme(
           'text-shadow': 'none !important',
           'background-color': 'transparent !important'
         },
-        // Captions
-        [`body.${themeName} .FigCapt, body.${themeName} .TabCapt, body.${themeName} .caption, body.${themeName} .fig-caption, body.${themeName} .fig-title, body.${themeName} figcaption`]: {
+        // Captions & Centered Elements
+        [`body.${themeName} .FigCapt, body.${themeName} .TabCapt, body.${themeName} .caption, body.${themeName} .fig-caption, body.${themeName} .fig-title, body.${themeName} figcaption, body.${themeName} .center, body.${themeName} p[align="center"]`]: {
           'color': `${colors.text} !important`,
           'opacity': '0.85 !important',
-          'background-color': 'transparent !important'
+          'background-color': 'transparent !important',
+          'text-align': 'center !important',
+          'text-indent': '0 !important'
         },
         // Horizontal Rules
         [`body.${themeName} hr`]: {
@@ -352,5 +399,5 @@ export function useEpubTheme(
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [fontSize, fontFamily, readingMode, scrollMode, rendition, highlights, setSelection, setNoteMode, setNoteText, globalLastHighlightClickRef, clearSelectionTimerRef]);
+  }, [fontSize, fontFamily, readingMode, scrollMode, lineHeight, textAlign, paragraphSpacing, rendition, highlights, setSelection, setNoteMode, setNoteText, globalLastHighlightClickRef, clearSelectionTimerRef]);
 }
