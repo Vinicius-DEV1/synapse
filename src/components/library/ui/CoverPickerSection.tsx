@@ -108,11 +108,13 @@ export function CoverPickerSection({
     }
   };
 
+  const isInvalidCover = !coverImage || coverLoadError || coverImage.startsWith('blob:');
+
   return (
     <div className="flex gap-4 items-start">
       <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-visible shrink-0 group">
         <div className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center">
-          {coverImage && !coverLoadError && !extractingCover ? (
+          {!isInvalidCover && !extractingCover ? (
             <img
               src={coverImage}
               alt=""

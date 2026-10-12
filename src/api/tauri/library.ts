@@ -145,7 +145,15 @@ export const tauriLibraryApi = {
   getBooks: async (): Promise<LibraryBook[]> => await invoke<LibraryBook[]>('library_get_books'),
   getBook: async (id: string): Promise<LibraryBook | null> => await invoke<LibraryBook | null>('library_get_book', { id }),
   addBook: async (b: Partial<LibraryBook>): Promise<void> => await invoke<void>('library_add_book', { book: b }),
-  updateBook: async (b: Partial<LibraryBook> & { id: string }): Promise<number> => await invoke<number>('library_update_book', { book: b }),
+  updateBook: async (b: Partial<LibraryBook> & { id: string }): Promise<number> => {
+    try {
+      const existing = await invoke<LibraryBook | null>('library_get_book', { id: b.id });
+      const payload = existing ? { ...existing, ...b } : b;
+      return await invoke<number>('library_update_book', { book: payload });
+    } catch {
+      return await invoke<number>('library_update_book', { book: b });
+    }
+  },
   deleteBook: async (id: string): Promise<boolean> => await invoke<boolean>('library_delete_book', { id }),
   evictBookLocalCache: async (id: string): Promise<boolean> => {
     try {

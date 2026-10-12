@@ -50,6 +50,34 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
             items.push(item);
         }
     }
+
+    // Self-healing: if file_path is missing/empty or is_local is false, verify if canonical encrypted file exists on disk
+    let app_dir = crate::get_app_data_dir();
+    for item in items.iter_mut() {
+        let is_missing_path = item.file_path.as_ref().map(|p| p.trim().is_empty()).unwrap_or(true);
+        let is_not_local = item.is_local != Some(true);
+        if is_missing_path || is_not_local {
+            let candidates = [
+                format!("library/{}.epub.enc", item.id),
+                format!("library/{}.pdf.enc", item.id),
+                format!("library/{}.enc", item.id),
+                format!("library/{}.epub", item.id),
+                format!("library/{}.pdf", item.id),
+            ];
+            for candidate in candidates {
+                if app_dir.join(&candidate).exists() {
+                    let _ = conn.execute(
+                        "UPDATE library_books SET file_path = ?, is_local = 1 WHERE id = ?",
+                        params![candidate, item.id],
+                    );
+                    item.file_path = Some(candidate);
+                    item.is_local = Some(true);
+                    break;
+                }
+            }
+        }
+    }
+
     Ok(items)
 }
 
@@ -78,19 +106,95 @@ pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book
     Ok(ret)
 }
 
-/// Updates an existing book metadata and reading progress.
+/// Updates an existing book metadata and reading progress with safe field merging.
 #[tauri::command]
 pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i32, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let is_local_val = book.is_local.unwrap_or_else(|| {
-        book.file_path.as_ref().map(|p| !p.trim().is_empty()).unwrap_or(false)
-    });
+    // 1. Fetch existing book from database to preserve non-specified fields
+    let existing: Option<Book> = conn
+        .query_row(
+            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description FROM library_books WHERE id = ?",
+            [&book.id],
+            |row| {
+                Ok(Book {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    author: row.get(2)?,
+                    file_path: row.get(3)?,
+                    drive_file_id: row.get(4)?,
+                    cover_color: row.get(5)?,
+                    cover_image: row.get(6)?,
+                    total_pages: row.get(7)?,
+                    current_page: row.get(8)?,
+                    reading_status: row.get(9)?,
+                    last_read_page: row.get(10)?,
+                    epub_locations: row.get(11)?,
+                    created_at: row.get(12)?,
+                    updated_at: row.get(13)?,
+                    deleted_at: row.get(14)?,
+                    reading_preferences: row.get(15)?,
+                    is_local: row.get(16)?,
+                    original_name: row.get(17)?,
+                    publisher: row.get(18)?,
+                    published_year: row.get(19)?,
+                    language: row.get(20)?,
+                    description: row.get(21)?,
+                })
+            },
+        )
+        .ok();
+
+    let final_title = if !book.title.trim().is_empty() {
+        book.title
+    } else {
+        existing.as_ref().map(|e| e.title.clone()).unwrap_or_default()
+    };
+    let final_author = book.author.filter(|s| !s.trim().is_empty()).or_else(|| existing.as_ref().and_then(|e| e.author.clone()));
+    let mut final_file_path = book.file_path.filter(|s| !s.trim().is_empty()).or_else(|| existing.as_ref().and_then(|e| e.file_path.clone()));
+    let final_drive_file_id = book.drive_file_id.filter(|s| !s.trim().is_empty()).or_else(|| existing.as_ref().and_then(|e| e.drive_file_id.clone()));
+    let final_cover_color = book.cover_color.or_else(|| existing.as_ref().and_then(|e| e.cover_color.clone()));
+    let final_cover_image = book.cover_image.filter(|s| !s.trim().is_empty()).or_else(|| existing.as_ref().and_then(|e| e.cover_image.clone()));
+    let final_total_pages = if book.total_pages > 0 { book.total_pages } else { existing.as_ref().map(|e| e.total_pages).unwrap_or(0) };
+    let final_current_page = if book.current_page > 0 { book.current_page } else { existing.as_ref().map(|e| e.current_page).unwrap_or(0) };
+    let final_reading_status = book.reading_status.filter(|s| !s.trim().is_empty()).or_else(|| existing.as_ref().and_then(|e| e.reading_status.clone()));
+    let final_last_read_page = book.last_read_page.or_else(|| existing.as_ref().and_then(|e| e.last_read_page.clone()));
+    let final_epub_locations = book.epub_locations.or_else(|| existing.as_ref().and_then(|e| e.epub_locations.clone()));
+    let final_reading_preferences = book.reading_preferences.or_else(|| existing.as_ref().and_then(|e| e.reading_preferences.clone()));
+    let final_original_name = book.original_name.or_else(|| existing.as_ref().and_then(|e| e.original_name.clone()));
+    let final_publisher = book.publisher.or_else(|| existing.as_ref().and_then(|e| e.publisher.clone()));
+    let final_published_year = book.published_year.or_else(|| existing.as_ref().and_then(|e| e.published_year));
+    let final_language = book.language.or_else(|| existing.as_ref().and_then(|e| e.language.clone()));
+    let final_description = book.description.or_else(|| existing.as_ref().and_then(|e| e.description.clone()));
+
+    // Auto-heal file_path if empty but candidate exists on disk
+    let app_dir = crate::get_app_data_dir();
+    if final_file_path.as_ref().map(|p| p.trim().is_empty()).unwrap_or(true) {
+        let candidates = [
+            format!("library/{}.epub.enc", book.id),
+            format!("library/{}.pdf.enc", book.id),
+            format!("library/{}.enc", book.id),
+            format!("library/{}.epub", book.id),
+            format!("library/{}.pdf", book.id),
+        ];
+        for candidate in candidates {
+            if app_dir.join(&candidate).exists() {
+                final_file_path = Some(candidate);
+                break;
+            }
+        }
+    }
+
+    let is_local_val = book.is_local
+        .or_else(|| existing.as_ref().and_then(|e| e.is_local))
+        .unwrap_or_else(|| {
+            final_file_path.as_ref().map(|p| !p.trim().is_empty()).unwrap_or(false)
+        });
 
     let count = conn.execute(
         "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, is_local = ?, original_name = ?, publisher = ?, published_year = ?, language = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, is_local_val, book.original_name, book.publisher, book.published_year, book.language, book.description, book.id]
+        params![final_title, final_author, final_file_path, final_drive_file_id, final_cover_color, final_cover_image, final_total_pages, final_current_page, final_reading_status, final_last_read_page, final_epub_locations, final_reading_preferences, is_local_val, final_original_name, final_publisher, final_published_year, final_language, final_description, book.id]
     ).map_err(|e| e.to_string())?;
 
     Ok(count as i32)
@@ -325,7 +429,32 @@ pub fn library_get_book(id: String, db_state: State<'_, DbState>) -> Result<Opti
     });
 
     match book {
-        Ok(b) => Ok(Some(b)),
+        Ok(mut b) => {
+            let is_missing_path = b.file_path.as_ref().map(|p| p.trim().is_empty()).unwrap_or(true);
+            let is_not_local = b.is_local != Some(true);
+            if is_missing_path || is_not_local {
+                let app_dir = crate::get_app_data_dir();
+                let candidates = [
+                    format!("library/{}.epub.enc", b.id),
+                    format!("library/{}.pdf.enc", b.id),
+                    format!("library/{}.enc", b.id),
+                    format!("library/{}.epub", b.id),
+                    format!("library/{}.pdf", b.id),
+                ];
+                for candidate in candidates {
+                    if app_dir.join(&candidate).exists() {
+                        let _ = conn.execute(
+                            "UPDATE library_books SET file_path = ?, is_local = 1 WHERE id = ?",
+                            params![candidate, b.id],
+                        );
+                        b.file_path = Some(candidate);
+                        b.is_local = Some(true);
+                        break;
+                    }
+                }
+            }
+            Ok(Some(b))
+        }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
         Err(e) => Err(e.to_string()),
     }

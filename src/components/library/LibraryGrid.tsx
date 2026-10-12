@@ -33,7 +33,9 @@ function BookCardCover({ coverImage }: { coverImage?: string; title?: string }) 
     setHasError(false);
   }, [coverImage]);
 
-  if (!coverImage || hasError) {
+  const isInvalidCover = !coverImage || hasError || coverImage.startsWith('blob:');
+
+  if (isInvalidCover) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-500/30 to-brand-700/30 select-none">
         <FileText size={40} className="text-brand-400/60" />
@@ -115,9 +117,10 @@ export default function LibraryGrid({
                        (book.title || '').toLowerCase().endsWith('.epub') ||
                        (book.original_name || '').toLowerCase().endsWith('.epub');
         const isSelected = selectedIds?.has(book.id);
+        const hasExplicitFilePath = Boolean(book.file_path && book.file_path.trim() !== '' && !book.file_path.startsWith('drive://'));
         const isLocal = book.is_local !== undefined 
           ? Boolean(book.is_local) 
-          : Boolean(book.file_path && book.file_path.trim() !== '' && !book.file_path.startsWith('drive://'));
+          : hasExplicitFilePath;
         const isSynced = Boolean(book.drive_file_id && book.drive_file_id.trim() !== '');
         const bookCollections = book.collections || [];
 
@@ -131,7 +134,7 @@ export default function LibraryGrid({
               animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
             }}
             onClick={() => {
-              if (!isLocal && !isSynced) {
+              if (!isLocal && !isSynced && !hasExplicitFilePath) {
                 triggerToast(`O arquivo "${book.title}" não foi encontrado localmente nem na nuvem. Use o menu do livro para reanexar o arquivo.`, 'error');
               } else {
                 onSelectBook(book);

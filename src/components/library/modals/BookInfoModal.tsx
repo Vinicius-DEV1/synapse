@@ -61,7 +61,7 @@ export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoM
           triggerToast('Dados encontrados e preenchidos nos campos! Revise e clique em Salvar.', 'success');
         } else {
           if (window.api?.library) {
-            await window.api.library.updateBook({ id: currentBook.id, ...updates });
+            await window.api.library.updateBook({ ...currentBook, id: currentBook.id, ...updates });
           }
           const updated = { ...currentBook, ...updates };
           setCurrentBook(updated);
@@ -96,7 +96,7 @@ export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoM
         language: editLanguage.trim() || null,
       };
 
-      await window.api.library.updateBook({ id: currentBook.id, ...updates });
+      await window.api.library.updateBook({ ...currentBook, id: currentBook.id, ...updates });
       const updated = { ...currentBook, ...updates };
       setCurrentBook(updated);
       onUpdateBook?.(updates);

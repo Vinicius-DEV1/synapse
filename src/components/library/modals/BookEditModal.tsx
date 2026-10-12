@@ -42,7 +42,9 @@ export default function BookEditModal({
   const [description, setDescription] = useState(book.description || '');
   const [status, setStatus] = useState<ReadingStatus>(book.reading_status);
   const [selectedCollections, setSelectedCollections] = useState<string[]>(bookCollections);
-  const [coverImage, setCoverImage] = useState(book.cover_image || '');
+  const [coverImage, setCoverImage] = useState(
+    book.cover_image && !book.cover_image.startsWith('blob:') ? book.cover_image : ''
+  );
   const [loading, setLoading] = useState(false);
   const [enriching, setEnriching] = useState(false);
 
@@ -109,7 +111,12 @@ export default function BookEditModal({
       );
       const finalPublisher = publisherMatch || publisher.trim();
 
+      const safeCoverImage = coverImage && !coverImage.startsWith('blob:')
+        ? coverImage
+        : (book.cover_image && !book.cover_image.startsWith('blob:') ? book.cover_image : '');
+
       const bookUpdate = {
+        ...book,
         id: book.id,
         title: title.trim(),
         author: finalAuthor,
@@ -118,7 +125,7 @@ export default function BookEditModal({
         language: language.trim() || null,
         description: description.trim() || null,
         reading_status: status,
-        cover_image: coverImage,
+        cover_image: safeCoverImage,
       };
       await window.api.library.updateBook(bookUpdate);
 
