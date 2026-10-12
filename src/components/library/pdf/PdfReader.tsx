@@ -524,7 +524,11 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
         {/* Book Info Modal */}
         {showBookInfo && (
-          <BookInfoModal book={book} onClose={() => setShowBookInfo(false)} />
+          <BookInfoModal
+            book={book}
+            onClose={() => setShowBookInfo(false)}
+            onUpdateBook={onUpdateBook}
+          />
         )}
       </div>
     </div>

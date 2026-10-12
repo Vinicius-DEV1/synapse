@@ -7,7 +7,7 @@ export function useEpubTheme(
   clearSelectionTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
 ) {
   const {
-    rendition, fontSize, fontFamily, readingMode, highlights, setSelection, setNoteMode, setNoteText
+    rendition, fontSize, fontFamily, readingMode, scrollMode, highlights, setSelection, setNoteMode, setNoteText
   } = useEpub();
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export function useEpubTheme(
       const themeName = `custom-${readingMode}-${fontFamily}`;
       
       const isMobileView = isMobileScreen() || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-      const bottomPadding = isMobileView ? '60px' : '16px';
+      const bottomPadding = scrollMode ? '80px' : isMobileView ? '60px' : '16px';
 
       const themeCss: any = {
         [`body.${themeName}`]: { 
@@ -352,5 +352,5 @@ export function useEpubTheme(
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [fontSize, fontFamily, readingMode, rendition, highlights, setSelection, setNoteMode, setNoteText, globalLastHighlightClickRef, clearSelectionTimerRef]);
+  }, [fontSize, fontFamily, readingMode, scrollMode, rendition, highlights, setSelection, setNoteMode, setNoteText, globalLastHighlightClickRef, clearSelectionTimerRef]);
 }

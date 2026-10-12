@@ -1,5 +1,6 @@
 import { ArrowLeft, Menu, Bookmark, Search, FileText, Type, Sparkles, Info } from 'lucide-react';
 import { useEpub } from './EpubContext';
+import { useEpubBookmark } from './hooks/useEpubBookmark';
 import { useStore } from '../../../store/useStore';
 
 interface EpubTopBarProps {
@@ -12,28 +13,11 @@ export default function EpubTopBar({ onBack, onShowInfo }: EpubTopBarProps) {
   const {
     book, readingMode, showToc, setShowToc, showNotebook, setShowNotebook,
     showSearch, setShowSearch, showSettings, setShowSettings,
-    bookmarks, setBookmarks, rendition, currentPage
   } = useEpub();
+  const { isBookmarked, toggleBookmark } = useEpubBookmark();
 
-  const currentCfi = rendition?.location?.start?.cfi;
-  const isBookmarked = bookmarks.some(b => b.label === currentCfi);
-
-  const handleToggleBookmark = async () => {
-    if (!currentCfi) return;
-    if (isBookmarked) {
-      const bm = bookmarks.find(b => b.label === currentCfi);
-      if (bm) {
-        await window.api.library.deleteBookmark(bm.id);
-        setBookmarks(prev => prev.filter(b => b.id !== bm.id));
-      }
-    } else {
-      const bm = await window.api.library.createBookmark({
-        book_id: book.id,
-        page_number: currentPage,
-        label: currentCfi
-      });
-      setBookmarks(prev => [...prev, bm]);
-    }
+  const handleToggleBookmark = () => {
+    toggleBookmark();
   };
 
   const isDark = ['dark', 'dim', 'nord', 'midnight', 'high-contrast'].includes(readingMode);

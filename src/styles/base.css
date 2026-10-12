@@ -38,6 +38,44 @@
   display: none;
 }
 
+/* EPUB Continuous Scrolling Container & Scrollbar */
+.epub-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scroll-behavior: auto !important;
+}
+
+.epub-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.epub-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.epub-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.epub-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+
+.reading-mode-light .epub-container::-webkit-scrollbar-thumb,
+.reading-mode-sepia .epub-container::-webkit-scrollbar-thumb,
+.reading-mode-mint .epub-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.reading-mode-light .epub-container::-webkit-scrollbar-thumb:hover,
+.reading-mode-sepia .epub-container::-webkit-scrollbar-thumb:hover,
+.reading-mode-mint .epub-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
 /* Tab Bar Horizontal Scrollbar (Clean hidden scrollbar to prevent GTK overlay lockup; navigation via wheel and chevrons) */
 .tab-scrollbar {
   overflow-x: auto;

@@ -10,11 +10,13 @@ import EpubSidebars from './EpubSidebars';
 import EpubTypography from './EpubTypography';
 import EpubHighlightMenu from './EpubHighlightMenu';
 import { EpubErrorState } from './EpubErrorState';
+import EpubBookmarkRibbon from './EpubBookmarkRibbon';
 import BookInfoModal from '../modals/BookInfoModal';
 import { triggerToast } from '../../ui/ToastContext';
 import { useEpubShortcuts } from './hooks/useEpubShortcuts';
 import { useEpubLoader } from './useEpubLoader';
 import { useEpubTheme } from './useEpubTheme';
+import { useEpubContinuousBookmarks } from './hooks/useEpubContinuousBookmarks';
 import { useTimeTracker } from '../../../hooks/useTimeTracker';
 import EpubBottomBar from './components/EpubBottomBar';
 
@@ -38,6 +40,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     textWidth,
     epubBook,
     fontFamily,
+    scrollMode,
+    setCurrentSectionHref,
   } = useEpub();
 
   const { state, dispatch } = useStore();
@@ -51,7 +55,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   });
 
   useEffect(() => {
-    const prefs = { fontSize, readingMode, fontFamily, textWidth };
+    const prefs = { fontSize, readingMode, fontFamily, textWidth, scrollMode };
     const str = JSON.stringify(prefs);
     if (str !== book.reading_preferences) {
       const timeout = setTimeout(() => {
@@ -60,7 +64,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       }, 1000);
       return () => clearTimeout(timeout);
     }
-  }, [fontSize, readingMode, fontFamily, textWidth, book, onUpdateBook]);
+  }, [fontSize, readingMode, fontFamily, textWidth, scrollMode, book, onUpdateBook]);
 
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState<{percent: number, stage: string} | null>(null);
@@ -74,6 +78,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   const viewerRef = useRef<HTMLDivElement>(null);
   const globalLastHighlightClickRef = useRef<number>(0);
   const clearSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveRelocatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingUpdatesRef = useRef<Partial<LibraryBook> | null>(null);
   const [showMobileTools, setShowMobileTools] = useState(false);
   const [showBookInfo, setShowBookInfo] = useState(false);
   const toolsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -125,10 +131,22 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     const renditionObj = r as { next: () => void, prev: () => void };
     if (!renditionObj) return;
     const now = Date.now();
-    if (now - lastPageTurnTimeRef.current < 200) {
+    if (now - lastPageTurnTimeRef.current < 150) {
       return;
     }
     lastPageTurnTimeRef.current = now;
+
+    if (scrollMode) {
+      const scroller = viewerRef.current?.querySelector('.epub-container') as HTMLElement;
+      if (scroller) {
+        const step = scroller.clientHeight * 0.8;
+        scroller.scrollBy({
+          top: direction === 'next' ? step : -step,
+          behavior: 'smooth'
+        });
+        return;
+      }
+    }
 
     if (viewerRef.current) {
       viewerRef.current.style.transition = 'opacity 0.05s ease-out';
@@ -181,6 +199,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   );
 
   useEpubTheme(globalLastHighlightClickRef, clearSelectionTimerRef);
+  useEpubContinuousBookmarks();
 
   useEffect(() => {
     if (!selection && rendition) {
@@ -197,8 +216,11 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
   useEffect(() => {
     if (!rendition) return;
 
-    const onRelocated = (location: { start: { cfi: string } }) => {
+    const onRelocated = (location: { start: { cfi: string; href?: string } }) => {
       const updates: Partial<LibraryBook> = { last_read_page: location.start.cfi };
+      if (location.start?.href) {
+        setCurrentSectionHref(location.start.href);
+      }
       if (locationsReady && epubBook) {
         const percentage = epubBook.locations.percentageFromCfi(location.start.cfi);
         setProgress(percentage);
@@ -206,14 +228,33 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         setCurrentPage(current as unknown as number);
         updates.current_page = current as unknown as number;
       }
-      onUpdateBook(updates);
+      // Debounce database and store persistence during continuous scrolling
+      pendingUpdatesRef.current = { ...(pendingUpdatesRef.current || {}), ...updates };
+      if (saveRelocatedTimerRef.current) {
+        clearTimeout(saveRelocatedTimerRef.current);
+      }
+      saveRelocatedTimerRef.current = setTimeout(() => {
+        if (pendingUpdatesRef.current) {
+          onUpdateBook(pendingUpdatesRef.current);
+          pendingUpdatesRef.current = null;
+        }
+        saveRelocatedTimerRef.current = null;
+      }, 800);
     };
 
     rendition.on('relocated', onRelocated);
     return () => {
       rendition.off('relocated', onRelocated);
+      if (saveRelocatedTimerRef.current) {
+        clearTimeout(saveRelocatedTimerRef.current);
+        saveRelocatedTimerRef.current = null;
+      }
+      if (pendingUpdatesRef.current) {
+        onUpdateBook(pendingUpdatesRef.current);
+        pendingUpdatesRef.current = null;
+      }
     };
-  }, [rendition, locationsReady, epubBook, setProgress, setCurrentPage, onUpdateBook]);
+  }, [rendition, locationsReady, epubBook, setProgress, setCurrentPage, setCurrentSectionHref, onUpdateBook]);
 
   const modeNames: Record<string, string> = {
     light: 'Tema: Claro',
@@ -261,6 +302,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     turnPage,
     cycleReadingMode,
     changeZoom,
+    scrollMode,
+    viewerRef,
   });
 
   useEffect(() => {
@@ -383,10 +426,15 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
           </button>
 
           <div
-            ref={viewerRef}
-            className="w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300"
+            className="w-full h-full mx-auto px-2 sm:px-10 transition-all duration-300 relative"
             style={{ maxWidth: textWidth === 'narrow' ? '700px' : textWidth === 'medium' ? '1000px' : '1400px' }}
-          />
+          >
+            <EpubBookmarkRibbon />
+            <div
+              ref={viewerRef}
+              className="w-full h-full"
+            />
+          </div>
 
           <button onClick={() => turnPage('next')} className="hidden sm:block absolute right-0 top-0 bottom-0 w-16 z-10 cursor-pointer group">
             <div className={`absolute right-0 top-0 bottom-0 w-16 transition-opacity opacity-0 group-hover:opacity-100 flex items-center justify-center ${isDark ? 'bg-gradient-to-l from-black/50 to-transparent text-white' : 'bg-gradient-to-l from-black/10 to-transparent text-black'}`}>
@@ -413,7 +461,11 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       )}
 
       {showBookInfo && (
-        <BookInfoModal book={book} onClose={() => setShowBookInfo(false)} />
+        <BookInfoModal
+          book={book}
+          onClose={() => setShowBookInfo(false)}
+          onUpdateBook={onUpdateBook}
+        />
       )}
     </div>
   );

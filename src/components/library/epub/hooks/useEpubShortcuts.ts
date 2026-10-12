@@ -7,6 +7,8 @@ interface UseEpubShortcutsProps {
   turnPage: (direction: 'next' | 'prev') => void;
   cycleReadingMode: () => void;
   changeZoom: (delta: number) => void;
+  scrollMode?: boolean;
+  viewerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function useEpubShortcuts({
@@ -16,6 +18,8 @@ export function useEpubShortcuts({
   turnPage,
   cycleReadingMode,
   changeZoom,
+  scrollMode,
+  viewerRef,
 }: UseEpubShortcutsProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -24,6 +28,34 @@ export function useEpubShortcuts({
         document.activeElement?.tagName === 'INPUT' ||
         (e.target as HTMLElement)?.isContentEditable;
       if (isInput) return;
+
+      if (scrollMode) {
+        const scroller =
+          (viewerRef?.current?.querySelector('.epub-container') as HTMLElement | null) ||
+          (document.querySelector('.epub-container') as HTMLElement | null);
+        if (scroller) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            scroller.scrollBy({ top: 60, behavior: 'smooth' });
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            scroller.scrollBy({ top: -60, behavior: 'smooth' });
+            return;
+          }
+          if (e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
+            e.preventDefault();
+            scroller.scrollBy({ top: scroller.clientHeight * 0.8, behavior: 'smooth' });
+            return;
+          }
+          if (e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) {
+            e.preventDefault();
+            scroller.scrollBy({ top: -scroller.clientHeight * 0.8, behavior: 'smooth' });
+            return;
+          }
+        }
+      }
 
       if (e.key.toLowerCase() === 'f' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
@@ -75,5 +107,5 @@ export function useEpubShortcuts({
         rendition.off('keydown', handleKeyDown);
       }
     };
-  }, [rendition, dispatch, isFullScreenRef, turnPage, cycleReadingMode, changeZoom]);
+  }, [rendition, dispatch, isFullScreenRef, turnPage, cycleReadingMode, changeZoom, scrollMode, viewerRef]);
 }

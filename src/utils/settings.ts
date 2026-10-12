@@ -23,6 +23,7 @@ export interface AppSettings {
   hasOfflineDictionary: boolean;
   defaultReadingMode: 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
   defaultTextWidth: 'narrow' | 'medium' | 'full';
+  defaultScrollMode?: boolean;
   aiDictionaryLanguage: 'bilingual' | 'english_only';
   enableStudySfx: boolean;
   enableStudy3DFlip: boolean;
@@ -60,6 +61,7 @@ export function getSettings(): AppSettings {
     hasOfflineDictionary: false,
     defaultReadingMode: 'light',
     defaultTextWidth: 'medium',
+    defaultScrollMode: false,
     aiDictionaryLanguage: 'bilingual',
     enableStudySfx: true,
     enableStudy3DFlip: true,
