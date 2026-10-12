@@ -174,11 +174,21 @@ function AppContent() {
 
   if (authStatus === null) {
     return (
-      <div className="w-full max-w-full h-full flex items-center justify-center bg-dark-bg text-dark-subtext relative overflow-hidden" style={{ height: '100dvh' }}>
-        <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none">
+      <div className="w-full max-w-full h-full flex flex-col items-center justify-center bg-dark-bg text-dark-subtext relative overflow-hidden select-none" style={{ height: '100dvh' }}>
+        <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none pointer-events-auto">
           <WindowControls />
         </div>
-        <span className="animate-pulse">Iniciando ambiente seguro...</span>
+        <div className="relative flex items-center justify-center mb-6">
+          <img
+            src="/icon.png"
+            alt="Caderno"
+            className="w-20 h-20 rounded-2xl shadow-2xl animate-pulse"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-medium text-dark-subtext/80 tracking-wide">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-ping" />
+          <span>Iniciando ambiente seguro...</span>
+        </div>
       </div>
     );
   }
