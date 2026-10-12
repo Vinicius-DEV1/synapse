@@ -19,6 +19,7 @@ import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useAppTitle } from './hooks/useAppTitle';
 import { useGarbageCollection } from './hooks/useGarbageCollection';
 import { usePlatform } from './hooks/usePlatform';
+import { isMobileScreen } from './services/platform';
 import { TaskProvider } from './store/TaskContext';
 import { GlobalModals } from './components/layout/GlobalModals';
 import { useAppEvents } from './hooks/useAppEvents';
@@ -32,8 +33,18 @@ function AppContent() {
   const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
   const platform = usePlatform();
   const [settings, setSettings] = useState(getSettings);
+  const [isMobile, setIsMobile] = useState(() => isMobileScreen() || platform.platform === 'mobile-webview');
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module;
+  const isReadingBook = activeTab?.module === 'library' && Boolean(activeTab?.bookTitle);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(isMobileScreen() || platform.platform === 'mobile-webview');
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [platform.platform]);
 
   useEffect(() => {
     const handleSettingsChange = () => {
@@ -220,10 +231,19 @@ function AppContent() {
       )}
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Tab Bar - Show always on mobile or if enabled in settings for current platform */}
-        {!state.isReadingModeFullScreen && 
-         (platform.platform === 'mobile-webview' || (platform.supportsNativeTabs ? settings.enableTabsDesktop : settings.enableTabsWeb)) && <TabBar />}
+        {(platform.platform === 'mobile-webview' || (platform.supportsNativeTabs ? settings.enableTabsDesktop : settings.enableTabsWeb)) && (
+          <div
+            className={
+              isReadingBook && isMobile
+                ? `absolute top-0 left-0 right-0 z-40 transition-transform duration-300 ${state.isReadingModeFullScreen ? '-translate-y-full pointer-events-none' : 'translate-y-0'}`
+                : state.isReadingModeFullScreen ? 'hidden' : ''
+            }
+          >
+            <TabBar />
+          </div>
+        )}
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">

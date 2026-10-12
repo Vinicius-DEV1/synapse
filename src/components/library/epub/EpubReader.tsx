@@ -332,7 +332,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       (rendition as unknown as { resize: (w: string, h: string) => void }).resize('100%', '100%');
     }, 350);
     return () => clearTimeout(timer);
-  }, [textWidth, state.isReadingModeFullScreen, showMobileTools, rendition]);
+  }, [textWidth, rendition]);
 
   const { progress, currentPage, totalPages } = useEpub();
   const progressPercentage = Math.round((progress || 0) * 100);
@@ -363,7 +363,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
       <div
         className={`
         transition-all duration-300 z-30
-        ${showMobileTools ? 'translate-y-0' : '-translate-y-full md:translate-y-0'}
+        ${showMobileTools ? 'translate-y-[46px] md:translate-y-0' : '-translate-y-full md:translate-y-0'}
         ${state.isReadingModeFullScreen ? 'md:hidden' : ''}
         absolute md:relative top-0 left-0 right-0
       `}
