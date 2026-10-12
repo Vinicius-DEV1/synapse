@@ -90,4 +90,24 @@ describe('sync-pdf service', () => {
       })
     );
   });
+
+  it('skips soft-deleted books from uploading to Google Drive', async () => {
+    const mockBooks = [
+      {
+        id: 'book-deleted',
+        title: 'Deleted Book.pdf',
+        file_path: '/path/to/deleted.pdf',
+        drive_file_id: null,
+        deleted_at: '2026-08-22T15:00:00Z',
+      },
+    ];
+
+    (window as any).api.library.getBooks.mockResolvedValue(mockBooks);
+    (drive.getValidAccessToken as any).mockResolvedValue('valid-oauth2-token');
+
+    await syncPdfsToCloud({ library: cryptoKey });
+
+    expect(storage.encryptFile).not.toHaveBeenCalled();
+    expect(drive.uploadToDrive).not.toHaveBeenCalled();
+  });
 });

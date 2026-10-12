@@ -150,6 +150,54 @@ describe('sync-pull service', () => {
     expect(window.api.sync.upsertRow).not.toHaveBeenCalled();
   });
 
+  it('pulls soft-deleted remote doc and persists deleted_at locally', async () => {
+    const remoteBookData = {
+      title: 'Livro Remoto Deletado',
+      deleted_at: '2026-08-22T15:00:00.000Z',
+    };
+    const encrypted = await encryptText(JSON.stringify(remoteBookData), cryptoKey);
+
+    const mockDocSnap = {
+      id: 'book-remote-deleted',
+      data: () => ({
+        encryptedData: encrypted,
+        updatedAt: '2026-08-22T15:00:00.000Z',
+        createdAt: '2026-08-20T10:00:00.000Z',
+        deletedAt: '2026-08-22T15:00:00.000Z',
+      }),
+    };
+
+    (firestore.getDocs as any).mockImplementation((q: any) => {
+      const collectionPath = q.args?.[0]?.path || q.path;
+      if (collectionPath === 'library_books') {
+        return Promise.resolve({
+          empty: false,
+          docs: [mockDocSnap],
+        });
+      }
+      return Promise.resolve({ empty: true, docs: [] });
+    });
+
+    (window as any).api.sync.getRowsByIds.mockResolvedValue([
+      {
+        id: 'book-remote-deleted',
+        title: 'Livro Remoto Deletado',
+        updated_at: '2026-08-21T10:00:00.000Z',
+        deleted_at: null,
+      },
+    ]);
+
+    await pullAllFromCloud({ library: cryptoKey });
+
+    expect(window.api.sync.upsertRow).toHaveBeenCalledWith(
+      'library_books',
+      expect.objectContaining({
+        id: 'book-remote-deleted',
+        deleted_at: '2026-08-22T15:00:00.000Z',
+      })
+    );
+  });
+
   it('subscribes to cloud sync signals using listenForCloudSyncSignal', () => {
     const callback = vi.fn();
     const unsubscribe = listenForCloudSyncSignal(callback);

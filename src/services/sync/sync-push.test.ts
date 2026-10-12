@@ -148,4 +148,42 @@ describe('sync-push service', () => {
 
     expect(mockBatch.commit).not.toHaveBeenCalled();
   });
+
+  it('pushes soft-deleted rows with deletedAt and preserved deletion timestamp', async () => {
+    syncUtils.setLastSyncTime('push', 0);
+
+    const deletedBook = [
+      {
+        id: 'book-deleted-1',
+        title: 'Livro Deletado',
+        created_at: '2026-08-20T10:00:00Z',
+        updated_at: '2026-08-22T15:00:00Z',
+        deleted_at: '2026-08-22T15:00:00Z',
+      },
+    ];
+
+    (window as any).api.sync.getTable.mockImplementation(async (table: string) => {
+      if (table === 'library_books') return deletedBook;
+      return [];
+    });
+
+    const mockBatch = {
+      set: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
+    };
+    (firestore.writeBatch as any).mockReturnValue(mockBatch);
+
+    await pushAllToCloud({ library: cryptoKey });
+
+    expect(mockBatch.set).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'book-deleted-1', table: 'library_books' }),
+      expect.objectContaining({
+        encryptedData: expect.any(String),
+        updatedAt: '2026-08-22T15:00:00.000Z',
+        deletedAt: '2026-08-22T15:00:00.000Z',
+      }),
+      { merge: true }
+    );
+    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+  });
 });

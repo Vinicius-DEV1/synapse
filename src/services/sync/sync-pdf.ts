@@ -12,13 +12,13 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
   if (!masterKey) return; 
 
   // Runs only in Desktop environment (with local filesystem access)
-  if (!platform.canReadLocalFilesystem) {
+  if (!platform.canReadLocalFilesystem || platform.platform !== 'desktop') {
     return;
   }
   
   try {
     const books = await window.api.library.getBooks();
-    const pendingBooks = books.filter(b => !b.drive_file_id);
+    const pendingBooks = books.filter(b => !b.drive_file_id && !b.deleted_at);
     if (pendingBooks.length === 0) return;
 
     window.dispatchEvent(new Event('library-upload-start'));

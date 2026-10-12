@@ -17,6 +17,7 @@ interface PreparedDoc {
   isCompressed?: boolean;
   updatedAt: string | null;
   createdAt: string | null;
+  deletedAt: string | null;
   localTime: number;
   table: string;
 }
@@ -33,8 +34,16 @@ async function prepareRowsForPush(
   const skippedLarge: string[] = [];
 
   const promises = rows.map(async (row): Promise<PreparedDoc | null> => {
-    const { id, updated_at, created_at, deleted_at, ...sensitiveData } = row;
+    const { id, updated_at, created_at, ...sensitiveData } = row;
     const docId = String(id);
+
+    // Ensure deleted_at is captured and included in encrypted sensitiveData payload
+    const rawDeletedAt = row.deleted_at;
+    const safeDeletedAt = rawDeletedAt ? new Date(parseDateSafe(rawDeletedAt)).toISOString() : null;
+    if (safeDeletedAt) {
+      sensitiveData.deleted_at = safeDeletedAt;
+    }
+
     const jsonString = JSON.stringify(sensitiveData);
 
     let payloadString = jsonString;
@@ -72,11 +81,26 @@ async function prepareRowsForPush(
     }
 
     const encryptedData = await encryptText(payloadString, key);
-    const safeUpdatedAt = updated_at ? new Date(parseDateSafe(updated_at)).toISOString() : null;
+    const localTime = Math.max(
+      parseDateSafe(updated_at || created_at || 0),
+      parseDateSafe(rawDeletedAt || 0)
+    );
+    // Ensure safeUpdatedAt is bumped to deletion time so Firestore updatedAt queries catch deleted docs
+    const safeUpdatedAt = localTime > 0
+      ? new Date(localTime).toISOString()
+      : (updated_at ? new Date(parseDateSafe(updated_at)).toISOString() : null);
     const safeCreatedAt = created_at ? new Date(parseDateSafe(created_at)).toISOString() : null;
-    const localTime = Math.max(parseDateSafe(updated_at || created_at || 0), parseDateSafe(deleted_at || 0));
 
-    return { id: docId, encryptedData, isCompressed, updatedAt: safeUpdatedAt, createdAt: safeCreatedAt, localTime, table };
+    return {
+      id: docId,
+      encryptedData,
+      isCompressed,
+      updatedAt: safeUpdatedAt,
+      createdAt: safeCreatedAt,
+      deletedAt: safeDeletedAt,
+      localTime,
+      table
+    };
   });
 
   const results = await Promise.all(promises);
@@ -96,6 +120,7 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   }
 
   const lastPush = getLastSyncTime('push');
+  const hasRepushedDeletions = typeof localStorage !== 'undefined' && localStorage.getItem('caderno_sync_fix_deletions_v1') === 'true';
   let highestSuccessTime = lastPush; // Only advances timestamp for successful documents
   let pushedCount = 0;
   const errors: string[] = [];
@@ -118,8 +143,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         const rowsToPush: SyncRow[] = lastPush > 0 
           ? localRows.filter((r: SyncRow) => {
               const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
-              const pushIt = rTime > lastPush;
-              return pushIt;
+              const isUnsyncedDeletion = !hasRepushedDeletions && Boolean(r.deleted_at);
+              return rTime > lastPush || isUnsyncedDeletion;
             })
           : localRows;
 
@@ -162,7 +187,8 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
               encryptedData: item.encryptedData,
               isCompressed: item.isCompressed || false,
               updatedAt: item.updatedAt,
-              createdAt: item.createdAt
+              createdAt: item.createdAt,
+              deletedAt: item.deletedAt ?? null
             }, { merge: true });
             
             chunkBytes += item.id.length + item.encryptedData.length + 150;
@@ -221,6 +247,9 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
     // #6: Update lastPush timestamp strictly from successfully committed docs
     if (highestSuccessTime > getLastSyncTime('push')) {
       setLastSyncTime('push', highestSuccessTime);
+    }
+    if (!hasRepushedDeletions && typeof localStorage !== 'undefined') {
+      localStorage.setItem('caderno_sync_fix_deletions_v1', 'true');
     }
     if (pushedCount > 0) {
       try {

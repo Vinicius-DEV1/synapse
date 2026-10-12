@@ -51,6 +51,11 @@ export async function prepareRowForUpsert(
   if (cloudData.createdAt !== undefined) {
     rowToUpsert.created_at = normalizeTime(cloudData.createdAt) || (cloudData.createdAt as string);
   }
+  if (cloudData.deletedAt !== undefined) {
+    rowToUpsert.deleted_at = normalizeTime(cloudData.deletedAt) || (cloudData.deletedAt as string | null);
+  } else if (parsed && parsed.deleted_at !== undefined) {
+    rowToUpsert.deleted_at = parsed.deleted_at ? (normalizeTime(parsed.deleted_at) || (parsed.deleted_at as string)) : null;
+  }
 
   // CRDT merge for pages (Yjs)
   if (
@@ -86,9 +91,13 @@ export async function prepareRowForUpsert(
       console.error('Erro no merge CRDT Yjs:', crdtErr);
     }
   } else if (localTime > cloudTime) {
-    if (parsed && parsed.deleted_at && !localRow?.deleted_at) {
+    const isCloudDeleted = Boolean(
+      (cloudData.deletedAt !== undefined && cloudData.deletedAt !== null) ||
+      (parsed && parsed.deleted_at)
+    );
+    if (isCloudDeleted && !localRow?.deleted_at) {
       Object.assign(rowToUpsert, localRow);
-      rowToUpsert.deleted_at = parsed.deleted_at as string;
+      rowToUpsert.deleted_at = (normalizeTime(cloudData.deletedAt) || (parsed?.deleted_at as string)) || new Date().toISOString();
     } else {
       return { rowToUpsert, isSkipped: true };
     }
@@ -97,7 +106,8 @@ export async function prepareRowForUpsert(
   // Race condition protection: check for local edits during sync
   if (freshRow) {
     const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
-    if (freshTime > cloudTime) {
+    const isCloudDeleted = Boolean(rowToUpsert.deleted_at);
+    if (freshTime > cloudTime && (!isCloudDeleted || freshRow.deleted_at)) {
       return { rowToUpsert, isSkipped: true };
     }
   }
