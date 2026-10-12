@@ -186,7 +186,7 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
               return false;
 
             const cloudTime = parseDateSafe(
-              (cloudData.updatedAt || cloudData.createdAt || 0) as string | number
+              (cloudData.updatedAt || cloudData.deletedAt || cloudData.createdAt || 0) as string | number
             );
             if (cloudTime > highestCloudTime) {
               highestCloudTime = cloudTime;
@@ -195,8 +195,16 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 
             const localRow = localMap!.get(docSnap.id);
             const localTime = localRow
-              ? parseDateSafe(localRow.updated_at || localRow.created_at || 0)
+              ? Math.max(
+                  parseDateSafe(localRow.updated_at || localRow.created_at || 0),
+                  parseDateSafe(localRow.deleted_at || 0)
+                )
               : -1;
+
+            const isCloudDeleted = Boolean(cloudData.deletedAt);
+            const isLocalDeleted = Boolean(localRow?.deleted_at);
+            if (isCloudDeleted !== isLocalDeleted) return true;
+
             return cloudTime !== localTime;
           });
 

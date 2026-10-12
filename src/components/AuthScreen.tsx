@@ -216,12 +216,14 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
   return (
     <div className="min-h-screen bg-[#0f0e17] flex items-center justify-center p-4 relative" style={{ minHeight: '100dvh' }}>
       {/* Draggable top bar with window controls for frameless Tauri window */}
-      <div
-        data-tauri-drag-region
-        className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none"
-      >
-        <WindowControls />
-      </div>
+      {platform.isDesktop && (
+        <div
+          data-tauri-drag-region
+          className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none"
+        >
+          <WindowControls />
+        </div>
+      )}
       <div 
         className={`bg-dark-card border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl transition-all ${shake ? 'animate-shake' : ''} ${lockoutTime > 0 ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.15)] bg-[#1a0f0f]' : ''}`}
       >

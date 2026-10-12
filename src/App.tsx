@@ -175,9 +175,11 @@ function AppContent() {
   if (authStatus === null) {
     return (
       <div className="w-full max-w-full h-full flex flex-col items-center justify-center bg-dark-bg text-dark-subtext relative overflow-hidden select-none" style={{ height: '100dvh' }}>
-        <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none pointer-events-auto">
-          <WindowControls />
-        </div>
+        {platform.isDesktop && (
+          <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-10 z-50 flex items-center justify-end select-none pointer-events-auto">
+            <WindowControls />
+          </div>
+        )}
         <div className="relative flex items-center justify-center mb-6">
           <img
             src="/icon.png"

@@ -154,7 +154,13 @@ export const tauriLibraryApi = {
       return await invoke<number>('library_update_book', { book: b });
     }
   },
-  deleteBook: async (id: string): Promise<boolean> => await invoke<boolean>('library_delete_book', { id }),
+  deleteBook: async (id: string): Promise<boolean> => {
+    const res = await invoke<boolean>('library_delete_book', { id });
+    if (res && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('app-sync-trigger-immediate'));
+    }
+    return res;
+  },
   evictBookLocalCache: async (id: string): Promise<boolean> => {
     try {
       await invoke('library_evict_book_local_cache', { id });

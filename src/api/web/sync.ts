@@ -19,6 +19,9 @@ export const webSyncApi = (db: any, originalDelete: any, originalPut: any) => ({
       } catch (e) {
         console.warn(`Failed to fetch existing row for merge in sync upsert:`, e);
       }
+      if (tableName === 'library_books' && row.deleted_at && db.objectStoreNames.contains('library_book_files' as any)) {
+        await db.delete('library_book_files' as any, row.id).catch(console.warn);
+      }
       await originalPut(tableName as any, row);
     }
     return { success: true };

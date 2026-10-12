@@ -15,6 +15,7 @@ declare global {
 
 export interface PlatformCapabilities {
   platform: 'web' | 'desktop' | 'mobile-webview';
+  isDesktop: boolean;
   canReadLocalFilesystem: boolean;
   useNativeTitleBar: boolean;
   supportsNativeTabs: boolean;
@@ -48,6 +49,9 @@ function checkIsMobileWebView(): boolean {
 export const platform: PlatformCapabilities = {
   get platform() {
     return checkIsDesktop() ? 'desktop' : checkIsMobileWebView() ? 'mobile-webview' : 'web';
+  },
+  get isDesktop() {
+    return checkIsDesktop();
   },
   get canReadLocalFilesystem() {
     return checkIsDesktop();

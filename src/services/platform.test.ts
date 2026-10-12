@@ -22,6 +22,7 @@ describe('platform capabilities', () => {
     expect(isDesktopApp()).toBe(false);
     expect(isMobileWebView()).toBe(false);
     expect(platform.platform).toBe('web');
+    expect(platform.isDesktop).toBe(false);
     expect(platform.canReadLocalFilesystem).toBe(false);
     expect(platform.useNativeTitleBar).toBe(false);
     expect(platform.supportsNativeTabs).toBe(false);
@@ -34,6 +35,7 @@ describe('platform capabilities', () => {
     expect(isDesktopApp()).toBe(false);
     expect(isMobileWebView()).toBe(true);
     expect(platform.platform).toBe('mobile-webview');
+    expect(platform.isDesktop).toBe(false);
     expect(platform.canReadLocalFilesystem).toBe(false);
     expect(platform.useNativeTitleBar).toBe(false);
     expect(platform.supportsNativeTabs).toBe(false);
@@ -45,6 +47,7 @@ describe('platform capabilities', () => {
     expect(isDesktopApp()).toBe(false);
     expect(isMobileWebView()).toBe(true);
     expect(platform.platform).toBe('mobile-webview');
+    expect(platform.isDesktop).toBe(false);
   });
 
   it('detects desktop mode when Tauri globals are present', () => {
@@ -52,6 +55,7 @@ describe('platform capabilities', () => {
 
     expect(isDesktopApp()).toBe(true);
     expect(platform.platform).toBe('desktop');
+    expect(platform.isDesktop).toBe(true);
     expect(platform.canReadLocalFilesystem).toBe(true);
     expect(platform.useNativeTitleBar).toBe(true);
     expect(platform.supportsNativeTabs).toBe(true);

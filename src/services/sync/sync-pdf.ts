@@ -39,8 +39,7 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
 
           const fileData = await window.api.library.getBookFile(book.id) as BookFileData;
           if (!fileData) {
-            console.error('[Sync] Arquivo local não encontrado para:', bookName);
-            triggerToast(`Não foi possível localizar o arquivo físico do livro "${bookName}".`, 'error');
+            console.warn('[Sync] Arquivo local não encontrado para upload:', bookName);
             continue;
           }
           

@@ -137,6 +137,9 @@ export const createBooksApi = (
       existing.deleted_at = new Date().toISOString();
       existing.updated_at = new Date().toISOString();
       await db.put('library_books', existing);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('app-sync-trigger-immediate'));
+      }
       return true;
     }
     return false;
@@ -236,7 +239,7 @@ export const createBooksApi = (
 
   getBookFile: async (id: string) => {
     const book = await db.get('library_books', id);
-    if (!book) return null;
+    if (!book || book.deleted_at) return null;
     const _masterKey = getMasterKey();
     if (!_masterKey) throw new Error("Chave Mestra não encontrada");
     

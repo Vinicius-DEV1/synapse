@@ -164,6 +164,9 @@ function MainWebView() {
               url.startsWith('http://10.0.2.2') ||
               url.startsWith('http://192.168.') ||
               url.startsWith('https://fourth-cirrus-468923-h7') ||
+              url.startsWith('https://synapse') ||
+              url.includes('.firebaseapp.com') ||
+              url.includes('.web.app') ||
               url.startsWith('https://accounts.google.com') ||
               url.startsWith('https://apis.google.com') ||
               url.startsWith('blob:') ||

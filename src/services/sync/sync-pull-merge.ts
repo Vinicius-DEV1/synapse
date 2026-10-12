@@ -55,6 +55,8 @@ export async function prepareRowForUpsert(
     rowToUpsert.deleted_at = normalizeTime(cloudData.deletedAt) || (cloudData.deletedAt as string | null);
   } else if (parsed && parsed.deleted_at !== undefined) {
     rowToUpsert.deleted_at = parsed.deleted_at ? (normalizeTime(parsed.deleted_at) || (parsed.deleted_at as string)) : null;
+  } else {
+    rowToUpsert.deleted_at = null;
   }
 
   // CRDT merge for pages (Yjs)
