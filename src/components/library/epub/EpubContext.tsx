@@ -3,6 +3,13 @@ import { Rendition, Book } from 'epubjs';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark, ReadingMode } from '../../../types';
 import { getSettings, saveSettings } from '../../../utils/settings';
 
+export interface TocItem {
+  id?: string;
+  href: string;
+  label: string;
+  subitems?: TocItem[];
+}
+
 interface EpubContextType {
   book: LibraryBook;
   rendition: Rendition | null;
@@ -35,6 +42,8 @@ interface EpubContextType {
   setTotalPages: (p: number) => void;
   locationsReady: boolean;
   setLocationsReady: (r: boolean) => void;
+  currentSectionHref: string | null;
+  setCurrentSectionHref: (href: string | null) => void;
   
   // Sidebars & UI State
   showSettings: boolean;
@@ -47,8 +56,8 @@ interface EpubContextType {
   setShowNotebook: (s: boolean) => void;
   
   // Data
-  toc: any[];
-  setToc: (t: any[]) => void;
+  toc: TocItem[];
+  setToc: (t: TocItem[]) => void;
   bookmarks: LibraryBookmark[];
   setBookmarks: React.Dispatch<React.SetStateAction<LibraryBookmark[]>>;
   highlights: LibraryHighlight[];
@@ -69,9 +78,28 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [rendition, setRendition] = useState<Rendition | null>(null);
   const [epubBook, setEpubBook] = useState<Book | null>(null);
   
-  const prefs = (book as any).reading_preferences ? JSON.parse((book as any).reading_preferences) : {};
-    const [fontSize, setFontSize] = useState(prefs.fontSize || 100);
-  const [readingMode, setReadingModeState] = useState<ReadingMode>(prefs.readingMode || getSettings().defaultReadingMode || 'light');
+  interface EpubReadingPrefs {
+    fontSize?: number;
+    readingMode?: ReadingMode;
+    fontFamily?: 'sans' | 'serif' | 'opendyslexic' | 'original';
+    scrollMode?: boolean;
+    textWidth?: 'narrow' | 'medium' | 'full';
+  }
+
+  let prefs: EpubReadingPrefs = {};
+  if (book.reading_preferences) {
+    try {
+      prefs = JSON.parse(book.reading_preferences) as EpubReadingPrefs;
+    } catch {
+      prefs = {};
+    }
+  }
+  const [fontSize, setFontSize] = useState(typeof prefs.fontSize === 'number' ? prefs.fontSize : 100);
+  const [readingMode, setReadingModeState] = useState<ReadingMode>(
+    prefs.readingMode && ['light', 'sepia', 'dark', 'mint'].includes(prefs.readingMode)
+      ? prefs.readingMode
+      : getSettings().defaultReadingMode || 'light'
+  );
 
   const setReadingMode = (mode: ReadingMode | ((prev: ReadingMode) => ReadingMode)) => {
     let newModeValue: ReadingMode;
@@ -89,9 +117,27 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'opendyslexic' | 'original'>('original');
   const [originalFontName, setOriginalFontName] = useState<string | null>(null);
   const [detectedFontSizePx, setDetectedFontSizePx] = useState<string | null>(null);
-  const [scrollMode, setScrollMode] = useState(false);
-  
-  const [textWidthState, setTextWidthState] = useState<'narrow' | 'medium' | 'full'>(prefs.textWidth || getSettings().defaultTextWidth || 'medium');
+  const [scrollMode, setScrollModeState] = useState<boolean>(
+    typeof prefs.scrollMode === 'boolean'
+      ? prefs.scrollMode
+      : (getSettings().defaultScrollMode ?? false)
+  );
+
+  const setScrollMode = (mode: boolean | ((prev: boolean) => boolean)) => {
+    let newModeValue: boolean;
+    setScrollModeState(prev => {
+      newModeValue = typeof mode === 'function' ? mode(prev) : mode;
+      return newModeValue;
+    });
+    setTimeout(() => {
+      saveSettings({ ...getSettings(), defaultScrollMode: newModeValue });
+    }, 0);
+  };
+  const [textWidthState, setTextWidthState] = useState<'narrow' | 'medium' | 'full'>(
+    prefs.textWidth && ['narrow', 'medium', 'full'].includes(prefs.textWidth)
+      ? prefs.textWidth
+      : getSettings().defaultTextWidth || 'medium'
+  );
   const setTextWidth = (w: 'narrow' | 'medium' | 'full' | ((prev: 'narrow' | 'medium' | 'full') => 'narrow' | 'medium' | 'full')) => {
     let newWidthValue: 'narrow' | 'medium' | 'full';
     setTextWidthState(prev => {
@@ -107,15 +153,16 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
   
   const [progress, setProgress] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [locationsReady, setLocationsReady] = useState(false);
+  const [totalPages, setTotalPages] = useState(book.total_pages || 0);
+  const [locationsReady, setLocationsReady] = useState(Boolean(book.epub_locations && (book.total_pages || 0) > 0));
+  const [currentSectionHref, setCurrentSectionHref] = useState<string | null>(null);
   
   const [showSettings, setShowSettings] = useState(false);
   const [showToc, setShowToc] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
   
-  const [toc, setToc] = useState<any[]>([]);
+  const [toc, setToc] = useState<TocItem[]>([]);
   const [bookmarks, setBookmarks] = useState<LibraryBookmark[]>([]);
   const [highlights, setHighlights] = useState<LibraryHighlight[]>([]);
   
@@ -139,6 +186,7 @@ export function EpubProvider({ children, book }: { children: ReactNode, book: Li
       currentPage, setCurrentPage,
       totalPages, setTotalPages,
       locationsReady, setLocationsReady,
+      currentSectionHref, setCurrentSectionHref,
       showSettings, setShowSettings,
       showToc, setShowToc,
       showSearch, setShowSearch,

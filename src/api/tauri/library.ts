@@ -34,12 +34,23 @@ export const tauriLibraryApi = {
           });
           
           const cleanFileName = filePath.split(/[/\\]/).pop() || 'Livro';
-          const title = cleanFileName.replace(/\.(pdf|epub)$/i, '') || 'Livro';
+          const rawName = cleanFileName.replace(/\.(pdf|epub)$/i, '') || 'Livro';
+          let title = rawName;
+          let author = 'Desconhecido';
+
+          if (rawName.includes(' - ')) {
+            const parts = rawName.split(' - ');
+            if (parts.length >= 2 && parts[0]?.trim() && parts[1]?.trim()) {
+              title = parts[0].trim();
+              author = parts[1].trim();
+            }
+          }
+
           const book: LibraryBook = {
             id: bookId,
             title,
             original_name: cleanFileName,
-            author: 'Desconhecido',
+            author,
             file_path: localPath,
             cover_image: '',
             total_pages: 0,

@@ -84,11 +84,22 @@ export const createBooksApi = (
               console.warn('[Library] Drive upload skipped (offline or no auth)', e);
             }
             
-            const title = file.name.replace(/\.(pdf|epub)$/i, '');
+            const rawName = file.name.replace(/\.(pdf|epub)$/i, '');
+            let title = rawName;
+            let author = 'Desconhecido';
+
+            if (rawName.includes(' - ')) {
+              const parts = rawName.split(' - ');
+              if (parts.length >= 2 && parts[0]?.trim() && parts[1]?.trim()) {
+                title = parts[0].trim();
+                author = parts[1].trim();
+              }
+            }
+
             const book: LibraryBook = {
               id: bookId,
               title,
-              author: '',
+              author,
               file_path: remotePath,
               drive_file_id: driveFileId,
               original_name: file.name,

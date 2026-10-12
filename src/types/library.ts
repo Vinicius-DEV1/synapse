@@ -21,6 +21,7 @@ export interface LibraryBook {
   published_year?: number | null;
   publisher?: string | null;
   language?: string | null;
+  description?: string | null;
   epub_locations?: string | null;
   /** Whether the file is cached locally (IndexedDB) or pending download */
   is_local?: boolean;

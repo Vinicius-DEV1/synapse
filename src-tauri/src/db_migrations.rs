@@ -62,6 +62,9 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_color TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_image TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN language TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN publisher TEXT", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN published_year INTEGER", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN description TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN is_local BOOLEAN DEFAULT 1", []);
 
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Search, BookOpen, Bookmark, Trash2, X, Sparkles } from 'lucide-react';
-import { useEpub } from './EpubContext';
+import { useEpub, type TocItem } from './EpubContext';
 
 export default function EpubSidebars() {
   const {
@@ -8,13 +8,96 @@ export default function EpubSidebars() {
     showToc, setShowToc, toc,
     showSearch, setShowSearch, epubBook,
     showNotebook, setShowNotebook, highlights, bookmarks, setHighlights, setBookmarks,
-    totalPages
+    locationsReady, currentSectionHref, totalPages
   } = useEpub();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [notebookTab, setNotebookTab] = useState<'highlights' | 'bookmarks'>('highlights');
+
+  const activeItemRef = useRef<HTMLButtonElement | null>(null);
+
+  const normalizeHref = (href: string): string => {
+    if (!href) return '';
+    return href.split('#')[0].replace(/^(\.\/|\/)/, '').trim().toLowerCase();
+  };
+
+  const activeNormalized = currentSectionHref ? normalizeHref(currentSectionHref) : '';
+
+  // Pre-calculate page numbers for TOC items once locations are ready
+  const tocPages = useMemo(() => {
+    if (!locationsReady || !epubBook) return new Map<string, number>();
+    const map = new Map<string, number>();
+    try {
+      // 1. Index all locations by section cfiBase for instant O(1) page lookup
+      const cfiBaseToPage = new Map<string, number>();
+      const locations = (epubBook.locations as unknown as { _locations?: string[] })?._locations;
+      if (Array.isArray(locations)) {
+        for (let i = 0; i < locations.length; i++) {
+          const locCfi = locations[i];
+          if (typeof locCfi === 'string') {
+            const excl = locCfi.indexOf('!');
+            if (excl !== -1) {
+              const base = locCfi.slice(8, excl + 1); // strip "epubcfi("
+              if (!cfiBaseToPage.has(base)) {
+                cfiBaseToPage.set(base, i + 1);
+              }
+            }
+          }
+        }
+      }
+
+      const spine = epubBook.spine as unknown as {
+        get?: (href: string) => { cfiBase?: string };
+        spineItems?: Array<{ href?: string; cfiBase?: string }>;
+      };
+
+      const resolvePage = (item: TocItem) => {
+        let page: number | undefined;
+        const cleanHref = (item.href || '').split('#')[0].replace(/^(\.\/|\/)/, '');
+        const section = spine?.get?.(cleanHref) || spine?.get?.(item.href) ||
+          spine?.spineItems?.find(s => s.href && (s.href === cleanHref || cleanHref.endsWith(s.href) || s.href.endsWith(cleanHref)));
+
+        if (section?.cfiBase) {
+          const mapped = cfiBaseToPage.get(section.cfiBase);
+          if (mapped !== undefined) {
+            page = mapped;
+          } else {
+            try {
+              const fullCfi = `epubcfi(${section.cfiBase}/2/1:0)`;
+              const loc = epubBook.locations.locationFromCfi(fullCfi);
+              if (typeof loc === 'number' && loc >= 0) {
+                page = loc + 1;
+              }
+            } catch {
+              // fallback
+            }
+          }
+        }
+
+        if (page !== undefined) {
+          map.set(item.href, page);
+        }
+
+        if (Array.isArray(item.subitems)) {
+          item.subitems.forEach(resolvePage);
+        }
+      };
+
+      toc.forEach(resolvePage);
+    } catch (err) {
+      console.debug('[EpubSidebars] Failed to calculate TOC pages:', err);
+    }
+    return map;
+  }, [toc, locationsReady, epubBook]);
+
+  // Auto-scroll active TOC chapter into view
+  useEffect(() => {
+    if (showToc && activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [showToc, currentSectionHref]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,8 +107,10 @@ export default function EpubSidebars() {
     const results: any[] = [];
     
     try {
+      const spineObj = epubBook.spine as unknown as { spineItems?: Array<{ load: (fn: any) => Promise<void>; find: (q: string) => any[]; unload: () => void }> };
+      const items = spineObj?.spineItems || [];
       await Promise.all(
-        (epubBook.spine as any).spineItems.map(async (item: any) => {
+        items.map(async (item) => {
           try {
             await item.load(epubBook.load.bind(epubBook));
             const matches = item.find(searchQuery);
@@ -65,6 +150,51 @@ export default function EpubSidebars() {
       readingMode === 'mint' ? 'bg-[#e8f5e9] border-[#c8e6c9] text-[#1b4332]' : 
       'bg-white border-gray-200 text-gray-800'}`;
 
+  const renderTocNode = (item: TocItem, key: string, depth = 0) => {
+    const itemNormalized = normalizeHref(item.href);
+    const isActive = Boolean(
+      activeNormalized && (
+        itemNormalized === activeNormalized ||
+        activeNormalized.endsWith(itemNormalized) ||
+        itemNormalized.endsWith(activeNormalized)
+      )
+    );
+    const page = tocPages.get(item.href);
+
+    return (
+      <li key={key} className={depth > 0 ? 'ml-3' : ''}>
+        <button
+          ref={isActive ? activeItemRef : undefined}
+          onClick={() => {
+            rendition?.display(item.href);
+            setShowToc(false);
+          }}
+          className={`text-left w-full rounded-lg px-2.5 py-1.5 transition-all flex items-center justify-between group ${
+            isActive
+              ? 'bg-brand-500/15 text-brand-400 font-semibold border-l-2 border-brand-500'
+              : 'hover:bg-white/5 opacity-80 hover:opacity-100 hover:text-brand-400'
+          }`}
+        >
+          <span className="truncate pr-2">{item.label}</span>
+          {page !== undefined && (
+            <span
+              className={`text-[11px] font-mono shrink-0 ${
+                isActive ? 'text-brand-400 font-medium' : 'opacity-40 group-hover:opacity-75'
+              }`}
+            >
+              pág. {page}
+            </span>
+          )}
+        </button>
+        {Array.isArray(item.subitems) && item.subitems.length > 0 && (
+          <ul className="space-y-1 mt-1 border-l border-white/10 pl-1">
+            {item.subitems.map((sub, sIdx) => renderTocNode(sub, `${key}-${sIdx}`, depth + 1))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
   return (
     <>
       {showToc && (
@@ -79,20 +209,8 @@ export default function EpubSidebars() {
             {toc.length === 0 ? (
               <p className="opacity-50 text-sm">Nenhum sumário encontrado.</p>
             ) : (
-              <ul className="space-y-2 text-sm">
-                {toc.map((item, index) => (
-                  <li key={index}>
-                    <button 
-                      onClick={() => {
-                        rendition?.display(item.href);
-                        setShowToc(false);
-                      }}
-                      className="text-left w-full hover:text-brand-500 opacity-80 hover:opacity-100 transition-opacity"
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
+              <ul className="space-y-1.5 text-sm">
+                {toc.map((item, index) => renderTocNode(item, `${index}`))}
               </ul>
             )}
           </div>

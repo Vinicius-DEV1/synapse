@@ -80,4 +80,36 @@ describe('BookInfoModal Component', () => {
       expect(onClose).toHaveBeenCalled();
     }
   });
+
+  it('allows user to toggle edit mode, modify fields, and save', async () => {
+    const onUpdateBook = vi.fn();
+    const updateBookMock = vi.fn().mockResolvedValue(1);
+    window.api = {
+      ...(window.api || {}),
+      library: {
+        ...(window.api?.library || {}),
+        updateBook: updateBookMock,
+      },
+    } as any;
+
+    const { getByText, getByDisplayValue } = render(
+      <BookInfoModal book={mockSyncedBook} onClose={vi.fn()} onUpdateBook={onUpdateBook} />
+    );
+
+    const editBtn = getByText('Editar');
+    fireEvent.click(editBtn);
+
+    const titleInput = getByDisplayValue('Domain-Driven Design') as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: 'Domain-Driven Design (2nd Edition)' } });
+
+    const saveBtn = getByText('Salvar');
+    fireEvent.click(saveBtn);
+
+    expect(updateBookMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'book-123',
+        title: 'Domain-Driven Design (2nd Edition)',
+      })
+    );
+  });
 });

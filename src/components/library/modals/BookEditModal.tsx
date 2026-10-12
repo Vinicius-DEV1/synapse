@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { X, Plus, Palette } from 'lucide-react';
+import { X, Plus, Palette, Sparkles } from 'lucide-react';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../../types';
 import { Modal } from '../../ui/Modal';
 import { CoverPickerSection } from '../ui/CoverPickerSection';
 import { triggerToast } from '../../ui/ToastContext';
+import { autoEnrichBookMetadata } from '../../../services/library/book-metadata-enricher';
 
 export interface BookEditModalProps {
   book: LibraryBook;
@@ -38,10 +39,43 @@ export default function BookEditModal({
   const [publisher, setPublisher] = useState(book.publisher || '');
   const [publishedYear, setPublishedYear] = useState<string>(book.published_year?.toString() || '');
   const [language, setLanguage] = useState(book.language || '');
+  const [description, setDescription] = useState(book.description || '');
   const [status, setStatus] = useState<ReadingStatus>(book.reading_status);
   const [selectedCollections, setSelectedCollections] = useState<string[]>(bookCollections);
   const [coverImage, setCoverImage] = useState(book.cover_image || '');
   const [loading, setLoading] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+
+  const handleAutoFill = async () => {
+    setEnriching(true);
+    try {
+      const updates = await autoEnrichBookMetadata({
+        id: book.id,
+        file_path: book.file_path,
+        drive_file_id: book.drive_file_id,
+        title,
+        author,
+        original_name: book.original_name,
+      });
+      if (updates) {
+        if (updates.title) setTitle(updates.title);
+        if (updates.author) setAuthor(updates.author);
+        if (updates.publisher) setPublisher(updates.publisher);
+        if (updates.published_year) setPublishedYear(updates.published_year.toString());
+        if (updates.language) setLanguage(updates.language);
+        if (updates.description) setDescription(updates.description);
+        if (updates.cover_image && !coverImage) setCoverImage(updates.cover_image);
+        triggerToast('Metadados encontrados e preenchidos!', 'success');
+      } else {
+        triggerToast('Nenhum dado novo encontrado para o título.', 'info');
+      }
+    } catch (err) {
+      console.error('Auto fill failed:', err);
+      triggerToast('Falha ao buscar metadados na internet.', 'error');
+    } finally {
+      setEnriching(false);
+    }
+  };
 
   const uniqueAuthors = Array.from(new Set(allBooks.map((b) => b.author).filter(Boolean)));
   const uniquePublishers = Array.from(
@@ -82,6 +116,7 @@ export default function BookEditModal({
         publisher: finalPublisher,
         published_year: publishedYear.trim() ? parseInt(publishedYear.trim(), 10) : null,
         language: language.trim() || null,
+        description: description.trim() || null,
         reading_status: status,
         cover_image: coverImage,
       };
@@ -117,7 +152,19 @@ export default function BookEditModal({
       <div className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
-          <h2 className="text-lg font-semibold text-dark-text">Editar Livro</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-semibold text-dark-text">Editar Livro</h2>
+            <button
+              type="button"
+              onClick={handleAutoFill}
+              disabled={enriching}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 border border-brand-500/20 transition-all disabled:opacity-50"
+              title="Buscar e preencher dados automaticamente via Web e IA"
+            >
+              <Sparkles size={13} className={enriching ? 'animate-spin' : ''} />
+              <span>{enriching ? 'Buscando...' : 'Auto-preencher'}</span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -214,6 +261,18 @@ export default function BookEditModal({
                   className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors"
                 />
               </div>
+            </div>
+
+            {/* Description / Synopsis */}
+            <div>
+              <label className="block text-xs text-dark-subtext mb-1.5">Sinopse / Descrição</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Sinopse ou resumo da obra..."
+                rows={3}
+                className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none transition-colors resize-none custom-scrollbar"
+              />
             </div>
 
             {/* Status */}

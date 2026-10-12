@@ -26,6 +26,34 @@ const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon:
   finished: { label: 'Concluído', color: 'text-brand-400', icon: CheckCircle2 },
 };
 
+function BookCardCover({ coverImage }: { coverImage?: string; title?: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [coverImage]);
+
+  if (!coverImage || hasError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-500/30 to-brand-700/30 select-none">
+        <FileText size={40} className="text-brand-400/60" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={coverImage}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setHasError(true)}
+      className="w-full h-full object-cover"
+      draggable={false}
+    />
+  );
+}
+
 export default function LibraryGrid({
   books,
   collections: _collections,
@@ -129,20 +157,7 @@ export default function LibraryGrid({
                   />
                 </div>
               )}
-              {book.cover_image ? (
-                <img
-                  src={book.cover_image}
-                  alt={book.title}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover"
-                  draggable={false}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-500/30 to-brand-700/30">
-                  <FileText size={40} className="text-brand-400/60" />
-                </div>
-              )}
+              <BookCardCover coverImage={book.cover_image} title={book.title} />
 
               {/* Book spine shadow (3D effect) */}
               <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />

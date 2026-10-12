@@ -18,7 +18,6 @@ import type {
   ReadingSession,
   BookReadingStats,
   GlobalReadingStats,
-  ReadingStatus,
   HighlightColor,
   HighlightType
 } from '../types/library';
@@ -101,7 +100,7 @@ export interface LibraryApi {
   deleteBook: (id: string) => Promise<boolean>;
   reattachBookFile: (id: string) => Promise<string | null>;
   evictBookLocalCache: (id: string) => Promise<boolean>;
-  updateBook: (book: { id: string; title?: string; author?: string; current_page?: number; last_read_page?: number | string; total_pages?: number; reading_status?: ReadingStatus; last_read_at?: string }) => Promise<number>;
+  updateBook: (book: Partial<LibraryBook> & { id: string }) => Promise<number>;
   getBookFile: (id: string) => Promise<string>;
   getBook?: (id: string) => Promise<LibraryBook | null>;
   getCollections: () => Promise<LibraryCollection[]>;

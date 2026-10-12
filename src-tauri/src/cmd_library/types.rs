@@ -40,6 +40,26 @@ where
     }
 }
 
+pub fn deserialize_option_i32_flexible<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrString {
+        Int(i32),
+        Float(f64),
+        String(String),
+    }
+
+    match Option::<IntOrString>::deserialize(deserializer)? {
+        Some(IntOrString::Int(i)) => Ok(Some(i)),
+        Some(IntOrString::Float(f)) => Ok(Some(f as i32)),
+        Some(IntOrString::String(s)) => Ok(s.parse::<i32>().ok()),
+        None => Ok(None),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Book {
     #[serde(default)]
@@ -78,6 +98,14 @@ pub struct Book {
     pub is_local: Option<bool>,
     #[serde(default)]
     pub original_name: Option<String>,
+    #[serde(default)]
+    pub publisher: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_option_i32_flexible")]
+    pub published_year: Option<i32>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

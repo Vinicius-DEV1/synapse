@@ -1,10 +1,14 @@
-import { X, Cloud, HardDrive, BookOpen, Clock, Info, Tag, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Cloud, HardDrive, BookOpen, Clock, Info, Tag, AlertCircle, CheckCircle2, Sparkles, Edit3, Check, RotateCcw } from 'lucide-react';
 import type { LibraryBook } from '../../../types';
 import { Modal } from '../../ui/Modal';
+import { triggerToast } from '../../ui/ToastContext';
+import { autoEnrichBookMetadata } from '../../../services/library/book-metadata-enricher';
 
 export interface BookInfoModalProps {
   book: LibraryBook;
   onClose: () => void;
+  onUpdateBook?: (updates: Partial<LibraryBook>) => void;
 }
 
 const formatDate = (dateString: string | null | undefined) => {
@@ -31,8 +35,89 @@ const formatStatus = (status: string) => {
   }
 };
 
-export default function BookInfoModal({ book, onClose }: BookInfoModalProps) {
-  const isCloudSynced = !!book.drive_file_id;
+export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoModalProps) {
+  const [currentBook, setCurrentBook] = useState<LibraryBook>(book);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(book.title);
+  const [editAuthor, setEditAuthor] = useState(book.author);
+  const [editPublisher, setEditPublisher] = useState(book.publisher || '');
+  const [editYear, setEditYear] = useState<string>(book.published_year?.toString() || '');
+  const [editLanguage, setEditLanguage] = useState(book.language || '');
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const isCloudSynced = !!currentBook.drive_file_id;
+
+  const handleEnrichMetadata = async () => {
+    setIsEnriching(true);
+    try {
+      const updates = await autoEnrichBookMetadata(currentBook, { allowAI: true });
+      if (updates) {
+        if (isEditing) {
+          if (updates.title) setEditTitle(updates.title);
+          if (updates.author) setEditAuthor(updates.author);
+          if (updates.publisher) setEditPublisher(updates.publisher);
+          if (updates.published_year) setEditYear(updates.published_year.toString());
+          if (updates.language) setEditLanguage(updates.language);
+          triggerToast('Dados encontrados e preenchidos nos campos! Revise e clique em Salvar.', 'success');
+        } else {
+          if (window.api?.library) {
+            await window.api.library.updateBook({ id: currentBook.id, ...updates });
+          }
+          const updated = { ...currentBook, ...updates };
+          setCurrentBook(updated);
+          if (updates.title) setEditTitle(updates.title);
+          if (updates.author) setEditAuthor(updates.author);
+          if (updates.publisher) setEditPublisher(updates.publisher);
+          if (updates.published_year) setEditYear(updates.published_year.toString());
+          if (updates.language) setEditLanguage(updates.language);
+          onUpdateBook?.(updates);
+          triggerToast('Metadados enriquecidos com sucesso!', 'success');
+        }
+      } else {
+        triggerToast('Nenhuma informação nova encontrada para este título.', 'info');
+      }
+    } catch (err) {
+      console.error('Enrich failed:', err);
+      triggerToast('Falha ao buscar metadados na internet.', 'error');
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!window.api?.library) return;
+    setIsSaving(true);
+    try {
+      const updates: Partial<LibraryBook> = {
+        title: editTitle.trim() || currentBook.title,
+        author: editAuthor.trim() || 'Desconhecido',
+        publisher: editPublisher.trim() || null,
+        published_year: editYear.trim() ? parseInt(editYear.trim(), 10) : null,
+        language: editLanguage.trim() || null,
+      };
+
+      await window.api.library.updateBook({ id: currentBook.id, ...updates });
+      const updated = { ...currentBook, ...updates };
+      setCurrentBook(updated);
+      onUpdateBook?.(updates);
+      setIsEditing(false);
+      triggerToast('Metadados atualizados com sucesso!', 'success');
+    } catch (err) {
+      console.error('Failed to save metadata edits:', err);
+      triggerToast('Falha ao salvar as alterações dos metadados.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditTitle(currentBook.title);
+    setEditAuthor(currentBook.author);
+    setEditPublisher(currentBook.publisher || '');
+    setEditYear(currentBook.published_year?.toString() || '');
+    setEditLanguage(currentBook.language || '');
+    setIsEditing(false);
+  };
 
   return (
     <Modal
@@ -50,7 +135,7 @@ export default function BookInfoModal({ book, onClose }: BookInfoModalProps) {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Informações do Livro</h2>
-              <p className="text-xs text-dark-subtext truncate max-w-sm">{book.title}</p>
+              <p className="text-xs text-dark-subtext truncate max-w-sm">{currentBook.title}</p>
             </div>
           </div>
           <button
@@ -163,44 +248,151 @@ export default function BookInfoModal({ book, onClose }: BookInfoModalProps) {
 
           {/* Metadata */}
           <div className="bg-dark-card border border-white/5 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-white mb-4">
-              <Tag size={16} className="text-brand-400" />
-              Metadados
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-white">
+                <Tag size={16} className="text-brand-400" />
+                <span>Metadados da Obra</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleEnrichMetadata}
+                  disabled={isEnriching}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 border border-brand-500/20 transition-all disabled:opacity-50"
+                  title="Consultar páginas iniciais e pesquisar na Web com IA"
+                >
+                  <Sparkles size={14} className={isEnriching ? "animate-spin" : ""} />
+                  <span>{isEnriching ? "Buscando..." : "Buscar na Web / IA"}</span>
+                </button>
+
+                {!isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10 border border-white/10 transition-all"
+                    title="Editar informações manualmente"
+                  >
+                    <Edit3 size={14} />
+                    <span>Editar</span>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 border border-white/10 transition-all"
+                      title="Cancelar edição"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Cancelar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 transition-all disabled:opacity-50"
+                      title="Salvar alterações"
+                    >
+                      <Check size={14} />
+                      <span>{isSaving ? "Salvando..." : "Salvar"}</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-dark-subtext">Autor</span>
-                <span className="text-sm text-white">{book.author || 'Desconhecido'}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-dark-subtext">Editora</span>
-                <span className="text-sm text-white">{book.publisher || 'Não informada'}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-dark-subtext">Ano de Publicação</span>
-                <span className="text-sm text-white">{book.published_year || 'Não informado'}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-dark-subtext">Idioma</span>
-                <span className="text-sm text-white">{book.language || 'Não informado'}</span>
-              </div>
-              {book.collections && book.collections.length > 0 && (
-                <div className="flex flex-col gap-1 col-span-2 mt-2">
-                  <span className="text-xs text-dark-subtext">Coleções</span>
-                  <div className="flex gap-2 flex-wrap mt-1">
-                    {book.collections.map((col) => (
-                      <span
-                        key={col.id}
-                        className="text-xs px-2 py-1 rounded-md"
-                        style={{ backgroundColor: `${col.color}20`, color: col.color }}
-                      >
-                        {col.name}
-                      </span>
-                    ))}
+
+            {isEditing ? (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs text-dark-subtext mb-1">Título</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Título da obra"
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-brand-500/50 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-dark-subtext mb-1">Autor</label>
+                  <input
+                    type="text"
+                    value={editAuthor}
+                    onChange={(e) => setEditAuthor(e.target.value)}
+                    placeholder="Nome do autor"
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-brand-500/50 outline-none transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-dark-subtext mb-1">Editora</label>
+                    <input
+                      type="text"
+                      value={editPublisher}
+                      onChange={(e) => setEditPublisher(e.target.value)}
+                      placeholder="Editora"
+                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-brand-500/50 outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-dark-subtext mb-1">Ano</label>
+                    <input
+                      type="number"
+                      value={editYear}
+                      onChange={(e) => setEditYear(e.target.value)}
+                      placeholder="Ex: 2024"
+                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-brand-500/50 outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-dark-subtext mb-1">Idioma</label>
+                    <input
+                      type="text"
+                      value={editLanguage}
+                      onChange={(e) => setEditLanguage(e.target.value)}
+                      placeholder="Ex: pt"
+                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-brand-500/50 outline-none transition-colors"
+                    />
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-dark-subtext">Autor</span>
+                  <span className="text-sm text-white font-medium">{currentBook.author || 'Desconhecido'}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-dark-subtext">Editora</span>
+                  <span className="text-sm text-white">{currentBook.publisher || 'Não informada'}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-dark-subtext">Ano de Publicação</span>
+                  <span className="text-sm text-white">{currentBook.published_year || 'Não informado'}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-dark-subtext">Idioma</span>
+                  <span className="text-sm text-white">{currentBook.language || 'Não informado'}</span>
+                </div>
+                {currentBook.collections && currentBook.collections.length > 0 && (
+                  <div className="flex flex-col gap-1 col-span-2 mt-2">
+                    <span className="text-xs text-dark-subtext">Coleções</span>
+                    <div className="flex gap-2 flex-wrap mt-1">
+                      {currentBook.collections.map((col) => (
+                        <span
+                          key={col.id}
+                          className="text-xs px-2 py-1 rounded-md"
+                          style={{ backgroundColor: `${col.color}20`, color: col.color }}
+                        >
+                          {col.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* System Info */}

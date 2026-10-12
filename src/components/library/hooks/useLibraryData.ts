@@ -176,6 +176,18 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
         const list = Array.isArray(imported) ? imported : [imported];
         await loadData();
         
+        // Auto-enrich metadata asynchronously in background without blocking UI
+        import('../../../services/library/book-metadata-enricher').then(({ autoEnrichBookMetadata }) => {
+          list.forEach((b) => {
+            autoEnrichBookMetadata(b).then(async (updates) => {
+              if (updates && window.api?.library && isMounted.current) {
+                await window.api.library.updateBook({ id: b.id, ...updates });
+                loadData();
+              }
+            }).catch((err) => console.debug('[useLibraryData] Auto-enrich failed:', err));
+          });
+        }).catch(console.error);
+
         // Dispara o sync imediatamente (completamente ignorando debounces)
         window.dispatchEvent(new Event('app-sync-trigger-immediate'));
 

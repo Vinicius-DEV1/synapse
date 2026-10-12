@@ -26,6 +26,12 @@ export function CoverPickerSection({
   const coverMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [coverLoadError, setCoverLoadError] = useState(false);
+
+  useEffect(() => {
+    setCoverLoadError(false);
+  }, [coverImage]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (coverMenuRef.current && !coverMenuRef.current.contains(event.target as Node)) {
@@ -51,6 +57,7 @@ export function CoverPickerSection({
         const base64 = event.target?.result as string;
         const compressed = await compressBase64Image(base64);
         setCoverImage(compressed);
+        setCoverLoadError(false);
         triggerToast('Nova capa carregada!', 'success');
       } catch (err: any) {
         triggerToast(err.message || 'Erro ao processar imagem de capa.', 'error');
@@ -91,6 +98,7 @@ export function CoverPickerSection({
       const base64 = await extractPdfCover(uintArray);
       const compressed = await compressBase64Image(base64);
       setCoverImage(compressed);
+      setCoverLoadError(false);
       triggerToast('Capa extraída do PDF com sucesso!', 'success');
     } catch (err: any) {
       console.error('Falha ao extrair capa', err);
@@ -104,12 +112,13 @@ export function CoverPickerSection({
     <div className="flex gap-4 items-start">
       <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-visible shrink-0 group">
         <div className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center">
-          {coverImage && !extractingCover ? (
+          {coverImage && !coverLoadError && !extractingCover ? (
             <img
               src={coverImage}
-              alt="Cover"
+              alt=""
               loading="lazy"
               decoding="async"
+              onError={() => setCoverLoadError(true)}
               className="w-full h-full object-cover"
             />
           ) : extractingCover ? (
