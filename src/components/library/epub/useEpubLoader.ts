@@ -6,6 +6,7 @@ import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
 import { createAssetEmbedder } from './utils/epubAssetManager';
 import { isMobileScreen } from '../../../services/platform';
+import { detectBufferFormat } from '../../../utils/book-format';
 
 declare global {
   interface Window {
@@ -83,6 +84,26 @@ export function useEpubLoader(
         });
 
         if (!active) return;
+
+        const detectedFormat = detectBufferFormat(arrayBuffer);
+        if (detectedFormat === 'pdf') {
+          console.info(`[useEpubLoader] Buffer for book "${book.title}" (${book.id}) is a PDF. Auto-healing format and switching to PdfReader.`);
+          const canonicalPath = book.file_path?.includes('.pdf')
+            ? book.file_path
+            : (book.file_path?.startsWith('indexeddb://')
+                ? `${book.file_path}.pdf`
+                : (book.file_path ? `${book.file_path}.pdf` : `indexeddb://${book.id}.pdf`));
+
+          onUpdateBook({
+            id: book.id,
+            format: 'pdf',
+            file_path: canonicalPath,
+            is_local: true,
+          });
+          setLoading(false);
+          return;
+        }
+
         if (safeSetLoadProgress) safeSetLoadProgress({ percent: 100, stage: 'rendering' });
 
         // Instantiate ePub.js with lazy asset embedding

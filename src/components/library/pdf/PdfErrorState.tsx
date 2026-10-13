@@ -1,4 +1,4 @@
-import { FileQuestion, FolderUp, RefreshCw, Trash2, ArrowLeft } from 'lucide-react';
+import { FileQuestion, FolderUp, RefreshCw, Trash2, ArrowLeft, BookOpen } from 'lucide-react';
 import type { LibraryBook } from '../../../types';
 
 interface PdfErrorStateProps {
@@ -13,6 +13,7 @@ interface PdfErrorStateProps {
   onDeleteBook: () => void;
   setConfirmDelete: (val: boolean) => void;
   pdfError?: string;
+  onSwitchToEpub?: () => void;
 }
 
 export function PdfErrorState({
@@ -27,6 +28,7 @@ export function PdfErrorState({
   onDeleteBook,
   setConfirmDelete,
   pdfError,
+  onSwitchToEpub,
 }: PdfErrorStateProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-full bg-dark-bg text-dark-text p-6 select-none">
@@ -59,6 +61,17 @@ export function PdfErrorState({
 
         {/* Action buttons */}
         <div className="flex flex-col gap-2.5 w-full">
+          {onSwitchToEpub && (
+            <button
+              onClick={onSwitchToEpub}
+              disabled={isReattaching || isDeleting}
+              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-medium rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+            >
+              <BookOpen size={16} />
+              Abrir como Livro EPUB
+            </button>
+          )}
+
           <button
             onClick={onReattach}
             disabled={isReattaching || isDeleting}

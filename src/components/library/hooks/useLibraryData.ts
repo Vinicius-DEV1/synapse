@@ -228,6 +228,7 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
       const book = books.find(b => b.id === id);
       if (book) {
         const merged = { ...book, ...updates };
+        setBooks((prev) => prev.map((b) => (b.id === id ? merged : b)));
         const payload = {
           ...merged,
           total_pages: typeof merged.total_pages === 'number' ? merged.total_pages : (parseInt(String(merged.total_pages || 0), 10) || 0),

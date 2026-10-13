@@ -51,6 +51,7 @@ export const tauriLibraryApi = {
             title,
             original_name: cleanFileName,
             author,
+            format: (ext === 'epub' ? 'epub' : 'pdf') as 'epub' | 'pdf',
             file_path: localPath,
             cover_image: '',
             total_pages: 0,
@@ -75,10 +76,11 @@ export const tauriLibraryApi = {
   },
   getBookFile: async (id: string) => {
     try {
+      const cleanId = id.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
       // 1. First try direct native Rust read (handles all app_data paths consistently)
       try {
-        console.log(`[library.ts] Tentando invoke 'library_get_book_file' nativo para ${id}...`);
-        const raw = await invoke<number[] | Uint8Array>('library_get_book_file', { id });
+        console.log(`[library.ts] Tentando invoke 'library_get_book_file' nativo para ${cleanId}...`);
+        const raw = await invoke<number[] | Uint8Array>('library_get_book_file', { id: cleanId });
         if (raw && (Array.isArray(raw) ? raw.length > 0 : (raw as Uint8Array).byteLength > 0)) {
           const uint8 = Array.isArray(raw) ? new Uint8Array(raw) : (raw as Uint8Array);
           console.log(`[library.ts] invoke 'library_get_book_file' retornou ${uint8.byteLength} bytes.`);

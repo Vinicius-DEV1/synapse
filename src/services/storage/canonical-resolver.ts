@@ -146,7 +146,8 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
           arrayBuffer = bytes.buffer;
         }
         if (arrayBuffer && onUpdateSavedPath && (!savedPath || savedPath.startsWith('drive:'))) {
-          onUpdateSavedPath(`indexeddb://${id}`);
+          const extension = extHint || (savedPath?.toLowerCase().includes('.epub') ? 'epub' : 'pdf');
+          onUpdateSavedPath(`indexeddb://${id}.${extension}`);
         }
       }
     } catch (apiErr) {
@@ -195,7 +196,8 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
         const db = await getWebDb();
         await db.put('library_book_files', { id, data: encryptedData });
         if (onUpdateSavedPath) {
-          onUpdateSavedPath(`indexeddb://${id}`);
+          const extension = extHint || (savedPath?.toLowerCase().includes('.epub') ? 'epub' : 'pdf');
+          onUpdateSavedPath(`indexeddb://${id}.${extension}`);
         }
       } catch (cacheErr) {
         console.warn(`[CanonicalResolver] Could not save cache in IndexedDB:`, cacheErr);

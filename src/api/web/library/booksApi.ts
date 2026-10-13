@@ -84,6 +84,8 @@ export const createBooksApi = (
               console.warn('[Library] Drive upload skipped (offline or no auth)', e);
             }
             
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            const format: 'pdf' | 'epub' = (ext === 'epub' || file.type.includes('epub')) ? 'epub' : 'pdf';
             const rawName = file.name.replace(/\.(pdf|epub)$/i, '');
             let title = rawName;
             let author = 'Desconhecido';
@@ -100,12 +102,13 @@ export const createBooksApi = (
               id: bookId,
               title,
               author,
-              file_path: remotePath,
+              format,
+              file_path: remotePath || `indexeddb://${bookId}.${format}`,
               drive_file_id: driveFileId,
               original_name: file.name,
               cover_image: '',
               total_pages: 0,
-              last_read_page: 1,
+              last_read_page: format === 'epub' ? '' : 1,
               reading_status: 'not_started',
               last_read_at: null,
               created_at: new Date().toISOString(),
@@ -131,9 +134,10 @@ export const createBooksApi = (
   },
 
   deleteBook: async (id: string) => {
-    const existing = await db.get('library_books', id);
+    const cleanId = id.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
+    const existing = await db.get('library_books', cleanId);
     if (existing) {
-      await db.delete('library_book_files', id).catch(console.warn);
+      await db.delete('library_book_files', cleanId).catch(console.warn);
       existing.deleted_at = new Date().toISOString();
       existing.updated_at = new Date().toISOString();
       await db.put('library_books', existing);
@@ -193,9 +197,13 @@ export const createBooksApi = (
             console.warn('[Library] Drive upload skipped for reattach (offline or no auth)', e);
           }
 
-          const existing = await db.get('library_books', bookId);
+          const cleanBookId = bookId.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
+          const existing = await db.get('library_books', cleanBookId);
           if (existing) {
-            existing.file_path = remotePath;
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            const format: 'pdf' | 'epub' = (ext === 'epub' || file.type.includes('epub')) ? 'epub' : 'pdf';
+            existing.format = format;
+            existing.file_path = remotePath || `indexeddb://${cleanBookId}.${format}`;
             existing.drive_file_id = driveFileId;
             existing.original_name = file.name;
             existing.updated_at = new Date().toISOString();
@@ -216,9 +224,10 @@ export const createBooksApi = (
   },
 
   evictBookLocalCache: async (id: string) => {
-    const existing = await db.get('library_books', id);
+    const cleanId = id.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
+    const existing = await db.get('library_books', cleanId);
     if (existing) {
-      await db.delete('library_book_files', id).catch(console.warn);
+      await db.delete('library_book_files', cleanId).catch(console.warn);
       existing.is_local = false;
       if (existing.file_path && !existing.file_path.startsWith('drive://')) {
         existing.file_path = existing.drive_file_id ? `drive://${existing.drive_file_id}` : '';
@@ -231,21 +240,23 @@ export const createBooksApi = (
   },
 
   updateBook: async (book: Partial<LibraryBook> & { id: string }): Promise<number> => {
-    const existing = await db.get('library_books', book.id);
+    const cleanId = book.id.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
+    const existing = await db.get('library_books', cleanId);
     if (!existing) return 0;
-    await db.put('library_books', { ...existing, ...book, updated_at: new Date().toISOString() });
+    await db.put('library_books', { ...existing, ...book, id: cleanId, updated_at: new Date().toISOString() });
     return 1;
   },
 
   getBookFile: async (id: string) => {
-    const book = await db.get('library_books', id);
+    const cleanId = id.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
+    const book = await db.get('library_books', cleanId);
     if (!book || book.deleted_at) return null;
     const _masterKey = getMasterKey();
     if (!_masterKey) throw new Error("Chave Mestra não encontrada");
     
     // First check local IndexedDB
     try {
-      const localRecord = await db.get('library_book_files', id);
+      const localRecord = await db.get('library_book_files', cleanId);
       if (localRecord && localRecord.data) {
         const { decryptFileChunked, decryptFile } = await import('../../../services/storage');
         const blob = localRecord.data instanceof Blob ? localRecord.data : new Blob([localRecord.data]);
@@ -260,7 +271,7 @@ export const createBooksApi = (
         }
       }
     } catch (e) {
-      console.warn("Falha ao ler cache local de PDF", e);
+      console.warn("Falha ao ler cache local de PDF/EPUB", e);
     }
     
     // Fallback to remote
@@ -277,7 +288,7 @@ export const createBooksApi = (
       try {
         const { encryptFile } = await import('../../../services/storage');
         const encrypted = await encryptFile(arrayBuffer, _masterKey);
-        await db.put('library_book_files', { id: book.id, data: encrypted });
+        await db.put('library_book_files', { id: cleanId, data: encrypted });
       } catch (cacheErr) {
         console.warn("Falha ao salvar no cache local", cacheErr);
       }

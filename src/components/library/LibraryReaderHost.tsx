@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { LibraryBook } from '../../types';
+import { isBookEpub } from '../../utils/book-format';
 
 const PdfReader = lazy(() => import('./pdf/PdfReader'));
 const EpubReader = lazy(() => import('./epub/EpubReader'));
@@ -16,16 +17,7 @@ export const LibraryReaderHost: React.FC<LibraryReaderHostProps> = ({
   onBack,
   onUpdateBook,
 }) => {
-  const filePathLower = (book.file_path || '').toLowerCase();
-  const titleLower = (book.title || '').toLowerCase();
-  const origNameLower = (book.original_name || '').toLowerCase();
-
-  const isEpub =
-    filePathLower.endsWith('.epub') ||
-    filePathLower.endsWith('.epub.enc') ||
-    filePathLower.includes('.epub.') ||
-    titleLower.endsWith('.epub') ||
-    origNameLower.endsWith('.epub');
+  const isEpub = isBookEpub(book);
 
   return (
     <Suspense
@@ -37,12 +29,14 @@ export const LibraryReaderHost: React.FC<LibraryReaderHostProps> = ({
     >
       {isEpub ? (
         <EpubReader
+          key={`epub-${book.id}`}
           book={book}
           onBack={onBack}
           onUpdateBook={onUpdateBook}
         />
       ) : (
         <PdfReader
+          key={`pdf-${book.id}`}
           book={book}
           onBack={onBack}
           onUpdateBook={onUpdateBook}

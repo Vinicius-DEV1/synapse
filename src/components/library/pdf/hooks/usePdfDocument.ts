@@ -7,6 +7,7 @@ import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../..
 import type { TocItem } from '../components/AnnotationPanel';
 import type { LoadProgressState } from '../types';
 import { triggerToast } from '../../../ui/ToastContext';
+import { detectBufferFormat, isBookEpub } from '../../../../utils/book-format';
 
 interface RawOutlineItem {
   title: string;
@@ -68,6 +69,25 @@ export function usePdfDocument(
             onUpdateBookRef.current({ id: book.id, file_path: newPath, is_local: true }),
           onProgress: (percent, stage) => setLoadProgress({ percent, stage }),
         });
+
+        const detectedFormat = detectBufferFormat(fileData);
+        if (detectedFormat === 'epub') {
+          console.info(`[usePdfDocument] Buffer for book "${book.title}" (${book.id}) is an EPUB. Auto-healing format and switching to EpubReader.`);
+          const canonicalPath = book.file_path?.includes('.epub')
+            ? book.file_path
+            : (book.file_path?.startsWith('indexeddb://')
+                ? `${book.file_path}.epub`
+                : (book.file_path ? `${book.file_path}.epub` : `indexeddb://${book.id}.epub`));
+
+          onUpdateBookRef.current({
+            id: book.id,
+            format: 'epub',
+            file_path: canonicalPath,
+            is_local: true,
+          });
+          setLoading(false);
+          return;
+        }
 
         if (active) setLoadProgress({ percent: 100, stage: 'rendering' });
         const loadingTask = pdfjsLib.getDocument({ data: fileData });
@@ -146,6 +166,36 @@ export function usePdfDocument(
         setLoading(false);
       } catch (err: unknown) {
         console.error('Error loading PDF:', err);
+        const errObj = err as { name?: string; message?: string } | null;
+        const isPdfStructureError = Boolean(
+          errObj?.name === 'InvalidPDFException' ||
+          errObj?.message?.includes('Invalid PDF structure')
+        );
+
+        if (isPdfStructureError) {
+          if (
+            isBookEpub(book) ||
+            (typeof book.last_read_page === 'string' && book.last_read_page.includes('epubcfi')) ||
+            book.epub_locations
+          ) {
+            console.info(`[usePdfDocument] InvalidPDFException on suspected EPUB "${book.title}". Auto-healing format.`);
+            const canonicalPath = book.file_path?.includes('.epub')
+              ? book.file_path
+              : (book.file_path?.startsWith('indexeddb://')
+                  ? `${book.file_path}.epub`
+                  : `indexeddb://${book.id}.epub`);
+
+            onUpdateBookRef.current({
+              id: book.id,
+              format: 'epub',
+              file_path: canonicalPath,
+              is_local: true,
+            });
+            setLoading(false);
+            return;
+          }
+        }
+
         const errorMsg = err instanceof Error ? err.message : 'Falha desconhecida ao carregar o PDF.';
         setPdfError(errorMsg);
         setLoading(false);

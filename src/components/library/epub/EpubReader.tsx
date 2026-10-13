@@ -433,6 +433,20 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
             onDeleteBook={handleDeleteBook}
             setConfirmDelete={setConfirmDelete}
             epubError={epubError}
+            onSwitchToPdf={() => {
+              const canonicalPath = book.file_path?.includes('.pdf')
+                ? book.file_path
+                : (book.file_path?.startsWith('indexeddb://')
+                    ? `${book.file_path}.pdf`
+                    : (book.file_path ? `${book.file_path}.pdf` : `indexeddb://${book.id}.pdf`));
+
+              onUpdateBook({
+                id: book.id,
+                format: 'pdf',
+                file_path: canonicalPath,
+                is_local: true,
+              });
+            }}
           />
         )}
 

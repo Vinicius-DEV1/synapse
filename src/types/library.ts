@@ -7,6 +7,7 @@ export interface LibraryBook {
   id: string;
   title: string;
   author: string;
+  format?: 'pdf' | 'epub';
   file_path: string | null;
   original_name: string;
   cover_image: string;

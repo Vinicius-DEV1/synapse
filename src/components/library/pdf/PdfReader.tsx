@@ -251,6 +251,21 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   );
 
   if (pdfError) {
+    const handleSwitchToEpub = () => {
+      const canonicalPath = book.file_path?.includes('.epub')
+        ? book.file_path
+        : (book.file_path?.startsWith('indexeddb://')
+            ? `${book.file_path}.epub`
+            : (book.file_path ? `${book.file_path}.epub` : `indexeddb://${book.id}.epub`));
+
+      onUpdateBook({
+        id: book.id,
+        format: 'epub',
+        file_path: canonicalPath,
+        is_local: true,
+      });
+    };
+
     return (
       <PdfErrorState
         book={book}
@@ -264,6 +279,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         onDeleteBook={handleDeleteBook}
         setConfirmDelete={setConfirmDelete}
         pdfError={pdfError}
+        onSwitchToEpub={handleSwitchToEpub}
       />
     );
   }

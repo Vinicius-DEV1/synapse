@@ -6,6 +6,7 @@ import {
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
 import { Portal } from '../ui/Portal';
+import { isBookEpub } from '../../utils/book-format';
 
 interface LibraryGridProps {
   books: LibraryBook[];
@@ -113,9 +114,7 @@ export default function LibraryGrid({
       {books.map((book, index) => {
         const progress = getProgress(book);
         const status = STATUS_CONFIG[book.reading_status || 'not_started'];
-        const isEpub = (book.file_path || '').toLowerCase().includes('.epub') ||
-                       (book.title || '').toLowerCase().endsWith('.epub') ||
-                       (book.original_name || '').toLowerCase().endsWith('.epub');
+        const isEpub = isBookEpub(book);
         const isSelected = selectedIds?.has(book.id);
         const hasExplicitFilePath = Boolean(book.file_path && book.file_path.trim() !== '' && !book.file_path.startsWith('drive://'));
         const isLocal = book.is_local !== undefined 
