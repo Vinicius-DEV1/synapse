@@ -11,6 +11,8 @@ export function useEpubTheme(
   } = useEpub();
 
   useEffect(() => {
+    let onContentRendered: ((c: unknown) => void) | null = null;
+
     if (rendition) {
       rendition.themes.fontSize(`${fontSize}%`);
       const font = fontFamily === 'serif' ? 'Georgia, serif' : fontFamily === 'opendyslexic' ? 'OpenDyslexic, sans-serif' : 'Inter, sans-serif';
@@ -118,7 +120,7 @@ export function useEpubTheme(
       const isMobileView = isMobileScreen() || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       const bottomPadding = scrollMode ? '80px' : isMobileView ? '60px' : '16px';
 
-      const themeCss: any = {
+      const themeCss: Record<string, Record<string, string>> = {
         [`body.${themeName}`]: { 
           'background': `${colors.bg} !important`, 
           'color': `${colors.text} !important`,
@@ -140,6 +142,16 @@ export function useEpubTheme(
           'padding-left': '20px !important',
           'padding-right': '20px !important',
           'margin-bottom': '0px !important'
+        },
+        [`html, :root, html.${themeName}`]: { 
+          'background': `${colors.bg} !important`, 
+          'background-color': `${colors.bg} !important`, 
+          'color': `${colors.text} !important`,
+        },
+        // Generic spans, inline text & content blocks inheriting readable color
+        [`body.${themeName} span:not([class*="epubjs"]), body.${themeName} b, body.${themeName} strong, body.${themeName} i, body.${themeName} em`]: {
+          'color': 'inherit !important',
+          'background-color': 'transparent !important'
         },
         // Paragraphs & Structural Text
         [`body.${themeName} p, body.${themeName} div:not([class*="epubjs"]), body.${themeName} li, body.${themeName} dt, body.${themeName} dd, body.${themeName} section, body.${themeName} article`]: {
@@ -310,8 +322,71 @@ export function useEpubTheme(
         themeCss[`.${themeName} body *`] = { 'font-family': `${font} !important` };
       }
           
-      rendition.themes.register(themeName, themeCss);
-      rendition.themes.select(themeName);
+      // Serialize CSS rules to a CSS string for safe injection (bypassing epubjs styleSheet.insertRule fragility)
+      const serializedCss = Object.entries(themeCss).map(([selector, rules]) => {
+        const props = Object.entries(rules)
+          .map(([prop, val]) => `${prop}: ${val};`)
+          .join(' ');
+        return `${selector} { ${props} }`;
+      }).join('\n');
+
+      try {
+        const anyThemes = rendition.themes as unknown as {
+          registerCss?: (name: string, css: string) => void;
+        };
+        if (typeof anyThemes?.registerCss === 'function') {
+          anyThemes.registerCss(themeName, serializedCss);
+        } else {
+          rendition.themes.register(themeName, themeCss);
+        }
+        rendition.themes.select(themeName);
+      } catch (err: unknown) {
+        console.warn('[useEpubTheme] Error registering/selecting theme in epubjs:', err);
+      }
+
+      // Directly apply styles to all currently mounted chapter contents
+      const applyThemeToContents = (contentObj: unknown) => {
+        try {
+          const c = contentObj as { document?: Document } | undefined;
+          const doc = c?.document;
+          if (doc) {
+            doc.documentElement.style.backgroundColor = colors.bg;
+            doc.body.style.backgroundColor = colors.bg;
+            doc.body.style.color = colors.text;
+            doc.documentElement.classList.add(themeName);
+            doc.body.classList.add(themeName);
+
+            let themeStyle = doc.getElementById('caderno-epub-theme') as HTMLStyleElement | null;
+            if (!themeStyle) {
+              themeStyle = doc.createElement('style');
+              themeStyle.id = 'caderno-epub-theme';
+              doc.head?.appendChild(themeStyle);
+            }
+            themeStyle.textContent = serializedCss;
+          }
+        } catch (e: unknown) {
+          console.debug('[useEpubTheme] Failed to apply theme directly to content document:', e);
+        }
+      };
+
+      try {
+        const contents = rendition.getContents();
+        const contentsArray = Array.isArray(contents) ? contents : contents ? [contents] : [];
+        contentsArray.forEach(applyThemeToContents);
+      } catch (e: unknown) {
+        console.debug('[useEpubTheme] getContents iteration skipped:', e);
+      }
+
+      const hookContainer = rendition.hooks?.content as {
+        register?: (fn: (contents: unknown) => void) => void;
+        deregister?: (fn: (contents: unknown) => void) => void;
+      } | undefined;
+      onContentRendered = (c: unknown) => {
+        applyThemeToContents(c);
+      };
+      if (typeof hookContainer?.register === 'function') {
+        hookContainer.register(onContentRendered);
+      }
     }
     
     const timer = setTimeout(() => {
@@ -398,6 +473,15 @@ export function useEpubTheme(
       }
     }, 800);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (onContentRendered && rendition?.hooks?.content && typeof (rendition.hooks.content as { deregister?: (fn: unknown) => void }).deregister === 'function') {
+        try {
+          (rendition.hooks.content as { deregister: (fn: unknown) => void }).deregister(onContentRendered);
+        } catch (e: unknown) {
+          console.debug('[useEpubTheme] Error deregistering content hook:', e);
+        }
+      }
+    };
   }, [fontSize, fontFamily, readingMode, scrollMode, lineHeight, textAlign, paragraphSpacing, rendition, highlights, setSelection, setNoteMode, setNoteText, globalLastHighlightClickRef, clearSelectionTimerRef]);
 }

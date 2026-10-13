@@ -398,6 +398,46 @@ export function useEpubLoader(
         const win = contents.window;
         const sectionUrl = contents.section?.url || contents.section?.href;
 
+        // Defensive guard: prevent epubjs from crashing on styleSheet.insertRule if .sheet is null
+        const anyContents = contents as unknown as {
+          addStylesheetRules?: (rules: unknown, key: string) => void;
+          addStylesheetCss?: (css: string, key: string) => void;
+          _getStylesheetNode?: (key: string) => HTMLStyleElement | null;
+          __safeAddRulesPatched?: boolean;
+        };
+        if (anyContents && typeof anyContents.addStylesheetRules === 'function' && !anyContents.__safeAddRulesPatched) {
+          anyContents.__safeAddRulesPatched = true;
+          const origAddStylesheetRules = anyContents.addStylesheetRules.bind(anyContents);
+          anyContents.addStylesheetRules = function(rules: unknown, key: string) {
+            try {
+              const node = anyContents._getStylesheetNode ? anyContents._getStylesheetNode(key) : null;
+              if (!node || !node.sheet) {
+                let serialized = '';
+                if (Array.isArray(rules)) {
+                  serialized = rules.map((r: unknown[]) => `${r[0]} { ${(r.slice(1) as unknown[][]).map((p: unknown[]) => `${p[0]}: ${p[1]}${p[2] ? ' !important' : ''};`).join(' ')} }`).join('\n');
+                } else if (rules && typeof rules === 'object') {
+                  serialized = Object.entries(rules as Record<string, unknown>).map(([sel, def]) => {
+                    if (Array.isArray(def)) {
+                      return `${sel} { ${def.map(item => Object.entries(item as Record<string, string>).map(([k, v]) => `${k}: ${v};`).join(' ')).join(' ')} }`;
+                    }
+                    if (def && typeof def === 'object') {
+                      return `${sel} { ${Object.entries(def as Record<string, string>).map(([k, v]) => `${k}: ${v};`).join(' ')} }`;
+                    }
+                    return '';
+                  }).filter(Boolean).join('\n');
+                }
+                if (serialized && typeof anyContents.addStylesheetCss === 'function') {
+                  return anyContents.addStylesheetCss(serialized, key);
+                }
+                return;
+              }
+              return origAddStylesheetRules(rules, key);
+            } catch (err: unknown) {
+              console.warn('[EpubLoader] Safe fallback for addStylesheetRules:', err);
+            }
+          };
+        }
+
         if (doc) {
           await assetEmbedder.embedAssetsAsDataUrls(doc, sectionUrl);
 

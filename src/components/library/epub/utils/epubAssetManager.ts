@@ -101,6 +101,13 @@ export const createAssetEmbedder = (epubBook: any) => {
   const embedAssetsAsDataUrls = async (doc: Document, sectionUrl?: string) => {
     if (!doc) return;
 
+    // 0. Remove any embedded Content-Security-Policy meta tags from EPUB XHTML files
+    // that could enforce restrictive CSP directives inside the iframe and block stylesheets
+    const cspMetas = doc.querySelectorAll('meta[http-equiv*="content-security-policy" i], meta[http-equiv*="x-webkit-csp" i]');
+    for (const meta of Array.from(cspMetas)) {
+      meta.remove();
+    }
+
     // 1. Process inline <style> blocks
     const styleTags = doc.querySelectorAll('style');
     for (const style of Array.from(styleTags)) {
