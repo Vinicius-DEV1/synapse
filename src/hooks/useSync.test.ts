@@ -88,4 +88,24 @@ describe('useSync Hook', () => {
 
     expect(syncService.pullAllFromCloud).toHaveBeenCalled();
   });
+
+  it('triggers full sync automatically when network reconnects (online event)', async () => {
+    // Start offline
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    const loadPages = vi.fn();
+    renderHook(() => useSync(true, mockMasterKeys, loadPages));
+
+    // Clear initial calls
+    vi.mocked(syncService.pullAllFromCloud).mockClear();
+
+    // Reconnect network
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await vi.waitFor(() => {
+      expect(syncService.pullAllFromCloud).toHaveBeenCalledWith(mockMasterKeys);
+    });
+  });
 });

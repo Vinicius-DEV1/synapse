@@ -208,9 +208,14 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           doFullSync().finally(() => { isSyncingOnFocus = false; });
         }
       };
-      document.addEventListener('visibilitychange', handleVisibilityChange);
+      // 6. Network reconnection trigger: automatically sync offline changes when connection returns
+      const handleOnline = () => {
+        console.log('[Sync] Network connection restored (online). Triggering full synchronization...');
+        doFullSync();
+      };
+      window.addEventListener('online', handleOnline);
 
-      // 6. Safety fallback (every 10 minutes - reduced from 5 to save quota)
+      // 7. Safety fallback (every 10 minutes - reduced from 5 to save quota)
       const syncInterval = setInterval(() => {
         doFullSync();
       }, 10 * 60 * 1000); 
@@ -219,6 +224,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         isClosed = true;
         clearInterval(syncInterval);
         clearTimeout(syncDebounceTimer);
+        window.removeEventListener('online', handleOnline);
         window.removeEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (cleanupSyncTrigger) cleanupSyncTrigger();
