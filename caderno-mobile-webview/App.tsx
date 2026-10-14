@@ -139,12 +139,14 @@ function MainWebView() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Caderno</Text>
           <Text style={styles.errorText}>
-            Não foi possível conectar ao servidor da aplicação:
+            Sem conexão com a internet.
           </Text>
-          <Text style={styles.errorDetails}>{errorMessage}</Text>
-          <Text style={styles.errorHint}>URL: {targetUri}</Text>
+          <Text style={styles.errorDetails}>
+            Se este é o primeiro acesso no dispositivo, conecte-se à internet uma vez para carregar a aplicação.
+            Após a primeira inicialização, seus dados locais estarão protegidos e acessíveis offline.
+          </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleReload}>
-            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+            <Text style={styles.retryButtonText}>Tentar Conectar</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -192,6 +194,7 @@ function MainWebView() {
           originWhitelist={['*']}
           textZoom={100}
           cacheEnabled={true}
+          cacheMode="LOAD_DEFAULT"
           androidLayerType="hardware"
           renderLoading={() => (
             <View style={styles.loadingContainer}>

@@ -1,14 +1,36 @@
 const CACHE_NAME = 'video-stream-cache-v1';
+const APP_SHELL_CACHE = 'caderno-shell-v2';
+const STATIC_ASSETS_CACHE = 'caderno-assets-v2';
 
 let masterKeys = {};
 let accessToken = '';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(APP_SHELL_CACHE).then((cache) => {
+      return cache.addAll(['/', '/index.html']).catch((err) => {
+        console.warn('[SW] Pre-caching shell failed:', err);
+      });
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== APP_SHELL_CACHE && key !== STATIC_ASSETS_CACHE && key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        );
+      })
+    ])
+  );
 });
 
 self.addEventListener('message', (event) => {
@@ -64,10 +86,86 @@ async function getOriginalSize(fileId) {
 }
 
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   const url = new URL(event.request.url);
-  
+
+  // 1. Encrypted video streaming protocol
   if (url.pathname.startsWith('/stream-video/')) {
     event.respondWith(handleVideoStream(event.request, url));
+    return;
+  }
+
+  // 2. Ignore cross-origin third-party APIs (Google Drive, Firebase Firestore, etc.)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // 3. Navigation requests (App Shell - HTML documents)
+  const isNavigate = event.request.mode === 'navigate' || 
+    (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html');
+
+  if (isNavigate) {
+    event.respondWith(
+      (async () => {
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            const cache = await caches.open(APP_SHELL_CACHE);
+            cache.put(event.request, networkResponse.clone());
+            cache.put('/', networkResponse.clone());
+            cache.put('/index.html', networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (fetchErr) {
+          const cached = (await caches.match(event.request)) ||
+            (await caches.match('/index.html')) ||
+            (await caches.match('/'));
+          if (cached) {
+            return cached;
+          }
+          throw fetchErr;
+        }
+      })()
+    );
+    return;
+  }
+
+  // 4. Same-origin static assets (JS, CSS, images, icons, fonts)
+  const isStaticAsset = url.pathname.startsWith('/assets/') ||
+    /\.(js|css|png|jpg|jpeg|svg|ico|webp|woff2|woff|ttf|json)$/i.test(url.pathname);
+
+  if (isStaticAsset) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(event.request);
+        const fetchPromise = fetch(event.request)
+          .then(async (networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const cache = await caches.open(STATIC_ASSETS_CACHE);
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          })
+          .catch(() => null);
+
+        if (cached) {
+          return cached;
+        }
+
+        const networkResponse = await fetchPromise;
+        if (networkResponse) {
+          return networkResponse;
+        }
+        return new Response('Asset not available offline', { status: 503 });
+      })()
+    );
+    return;
   }
 });
 
