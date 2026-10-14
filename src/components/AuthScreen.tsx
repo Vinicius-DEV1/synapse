@@ -58,8 +58,9 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
     try {
       const cloudCheck = await verifyCloudMasterPassword(password);
 
-      if (platform.platform === 'web' && (cloudCheck.error === 'offline' || cloudCheck.error === 'timeout')) {
-        triggerError('O App Web requer conexão com a internet ativa.');
+      // Only block during initial setup if offline, since initial setup requires verifying cloud consistency
+      if (isSetup && platform.platform === 'web' && (cloudCheck.error === 'offline' || cloudCheck.error === 'timeout')) {
+        triggerError('A configuração inicial requer conexão com a internet ativa.');
         setLoading(false);
         return;
       }
@@ -118,6 +119,13 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
              }
           }
 
+          if (rawKeys) {
+            const authApi = window.api.auth as AuthApiWithKeychain;
+            if (authApi.forceUpdateKeychain) {
+              await authApi.forceUpdateKeychain(password, rawKeys);
+            }
+          }
+
           const moduleKeys = await buildModuleKeys(rawKeys, masterKey);
           
           if (cloudCheck.isNew) {
@@ -154,11 +162,11 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           let rawKeys: Record<string, string> | null | undefined = res.keys;
 
           let cloudKeys = null;
-          try {
-            cloudKeys = await pullModularKeysFromCloud(masterKey);
-          } catch (e: unknown) {
-            if (platform.platform === 'web') {
-              throw new Error("O App Web não permite acesso offline. O Firebase não respondeu.", { cause: e });
+          if (navigator.onLine && cloudCheck.isValid) {
+            try {
+              cloudKeys = await pullModularKeysFromCloud(masterKey);
+            } catch (e: unknown) {
+              console.warn('[AuthScreen] Pulling cloud keys failed, checking local keychain:', e);
             }
           }
 
@@ -169,10 +177,17 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
                await authApi.forceUpdateKeychain(password, rawKeys);
              }
           } else if (!rawKeys) {
-             try {
-               rawKeys = await pullModularKeysFromCloud(masterKey);
-             } catch (e: unknown) {
-               if (platform.platform === 'web') throw new Error("Conexão com Firebase falhou. App Web bloqueado.", { cause: e });
+             if (navigator.onLine) {
+               try {
+                 rawKeys = await pullModularKeysFromCloud(masterKey);
+               } catch (e: unknown) {
+                 console.warn('[AuthScreen] Cloud keys fallback pull failed:', e);
+               }
+             }
+             if (!rawKeys) {
+               triggerError('Chaves de criptografia não encontradas offline. Conecte-se à internet uma vez para sincronizá-las.');
+               setLoading(false);
+               return;
              }
           }
 
