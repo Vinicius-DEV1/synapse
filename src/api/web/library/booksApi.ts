@@ -11,7 +11,21 @@ export const createBooksApi = (
 ) => ({
   getBooks: async (): Promise<LibraryBook[]> => {
     const all = await db.getAll('library_books');
-    return all.filter((b) => !b.deleted_at);
+    const filtered = all.filter((b) => !b.deleted_at);
+    try {
+      const keys = await db.getAllKeys('library_book_files');
+      const localKeysSet = new Set(keys.map((k) => String(k)));
+      return filtered.map((b) => {
+        const cleanId = b.id.replace(/^indexeddb:\/\//, '').replace(/\.(epub|pdf).*$/i, '');
+        const hasLocalCache = localKeysSet.has(cleanId);
+        return {
+          ...b,
+          is_local: hasLocalCache || b.is_local || false,
+        };
+      });
+    } catch {
+      return filtered;
+    }
   },
 
   getBook: async (id: string): Promise<LibraryBook | null> => {
@@ -289,6 +303,9 @@ export const createBooksApi = (
         const { encryptFile } = await import('../../../services/storage');
         const encrypted = await encryptFile(arrayBuffer, _masterKey);
         await db.put('library_book_files', { id: cleanId, data: encrypted });
+        book.is_local = true;
+        book.updated_at = new Date().toISOString();
+        await db.put('library_books', book);
       } catch (cacheErr) {
         console.warn("Falha ao salvar no cache local", cacheErr);
       }

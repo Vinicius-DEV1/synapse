@@ -19,6 +19,7 @@ interface LibraryGridProps {
   onDeleteBook: (id: string) => void;
   onStatusChange: (book: LibraryBook, status: ReadingStatus) => void;
   onEvictBook?: (id: string) => void;
+  onDownloadOffline?: (book: LibraryBook) => void;
 }
 
 const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
@@ -68,6 +69,7 @@ export default function LibraryGrid({
   onDeleteBook,
   onStatusChange,
   onEvictBook,
+  onDownloadOffline,
 }: LibraryGridProps) {
   const [menuBookId, setMenuBookId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -292,6 +294,19 @@ export default function LibraryGrid({
                     >
                       <CloudOff size={14} />
                       Remover Download Local
+                    </button>
+                  )}
+
+                  {!isLocal && isSynced && onDownloadOffline && (
+                    <button
+                      onClick={() => {
+                        onDownloadOffline(book);
+                        setMenuBookId(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 flex items-center gap-2 transition-colors"
+                    >
+                      <CloudDownload size={14} />
+                      Baixar para Offline
                     </button>
                   )}
 

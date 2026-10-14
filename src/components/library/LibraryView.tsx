@@ -138,6 +138,22 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
     }
   };
 
+  const handleDownloadOffline = async (book: LibraryBook) => {
+    try {
+      if (!window.api?.library?.getBookFile) return;
+      triggerToast(`Baixando "${book.title}" para leitura offline...`, 'info');
+      const fileData = await window.api.library.getBookFile(book.id);
+      if (fileData) {
+        triggerToast(`"${book.title}" disponível offline!`, 'success');
+        await loadData();
+      } else {
+        triggerToast('Não foi possível baixar o livro da nuvem.', 'error');
+      }
+    } catch (err) {
+      triggerToast(err instanceof Error ? err.message : String(err), 'error');
+    }
+  };
+
   const handleStartRename = (e: React.MouseEvent, col: LibraryCollection) => {
     e.stopPropagation();
     e.preventDefault();
@@ -256,6 +272,7 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
             onDeleteBook={handleDelete}
             onStatusChange={handleStatusChange}
             onEvictBook={handleEvictLocalCache}
+            onDownloadOffline={handleDownloadOffline}
           />
         )}
       </div>
