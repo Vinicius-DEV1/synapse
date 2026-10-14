@@ -72,13 +72,14 @@ This document provides a comprehensive technical overview of the functional modu
 
 ---
 
-### 2.6. AI Conversational Language Practice
+### 2.6. AI Conversational Language Practice & Interview Simulator
 - **Source Paths**: `src/components/practice/`, `src/services/gemini/`
-- **Core Technology**: Google Gemini 2.0 Flash, Web Audio API, Push-to-Talk.
+- **Core Technology**: Google Gemini 2.0/2.5 Flash, Gemini Multimodal Live (Bidi WebSocket), Web Audio API, Web Speech API.
 - **Architectural Highlights**:
-  - **Real-Time Voice & Chat Interaction**: Dynamic foreign language conversational practice tailored to user proficiency levels.
-  - **Long-Term Memory Extraction**: Background extraction of linguistic errors, vocabulary strengths, and personal facts to personalize subsequent sessions.
-  - **Instant Feedback**: Grammar corrections, phonetic IPA transcriptions, and idiomatic collocation tips.
+  - **Hybrid Voice & Text Chat**: Seamless multi-modal practice supporting real-time zero-latency voice calls and written chat with keyboard fluidity.
+  - **Pedagogical Language Coach**: Double-layer response architecture providing conversational engagement in target language plus structured feedback cards (comprehension rating, grammar/orthography error analysis with explanations, and native phrasing alternatives).
+  - **Job Interview Simulator**: Realistic technical and behavioral interview preparation with animated 2D lip-sync avatar, CV/JD file ingestion, and multi-turn performance reporting.
+  - **Long-Term Memory Extraction**: Background extraction of personal context and language progress across sessions.
 
 ---
 
