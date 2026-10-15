@@ -112,15 +112,32 @@ describe('PdfReader Component', () => {
     });
     mockDispatch.mockClear();
 
-    // Single click should NOT trigger fullscreen toggle
+    // Single click and double click should NOT trigger fullscreen toggle (avoiding text selection conflicts)
     fireEvent.click(viewport);
     expect(mockDispatch).not.toHaveBeenCalled();
 
-    // Double click triggers fullscreen toggle (showing mobile tools / isFullScreen false)
     fireEvent.doubleClick(viewport);
+    expect(mockDispatch).not.toHaveBeenCalled();
+
+    // Key 'f' triggers fullscreen toggle cleanly
+    fireEvent.keyDown(window, { key: 'f' });
     expect(mockDispatch).toHaveBeenCalledWith({
       type: 'SET_READING_MODE_FULLSCREEN',
       isFullScreen: false,
     });
+  });
+
+  it('renders viewport with horizontal scrolling enabled (overflow-x-auto) for mobile panning', () => {
+    const onBack = vi.fn();
+    const onUpdateBook = vi.fn();
+
+    const { getByTestId } = render(
+      <PdfReader book={mockBook} onBack={onBack} onUpdateBook={onUpdateBook} />
+    );
+
+    const viewport = getByTestId('pdf-viewport');
+    expect(viewport.className).toContain('overflow-x-auto');
+    expect(viewport.className).toContain('pdf-viewport');
+    expect(viewport.className).not.toContain('overflow-x-hidden');
   });
 });

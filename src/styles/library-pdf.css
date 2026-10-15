@@ -33,6 +33,17 @@
   border-radius: 2px 0 0 2px;
 }
 
+/* PDF Viewport & Touch Gestures */
+.pdf-viewport {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
+.pdf-viewport.is-pinching {
+  touch-action: none;
+}
+
 /* PDF Page Wrapper */
 .pdf-page-wrapper {
   position: relative;
@@ -40,6 +51,7 @@
   background: white;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   contain: layout paint;
+  max-width: none !important;
 }
 
 /* Text Layer (for text selection) */
@@ -50,21 +62,28 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
-  opacity: 0.25;
+  opacity: 1;
   line-height: 1;
-  pointer-events: all;
+  pointer-events: auto;
+  z-index: 2;
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 .pdf-text-layer span {
   position: absolute;
   white-space: pre;
   color: transparent;
-  pointer-events: all;
+  pointer-events: auto;
   cursor: text;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  transform-origin: 0% 0%;
 }
 
 .pdf-text-layer ::selection {
-  background: rgba(139, 92, 246, 0.75);
+  background: rgba(139, 92, 246, 0.45) !important;
+  color: transparent !important;
 }
 
 /* Highlight Layer */
@@ -75,7 +94,7 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
 .pdf-highlight-layer .highlight-rect {
@@ -189,7 +208,8 @@
 }
 
 .reading-mode-dark .pdf-text-layer ::selection {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.5) !important;
+  color: transparent !important;
 }
 
 .reading-mode-dim .pdf-page-wrapper {
@@ -209,7 +229,8 @@
 }
 
 .reading-mode-midnight .pdf-text-layer ::selection {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.5) !important;
+  color: transparent !important;
 }
 
 .reading-mode-nord .pdf-page-wrapper {

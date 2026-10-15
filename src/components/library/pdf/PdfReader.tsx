@@ -20,8 +20,11 @@ import { usePdfKeyboardShortcuts } from './hooks/usePdfKeyboardShortcuts';
 import { usePdfDocument } from './hooks/usePdfDocument';
 import { usePdfRenderer } from './hooks/usePdfRenderer';
 import { usePdfHighlights } from './hooks/usePdfHighlights';
+import { usePdfTouchGestures } from './hooks/usePdfTouchGestures';
 import { useTimeTracker } from '../../../hooks/useTimeTracker';
 import { MODE_NAMES, THEME_CLASSES, getPdfCssFilter } from './utils/pdfThemes';
+import { PdfHighlightInspector } from './components/PdfHighlightInspector';
+import { PdfHighlightNoteTooltip } from './components/PdfHighlightNoteTooltip';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -93,7 +96,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   const {
     scrollRef,
     zoom,
+    setZoom,
     handleZoom,
+    fitToWidth,
     currentPage,
     scrollToPage,
     virtualWindow,
@@ -102,7 +107,19 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     PAGE_GAP,
   } = usePdfRenderer({ totalPages, loading, book, onUpdateBook, pdfDoc });
 
-  // Hook 3: Highlights & Text Selection
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Hook 3: Multi-Touch Gestures (Pinch-to-zoom, Pan, Double-tap)
+  const { isPinching } = usePdfTouchGestures({
+    scrollRef,
+    contentRef,
+    zoom,
+    setZoom,
+    minZoom: 0.5,
+    maxZoom: 3.0,
+  });
+
+  // Hook 4: Highlights & Text Selection
   const {
     activeHighlight,
     setActiveHighlight,
@@ -147,11 +164,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     }
   };
 
-  const handlePdfDoubleClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement | null;
-    if (target?.closest('button, a, input, textarea, [role="button"]')) {
-      return;
-    }
+  const toggleFullScreen = useCallback(() => {
     setShowMobileTools((prev) => {
       const nextState = !prev;
       if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
@@ -160,11 +173,12 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       }
       return nextState;
     });
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
       if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     };
   }, []);
 
@@ -203,6 +217,8 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     toggleBookmark,
     cycleReadingMode,
     handleZoom,
+    fitToWidth,
+    toggleFullScreen,
   });
 
   useEffect(() => {
@@ -214,6 +230,35 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
   const isDarkMode = ['dim', 'nord', 'midnight', 'dark', 'high-contrast'].includes(readingMode);
   const cssFilter = getPdfCssFilter(readingMode);
+
+  // Hover state for note preview tooltip
+  const [hoveredHighlight, setHoveredHighlight] = useState<{
+    highlight: LibraryHighlight;
+    position: { x: number; y: number };
+  } | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleHighlightHover = useCallback(
+    (h: LibraryHighlight | null, rect: DOMRect | null) => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+
+      if (!h || !rect || !h.note?.trim()) {
+        setHoveredHighlight(null);
+        return;
+      }
+
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoveredHighlight({
+          highlight: h,
+          position: { x: rect.left + rect.width / 2, y: rect.bottom + window.scrollY },
+        });
+      }, 120);
+    },
+    []
+  );
 
   // Group highlights by page for O(1) rendering lookup
   const highlightsByPage = useMemo(() => {
@@ -242,12 +287,53 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
   // Memoized highlight click callback
   const handleHighlightClick = useCallback(
     (h: LibraryHighlight, rect: DOMRect) => {
+      setHoveredHighlight(null);
       setActiveHighlight({
         highlight: h,
         position: { x: rect.left + rect.width / 2, y: rect.bottom + window.scrollY },
       });
     },
     [setActiveHighlight]
+  );
+
+  const handleUpdateHighlightColor = useCallback(
+    async (id: string, color: LibraryHighlight['color']) => {
+      if (!window.api?.library) return;
+      try {
+        await window.api.library.updateHighlight({ id, color });
+        setHighlights((prev) =>
+          prev.map((h) => (h.id === id ? { ...h, color } : h))
+        );
+        setActiveHighlight((prev) =>
+          prev && prev.highlight.id === id
+            ? { ...prev, highlight: { ...prev.highlight, color } }
+            : prev
+        );
+      } catch (err) {
+        console.error('Falha ao atualizar cor da marcação:', err);
+      }
+    },
+    [setHighlights, setActiveHighlight]
+  );
+
+  const handleUpdateHighlightNote = useCallback(
+    async (id: string, note: string) => {
+      if (!window.api?.library) return;
+      try {
+        await window.api.library.updateHighlight({ id, note });
+        setHighlights((prev) =>
+          prev.map((h) => (h.id === id ? { ...h, note } : h))
+        );
+        setActiveHighlight((prev) =>
+          prev && prev.highlight.id === id
+            ? { ...prev, highlight: { ...prev.highlight, note } }
+            : prev
+        );
+      } catch (err) {
+        console.error('Falha ao atualizar nota da marcação:', err);
+      }
+    },
+    [setHighlights, setActiveHighlight]
   );
 
   if (pdfError) {
@@ -284,16 +370,14 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     );
   }
 
-  // Calculate stable spacers without layout thrashing
-  let topSpacerHeight = 0;
-  for (let i = 1; i < virtualWindow.start; i++) {
-    topSpacerHeight += dimensionCache.current.getPageHeight(i, zoom) + PAGE_GAP;
-  }
-
-  let bottomSpacerHeight = 0;
-  for (let i = virtualWindow.end + 1; i <= totalPages; i++) {
-    bottomSpacerHeight += dimensionCache.current.getPageHeight(i, zoom) + PAGE_GAP;
-  }
+  // Calculate stable spacers without layout thrashing in O(1)
+  const { topSpacerHeight, bottomSpacerHeight } = dimensionCache.current.getSpacerHeights(
+    virtualWindow.start,
+    virtualWindow.end,
+    totalPages,
+    zoom,
+    PAGE_GAP
+  );
 
   const pagesToRender: number[] = [];
   for (let i = virtualWindow.start; i <= virtualWindow.end; i++) {
@@ -304,9 +388,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     <div
       className={`flex h-full relative font-sans transition-colors duration-300 ${THEME_CLASSES[readingMode]}`}
     >
-      {/* Sidebar de Anotações */}
+      {/* Sidebar de Anotações (Mobile Drawer / Desktop Sidebar) */}
       {showAnnotations && (
-        <div className="w-80 flex-shrink-0 border-r border-black/10 dark:border-white/10 flex flex-col bg-white/5 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 md:relative md:z-auto md:w-80 md:flex-shrink-0 border-r border-black/10 dark:border-white/10 flex flex-col bg-dark-bg/95 md:bg-white/5 backdrop-blur-md animate-in fade-in duration-200">
           <AnnotationPanel
             bookId={book.id}
             highlights={highlights}
@@ -361,11 +445,13 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
         <div
           ref={scrollRef}
           data-testid="pdf-viewport"
-          className="flex-1 overflow-y-auto overflow-x-hidden relative"
-          onDoubleClick={handlePdfDoubleClick}
+          className={`pdf-viewport flex-1 overflow-y-auto overflow-x-auto relative select-text overscroll-contain ${
+            isPinching ? 'is-pinching' : ''
+          }`}
           style={{
             scrollBehavior: 'auto',
             backgroundColor: isDarkMode ? 'transparent' : 'rgba(0,0,0,0.03)',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {loading ? (
@@ -416,7 +502,10 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
               </div>
             </div>
           ) : (
-            <div className="pdf-container pb-32 pt-8 flex flex-col items-center">
+            <div
+              ref={contentRef}
+              className="pdf-container pb-32 pt-4 sm:pt-8 min-w-full w-max flex flex-col items-center"
+            >
               {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight, width: '100%' }} />}
 
               {pagesToRender.map((pageNum) => (
@@ -436,6 +525,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                   setOcrProcessing={setOcrProcessing}
                   onMeasure={(unscaledW, unscaledH) => handleMeasurePage(pageNum, unscaledW, unscaledH)}
                   onHighlightClick={handleHighlightClick}
+                  onHighlightHover={handleHighlightHover}
                   pageWidth={dimensionCache.current.getPageWidth(pageNum, zoom)}
                   pageHeight={dimensionCache.current.getPageHeight(pageNum, zoom)}
                 />
@@ -450,7 +540,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
 
         {/* Floating Search Bar */}
         {showSearch && (
-          <div className="absolute top-4 right-16 z-50 w-80 shadow-2xl rounded-2xl overflow-hidden pointer-events-auto animate-in slide-in-from-top-4">
+          <div className="absolute top-3 inset-x-3 sm:inset-x-auto sm:right-16 sm:w-80 z-50 shadow-2xl rounded-2xl overflow-hidden pointer-events-auto animate-in slide-in-from-top-4">
             <PdfSearchBar
               pdfDoc={pdfDoc}
               bookId={book.id}
@@ -474,6 +564,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             onPageChange={(p) => scrollToPage(p, false)}
             zoom={zoom}
             onZoom={handleZoom}
+            onFitWidth={fitToWidth}
             showSearch={showSearch}
             onToggleSearch={() => setShowSearch(!showSearch)}
             isBookmarked={bookmarks.some((b) => b.page_number === currentPage)}
@@ -503,23 +594,24 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
           />
         )}
 
+        {/* Market-Leading Highlight Inspector & Note Editor */}
         {activeHighlight && (
-          <div
-            className="absolute z-[100] animate-in fade-in slide-in-from-bottom-2"
-            style={{
-              top: activeHighlight.position.y + 10,
-              left: activeHighlight.position.x - 75,
-            }}
-          >
-            <div className="bg-dark-bg/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-2 flex gap-2">
-              <button
-                onClick={() => handleDeleteHighlight(activeHighlight.highlight.id)}
-                className="px-3 py-1.5 rounded-lg hover:bg-red-500/20 text-red-400 text-sm font-medium transition-colors"
-              >
-                Remover
-              </button>
-            </div>
-          </div>
+          <PdfHighlightInspector
+            highlight={activeHighlight.highlight}
+            position={activeHighlight.position}
+            onClose={() => setActiveHighlight(null)}
+            onDelete={handleDeleteHighlight}
+            onUpdateColor={handleUpdateHighlightColor}
+            onUpdateNote={handleUpdateHighlightNote}
+          />
+        )}
+
+        {/* Hover Note Tooltip (when not actively inspecting) */}
+        {!activeHighlight && hoveredHighlight && (
+          <PdfHighlightNoteTooltip
+            highlight={hoveredHighlight.highlight}
+            position={hoveredHighlight.position}
+          />
         )}
 
         {/* Dicionário Modal */}
