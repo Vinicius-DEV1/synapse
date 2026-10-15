@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import type { PdfDimensionCache } from '../services/pdfDimensionCache';
 
 export interface UsePdfTouchGesturesProps {
   scrollRef: React.RefObject<HTMLDivElement | null>;
@@ -7,19 +8,26 @@ export interface UsePdfTouchGesturesProps {
   setZoom: (newZoom: number) => void;
   minZoom?: number;
   maxZoom?: number;
+  dimensionCache?: React.RefObject<PdfDimensionCache>;
+  totalPages?: number;
+  pageGap?: number;
   onDoubleTap?: (tapX: number, tapY: number) => void;
 }
 
 /**
  * Industry-standard GPU-accelerated multi-touch gesture engine for the PDF reader:
- * 1. During active pinch: visual scaling and translation are executed directly via
- *    hardware-accelerated CSS 3D transform on the GPU compositor thread.
- *    ZERO React re-renders, ZERO PDF.js canvas cancellations, and ZERO scroll fighting.
- * 2. On pinch release: new target zoom is committed to React state. In useLayoutEffect
- *    (synchronously after DOM expansion but before browser paint), the target scrollLeft
- *    and scrollTop are applied and the CSS transform is cleared in the exact same frame.
- *    Eliminates 100% of white/black flashing, screen bouncing, and erratic coordinate jumping.
- * 3. Double-tap quick-zoom toggle with seamless focal coordinate alignment.
+ * 1. Active Pinch (GPU Transform):
+ *    Scales and pans on the GPU compositor thread with ZERO React re-renders,
+ *    ZERO PDF.js canvas cancellations, and ZERO scroll fighting.
+ * 2. Page-Anchored Focal Preservation:
+ *    Anchors the focal point to the exact target PDF page and relative (u, v) coordinates.
+ *    Eliminates virtualization jumps, non-linear gap errors, and margin-centering shifts.
+ * 3. Trailing Finger Protection:
+ *    Swallows touches until all fingers have left the screen (touches.length === 0)
+ *    preventing accidental single-finger momentum scrolls from hijacking the viewport.
+ * 4. Synchronous Layout Transfer (useLayoutEffect):
+ *    Forces container reflow and applies new scroll positions while clearing the GPU
+ *    transform in the exact same synchronous frame before the browser paints.
  */
 export function usePdfTouchGestures({
   scrollRef,
@@ -28,6 +36,9 @@ export function usePdfTouchGestures({
   setZoom,
   minZoom = 0.5,
   maxZoom = 3.0,
+  dimensionCache,
+  totalPages,
+  pageGap = 16,
   onDoubleTap,
 }: UsePdfTouchGesturesProps) {
   const [isPinching, setIsPinching] = useState(false);
@@ -39,11 +50,19 @@ export function usePdfTouchGestures({
   }, [zoom]);
 
   const isPinchingRef = useRef(false);
+  const isPinchEndingRef = useRef(false);
   const touchStartDistRef = useRef(0);
   const touchStartZoomRef = useRef(zoom);
   const touchStartFocalRef = useRef({ x: 0, y: 0 });
   const touchStartScrollRef = useRef({ left: 0, top: 0 });
   const touchStartOriginRef = useRef({ x: 0, y: 0 });
+
+  // Page-anchored relative coordinate tracking
+  const touchTargetAnchorRef = useRef<{
+    page: number;
+    normU: number;
+    normV: number;
+  }>({ page: 1, normU: 0.5, normV: 0.5 });
 
   const currentScaleRef = useRef(1.0);
   const currentDeltaRef = useRef({ x: 0, y: 0 });
@@ -67,6 +86,11 @@ export function usePdfTouchGestures({
         clearTimeout(safetyTimerRef.current);
         safetyTimerRef.current = null;
       }
+
+      // Force synchronous layout calculation so scrollWidth and scrollHeight
+      // reflect the newly sized DOM elements before writing scroll offsets
+      void scrollRef.current.scrollWidth;
+      void scrollRef.current.scrollHeight;
 
       // 1. Set scroll on the newly sized container
       scrollRef.current.scrollLeft = left;
@@ -92,16 +116,57 @@ export function usePdfTouchGestures({
       const focalX = clientX - rect.left;
       const focalY = clientY - rect.top;
 
-      const contentX = (el.scrollLeft + focalX) / currentZoom;
-      const contentY = (el.scrollTop + focalY) / currentZoom;
+      const viewportWidth = el.clientWidth;
+      const absY = el.scrollTop + focalY;
+      const absX = el.scrollLeft + focalX;
 
-      const nextScrollLeft = Math.max(0, contentX * targetZoom - focalX);
-      const nextScrollTop = Math.max(0, contentY * targetZoom - focalY);
+      let nextScrollLeft = 0;
+      let nextScrollTop = 0;
+
+      if (dimensionCache?.current && totalPages) {
+        const targetPage = dimensionCache.current.findPageAtScrollTop(
+          absY,
+          totalPages,
+          currentZoom,
+          pageGap
+        );
+        const pageOffset = dimensionCache.current.getPageOffset(targetPage, currentZoom, pageGap);
+        const pageH = dimensionCache.current.getPageHeight(targetPage, currentZoom);
+        const pageW = dimensionCache.current.getPageWidth(targetPage, currentZoom);
+
+        const normV = pageH > 0 ? Math.max(0, Math.min(1, (absY - pageOffset) / pageH)) : 0.5;
+        let normU = 0.5;
+        if (pageW > viewportWidth) {
+          normU = Math.max(0, Math.min(1, absX / pageW));
+        } else {
+          const pageLeft = Math.max(0, (viewportWidth - pageW) / 2);
+          normU = Math.max(0, Math.min(1, (focalX - pageLeft) / Math.max(1, pageW)));
+        }
+
+        const newPageOffset = dimensionCache.current.getPageOffset(targetPage, targetZoom, pageGap);
+        const newPageH = dimensionCache.current.getPageHeight(targetPage, targetZoom);
+        const newPageW = dimensionCache.current.getPageWidth(targetPage, targetZoom);
+
+        const newAbsY = newPageOffset + normV * newPageH;
+        nextScrollTop = Math.max(0, newAbsY - focalY);
+
+        if (newPageW > viewportWidth) {
+          const newAbsX = normU * newPageW;
+          nextScrollLeft = Math.max(0, newAbsX - focalX);
+        } else {
+          nextScrollLeft = 0;
+        }
+      } else {
+        const contentX = (el.scrollLeft + focalX) / currentZoom;
+        const contentY = (el.scrollTop + focalY) / currentZoom;
+        nextScrollLeft = Math.max(0, contentX * targetZoom - focalX);
+        nextScrollTop = Math.max(0, contentY * targetZoom - focalY);
+      }
 
       pendingScrollRef.current = { left: nextScrollLeft, top: nextScrollTop };
       setZoom(targetZoom);
     },
-    [setZoom, scrollRef]
+    [setZoom, scrollRef, dimensionCache, totalPages, pageGap]
   );
 
   useEffect(() => {
@@ -114,6 +179,7 @@ export function usePdfTouchGestures({
         const t1 = e.touches[0];
         const t2 = e.touches[1];
 
+        isPinchEndingRef.current = false;
         isPinchingRef.current = true;
         setIsPinching(true);
 
@@ -139,6 +205,42 @@ export function usePdfTouchGestures({
         const originY = scrollTop + focalY;
         touchStartOriginRef.current = { x: originX, y: originY };
 
+        // Anchor to specific page and relative (u, v) coordinates
+        const currentZoom = zoomRef.current;
+        const viewportWidth = el.clientWidth;
+        let targetPage = 1;
+        let normU = 0.5;
+        let normV = 0.5;
+
+        if (dimensionCache?.current && totalPages) {
+          targetPage = dimensionCache.current.findPageAtScrollTop(
+            originY,
+            totalPages,
+            currentZoom,
+            pageGap
+          );
+          const pageOffset = dimensionCache.current.getPageOffset(targetPage, currentZoom, pageGap);
+          const pageH = dimensionCache.current.getPageHeight(targetPage, currentZoom);
+          const pageW = dimensionCache.current.getPageWidth(targetPage, currentZoom);
+
+          if (pageH > 0) {
+            normV = Math.max(0, Math.min(1, (originY - pageOffset) / pageH));
+          }
+
+          if (pageW > viewportWidth) {
+            normU = Math.max(0, Math.min(1, originX / pageW));
+          } else {
+            const pageLeft = Math.max(0, (viewportWidth - pageW) / 2);
+            normU = Math.max(0, Math.min(1, (focalX - pageLeft) / Math.max(1, pageW)));
+          }
+        }
+
+        touchTargetAnchorRef.current = {
+          page: targetPage,
+          normU,
+          normV,
+        };
+
         if (contentRef.current) {
           contentRef.current.style.transformOrigin = `${originX}px ${originY}px`;
           contentRef.current.style.willChange = 'transform';
@@ -148,7 +250,11 @@ export function usePdfTouchGestures({
         if (e.cancelable) {
           e.preventDefault();
         }
-      } else if (e.touches.length === 1) {
+      } else if (
+        e.touches.length === 1 &&
+        !isPinchingRef.current &&
+        !isPinchEndingRef.current
+      ) {
         // Single touch: double-tap detection
         const touch = e.touches[0];
         const now = Date.now();
@@ -210,6 +316,11 @@ export function usePdfTouchGestures({
             contentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${s})`;
           });
         }
+      } else if (isPinchEndingRef.current) {
+        // While trailing finger is lifting: prevent native pan/scroll/fling
+        if (e.cancelable) {
+          e.preventDefault();
+        }
       }
     };
 
@@ -217,6 +328,11 @@ export function usePdfTouchGestures({
       if (e.touches.length < 2 && isPinchingRef.current) {
         isPinchingRef.current = false;
         setIsPinching(false);
+
+        // Protect against trailing finger dragging the page
+        if (e.touches.length > 0) {
+          isPinchEndingRef.current = true;
+        }
 
         if (rafIdRef.current) {
           cancelAnimationFrame(rafIdRef.current);
@@ -229,12 +345,33 @@ export function usePdfTouchGestures({
         const targetZoom = Math.min(maxZoom, Math.max(minZoom, rawTargetZoom));
         const roundedZoom = Number(targetZoom.toFixed(2));
 
-        const ratio = roundedZoom / baseZoom;
-        const origin = touchStartOriginRef.current;
         const focal = currentFocalRef.current;
+        const viewportWidth = el.clientWidth;
 
-        const nextScrollLeft = Math.max(0, origin.x * ratio - focal.x);
-        const nextScrollTop = Math.max(0, origin.y * ratio - focal.y);
+        let nextScrollLeft = 0;
+        let nextScrollTop = 0;
+
+        if (dimensionCache?.current && totalPages) {
+          const { page, normU, normV } = touchTargetAnchorRef.current;
+          const newPageOffset = dimensionCache.current.getPageOffset(page, roundedZoom, pageGap);
+          const newPageH = dimensionCache.current.getPageHeight(page, roundedZoom);
+          const newPageW = dimensionCache.current.getPageWidth(page, roundedZoom);
+
+          const newAbsY = newPageOffset + normV * newPageH;
+          nextScrollTop = Math.max(0, newAbsY - focal.y);
+
+          if (newPageW > viewportWidth) {
+            const newAbsX = normU * newPageW;
+            nextScrollLeft = Math.max(0, newAbsX - focal.x);
+          } else {
+            nextScrollLeft = 0;
+          }
+        } else {
+          const ratio = roundedZoom / baseZoom;
+          const origin = touchStartOriginRef.current;
+          nextScrollLeft = Math.max(0, origin.x * ratio - focal.x);
+          nextScrollTop = Math.max(0, origin.y * ratio - focal.y);
+        }
 
         if (roundedZoom === zoomRef.current) {
           // Zoom did not change: reset transform immediately and align scroll
@@ -265,18 +402,29 @@ export function usePdfTouchGestures({
           setZoom(roundedZoom);
         }
       }
+
+      if (e.touches.length === 0) {
+        isPinchEndingRef.current = false;
+      }
+    };
+
+    const onTouchCancel = (e: TouchEvent) => {
+      isPinchingRef.current = false;
+      isPinchEndingRef.current = false;
+      setIsPinching(false);
+      onTouchEnd(e);
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: false });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
-    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchCancel, { passive: true });
 
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
-      el.removeEventListener('touchcancel', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchCancel);
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
       }
@@ -284,7 +432,18 @@ export function usePdfTouchGestures({
         clearTimeout(safetyTimerRef.current);
       }
     };
-  }, [scrollRef, contentRef, minZoom, maxZoom, setZoom, onDoubleTap, handleDefaultDoubleTap]);
+  }, [
+    scrollRef,
+    contentRef,
+    minZoom,
+    maxZoom,
+    dimensionCache,
+    totalPages,
+    pageGap,
+    setZoom,
+    onDoubleTap,
+    handleDefaultDoubleTap,
+  ]);
 
   return {
     isPinching,

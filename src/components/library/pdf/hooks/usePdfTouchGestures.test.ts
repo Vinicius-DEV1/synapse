@@ -314,4 +314,62 @@ describe('usePdfTouchGestures', () => {
     expect(setZoom).toHaveBeenCalledWith(1.85);
     dateNowSpy.mockRestore();
   });
+
+  it('prevents default on touchmove while trailing finger is lifting to protect scroll position', () => {
+    const setZoom = vi.fn();
+
+    renderHook(() =>
+      usePdfTouchGestures({
+        scrollRef,
+        contentRef,
+        zoom: 1.0,
+        setZoom,
+      })
+    );
+
+    // Start 2-finger pinch
+    act(() => {
+      mockContainer.dispatchEvent(
+        new TouchEvent('touchstart', {
+          touches: [
+            { clientX: 100, clientY: 200 } as Touch,
+            { clientX: 200, clientY: 200 } as Touch,
+          ],
+          cancelable: true,
+        })
+      );
+    });
+
+    // One finger lifts first (touches.length === 1) -> pinch ends, trailing protection engaged
+    act(() => {
+      mockContainer.dispatchEvent(
+        new TouchEvent('touchend', {
+          touches: [{ clientX: 100, clientY: 200 } as Touch],
+        })
+      );
+    });
+
+    // Trailing finger moves slightly while lifting
+    const trailingMoveEvent = new TouchEvent('touchmove', {
+      touches: [{ clientX: 105, clientY: 200 } as Touch],
+      cancelable: true,
+    });
+    const preventDefaultSpy = vi.spyOn(trailingMoveEvent, 'preventDefault');
+
+    act(() => {
+      mockContainer.dispatchEvent(trailingMoveEvent);
+    });
+
+    // Must preventDefault to block native scroll hijacking
+    expect(preventDefaultSpy).toHaveBeenCalled();
+
+    // Final finger lifts (touches.length === 0)
+    act(() => {
+      mockContainer.dispatchEvent(
+        new TouchEvent('touchend', {
+          touches: [],
+        })
+      );
+    });
+  });
 });

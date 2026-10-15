@@ -117,6 +117,9 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
     setZoom,
     minZoom: 0.5,
     maxZoom: 3.0,
+    dimensionCache,
+    totalPages,
+    pageGap: PAGE_GAP,
   });
 
   // Hook 4: Highlights & Text Selection

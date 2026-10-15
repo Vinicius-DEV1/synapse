@@ -20,11 +20,9 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({ page, z
     const context = canvas.getContext('2d', { alpha: false });
     if (!context) return;
 
-    const pixelRatio = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(viewport.width * pixelRatio);
-    canvas.height = Math.floor(viewport.height * pixelRatio);
-    canvas.style.width = `${viewport.width}px`;
-    canvas.style.height = `${viewport.height}px`;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const targetWidth = Math.floor(viewport.width * pixelRatio);
+    const targetHeight = Math.floor(viewport.height * pixelRatio);
 
     // Cancel in-flight render task if zoom or page changed
     if (renderTaskRef.current) {
@@ -32,9 +30,16 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({ page, z
       renderTaskRef.current = null;
     }
 
+    // Render off-screen first to eliminate white/black flashing on zoom/scroll
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = targetWidth;
+    offscreenCanvas.height = targetHeight;
+    const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+    if (!offscreenCtx) return;
+
     const renderContext = {
-      canvas,
-      canvasContext: context,
+      canvas: offscreenCanvas,
+      canvasContext: offscreenCtx,
       viewport,
       transform: pixelRatio !== 1 ? [pixelRatio, 0, 0, pixelRatio, 0, 0] : undefined,
     };
@@ -44,7 +49,12 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({ page, z
 
     task.promise
       .then(() => {
-        if (!active) return;
+        if (!active || !canvasRef.current) return;
+        const currentCanvas = canvasRef.current;
+        currentCanvas.width = targetWidth;
+        currentCanvas.height = targetHeight;
+        const destCtx = currentCanvas.getContext('2d', { alpha: false });
+        destCtx?.drawImage(offscreenCanvas, 0, 0);
         renderTaskRef.current = null;
       })
       .catch((err: unknown) => {
@@ -66,7 +76,7 @@ export const PdfPageCanvas: React.FC<PdfPageCanvasProps> = React.memo(({ page, z
   return (
     <canvas
       ref={canvasRef}
-      className="w-full h-full block transition-all duration-300"
+      className="w-full h-full block transition-[filter] duration-200 ease-out"
       style={{ filter: cssFilter || 'none' }}
     />
   );
