@@ -43,14 +43,14 @@ describe('AuthScreen Component', () => {
     };
   });
 
-  it('renders setup form for new vault', () => {
+  it('renders setup form for new vault in English by default', () => {
     const onSuccess = vi.fn();
     const { getByPlaceholderText, getByText } = render(
       <AuthScreen status="new" onSuccess={onSuccess} />
     );
 
-    expect(getByPlaceholderText(/Sua senha secreta.../i)).toBeDefined();
-    expect(getByText(/Salvar Senha/i)).toBeDefined();
+    expect(getByPlaceholderText(/Enter master password.../i)).toBeDefined();
+    expect(getByText(/Set Password/i)).toBeDefined();
   });
 
   it('renders unlock form for encrypted vault and submits', async () => {
@@ -59,10 +59,10 @@ describe('AuthScreen Component', () => {
       <AuthScreen status="encrypted" onSuccess={onSuccess} />
     );
 
-    const input = getByPlaceholderText(/Sua senha secreta.../i);
+    const input = getByPlaceholderText(/Enter master password.../i);
     fireEvent.change(input, { target: { value: 'minha-senha-segura-123' } });
 
-    const submitBtn = getByRole('button', { name: /Acessar/i });
+    const submitBtn = getByRole('button', { name: /Unlock/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

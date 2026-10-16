@@ -4,6 +4,7 @@ import { MasterPasswordSection } from './security/MasterPasswordSection';
 import { VisitorsManagementSection } from './security/VisitorsManagementSection';
 import { AutoLockSection } from './security/AutoLockSection';
 import { BackupAndWipeSection } from './security/BackupAndWipeSection';
+import { useI18n } from '../../../i18n';
 
 interface SecurityTabProps {
   appSettings: AppSettings;
@@ -18,6 +19,7 @@ export default function SecurityTab({
   isChangingPassword, 
   setIsChangingPassword 
 }: SecurityTabProps) {
+  const { t } = useI18n();
   
   if (isChangingPassword) {
     return <MasterPasswordSection onCancel={() => setIsChangingPassword(false)} />;
@@ -39,7 +41,7 @@ export default function SecurityTab({
           className="w-full py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
         >
           <KeyRound size={16} />
-          Alterar Senha Mestra
+          {t('settings.security.changeMasterPassword')}
         </button>
       </div>
 

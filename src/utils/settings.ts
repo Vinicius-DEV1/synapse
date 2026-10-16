@@ -44,10 +44,13 @@ export interface AppSettings {
   cultureExcludedTypes?: CultureType[];
   /** Custom genres, themes, or keywords to strictly exclude from cultural recommendations (e.g. ['terror', 'gore']) */
   cultureExcludedThemes?: string[];
+  /** Application display language */
+  language?: 'en' | 'pt-BR';
 }
 
 export function getSettings(): AppSettings {
   const defaultSettings: AppSettings = {
+    language: 'en',
     autoLockOnSuspend: true,
     inactivityTimeoutMinutes: 60,
     restoreTabsOnStartup: true,

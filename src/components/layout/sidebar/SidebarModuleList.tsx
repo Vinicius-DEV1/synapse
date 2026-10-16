@@ -3,6 +3,7 @@ import type { ModuleConfig } from './modules.config';
 import { useStore } from '../../../store/useStore';
 import type { Action, Tab } from '../../../types';
 import { Settings } from 'lucide-react';
+import { useI18n } from '../../../i18n';
 
 interface SidebarModuleListProps {
   isCollapsedView?: boolean;
@@ -10,13 +11,12 @@ interface SidebarModuleListProps {
 }
 
 // UI navigates to 'home', 'trash', and 'settings' as tabs,
-// embora `Action['UPDATE_TAB_MODULE'].module` (definido em src/types/store.ts)
 // extending Tab['module'] for navigation.
-// refletir o valor real em runtime.
 type ModuleId = Tab['module'] | 'settings';
 
 export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarModuleListProps) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module as ModuleId | undefined;
 
@@ -29,9 +29,16 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
     }
   };
 
+  const getModuleLabel = (mod: ModuleConfig): string => {
+    const key = `sidebar.${mod.id}`;
+    const translated = t(key);
+    return translated !== key ? translated : mod.label;
+  };
+
   const renderModuleButton = (mod: ModuleConfig) => {
     const isActive = activeModule === mod.id;
     const Icon = mod.icon;
+    const label = getModuleLabel(mod);
 
     if (isCollapsedView) {
       const activeClass = mod.color === 'red'
@@ -45,7 +52,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
           className={`p-2 rounded-lg transition-all active:scale-95 ${
             isActive ? activeClass : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
-          title={mod.label}
+          title={label}
         >
           <Icon size={18} />
         </button>
@@ -69,10 +76,12 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
         }`}
       >
         <Icon size={16} />
-        <span>{mod.label}</span>
+        <span>{label}</span>
       </button>
     );
   };
+
+  const settingsLabel = t('sidebar.settings');
 
   return (
     <>
@@ -86,7 +95,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
           className={`p-2 rounded-lg transition-all active:scale-95 mt-auto ${
             activeModule === 'settings' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
-          title="Configurações"
+          title={settingsLabel}
         >
           <Settings size={18} />
         </button>
@@ -98,7 +107,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
           }`}
         >
           <Settings size={16} />
-          <span>Configurações</span>
+          <span>{settingsLabel}</span>
         </button>
       )}
     </>

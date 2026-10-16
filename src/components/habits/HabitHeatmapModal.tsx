@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Flame,
   Trash2,
   Edit2,
   Check,
+  HelpCircle,
 } from 'lucide-react';
 import { HabitScorecards } from './ui/HabitScorecards';
 import { HabitHeatmapGrid } from './ui/HabitHeatmapGrid';
 import { useHabitHeatmapData } from './hooks/useHabitHeatmapData';
+import { HabitsHelpModal } from './HabitsHelpModal';
 
 export interface HabitHeatmapModalProps {
   habitId: string;
@@ -23,6 +25,7 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
   onClose,
   onHabitUpdated,
 }) => {
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const {
     habit,
     isEditingTitle,
@@ -105,6 +108,15 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="p-2 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
+              title="Guia do Sistema de Hábitos"
+              aria-label="Guia de Hábitos"
+            >
+              <HelpCircle size={18} />
+            </button>
+            <button
               onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
               className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
               title="Excluir hábito"
@@ -171,6 +183,10 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
           </button>
         </div>
       </div>
+
+      {showHelpModal && (
+        <HabitsHelpModal onClose={() => setShowHelpModal(false)} />
+      )}
     </div>
   );
 };

@@ -1,38 +1,41 @@
-import { Keyboard, BookOpen, PenTool, Layout} from 'lucide-react';
+import { Keyboard, BookOpen, PenTool, Layout } from 'lucide-react';
+import { useI18n } from '../../../i18n';
 
 export default function ShortcutsTab() {
+  const { t } = useI18n();
+
   const shortcutGroups = [
     {
-      title: "Gerais do Aplicativo",
+      title: t('settings.shortcuts.general'),
       icon: <Layout size={16} className="text-brand-400" />,
       items: [
-        { keys: ["Ctrl", "J"], desc: "Abrir/Fechar Assistente de IA Rápido (ou Ctrl+Shift+A)" },
-        { keys: ["Shift", "F"], desc: "Alternar Tela Cheia (Ocultar Barra do Windows)" },
-        { keys: ["Ctrl", "P"], desc: "Abrir Busca Global de Obras" },
-        { keys: ["Esc"], desc: "Fechar modais abertos" }
+        { keys: ["Ctrl", "J"], desc: t('settings.shortcuts.quickAi') },
+        { keys: ["Shift", "F"], desc: t('settings.shortcuts.fullScreen') },
+        { keys: ["Ctrl", "P"], desc: t('settings.shortcuts.search') },
+        { keys: ["Esc"], desc: t('settings.shortcuts.closeModals') }
       ]
     },
     {
-      title: "Leitor de PDF e EPUB",
+      title: t('settings.shortcuts.reader'),
       icon: <BookOpen size={16} className="text-purple-400" />,
       items: [
-        { keys: ["F"], desc: "Modo Foco do Leitor (Ocultar menus e barra lateral)" },
-        { keys: ["M"], desc: "Alternar Temas (Claro, Sépia, Escuro, Nord, etc)" },
-        { keys: ["+", "ou", "="], desc: "Aumentar o Zoom do texto" },
-        { keys: ["-"], desc: "Reduzir o Zoom do texto" },
-        { keys: ["Seta Esquerda"], desc: "Página Anterior" },
-        { keys: ["Seta Direita", "ou", "Espaço"], desc: "Próxima Página" }
+        { keys: ["F"], desc: t('settings.shortcuts.readerFocus') },
+        { keys: ["M"], desc: t('settings.shortcuts.readerThemes') },
+        { keys: ["+", t('settings.shortcuts.or'), "="], desc: t('settings.shortcuts.zoomIn') },
+        { keys: ["-"], desc: t('settings.shortcuts.zoomOut') },
+        { keys: [t('settings.shortcuts.leftArrow')], desc: t('settings.shortcuts.prevPage') },
+        { keys: [t('settings.shortcuts.rightArrow'), t('settings.shortcuts.or'), t('settings.shortcuts.space')], desc: t('settings.shortcuts.nextPage') }
       ]
     },
     {
-      title: "Editor de Cadernos / Notas",
+      title: t('settings.shortcuts.editor'),
       icon: <PenTool size={16} className="text-emerald-400" />,
       items: [
-        { keys: ["Ctrl", "B"], desc: "Negrito" },
-        { keys: ["Ctrl", "I"], desc: "Itálico" },
-        { keys: ["Ctrl", "U"], desc: "Sublinhado" },
-        { keys: ["Ctrl", "Z"], desc: "Desfazer (Undo)" },
-        { keys: ["Ctrl", "Shift", "Z"], desc: "Refazer (Redo)" }
+        { keys: ["Ctrl", "B"], desc: t('settings.shortcuts.bold') },
+        { keys: ["Ctrl", "I"], desc: t('settings.shortcuts.italic') },
+        { keys: ["Ctrl", "U"], desc: t('settings.shortcuts.underline') },
+        { keys: ["Ctrl", "Z"], desc: t('settings.shortcuts.undo') },
+        { keys: ["Ctrl", "Shift", "Z"], desc: t('settings.shortcuts.redo') }
       ]
     }
   ];
@@ -41,7 +44,7 @@ export default function ShortcutsTab() {
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-2">
         <Keyboard size={16} className="text-brand-400" />
-        <p className="text-sm font-medium text-white">Atalhos de Teclado</p>
+        <p className="text-sm font-medium text-white">{t('settings.shortcuts.title')}</p>
       </div>
 
       <div className="space-y-5">

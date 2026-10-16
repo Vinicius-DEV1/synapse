@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Loader2, Building2 } from 'lucide-react';
+import { Plus, Loader2, Building2, HelpCircle } from 'lucide-react';
 import type { Transaction, WishlistItem, Tab } from '../../types';
 import { useFinance } from './hooks/useFinance';
 import { useFinanceMetrics } from './hooks/useFinanceMetrics';
@@ -10,6 +10,7 @@ import { TransactionList } from './ui/TransactionList';
 import { LoansTab } from './ui/LoansTab';
 import { WishlistTab } from './ui/WishlistTab';
 import { FinanceModalsHost } from './ui/FinanceModalsHost';
+import { FinanceHelpModal } from './FinanceHelpModal';
 
 type FinanceSection = 'dashboard' | 'transactions' | 'loans' | 'wishlist';
 
@@ -47,6 +48,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('all');
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const [showTxModal, setShowTxModal] = useState(false);
   const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
@@ -151,6 +153,14 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
             </div>
 
             <div className="flex gap-2">
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95"
+                title="Guia do Sistema Financeiro"
+              >
+                <HelpCircle size={14} className="text-emerald-400" />
+                <span>Guia</span>
+              </button>
               <button
                 onClick={() => setShowAccountModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95"
@@ -276,6 +286,11 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
           setSelectedWishlistDetails(null);
         }}
         onDeleteWishlistItem={handleDeleteWishlist}
+      />
+
+      <FinanceHelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
     </div>
   );

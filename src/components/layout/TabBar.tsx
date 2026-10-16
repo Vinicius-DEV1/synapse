@@ -11,6 +11,7 @@ import { triggerHaptic } from '../../services/haptics';
 import { isDesktopApp } from '../../services/platform';
 import { windowService } from '../../services/windowService';
 import { getSettings } from '../../utils/settings';
+import { useI18n } from '../../i18n';
 
 interface TabItemProps {
   tab: Tab;
@@ -38,22 +39,25 @@ const TabItem = memo(function TabItem({
   compactPinnedTabs,
   tabMaxWidth = 400,
 }: TabItemProps) {
-  let title = 'Nova Aba';
+  const { t } = useI18n();
+  let title = t('tabBar.newTab');
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
 
   const moduleConfig = MODULE_CONFIG_MAP.get(tab.module);
 
   if (tab.module === 'notes') {
-    title = page?.title || 'Nova Página';
+    title = page?.title || t('sidebar.newPage');
     icon = page?.icon ? <span className="text-sm flex-shrink-0">{page.icon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
   } else if (tab.module === 'library' && tab.bookTitle) {
     title = tab.bookTitle;
     icon = <Library size={13} className="flex-shrink-0 text-dark-subtext" />;
   } else if (tab.module === 'settings') {
-    title = 'Configurações';
+    title = t('sidebar.settings');
     icon = <Settings size={13} className="flex-shrink-0 text-dark-subtext" />;
   } else if (moduleConfig) {
-    title = moduleConfig.label;
+    const key = `sidebar.${moduleConfig.id}`;
+    const translated = t(key);
+    title = translated !== key ? translated : moduleConfig.label;
     const Icon = moduleConfig.icon;
     icon = <Icon size={13} className="flex-shrink-0 text-dark-subtext" />;
   }
@@ -126,7 +130,7 @@ const TabItem = memo(function TabItem({
                 ? 'hover:bg-white/10 text-dark-subtext hover:text-dark-text'
                 : 'opacity-0 group-hover:opacity-100 hover:bg-white/10 text-dark-subtext hover:text-dark-text'
             }`}
-            title="Fechar aba"
+            title={t('tabBar.closeTab')}
           >
             <X size={12} />
           </span>
@@ -138,6 +142,7 @@ const TabItem = memo(function TabItem({
 
 export default function TabBar() {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [tabContextMenu, setTabContextMenu] = useState<{
     x: number;
@@ -418,7 +423,7 @@ export default function TabBar() {
             <button
               onClick={handleNewTab}
               className="flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-brand-400 hover:bg-white/5 transition-all active:scale-95 mb-0.5"
-              title="Nova aba"
+              title={t('tabBar.newTab')}
               data-no-drag
             >
               <Plus size={15} />

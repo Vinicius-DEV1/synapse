@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell, Music, Activity } from 'lucide-react';
+import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell, Music, Activity, HelpCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getLocalIsoDate } from '../../utils/date-utils';
 import type { Session } from './types';
+import FocusHelpModal from './FocusHelpModal';
 
 interface DashboardProps {
   sessions: Session[];
@@ -18,6 +19,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
   const [dailyGoal, setDailyGoal] = useState<number>(120);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('120');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('dailyGoal');
@@ -105,6 +107,10 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setIsHelpOpen(true)} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0 flex items-center gap-1.5" title="Guia do Focus Tracker">
+            <HelpCircle size={18} />
+            <span className="hidden md:inline text-xs font-medium">Guia</span>
+          </button>
           <button onClick={onOpenLofi} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Lofi">
             <Music size={18} />
           </button>
@@ -252,6 +258,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           )}
         </div>
       </div>
+
+      <FocusHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>
   );
 };

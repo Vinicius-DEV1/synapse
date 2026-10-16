@@ -6,6 +6,7 @@ import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
 import { isDesktopApp } from '../../../services/platform';
 import { windowService } from '../../../services/windowService';
+import { useI18n } from '../../../i18n';
 
 // UI navigates to 'settings' module as a tab,
 // extending Tab['module'] support.
@@ -19,6 +20,7 @@ interface SidebarProps {
 
 export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
     const saved = localStorage.getItem('caderno_modules_expanded');
     return saved ? JSON.parse(saved) : true;
@@ -64,7 +66,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
           className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
-          title="Expandir sidebar"
+          title={t('sidebar.expand')}
         >
           <PanelLeft size={18} />
         </button>
@@ -95,27 +97,10 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   };
 
   const renderModuleHeaderLabel = () => {
-    switch (activeModule) {
-      case 'home': return 'Início';
-      case 'notes': return 'Caderno';
-      case 'quiz': return 'Questões';
-      case 'library': return 'Biblioteca';
-      case 'culture': return 'Cultura';
-      case 'video': return 'Vídeos';
-      case 'anki': return 'Flashcards';
-      case 'focus': return 'Foco';
-      case 'calendar': return 'Agenda';
-      case 'files': return 'Arquivos';
-      case 'vault': return 'Cofre';
-      case 'practice': return 'Prática';
-      case 'settings': return 'Configurações';
-      case 'trash': return 'Lixeira';
-      case 'diagrams': return 'Diagramas';
-      case 'finance': return 'Finanças';
-      default: return 'Início';
-    }
+    const key = `sidebar.${activeModule}`;
+    const translated = t(key);
+    return translated !== key ? translated : activeModule;
   };
-
 
   return (
     <>
@@ -140,6 +125,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <button
             onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
             className="p-1.5 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
+            title={t('sidebar.collapse')}
           >
             <PanelLeftClose size={16} />
           </button>
@@ -153,64 +139,64 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           />
         ) : activeModule === 'library' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Biblioteca de PDFs</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Use o painel principal para gerenciar seus livros e coleções.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.library')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.libraryDesc')}</div>
           </div>
         ) : activeModule === 'culture' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Área Cultura</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie seus filmes, séries, livros e animes no painel principal.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.culture')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.cultureDesc')}</div>
           </div>
         ) : activeModule === 'video' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Player Video</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Seus vídeos com legendas interativas para estudo.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.video')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.videoDesc')}</div>
           </div>
         ) : activeModule === 'anki' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Flashcards</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Revise seus cartões espaçadamente.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.anki')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.ankiDesc')}</div>
           </div>
         ) : activeModule === 'focus' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Foco</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie suas sessões de foco e cronômetros.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.focus')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.focusDesc')}</div>
           </div>
         ) : activeModule === 'calendar' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Agenda</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie seus compromissos e tarefas diárias.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.calendar')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.calendarDesc')}</div>
           </div>
         ) : activeModule === 'files' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Arquivos</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Gerencie seus arquivos, PDFs e documentos.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.files')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.filesDesc')}</div>
           </div>
         ) : activeModule === 'vault' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Cofre de Senhas</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Proteja suas credenciais e senhas com segurança máxima.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.vault')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.vaultDesc')}</div>
           </div>
         ) : activeModule === 'practice' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Prática de Inglês</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Converse fluentemente com o seu parceiro IA e aperfeiçoe seu idioma.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.practice')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.practiceDesc')}</div>
           </div>
         ) : activeModule === 'settings' ? (
           <div className="flex flex-col gap-1 mt-2 flex-1 overflow-y-auto custom-scrollbar pb-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider shrink-0">Painel de Controle</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider shrink-0">{t('sidebar.dashboard')}</div>
             
             {[
-              { id: 'general', label: 'Geral', icon: Settings },
-              { id: 'editor', label: 'Editor', icon: LayoutDashboard },
-              { id: 'security', label: 'Segurança', icon: Shield },
-              { id: 'ai', label: 'IA', icon: Zap },
-              { id: 'shortcuts', label: 'Atalhos', icon: Keyboard },
-              { id: 'storage', label: 'Uso', icon: HardDrive },
-              { id: 'video', label: 'Vídeo', icon: Video },
-              { id: 'backup', label: 'Backup', icon: DownloadCloud },
-              { id: 'sync', label: 'Sync', icon: RefreshCw },
-              { id: 'sharing', label: 'Compartilhamento', icon: Share2 },
+              { id: 'general', label: t('settings.tabs.general'), icon: Settings },
+              { id: 'editor', label: t('settings.tabs.editor'), icon: LayoutDashboard },
+              { id: 'security', label: t('settings.tabs.security'), icon: Shield },
+              { id: 'ai', label: t('settings.tabs.ai'), icon: Zap },
+              { id: 'shortcuts', label: t('settings.tabs.shortcuts'), icon: Keyboard },
+              { id: 'storage', label: t('settings.tabs.storage'), icon: HardDrive },
+              { id: 'video', label: t('settings.tabs.video'), icon: Video },
+              { id: 'backup', label: t('settings.tabs.backup'), icon: DownloadCloud },
+              { id: 'sync', label: t('settings.tabs.sync'), icon: RefreshCw },
+              { id: 'sharing', label: t('settings.tabs.sharing'), icon: Share2 },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -228,32 +214,32 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           </div>
         ) : activeModule === 'home' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Página Inicial</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Resumo do dia, eventos ao vivo e revisões diárias.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.home')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.homeDesc')}</div>
           </div>
         ) : activeModule === 'trash' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Lixeira do Sistema</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Restaure páginas e estações lofi ou exclua itens permanentemente.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.trash')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.trashDesc')}</div>
           </div>
         ) : activeModule === 'diagrams' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">Editor de Diagramas</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">Crie, conecte e estruture fluxogramas visuais no painel principal.</div>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.diagrams')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.diagramsDesc')}</div>
           </div>
         ) : activeModule === 'finance' ? (
           <div className="flex flex-col gap-1 mt-2">
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
               <LayoutDashboard size={16} className="text-brand-400" />
-              <span>Visão Geral</span>
+              <span>{t('common.view')}</span>
             </button>
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all">
               <ArrowRightLeft size={16} className="text-brand-400" />
-              <span>Transações</span>
+              <span>{t('sidebar.finance')}</span>
             </button>
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all">
               <Gift size={16} className="text-brand-400" />
-              <span>Desejos & Futuro</span>
+              <span>{t('common.options')}</span>
             </button>
           </div>
         ) : (
@@ -265,7 +251,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             onClick={() => setIsModulesExpanded(!isModulesExpanded)}
             className="flex items-center justify-between w-full p-3 text-xs font-semibold text-dark-subtext uppercase tracking-wider hover:bg-white/5 transition-colors group"
           >
-            <span>Módulos</span>
+            <span>{t('sidebar.modules')}</span>
             {isModulesExpanded ? (
               <ChevronDown size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
             ) : (

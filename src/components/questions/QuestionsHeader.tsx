@@ -1,5 +1,6 @@
-import React from 'react';
-import { CheckSquare, LayoutDashboard, Compass, Sparkles, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckSquare, LayoutDashboard, Compass, Sparkles, Plus, HelpCircle } from 'lucide-react';
+import { QuestionsHelpModal } from './QuestionsHelpModal';
 
 interface QuestionsHeaderProps {
   totalQuestions: number;
@@ -14,6 +15,8 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
   onSelectTabSection,
   onNewBattery,
 }: QuestionsHeaderProps) {
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
   return (
     <>
       {/* Top Header (Scrolls away) */}
@@ -34,6 +37,17 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowHelpModal(true)}
+          className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+          title="Guia do Banco de Questões"
+          aria-label="Guia de Questões"
+        >
+          <HelpCircle size={15} />
+          <span>Guia</span>
+        </button>
       </header>
 
       {/* Action Controls (Sticky) */}
@@ -86,6 +100,10 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
           <span>Nova Bateria</span>
         </button>
       </div>
+
+      {showHelpModal && (
+        <QuestionsHelpModal onClose={() => setShowHelpModal(false)} />
+      )}
     </>
   );
 });

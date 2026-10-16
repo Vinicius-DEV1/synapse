@@ -3,8 +3,10 @@ import { getTodayStats, getWeeklyStats, isEmergencyStopped, clearEmergencyStop, 
 import type { SyncStats, SyncEventLog } from '../../services/sync/sync-monitor';
 import { Database, AlertTriangle, RefreshCw,  ArrowDownToLine, ArrowUpFromLine, Terminal } from 'lucide-react';
 import { formatBytes } from '../../utils/format';
+import { useI18n } from '../../i18n';
 
 export default function SyncMonitor() {
+  const { t } = useI18n();
   const [today, setToday] = useState<SyncStats | null>(null);
   const [week, setWeek] = useState<SyncStats[]>([]);
   const [events, setEvents] = useState<SyncEventLog[]>([]);
@@ -63,9 +65,9 @@ export default function SyncMonitor() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Database size={20} className="text-purple-400" />
-          Uso do Firebase (Estimativa Local)
+          {t('settings.sync.title')}
         </h2>
-        <button onClick={loadStats} className="p-2 hover:bg-white/5 rounded-md transition-colors text-white/50 hover:text-white" title="Atualizar">
+        <button onClick={loadStats} className="p-2 hover:bg-white/5 rounded-md transition-colors text-white/50 hover:text-white" title={t('settings.sync.refresh')}>
           <RefreshCw size={16} />
         </button>
       </div>
@@ -92,7 +94,7 @@ export default function SyncMonitor() {
         {/* Leituras */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-white/70">Leituras (Hoje)</span>
+            <span className="text-sm font-medium text-white/70">{t('settings.sync.readsToday')}</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getStatusColor(readPercent)}`}>
               {readPercent.toFixed(1)}%
             </span>
@@ -106,7 +108,7 @@ export default function SyncMonitor() {
         {/* Escritas */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-white/70">Escritas (Hoje)</span>
+            <span className="text-sm font-medium text-white/70">{t('settings.sync.writesToday')}</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getStatusColor(writePercent)}`}>
               {writePercent.toFixed(1)}%
             </span>
@@ -125,7 +127,7 @@ export default function SyncMonitor() {
             <ArrowDownToLine size={20} />
           </div>
           <div>
-            <div className="text-sm font-medium text-white/70">Baixado (Pull)</div>
+            <div className="text-sm font-medium text-white/70">{t('settings.sync.downloaded')}</div>
             <div className="text-xl font-bold">{formatBytes(today.bytesDownloaded)}</div>
           </div>
         </div>
@@ -134,7 +136,7 @@ export default function SyncMonitor() {
             <ArrowUpFromLine size={20} />
           </div>
           <div>
-            <div className="text-sm font-medium text-white/70">Enviado (Push)</div>
+            <div className="text-sm font-medium text-white/70">{t('settings.sync.uploaded')}</div>
             <div className="text-xl font-bold">{formatBytes(today.bytesUploaded)}</div>
           </div>
         </div>
@@ -144,7 +146,7 @@ export default function SyncMonitor() {
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <h3 className="text-sm font-medium text-white/70 mb-6 flex items-center gap-2">
           <Database size={14} />
-          Consumo Hoje (Por Hora)
+          {t('settings.sync.hourlyUsage')}
         </h3>
         <div className="flex items-end gap-1 h-32 w-full pt-4 border-b border-white/10">
           {Array.from({ length: 24 }).map((_, h) => {
@@ -181,12 +183,12 @@ export default function SyncMonitor() {
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
         <h3 className="text-sm font-medium text-white/70 mb-4 flex items-center gap-2">
           <Database size={14} />
-          Últimos 7 dias
+          {t('settings.sync.last7Days')}
         </h3>
         <div className="space-y-3">
           {week.slice().reverse().map((day, i) => (
             <div key={day.date} className="flex items-center gap-4 text-sm">
-              <div className="w-24 text-white/50">{day.date.replace('sync_stats_', '').split('-').slice(1).join('/')} {i === 0 ? '(Hoje)' : ''}</div>
+              <div className="w-24 text-white/50">{day.date.replace('sync_stats_', '').split('-').slice(1).join('/')} {i === 0 ? `(${t('settings.sync.today')})` : ''}</div>
               <div className="flex-1">
                 <div className="flex gap-2">
                   <div className="text-blue-400" style={{ width: '80px' }}>{day.reads} L</div>
@@ -208,7 +210,7 @@ export default function SyncMonitor() {
       
       <div className="text-xs text-white/40 mt-4 flex items-start gap-2">
         <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-        <p>Estes valores são estimativas baseadas nas operações enviadas e recebidas pelo aplicativo localmente. O consumo real computado pelo Google Cloud no Firebase pode ter uma pequena variação.</p>
+        <p>{t('settings.sync.disclaimer')}</p>
       </div>
 
       {/* Sync Logs Console */}
@@ -216,13 +218,13 @@ export default function SyncMonitor() {
         <div className="px-4 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between">
           <h3 className="text-sm font-medium text-white/70 flex items-center gap-2">
             <Terminal size={14} />
-            Console de Eventos (Logs)
+            {t('settings.sync.consoleTitle')}
           </h3>
           <span className="text-xs text-white/40 font-mono">caderno-sync-daemon v1.0</span>
         </div>
         <div className="p-4 overflow-y-auto font-mono text-xs max-h-64 space-y-1.5 custom-scrollbar">
           {events.length === 0 ? (
-            <div className="text-white/30 italic">Nenhum evento registrado ainda.</div>
+            <div className="text-white/30 italic">{t('settings.sync.noEvents')}</div>
           ) : (
             events.map(ev => {
               const time = new Date(ev.timestamp).toLocaleTimeString([], { hour12: false });

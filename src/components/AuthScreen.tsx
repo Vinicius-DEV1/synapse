@@ -18,6 +18,7 @@ import { platform } from '../services/platform';
 import { AuthLockoutView } from './auth/AuthLockoutView';
 import { useAuthLockout } from './auth/useAuthLockout';
 import { buildModuleKeys } from './auth/auth-keys-builder';
+import { useI18n } from '../i18n';
 
 // The AuthApi interface (src/api/types.ts) does not declare forceUpdateKeychain,
 // but both tauriAuthApi and webAuthApi implement it.
@@ -31,6 +32,7 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -256,19 +258,19 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             </div>
 
             <h1 className="text-xl font-medium text-center text-white mb-2">
-              {isSetup ? 'Configuração Inicial' : 'Bem-vindo de volta'}
+              {isSetup ? t('auth.setupTitle') : t('auth.title')}
             </h1>
             
             <p className="text-center text-dark-subtext mb-8 text-sm">
               {isSetup 
-                ? 'Defina uma senha de acesso para continuar.' 
-                : 'Por favor, insira sua senha para acessar.'}
+                ? t('auth.setupSubtitle') 
+                : t('auth.subtitle')}
             </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
-              Senha
+              {t('settings.security.masterPassword')}
             </label>
             <input
               type="password"
@@ -277,7 +279,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               disabled={loading}
               autoFocus
               className="w-full bg-dark-bg border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all placeholder:text-white/10"
-              placeholder="Sua senha secreta..."
+              placeholder={t('auth.passwordPlaceholder')}
             />
           </div>
 
@@ -294,10 +296,10 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
             className="w-full bg-white/10 hover:bg-white/15 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
-              <span className="animate-pulse">Processando...</span>
+              <span className="animate-pulse">{t('common.loading')}</span>
             ) : (
               <>
-                {isSetup ? 'Salvar Senha' : 'Acessar'}
+                {isSetup ? t('auth.setPasswordButton') : t('auth.unlockButton')}
                 <ArrowRight size={18} className="opacity-50" />
               </>
             )}

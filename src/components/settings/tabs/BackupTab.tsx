@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { FolderOpen, AlertTriangle, ShieldCheck, HardDrive, CheckCircle2, Ban } from 'lucide-react';
 import { getValidAccessToken } from '../../../services/drive';
 import { triggerToast } from '../../ui/ToastContext';
+import { useI18n } from '../../../i18n';
 
 export function BackupTab() {
+  const { t } = useI18n();
   const [destination, setDestination] = useState<string>('');
   const [backupType, setBackupType] = useState<'encrypted' | 'decrypted'>('encrypted');
   const [includeMedia, setIncludeMedia] = useState(false);
@@ -117,9 +119,9 @@ export function BackupTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-white mb-2">Backup de Dados</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">{t('settings.backup.title')}</h3>
         <p className="text-sm text-white/60">
-          Faça um backup local de 100% dos seus cadernos, anotações, vídeos e flashcards.
+          {t('settings.backup.subtitle')}
         </p>
       </div>
 
@@ -136,10 +138,10 @@ export function BackupTab() {
         >
           <div className="flex items-center gap-2">
             <ShieldCheck size={20} className={backupType === 'encrypted' ? 'text-brand-400' : 'text-white/60'} />
-            <span className="font-semibold text-white">Criptografado</span>
+            <span className="font-semibold text-white">{t('settings.backup.encrypted')}</span>
           </div>
           <span className="text-sm text-white/60">
-            Recomendado. Mantém a segurança original. Arquivos ilegíveis fora do app.
+            {t('settings.backup.encryptedDesc')}
           </span>
         </button>
 
@@ -154,10 +156,10 @@ export function BackupTab() {
         >
           <div className="flex items-center gap-2">
             <AlertTriangle size={20} className={backupType === 'decrypted' ? 'text-red-400' : 'text-white/60'} />
-            <span className="font-semibold text-white">Descriptografado</span>
+            <span className="font-semibold text-white">{t('settings.backup.decrypted')}</span>
           </div>
           <span className="text-sm text-white/60">
-            Atenção. Seus dados poderão ser abertos por qualquer leitor de banco de dados.
+            {t('settings.backup.decryptedDesc')}
           </span>
         </button>
       </div>
@@ -173,18 +175,18 @@ export function BackupTab() {
             disabled={isBackingUp}
           />
           <div>
-            <span className="text-sm font-medium text-white block">Incluir Mídias do Drive</span>
-            <span className="text-xs text-white/50 block">Baixa todos os PDFs, Vídeos e Imagens para a pasta. Atenção: Isso pode demorar horas dependendo da quantidade de arquivos.</span>
+            <span className="text-sm font-medium text-white block">{t('settings.backup.includeMedia')}</span>
+            <span className="text-xs text-white/50 block">{t('settings.backup.includeMediaDesc')}</span>
           </div>
         </label>
       </div>
 
       {/* Pasta de Destino */}
       <div className="space-y-2">
-        <span className="text-sm font-medium text-white">Pasta de Destino</span>
+        <span className="text-sm font-medium text-white">{t('settings.backup.destinationFolder')}</span>
         <div className="flex gap-2">
           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/70 overflow-hidden text-ellipsis whitespace-nowrap">
-            {destination || 'Nenhuma pasta selecionada...'}
+            {destination || t('settings.backup.noFolderSelected')}
           </div>
           <button 
             onClick={handleSelectFolder}
@@ -192,7 +194,7 @@ export function BackupTab() {
             className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FolderOpen size={18} />
-            Escolher
+            {t('settings.backup.chooseFolder')}
           </button>
         </div>
       </div>
@@ -212,17 +214,17 @@ export function BackupTab() {
             {isBackingUp ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Realizando Backup...
+                {t('settings.backup.backingUp')}
               </>
             ) : isCompleted ? (
               <>
                 <CheckCircle2 size={18} />
-                Backup Concluído — Iniciar Novo
+                {t('settings.backup.completed')}
               </>
             ) : (
               <>
                 <HardDrive size={18} />
-                Iniciar Backup Completo
+                {t('settings.backup.startBackup')}
               </>
             )}
           </button>
@@ -233,7 +235,7 @@ export function BackupTab() {
               className="px-5 py-3 rounded-xl font-medium bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 transition-colors flex items-center gap-2"
             >
               <Ban size={18} />
-              Cancelar
+              {t('settings.backup.cancel')}
             </button>
           )}
         </div>
@@ -244,7 +246,7 @@ export function BackupTab() {
             <div className="px-4 py-2 bg-white/5 border-b border-white/10 flex justify-between items-center text-xs text-white/50">
               <span className="flex items-center gap-2">
                 {isBackingUp && <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />}
-                {isBackingUp ? 'Backup em andamento' : isCompleted ? '✓ Finalizado' : 'Log'}
+                {isBackingUp ? t('settings.backup.inProgress') : isCompleted ? `✓ ${t('settings.backup.finished')}` : t('settings.backup.log')}
               </span>
               <span className="font-mono">{Math.round(progress)}%</span>
             </div>

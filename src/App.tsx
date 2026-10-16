@@ -25,6 +25,7 @@ import { GlobalModals } from './components/layout/GlobalModals';
 import { useAppEvents } from './hooks/useAppEvents';
 import { useAppBackPress } from './hooks/useAppBackPress';
 import WindowControls from './components/layout/WindowControls';
+import { I18nProvider } from './i18n';
 import type { Page } from './types';
 
 
@@ -327,13 +328,15 @@ export default function App() {
   return (
     <GlobalErrorBoundary>
       <ToastProvider>
-        <StoreProvider>
-          <FocusProvider>
-            <TaskProvider>
-              <AppContent />
-            </TaskProvider>
-          </FocusProvider>
-        </StoreProvider>
+        <I18nProvider>
+          <StoreProvider>
+            <FocusProvider>
+              <TaskProvider>
+                <AppContent />
+              </TaskProvider>
+            </FocusProvider>
+          </StoreProvider>
+        </I18nProvider>
       </ToastProvider>
     </GlobalErrorBoundary>
   );

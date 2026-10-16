@@ -1,14 +1,25 @@
-import  { useEffect, useState } from 'react';
-import { Database, Image as ImageIcon, Video, Book, FileQuestion, HardDrive, RefreshCw, Headphones } from 'lucide-react';
-import { getDriveStorageUsage, type DriveStorageUsage } from '../../../services/drive';
+import { useEffect, useState } from 'react';
+import { Database, Image as ImageIcon, Video, Book, FileQuestion, HardDrive, RefreshCw, Headphones, type LucideIcon } from 'lucide-react';
+import { getDriveStorageUsage, type DriveStorageUsage, type DriveFile } from '../../../services/drive';
 import { formatBytes } from '../../../utils/format';
 import StorageFilesModal from './StorageFilesModal';
+import { useI18n } from '../../../i18n';
+
+interface StorageModuleItem {
+  name: string;
+  icon: LucideIcon;
+  size: number;
+  files: DriveFile[];
+  color: string;
+  bg: string;
+}
 
 export default function StorageTab() {
+  const { t } = useI18n();
   const [usage, setUsage] = useState<DriveStorageUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModule, setSelectedModule] = useState<any>(null);
+  const [selectedModule, setSelectedModule] = useState<StorageModuleItem | null>(null);
 
   const fetchStorage = async () => {
     setIsLoading(true);
@@ -18,10 +29,10 @@ export default function StorageTab() {
       if (data) {
         setUsage(data);
       } else {
-        setError('Não foi possível obter o armazenamento. Verifique se você está conectado ao Google Drive na aba Geral.');
+        setError(t('settings.storage.unableToFetch'));
       }
     } catch {
-      setError('Erro ao carregar os dados de armazenamento.');
+      setError(t('settings.storage.loadError'));
     } finally {
       setIsLoading(false);
     }
@@ -35,7 +46,7 @@ export default function StorageTab() {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-dark-subtext">
         <RefreshCw size={24} className="animate-spin mb-4" />
-        <p className="text-sm">Calculando armazenamento...</p>
+        <p className="text-sm">{t('settings.storage.calculating')}</p>
       </div>
     );
   }
@@ -46,24 +57,24 @@ export default function StorageTab() {
         <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 mb-4">
           <HardDrive size={24} />
         </div>
-        <p className="text-sm text-red-400 mb-4">{error || 'Dados de armazenamento não disponíveis.'}</p>
+        <p className="text-sm text-red-400 mb-4">{error || t('settings.storage.notAvailable')}</p>
         <button
           onClick={fetchStorage}
           className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-colors flex items-center gap-2"
         >
           <RefreshCw size={16} />
-          Tentar Novamente
+          {t('settings.storage.tryAgain')}
         </button>
       </div>
     );
   }
 
-  const modules = [
-    { name: 'Biblioteca (PDFs)', icon: Book, size: usage.modules.library.size, files: usage.modules.library.files, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-    { name: 'Fotos (Imagens)', icon: ImageIcon, size: usage.modules.photos.size, files: usage.modules.photos.files, color: 'text-pink-400', bg: 'bg-pink-500/20' },
-    { name: 'Vídeos', icon: Video, size: usage.modules.videos.size, files: usage.modules.videos.files, color: 'text-brand-400', bg: 'bg-brand-500/20' },
-    { name: 'Lofi (Áudio)', icon: Headphones, size: usage.modules.lofi.size, files: usage.modules.lofi.files, color: 'text-purple-400', bg: 'bg-purple-500/20' },
-    { name: 'Outros', icon: FileQuestion, size: usage.modules.others.size, files: usage.modules.others.files, color: 'text-gray-400', bg: 'bg-gray-500/20' },
+  const modules: StorageModuleItem[] = [
+    { name: t('settings.storage.modules.library'), icon: Book, size: usage.modules.library.size, files: usage.modules.library.files, color: 'text-blue-400', bg: 'bg-blue-500/20' },
+    { name: t('settings.storage.modules.photos'), icon: ImageIcon, size: usage.modules.photos.size, files: usage.modules.photos.files, color: 'text-pink-400', bg: 'bg-pink-500/20' },
+    { name: t('settings.storage.modules.videos'), icon: Video, size: usage.modules.videos.size, files: usage.modules.videos.files, color: 'text-brand-400', bg: 'bg-brand-500/20' },
+    { name: t('settings.storage.modules.lofi'), icon: Headphones, size: usage.modules.lofi.size, files: usage.modules.lofi.files, color: 'text-purple-400', bg: 'bg-purple-500/20' },
+    { name: t('settings.storage.modules.others'), icon: FileQuestion, size: usage.modules.others.size, files: usage.modules.others.files, color: 'text-gray-400', bg: 'bg-gray-500/20' },
   ];
 
   return (
@@ -72,16 +83,16 @@ export default function StorageTab() {
         <div>
           <h3 className="text-sm font-medium text-white flex items-center gap-2">
             <Database size={16} className="text-brand-400" />
-            Armazenamento no Drive
+            {t('settings.storage.title')}
           </h3>
           <p className="text-xs text-dark-subtext mt-1">
-            Espaço consumido pelos arquivos criptografados do app
+            {t('settings.storage.subtitle')}
           </p>
         </div>
         <button
           onClick={fetchStorage}
           className="p-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white rounded-lg transition-colors"
-          title="Recalcular"
+          title={t('settings.storage.recalculate')}
         >
           <RefreshCw size={16} />
         </button>
@@ -89,7 +100,7 @@ export default function StorageTab() {
 
       {/* Card de Armazenamento Total */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col items-center justify-center">
-        <p className="text-xs text-dark-subtext uppercase tracking-wider font-semibold mb-1">Total Utilizado</p>
+        <p className="text-xs text-dark-subtext uppercase tracking-wider font-semibold mb-1">{t('settings.storage.totalUsed')}</p>
         <p className="text-3xl font-bold text-white tracking-tight">{formatBytes(usage.total)}</p>
       </div>
 

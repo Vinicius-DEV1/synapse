@@ -1,6 +1,8 @@
 import React from 'react';
+import { Globe, Check } from 'lucide-react';
 import type { AppSettings } from '../../../utils/settings';
 import { triggerToast } from '../../ui/ToastContext';
+import { useI18n, SUPPORTED_LANGUAGES } from '../../../i18n';
 
 interface GeneralTabProps {
   appSettings: AppSettings;
@@ -8,21 +10,22 @@ interface GeneralTabProps {
 }
 
 export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabProps) {
+  const { t, setLanguage } = useI18n();
   const [videoPath, setVideoPath] = React.useState<string>('Padrão do Sistema (AppData)');
   
   React.useEffect(() => {
     if (window.api?.config) {
-      window.api.config.get('videoStoragePath').then((path) => {
-        if (path && typeof path === 'string') {
+      window.api.config.get('videoStoragePath').then((path: unknown) => {
+        if (typeof path === 'string') {
           setVideoPath(path);
         }
-      });
+      }).catch(console.error);
     }
   }, []);
 
   const handleSelectFolder = async () => {
     if (!window.api?.video?.openFolderDialog) {
-      triggerToast("Recurso não disponível nesta versão.", "info");
+      triggerToast(t('common.featureNotAvailable') || 'Recurso não disponível nesta versão.', 'info');
       return;
     }
     try {
@@ -32,23 +35,76 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
         window.api.config?.set('videoStoragePath', newPath);
         triggerToast('Pasta de vídeos atualizada!', 'success');
       }
-    } catch (e: any) {
-      triggerToast(e.message || 'Erro ao alterar pasta de vídeos', 'error');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Erro ao alterar pasta de vídeos';
+      triggerToast(message, 'error');
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Language Selection */}
+      <div className="border-b border-white/10 pb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Globe size={16} className="text-brand-400" />
+          <h4 className="text-sm font-medium text-white">{t('settings.language.title')}</h4>
+        </div>
+        <p className="text-xs text-dark-subtext mb-3">
+          {t('settings.language.description')}
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {SUPPORTED_LANGUAGES.map((lang) => {
+            const isSelected = (appSettings.language || 'en') === lang.code;
+            return (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => {
+                  setAppSettings({ ...appSettings, language: lang.code });
+                  setLanguage(lang.code);
+                }}
+                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all text-left ${
+                  isSelected
+                    ? 'bg-brand-500/10 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/30'
+                    : 'bg-black/20 border-white/5 hover:border-white/15 text-white/70 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs uppercase ${
+                      isSelected ? 'bg-brand-500 text-white' : 'bg-white/5 text-white/60'
+                    }`}
+                  >
+                    {lang.code === 'en' ? 'EN' : 'PT'}
+                  </div>
+                  <div>
+                    <span className="block text-sm font-medium">{lang.nativeLabel}</span>
+                    <span className="block text-xs text-dark-subtext">{lang.label}</span>
+                  </div>
+                </div>
+                {isSelected && (
+                  <div className="flex items-center gap-1.5 text-brand-400">
+                    <Check size={16} />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tab System */}
       <div className="border-b border-white/10 pb-4">
-        <h4 className="text-sm font-medium text-white mb-3">Sistema de Abas</h4>
+        <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.tabSystem')}</h4>
         
         <label className="flex items-center justify-between cursor-pointer group mb-4">
           <div>
             <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-              Abas na Versão Web
+              {t('settings.general.tabsWeb')}
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Ativa ou desativa o sistema de abas na versão web do aplicativo.
+              {t('settings.general.tabsWebDesc')}
             </span>
           </div>
           <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -65,10 +121,10 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
         <label className="flex items-center justify-between cursor-pointer group">
           <div>
             <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-              Abas na Versão Desktop
+              {t('settings.general.tabsDesktop')}
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Ativa ou desativa o sistema de abas na versão desktop do aplicativo.
+              {t('settings.general.tabsDesktopDesc')}
             </span>
           </div>
           <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -82,13 +138,13 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
           </div>
         </label>
 
-        <label className="flex items-center justify-between cursor-pointer group">
+        <label className="flex items-center justify-between cursor-pointer group mt-4">
           <div>
             <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-              Ocultar Nomes de Abas Fixadas
+              {t('settings.general.hidePinnedNames')}
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Exibe apenas o ícone/emoji nas abas fixadas para economizar espaço horizontal.
+              {t('settings.general.hidePinnedNamesDesc')}
             </span>
           </div>
           <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -102,13 +158,13 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
           </div>
         </label>
 
-        <div className="flex items-center justify-between group pt-1">
+        <div className="flex items-center justify-between group pt-4">
           <div>
             <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-              Largura Máxima das Abas
+              {t('settings.general.tabMaxWidth')}
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Define o limite de largura em pixels antes de abreviar o título. Padrão: 400px.
+              {t('settings.general.tabMaxWidthDesc')}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -131,10 +187,10 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
       <label className="flex items-center justify-between cursor-pointer group">
         <div>
           <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-            Salvar estado das abas
+            {t('settings.general.restoreTabs')}
           </span>
           <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-            Restaura as abas abertas da última sessão.
+            {t('settings.general.restoreTabsDesc')}
           </span>
         </div>
         <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -148,16 +204,17 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
         </div>
       </label>
 
+      {/* Studies (Anki) */}
       <div className="border-t border-white/10 pt-4 mb-4">
-        <h4 className="text-sm font-medium text-white mb-3">Estudos (Anki)</h4>
+        <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.studyAnki')}</h4>
         
         <label className="flex items-center justify-between cursor-pointer group mb-4">
           <div>
             <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-              Animação 3D do Cartão
+              {t('settings.general.enable3DFlip')}
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Ativa uma animação 3D suave ao revelar a resposta do flashcard.
+              {t('settings.general.enable3DFlipDesc')}
             </span>
           </div>
           <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -174,10 +231,10 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
         <label className="flex items-center justify-between cursor-pointer group mb-4">
           <div>
             <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-              Efeitos Sonoros (SFX)
+              {t('settings.general.enableSfx')}
             </span>
             <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-              Toca sons sutis ao virar cartões e ao acertar/errar.
+              {t('settings.general.enableSfxDesc')}
             </span>
           </div>
           <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -192,10 +249,11 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
         </label>
       </div>
 
+      {/* Local Storage */}
       <div className="border-t border-white/10 pt-4">
-        <h4 className="text-sm font-medium text-white mb-3">Armazenamento Local</h4>
+        <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.localStorage')}</h4>
         <div className="bg-black/20 border border-white/5 rounded-xl p-3">
-          <label className="block text-xs font-medium text-dark-subtext mb-1">Pasta de Download de Vídeos</label>
+          <label className="block text-xs font-medium text-dark-subtext mb-1">{t('settings.general.videoDownloadFolder')}</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-white/5 border border-white/10 text-white/80 text-xs px-3 py-2 rounded-lg font-mono truncate cursor-not-allowed">
               {videoPath}
@@ -205,22 +263,23 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
               onClick={handleSelectFolder}
               className="px-3 py-2 bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
             >
-              Alterar
+              {t('settings.general.changeFolder')}
             </button>
           </div>
           <p className="text-[10px] text-white/40 mt-2">
-            Nota: Alterar a pasta fará com que novos vídeos sejam salvos no novo local. Vídeos antigos continuarão funcionando nos locais originais.
+            {t('settings.general.videoFolderNotice')}
           </p>
         </div>
       </div>
 
+      {/* External Modules */}
       <div className="border-t border-white/10 pt-4">
-        <h4 className="text-sm font-medium text-white mb-3">Módulos Externos</h4>
+        <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.externalModules')}</h4>
         <div className="bg-black/20 border border-white/5 rounded-xl p-3 flex justify-between items-center">
           <div>
-            <label className="block text-xs font-medium text-dark-subtext mb-1">Módulo Focus</label>
+            <label className="block text-xs font-medium text-dark-subtext mb-1">{t('settings.general.focusModule')}</label>
             <p className="text-[10px] text-white/40">
-              Abre o módulo de foco em uma janela separada.
+              {t('settings.general.focusModuleDesc')}
             </p>
           </div>
           <button
@@ -228,7 +287,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
             onClick={() => window.api?.app?.openFocusWindow?.()}
             className="px-3 py-2 bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
           >
-            Abrir Focus
+            {t('settings.general.openFocus')}
           </button>
         </div>
       </div>

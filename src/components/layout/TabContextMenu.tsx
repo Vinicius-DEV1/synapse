@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Pin, PinOff, X, Copy, Plus, ArrowRight } from 'lucide-react';
 import type { Tab } from '../../types';
+import { useI18n } from '../../i18n';
 
 interface TabContextMenuProps {
   x: number;
@@ -31,6 +32,7 @@ export default function TabContextMenu({
   onNewTab,
   onClose,
 }: TabContextMenuProps) {
+  const { t } = useI18n();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function TabContextMenu({
       style={{ left: adjustedX, top: adjustedY }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Fixar / Desfixar aba */}
+      {/* Pin / Unpin tab */}
       <button
         onClick={() => {
           onClose();
@@ -72,19 +74,19 @@ export default function TabContextMenu({
         {tab.isPinned ? (
           <>
             <PinOff size={14} className="text-brand-400" />
-            <span>Desfixar aba</span>
+            <span>{t('tabBar.unpinTab')}</span>
           </>
         ) : (
           <>
             <Pin size={14} className="text-brand-400" />
-            <span>Fixar aba</span>
+            <span>{t('tabBar.pinTab')}</span>
           </>
         )}
       </button>
 
       <div className="h-px bg-white/5 my-1 mx-2" />
 
-      {/* Nova aba */}
+      {/* New tab */}
       <button
         onClick={() => {
           onClose();
@@ -93,10 +95,10 @@ export default function TabContextMenu({
         className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
       >
         <Plus size={14} className="text-dark-subtext" />
-        <span>Nova aba</span>
+        <span>{t('tabBar.newTab')}</span>
       </button>
 
-      {/* Duplicar aba */}
+      {/* Duplicate tab */}
       <button
         onClick={() => {
           onClose();
@@ -105,12 +107,12 @@ export default function TabContextMenu({
         className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
       >
         <Copy size={14} className="text-dark-subtext" />
-        <span>Duplicar aba</span>
+        <span>{t('tabBar.duplicateTab')}</span>
       </button>
 
       <div className="h-px bg-white/5 my-1 mx-2" />
 
-      {/* Fechar aba */}
+      {/* Close tab */}
       <button
         onClick={() => {
           onClose();
@@ -124,10 +126,10 @@ export default function TabContextMenu({
         }`}
       >
         <X size={14} className="text-dark-subtext" />
-        <span>Fechar aba</span>
+        <span>{t('tabBar.closeTab')}</span>
       </button>
 
-      {/* Fechar outras abas */}
+      {/* Close other tabs */}
       {tabCount > 1 && (
         <button
           onClick={() => {
@@ -137,11 +139,11 @@ export default function TabContextMenu({
           className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
         >
           <X size={14} className="text-dark-subtext" />
-          <span>Fechar outras abas</span>
+          <span>{t('tabBar.closeOthers')}</span>
         </button>
       )}
 
-      {/* Fechar abas à direita */}
+      {/* Close tabs to the right */}
       {hasTabsToRight && (
         <button
           onClick={() => {
@@ -151,7 +153,7 @@ export default function TabContextMenu({
           className="w-full flex items-center gap-2.5 px-3 py-2 text-dark-text hover:bg-white/5 hover:text-white transition-colors"
         >
           <ArrowRight size={14} className="text-dark-subtext" />
-          <span>Fechar abas à direita</span>
+          <span>{t('tabBar.closeToRight')}</span>
         </button>
       )}
     </div>

@@ -248,3 +248,64 @@ To guarantee that Caderno delivers a first-class native Android experience insid
 - **Text Selection Isolation**: Apply `-webkit-user-select: none` to chrome and navigation elements, while strictly whitelisting editable and study content (`.select-text`, `[data-selectable="true"]`, TipTap editor surfaces).
 - **Hardened WebView Isolation**: Never expose unrestricted JavaScript interfaces or sensitive storage keys across unvalidated origins. Keep file access strictly bounded and all IPC communication validated.
 
+---
+
+## 12. Living User Guides & Continuous Documentation Synchronization
+
+To ensure users never get lost as features grow in depth and power, Caderno enforces a strict, self-documenting in-app knowledge architecture:
+
+### 12.1. Dedicated In-App Module Guides (`<Module>HelpModal.tsx`)
+- Every primary application module (`library`, `questions`, `vault`, `focus`, `habits`, `finance`, `culture`) must provide a dedicated, interactive User Guide modal (e.g., `LibraryHelpModal`, `QuestionsHelpModal`, `VaultHelpModal`, `FocusHelpModal`, `HabitsHelpModal`, `FinanceHelpModal`, `CultureHelpModal`).
+- Guides must follow the Zen Design standard: modal dialog with categorized sidebar navigation, clear feature explanations, actionable step-by-step instructions, keyboard shortcut cheat sheets, and pro-tips.
+- The guide trigger button (`HelpCircle` icon, labeled "Guia") must be prominently placed in the module's main navigation header or toolbar (e.g., adjacent to cloud sync, settings, or primary actions).
+
+### 12.2. Mandatory Guide Synchronization on Any Feature Addition or Change
+- **Zero Stale Documentation**: Whenever a new feature, filter, shortcut, UI layout, or business rule is added or modified in a module, **the corresponding module user guide (`<Module>HelpModal.tsx`) MUST be updated concurrently within the same task or commit**.
+- Omitting guide updates when introducing or altering module functionality is strictly prohibited and considered a regression in project quality standards.
+- Maintain accurate keyboard shortcut references across all guide tabs whenever shortcuts are assigned or adjusted.
+
+---
+
+## 13. Internationalization (i18n) & English-First Architectural Standard
+
+To ensure Caderno operates as a world-class application catering to global standards while preserving seamless multilingual adaptability (like VS Code, Obsidian, and Linear), all UI presentation must strictly adhere to these internationalization principles:
+
+### 13.1. English-First Default UI Standard
+- **English as Canonical Base**: All user-facing screens, options, titles, tooltips, dialogs, button labels, placeholders, toasts, and status indicators must default to **English (`en`)**.
+- **Source of Truth Dictionaries**: The primary translation dictionary is `src/i18n/locales/en.json`. All newly introduced user-facing text must be defined first in `en.json` and mirrored in `src/i18n/locales/pt.json` (and future locale dictionaries).
+
+### 13.2. Modular & Typed JSON Dictionaries (Zero Hardcoded Strings)
+- **No Raw Hardcoded UI Strings**: Never embed raw user-facing Portuguese or English text strings directly inside JSX/TSX elements. All visual strings must be accessed through the typed translation hook `const { t } = useI18n()`.
+- **Strict TypeScript Schema & Autocomplete**: The i18n engine must enforce strict recursive type inference (`NestedKeyOf<TranslationSchema>`). Magic translation strings that do not exist in the dictionary schema are strictly prohibited and must trigger compile-time TypeScript errors.
+- **Zero `any` & Safe Interpolation**: Dynamic translation values (e.g. `{{count}}`, `{{name}}`) must be validated and injected safely without any type escapes.
+
+### 13.3. Settings Language Option & Multiplatform Persistence
+- **Dedicated Settings Selector**: The user can toggle languages in Settings (`GeneralTab.tsx`). It is rendered at the top of the General tab with prominent language cards, EN/PT badges, and real-time active indicators.
+- **Single Source of Preference Truth**: The user's language selection is stored in `AppSettings.language` (`'en' | 'pt-BR'`), defaulting strictly to `'en'`.
+- **Seamless Reactive Switching**: Language switching is instant via `I18nProvider` without requiring application reload or freezing frames.
+- **Cross-Platform Sync**: Language preferences automatically sync across desktop (Tauri), web browser (`localStorage` + IndexedDB / cloud config), and mobile webview, emitting `app-settings-changed` events across active windows.
+- **Document Element Synchronization**: Active language is dynamically synced to `<html lang="en">` or `<html lang="pt-BR">` to support assistive technology, browser spellcheck, and `:lang()` CSS selectors.
+
+### 13.4. 100% Dictionary Key Parity & Regression Testing
+- **Automated Parity Enforcement**: Every translation key present in `src/i18n/locales/en.json` MUST exist in `src/i18n/locales/pt.json` and vice versa.
+- **Vitest Parity Assertion**: The test suite in `src/i18n/i18n.test.tsx` recursively asserts 100% key parity on every test run. Missing keys on either side fail the build immediately.
+- **Graceful Fallback**: If a key is ever dynamically requested in `pt-BR` that is absent, the engine falls back to `en.json` first before returning the raw key path.
+
+### 13.5. Standard Code Recipe
+```tsx
+import { useI18n } from '../i18n';
+
+export function MyComponent() {
+  const { t, language, setLanguage } = useI18n();
+
+  return (
+    <div>
+      <h3>{t('settings.language.title')}</h3>
+      <p>{t('settings.subtitle', { category: 'editor' })}</p>
+      <button onClick={() => setLanguage(language === 'en' ? 'pt-BR' : 'en')}>
+        {language === 'en' ? 'Mudar para Português' : 'Switch to English'}
+      </button>
+    </div>
+  );
+}
+```

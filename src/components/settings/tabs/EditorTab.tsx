@@ -1,4 +1,5 @@
 import type { AppSettings } from '../../../utils/settings';
+import { useI18n } from '../../../i18n';
 
 interface EditorTabProps {
   appSettings: AppSettings;
@@ -6,28 +7,30 @@ interface EditorTabProps {
 }
 
 export default function EditorTab({ appSettings, setAppSettings }: EditorTabProps) {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-white mb-2">Tamanho da Fonte</label>
+        <label className="block text-sm font-medium text-white mb-2">{t('settings.editor.fontSize')}</label>
         <select 
           value={appSettings.fontSize}
-          onChange={(e) => setAppSettings({ ...appSettings, fontSize: e.target.value as any })}
+          onChange={(e) => setAppSettings({ ...appSettings, fontSize: e.target.value as AppSettings['fontSize'] })}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
-          <option className="bg-dark-bg text-white" value="text-sm">Pequeno (14px)</option>
-          <option className="bg-dark-bg text-white" value="text-base">Padrão (16px)</option>
-          <option className="bg-dark-bg text-white" value="text-lg">Grande (18px)</option>
+          <option className="bg-dark-bg text-white" value="text-sm">{t('settings.editor.fontSizeSmall')} (14px)</option>
+          <option className="bg-dark-bg text-white" value="text-base">{t('settings.editor.fontSizeMedium')} (16px)</option>
+          <option className="bg-dark-bg text-white" value="text-lg">{t('settings.editor.fontSizeLarge')} (18px)</option>
         </select>
       </div>
       
       <label className="flex items-center justify-between cursor-pointer group">
         <div>
           <span className="block text-sm font-medium text-white group-hover:text-brand-400 transition-colors">
-            Corretor Ortográfico
+            {t('settings.editor.spellcheck')}
           </span>
           <span className="block text-xs text-dark-subtext mt-0.5 pr-4">
-            Sublinha palavras incorretas no texto.
+            {t('settings.editor.spellcheckDesc')}
           </span>
         </div>
         <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Save, Shield, Layout, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
 import { getSettings, saveSettings } from '../../utils/settings';
 import type { AppSettings } from '../../utils/settings';
@@ -14,12 +14,22 @@ import { BackupTab } from './tabs/BackupTab';
 import SyncMonitor from './SyncMonitor';
 import { SharingTab } from './tabs/SharingTab';
 import type { Tab } from '../../types';
+import { useI18n } from '../../i18n';
 
 export default function SettingsModule({ tab }: { tab?: Tab }) {
+  const { t } = useI18n();
   const activeTab = tab?.pageId || 'general';
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    const handleSettingsChange = () => {
+      setAppSettings(getSettings());
+    };
+    window.addEventListener('app-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('app-settings-changed', handleSettingsChange);
+  }, []);
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,19 +39,20 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
   };
 
   const tabs = [
-    { id: 'general', label: 'Geral', icon: Settings },
-    { id: 'editor', label: 'Editor', icon: Layout },
-    { id: 'security', label: 'Segurança', icon: Shield },
-    { id: 'ai', label: 'IA', icon: Zap },
-    { id: 'shortcuts', label: 'Atalhos', icon: Keyboard },
-    { id: 'storage', label: 'Uso', icon: HardDrive },
-    { id: 'video', label: 'Vídeo', icon: Video },
-    { id: 'backup', label: 'Backup', icon: DownloadCloud },
-    { id: 'sync', label: 'Sync', icon: RefreshCw },
-    { id: 'sharing', label: 'Compartilhamento', icon: Share2 },
+    { id: 'general', label: t('settings.tabs.general'), icon: Settings },
+    { id: 'editor', label: t('settings.tabs.editor'), icon: Layout },
+    { id: 'security', label: t('settings.tabs.security'), icon: Shield },
+    { id: 'ai', label: t('settings.tabs.ai'), icon: Zap },
+    { id: 'shortcuts', label: t('settings.tabs.shortcuts'), icon: Keyboard },
+    { id: 'storage', label: t('settings.tabs.storage'), icon: HardDrive },
+    { id: 'video', label: t('settings.tabs.video'), icon: Video },
+    { id: 'backup', label: t('settings.tabs.backup'), icon: DownloadCloud },
+    { id: 'sync', label: t('settings.tabs.sync'), icon: RefreshCw },
+    { id: 'sharing', label: t('settings.tabs.sharing'), icon: Share2 },
   ] as const;
 
   const showSaveButton = !isChangingPassword && ['general', 'editor', 'security', 'ai'].includes(activeTab);
+  const currentTab = tabs.find(t => t.id === activeTab);
 
   return (
     <div className="w-full h-full flex bg-dark-bg text-dark-text overflow-hidden">
@@ -50,8 +61,10 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
         <div className="max-w-4xl mx-auto">
           
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{tabs.find(t => t.id === activeTab)?.label}</h1>
-            <p className="text-dark-subtext text-sm sm:text-base">Gerencie suas preferências de {tabs.find(t => t.id === activeTab)?.label.toLowerCase()}.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{currentTab?.label}</h1>
+            <p className="text-dark-subtext text-sm sm:text-base">
+              {t('settings.subtitle', { category: (currentTab?.label ?? '').toLowerCase() })}
+            </p>
           </div>
 
           <form onSubmit={handleSaveSettings} className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl">
@@ -104,7 +117,7 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
               <div className="pt-8 mt-8 border-t border-white/5 flex items-center justify-end gap-4">
                 {saveSuccess && (
                   <span className="text-green-400 text-sm animate-fade-in flex items-center gap-1">
-                    <Save size={14} /> Salvo com sucesso!
+                    <Save size={14} /> {t('settings.savedSuccess')}
                   </span>
                 )}
                 <button
@@ -112,7 +125,7 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
                   className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-8 py-2.5 rounded-xl transition-all flex items-center gap-2"
                 >
                   <Save size={16} />
-                  Salvar Alterações
+                  {t('settings.saveButton')}
                 </button>
               </div>
             )}

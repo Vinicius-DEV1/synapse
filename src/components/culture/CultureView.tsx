@@ -6,6 +6,7 @@ import CultureMediaCard from './CultureMediaCard';
 import CultureAddModal from './CultureAddModal';
 import CultureViewModal from './CultureViewModal';
 import CultureGoalModal from './CultureGoalModal';
+import CultureHelpModal from './CultureHelpModal';
 import { useCulture, TYPE_LABELS, sortItems } from './hooks/useCulture';
 
 import { CultureHeader } from './ui/CultureHeader';
@@ -34,6 +35,7 @@ export default function CultureView() {
   } = useCulture();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CultureItem | null>(null);
   const [viewingItem, setViewingItem] = useState<CultureItem | null>(null);
   const [goalModalItem, setGoalModalItem] = useState<CultureItem | null>(null);
@@ -134,6 +136,7 @@ export default function CultureView() {
         showGoalsSection={showGoalsSection}
         toggleGoalsSection={toggleGoalsSection}
         onOpenAddModal={() => setIsAddModalOpen(true)}
+        onOpenHelpModal={() => setIsHelpModalOpen(true)}
       />
 
       {activeFilter !== 'recommendations' && (
@@ -236,6 +239,11 @@ export default function CultureView() {
           onSave={handleSaveGoalNote}
         />
       )}
+
+      <CultureHelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+      />
     </div>
   );
 }

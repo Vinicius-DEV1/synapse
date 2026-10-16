@@ -3,6 +3,7 @@ import { AlertTriangle, Calendar, Clock, BookOpen } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { useStore } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
+import { useI18n } from '../../i18n';
 
 interface ConfirmModalProps {
   pageId: string;
@@ -21,6 +22,7 @@ function isEventExpired(ev: CalendarEvent): boolean {
 }
 
 export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: ConfirmModalProps) {
+  const { t } = useI18n();
   const { state } = useStore();
   const [activeEvents, setActiveEvents] = useState<CalendarEvent[]>([]);
   const [_isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -130,14 +132,14 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
             <div>
               <h3 className="text-lg font-semibold text-white mb-1">
                 {hasActiveEvents
-                  ? 'Excluir Página com Eventos da Agenda'
-                  : 'Excluir página'}
+                  ? t('modals.confirm.titleWithEvents')
+                  : t('modals.confirm.title')}
               </h3>
               <p className="text-sm text-dark-subtext leading-relaxed">
-                Tem certeza que deseja excluir <strong>{pageName}</strong>?
+                {t('modals.confirm.areYouSure', { pageName })}
                 {hasActiveEvents
-                  ? ' Ela (ou suas subpáginas) possui eventos da agenda associados.'
-                  : ' Esta ação removerá também todas as sub-páginas e não pode ser desfeita.'}
+                  ? t('modals.confirm.hasEventsNotice')
+                  : t('modals.confirm.irreversibleNotice')}
               </p>
             </div>
           </div>
@@ -201,7 +203,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
               disabled={isDeleting}
               className="px-4 py-2 rounded-xl text-sm font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
             >
-              Cancelar
+              {t('modals.confirm.cancel')}
             </button>
             <button
               onClick={handleConfirm}
@@ -210,10 +212,10 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
             >
               <span>
                 {isDeleting
-                  ? 'Excluindo...'
+                  ? t('modals.confirm.deleting')
                   : hasActiveEvents
-                  ? `Sim, excluir página e ${activeEvents.length} evento(s)`
-                  : 'Sim, excluir'}
+                  ? t('modals.confirm.deleteWithEvents', { count: activeEvents.length })
+                  : t('modals.confirm.delete')}
               </span>
             </button>
           </div>

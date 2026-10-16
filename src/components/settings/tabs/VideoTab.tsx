@@ -1,8 +1,10 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Video, Settings2, PlayCircle, Zap } from 'lucide-react';
 import { getSettings, saveSettings, type AppSettings } from '../../../utils/settings';
+import { useI18n } from '../../../i18n';
 
 export default function VideoTab() {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
@@ -27,8 +29,8 @@ export default function VideoTab() {
           <Video size={20} />
         </div>
         <div>
-          <h2 className="text-xl font-medium text-white">Vídeos & Mídia</h2>
-          <p className="text-sm text-dark-subtext">Configurações de conversão e reprodução</p>
+          <h2 className="text-xl font-medium text-white">{t('settings.video.title')}</h2>
+          <p className="text-sm text-dark-subtext">{t('settings.video.subtitle')}</p>
         </div>
       </div>
 
@@ -37,7 +39,7 @@ export default function VideoTab() {
         <section className="bg-dark-card border border-white/5 rounded-2xl p-5 shadow-lg">
           <h3 className="text-base font-medium text-white mb-4 flex items-center gap-2">
             <PlayCircle size={18} className="text-purple-400" />
-            Preferência de Reprodução
+            {t('settings.video.playbackPref')}
           </h3>
           
           <div className="space-y-4">
@@ -54,8 +56,8 @@ export default function VideoTab() {
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
               </div>
               <div>
-                <span className="text-white font-medium block">Automático (Recomendado)</span>
-                <span className="text-sm text-dark-subtext block mt-1">Toca a versão Web para vídeos incompatíveis (MKV) e a versão Original para vídeos suportados nativamente (MP4).</span>
+                <span className="text-white font-medium block">{t('settings.video.auto')}</span>
+                <span className="text-sm text-dark-subtext block mt-1">{t('settings.video.autoDesc')}</span>
               </div>
             </label>
 
@@ -72,8 +74,8 @@ export default function VideoTab() {
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
               </div>
               <div>
-                <span className="text-white font-medium block">Forçar Versão Web</span>
-                <span className="text-sm text-dark-subtext block mt-1">Sempre tenta tocar a versão convertida (menor e mais leve), mesmo se o arquivo original for MP4.</span>
+                <span className="text-white font-medium block">{t('settings.video.forceWeb')}</span>
+                <span className="text-sm text-dark-subtext block mt-1">{t('settings.video.forceWebDesc')}</span>
               </div>
             </label>
             
@@ -90,8 +92,8 @@ export default function VideoTab() {
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
               </div>
               <div>
-                <span className="text-white font-medium block">Forçar Original</span>
-                <span className="text-sm text-dark-subtext block mt-1">Ignora versões web e tenta rodar sempre o arquivo original. Falhará para MKVs se você não tiver plugins instalados no sistema.</span>
+                <span className="text-white font-medium block">{t('settings.video.forceOriginal')}</span>
+                <span className="text-sm text-dark-subtext block mt-1">{t('settings.video.forceOriginalDesc')}</span>
               </div>
             </label>
           </div>
@@ -101,28 +103,28 @@ export default function VideoTab() {
         <section className="bg-dark-card border border-white/5 rounded-2xl p-5 shadow-lg">
           <h3 className="text-base font-medium text-white mb-4 flex items-center gap-2">
             <Zap size={18} className="text-yellow-400" />
-            Motor de Conversão (FFmpeg Preset)
+            {t('settings.video.conversionEngine')}
           </h3>
           
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-dark-subtext">Perfil de Velocidade vs Qualidade</label>
+            <label className="text-sm text-dark-subtext">{t('settings.video.speedVsQuality')}</label>
             <select
               value={settings.videoConversionPreset}
-              onChange={(e) => handleSave({ ...settings, videoConversionPreset: e.target.value as any })}
+              onChange={(e) => handleSave({ ...settings, videoConversionPreset: e.target.value as AppSettings['videoConversionPreset'] })}
               className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
-              <option className="bg-dark-bg text-white" value="ultrafast">Ultrafast (Mais Rápido / Maior Tamanho / Menor Qualidade)</option>
+              <option className="bg-dark-bg text-white" value="ultrafast">Ultrafast</option>
               <option className="bg-dark-bg text-white" value="superfast">Superfast</option>
               <option className="bg-dark-bg text-white" value="veryfast">Veryfast</option>
               <option className="bg-dark-bg text-white" value="faster">Faster</option>
               <option className="bg-dark-bg text-white" value="fast">Fast</option>
-              <option className="bg-dark-bg text-white" value="medium">Medium (Equilíbrio Padrão)</option>
+              <option className="bg-dark-bg text-white" value="medium">Medium</option>
               <option className="bg-dark-bg text-white" value="slow">Slow</option>
               <option className="bg-dark-bg text-white" value="slower">Slower</option>
-              <option className="bg-dark-bg text-white" value="veryslow">Veryslow (Mais Lento / Menor Tamanho / Máxima Qualidade)</option>
+              <option className="bg-dark-bg text-white" value="veryslow">Veryslow</option>
             </select>
             <p className="text-xs text-dark-subtext mt-2">
-              Presets rápidos (como ultrafast) desativam B-Frames e estimação de movimento fina, o que pode causar trepidações ou "cortes" em cenas de ação, mas convertem muito rápido.
+              {t('settings.video.presetNotice')}
             </p>
           </div>
         </section>
@@ -131,22 +133,22 @@ export default function VideoTab() {
         <section className="bg-dark-card border border-white/5 rounded-2xl p-5 shadow-lg">
           <h3 className="text-base font-medium text-white mb-4 flex items-center gap-2">
             <Settings2 size={18} className="text-blue-400" />
-            Qualidade Web Padrão
+            {t('settings.video.webQuality')}
           </h3>
           
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-dark-subtext">Resolução pré-selecionada no momento do upload</label>
+            <label className="text-sm text-dark-subtext">{t('settings.video.webQualityDesc')}</label>
             <select
               value={settings.videoDefaultWebQuality}
-              onChange={(e) => handleSave({ ...settings, videoDefaultWebQuality: e.target.value as any })}
+              onChange={(e) => handleSave({ ...settings, videoDefaultWebQuality: e.target.value as AppSettings['videoDefaultWebQuality'] })}
               className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
-              <option className="bg-dark-bg text-white" value="original">Original (Não recomendado para Web)</option>
-              <option className="bg-dark-bg text-white" value="remux">Clonar Original (Remux MP4 Ultra Rápido)</option>
+              <option className="bg-dark-bg text-white" value="original">Original</option>
+              <option className="bg-dark-bg text-white" value="remux">Remux MP4</option>
               <option className="bg-dark-bg text-white" value="1080p">1080p Full HD</option>
-              <option className="bg-dark-bg text-white" value="720p">720p HD (Rápido e Leve - Recomendado)</option>
-              <option className="bg-dark-bg text-white" value="480p">480p SD (Bom para Celular)</option>
-              <option className="bg-dark-bg text-white" value="360p">360p (Economia Máxima de Espaço)</option>
+              <option className="bg-dark-bg text-white" value="720p">720p HD</option>
+              <option className="bg-dark-bg text-white" value="480p">480p SD</option>
+              <option className="bg-dark-bg text-white" value="360p">360p</option>
             </select>
           </div>
         </section>

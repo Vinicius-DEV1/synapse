@@ -1,5 +1,7 @@
-import { Shield, Plus, ShieldAlert, ShieldCheck, Folder, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, Plus, ShieldAlert, ShieldCheck, Folder, MoreVertical, Edit2, Trash2, HelpCircle } from 'lucide-react';
 import type { VaultGroup } from '../../types';
+import { VaultHelpModal } from './VaultHelpModal';
 
 interface VaultSidebarProps {
   groups: VaultGroup[];
@@ -26,6 +28,8 @@ export function VaultSidebar({
   handleEditGroup,
   handleDeleteGroup,
 }: VaultSidebarProps) {
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
   return (
     <div className="hidden md:flex w-64 border-r border-white/5 bg-dark-card/30 flex-col shrink-0">
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
@@ -33,13 +37,24 @@ export function VaultSidebar({
           <Shield size={20} />
           <span>Cofre</span>
         </div>
-        <button
-          onClick={handleCreateGroup}
-          className="p-1 hover:bg-white/10 rounded-md transition-colors"
-          title="Novo Grupo"
-        >
-          <Plus size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowHelpModal(true)}
+            className="p-1 hover:bg-white/10 rounded-md text-dark-subtext hover:text-white transition-colors"
+            title="Guia do Cofre Criptografado"
+            aria-label="Guia do Cofre"
+          >
+            <HelpCircle size={16} />
+          </button>
+          <button
+            onClick={handleCreateGroup}
+            className="p-1 hover:bg-white/10 rounded-md text-dark-subtext hover:text-white transition-colors"
+            title="Novo Grupo"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
@@ -141,6 +156,10 @@ export function VaultSidebar({
             <Trash2 size={14} /> Deletar
           </button>
         </div>
+      )}
+
+      {showHelpModal && (
+        <VaultHelpModal onClose={() => setShowHelpModal(false)} />
       )}
     </div>
   );

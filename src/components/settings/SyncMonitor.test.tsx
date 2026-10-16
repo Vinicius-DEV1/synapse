@@ -28,10 +28,10 @@ describe('SyncMonitor Component', () => {
     vi.mocked(syncMonitorService.getSyncEvents).mockReturnValue([]);
   });
 
-  it('renders sync stats metrics, daily quotas and counters', () => {
+  it('renders sync stats metrics, daily quotas and counters in English by default', () => {
     const { getByText } = render(<SyncMonitor />);
 
-    expect(getByText(/Uso do Firebase/i)).toBeDefined();
+    expect(getByText(/Firebase Usage/i)).toBeDefined();
     expect(getByText('120')).toBeDefined();
     expect(getByText('45')).toBeDefined();
   });

@@ -1,4 +1,4 @@
-import { Plus, Search, LayoutGrid, AlignJustify, Rows3, ArrowUpDown, Target, Sparkles } from 'lucide-react';
+import { Plus, Search, LayoutGrid, AlignJustify, Rows3, ArrowUpDown, Target, Sparkles, HelpCircle } from 'lucide-react';
 import { SORT_OPTIONS, type SortMode, type FilterType } from '../hooks/useCulture';
 
 interface CultureHeaderProps {
@@ -13,6 +13,7 @@ interface CultureHeaderProps {
   showGoalsSection: boolean;
   toggleGoalsSection: () => void;
   onOpenAddModal: () => void;
+  onOpenHelpModal?: () => void;
 }
 
 export function CultureHeader({
@@ -27,12 +28,24 @@ export function CultureHeader({
   showGoalsSection,
   toggleGoalsSection,
   onOpenAddModal,
+  onOpenHelpModal,
 }: CultureHeaderProps) {
   return (
     <div className="flex-none px-6 pt-6 pb-4 border-b border-white/5 flex flex-col gap-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Área Cultura</h1>
         <div className="flex items-center gap-2 flex-wrap">
+
+          {onOpenHelpModal && (
+            <button
+              onClick={onOpenHelpModal}
+              title="Guia da Área de Cultura"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium bg-white/5 text-dark-subtext border-white/10 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <HelpCircle size={14} className="text-purple-400" />
+              <span className="hidden sm:inline">Guia</span>
+            </button>
+          )}
 
           {/* Sort dropdown */}
           <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5">
