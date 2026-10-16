@@ -21,9 +21,20 @@ const ScrapViewerModal = lazy(() => import('../modals/ScrapViewerModal').then(m 
 const ScrapDeleteModal = lazy(() => import('../modals/ScrapDeleteModal').then(m => ({ default: m.ScrapDeleteModal })));
 const ScrapInputModal = lazy(() => import('../modals/ScrapInputModal').then(m => ({ default: m.ScrapInputModal })));
 const ShareModal = lazy(() => import('../sharing/ShareModal').then(m => ({ default: m.ShareModal })));
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ShareAccessRequestToast } from '../sharing/ShareAccessRequestToast';
 import { ShareAccessRequestModal } from '../sharing/ShareAccessRequestModal';
 import { useShareAccessRequests } from '../../hooks/useShareAccessRequests';
+
+interface GlobalConfirmData {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  kind?: 'info' | 'warning' | 'error';
+  confirmText?: string;
+  cancelText?: string;
+  resolve: (confirmed: boolean) => void;
+}
 
 interface ScrapModalData {
   scrapId: string;
@@ -132,6 +143,37 @@ export function GlobalModals({
       window.removeEventListener('caderno-open-scrap-action', handleOpenScrapAction as EventListener);
       window.removeEventListener('caderno-request-scrap-delete', handleRequestScrapDelete as EventListener);
       window.removeEventListener('caderno-open-scrap-input', handleOpenScrapInput as EventListener);
+    };
+  }, []);
+
+  const [globalConfirmData, setGlobalConfirmData] = useState<GlobalConfirmData | null>(null);
+
+  useEffect(() => {
+    const handleRequestConfirm = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        title?: string;
+        message: string;
+        kind?: 'info' | 'warning' | 'error';
+        confirmText?: string;
+        cancelText?: string;
+        resolve: (confirmed: boolean) => void;
+      }>;
+      if (customEvent.detail) {
+        setGlobalConfirmData({
+          isOpen: true,
+          title: customEvent.detail.title || 'Confirmação',
+          message: customEvent.detail.message,
+          kind: customEvent.detail.kind || 'warning',
+          confirmText: customEvent.detail.confirmText,
+          cancelText: customEvent.detail.cancelText,
+          resolve: customEvent.detail.resolve,
+        });
+      }
+    };
+
+    window.addEventListener('caderno-request-confirm', handleRequestConfirm as EventListener);
+    return () => {
+      window.removeEventListener('caderno-request-confirm', handleRequestConfirm as EventListener);
     };
   }, []);
 
@@ -288,6 +330,26 @@ export function GlobalModals({
           />
         ) : null;
       })()}
+
+      {/* Global In-App Confirmation Dialog */}
+      {globalConfirmData?.isOpen && (
+        <ConfirmDialog
+          isOpen={true}
+          title={globalConfirmData.title}
+          message={globalConfirmData.message}
+          variant={globalConfirmData.kind === 'error' ? 'danger' : globalConfirmData.kind === 'info' ? 'info' : 'warning'}
+          confirmText={globalConfirmData.confirmText}
+          cancelText={globalConfirmData.cancelText}
+          onConfirm={() => {
+            globalConfirmData.resolve(true);
+            setGlobalConfirmData(null);
+          }}
+          onCancel={() => {
+            globalConfirmData.resolve(false);
+            setGlobalConfirmData(null);
+          }}
+        />
+      )}
     </Suspense>
   );
 }

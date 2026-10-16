@@ -91,7 +91,7 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     try {
       const count = selectedIds.size;
@@ -190,7 +190,7 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     try {
       await window.api.library.deleteCollection(colId);

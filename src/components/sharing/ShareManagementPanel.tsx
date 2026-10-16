@@ -86,7 +86,7 @@ export const ShareManagementPanel: React.FC = () => {
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) {
       return;
     }
@@ -107,7 +107,7 @@ export const ShareManagementPanel: React.FC = () => {
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) {
       return;
     }

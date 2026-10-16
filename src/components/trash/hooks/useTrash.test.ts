@@ -74,7 +74,9 @@ describe('useTrash Hook', () => {
   });
 
   it('permanently deletes page item and triggers imageCache cleanup', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (window as any).api.app = {
+      showConfirm: vi.fn().mockResolvedValue(1),
+    };
     (window as any).api.imageCache = {
       cleanupOrphans: vi.fn().mockResolvedValue(1),
     };

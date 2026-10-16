@@ -49,7 +49,7 @@ export function PromptsTab() {
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     setIsSavingPrompt(true);
     try {

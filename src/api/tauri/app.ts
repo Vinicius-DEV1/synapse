@@ -41,9 +41,19 @@ export const tauriAppApi = {
       });
       return confirmed ? 1 : 0;
     } catch (err) {
-      console.warn('[TauriAppApi] Native dialog confirm unavailable, falling back to window.confirm:', err);
-      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-        return window.confirm(message) ? 1 : 0;
+      console.warn('[TauriAppApi] Native dialog confirm unavailable, falling back to in-app dialog:', err);
+      if (typeof window !== 'undefined') {
+        return new Promise<number>((resolve) => {
+          const event = new CustomEvent('caderno-request-confirm', {
+            detail: {
+              title,
+              message,
+              kind,
+              resolve: (confirmed: boolean) => resolve(confirmed ? 1 : 0),
+            },
+          });
+          window.dispatchEvent(event);
+        });
       }
       return 0;
     }

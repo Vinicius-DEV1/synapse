@@ -100,7 +100,7 @@ export function useLofiBulkActions({
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     const ids = Array.from(selectedIds);
     let count = 0;
@@ -135,7 +135,7 @@ export function useLofiBulkActions({
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     const ids = Array.from(selectedIds);
     let count = 0;

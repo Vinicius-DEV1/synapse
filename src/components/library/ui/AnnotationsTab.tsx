@@ -43,7 +43,7 @@ export function AnnotationsTab({
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     groupedHighlights.forEach(items => {
       items.forEach(h => onDelete(h.id));

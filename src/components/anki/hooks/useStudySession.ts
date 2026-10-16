@@ -128,7 +128,7 @@ export function useStudySession(deckId: string) {
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (confirmed) {
       if (window.api?.anki) {
         await window.api.anki.deleteCard(card.id);

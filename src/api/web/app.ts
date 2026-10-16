@@ -21,10 +21,27 @@ export const createWebAppApi = () => ({
     return file?.name || '';
   },
 
-  showConfirm: async (optionsOrMessage: string | { message: string; title?: string; kind?: 'info' | 'warning' | 'error' }): Promise<number> => {
+  showConfirm: async (optionsOrMessage: string | { message: string; title?: string; kind?: 'info' | 'warning' | 'error'; confirmText?: string; cancelText?: string }): Promise<number> => {
     const message = typeof optionsOrMessage === 'string' ? optionsOrMessage : optionsOrMessage.message;
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      return window.confirm(message) ? 1 : 0;
+    const title = typeof optionsOrMessage === 'string' ? 'Confirmação' : optionsOrMessage.title || 'Confirmação';
+    const kind = typeof optionsOrMessage === 'string' ? 'warning' : optionsOrMessage.kind || 'warning';
+    const confirmText = typeof optionsOrMessage === 'object' ? optionsOrMessage.confirmText : undefined;
+    const cancelText = typeof optionsOrMessage === 'object' ? optionsOrMessage.cancelText : undefined;
+
+    if (typeof window !== 'undefined') {
+      return new Promise<number>((resolve) => {
+        const event = new CustomEvent('caderno-request-confirm', {
+          detail: {
+            title,
+            message,
+            kind,
+            confirmText,
+            cancelText,
+            resolve: (confirmed: boolean) => resolve(confirmed ? 1 : 0),
+          },
+        });
+        window.dispatchEvent(event);
+      });
     }
     return 0;
   },

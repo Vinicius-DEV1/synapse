@@ -108,7 +108,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     if (window.api?.anki) {
       await window.api.anki.deleteCardsBulk(Array.from(selectedIds));
@@ -125,7 +125,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           message: msg,
           kind: 'info',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     const ankiApi = window.api?.anki;
     if (ankiApi) {
@@ -147,7 +147,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     if (window.api?.anki) {
       await window.api.anki.deleteCard(id);
@@ -178,7 +178,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     if (window.api?.anki) {
       await window.api.anki.deleteDeck(deck.id);
@@ -195,7 +195,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : false;
     if (!confirmed) return;
     if (window.api?.anki?.resetDeckProgress) {
       const res = await window.api.anki.resetDeckProgress(deck.id);
