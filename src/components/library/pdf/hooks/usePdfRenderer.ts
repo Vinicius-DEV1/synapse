@@ -141,27 +141,11 @@ export function usePdfRenderer({
       const scrollTop = container.scrollTop;
       const viewportHeight = container.clientHeight;
 
-      let accum = 0;
-      let firstVisible = 1;
-      for (let i = 1; i <= totalPages; i++) {
-        const h = dimensionCache.current.getPageHeight(i, zoom) + PAGE_GAP;
-        if (accum + h > scrollTop) {
-          firstVisible = i;
-          break;
-        }
-        accum += h;
-      }
-
-      let lastVisible = firstVisible;
-      let visibleAccum = accum;
-      for (let i = firstVisible; i <= totalPages; i++) {
-        lastVisible = i;
-        visibleAccum += dimensionCache.current.getPageHeight(i, zoom) + PAGE_GAP;
-        if (visibleAccum > scrollTop + viewportHeight) break;
-      }
+      const firstVisible = dimensionCache.current.findPageAtScrollTop(scrollTop, totalPages, zoom, PAGE_GAP);
+      const lastVisible = dimensionCache.current.findPageAtScrollTop(scrollTop + viewportHeight, totalPages, zoom, PAGE_GAP);
 
       const windowStart = Math.max(1, firstVisible - BUFFER);
-      const windowEnd = Math.min(totalPages, lastVisible + BUFFER);
+      const windowEnd = Math.min(totalPages, Math.max(firstVisible, lastVisible) + BUFFER);
 
       setVirtualWindow((prev) => {
         if (prev.start === windowStart && prev.end === windowEnd) return prev;
@@ -219,14 +203,43 @@ export function usePdfRenderer({
     };
   }, [totalPages, loading, book.id, zoom]);
 
+  // Auto-fit page to viewport width
+  const fitToWidth = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const viewportWidth = el.clientWidth;
+    if (viewportWidth <= 0) return;
+
+    const unscaledWidth = dimensionCache.current.getPageDimension(currentPageRef.current).width;
+    if (unscaledWidth <= 0) return;
+
+    const padding = viewportWidth < 640 ? 12 : 24;
+    const targetZoom = Math.min(3.0, Math.max(0.5, (viewportWidth - padding) / unscaledWidth));
+    handleZoom(Number(targetZoom.toFixed(2)));
+  }, [handleZoom]);
+
   // Restore initial scroll position ONCE when document is ready
   useEffect(() => {
     if (!loading && pdfDoc && totalPages > 0 && !hasRestoredInitialPosition.current) {
       hasRestoredInitialPosition.current = true;
+      let effectiveZoom = zoom;
+
+      // Auto-fit to width on small mobile screens if unscaled page exceeds viewport
+      if (scrollRef.current && scrollRef.current.clientWidth > 0 && scrollRef.current.clientWidth < 640) {
+        const viewportWidth = scrollRef.current.clientWidth;
+        const unscaledWidth = dimensionCache.current.getPageDimension(initialPage).width;
+        if (unscaledWidth > 0 && unscaledWidth > viewportWidth - 16) {
+          const autoZoom = Math.min(3.0, Math.max(0.5, (viewportWidth - 12) / unscaledWidth));
+          const roundedZoom = Number(autoZoom.toFixed(2));
+          effectiveZoom = roundedZoom;
+          setZoom(roundedZoom);
+        }
+      }
+
       if (initialPage > 1) {
         // Allow DOM layout to complete before initial scroll alignment
         requestAnimationFrame(() => {
-          const offset = dimensionCache.current.getPageOffset(initialPage, zoom, PAGE_GAP);
+          const offset = dimensionCache.current.getPageOffset(initialPage, effectiveZoom, PAGE_GAP);
           if (scrollRef.current) {
             scrollRef.current.scrollTop = offset;
           }
@@ -255,6 +268,7 @@ export function usePdfRenderer({
     zoom,
     setZoom,
     handleZoom,
+    fitToWidth,
     currentPage,
     setCurrentPage,
     scrollToPage,

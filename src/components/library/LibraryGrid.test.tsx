@@ -17,6 +17,11 @@ vi.mock('lucide-react', () => ({
   CloudDownload: () => <div data-testid="icon-cloud-download" />,
   HardDrive: () => <div data-testid="icon-hard-drive" />,
   CloudOff: () => <div data-testid="icon-cloud-off" />,
+  Archive: () => <div data-testid="icon-archive" />,
+  ArchiveRestore: () => <div data-testid="icon-archive-restore" />,
+  ArrowLeft: () => <div data-testid="icon-arrow-left" />,
+  Layers: () => <div data-testid="icon-layers" />,
+  Folder: () => <div data-testid="icon-folder" />,
 }));
 
 describe('LibraryGrid Component', () => {
@@ -85,5 +90,47 @@ describe('LibraryGrid Component', () => {
 
     fireEvent.click(getByText('Clean Code'));
     expect(onSelectBook).toHaveBeenCalledWith(mockBooks[0]);
+  });
+
+  it('renders collections grid when viewMode is collections', () => {
+    const mockCollections = [
+      { id: 'c1', name: 'Tecnologia', color: '#6366f1', created_at: '' },
+    ];
+    const { getByText } = render(
+      <LibraryGrid
+        books={mockBooks}
+        collections={mockCollections}
+        viewMode="collections"
+        onSelectBook={vi.fn()}
+        onImportBook={vi.fn()}
+        onEditBook={vi.fn()}
+        onDeleteBook={vi.fn()}
+        onStatusChange={vi.fn()}
+      />
+    );
+
+    expect(getByText('Tecnologia')).toBeDefined();
+  });
+
+  it('renders Arquivado badge when book is archived', () => {
+    const archivedBooks: LibraryBook[] = [
+      {
+        ...mockBooks[0],
+        is_archived: true,
+      },
+    ];
+    const { getByText } = render(
+      <LibraryGrid
+        books={archivedBooks}
+        collections={[]}
+        onSelectBook={vi.fn()}
+        onImportBook={vi.fn()}
+        onEditBook={vi.fn()}
+        onDeleteBook={vi.fn()}
+        onStatusChange={vi.fn()}
+      />
+    );
+
+    expect(getByText('Arquivado')).toBeDefined();
   });
 });

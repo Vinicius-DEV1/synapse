@@ -19,6 +19,7 @@ export interface PdfPageProps {
   isBookmarked: boolean;
   onToggleBookmark: () => void;
   onHighlightClick: (h: LibraryHighlight, rect: DOMRect) => void;
+  onHighlightHover?: (h: LibraryHighlight | null, rect: DOMRect | null) => void;
   ocrProcessing: Set<number>;
   setOcrProcessing: React.Dispatch<React.SetStateAction<Set<number>>>;
   onMeasure?: (unscaledWidth: number, unscaledHeight: number) => void;
@@ -39,6 +40,7 @@ export const PdfPage: React.FC<PdfPageProps> = React.memo(
     isBookmarked,
     onToggleBookmark,
     onHighlightClick,
+    onHighlightHover,
     ocrProcessing,
     setOcrProcessing,
     onMeasure,
@@ -46,49 +48,49 @@ export const PdfPage: React.FC<PdfPageProps> = React.memo(
     pageHeight,
   }) => {
     const [pageProxy, setPageProxy] = useState<PDFPageProxy | null>(null);
-    const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
-      width: pageWidth || Math.round(595 * zoom),
-      height: pageHeight || Math.round(842 * zoom),
-    });
-
-    // Synchronize dimensions when zoom or cache props update
-    useEffect(() => {
-      if (pageWidth && pageHeight) {
-        setDimensions({ width: pageWidth, height: pageHeight });
-      }
-    }, [pageWidth, pageHeight]);
 
     const onMeasureRef = useRef(onMeasure);
     useEffect(() => {
       onMeasureRef.current = onMeasure;
     }, [onMeasure]);
 
-    // Single source of truth: fetch page proxy once when page enters rendering window
+    // Derive dimensions synchronously with zero-latency
+    const finalWidth = pageWidth || Math.round(595 * zoom);
+    const finalHeight = pageHeight || Math.round(842 * zoom);
+
+    // Single source of truth: fetch page proxy once when page enters rendering window (independent of zoom)
     useEffect(() => {
       if (!isRendered || !pdfDoc) return;
       let active = true;
+      let loadedPage: PDFPageProxy | null = null;
 
       pdfDoc.getPage(pageNum).then((page) => {
-        if (!active) return;
+        if (!active) {
+          page.cleanup?.();
+          return;
+        }
+        loadedPage = page;
         setPageProxy(page);
 
-        const viewport = page.getViewport({ scale: zoom });
-        setDimensions({ width: Math.round(viewport.width), height: Math.round(viewport.height) });
-        onMeasureRef.current?.(viewport.width / zoom, viewport.height / zoom);
+        const viewport = page.getViewport({ scale: 1.0 });
+        onMeasureRef.current?.(viewport.width, viewport.height);
       }).catch((err) => {
         console.error('Failed to load page proxy for page', pageNum, err);
       });
 
       return () => {
         active = false;
+        if (loadedPage) {
+          loadedPage.cleanup?.();
+        }
       };
-    }, [pdfDoc, pageNum, zoom, isRendered]);
+    }, [pdfDoc, pageNum, isRendered]);
 
     return (
       <div
         data-page-number={pageNum}
-        className="pdf-page-wrapper"
-        style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
+        className="pdf-page-wrapper select-text"
+        style={{ width: `${finalWidth}px`, height: `${finalHeight}px` }}
       >
         {isRendered && pageProxy ? (
           <>
@@ -107,6 +109,7 @@ export const PdfPage: React.FC<PdfPageProps> = React.memo(
               highlights={highlights}
               readingMode={readingMode}
               onHighlightClick={onHighlightClick}
+              onHighlightHover={onHighlightHover}
             />
 
             <PdfPageBookmarkRibbon

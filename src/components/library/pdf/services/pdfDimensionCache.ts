@@ -10,6 +10,7 @@ export class PdfDimensionCache {
   private defaultWidth = 595; // Default A4 width in points
   private defaultHeight = 842; // Default A4 height in points
   private hasBaseline = false;
+  private isUniform = true;
 
   /**
    * Set baseline dimensions from page 1 or document metadata.
@@ -33,6 +34,8 @@ export class PdfDimensionCache {
 
     if (!this.hasBaseline) {
       this.setBaseline(width, height);
+    } else if (height !== this.defaultHeight || width !== this.defaultWidth) {
+      this.isUniform = false;
     }
   }
 
@@ -67,9 +70,17 @@ export class PdfDimensionCache {
   }
 
   /**
-   * Get vertical scroll offset for a target page (1-based index).
+   * Get vertical scroll offset for a target page (1-based index) in O(1) for uniform pages.
    */
   public getPageOffset(targetPage: number, zoom: number, pageGap: number): number {
+    if (targetPage <= 1) return 0;
+
+    // Fast-path O(1) for uniform pages
+    if (this.isUniform) {
+      const pageHeightWithGap = Math.round(this.defaultHeight * zoom) + pageGap;
+      return (targetPage - 1) * pageHeightWithGap;
+    }
+
     let offset = 0;
     for (let i = 1; i < targetPage; i++) {
       offset += this.getPageHeight(i, zoom) + pageGap;
@@ -78,18 +89,62 @@ export class PdfDimensionCache {
   }
 
   /**
-   * Find which page is visible given a scrollTop position.
+   * Find which page is visible given a scrollTop position in O(1) or O(log N).
    */
   public findPageAtScrollTop(scrollTop: number, totalPages: number, zoom: number, pageGap: number): number {
-    let accum = 0;
-    for (let i = 1; i <= totalPages; i++) {
-      const h = this.getPageHeight(i, zoom) + pageGap;
-      if (accum + h > scrollTop) {
-        return i;
-      }
-      accum += h;
+    if (scrollTop <= 0 || totalPages <= 1) return 1;
+
+    // Fast-path O(1) for uniform pages
+    if (this.isUniform) {
+      const pageHeightWithGap = Math.round(this.defaultHeight * zoom) + pageGap;
+      if (pageHeightWithGap <= 0) return 1;
+      const pageIndex = Math.floor(scrollTop / pageHeightWithGap) + 1;
+      return Math.max(1, Math.min(totalPages, pageIndex));
     }
-    return Math.max(1, totalPages);
+
+    // Binary search O(log N) for variable page heights
+    let low = 1;
+    let high = totalPages;
+    let candidate = 1;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const offset = this.getPageOffset(mid, zoom, pageGap);
+      const pageH = this.getPageHeight(mid, zoom) + pageGap;
+
+      if (scrollTop >= offset && scrollTop < offset + pageH) {
+        return mid;
+      } else if (scrollTop < offset) {
+        high = mid - 1;
+      } else {
+        candidate = mid;
+        low = mid + 1;
+      }
+    }
+
+    return Math.max(1, Math.min(totalPages, candidate));
+  }
+
+  /**
+   * Compute top and bottom virtualization spacers in O(1) time without layout loops.
+   */
+  public getSpacerHeights(
+    start: number,
+    end: number,
+    totalPages: number,
+    zoom: number,
+    pageGap: number
+  ): { topSpacerHeight: number; bottomSpacerHeight: number } {
+    const topSpacerHeight = start > 1 ? this.getPageOffset(start, zoom, pageGap) : 0;
+    const bottomSpacerHeight =
+      end < totalPages
+        ? this.getPageOffset(totalPages + 1, zoom, pageGap) - this.getPageOffset(end + 1, zoom, pageGap)
+        : 0;
+
+    return {
+      topSpacerHeight: Math.max(0, topSpacerHeight),
+      bottomSpacerHeight: Math.max(0, bottomSpacerHeight),
+    };
   }
 
   /**
@@ -100,5 +155,6 @@ export class PdfDimensionCache {
     this.defaultWidth = 595;
     this.defaultHeight = 842;
     this.hasBaseline = false;
+    this.isUniform = true;
   }
 }

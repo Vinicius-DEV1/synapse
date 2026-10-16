@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   FileText, Plus, MoreVertical, BookOpen, CheckCircle2,
-  Circle, Pencil, Trash2, BookMarked, Cloud, CloudDownload, HardDrive, CloudOff
+  Circle, Pencil, Trash2, BookMarked, Cloud, CloudDownload, HardDrive, CloudOff,
+  Archive, ArchiveRestore, ArrowLeft, Layers
 } from 'lucide-react';
-import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
+import type { LibraryBook, LibraryCollection, ReadingStatus, LibraryViewMode } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
 import { Portal } from '../ui/Portal';
 import { isBookEpub } from '../../utils/book-format';
+import { LibraryCollectionCard, NewCollectionCard } from './ui/LibraryCollectionCard';
 
 interface LibraryGridProps {
   books: LibraryBook[];
+  allBooks?: LibraryBook[];
   collections: LibraryCollection[];
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
@@ -20,6 +23,19 @@ interface LibraryGridProps {
   onStatusChange: (book: LibraryBook, status: ReadingStatus) => void;
   onEvictBook?: (id: string) => void;
   onDownloadOffline?: (book: LibraryBook) => void;
+
+  viewMode?: LibraryViewMode;
+  onSelectCollection?: (collectionId: string) => void;
+  onEditCollection?: (collection: LibraryCollection) => void;
+  onDeleteCollection?: (collectionId: string) => void;
+  onOpenCreateCollection?: () => void;
+  selectedCollectionId?: string | null;
+  onClearSelectedCollection?: () => void;
+
+  onArchiveBook?: (book: LibraryBook) => void;
+  onUnarchiveBook?: (book: LibraryBook) => void;
+  isViewingArchived?: boolean;
+  onClearArchivedView?: () => void;
 }
 
 const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
@@ -60,7 +76,8 @@ function BookCardCover({ coverImage }: { coverImage?: string; title?: string }) 
 
 export default function LibraryGrid({
   books,
-  collections: _collections,
+  allBooks,
+  collections,
   selectedIds,
   onToggleSelect,
   onSelectBook,
@@ -70,12 +87,22 @@ export default function LibraryGrid({
   onStatusChange,
   onEvictBook,
   onDownloadOffline,
+  viewMode = 'books',
+  onSelectCollection,
+  onEditCollection,
+  onDeleteCollection,
+  onOpenCreateCollection,
+  selectedCollectionId,
+  onClearSelectedCollection,
+  onArchiveBook,
+  onUnarchiveBook,
+  isViewingArchived = false,
+  onClearArchivedView,
 }: LibraryGridProps) {
   const [menuBookId, setMenuBookId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -110,8 +137,119 @@ export default function LibraryGrid({
     return isNaN(pct) ? 0 : Math.min(100, Math.max(0, pct));
   };
 
+  // If in Collections view mode, render the rich Collections Grid
+  if (viewMode === 'collections') {
+    return (
+      <div className="p-4 sm:p-6 flex flex-col gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
+          {collections.map((col) => (
+            <LibraryCollectionCard
+              key={col.id}
+              collection={col}
+              books={allBooks || books}
+              onSelect={(id) => onSelectCollection?.(id)}
+              onEdit={onEditCollection}
+              onDelete={onDeleteCollection}
+            />
+          ))}
+
+          {onOpenCreateCollection && (
+            <NewCollectionCard onClick={onOpenCreateCollection} />
+          )}
+        </div>
+
+        {collections.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="p-4 rounded-2xl bg-brand-500/10 mb-4">
+              <Layers size={40} className="text-brand-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-dark-text mb-1">
+              Nenhuma coleção criada
+            </h3>
+            <p className="text-sm text-dark-subtext max-w-sm mb-4">
+              Crie coleções para agrupar livros com cards de capas empilhadas, cores temáticas e navegação por temas.
+            </p>
+            {onOpenCreateCollection && (
+              <button
+                onClick={onOpenCreateCollection}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Criar Primeira Coleção
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const activeCollectionObj = selectedCollectionId
+    ? collections.find((c) => c.id === selectedCollectionId)
+    : null;
+
   return (
     <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
+      {/* Active Collection Drill-Down Banner */}
+      {selectedCollectionId && activeCollectionObj && (
+        <div className="col-span-full mb-1 p-3.5 rounded-xl bg-dark-card border border-white/5 flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            {onClearSelectedCollection && (
+              <button
+                onClick={onClearSelectedCollection}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-white transition-colors"
+              >
+                <ArrowLeft size={14} />
+                Voltar para Todas
+              </button>
+            )}
+            <div className="h-4 w-px bg-white/10" />
+            <div className="flex items-center gap-2">
+              <span
+                className="w-3 h-3 rounded-full shadow-sm"
+                style={{ backgroundColor: activeCollectionObj.color }}
+              />
+              <h2 className="text-sm font-bold text-white">
+                {activeCollectionObj.name}
+              </h2>
+              <span className="text-xs text-dark-subtext">
+                ({books.length} {books.length === 1 ? 'livro' : 'livros'})
+              </span>
+            </div>
+          </div>
+
+          {onEditCollection && (
+            <button
+              onClick={() => onEditCollection(activeCollectionObj)}
+              className="p-1.5 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              title="Editar coleção"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Archive Info Banner */}
+      {isViewingArchived && (
+        <div className="col-span-full mb-1 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-2.5 text-amber-300 text-xs font-medium">
+            <Archive size={16} className="text-amber-400 flex-shrink-0" />
+            <span>
+              Visualizando Livros Arquivados — Estes livros estão guardados fora da sua biblioteca principal.
+            </span>
+          </div>
+          {onClearArchivedView && (
+            <button
+              onClick={onClearArchivedView}
+              className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-xs font-semibold text-amber-200 transition-colors whitespace-nowrap"
+            >
+              Voltar para Ativos
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Book Cards */}
       {books.map((book, index) => {
         const progress = getProgress(book);
@@ -178,6 +316,12 @@ export default function LibraryGrid({
                 >
                   {isEpub ? 'EPUB' : 'PDF'}
                 </span>
+
+                {book.is_archived && (
+                  <span className="px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm bg-amber-500/20 text-amber-300 border-amber-500/30">
+                    Arquivado
+                  </span>
+                )}
                 
                 {/* Storage & Cloud Status Badge */}
                 <div className="px-1.5 py-0.5 rounded-[5px] bg-black/50 backdrop-blur-md border border-white/10 text-white shadow-sm flex items-center gap-1">
@@ -308,6 +452,36 @@ export default function LibraryGrid({
                       <CloudDownload size={14} />
                       Baixar para Offline
                     </button>
+                  )}
+
+                  <div className="border-t border-white/5 my-1" />
+
+                  {book.is_archived ? (
+                    onUnarchiveBook && (
+                      <button
+                        onClick={() => {
+                          onUnarchiveBook(book);
+                          setMenuBookId(null);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-amber-300 hover:bg-amber-500/10 flex items-center gap-2 transition-colors"
+                      >
+                        <ArchiveRestore size={14} />
+                        Desarquivar Livro
+                      </button>
+                    )
+                  ) : (
+                    onArchiveBook && (
+                      <button
+                        onClick={() => {
+                          onArchiveBook(book);
+                          setMenuBookId(null);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
+                      >
+                        <Archive size={14} className="text-amber-400" />
+                        Arquivar Livro
+                      </button>
+                    )
                   )}
 
                   <div className="border-t border-white/5 my-1" />

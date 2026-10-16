@@ -49,4 +49,38 @@ describe('PdfDimensionCache', () => {
     expect(cache.findPageAtScrollTop(1021, 10, 1.0, gap)).toBe(2);
     expect(cache.findPageAtScrollTop(2050, 10, 1.0, gap)).toBe(3);
   });
+
+  it('computes virtualization spacers accurately in O(1)', () => {
+    cache.setBaseline(500, 1000);
+    const gap = 20;
+    // Each page takes 1020px at zoom 1.0
+    // start = 3, end = 5, totalPages = 10
+    const spacers = cache.getSpacerHeights(3, 5, 10, 1.0, gap);
+    // top: pages 1 and 2 = 2 * 1020 = 2040
+    expect(spacers.topSpacerHeight).toBe(2040);
+    // bottom: pages 6, 7, 8, 9, 10 = 5 * 1020 = 5100
+    expect(spacers.bottomSpacerHeight).toBe(5100);
+
+    // Edge cases: start = 1 (topSpacer = 0) and end = 10 (bottomSpacer = 0)
+    const edgeSpacers = cache.getSpacerHeights(1, 10, 10, 1.0, gap);
+    expect(edgeSpacers.topSpacerHeight).toBe(0);
+    expect(edgeSpacers.bottomSpacerHeight).toBe(0);
+  });
+
+  it('handles variable page dimensions with binary search', () => {
+    cache.setBaseline(500, 1000);
+    // Page 2 is an insert with height 2000
+    cache.setPageDimension(2, 500, 2000);
+    const gap = 0;
+
+    // Page 1: 0 - 1000
+    // Page 2: 1000 - 3000
+    // Page 3: 3000 - 4000
+    expect(cache.getPageOffset(2, 1.0, gap)).toBe(1000);
+    expect(cache.getPageOffset(3, 1.0, gap)).toBe(3000);
+
+    expect(cache.findPageAtScrollTop(500, 5, 1.0, gap)).toBe(1);
+    expect(cache.findPageAtScrollTop(1500, 5, 1.0, gap)).toBe(2);
+    expect(cache.findPageAtScrollTop(3500, 5, 1.0, gap)).toBe(3);
+  });
 });

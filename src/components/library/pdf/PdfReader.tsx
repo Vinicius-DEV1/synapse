@@ -172,11 +172,147 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
       const nextState = !prev;
       if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
       if (nextState) {
-        toolsTimeoutRef.current = setTimeout(() => setShowMobileTools(false), 15000);
+        toolsTimeoutRef.current = setTimeout(() => setShowMobileTools(false), 4000);
       }
       return nextState;
     });
   }, []);
+
+  const handleResetToolsTimer = useCallback(() => {
+    setShowMobileTools(true);
+    if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+    toolsTimeoutRef.current = setTimeout(() => setShowMobileTools(false), 4000);
+  }, []);
+
+  // Show tools briefly on initial book load so user knows options exist, then auto-hide
+  useEffect(() => {
+    if (!loading) {
+      setShowMobileTools(true);
+      if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+      toolsTimeoutRef.current = setTimeout(() => setShowMobileTools(false), 3500);
+    }
+  }, [loading]);
+
+  // Gesture-safe single-tap detection: never conflicts with pinch-to-zoom, scrolling, text selection or highlights
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let hasMoved = false;
+    let isMultiTouch = false;
+    let tapTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        isMultiTouch = true;
+        hasMoved = true;
+        if (tapTimer) {
+          clearTimeout(tapTimer);
+          tapTimer = null;
+        }
+        return;
+      }
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      touchStartTime = Date.now();
+      hasMoved = false;
+      isMultiTouch = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        isMultiTouch = true;
+        hasMoved = true;
+        return;
+      }
+      const t = e.touches[0];
+      const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+      if (dist > 10) {
+        hasMoved = true;
+        // User is scrolling: immediately dismiss tools if visible
+        setShowMobileTools(false);
+        if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (isMultiTouch || hasMoved) return;
+
+      const elapsed = Date.now() - touchStartTime;
+      // Filter out long-press (used for text selection, > 350ms)
+      if (elapsed < 50 || elapsed > 350) return;
+
+      // Filter out if user currently has text selected
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) return;
+
+      // Filter out interactive elements, highlights or toolbars
+      const target = (e.target instanceof Element
+        ? e.target
+        : (e.target as Node | null)?.parentElement) as HTMLElement | null;
+      if (!target || typeof target.closest !== 'function') return;
+
+      if (
+        target.closest('button, a, input, textarea, select, [role="button"]') ||
+        target.closest('.pdf-toolbar') ||
+        target.closest('.highlight-toolbar-container') ||
+        target.closest('.highlight-popup') ||
+        target.closest('.highlight-inspector') ||
+        target.closest('.pdf-highlight-rect') ||
+        target.closest('.highlight-mark') ||
+        target.closest('.dictionary-modal') ||
+        target.closest('.annotation-panel') ||
+        target.closest('.modal-content')
+      ) {
+        return;
+      }
+
+      // Disambiguate single-tap from potential double-tap (280ms window)
+      if (tapTimer) {
+        clearTimeout(tapTimer);
+        tapTimer = null;
+        return;
+      }
+
+      tapTimer = setTimeout(() => {
+        tapTimer = null;
+        toggleFullScreen();
+      }, 280);
+    };
+
+    const onTouchCancel = () => {
+      hasMoved = true;
+      if (tapTimer) {
+        clearTimeout(tapTimer);
+        tapTimer = null;
+      }
+    };
+
+    const onScroll = () => {
+      // When scrolling, hide tools immediately
+      setShowMobileTools(false);
+      if (toolsTimeoutRef.current) clearTimeout(toolsTimeoutRef.current);
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchCancel, { passive: true });
+    el.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchCancel);
+      el.removeEventListener('scroll', onScroll);
+      if (tapTimer) clearTimeout(tapTimer);
+    };
+  }, [toggleFullScreen]);
 
   useEffect(() => {
     return () => {
@@ -562,6 +698,7 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
             bookTitle={book.title}
             onBack={onBack}
             showMobileTools={showMobileTools}
+            onResetMobileToolsTimer={handleResetToolsTimer}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={(p) => scrollToPage(p, false)}
@@ -592,8 +729,13 @@ export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps
                 context: selection.pageContext,
                 preloadedData,
               });
+              setSelection(null);
+              window.getSelection()?.removeAllRanges();
             }}
-            onDismiss={() => setSelection(null)}
+            onDismiss={() => {
+              setSelection(null);
+              window.getSelection()?.removeAllRanges();
+            }}
           />
         )}
 

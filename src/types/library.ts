@@ -3,6 +3,10 @@ export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
 export type HighlightType = 'text' | 'rect';
 export type ReadingMode = 'light' | 'sepia' | 'mint' | 'dim' | 'nord' | 'midnight' | 'dark' | 'high-contrast';
 
+export type BookFormatFilter = 'all' | 'pdf' | 'epub';
+export type BookArchiveFilter = 'active' | 'archived' | 'all';
+export type LibraryViewMode = 'books' | 'collections';
+
 export interface LibraryBook {
   id: string;
   title: string;
@@ -30,6 +34,10 @@ export interface LibraryBook {
   current_page?: number | null;
   /** Serialized JSON reading preferences: { fontSize, readingMode, fontFamily, textWidth } */
   reading_preferences?: string | null;
+  /** Whether the book is archived */
+  is_archived?: boolean;
+  /** Timestamp when the book was archived */
+  archived_at?: string | null;
   deleted_at?: string | null;
 }
 

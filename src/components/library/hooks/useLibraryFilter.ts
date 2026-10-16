@@ -1,11 +1,22 @@
-import { useState, useMemo } from 'react';
-import type { LibraryBook, ReadingStatus } from '../../../types';
+import { useState, useMemo, useCallback } from 'react';
+import type {
+  LibraryBook,
+  ReadingStatus,
+  BookFormatFilter,
+  BookArchiveFilter,
+  LibraryViewMode,
+} from '../../../types';
+import { isBookEpub } from '../../../utils/book-format';
 
 export function useLibraryFilter(books: LibraryBook[]) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ReadingStatus | 'all'>('all');
+  const [formatFilter, setFormatFilter] = useState<BookFormatFilter>('all');
+  const [archiveFilter, setArchiveFilter] = useState<BookArchiveFilter>('active');
+  const [viewMode, setViewMode] = useState<LibraryViewMode>('books');
+
   const [sortBy, setSortBy] = useState<'last_read' | 'title' | 'created' | 'author'>('last_read');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -13,15 +24,67 @@ export function useLibraryFilter(books: LibraryBook[]) {
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
 
+  // Author list based on non-archived books (or current archive filter context)
   const authors = useMemo(() => {
-    const authorSet = new Set(books.map(b => b.author).filter(Boolean));
+    const authorSet = new Set(books.map((b) => b.author).filter(Boolean));
     return Array.from(authorSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [books]);
+
+  // Aggregate book counts
+  const activeCount = useMemo(
+    () => books.filter((b) => b.is_archived !== true).length,
+    [books]
+  );
+  const archivedCount = useMemo(
+    () => books.filter((b) => b.is_archived === true).length,
+    [books]
+  );
+
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      searchQuery.trim() ||
+        statusFilter !== 'all' ||
+        selectedCollection !== null ||
+        selectedAuthor !== null ||
+        formatFilter !== 'all' ||
+        archiveFilter !== 'active'
+    );
+  }, [
+    searchQuery,
+    statusFilter,
+    selectedCollection,
+    selectedAuthor,
+    formatFilter,
+    archiveFilter,
+  ]);
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setSelectedCollection(null);
+    setSelectedAuthor(null);
+    setFormatFilter('all');
+    setArchiveFilter('active');
+  }, []);
 
   const filteredAndSorted = useMemo(() => {
     let result = [...books];
 
-    // Search filter
+    // 1. Archive filter
+    if (archiveFilter === 'active') {
+      result = result.filter((b) => b.is_archived !== true);
+    } else if (archiveFilter === 'archived') {
+      result = result.filter((b) => b.is_archived === true);
+    }
+
+    // 2. Format filter
+    if (formatFilter === 'epub') {
+      result = result.filter((b) => isBookEpub(b));
+    } else if (formatFilter === 'pdf') {
+      result = result.filter((b) => !isBookEpub(b));
+    }
+
+    // 3. Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -31,24 +94,26 @@ export function useLibraryFilter(books: LibraryBook[]) {
       );
     }
 
-    // Status filter
+    // 4. Status filter
     if (statusFilter !== 'all') {
       result = result.filter((b) => b.reading_status === statusFilter);
     }
 
-    // Collection filter
+    // 5. Collection filter
     if (selectedCollection) {
-      result = result.filter((b) =>
-        b.collections?.some((c) => c.id === selectedCollection)
+      result = result.filter(
+        (b) =>
+          b.collections?.some((c) => c.id === selectedCollection) ||
+          (b as { collection_id?: string | null }).collection_id === selectedCollection
       );
     }
 
-    // Author filter
+    // 6. Author filter
     if (selectedAuthor) {
       result = result.filter((b) => b.author === selectedAuthor);
     }
 
-    // Sort
+    // 7. Sort
     result.sort((a, b) => {
       let cmp: number;
       switch (sortBy) {
@@ -73,7 +138,17 @@ export function useLibraryFilter(books: LibraryBook[]) {
     });
 
     return result;
-  }, [books, searchQuery, statusFilter, selectedCollection, selectedAuthor, sortBy, sortOrder]);
+  }, [
+    books,
+    archiveFilter,
+    formatFilter,
+    searchQuery,
+    statusFilter,
+    selectedCollection,
+    selectedAuthor,
+    sortBy,
+    sortOrder,
+  ]);
 
   return {
     searchQuery,
@@ -84,6 +159,12 @@ export function useLibraryFilter(books: LibraryBook[]) {
     setSelectedAuthor,
     statusFilter,
     setStatusFilter,
+    formatFilter,
+    setFormatFilter,
+    archiveFilter,
+    setArchiveFilter,
+    viewMode,
+    setViewMode,
     sortBy,
     setSortBy,
     sortOrder,
@@ -95,6 +176,11 @@ export function useLibraryFilter(books: LibraryBook[]) {
     showAuthorDropdown,
     setShowAuthorDropdown,
     authors,
-    filteredAndSorted
+    activeCount,
+    archivedCount,
+    hasActiveFilters,
+    clearAllFilters,
+    filteredAndSorted,
   };
 }
+

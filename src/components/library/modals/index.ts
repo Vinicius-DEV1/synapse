@@ -15,3 +15,5 @@ export type { ReadingStatsModalProps } from './ReadingStatsModal';
 
 export { default as UploadResultModal } from './UploadResultModal';
 export type { UploadResult, UploadResultModalProps } from './UploadResultModal';
+
+export { LibraryCreateCollectionModal } from './LibraryCreateCollectionModal';

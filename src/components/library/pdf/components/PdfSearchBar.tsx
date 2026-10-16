@@ -86,6 +86,12 @@ export default function PdfSearchBar({
       for (let i = 1; i <= totalPages; i++) {
         if (abortRef.current) break;
 
+        // Yield to the main thread event loop every 15 pages to preserve 60 FPS fluidity
+        if (i % 15 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          if (abortRef.current) break;
+        }
+
         let pageText = '';
 
         try {

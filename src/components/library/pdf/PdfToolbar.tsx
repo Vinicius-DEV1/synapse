@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, ZoomIn, ZoomOut, Search, Bookmark, BookmarkCheck, Sun, Moon, StickyNote, Info } from 'lucide-react';
+import { ArrowLeft, ZoomIn, ZoomOut, Search, Bookmark, BookmarkCheck, Sun, Moon, StickyNote, Info, MoveHorizontal } from 'lucide-react';
 
 interface PdfToolbarProps {
   bookTitle: string;
   onBack: () => void;
   showMobileTools: boolean;
+  onResetMobileToolsTimer?: () => void;
   
   currentPage: number;
   totalPages: number;
@@ -12,6 +13,7 @@ interface PdfToolbarProps {
   
   zoom: number;
   onZoom: (updater: number | ((z: number) => number)) => void;
+  onFitWidth?: () => void;
   
   showSearch: boolean;
   onToggleSearch: () => void;
@@ -31,11 +33,13 @@ export function PdfToolbar({
   bookTitle,
   onBack,
   showMobileTools,
+  onResetMobileToolsTimer,
   currentPage,
   totalPages,
   onPageChange,
   zoom,
   onZoom,
+  onFitWidth,
   showSearch,
   onToggleSearch,
   isBookmarked,
@@ -49,6 +53,10 @@ export function PdfToolbar({
   const [zoomInputActive, setZoomInputActive] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const zoomInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInteraction = () => {
+    onResetMobileToolsTimer?.();
+  };
 
   const handleZoomInputBlur = () => {
     const parsed = parseInt(zoomInputValue, 10);
@@ -73,7 +81,15 @@ export function PdfToolbar({
   return (
     <>
       {/* Floating Top-Left Controls */}
-      <div className={`absolute top-4 left-4 z-50 flex flex-col gap-2 transition-opacity duration-300 ${showMobileTools ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'}`}>
+      <div
+        onTouchStart={handleInteraction}
+        onClick={handleInteraction}
+        className={`absolute top-4 left-4 z-50 flex flex-col gap-2 transition-opacity duration-300 ${
+          showMobileTools
+            ? 'opacity-100 pointer-events-auto'
+            : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'
+        }`}
+      >
         <div className="flex items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 shadow-xl">
           <button 
             onClick={onBack}
@@ -89,7 +105,15 @@ export function PdfToolbar({
       </div>
 
       {/* Floating Vertical Toolbar - Right Side */}
-      <div className={`absolute top-1/2 -translate-y-1/2 right-3 z-40 flex flex-col max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar items-center gap-3 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl transition-opacity duration-300 ${showMobileTools ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'}`}>
+      <div
+        onTouchStart={handleInteraction}
+        onClick={handleInteraction}
+        className={`absolute top-1/2 -translate-y-1/2 right-3 z-40 flex flex-col max-h-[calc(100dvh-5rem)] overflow-y-auto custom-scrollbar items-center gap-2.5 bg-dark-card/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 sm:p-2 shadow-2xl transition-opacity duration-300 ${
+          showMobileTools
+            ? 'opacity-100 pointer-events-auto'
+            : 'opacity-0 pointer-events-none md:pointer-events-auto md:opacity-30 md:hover:opacity-100'
+        }`}
+      >
 
         {/* Pagination */}
         <div className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-1.5 w-full">
@@ -112,7 +136,7 @@ export function PdfToolbar({
 
         <div className="w-full h-px bg-white/10" />
 
-        {/* Zoom */}
+        {/* Zoom Controls */}
         <button 
           onClick={() => onZoom(z => Math.min(3, z + 0.25))}
           className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all"
@@ -152,6 +176,16 @@ export function PdfToolbar({
         >
           <ZoomOut size={18} />
         </button>
+
+        {onFitWidth && (
+          <button 
+            onClick={onFitWidth}
+            className="p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-all"
+            title="Ajustar à Largura da Tela (W)"
+          >
+            <MoveHorizontal size={18} />
+          </button>
+        )}
 
         <div className="w-full h-px bg-white/10" />
 

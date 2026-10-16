@@ -26,6 +26,13 @@ export const PdfPageTextLayer: React.FC<PdfPageTextLayerProps> = React.memo(
   ({ page, pageNum, zoom, bookId, ocrProcessing, setOcrProcessing }) => {
     const [textItems, setTextItems] = useState<PdfTextItem[]>([]);
     const ocrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const textContentCacheRef = useRef<Awaited<ReturnType<PDFPageProxy['getTextContent']>> | null>(null);
+    const cachedPageRef = useRef<PDFPageProxy | null>(null);
+
+    if (cachedPageRef.current !== page) {
+      cachedPageRef.current = page;
+      textContentCacheRef.current = null;
+    }
 
     useEffect(() => {
       let active = true;
@@ -33,9 +40,10 @@ export const PdfPageTextLayer: React.FC<PdfPageTextLayerProps> = React.memo(
       const loadText = async () => {
         try {
           const viewport = page.getViewport({ scale: zoom });
-          const textContent = await page.getTextContent();
+          const textContent = textContentCacheRef.current || (await page.getTextContent());
 
           if (!active) return;
+          textContentCacheRef.current = textContent;
 
           if (textContent.items.length > 0) {
             const items: PdfTextItem[] = [];
@@ -160,7 +168,7 @@ export const PdfPageTextLayer: React.FC<PdfPageTextLayerProps> = React.memo(
     }, [page, pageNum, zoom, bookId]);
 
     return (
-      <div className="pdf-text-layer">
+      <div className="pdf-text-layer select-text" data-selectable="true">
         {textItems.map((item, idx) => (
           <span
             key={idx}
@@ -175,6 +183,9 @@ export const PdfPageTextLayer: React.FC<PdfPageTextLayerProps> = React.memo(
               fontFamily: 'sans-serif',
               whiteSpace: 'pre',
               color: 'transparent',
+              userSelect: 'text',
+              WebkitUserSelect: 'text',
+              transformOrigin: '0 0',
             }}
           >
             {item.str}

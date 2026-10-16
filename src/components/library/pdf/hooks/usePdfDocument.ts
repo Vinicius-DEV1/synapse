@@ -111,34 +111,36 @@ export function usePdfDocument(
         const outline = (await pdf.getOutline()) as RawOutlineItem[] | null;
         if (outline) {
           const processOutline = async (items: RawOutlineItem[], level = 0): Promise<TocItem[]> => {
-            const result: TocItem[] = [];
-            for (const item of items) {
-              let pageNumber = 1;
-              if (item.dest) {
-                const dest =
-                  typeof item.dest === 'string'
-                    ? await pdf.getDestination(item.dest)
-                    : item.dest;
-                if (dest && dest[0]) {
+            return Promise.all(
+              items.map(async (item) => {
+                let pageNumber = 1;
+                if (item.dest) {
                   try {
-                    const pageIndex = await pdf.getPageIndex(dest[0]);
-                    pageNumber = pageIndex + 1;
+                    const dest =
+                      typeof item.dest === 'string'
+                        ? await pdf.getDestination(item.dest)
+                        : item.dest;
+                    if (dest && dest[0]) {
+                      const pageIndex = await pdf.getPageIndex(dest[0]);
+                      pageNumber = pageIndex + 1;
+                    }
                   } catch (e) {
                     console.error('Failed to get page index for TOC item', e);
                   }
                 }
-              }
-              const processedItem: TocItem = {
-                title: item.title,
-                pageNumber,
-                level,
-                children: item.items && item.items.length > 0
-                  ? await processOutline(item.items, level + 1)
-                  : undefined,
-              };
-              result.push(processedItem);
-            }
-            return result;
+                const children =
+                  item.items && item.items.length > 0
+                    ? await processOutline(item.items, level + 1)
+                    : undefined;
+
+                return {
+                  title: item.title,
+                  pageNumber,
+                  level,
+                  children,
+                };
+              })
+            );
           };
           setTocItems(await processOutline(outline));
         }

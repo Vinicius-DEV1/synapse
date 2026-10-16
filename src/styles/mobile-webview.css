@@ -31,7 +31,7 @@ body {
   user-select: none;
 }
 
-/* Allow text selection in editors, inputs and explicit selectable containers */
+/* Allow text selection in editors, inputs, PDF text layers and explicit selectable containers */
 input,
 textarea,
 [contenteditable="true"],
@@ -40,7 +40,9 @@ textarea,
 .select-text *,
 [data-selectable="true"],
 .ProseMirror,
-.ProseMirror * {
+.ProseMirror *,
+.pdf-text-layer,
+.pdf-text-layer * {
   -webkit-user-select: text !important;
   user-select: text !important;
   -webkit-touch-callout: default;

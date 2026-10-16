@@ -63,4 +63,60 @@ describe('LibraryHeader component', () => {
     fireEvent.click(screen.getByText('Lendo'));
     expect(setStatusFilter).toHaveBeenCalledWith('reading');
   });
+
+  it('toggles view mode between books and collections', () => {
+    const setViewMode = vi.fn();
+    render(
+      <LibraryHeader
+        {...defaultProps}
+        viewMode="books"
+        setViewMode={setViewMode}
+        collections={[{ id: 'c1', name: 'Ficção', color: '#6366f1', created_at: '' }]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Visualizar Coleções' }));
+    expect(setViewMode).toHaveBeenCalledWith('collections');
+  });
+
+  it('changes format filter on click', () => {
+    const setFormatFilter = vi.fn();
+    render(
+      <LibraryHeader
+        {...defaultProps}
+        formatFilter="all"
+        setFormatFilter={setFormatFilter}
+      />
+    );
+
+    fireEvent.click(screen.getByText('PDF'));
+    expect(setFormatFilter).toHaveBeenCalledWith('pdf');
+  });
+
+  it('toggles archive filter when clicking archive button', () => {
+    const setArchiveFilter = vi.fn();
+    render(
+      <LibraryHeader
+        {...defaultProps}
+        archiveFilter="active"
+        setArchiveFilter={setArchiveFilter}
+        archivedCount={5}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Arquivados'));
+    expect(setArchiveFilter).toHaveBeenCalledWith('archived');
+  });
+
+  it('opens LibraryHelpModal when clicking Guia button', () => {
+    render(<LibraryHeader {...defaultProps} />);
+
+    const guideBtn = screen.getByRole('button', { name: 'Guia da Biblioteca' });
+    expect(guideBtn).toBeDefined();
+
+    fireEvent.click(guideBtn);
+    expect(screen.getByRole('dialog', { name: 'Guia do Usuário da Biblioteca' })).toBeDefined();
+    expect(screen.getByText('O Básico & Formatos')).toBeDefined();
+  });
 });
+

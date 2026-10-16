@@ -66,6 +66,8 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN published_year INTEGER", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN description TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN is_local BOOLEAN DEFAULT 1", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN is_archived BOOLEAN DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN archived_at DATETIME", []);
 
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_web_file_id TEXT", []);

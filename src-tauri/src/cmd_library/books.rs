@@ -11,7 +11,7 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description FROM library_books WHERE deleted_at IS NULL",
+            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description, is_archived, archived_at FROM library_books WHERE deleted_at IS NULL",
         )
         .map_err(|e| e.to_string())?;
 
@@ -40,6 +40,8 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
                 published_year: row.get(19).unwrap_or(None),
                 language: row.get(20).unwrap_or(None),
                 description: row.get(21).unwrap_or(None),
+                is_archived: row.get(22).unwrap_or(Some(false)),
+                archived_at: row.get(23).unwrap_or(None),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -94,15 +96,17 @@ pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book
     };
 
     let is_local_val = book.is_local.unwrap_or(true);
+    let is_archived_val = book.is_archived.unwrap_or(false);
 
     conn.execute(
-        "INSERT INTO library_books (id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, reading_preferences, is_local, original_name, publisher, published_year, language, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params![id, book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, is_local_val, book.original_name, book.publisher, book.published_year, book.language, book.description]
+        "INSERT INTO library_books (id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, reading_preferences, is_local, original_name, publisher, published_year, language, description, is_archived, archived_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![id, book.title, book.author, book.file_path, book.drive_file_id, book.cover_color, book.cover_image, book.total_pages, book.current_page, book.reading_status, book.last_read_page, book.epub_locations, book.reading_preferences, is_local_val, book.original_name, book.publisher, book.published_year, book.language, book.description, is_archived_val, book.archived_at]
     ).map_err(|e| e.to_string())?;
 
     let mut ret = book;
     ret.id = id;
     ret.is_local = Some(is_local_val);
+    ret.is_archived = Some(is_archived_val);
     Ok(ret)
 }
 
@@ -115,7 +119,7 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
     // 1. Fetch existing book from database to preserve non-specified fields
     let existing: Option<Book> = conn
         .query_row(
-            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description FROM library_books WHERE id = ?",
+            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description, is_archived, archived_at FROM library_books WHERE id = ?",
             [&book.id],
             |row| {
                 Ok(Book {
@@ -141,6 +145,8 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
                     published_year: row.get(19)?,
                     language: row.get(20)?,
                     description: row.get(21)?,
+                    is_archived: row.get(22).unwrap_or(Some(false)),
+                    archived_at: row.get(23).unwrap_or(None),
                 })
             },
         )
@@ -167,6 +173,8 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
     let final_published_year = book.published_year.or_else(|| existing.as_ref().and_then(|e| e.published_year));
     let final_language = book.language.or_else(|| existing.as_ref().and_then(|e| e.language.clone()));
     let final_description = book.description.or_else(|| existing.as_ref().and_then(|e| e.description.clone()));
+    let final_is_archived = book.is_archived.or_else(|| existing.as_ref().and_then(|e| e.is_archived));
+    let final_archived_at = book.archived_at.or_else(|| existing.as_ref().and_then(|e| e.archived_at.clone()));
 
     // Auto-heal file_path if empty but candidate exists on disk
     let app_dir = crate::get_app_data_dir();
@@ -193,8 +201,8 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
         });
 
     let count = conn.execute(
-        "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, is_local = ?, original_name = ?, publisher = ?, published_year = ?, language = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![final_title, final_author, final_file_path, final_drive_file_id, final_cover_color, final_cover_image, final_total_pages, final_current_page, final_reading_status, final_last_read_page, final_epub_locations, final_reading_preferences, is_local_val, final_original_name, final_publisher, final_published_year, final_language, final_description, book.id]
+        "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, is_local = ?, original_name = ?, publisher = ?, published_year = ?, language = ?, description = ?, is_archived = ?, archived_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        params![final_title, final_author, final_file_path, final_drive_file_id, final_cover_color, final_cover_image, final_total_pages, final_current_page, final_reading_status, final_last_read_page, final_epub_locations, final_reading_preferences, is_local_val, final_original_name, final_publisher, final_published_year, final_language, final_description, final_is_archived, final_archived_at, book.id]
     ).map_err(|e| e.to_string())?;
 
     Ok(count as i32)
@@ -397,7 +405,7 @@ pub fn library_get_book(id: String, db_state: State<'_, DbState>) -> Result<Opti
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description FROM library_books WHERE id = ? AND deleted_at IS NULL",
+            "SELECT id, title, author, file_path, drive_file_id, cover_color, cover_image, total_pages, current_page, reading_status, last_read_page, epub_locations, created_at, updated_at, deleted_at, reading_preferences, is_local, original_name, publisher, published_year, language, description, is_archived, archived_at FROM library_books WHERE id = ? AND deleted_at IS NULL",
         )
         .map_err(|e| e.to_string())?;
 
@@ -425,6 +433,8 @@ pub fn library_get_book(id: String, db_state: State<'_, DbState>) -> Result<Opti
             published_year: row.get(19).unwrap_or(None),
             language: row.get(20).unwrap_or(None),
             description: row.get(21).unwrap_or(None),
+            is_archived: row.get(22).unwrap_or(Some(false)),
+            archived_at: row.get(23).unwrap_or(None),
         })
     });
 

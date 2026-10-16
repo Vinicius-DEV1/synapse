@@ -1,9 +1,16 @@
-import React from 'react';
-import { Search, Plus, BarChart3, Library, Cloud } from 'lucide-react';
-import type { LibraryCollection, ReadingStatus } from '../../../types';
+import { useState } from 'react';
+import { Search, Plus, BarChart3, Library, Cloud, BookOpen, Folder, FolderPlus, Archive, HelpCircle } from 'lucide-react';
+import type {
+  LibraryCollection,
+  ReadingStatus,
+  BookFormatFilter,
+  BookArchiveFilter,
+  LibraryViewMode,
+} from '../../../types';
 import { LibrarySortDropdown, type SortBy, type SortOrder } from './LibrarySortDropdown';
 import { LibraryCollectionDropdown } from './LibraryCollectionDropdown';
 import { LibraryAuthorDropdown } from './LibraryAuthorDropdown';
+import { LibraryHelpModal } from '../modals/LibraryHelpModal';
 
 const STATUS_LABELS: Record<ReadingStatus | 'all', string> = {
   all: 'Todos',
@@ -49,6 +56,15 @@ interface LibraryHeaderProps {
   setSelectedAuthor: (a: string | null) => void;
   showAuthorDropdown: boolean;
   setShowAuthorDropdown: (show: boolean) => void;
+
+  viewMode?: LibraryViewMode;
+  setViewMode?: (mode: LibraryViewMode) => void;
+  formatFilter?: BookFormatFilter;
+  setFormatFilter?: (f: BookFormatFilter) => void;
+  archiveFilter?: BookArchiveFilter;
+  setArchiveFilter?: (a: BookArchiveFilter) => void;
+  archivedCount?: number;
+  onOpenCreateCollection?: () => void;
 }
 
 export function LibraryHeader({
@@ -59,22 +75,72 @@ export function LibraryHeader({
   collections, selectedCollection, setSelectedCollection, showCollectionDropdown, setShowCollectionDropdown,
   editingCollectionId, setEditingCollectionId, editingCollectionName, setEditingCollectionName, handleSaveRename, handleStartRename,
   authors, selectedAuthor, setSelectedAuthor, showAuthorDropdown, setShowAuthorDropdown,
+  viewMode = 'books', setViewMode,
+  formatFilter = 'all', setFormatFilter,
+  archiveFilter = 'active', setArchiveFilter,
+  archivedCount = 0,
+  onOpenCreateCollection,
 }: LibraryHeaderProps) {
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
   return (
     <div className="relative z-50 flex-shrink-0 border-b border-white/5 bg-dark-bg/80 backdrop-blur-sm">
       <div className="px-6 py-4">
-        {/* Top row: title + actions */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-brand-500/10">
-              <Library size={22} className="text-brand-400" />
+        {/* Top row: title + view mode toggle + actions */}
+        <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-brand-500/10">
+                <Library size={22} className="text-brand-400" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-dark-text">Biblioteca</h1>
+                <p className="text-xs text-dark-subtext mt-0.5">
+                  {viewMode === 'collections'
+                    ? `${collections.length} ${collections.length === 1 ? 'coleção' : 'coleções'}`
+                    : archiveFilter === 'archived'
+                    ? `${booksCount} ${booksCount === 1 ? 'livro arquivado' : 'livros arquivados'}`
+                    : `${booksCount} ${booksCount === 1 ? 'livro' : 'livros'}`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-dark-text">Biblioteca</h1>
-              <p className="text-xs text-dark-subtext mt-0.5">
-                {booksCount} {booksCount === 1 ? 'livro' : 'livros'}
-              </p>
-            </div>
+
+            {/* View Mode Toggle: Livros vs Coleções */}
+            {setViewMode && (
+              <div className="flex items-center gap-1 bg-dark-card rounded-xl p-1 border border-white/5 ml-2">
+                <button
+                  type="button"
+                  aria-label="Visualizar Livros"
+                  onClick={() => setViewMode('books')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    viewMode === 'books'
+                      ? 'bg-brand-500/20 text-brand-300 shadow-sm'
+                      : 'text-dark-subtext hover:text-white'
+                  }`}
+                >
+                  <BookOpen size={14} />
+                  <span>Livros</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Visualizar Coleções"
+                  onClick={() => setViewMode('collections')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    viewMode === 'collections'
+                      ? 'bg-brand-500/20 text-brand-300 shadow-sm'
+                      : 'text-dark-subtext hover:text-white'
+                  }`}
+                >
+                  <Folder size={14} />
+                  <span>Coleções</span>
+                  {collections.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/80 font-semibold">
+                      {collections.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -90,19 +156,39 @@ export function LibraryHeader({
               <span className="hidden sm:inline">Drive</span>
             </button>
             <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-white/5 text-dark-subtext hover:bg-white/10 hover:text-white border border-white/10 transition-colors"
+              title="Guia completo de uso da Biblioteca"
+              aria-label="Guia da Biblioteca"
+            >
+              <HelpCircle size={16} />
+              <span className="hidden sm:inline">Guia</span>
+            </button>
+            <button
               onClick={() => setShowStats(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
               title="Estatísticas de leitura"
             >
               <BarChart3 size={18} />
             </button>
-            <button
-              onClick={handleImport}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-lg shadow-brand-500/20"
-            >
-              <Plus size={16} />
-              <span>Importar PDF / EPUB</span>
-            </button>
+            {viewMode === 'collections' && onOpenCreateCollection ? (
+              <button
+                onClick={onOpenCreateCollection}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-lg shadow-brand-500/20"
+              >
+                <FolderPlus size={16} />
+                <span>Nova Coleção</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleImport}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-lg shadow-brand-500/20"
+              >
+                <Plus size={16} />
+                <span>Importar PDF / EPUB</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -155,25 +241,75 @@ export function LibraryHeader({
             ))}
           </div>
 
-          {/* Collection filter */}
-          <LibraryCollectionDropdown
-            collections={collections}
-            selectedCollection={selectedCollection}
-            setSelectedCollection={setSelectedCollection}
-            showCollectionDropdown={showCollectionDropdown}
-            setShowCollectionDropdown={setShowCollectionDropdown}
-            editingCollectionId={editingCollectionId}
-            setEditingCollectionId={setEditingCollectionId}
-            editingCollectionName={editingCollectionName}
-            setEditingCollectionName={setEditingCollectionName}
-            handleSaveRename={handleSaveRename}
-            handleStartRename={handleStartRename}
-            onOpen={() => {
-              setShowCollectionDropdown(!showCollectionDropdown);
-              setShowSortDropdown(false);
-              setShowAuthorDropdown(false);
-            }}
-          />
+          {/* Format filter pills */}
+          {setFormatFilter && (
+            <div className="flex items-center gap-1 bg-dark-card rounded-lg p-1 border border-white/5">
+              {(['all', 'pdf', 'epub'] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  onClick={() => setFormatFilter(fmt)}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium uppercase tracking-wide transition-all ${
+                    formatFilter === fmt
+                      ? 'bg-brand-500/20 text-brand-400 shadow-sm'
+                      : 'text-dark-subtext hover:text-dark-text'
+                  }`}
+                >
+                  {fmt === 'all' ? 'Formatos' : fmt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Archive Toggle Button */}
+          {setArchiveFilter && (
+            <button
+              onClick={() => {
+                setArchiveFilter(archiveFilter === 'archived' ? 'active' : 'archived');
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                archiveFilter === 'archived'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 shadow-sm'
+                  : 'bg-dark-card border-white/5 text-dark-subtext hover:text-white'
+              }`}
+              title={archiveFilter === 'archived' ? 'Voltar para livros ativos' : 'Ver livros arquivados'}
+            >
+              <Archive size={14} className={archiveFilter === 'archived' ? 'text-amber-400' : 'text-dark-subtext'} />
+              <span>Arquivados</span>
+              {archivedCount > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                    archiveFilter === 'archived'
+                      ? 'bg-amber-500/30 text-amber-200'
+                      : 'bg-white/10 text-white/70'
+                  }`}
+                >
+                  {archivedCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Collection filter (relevant in books mode) */}
+          {viewMode === 'books' && (
+            <LibraryCollectionDropdown
+              collections={collections}
+              selectedCollection={selectedCollection}
+              setSelectedCollection={setSelectedCollection}
+              showCollectionDropdown={showCollectionDropdown}
+              setShowCollectionDropdown={setShowCollectionDropdown}
+              editingCollectionId={editingCollectionId}
+              setEditingCollectionId={setEditingCollectionId}
+              editingCollectionName={editingCollectionName}
+              setEditingCollectionName={setEditingCollectionName}
+              handleSaveRename={handleSaveRename}
+              handleStartRename={handleStartRename}
+              onOpen={() => {
+                setShowCollectionDropdown(!showCollectionDropdown);
+                setShowSortDropdown(false);
+                setShowAuthorDropdown(false);
+              }}
+            />
+          )}
 
           {/* Author filter */}
           <LibraryAuthorDropdown
@@ -190,6 +326,10 @@ export function LibraryHeader({
           />
         </div>
       </div>
+
+      {showHelpModal && (
+        <LibraryHelpModal onClose={() => setShowHelpModal(false)} />
+      )}
     </div>
   );
 }
