@@ -19,6 +19,7 @@ export interface CultureItem {
   volumes?: number | null;
   chapters?: number | null;
   episodes_count?: number | null;
+  genres?: string[];
   trailer_url?: string;
   trailer_yt_id?: string;
   created_at: string;

@@ -1,20 +1,31 @@
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
 import type { CultureType } from '../../types/culture';
+import type { RecommendationTier } from '../../types/culture-recommendations';
+import { CultureEdgeAI } from './culture-edge-ai';
+import { CURATED_MEDIA_CATALOG } from './culture-local-catalog';
 
 /**
- * Interface representing a 1-bit quantized embedding.
- * In a real scenario, this would be a Uint8Array where each bit represents a dimension.
- * For example, a 768-dim vector becomes a 96-byte array.
+ * Interface representing a local media item with a 1-bit quantized embedding.
+ * In a 384-dimensional space, each vector is compressed to 48 bytes (384 bits).
  */
 export interface LocalMediaItem {
-  id: string;             // TMDB ID
+  id: string;
   title: string;
+  original_title?: string;
   type: CultureType;
   year: number;
   popularity: number;
-  genres: string[];       // Fast literal fallback
-  embedding: Uint8Array;  // 1-bit quantized vector (e.g., 48 or 96 bytes)
+  genres: string[];
+  creator?: string;
+  synopsis?: string;
+  tier?: RecommendationTier;
+  origin_country?: string;
+  duration?: string;
+  platform?: string;
+  cover_image?: string;
+  rating?: number;
+  embedding: Uint8Array;
 }
 
 interface CultureEdgeDBSchema extends DBSchema {
@@ -32,6 +43,8 @@ interface CultureEdgeDBSchema extends DBSchema {
     value: unknown;
   };
 }
+
+const CURRENT_CATALOG_VERSION = 2;
 
 class CultureLocalDatabaseImpl {
   private dbPromise: Promise<IDBPDatabase<CultureEdgeDBSchema>> | null = null;
@@ -58,24 +71,25 @@ class CultureLocalDatabaseImpl {
 
   /**
    * Syncs the remote compressed binary database to local IndexedDB via Delta Updates.
-   * If offline or API unavailable, falls back to existing local data (and inserts mock data if completely empty).
+   * If offline or API unavailable, falls back to existing local data and seeds/upgrades
+   * the curated local catalog of 90+ multi-format works.
    */
   async syncDatabase(): Promise<void> {
     const db = await this.initDB();
-    
+
     try {
       // 1. Check last sync cursor
-      const lastSync = (await db.get('metadata', 'last_sync_timestamp')) as number || 0;
-      
+      const lastSync = ((await db.get('metadata', 'last_sync_timestamp')) as number) || 0;
+
       // 2. Fetch delta update only if remote endpoint is explicitly configured
       const syncUrl = import.meta.env.VITE_CULTURE_SYNC_URL as string | undefined;
       if (syncUrl) {
         console.log(`[CultureLocalDB] Checking new media updates since ${new Date(lastSync).toISOString()}...`);
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for background sync
-        
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
         const response = await fetch(`${syncUrl}?since=${lastSync}`, {
-          signal: controller.signal
+          signal: controller.signal,
         });
         clearTimeout(timeoutId);
 
@@ -101,111 +115,32 @@ class CultureLocalDatabaseImpl {
       console.warn('[CultureLocalDB] Sync API unreachable at this time. Using local offline database.', err);
     }
 
-    // --- Local Fallback: If DB is completely empty (first boot), inject initial catalog ---
+    // --- Local Fallback & Catalog Version Upgrade Check ---
+    const storedVersion = (await db.get('metadata', 'catalog_version')) as number | undefined;
     const count = await db.count('media');
-    if (count === 0) {
-      console.log('[CultureLocalDB] Local database completely empty. Seeding initial catalog with 48-byte vectors (384 dimensions)...');
-      const seedData: LocalMediaItem[] = [
-        {
-          id: 'seed-1',
-          title: 'Blade Runner 2049',
-          type: 'filme',
-          year: 2017,
-          popularity: 95.5,
-          genres: ['Sci-Fi', 'Thriller'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-2',
-          title: 'Interstellar',
-          type: 'filme',
-          year: 2014,
-          popularity: 98.2,
-          genres: ['Sci-Fi', 'Drama'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-3',
-          title: 'The Godfather',
-          type: 'filme',
-          year: 1972,
-          popularity: 88.0,
-          genres: ['Crime', 'Drama'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-4',
-          title: 'Cyberpunk Edgerunners',
-          type: 'série',
-          year: 2022,
-          popularity: 92.0,
-          genres: ['Sci-Fi', 'Action', 'Anime'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-5',
-          title: 'Dune: Part Two',
-          type: 'filme',
-          year: 2024,
-          popularity: 96.0,
-          genres: ['Sci-Fi', 'Adventure'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-6',
-          title: 'Severance',
-          type: 'série',
-          year: 2022,
-          popularity: 94.0,
-          genres: ['Sci-Fi', 'Thriller', 'Mystery'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-7',
-          title: 'Oppenheimer',
-          type: 'filme',
-          year: 2023,
-          popularity: 97.0,
-          genres: ['Drama', 'History'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-8',
-          title: 'Succession',
-          type: 'série',
-          year: 2018,
-          popularity: 93.0,
-          genres: ['Drama'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-9',
-          title: 'Breaking Bad',
-          type: 'série',
-          year: 2008,
-          popularity: 99.0,
-          genres: ['Crime', 'Drama', 'Thriller'],
-          embedding: this.generateRandomVector(48),
-        },
-        {
-          id: 'seed-10',
-          title: 'Arrival',
-          type: 'filme',
-          year: 2016,
-          popularity: 91.0,
-          genres: ['Sci-Fi', 'Mystery', 'Drama'],
-          embedding: this.generateRandomVector(48),
-        }
-      ];
+
+    // If empty or holding previous small mock dataset (< 50 items) or version outdated:
+    if (count < 50 || storedVersion !== CURRENT_CATALOG_VERSION) {
+      console.log(
+        `[CultureLocalDB] Seeding/Upgrading local catalog to version ${CURRENT_CATALOG_VERSION} (${CURATED_MEDIA_CATALOG.length} items)...`
+      );
 
       const tx = db.transaction('media', 'readwrite');
-      for (const item of seedData) {
-        await tx.store.put(item);
+      for (const item of CURATED_MEDIA_CATALOG) {
+        const textVibe = `${item.title} ${item.original_title || ''} ${item.type} ${item.genres.join(' ')} ${item.creator} ${item.synopsis}`;
+        const embedding = CultureEdgeAI.generateFallbackVector(textVibe, 48);
+
+        await tx.store.put({
+          ...item,
+          embedding,
+        });
       }
       await tx.done;
+
+      await db.put('metadata', CURRENT_CATALOG_VERSION, 'catalog_version');
       await db.put('metadata', Date.now(), 'last_sync_timestamp');
     }
-    
+
     this.isInitialized = true;
   }
 
@@ -214,10 +149,18 @@ class CultureLocalDatabaseImpl {
     return db.getAll('media');
   }
 
-  private generateRandomVector(bytes: number): Uint8Array {
-    const arr = new Uint8Array(bytes);
-    crypto.getRandomValues(arr);
-    return arr;
+  async getItem(id: string): Promise<LocalMediaItem | undefined> {
+    const db = await this.initDB();
+    return db.get('media', id);
+  }
+
+  async addOrUpdateItems(items: LocalMediaItem[]): Promise<void> {
+    const db = await this.initDB();
+    const tx = db.transaction('media', 'readwrite');
+    for (const item of items) {
+      await tx.store.put(item);
+    }
+    await tx.done;
   }
 }
 

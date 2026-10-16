@@ -102,13 +102,16 @@ export function useRecommendations(onLibraryUpdated?: () => void) {
           // Progressive rendering: mount cards smoothly without collapsing page height or causing scroll jumps!
           if (update.clusters && update.clusters.length > 0) {
             setClusters(prevClusters => {
-              if (!prevClusters || prevClusters.length === 0) {
+              if (!prevClusters || prevClusters.length === 0 || !update.isPartial) {
                 return update.clusters;
               }
-              // If previous clusters existed, preserve the bottom clusters to avoid height collapse / scroll jump
+              // Deduplicate by cluster ID and preserve existing clusters during progressive mounting
+              const updateIds = new Set(update.clusters.map(c => c.id));
               const merged = [...update.clusters];
-              if (prevClusters.length > update.clusters.length) {
-                merged.push(...prevClusters.slice(update.clusters.length));
+              for (const prev of prevClusters) {
+                if (!updateIds.has(prev.id)) {
+                  merged.push(prev);
+                }
               }
               return merged;
             });

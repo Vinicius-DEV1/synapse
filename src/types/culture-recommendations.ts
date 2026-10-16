@@ -26,6 +26,9 @@ export interface RawAIRecommendation {
   cast?: string;
   trailer_url?: string;
   trailer_yt_id?: string;
+  cover_image?: string;
+  api_id?: string;
+  api_source?: 'jikan' | 'tvmaze' | 'imdb' | 'books' | 'itunes' | 'anilist' | 'kitsu' | 'openlibrary';
 }
 
 export interface HydratedRecommendation extends RawAIRecommendation {

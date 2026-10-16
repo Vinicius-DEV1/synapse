@@ -17,6 +17,19 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
+interface OpenLibraryDoc {
+  key?: string;
+  cover_i?: number;
+  title?: string;
+  author_name?: string[];
+  publisher?: string[];
+  ratings_average?: number;
+  number_of_pages_median?: number;
+  first_publish_year?: number;
+  publish_year?: number[];
+  subject?: string[];
+}
+
 /**
  * Fetches book covers and metadata from Open Library.
  * Open Library provides high-resolution book covers with no strict daily quotas.
@@ -40,12 +53,12 @@ export async function fetchOpenLibraryBooks(
     if (!res.ok) return [];
 
     const data = await res.json();
-    const docs = Array.isArray(data.docs) ? data.docs : [];
+    const docs: OpenLibraryDoc[] = Array.isArray(data.docs) ? data.docs : [];
 
     const results: CultureSearchResult[] = docs
-      .filter((doc: any) => doc.cover_i)
+      .filter((doc): doc is OpenLibraryDoc & { cover_i: number } => typeof doc.cover_i === 'number')
       .slice(0, 3)
-      .map((doc: any) => {
+      .map((doc) => {
         const coverId = doc.cover_i;
         const cover = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
         const year = doc.first_publish_year || (doc.publish_year ? doc.publish_year[0] : null);

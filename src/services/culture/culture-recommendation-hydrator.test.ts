@@ -92,6 +92,7 @@ describe('culture-recommendation-hydrator', () => {
     ]);
 
     const itunesSpy = vi.spyOn(cultureApis, 'fetchITunesMovies').mockResolvedValue([]);
+    const cinemetaSpy = vi.spyOn(cultureApis, 'fetchCinemetaSearch').mockResolvedValue([]);
 
     const item: RawAIRecommendation = {
       title: 'Alien: Romulus',
@@ -107,6 +108,7 @@ describe('culture-recommendation-hydrator', () => {
     expect(match).toBeNull();
 
     imdbSpy.mockRestore();
+    cinemetaSpy.mockRestore();
     itunesSpy.mockRestore();
   });
 
@@ -224,6 +226,7 @@ describe('culture-recommendation-hydrator', () => {
 
   it('filters out hallucinated or unverified works that have no match and no cover image', async () => {
     const imdbSpy = vi.spyOn(cultureApis, 'fetchImdbMovies').mockResolvedValue([]);
+    const cinemetaSpy = vi.spyOn(cultureApis, 'fetchCinemetaSearch').mockResolvedValue([]);
     const itunesSpy = vi.spyOn(cultureApis, 'fetchITunesMovies').mockResolvedValue([]);
 
     const rawItems: RawAIRecommendation[] = [
@@ -244,6 +247,7 @@ describe('culture-recommendation-hydrator', () => {
     expect(results).toHaveLength(0); // Hallucinated item with no match/cover is discarded!
 
     imdbSpy.mockRestore();
+    cinemetaSpy.mockRestore();
     itunesSpy.mockRestore();
   });
 });

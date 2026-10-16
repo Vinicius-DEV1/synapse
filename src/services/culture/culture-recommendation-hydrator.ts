@@ -8,6 +8,7 @@ import {
   fetchJikan,
   fetchGoogleBooks,
   fetchCinemetaMetadata,
+  fetchCinemetaSearch,
   type CultureSearchResult,
 } from './culture-apis';
 import {
@@ -21,16 +22,8 @@ import {
   cleanEditionModifiers,
   cleanSeasonModifiers,
   isItemInLibrary,
+  slugify,
 } from './culture-title-utils';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 /**
  * Validates that an external media search result actually corresponds to the recommendation,
@@ -156,6 +149,21 @@ function pickValidMatch(
  * Searches the appropriate API for a single raw recommendation with multi-tiered provider fallbacks.
  */
 export async function searchMediaForRecommendation(item: RawAIRecommendation): Promise<CultureSearchResult | null> {
+  if (item.cover_image) {
+    return {
+      title: item.title,
+      type: item.type,
+      cover: item.cover_image,
+      year: item.year,
+      synopsis: item.synopsis || '',
+      total: 0,
+      rating: item.rating,
+      genres: item.genres,
+      api_id: item.api_id || `rec_${item.type}_${slugify(item.title)}_${item.year || ''}`,
+      api_source: item.api_source || (item.type === 'anime' || item.type === 'manga' ? 'anilist' : item.type === 'livro' ? 'books' : 'imdb'),
+    };
+  }
+
   const queriesToTry: string[] = [];
   if (item.type === 'anime' || item.type === 'manga') {
     if (item.original_title && !queriesToTry.includes(item.original_title)) queriesToTry.push(item.original_title);
@@ -188,6 +196,10 @@ export async function searchMediaForRecommendation(item: RawAIRecommendation): P
         const validImdb = pickValidMatch(imdbMatches, item);
         if (validImdb) return validImdb;
 
+        const cinemetaMatches = await fetchCinemetaSearch(query, 'movie');
+        const validCinemeta = pickValidMatch(cinemetaMatches, item);
+        if (validCinemeta) return validCinemeta;
+
         const itunesMatches = await fetchITunesMovies(query);
         const validItunes = pickValidMatch(itunesMatches, item);
         if (validItunes) return validItunes;
@@ -195,6 +207,10 @@ export async function searchMediaForRecommendation(item: RawAIRecommendation): P
         const tvMatches = await fetchTVMaze(query);
         const validTv = pickValidMatch(tvMatches, item);
         if (validTv) return validTv;
+
+        const cinemetaMatches = await fetchCinemetaSearch(query, 'series');
+        const validCinemeta = pickValidMatch(cinemetaMatches, item);
+        if (validCinemeta) return validCinemeta;
 
         const imdbMatches = await fetchImdbSeries(query);
         const validImdb = pickValidMatch(imdbMatches, item);
@@ -282,8 +298,8 @@ export async function hydrateRecommendations(
   seenTracker: Set<string> = new Set<string>()
 ): Promise<HydratedRecommendation[]> {
   const hydratedResults: HydratedRecommendation[] = [];
-  const BATCH_SIZE = 4;
-  const DELAY_MS = 60;
+  const BATCH_SIZE = 3;
+  const DELAY_MS = 120;
 
   for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
     const batch = rawItems.slice(i, i + BATCH_SIZE);
@@ -316,12 +332,27 @@ export async function hydrateRecommendations(
             console.warn(`[Hydrator] Falha ao consultar metadados para "${rawItem.title}":`, fetchErr);
           }
 
-          // Strict Factual Verification & No Ghost Works Guard:
-          // If no verified match with a cover was found in external APIs (IMDb, AniList, TVMaze, Google Books):
-          // Reject unverified or hallucinated ghost works so the user never sees "Sem Capa" or fake titles.
+          // If no cover was found with primary title, try searching with original title as fallback
+          if ((!match || !match.cover) && rawItem.original_title && rawItem.original_title !== rawItem.title) {
+            try {
+              const fallbackMatch = await searchMediaForRecommendation({
+                ...rawItem,
+                title: rawItem.original_title,
+              });
+              if (fallbackMatch?.cover) {
+                match = fallbackMatch;
+              }
+            } catch {
+              // Gracefully continue
+            }
+          }
+
+          // Strict Factual Verification Guard:
+          // For upcoming announcements without external API index yet, allow them through.
+          // For other tiers, require a verified match with cover to prevent ghost works.
           if (!match || !match.cover) {
-            if (!(rawItem.tier === 'upcoming' && match?.api_id)) {
-              console.warn(`[Hydrator] Rejeitando obra não verificada/sem capa (possível alucinação da IA): "${rawItem.title}"`);
+            if (rawItem.tier !== 'upcoming') {
+              console.warn(`[Hydrator] Rejeitando obra não verificada/sem capa: "${rawItem.title}"`);
               return null;
             }
           }

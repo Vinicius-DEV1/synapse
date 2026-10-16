@@ -177,6 +177,69 @@ export async function fetchCinemetaMetadata(
   }
 }
 
+interface CinemetaCatalogMeta {
+  id: string;
+  name?: string;
+  type?: string;
+  poster?: string;
+  releaseInfo?: string;
+  description?: string;
+}
+
+/**
+ * Searches Cinemeta catalog by title query for movies or series.
+ * Serves as a high-reliability fallback when IMDb autosuggest or TVMaze rate-limits.
+ */
+export async function fetchCinemetaSearch(
+  q: string,
+  type: 'movie' | 'series' = 'movie'
+): Promise<CultureSearchResult[]> {
+  const clean = q.trim();
+  if (!clean) return [];
+
+  const cacheKey = `cinemeta_search_${type}_${clean.toLowerCase()}`;
+  const cached = cultureApiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const res = await fetch(
+      `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodeURIComponent(clean)}.json`,
+      { signal: controller.signal }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const metas: CinemetaCatalogMeta[] = Array.isArray(data?.metas) ? data.metas : [];
+
+    const results: CultureSearchResult[] = metas.slice(0, 5).map((m) => {
+      const year = m.releaseInfo ? parseInt(m.releaseInfo, 10) : undefined;
+      return {
+        title: m.name || clean,
+        synopsis: m.description || '',
+        cover: m.poster || '',
+        total: 0,
+        year: typeof year === 'number' && !isNaN(year) ? year : null,
+        type: type === 'series' ? 'série' : 'filme',
+        api_id: m.id || '',
+        api_source: 'imdb',
+        status: 'finished' as const,
+      };
+    });
+
+    cultureApiCache.set(cacheKey, { timestamp: Date.now(), data: results });
+    return results;
+  } catch (err) {
+    console.warn('[CultureAPI] Erro na busca de catálogo do Cinemeta:', err);
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 
 let lastJikanRequestTime = 0;
 let jikanCooldownUntil = 0;

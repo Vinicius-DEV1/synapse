@@ -80,27 +80,49 @@ class CultureEdgeAIImpl {
   }
 
   /**
-   * Generates a deterministic-ish random binary vector as a fallback
-   * when the embedding model is unavailable (CORS, offline, etc.).
-   * Uses a simple string hash to produce semi-stable vectors per input.
+   * Generates a deterministic semantic binary vector using token-based feature hashing
+   * when the transformer embedding model is unavailable or still downloading.
+   * Words sharing genres/creators activate the same bit positions, ensuring genuine Hamming affinity.
    */
-  private generateFallbackVector(seed: string, byteLength: number = 48): Uint8Array {
+  public generateFallbackVector(seed: string, byteLength: number = 48): Uint8Array {
     const vector = new Uint8Array(byteLength);
+    const totalBits = byteLength * 8;
+    const tokens = seed.toLowerCase().split(/[\s,.:;_\-+/()]+/).filter(t => t.length > 1);
 
-    // Simple FNV-1a-inspired hash seeding for deterministic-ish output per text
-    let hash = 0x811c9dc5;
-    for (let i = 0; i < seed.length; i++) {
-      hash ^= seed.charCodeAt(i);
-      hash = Math.imul(hash, 0x01000193);
+    if (tokens.length === 0) {
+      return vector;
     }
 
-    for (let i = 0; i < byteLength; i++) {
-      hash ^= (i * 31);
-      hash = Math.imul(hash, 0x01000193);
-      vector[i] = (hash >>> 0) & 0xFF;
+    for (const token of tokens) {
+      let hash = 0x811c9dc5;
+      for (let i = 0; i < token.length; i++) {
+        hash ^= token.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193);
+      }
+      // Project 3 deterministic bit positions per token across the 384 dimensions
+      for (let k = 0; k < 3; k++) {
+        hash = Math.imul(hash ^ (k * 0x5bd1e995), 0x01000193);
+        const bitIdx = Math.abs(hash) % totalBits;
+        const byteIdx = Math.floor(bitIdx / 8);
+        const bitPos = bitIdx % 8;
+        vector[byteIdx] |= (1 << bitPos);
+      }
     }
 
     return vector;
+  }
+
+  /**
+   * Generates a 48-byte 1-bit quantized binary embedding for text.
+   * Uses neural transformer model when available, falling back seamlessly to semantic token hashing.
+   */
+  async generateBinaryEmbedding(text: string): Promise<Uint8Array> {
+    try {
+      const floatVector = await this.generateEmbedding(text);
+      return this.quantizeToBinary(floatVector);
+    } catch {
+      return this.generateFallbackVector(text, 48);
+    }
   }
 
   /**

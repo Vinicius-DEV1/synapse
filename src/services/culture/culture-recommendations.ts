@@ -17,7 +17,7 @@ import {
   buildExpandClusterPrompt,
 } from './culture-recommendations-prompt';
 import { hydrateRecommendations } from './culture-recommendation-hydrator';
-import { normalizeTitle, isItemInLibrary } from './culture-title-utils';
+import { normalizeTitle, isItemInLibrary, slugify } from './culture-title-utils';
 import { getSettings } from '../../utils/settings';
 import { promptGemini } from '../gemini/client';
 import { extractAiCulturalDna } from './culture-ai-dna';
@@ -410,11 +410,25 @@ export const CultureRecommendationsService = {
 
       const hydratedItems = await hydrateRecommendations(validItems, items, seenTracker);
       if (hydratedItems.length > 0) {
+        const clusterSlug = slugify(rawCluster.title || rawCluster.id || `colecao_${cIdx + 1}`);
         accumulatedClusters.push({
-          id: rawCluster.id || `cluster_${cIdx + 1}`,
+          id: `b1_c${cIdx + 1}_${clusterSlug}`,
           title: rawCluster.title || `Coleção ${cIdx + 1}`,
           description: rawCluster.description || '',
           items: hydratedItems,
+        });
+
+        // Broadcast incrementally as each collection in Batch 1 is hydrated
+        const currentCount = accumulatedClusters.reduce((acc, c) => acc + c.items.length, 0);
+        broadcast({
+          phase: 'batch_hydrating',
+          currentBatch: 1,
+          totalBatches: 2,
+          clusters: [...accumulatedClusters],
+          message: `Coleção "${rawCluster.title || `Coleção ${cIdx + 1}`}" pronta!`,
+          progressPercent: Math.min(30 + (cIdx + 1) * 12, 55),
+          isPartial: true,
+          totalItemsCount: currentCount,
         });
       }
     }
@@ -523,11 +537,25 @@ export const CultureRecommendationsService = {
 
           const hydratedItems = await hydrateRecommendations(validItems, items, seenTracker);
           if (hydratedItems.length > 0) {
+            const clusterSlug = slugify(rawCluster.title || rawCluster.id || `colecao_${accumulatedClusters.length + 1}`);
             accumulatedClusters.push({
-              id: rawCluster.id || `cluster_b2_${cIdx + 1}`,
+              id: `b2_c${cIdx + 1}_${clusterSlug}`,
               title: rawCluster.title || `Coleção ${accumulatedClusters.length + 1}`,
               description: rawCluster.description || '',
               items: hydratedItems,
+            });
+
+            // Broadcast incrementally as each collection in Batch 2 is ready: mounts immediately in UI!
+            const currentTotal = accumulatedClusters.reduce((acc, c) => acc + c.items.length, 0);
+            broadcast({
+              phase: 'batch_ready',
+              currentBatch: 2,
+              totalBatches: 2,
+              clusters: [...accumulatedClusters],
+              message: `Coleção "${rawCluster.title || `Coleção ${accumulatedClusters.length}`}" pronta! (${accumulatedClusters.length} coleções)`,
+              progressPercent: Math.min(85 + (cIdx + 1) * 6, 98),
+              isPartial: true,
+              totalItemsCount: currentTotal,
             });
           }
         }
