@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import BookEditModal from './BookEditModal';
-import type { LibraryBook } from '../../types';
+import type { LibraryBook } from '../../../types';
 
 vi.mock('../../ui/Portal', () => ({
   Portal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

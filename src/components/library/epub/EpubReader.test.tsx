@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import EpubReader from './EpubReader';
-import type { LibraryBook } from '../../types';
+import type { LibraryBook } from '../../../types';
 
 vi.mock('epubjs', () => ({
   default: vi.fn(),

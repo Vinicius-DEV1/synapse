@@ -66,6 +66,15 @@ Desktop.ini
 *.sw?
 *.bak
 *.tmp
+*.old
+*.orig
+*.backup
+*~
+*.tsbuildinfo
+
+# Mobile WebView Shell & Expo
+caderno-mobile-webview/.expo/
+caderno-mobile-webview/web-build/
 
 # Audit Reports & Agent Swarm Worktrees (Internal - Never Commit)
 docs/audit/

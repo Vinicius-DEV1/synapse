@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import AnnotationPanel from './AnnotationPanel';
-import type { LibraryHighlight, LibraryBookmark } from '../../types';
+import type { LibraryHighlight, LibraryBookmark } from '../../../../types';
 
 vi.mock('../../ui/AnnotationsTab', () => ({
   AnnotationsTab: ({ groupedHighlights }: any) => (
