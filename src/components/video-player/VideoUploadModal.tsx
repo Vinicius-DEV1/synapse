@@ -35,6 +35,29 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   const isMountedRef = useRef(true);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isUploading) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isUploading) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isUploading, onClose]);
+
+  useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
@@ -175,7 +198,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
             message: msg,
             kind: 'warning',
           })) === 1
-        : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+        : true;
       if (!confirmed) {
         setIsUploading(false);
         return;

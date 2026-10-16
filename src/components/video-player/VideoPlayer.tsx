@@ -204,6 +204,27 @@ export default function VideoPlayer({ src, video, title, onClose, onDurationLoad
   };
 
   useEffect(() => {
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dictState) {
+        setDictState(null);
+      } else if (showHelpModal) {
+        setShowHelpModal(false);
+      } else if (showVocabDrawer) {
+        setShowVocabDrawer(false);
+      } else {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [dictState, showHelpModal, showVocabDrawer]);
+
+  useEffect(() => {
     return () => {
       if (videoRef.current) {
         videoRef.current.pause();

@@ -9,11 +9,13 @@ import {
 import { playUiToggleSound } from '../../utils/uiSounds';
 import { HabitHeatmapModal } from '../habits/HabitHeatmapModal';
 import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 
 export default function HabitWidgetNodeView({ node, updateAttributes }: NodeViewProps) {
+  const { t } = useTranslation();
   const { habitId, targetDate, title: initialTitle, streak: initialStreak } = node.attrs;
 
-  const [title, setTitle] = useState<string>(initialTitle || 'Hábito');
+  const [title, setTitle] = useState<string>(initialTitle || t('habits.habit', 'Hábito'));
   const [streak, setStreak] = useState<number>(Number(initialStreak) || 0);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [isNotFound, setIsNotFound] = useState<boolean>(false);
@@ -175,7 +177,7 @@ export default function HabitWidgetNodeView({ node, updateAttributes }: NodeView
         {/* Activity Heatmap Toggle Indicator */}
         <span
           className="text-zinc-500 hover:text-zinc-200 opacity-40 group-hover:opacity-100 transition-opacity ml-0.5"
-          title="Ver mapa de atividade anual"
+          title={t('habits.seeAnnualActivity', 'Ver mapa de atividade anual')}
         >
           <Activity size={12} />
         </span>

@@ -3,6 +3,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LoansTab } from './LoansTab';
 import type { Transaction } from '../../../types';
+import { I18nProvider } from '../../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('LoansTab component', () => {
   const mockLoans: Transaction[] = [
@@ -40,7 +44,7 @@ describe('LoansTab component', () => {
     const onEditLoan = vi.fn();
     const onDeleteLoan = vi.fn();
 
-    render(
+    renderWithI18n(
       <LoansTab
         loans={mockLoans}
         onAddLoan={onAddLoan}
@@ -70,7 +74,7 @@ describe('LoansTab component', () => {
     const onEditLoan = vi.fn();
     const onDeleteLoan = vi.fn();
 
-    render(
+    renderWithI18n(
       <LoansTab
         loans={mockLoans}
         onAddLoan={onAddLoan}
@@ -101,7 +105,7 @@ describe('LoansTab component', () => {
     const onEditLoan = vi.fn();
     const onDeleteLoan = vi.fn();
 
-    render(
+    renderWithI18n(
       <LoansTab
         loans={mockLoans}
         onAddLoan={onAddLoan}
@@ -151,7 +155,7 @@ describe('LoansTab component', () => {
       },
     ];
 
-    render(
+    renderWithI18n(
       <LoansTab
         loans={overdueLoans}
         onAddLoan={vi.fn()}
@@ -184,7 +188,7 @@ describe('LoansTab component', () => {
       },
     ];
 
-    render(
+    renderWithI18n(
       <LoansTab
         loans={loanWithInterest}
         onAddLoan={vi.fn()}

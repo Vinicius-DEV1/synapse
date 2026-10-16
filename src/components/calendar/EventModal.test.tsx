@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import EventModal from './EventModal';
+import { I18nProvider } from '../../i18n';
 
 vi.mock('../ui/Portal', () => ({
   Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="event-portal">{children}</div>,
@@ -36,7 +37,9 @@ describe('EventModal Component', () => {
     const onClose = vi.fn();
 
     const { getByPlaceholderText, getByText, getByTestId } = render(
-      <EventModal event={null} onSave={onSave} onClose={onClose} />
+      <I18nProvider initialLanguage="pt-BR">
+        <EventModal event={null} onSave={onSave} onClose={onClose} />
+      </I18nProvider>
     );
 
     expect(getByText('Novo Agendamento')).toBeDefined();

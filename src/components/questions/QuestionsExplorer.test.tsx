@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import { QuestionsExplorer } from './QuestionsExplorer';
+import { I18nProvider } from '../../i18n';
 import type { BatteryWithQuestions } from '../../types/quiz';
+
+function renderWithI18n(ui: React.ReactElement) {
+  return render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
+}
 
 const mockBatteries: BatteryWithQuestions[] = [
   {
@@ -73,7 +78,7 @@ const mockBatteries: BatteryWithQuestions[] = [
 
 describe('QuestionsExplorer Component', () => {
   it('renders battery list with titles and page origins', () => {
-    const { getByText } = render(
+    const { getByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -91,7 +96,7 @@ describe('QuestionsExplorer Component', () => {
   });
 
   it('filters batteries by search term', () => {
-    const { getByText, queryByText, getByPlaceholderText } = render(
+    const { getByText, queryByText, getByPlaceholderText } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -112,7 +117,7 @@ describe('QuestionsExplorer Component', () => {
   it('triggers onPlayBattery when clicking Praticar', () => {
     const onPlay = vi.fn();
 
-    const { getAllByText } = render(
+    const { getAllByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={onPlay}
@@ -132,7 +137,7 @@ describe('QuestionsExplorer Component', () => {
   it('triggers onNavigateToPage when clicking page origin badge', () => {
     const onNavigate = vi.fn();
 
-    const { getByText } = render(
+    const { getByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -148,7 +153,7 @@ describe('QuestionsExplorer Component', () => {
   });
 
   it('expands battery questions when toggled', () => {
-    const { getByText, queryByText, getAllByTitle } = render(
+    const { getByText, queryByText, getAllByTitle } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -170,7 +175,7 @@ describe('QuestionsExplorer Component', () => {
 
   it('shows confirmation modal before deleting battery and cancels properly', () => {
     const onDelete = vi.fn();
-    const { getAllByTitle, getByText, queryByText } = render(
+    const { getAllByTitle, getByText, queryByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -198,7 +203,7 @@ describe('QuestionsExplorer Component', () => {
 
   it('confirms deletion in modal and calls onDeleteBattery', () => {
     const onDelete = vi.fn();
-    const { getAllByTitle, getByRole } = render(
+    const { getAllByTitle, getByRole } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -238,7 +243,7 @@ describe('QuestionsExplorer Component', () => {
 
     const getPageTitle = vi.fn((id: string) => (id === 'page-direito' ? 'Direito Constitucional I' : null));
 
-    const { getByText, queryByText } = render(
+    const { getByText, queryByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={batteryWithPageId}
         onPlayBattery={vi.fn()}
@@ -285,7 +290,7 @@ describe('QuestionsExplorer Component', () => {
 
     const onCreateSubgroup = vi.fn();
 
-    const { getByText, getAllByTitle } = render(
+    const { getByText, getAllByTitle } = renderWithI18n(
       <QuestionsExplorer
         batteries={hierarchicalBatteries}
         onPlayBattery={vi.fn()}
@@ -310,7 +315,7 @@ describe('QuestionsExplorer Component', () => {
   it('opens BatteryMoveModal and allows moving battery to another parent', async () => {
     const onMoveBattery = vi.fn().mockResolvedValue(undefined);
 
-    const { getAllByTitle, getByText, getAllByText, getByRole } = render(
+    const { getAllByTitle, getByText, getAllByText, getByRole } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}

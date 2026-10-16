@@ -70,8 +70,8 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
         onSuccess();
         onClose();
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Falha ao autenticar com o Google Drive');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Falha ao autenticar com o Google Drive');
     } finally {
       setLoading(false);
     }

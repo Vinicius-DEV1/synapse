@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trash2, Volume2, VolumeX, AlertTriangle } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -8,9 +9,30 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => {
+  const { t } = useTranslation();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [alarmType, setAlarmType] = useState('beep');
   const [confirmDelete, setConfirmDelete] = useState<'today' | 'last7days' | 'all' | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem('soundEnabled') !== 'false');
@@ -52,6 +74,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
       
+      osc.onended = () => {
+        ctx.close().catch(() => {});
+      };
+      setTimeout(() => {
+        if (ctx.state !== 'closed') ctx.close().catch(() => {});
+      }, 500);
+
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
     } catch (e) {
@@ -67,15 +96,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
     }
   };
 
+  const dataOptions = [
+    { type: 'today' as const, label: t('focus.clearToday', "Limpar Dados de Hoje"), desc: t('focus.clearTodayDesc', 'Exclui todas as sessões de hoje'), danger: false },
+    { type: 'last7days' as const, label: t('focus.clear7Days', 'Limpar Últimos 7 Dias'), desc: t('focus.clear7DaysDesc', 'Exclui sessões da semana passada'), danger: false },
+    { type: 'all' as const, label: t('focus.factoryReset', 'Redefinir Tudo'), desc: t('focus.factoryResetDesc', 'Exclui todas as sessões completamente'), danger: true },
+  ];
+
   return (
     <Portal>
-      <div className="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden">
-      <div className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200">
+      <div 
+        className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden animate-fade-in"
+        onClick={onClose}
+      >
+      <div 
+        className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            ⚙️ Settings
+            ⚙️ {t('focus.settingsTitle', 'Configurações de Foco')}
           </h2>
-          <button onClick={onClose} className="text-dark-subtext hover:text-white transition-colors">
+          <button onClick={onClose} className="text-dark-subtext hover:text-white transition-colors" title={t('common.cancel', 'Cancelar')}>
             <X size={20} />
           </button>
         </div>
@@ -83,15 +124,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
         <div className="p-5 sm:p-6 space-y-8">
           {/* Audio Settings */}
           <div>
-            <h3 className="text-sm font-bold text-dark-subtext uppercase tracking-widest mb-4">Preferences</h3>
+            <h3 className="text-sm font-bold text-dark-subtext uppercase tracking-widest mb-4">{t('focus.preferences', 'Preferências')}</h3>
             <div className="flex items-center justify-between p-4 bg-dark-bg rounded-xl border border-white/5">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${soundEnabled ? 'bg-brand-500/20 text-brand-400' : 'bg-white/5 text-dark-subtext'}`}>
                   {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                 </div>
                 <div>
-                  <p className="font-semibold text-white">Alarm Sound</p>
-                  <p className="text-xs text-dark-subtext">Play a sound when timer finishes</p>
+                  <p className="font-semibold text-white">{t('focus.soundEnabled', 'Som do Alarme')}</p>
+                  <p className="text-xs text-dark-subtext">{t('focus.soundEnabledDesc', 'Tocar som quando o cronômetro terminar')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -107,9 +148,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                     }}
                     className="bg-dark-bg text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-500"
                   >
-                    <option className="bg-dark-bg text-white" value="beep">Digital Beep</option>
-                    <option className="bg-dark-bg text-white" value="retro">Retro Alarm</option>
-                    <option className="bg-dark-bg text-white" value="bell">Tibetan Bell</option>
+                    <option className="bg-dark-bg text-white" value="beep">{t('focus.digitalBeep', 'Beep Digital')}</option>
+                    <option className="bg-dark-bg text-white" value="retro">{t('focus.retroAlarm', 'Alarme Retrô')}</option>
+                    <option className="bg-dark-bg text-white" value="bell">{t('focus.tibetanBell', 'Sino Tibetano')}</option>
                   </select>
                 )}
                 <button 
@@ -124,28 +165,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
 
           {/* Data Management */}
           <div>
-            <h3 className="text-sm font-bold text-dark-subtext uppercase tracking-widest mb-4">Data Management</h3>
+            <h3 className="text-sm font-bold text-dark-subtext uppercase tracking-widest mb-4">{t('focus.dataManagement', 'Gerenciamento de Dados')}</h3>
             <div className="space-y-3">
-              {(
-                [
-                  { type: 'today' as const, label: "Clear Today's Data", desc: 'Deletes all sessions from today', danger: false },
-                  { type: 'last7days' as const, label: 'Clear Last 7 Days', desc: 'Deletes sessions from the past week', danger: false },
-                  { type: 'all' as const, label: 'Factory Reset', desc: 'Deletes all sessions completely', danger: true },
-                ]
-              ).map((item) => (
+              {dataOptions.map((item) => (
                 <div key={item.type} className={`p-4 rounded-xl border ${item.danger ? 'bg-rose-500/5 border-rose-500/20' : 'bg-dark-bg border-white/5'}`}>
                   {confirmDelete === item.type ? (
                     <div className="flex flex-col gap-3 animate-in fade-in">
                       <div className="flex items-center gap-2 text-rose-400">
                         <AlertTriangle size={16} />
-                        <span className="text-sm font-bold">Are you absolutely sure?</span>
+                        <span className="text-sm font-bold">Confirmar exclusão?</span>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 rounded-lg bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition-colors">
-                          Cancel
+                          {t('common.cancel', 'Cancelar')}
                         </button>
                         <button onClick={() => handleDelete(item.type)} className="flex-1 py-2 rounded-lg bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20">
-                          Confirm Delete
+                          {t('focus.confirmDelete', 'Confirmar Exclusão')}
                         </button>
                       </div>
                     </div>
@@ -157,6 +192,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                       </div>
                       <button 
                         onClick={() => setConfirmDelete(item.type)}
+                        title={t('common.delete', 'Excluir')}
                         className={`p-2 rounded-lg transition-colors ${item.danger ? 'text-rose-400 hover:bg-rose-500/20' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
                       >
                         <Trash2 size={18} />

@@ -115,7 +115,7 @@ const TabItem = memo(function TabItem({
         !compactPinnedTabs && (
           <span
             className="p-0.5 rounded-md text-brand-400 flex-shrink-0"
-            title="Aba fixada"
+            title={t('tabBar.pinnedTab')}
           >
             <Pin size={11} className="fill-brand-400/20 rotate-45" />
           </span>
@@ -364,7 +364,7 @@ export default function TabBar() {
             dispatch({ type: 'TOGGLE_SIDEBAR' });
           }}
           className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-0.5"
-          title="Abrir menu"
+          title={t('tabBar.openMenu')}
           data-no-drag
         >
           <PanelLeft size={18} />
@@ -379,7 +379,7 @@ export default function TabBar() {
                 type="button"
                 onClick={() => tabStripRef.current?.scrollBy({ left: -220, behavior: 'smooth' })}
                 className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-all active:scale-95 ml-0.5 mb-0.5"
-                title="Rolar abas para a esquerda"
+                title={t('tabBar.scrollLeft')}
                 data-no-drag
               >
                 <ChevronLeft size={14} />
@@ -437,7 +437,7 @@ export default function TabBar() {
                 type="button"
                 onClick={() => tabStripRef.current?.scrollBy({ left: 220, behavior: 'smooth' })}
                 className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-all active:scale-95 mr-0.5 mb-0.5"
-                title="Rolar abas para a direita"
+                title={t('tabBar.scrollRight')}
                 data-no-drag
               >
                 <ChevronRight size={14} />
@@ -462,14 +462,14 @@ export default function TabBar() {
                 ? 'bg-brand-500/20 text-brand-400' 
                 : 'text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10'
             }`}
-            title="Assistente IA (Chats Ativos)"
-            aria-label="Assistente IA"
+            title={t('tabBar.aiAssistant')}
+            aria-label={t('tabBar.aiAssistant')}
           >
             <span className="text-[15px] flex items-center justify-center">✨</span>
 
             {/* Floating tooltip on hover (pure CSS, zero layout shift) */}
             <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/10 rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
-              Assistente
+              {t('tabBar.aiAssistant')}
             </span>
           </button>
 

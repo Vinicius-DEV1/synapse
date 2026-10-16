@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LibraryActiveFilters } from './LibraryActiveFilters';
+import { I18nProvider } from '../../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) => render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('LibraryActiveFilters', () => {
   const defaultProps = {
@@ -21,13 +24,13 @@ describe('LibraryActiveFilters', () => {
   };
 
   it('renders nothing when no filters are active', () => {
-    const { container } = render(<LibraryActiveFilters {...defaultProps} />);
+    const { container } = renderWithI18n(<LibraryActiveFilters {...defaultProps} />);
     expect(container.firstChild).toBeNull();
   });
 
   it('renders search query chip and clears on click', () => {
     const onClearSearch = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryActiveFilters
         {...defaultProps}
         searchQuery="clean architecture"
@@ -45,7 +48,7 @@ describe('LibraryActiveFilters', () => {
 
   it('renders format chip (PDF) and clears on click', () => {
     const onClearFormat = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryActiveFilters
         {...defaultProps}
         formatFilter="pdf"
@@ -61,7 +64,7 @@ describe('LibraryActiveFilters', () => {
 
   it('renders archive chip when showing archived books', () => {
     const onClearArchive = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryActiveFilters
         {...defaultProps}
         archiveFilter="archived"
@@ -70,14 +73,14 @@ describe('LibraryActiveFilters', () => {
     );
 
     expect(screen.getByText(/Visualizando: Arquivados/i)).toBeDefined();
-    const clearBtn = screen.getByTitle('Voltar para livros ativos');
+    const clearBtn = screen.getByTitle(/Voltar para Ativos/i);
     fireEvent.click(clearBtn);
     expect(onClearArchive).toHaveBeenCalledTimes(1);
   });
 
   it('renders "Limpar filtros" button when filters are active and triggers onClearAll', () => {
     const onClearAll = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryActiveFilters
         {...defaultProps}
         searchQuery="test"

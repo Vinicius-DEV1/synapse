@@ -2,6 +2,7 @@ import { Bold, Italic, Underline, Palette, Strikethrough, Sparkles, Code, Link a
 import { useState, useRef, useEffect } from 'react';
 import { TEXT_COLORS, BG_COLORS } from '../../../utils/colors';
 import type { Editor } from '@tiptap/react';
+import { useI18n } from '../../../i18n';
 
 interface FloatingToolbarProps {
   editor: Editor;
@@ -9,6 +10,7 @@ interface FloatingToolbarProps {
 }
 
 export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarProps) {
+  const { t } = useI18n();
   const [showColors, setShowColors] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -129,55 +131,55 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Cole o link aqui..."
+            placeholder={t('notes.toolbar.linkPlaceholder')}
             className="w-48 bg-black/20 border border-white/10 rounded-md text-sm px-2 py-1 focus:outline-none focus:border-brand-500/50 text-white placeholder-white/30"
           />
-          <button onClick={submitLink} className="p-1 hover:bg-white/10 rounded text-brand-400" title="Salvar"><Check size={16} /></button>
+          <button onClick={submitLink} className="p-1 hover:bg-white/10 rounded text-brand-400" title={t('common.save')}><Check size={16} /></button>
           {formatState?.link && (
             <button 
               onClick={() => { handleFormat('unlink'); setShowLinkInput(false); }} 
               className="p-1 hover:bg-white/10 rounded text-red-400"
-              title="Remover Link"
+              title={t('notes.toolbar.removeLink')}
             >
               <Trash size={15} />
             </button>
           )}
-          <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-white/10 rounded text-dark-subtext" title="Cancelar"><X size={16} /></button>
+          <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-white/10 rounded text-dark-subtext" title={t('common.cancel')}><X size={16} /></button>
         </div>
       ) : (
         <>
           <button
             onClick={() => handleFormat('bold')}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.bold ? activeClass : inactiveClass}`}
-            title="Negrito (Ctrl+B)"
+            title={t('notes.toolbar.bold')}
           >
             <Bold size={15} />
           </button>
           <button
             onClick={() => handleFormat('italic')}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.italic ? activeClass : inactiveClass}`}
-            title="Itálico (Ctrl+I)"
+            title={t('notes.toolbar.italic')}
           >
             <Italic size={15} />
           </button>
           <button
             onClick={() => handleFormat('strike')}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.strike ? activeClass : inactiveClass}`}
-            title="Riscar"
+            title={t('notes.toolbar.strike')}
           >
             <Strikethrough size={15} />
           </button>
           <button
             onClick={() => handleFormat('underline')}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.underline ? activeClass : inactiveClass}`}
-            title="Sublinhado"
+            title={t('notes.toolbar.underline')}
           >
             <Underline size={15} />
           </button>
           <button
             onClick={() => handleFormat('code')}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.code ? activeClass : inactiveClass}`}
-            title="Código"
+            title={t('notes.toolbar.code')}
           >
             <Code size={15} />
           </button>
@@ -192,7 +194,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
               setShowLinkInput(true);
             }}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.link ? activeClass : inactiveClass}`}
-            title={formatState?.link ? "Editar/Remover Link" : "Adicionar Link"}
+            title={formatState?.link ? t('notes.toolbar.editLink') : t('notes.toolbar.link')}
           >
             <LinkIcon size={15} />
           </button>
@@ -201,7 +203,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
             <button
               onClick={() => setShowColors(!showColors)}
               className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.highlight || !!formatState?.textColor ? activeClass : inactiveClass}`}
-              title="Cores e Destaque"
+              title={t('notes.toolbar.colors')}
             >
               <Palette size={15} />
             </button>
@@ -214,7 +216,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                 <div>
                   <div className="flex items-center justify-between mb-1.5 px-0.5">
                     <span className="text-[10px] font-bold text-dark-subtext uppercase tracking-wider">
-                      Cor do Texto
+                      {t('notes.toolbar.textColor')}
                     </span>
                     {formatState?.textColor && (
                       <button
@@ -224,9 +226,9 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                           setShowColors(false);
                         }}
                         className="text-[10px] text-brand-400 hover:text-brand-300 transition-colors"
-                        title="Restaurar cor padrão"
+                        title={t('notes.toolbar.restoreDefaultColor')}
                       >
-                        Limpar
+                        {t('common.clear')}
                       </button>
                     )}
                   </div>
@@ -244,7 +246,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                           backgroundColor: c.value === 'inherit' ? '#262533' : c.hex,
                           color: '#fff',
                         }}
-                        title={c.value === 'inherit' ? 'Cor padrão' : c.name}
+                        title={c.value === 'inherit' ? t('notes.toolbar.defaultColor') : c.name}
                       >
                         {c.value === 'inherit' ? 'A' : ''}
                       </button>
@@ -258,7 +260,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                 <div>
                   <div className="flex items-center justify-between mb-1.5 px-0.5">
                     <span className="text-[10px] font-bold text-dark-subtext uppercase tracking-wider">
-                      Destaque
+                      {t('notes.toolbar.highlight')}
                     </span>
                     {formatState?.highlight && (
                       <button
@@ -268,9 +270,9 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                           setShowColors(false);
                         }}
                         className="text-[10px] text-brand-400 hover:text-brand-300 transition-colors"
-                        title="Remover destaque"
+                        title={t('notes.toolbar.removeHighlight')}
                       >
-                        Limpar
+                        {t('common.clear')}
                       </button>
                     )}
                   </div>
@@ -292,7 +294,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                           backgroundColor: color.value === 'transparent' ? '#262533' : color.hex,
                           color: color.hex === 'transparent' ? 'rgba(255,255,255,0.4)' : '#fff',
                         }}
-                        title={color.value === 'transparent' ? 'Sem destaque' : color.name}
+                        title={color.value === 'transparent' ? t('notes.toolbar.noHighlight') : color.name}
                       >
                         {color.value === 'transparent' ? <X size={12} /> : null}
                       </button>
@@ -306,7 +308,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
           <button
             onClick={() => handleFormat('spoiler')}
             className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.spoiler ? activeClass : inactiveClass}`}
-            title="Ocultar com Fumaça / Spoiler (Ctrl+Shift+S)"
+            title={t('notes.toolbar.spoiler')}
           >
             <EyeOff size={15} />
           </button>
@@ -315,7 +317,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
             <button
               onClick={onAiClick}
               className="p-1.5 rounded-lg hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-all active:scale-90 ml-1 group"
-              title="Assistente IA"
+              title={t('notes.toolbar.aiAssistant')}
             >
               <Sparkles size={15} className="group-hover:animate-pulse text-brand-400" />
             </button>

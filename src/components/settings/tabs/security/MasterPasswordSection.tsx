@@ -1,17 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
+import { useI18n } from '../../../../i18n';
 
 interface MasterPasswordSectionProps {
   onCancel: () => void;
 }
 
 export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) {
+  const { t } = useI18n();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [shake, setShake] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onCancel();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onCancel]);
 
   const triggerError = (msg: string) => {
     setPwdError(msg);
@@ -22,11 +46,11 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
   const handlePasswordSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
     if (!newPassword.trim()) {
-      triggerError('A nova senha não pode ser vazia.');
+      triggerError(t('settings.security.emptyPasswordError') || 'A nova senha não pode ser vazia.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      triggerError('As senhas não coincidem.');
+      triggerError(t('settings.security.passwordMismatchError') || 'As senhas não coincidem.');
       return;
     }
 
@@ -44,10 +68,11 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
           setConfirmPassword('');
         }, 2000);
       } else {
-        triggerError(res.error || 'Erro ao alterar a senha.');
+        triggerError(res.error || t('settings.security.changePasswordError') || 'Erro ao alterar a senha.');
       }
-    } catch (err: any) {
-      triggerError(err.message || 'Erro ao processar.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : (t('common.processingError') || 'Erro ao processar.');
+      triggerError(message);
     } finally {
       setPwdLoading(false);
     }
@@ -57,9 +82,9 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
     return (
       <div className="flex flex-col items-center justify-center py-6 text-emerald-400 animate-scale-in">
         <ShieldCheck size={48} className="mb-4" />
-        <h3 className="text-lg font-bold">Senha Alterada!</h3>
+        <h3 className="text-lg font-bold">{t('settings.security.masterPasswordChanged') || 'Senha Alterada!'}</h3>
         <p className="text-sm text-center text-dark-subtext mt-2">
-          Seu banco de dados foi recriptografado.
+          {t('settings.security.masterPasswordReencrypted') || 'Seu banco de dados foi recriptografado.'}
         </p>
       </div>
     );
@@ -70,13 +95,13 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
       <button 
         type="button"
         onClick={onCancel}
-        className="text-xs text-brand-400 hover:text-brand-300 mb-2 flex items-center gap-1"
+        className="text-xs text-brand-400 hover:text-brand-300 mb-2 flex items-center gap-1 cursor-pointer"
       >
-        &larr; Voltar
+        &larr; {t('settings.security.back') || 'Voltar'}
       </button>
       <div>
         <label className="block text-xs font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
-          Nova Senha Mestra
+          {t('settings.security.newMasterPassword') || 'Nova Senha Mestra'}
         </label>
         <input
           type="password"
@@ -84,13 +109,13 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
           onChange={e => setNewPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
-          placeholder="Digite a nova senha..."
+          placeholder={t('settings.security.newPasswordPlaceholder') || "Digite a nova senha..."}
           autoFocus
         />
       </div>
       <div>
         <label className="block text-xs font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
-          Confirmar Senha
+          {t('settings.security.confirmPassword') || 'Confirmar Senha'}
         </label>
         <input
           type="password"
@@ -98,7 +123,7 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
           onChange={e => setConfirmPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
           className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
-          placeholder="Digite a senha novamente..."
+          placeholder={t('settings.security.confirmPasswordPlaceholder') || "Digite a senha novamente..."}
         />
       </div>
       
@@ -113,10 +138,11 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
         type="button"
         onClick={handlePasswordSubmit}
         disabled={pwdLoading}
-        className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+        className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 cursor-pointer"
       >
-        {pwdLoading ? 'Alterando...' : 'Confirmar Alteração'}
+        {pwdLoading ? (t('settings.security.changing') || 'Alterando...') : (t('settings.security.confirmChange') || 'Confirmar Alteração')}
       </button>
     </div>
   );
 }
+

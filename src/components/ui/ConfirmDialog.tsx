@@ -44,7 +44,14 @@ export function ConfirmDialog({
       }
     };
 
+    const handleBackPress = (e: Event) => {
+      if (busy) return;
+      e.preventDefault();
+      onCancel();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
     const raf = requestAnimationFrame(() => {
       confirmBtnRef.current?.focus();
     });
@@ -52,6 +59,7 @@ export function ConfirmDialog({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
     };
   }, [isOpen, busy, onCancel]);
 
@@ -96,7 +104,7 @@ export function ConfirmDialog({
   return (
     <Portal>
       <div
-        className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in w-screen h-screen"
+        className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in w-full h-full"
         onClick={(e) => {
           if (e.target === e.currentTarget && !busy) onCancel();
         }}

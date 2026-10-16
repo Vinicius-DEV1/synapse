@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Tag, FileText, Zap } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 interface QuestionsExplorerFiltersProps {
   searchTerm: string;
@@ -24,6 +25,8 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
   onSelectedTagChange,
   allAvailableTags,
 }: QuestionsExplorerFiltersProps) {
+  const { t } = useI18n();
+
   return (
     <div className="bg-dark-card/50 border border-white/5 rounded-2xl p-4 space-y-3">
       {/* Search Input */}
@@ -33,7 +36,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
           type="text"
           value={searchTerm}
           onChange={(e) => onSearchTermChange(e.target.value)}
-          placeholder="Buscar por título, enunciado, tag ou comentário..."
+          placeholder={t('questions.explorer.searchPlaceholder')}
           className="w-full pl-10 pr-4 py-2 bg-dark-bg/60 border border-white/5 focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 rounded-xl text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
         />
       </div>
@@ -48,7 +51,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
               selectedOrigin === 'all' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            Todas
+            {t('questions.explorer.origin.all')}
           </button>
           <button
             onClick={() => onSelectedOriginChange('linked')}
@@ -59,7 +62,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
             }`}
           >
             <FileText size={12} />
-            <span>Do Caderno</span>
+            <span>{t('questions.explorer.origin.linked')}</span>
           </button>
           <button
             onClick={() => onSelectedOriginChange('standalone')}
@@ -70,7 +73,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
             }`}
           >
             <Zap size={12} />
-            <span>Avulsas</span>
+            <span>{t('questions.explorer.origin.standalone')}</span>
           </button>
         </div>
 
@@ -82,7 +85,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
               selectedStatus === 'all' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            Qualquer Status
+            {t('questions.explorer.status.all')}
           </button>
           <button
             onClick={() => onSelectedStatusChange('pending')}
@@ -90,7 +93,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
               selectedStatus === 'pending' ? 'bg-white/10 text-white font-medium' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            Pendentes
+            {t('questions.explorer.status.pending')}
           </button>
           <button
             onClick={() => onSelectedStatusChange('errors')}
@@ -100,7 +103,7 @@ export const QuestionsExplorerFilters = React.memo(function QuestionsExplorerFil
                 : 'hover:text-rose-200'
             }`}
           >
-            Com Erros
+            {t('questions.explorer.status.errors')}
           </button>
         </div>
       </div>

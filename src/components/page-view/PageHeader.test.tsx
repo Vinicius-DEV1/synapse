@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PageHeader } from './PageHeader';
 import { useStore } from '../../store/useStore';
+import { I18nProvider } from '../../i18n';
 import type { Page } from '../../types';
 
 vi.mock('../../store/useStore', () => ({
@@ -59,11 +60,13 @@ describe('PageHeader Component', () => {
     const onShowHistory = vi.fn();
 
     render(
-      <PageHeader
-        page={mockPages[1]}
-        onUpdatePage={onUpdatePage}
-        onShowHistory={onShowHistory}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageHeader
+          page={mockPages[1]}
+          onUpdatePage={onUpdatePage}
+          onShowHistory={onShowHistory}
+        />
+      </I18nProvider>
     );
 
     const rootCrumb = screen.getByText('📁 Página Raiz');
@@ -87,11 +90,13 @@ describe('PageHeader Component', () => {
     const onShowHistory = vi.fn();
 
     render(
-      <PageHeader
-        page={mockPages[1]}
-        onUpdatePage={onUpdatePage}
-        onShowHistory={onShowHistory}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageHeader
+          page={mockPages[1]}
+          onUpdatePage={onUpdatePage}
+          onShowHistory={onShowHistory}
+        />
+      </I18nProvider>
     );
 
     const rootCrumb = screen.getByText('📁 Página Raiz');
@@ -116,11 +121,13 @@ describe('PageHeader Component', () => {
     const onShowHistory = vi.fn();
 
     render(
-      <PageHeader
-        page={mockPages[2]}
-        onUpdatePage={onUpdatePage}
-        onShowHistory={onShowHistory}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageHeader
+          page={mockPages[2]}
+          onUpdatePage={onUpdatePage}
+          onShowHistory={onShowHistory}
+        />
+      </I18nProvider>
     );
 
     const prevButton = screen.getByLabelText('Página anterior');
@@ -145,11 +152,13 @@ describe('PageHeader Component', () => {
     const onShowHistory = vi.fn();
 
     render(
-      <PageHeader
-        page={mockPages[1]}
-        onUpdatePage={onUpdatePage}
-        onShowHistory={onShowHistory}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageHeader
+          page={mockPages[1]}
+          onUpdatePage={onUpdatePage}
+          onShowHistory={onShowHistory}
+        />
+      </I18nProvider>
     );
 
     const prevButton = screen.getByLabelText('Página anterior');

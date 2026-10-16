@@ -1,4 +1,5 @@
 import { RotateCcw, X, Edit3, Trash2 } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 import type { Card } from '../types';
 
 interface StudyTopBarProps {
@@ -22,13 +23,18 @@ export function StudyTopBar({
   onDeleteCard,
   onClose,
 }: StudyTopBarProps) {
+  const { t } = useTranslation();
+
   return (
     <>
       {/* Counter Left */}
       <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-10">
         <div className="flex items-center gap-4 text-sm font-medium bg-dark-bg/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5 shadow-lg">
           <span className="text-dark-subtext">
-            Cartão {currentIndex + 1} de {totalCards}
+            {t('anki.study.cardCounter', 'Cartão {{current}} de {{total}}', {
+              current: currentIndex + 1,
+              total: totalCards,
+            })}
           </span>
         </div>
       </div>
@@ -39,8 +45,8 @@ export function StudyTopBar({
           <>
             <button
               onClick={onRetryPractice}
-              className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors"
-              title="Treinar Novamente (Tecla T)"
+              className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              title={t('anki.study.retryPractice', 'Treinar Novamente (Tecla T)')}
             >
               <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -50,24 +56,24 @@ export function StudyTopBar({
         {currentCard && (
           <button
             onClick={() => onEditCard(currentCard)}
-            className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors"
-            title="Editar Cartão"
+            className="p-2 text-dark-subtext hover:text-indigo-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+            title={t('anki.study.editCard', 'Editar Cartão')}
           >
             <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         )}
         <button
           onClick={onDeleteCard}
-          className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"
-          title="Excluir Cartão"
+          className="p-2 text-dark-subtext hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+          title={t('anki.study.deleteCard', 'Excluir Cartão')}
         >
           <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
         <div className="w-[1px] h-6 bg-white/10 my-auto mx-1" />
         <button
           onClick={onClose}
-          className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/10 rounded-lg transition-colors"
-          title="Fechar Sessão"
+          className="p-2 text-dark-subtext hover:text-dark-text hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+          title={t('anki.study.closeSession', 'Fechar Sessão')}
         >
           <X className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>

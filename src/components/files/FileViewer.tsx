@@ -12,6 +12,7 @@ import { DocumentEditorView } from './viewer/components/DocumentEditorView';
 import { DocumentAiModal } from './viewer/modals/DocumentAiModal';
 import { downloadDocumentFile } from './viewer/utils/documentDownloadUtils';
 import { useDocumentSync } from './viewer/hooks/useDocumentSync';
+import { useTranslation } from '../../i18n';
 
 interface FileViewerProps {
   item: FileItem;
@@ -19,6 +20,7 @@ interface FileViewerProps {
 }
 
 function FileViewerContent({ item, onClose }: FileViewerProps) {
+  const { t } = useTranslation();
   const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
@@ -75,6 +77,46 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
     handleRemoveBookmark,
     handleJumpToBookmark,
   } = useFileReadingProgress(item.id, isText, textContent);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAiModal) {
+          e.stopPropagation();
+          setShowAiModal(false);
+        } else if (showBookmarksMenu) {
+          e.stopPropagation();
+          setShowBookmarksMenu(false);
+        } else if (!isEditing) {
+          e.stopPropagation();
+          onClose();
+        }
+      }
+    };
+
+    const handleBackPress = (e: Event) => {
+      if (showAiModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowAiModal(false);
+      } else if (showBookmarksMenu) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowBookmarksMenu(false);
+      } else if (!isEditing) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [showAiModal, showBookmarksMenu, isEditing, onClose]);
 
   const handleDownload = useCallback(async () => {
     if (!objectUrl || isDownloading) return;
@@ -193,7 +235,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
           <div className="absolute top-4 right-6 z-50 bg-amber-500/90 text-black font-medium text-xs px-3.5 py-2 rounded-xl shadow-2xl flex items-center gap-2 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150">
             <Bookmark size={15} className="fill-black" />
             <span>
-              Navegou para: <strong>{activeBookmarkToast}</strong>
+              {t('files.navigatedTo')} <strong>{activeBookmarkToast}</strong>
             </span>
           </div>
         )}
@@ -209,7 +251,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-400">
             <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-mono">Carregando arquivo...</span>
+            <span className="text-xs font-mono">{t('files.loadingFile')}</span>
           </div>
         ) : !objectUrl ? (
           <div className="flex-1 flex items-center justify-center p-6">
@@ -217,7 +259,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
               <div className="p-3.5 bg-red-500/10 text-red-400 rounded-xl">
                 <File size={36} />
               </div>
-              <h3 className="text-base font-semibold text-white">Não foi possível carregar o arquivo</h3>
+              <h3 className="text-base font-semibold text-white">{t('files.couldNotLoadFile')}</h3>
               <p className="text-zinc-400 text-xs leading-relaxed">
                 {loadError || 'O arquivo não foi encontrado localmente e não pôde ser baixado.'}
               </p>
@@ -228,14 +270,14 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
                   }}
                   className="w-full px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-medium transition-colors shadow-lg shadow-brand-500/20"
                 >
-                  Conectar ao Google Drive
+                  {t('files.connectGoogleDrive')}
                 </button>
               )}
               <button
                 onClick={onClose}
                 className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-xl text-xs transition-colors"
               >
-                Fechar
+                {t('files.close')}
               </button>
             </div>
           </div>
@@ -283,8 +325,8 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
               </div>
               <h3 className="text-lg font-semibold text-white text-center break-all">{item.name}</h3>
               <p className="text-zinc-400 text-center text-xs leading-relaxed">
-                Visualização não suportada para este formato. <br />
-                Tamanho: {(item.file_size / 1024 / 1024).toFixed(2)} MB
+                {t('files.unsupportedFormat')} <br />
+                {t('files.size')}: {(item.file_size / 1024 / 1024).toFixed(2)} MB
               </p>
               <button
                 type="button"
@@ -293,7 +335,7 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
                 className="w-full px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                <span>Baixar Arquivo</span>
+                <span>{t('files.downloadFile')}</span>
               </button>
             </div>
           </div>

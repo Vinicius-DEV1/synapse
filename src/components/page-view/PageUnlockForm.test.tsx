@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PageUnlockForm } from './PageUnlockForm';
+import { I18nProvider } from '../../i18n';
 import type { Page } from '../../types';
 import * as cryptoService from '../../services/crypto';
 import * as toastModule from '../ui/ToastContext';
@@ -28,13 +29,15 @@ describe('PageUnlockForm', () => {
     vi.clearAllMocks();
   });
 
-  it('renders locked page indicator and password input', () => {
+  it('renders locked page indicator and password input in Portuguese', () => {
     render(
-      <PageUnlockForm
-        page={mockPage}
-        encryptedContent="encrypted_base64_data"
-        onUnlockSuccess={onUnlockSuccess}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageUnlockForm
+          page={mockPage}
+          encryptedContent="encrypted_base64_data"
+          onUnlockSuccess={onUnlockSuccess}
+        />
+      </I18nProvider>
     );
 
     expect(screen.getByText('Página Trancada')).toBeInTheDocument();
@@ -42,13 +45,31 @@ describe('PageUnlockForm', () => {
     expect(screen.getByRole('button', { name: /Desbloquear/i })).toBeInTheDocument();
   });
 
+  it('renders locked page indicator and password input in English', () => {
+    render(
+      <I18nProvider initialLanguage="en">
+        <PageUnlockForm
+          page={mockPage}
+          encryptedContent="encrypted_base64_data"
+          onUnlockSuccess={onUnlockSuccess}
+        />
+      </I18nProvider>
+    );
+
+    expect(screen.getByText('Locked Page')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Page password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Unlock/i })).toBeInTheDocument();
+  });
+
   it('shows error toast if submitted with empty password', async () => {
     render(
-      <PageUnlockForm
-        page={mockPage}
-        encryptedContent="encrypted_base64_data"
-        onUnlockSuccess={onUnlockSuccess}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageUnlockForm
+          page={mockPage}
+          encryptedContent="encrypted_base64_data"
+          onUnlockSuccess={onUnlockSuccess}
+        />
+      </I18nProvider>
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Desbloquear/i }));
@@ -63,11 +84,13 @@ describe('PageUnlockForm', () => {
     vi.spyOn(cryptoService, 'decryptText').mockResolvedValue('<p>Conteúdo Secreto</p>');
 
     render(
-      <PageUnlockForm
-        page={mockPage}
-        encryptedContent="valid_encrypted_base64"
-        onUnlockSuccess={onUnlockSuccess}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageUnlockForm
+          page={mockPage}
+          encryptedContent="valid_encrypted_base64"
+          onUnlockSuccess={onUnlockSuccess}
+        />
+      </I18nProvider>
     );
 
     fireEvent.change(screen.getByPlaceholderText('Senha da página'), {
@@ -89,11 +112,13 @@ describe('PageUnlockForm', () => {
     vi.spyOn(cryptoService, 'decryptText').mockRejectedValue(new Error('Ciphertext integrity check failed'));
 
     render(
-      <PageUnlockForm
-        page={mockPage}
-        encryptedContent="valid_encrypted_base64"
-        onUnlockSuccess={onUnlockSuccess}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <PageUnlockForm
+          page={mockPage}
+          encryptedContent="valid_encrypted_base64"
+          onUnlockSuccess={onUnlockSuccess}
+        />
+      </I18nProvider>
     );
 
     fireEvent.change(screen.getByPlaceholderText('Senha da página'), {

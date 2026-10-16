@@ -1,40 +1,58 @@
+import { useState } from 'react';
 import { DatabaseBackup, ShieldAlert } from 'lucide-react';
 import { triggerToast } from '../../../ui/ToastContext';
+import { ConfirmDialog } from '../../../ui/ConfirmDialog';
+import { useI18n } from '../../../../i18n';
 
 export function BackupAndWipeSection() {
+  const { t } = useI18n();
+  const [showConfirmWipe, setShowConfirmWipe] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
+
   const handleExportBackup = async () => {
     try {
       if (window.api?.exportBackup) {
         const res = await window.api.exportBackup();
         if (res.success) {
-          triggerToast('Backup salvo com sucesso em: ' + res.path, 'success', 6000);
+          triggerToast(t('settings.security.backupSavedSuccess') || 'Backup salvo com sucesso em: ' + res.path, 'success', 6000);
         } else if (!res.canceled) {
-          triggerToast('Erro ao salvar backup: ' + (res.error || 'Falha'), 'error');
+          triggerToast((t('settings.security.backupSavedError') || 'Erro ao salvar backup: ') + (res.error || 'Falha'), 'error');
         }
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Falha desconhecida';
-      triggerToast('Erro inesperado: ' + errorMsg, 'error');
+      triggerToast((t('common.unexpectedError') || 'Erro inesperado: ') + errorMsg, 'error');
     }
   };
 
-  const handleWipeLocalData = async () => {
-    const msg = 'ATENÇÃO: Deseja realmente apagar TODOS os dados locais (banco de dados e arquivos de mídia)?\n\nIsso NÃO apagará seus dados da nuvem. O aplicativo será reiniciado e fará o download de tudo novamente.';
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm({
-          title: 'Apagar Dados Locais',
-          message: msg,
-          kind: 'warning',
-        })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-    if (!confirmed) return;
+  const executeWipe = async () => {
+    setIsWiping(true);
     try {
       if (window.api?.auth?.wipeLocalData) {
         await window.api.auth.wipeLocalData();
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Falha ao limpar dados';
-      triggerToast('Erro ao limpar dados locais: ' + errorMsg, 'error');
+      triggerToast((t('settings.security.wipeError') || 'Erro ao limpar dados locais: ') + errorMsg, 'error');
+    } finally {
+      setIsWiping(false);
+      setShowConfirmWipe(false);
+    }
+  };
+
+  const handleWipeLocalData = async () => {
+    const msg = t('settings.security.wipeConfirmMessage') || 'ATENÇÃO: Deseja realmente apagar TODOS os dados locais (banco de dados e arquivos de mídia)?\n\nIsso NÃO apagará seus dados da nuvem. O aplicativo será reiniciado e fará o download de tudo novamente.';
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: t('settings.security.wipeConfirmTitle') || 'Apagar Dados Locais',
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (confirmed) {
+        await executeWipe();
+      }
+    } else {
+      setShowConfirmWipe(true);
     }
   };
 
@@ -44,13 +62,13 @@ export function BackupAndWipeSection() {
         <button 
           type="button"
           onClick={handleExportBackup}
-          className="w-full py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           <DatabaseBackup size={16} />
-          Exportar DB Local (Backup)
+          {t('settings.security.exportBackup') || 'Exportar DB Local (Backup)'}
         </button>
         <p className="text-[11px] text-dark-subtext mt-1.5 text-center">
-          Cria uma cópia física do banco de dados (também criptografada).
+          {t('settings.security.exportBackupDesc') || 'Cria uma cópia física do banco de dados (também criptografada).'}
         </p>
       </div>
 
@@ -58,15 +76,28 @@ export function BackupAndWipeSection() {
         <button 
           type="button"
           onClick={handleWipeLocalData}
-          className="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-bold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+          disabled={isWiping}
+          className="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-sm font-bold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.1)] cursor-pointer disabled:opacity-50"
         >
           <ShieldAlert size={16} />
-          APAGAR DADOS LOCAIS (FORÇAR SYNC)
+          {isWiping ? (t('common.processing') || 'Processando...') : (t('settings.security.wipeLocalData') || 'APAGAR DADOS LOCAIS (FORÇAR SYNC)')}
         </button>
         <p className="text-[11px] text-red-400/70 mt-1.5 text-center">
-          Deleta o banco local e mídias. O app reiniciará e baixará tudo da nuvem novamente.
+          {t('settings.security.wipeLocalDataDesc') || 'Deleta o banco local e mídias. O app reiniciará e baixará tudo da nuvem novamente.'}
         </p>
       </div>
+
+      <ConfirmDialog
+        isOpen={showConfirmWipe}
+        title={t('settings.security.wipeConfirmTitle') || 'Apagar Dados Locais'}
+        message={t('settings.security.wipeConfirmMessage') || 'ATENÇÃO: Deseja realmente apagar TODOS os dados locais (banco de dados e arquivos de mídia)? Isso NÃO apagará seus dados da nuvem. O aplicativo será reiniciado e fará o download de tudo novamente.'}
+        confirmText={t('common.confirm') || 'Sim, Apagar'}
+        variant="danger"
+        isLoading={isWiping}
+        onConfirm={executeWipe}
+        onCancel={() => setShowConfirmWipe(false)}
+      />
     </>
   );
 }
+

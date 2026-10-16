@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Shield, Plus, ShieldAlert, ShieldCheck, Folder, MoreVertical, Edit2, Trash2, HelpCircle } from 'lucide-react';
 import type { VaultGroup } from '../../types';
 import { VaultHelpModal } from './VaultHelpModal';
+import { useTranslation } from '../../i18n';
 
 interface VaultSidebarProps {
   groups: VaultGroup[];
@@ -28,6 +29,7 @@ export function VaultSidebar({
   handleEditGroup,
   handleDeleteGroup,
 }: VaultSidebarProps) {
+  const { t } = useTranslation();
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   return (
@@ -35,22 +37,22 @@ export function VaultSidebar({
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-brand-400 font-semibold">
           <Shield size={20} />
-          <span>Cofre</span>
+          <span>{t('vault.sidebarTitle', 'Cofre')}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setShowHelpModal(true)}
             className="p-1 hover:bg-white/10 rounded-md text-dark-subtext hover:text-white transition-colors"
-            title="Guia do Cofre Criptografado"
-            aria-label="Guia do Cofre"
+            title={t('vault.helpGuide', 'Guia do Cofre Criptografado')}
+            aria-label={t('vault.helpGuide', 'Guia do Cofre')}
           >
             <HelpCircle size={16} />
           </button>
           <button
             onClick={handleCreateGroup}
             className="p-1 hover:bg-white/10 rounded-md text-dark-subtext hover:text-white transition-colors"
-            title="Novo Grupo"
+            title={t('vault.newGroup', 'Novo Grupo')}
           >
             <Plus size={16} />
           </button>
@@ -70,7 +72,7 @@ export function VaultSidebar({
           }`}
         >
           <ShieldAlert size={16} />
-          <span>Todos os Itens</span>
+          <span>{t('vault.allItems', 'Todos os Itens')}</span>
         </button>
 
         <button
@@ -82,11 +84,11 @@ export function VaultSidebar({
           }`}
         >
           <ShieldCheck size={16} />
-          <span>Painel de Segurança</span>
+          <span>{t('vault.securityDashboard', 'Painel de Segurança')}</span>
         </button>
 
         <div className="px-4 py-2 mt-4 text-xs font-semibold text-dark-subtext uppercase tracking-wider">
-          Grupos
+          {t('vault.groups', 'Grupos')}
         </div>
         {groups.map((g) => (
           <div
@@ -143,7 +145,7 @@ export function VaultSidebar({
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-text hover:bg-white/10 transition-colors"
           >
-            <Edit2 size={14} /> Editar Grupo
+            <Edit2 size={14} /> {t('vault.editGroup', 'Editar Grupo')}
           </button>
           <button
             onClick={() => {
@@ -153,7 +155,7 @@ export function VaultSidebar({
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-400/10 transition-colors"
           >
-            <Trash2 size={14} /> Deletar
+            <Trash2 size={14} /> {t('vault.deleteGroup', 'Deletar')}
           </button>
         </div>
       )}

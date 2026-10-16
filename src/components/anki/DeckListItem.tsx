@@ -1,5 +1,6 @@
 import React from 'react';
 import { Play, Plus, Settings, Layers, ChevronDown, ChevronRight } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 import type { Deck, DeckTreeNode } from './types';
 
 interface DeckListItemProps {
@@ -23,6 +24,7 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
   onManageDeck,
   onStudyDeck,
 }) => {
+  const { t } = useTranslation();
   const isCollapsed = collapsedDecks.has(deck.id);
   const hasChildren = Boolean(deck.children && deck.children.length > 0);
 
@@ -40,7 +42,7 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
                 toggleDeckCollapse(deck.id);
               }}
               className="p-1 rounded hover:bg-white/10 text-dark-subtext transition-colors"
-              title={isCollapsed ? 'Expandir' : 'Recolher'}
+              title={isCollapsed ? t('anki.expand', 'Expandir') : t('anki.collapse', 'Recolher')}
             >
               {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
             </button>
@@ -60,15 +62,15 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
 
         <div className="flex flex-wrap items-center justify-end gap-6 shrink-0">
           <div className="flex gap-3 text-xs font-medium bg-dark-bg px-3 py-1.5 rounded-lg border border-white/5">
-            <div className="text-blue-400/80 flex items-center gap-1" title="Novos Cartões">
+            <div className="text-blue-400/80 flex items-center gap-1" title={t('anki.newCards', 'Novos Cartões')}>
               <span className="w-2 h-2 rounded-full bg-blue-400/50"></span>
               {deckStats[deck.id]?.novos || 0}
             </div>
-            <div className="text-orange-400/80 flex items-center gap-1" title="Aprendendo">
+            <div className="text-orange-400/80 flex items-center gap-1" title={t('anki.learning', 'Aprendendo')}>
               <span className="w-2 h-2 rounded-full bg-orange-400/50"></span>
               {deckStats[deck.id]?.aprender || 0}
             </div>
-            <div className="text-green-400/80 flex items-center gap-1" title="A Revisar Hoje">
+            <div className="text-green-400/80 flex items-center gap-1" title={t('anki.reviewToday', 'A Revisar Hoje')}>
               <span className="w-2 h-2 rounded-full bg-green-400/50"></span>
               {deckStats[deck.id]?.revisar || 0}
             </div>
@@ -81,14 +83,14 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
                 onCreateSubDeck(deck.id);
               }}
               className="flex items-center justify-center p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
-              title="Criar Subbaralho"
+              title={t('anki.createSubDeck', 'Criar Subbaralho')}
             >
               <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={() => onManageDeck(deck)}
               className="flex items-center justify-center p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
-              title="Gerenciar Baralho"
+              title={t('anki.manageDeck', 'Gerenciar Baralho')}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -97,7 +99,7 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
               className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-sm transition-all font-medium"
             >
               <Play className="w-3 h-3 fill-white" />
-              Estudar
+              {t('anki.study', 'Estudar')}
             </button>
           </div>
         </div>

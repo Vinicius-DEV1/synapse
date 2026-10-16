@@ -42,9 +42,9 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({ children, initialLan
   }, []);
 
   const t = useCallback(
-    (key: string, vars?: TranslationVariables): string => {
-      return translate(language, key, vars);
-    },
+    ((key: string, defaultTextOrVars?: string | TranslationVariables, maybeVars?: TranslationVariables): string => {
+      return translate(language, key, defaultTextOrVars, maybeVars);
+    }) as I18nContextValue<TranslationSchema>['t'],
     [language]
   );
 
@@ -68,8 +68,11 @@ export function useI18n(): I18nContextValue<TranslationSchema> {
     return {
       language: fallbackLang,
       setLanguage: () => {},
-      t: (key: string, vars?: TranslationVariables) => translate(fallbackLang, key, vars),
+      t: ((key: string, defaultTextOrVars?: string | TranslationVariables, maybeVars?: TranslationVariables) =>
+        translate(fallbackLang, key, defaultTextOrVars, maybeVars)) as I18nContextValue<TranslationSchema>['t'],
     };
   }
   return context;
 }
+
+export const useTranslation = useI18n;

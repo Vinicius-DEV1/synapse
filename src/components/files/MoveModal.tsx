@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Folder, ChevronRight, LayoutGrid } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 import { getDescendantFolderIds } from './utils/filesHierarchy';
 
@@ -16,6 +17,7 @@ interface MoveModalProps {
 }
 
 export default function MoveModal({ item, items, isFolder = false, folders, onClose, onMove }: MoveModalProps) {
+  const { t } = useTranslation();
   const list = items
     ? items.map(i => ('item' in i ? (i as { item: FileItem | FileFolder; isFolder: boolean }) : { item: i, isFolder: 'parent_id' in i }))
     : (item ? [{ item, isFolder }] : []);
@@ -26,6 +28,29 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isSubmitting) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isSubmitting, onClose]);
 
   // Filter valid target folders (a folder cannot be moved into itself or its descendants)
   const invalidTargetIds = new Set<string>();
@@ -51,7 +76,7 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
           await onMove(entry.item.id, selectedFolderId, entry.isFolder);
         }
       }
-      triggerToast(list.length > 1 ? `${list.length} itens movidos com sucesso!` : 'Item movido com sucesso!', 'success');
+      triggerToast(list.length > 1 ? t('files.itemsMoved', { count: list.length }) : t('files.itemMoved'), 'success');
       onClose();
     } catch (err: unknown) {
       console.error("Failed to move:", err);
@@ -67,7 +92,7 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[70vh]">
         <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
-          <h2 className="text-lg font-semibold text-white">Mover para...</h2>
+          <h2 className="text-lg font-semibold text-white">{t('files.moveTo')}</h2>
           <button onClick={onClose} disabled={isSubmitting} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
           </button>
@@ -91,7 +116,7 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
                     <LayoutGrid size={20} />
                   </div>
                   <span className={`font-medium ${selectedFolderId === null ? 'text-brand-300' : 'text-white'}`}>
-                    Raiz (Início)
+                    {t('files.root')}
                   </span>
                 </div>
                 {selectedFolderId === null && <ChevronRight size={18} className="text-brand-400" />}
@@ -130,14 +155,14 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
               disabled={isSubmitting}
               className="flex-1 py-2.5 rounded-xl font-medium text-dark-subtext hover:bg-white/5 transition-colors"
             >
-              Cancelar
+              {t('files.cancel')}
             </button>
             <button 
               type="submit"
               disabled={isSubmitting}
               className="flex-1 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
             >
-              {isSubmitting ? 'Movendo...' : 'Mover'}
+              {isSubmitting ? t('files.moving') : t('files.moveAction')}
             </button>
           </div>
         </form>

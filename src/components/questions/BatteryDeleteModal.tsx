@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 import type { BatteryWithQuestions } from '../../types/quiz';
 
 interface BatteryDeleteModalProps {
@@ -16,6 +17,8 @@ export const BatteryDeleteModal = React.memo(function BatteryDeleteModal({
   onClose,
   onConfirmDelete,
 }: BatteryDeleteModalProps) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (!battery) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -45,13 +48,18 @@ export const BatteryDeleteModal = React.memo(function BatteryDeleteModal({
               <Trash2 size={20} />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">Excluir Bateria</h3>
+              <h3 className="text-base font-semibold text-white">
+                {t('questions.modals.deleteTitle', 'Excluir Bateria')}
+              </h3>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Deseja realmente mover a bateria <strong className="text-zinc-200">"{battery.title || 'Sem título'}"</strong> ({battery.questions.length} questões) para a lixeira?
+                {t('questions.modals.deleteDesc', 'Deseja realmente mover a bateria "{{title}}" ({{count}} questões) para a lixeira?', {
+                  title: battery.title || 'Sem título',
+                  count: battery.questions.length,
+                })}
               </p>
               {hasSubgroups && (
                 <p className="text-[11px] text-zinc-400 mt-2 bg-white/5 p-2 rounded-lg border border-white/5">
-                  ℹ️ Os subgrupos desta bateria não serão excluídos; eles serão mantidos e movidos para o nível principal.
+                  {t('questions.modals.deleteSubgroupNotice', 'ℹ️ Os subgrupos desta bateria não serão excluídos; eles serão mantidos e movidos para o nível principal.')}
                 </p>
               )}
             </div>
@@ -62,7 +70,7 @@ export const BatteryDeleteModal = React.memo(function BatteryDeleteModal({
               onClick={onClose}
               className="px-3.5 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             >
-              Cancelar
+              {t('common.cancel', 'Cancelar')}
             </button>
             <button
               type="button"
@@ -73,7 +81,7 @@ export const BatteryDeleteModal = React.memo(function BatteryDeleteModal({
               }}
               className="px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
             >
-              Excluir Bateria
+              {t('questions.modals.deleteTitle', 'Excluir Bateria')}
             </button>
           </div>
         </div>

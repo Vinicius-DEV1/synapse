@@ -235,7 +235,7 @@ export function useLibraryData(selectedBookId: string | null | undefined) {
           current_page: typeof merged.current_page === 'number' ? merged.current_page : (parseInt(String(merged.current_page || 0), 10) || 0),
           last_read_page: merged.last_read_page != null ? String(merged.last_read_page) : undefined,
         };
-        await window.api.library.updateBook(payload as any);
+        await window.api.library.updateBook(payload);
         await loadData();
       } else if (virtualBook && virtualBook.id === id) {
         const updatedAvulso = { ...virtualBook, ...updates };

@@ -6,6 +6,7 @@ import { getPagePath } from '../../utils/hierarchy';
 import { getSiblingPageNavigation } from '../../utils/page-navigation';
 import EmojiPopover from '../EmojiPopover';
 import { ShareButton } from '../sharing/ShareButton';
+import { useI18n } from '../../i18n';
 
 interface PageHeaderProps {
   page: Page;
@@ -15,6 +16,7 @@ interface PageHeaderProps {
 
 export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProps) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const isEditingTitleRef = useRef(false);
   const isEditingDescRef = useRef(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -22,7 +24,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
 
   useEffect(() => {
     if (!isEditingTitleRef.current && titleRef.current) {
-      const displayTitle = page.title === 'Sem Título' ? '' : page.title;
+      const displayTitle = page.title === 'Sem Título' || page.title === 'Untitled' ? '' : page.title;
       if (titleRef.current.textContent !== displayTitle) {
         titleRef.current.textContent = displayTitle;
       }
@@ -49,16 +51,16 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
 
   const isNested = Boolean(page?.parent_id);
   const prevTooltip = prevPage
-    ? `Página anterior: ${prevPage.title || 'Sem Título'}`
+    ? t('notes.prevTooltip', { title: prevPage.title || t('notes.untitled') })
     : isNested
-    ? 'Primeira página desta pasta'
-    : 'Primeira página';
+    ? t('notes.firstPageInFolder')
+    : t('notes.firstPage');
 
   const nextTooltip = nextPage
-    ? `Próxima página: ${nextPage.title || 'Sem Título'}`
+    ? t('notes.nextTooltip', { title: nextPage.title || t('notes.untitled') })
     : isNested
-    ? 'Última página desta pasta'
-    : 'Última página';
+    ? t('notes.lastPageInFolder')
+    : t('notes.lastPage');
 
   const handleNavigate = (pageId: string) => {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
@@ -102,7 +104,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
             onClick={() => prevPage && handleNavigate(prevPage.id)}
             disabled={!prevPage}
             title={prevTooltip}
-            aria-label="Página anterior"
+            aria-label={t('notes.prevPage')}
             className={`p-1 rounded-md transition-all ${
               prevPage
                 ? 'text-dark-subtext hover:text-white hover:bg-white/10 active:scale-95 cursor-pointer'
@@ -115,7 +117,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
             onClick={() => nextPage && handleNavigate(nextPage.id)}
             disabled={!nextPage}
             title={nextTooltip}
-            aria-label="Próxima página"
+            aria-label={t('notes.nextPage')}
             className={`p-1 rounded-md transition-all ${
               nextPage
                 ? 'text-dark-subtext hover:text-white hover:bg-white/10 active:scale-95 cursor-pointer'
@@ -178,25 +180,25 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
             {page.title === 'Sem Título' ? '' : page.title}
           </h1>
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-4 shrink-0">
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity ml-4 shrink-0">
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('caderno-open-move-page', { detail: { pageId: page.id } }));
               }}
               className="p-2 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg flex items-center gap-1.5 text-sm whitespace-nowrap"
-              title="Mover Página para outro local..."
+              title={t('notes.moveTooltip')}
             >
               <FolderInput size={16} />
-              <span className="hidden sm:inline font-medium">Mover</span>
+              <span className="hidden sm:inline font-medium">{t('notes.move')}</span>
             </button>
 
             <button
               onClick={onShowHistory}
               className="p-2 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg flex items-center gap-1.5 text-sm whitespace-nowrap"
-              title="Histórico de Edições"
+              title={t('notes.historyTooltip')}
             >
               <Clock size={16} />
-              <span className="hidden sm:inline font-medium">Histórico</span>
+              <span className="hidden sm:inline font-medium">{t('notes.history')}</span>
             </button>
 
             <ShareButton page={page} masterKey={getNotesKey()} />

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useTranslation } from '../../i18n';
 import { Filter, ChevronUp, ChevronDown } from 'lucide-react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
@@ -14,6 +15,7 @@ import { CultureRecentReleases } from './ui/CultureRecentReleases';
 import { CultureRecommendationsView } from './recommendations/CultureRecommendationsView';
 
 export default function CultureView() {
+  const { t } = useTranslation();
   const {
     items,
     recentReleases,
@@ -50,7 +52,7 @@ export default function CultureView() {
     if (showGoalsSection && goalItems.length > 0) {
       groups.push({ 
         type: 'goals', 
-        label: '🎯 Objetivos Ativos', 
+        label: t('culture.activeGoals', '🎯 Objetivos Ativos'), 
         items: sortItems(goalItems, sortMode),
         isGoalSection: true
       });
@@ -68,9 +70,9 @@ export default function CultureView() {
     
     // items outside saved custom order (excluding goals already handled)
     const others = filteredItems.filter(i => !handled.has(i.id));
-    if (others.length > 0) groups.push({ type: 'other', label: '📦 Outros', items: sortItems(others, sortMode) });
+    if (others.length > 0) groups.push({ type: 'other', label: `📦 ${t('culture.other', 'Outros')}`, items: sortItems(others, sortMode) });
     return groups;
-  }, [filteredItems, activeFilter, sectionOrder, sortMode, showGoalsSection]);
+  }, [filteredItems, activeFilter, sectionOrder, sortMode, showGoalsSection, t]);
 
   const flatItems = useMemo(() => {
     if (activeFilter === 'all') return [];
@@ -161,7 +163,7 @@ export default function CultureView() {
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
                 <Filter size={32} className="opacity-50" />
               </div>
-              <p className="text-sm">Nenhuma obra encontrada para esta visualização.</p>
+              <p className="text-sm">{t('culture.noItemsFound', 'Nenhuma obra encontrada para esta visualização.')}</p>
             </div>
           ) : activeFilter === 'all' && groupedItems ? (
             <div className="flex flex-col gap-8">
@@ -174,7 +176,7 @@ export default function CultureView() {
                   <div className="flex items-center gap-3 mb-4">
                     <h2 className="text-base font-semibold text-dark-text tracking-tight">{group.label}</h2>
                     <span className="text-xs text-dark-subtext bg-white/5 px-2 py-0.5 rounded-full">
-                      {group.items.length} {group.items.length === 1 ? 'item' : 'itens'}
+                      {group.items.length} {group.items.length === 1 ? t('culture.item', 'item') : t('culture.items', 'itens')}
                     </span>
                     <div className="flex-1 h-px bg-white/5" />
                     {/* Reorder arrows — only for named type sections (not goals, not others) */}
@@ -183,7 +185,7 @@ export default function CultureView() {
                         <button
                           onClick={() => moveSectionUp(group.type)}
                           disabled={isFirst || (idx === 1 && groupedItems[0]?.isGoalSection)} // disable if it's right under goals
-                          title="Mover seção para cima"
+                          title={t('culture.moveUp', 'Mover seção para cima')}
                           className="p-1 rounded text-white/20 hover:text-white/60 hover:bg-white/5 transition-colors disabled:opacity-0 disabled:cursor-not-allowed"
                         >
                           <ChevronUp size={14} />
@@ -191,7 +193,7 @@ export default function CultureView() {
                         <button
                           onClick={() => moveSectionDown(group.type)}
                           disabled={isLast}
-                          title="Mover seção para baixo"
+                          title={t('culture.moveDown', 'Mover seção para baixo')}
                           className="p-1 rounded text-white/20 hover:text-white/60 hover:bg-white/5 transition-colors disabled:opacity-0 disabled:cursor-not-allowed"
                         >
                           <ChevronDown size={14} />

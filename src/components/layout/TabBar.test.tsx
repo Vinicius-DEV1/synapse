@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import TabBar from './TabBar';
 import { StoreProvider } from '../../store/useStore';
 
+import { I18nProvider } from '../../i18n';
+
 describe('TabBar component', () => {
   beforeEach(() => {
     (window as unknown as { api: { notifications: { getUnreadCount: () => Promise<number>; getNotifications: () => Promise<unknown[]> } } }).api = {
@@ -16,12 +18,14 @@ describe('TabBar component', () => {
 
   it('renders tab bar with add tab button and tabs list', () => {
     render(
-      <StoreProvider>
-        <TabBar />
-      </StoreProvider>
+      <I18nProvider initialLanguage="en">
+        <StoreProvider>
+          <TabBar />
+        </StoreProvider>
+      </I18nProvider>
     );
 
-    const addTabButton = screen.getByTitle('Nova aba');
+    const addTabButton = screen.getByTitle('New Tab');
     expect(addTabButton).toBeInTheDocument();
 
     fireEvent.click(addTabButton);

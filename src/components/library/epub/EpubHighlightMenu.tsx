@@ -54,21 +54,6 @@ export default function EpubHighlightMenu() {
     }
   }, [selection]);
 
-  if (!selection && !dictionaryTarget?.selection) {
-    if (dictionaryTarget) {
-      return (
-        <DictionaryModal
-          text={dictionaryTarget.word}
-          pageContext={dictionaryTarget.context}
-          preloadedData={dictionaryTarget.preloadedData}
-          onSaveHighlight={dictionaryTarget.selection ? (color, note) => handleCreateHighlight(color, note, dictionaryTarget.selection) : undefined}
-          onClose={() => setDictionaryTarget(null)}
-        />
-      );
-    }
-    return null;
-  }
-
   if (dictionaryTarget) {
     return (
       <DictionaryModal
@@ -84,6 +69,10 @@ export default function EpubHighlightMenu() {
         }}
       />
     );
+  }
+
+  if (!selection) {
+    return null;
   }
 
   const { isDark, modeClass, dividerClass, noteAreaClass, textareaClass } = getHighlightMenuTheme(readingMode);
@@ -208,46 +197,21 @@ export default function EpubHighlightMenu() {
             {menuContent}
           </div>
         )}
-
-        {dictionaryTarget && (
-          <DictionaryModal
-            text={(dictionaryTarget as any).word}
-            pageContext={(dictionaryTarget as any).context}
-            preloadedData={(dictionaryTarget as any).preloadedData}
-            onSaveHighlight={(color, note) => handleCreateHighlight(color, note, (dictionaryTarget as any).selection)}
-            onClose={() => {
-              if ((dictionaryTarget as any).selection) setSelection((dictionaryTarget as any).selection);
-              setDictionaryTarget(null);
-            }}
-          />
-        )}
       </>
     );
   }
 
   // DESKTOP: Floating menu
   return (
-    <>
-      <div
-        key={selection?.existingHighlightId || selection?.cfiRange || 'menu'}
-        ref={refs.setFloating}
-        className={`absolute z-40 ${isPositioned ? 'visible' : 'invisible'}`}
-        style={{ ...floatingStyles, pointerEvents: isPositioned ? 'auto' : 'none' }}
-      >
-        <div className={`shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-max min-w-[260px] max-w-[320px] ${modeClass} ${isPositioned ? 'animate-fade-in' : ''}`}>
-          {menuContent}
-        </div>
+    <div
+      key={selection?.existingHighlightId || selection?.cfiRange || 'menu'}
+      ref={refs.setFloating}
+      className={`absolute z-40 ${isPositioned ? 'visible' : 'invisible'}`}
+      style={{ ...floatingStyles, pointerEvents: isPositioned ? 'auto' : 'none' }}
+    >
+      <div className={`shadow-2xl rounded-xl border p-2 flex flex-col gap-2 w-max min-w-[260px] max-w-[320px] ${modeClass} ${isPositioned ? 'animate-fade-in' : ''}`}>
+        {menuContent}
       </div>
-
-      {dictionaryTarget && (
-        <DictionaryModal
-          text={(dictionaryTarget as any).word}
-          pageContext={(dictionaryTarget as any).context}
-          preloadedData={(dictionaryTarget as any).preloadedData}
-          onSaveHighlight={(color, note) => handleCreateHighlight(color, note, (dictionaryTarget as any).selection)}
-          onClose={() => setDictionaryTarget(null)}
-        />
-      )}
-    </>
+    </div>
   );
 }

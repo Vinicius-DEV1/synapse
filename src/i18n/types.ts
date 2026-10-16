@@ -22,5 +22,8 @@ export type NestedKeyOf<ObjectType extends object> = {
 export interface I18nContextValue<T extends object = Record<string, unknown>> {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
-  t: (key: NestedKeyOf<T> | (string & {}), vars?: TranslationVariables) => string;
+  t: {
+    (key: NestedKeyOf<T> | (string & {}), vars?: TranslationVariables): string;
+    (key: NestedKeyOf<T> | (string & {}), defaultText: string, vars?: TranslationVariables): string;
+  };
 }

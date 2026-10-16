@@ -4,6 +4,7 @@ import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
 import { useStore } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
+import { useTranslation } from '../../i18n';
 
 interface AudioPlayerModalProps {
   item: FileItem;
@@ -11,6 +12,7 @@ interface AudioPlayerModalProps {
 }
 
 export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProps) {
+  const { t } = useTranslation();
   const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -25,6 +27,27 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
   const audioRef = useRef<HTMLAudioElement>(null);
   const objectUrlRef = useRef<string | null>(null);
   const filesMasterKey = state.moduleKeys['files'];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -45,11 +68,11 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
           objectUrlRef.current = resolvedUrl;
           setObjectUrl(resolvedUrl);
         } else {
-          setError('Arquivo de áudio não encontrado localmente.');
+          setError(t('files.noAudioFound'));
         }
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Falha ao carregar o áudio.';
+        const message = err instanceof Error ? err.message : t('files.loadError');
         if (!isCancelled) setError(message);
       })
       .finally(() => {
@@ -169,7 +192,7 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
           {isLoading ? (
             <div className="py-8 flex flex-col items-center gap-3">
               <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-white/40 text-xs">Carregando áudio...</span>
+              <span className="text-white/40 text-xs">{t('files.loadingAudio')}</span>
             </div>
           ) : error ? (
             <div className="py-8 text-red-400 text-sm text-center">
@@ -200,7 +223,7 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
 
               {/* Controls */}
               <div className="flex items-center justify-center gap-6">
-                <button onClick={skipBackward} className="text-white/40 hover:text-white transition-colors" title="Voltar 10s">
+                <button onClick={skipBackward} className="text-white/40 hover:text-white transition-colors" title={t('files.back10s')}>
                   <Rewind size={20} />
                 </button>
                 <button 
@@ -209,7 +232,7 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
                 >
                   {isPlaying ? <Pause size={24} className="fill-white" /> : <Play size={24} className="fill-white ml-1" />}
                 </button>
-                <button onClick={skipForward} className="text-white/40 hover:text-white transition-colors" title="Avançar 10s">
+                <button onClick={skipForward} className="text-white/40 hover:text-white transition-colors" title={t('files.forward10s')}>
                   <FastForward size={20} />
                 </button>
               </div>

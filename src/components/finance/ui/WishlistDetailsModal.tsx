@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { X, Edit2, Trash2 } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import { DescriptionRenderer } from '../../ui/RichTextRenderer';
 import type { WishlistItem } from '../../../types';
 import { formatDateSafe } from './TransactionList';
+import { useTranslation } from '../../../i18n';
 
 interface WishlistDetailsModalProps {
   item: WishlistItem | null;
@@ -12,6 +14,30 @@ interface WishlistDetailsModalProps {
 }
 
 export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: WishlistDetailsModalProps) {
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!item) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [item, onClose]);
+
   if (!item) return null;
 
   return (
@@ -25,25 +51,26 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-4 border-b border-white/5">
-            <h2 className="text-lg font-semibold text-dark-text">Detalhes do Desejo</h2>
+            <h2 className="text-lg font-semibold text-dark-text">{t('finance.wishlistDetails', 'Detalhes do Desejo')}</h2>
             <div className="flex gap-2">
               <button
                 onClick={() => onEdit(item)}
-                className="p-1.5 text-brand-400 hover:text-brand-300 rounded-lg hover:bg-white/5 transition-colors"
-                title="Editar"
+                className="p-1.5 text-brand-400 hover:text-brand-300 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                title={t('common.edit', 'Editar')}
               >
                 <Edit2 size={18} />
               </button>
               <button
                 onClick={() => onDelete(item.id)}
-                className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-white/5 transition-colors"
-                title="Apagar"
+                className="p-1.5 text-red-400 hover:text-red-300 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                title={t('common.delete', 'Apagar')}
               >
                 <Trash2 size={18} />
               </button>
               <button
                 onClick={onClose}
-                className="p-1.5 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors"
+                className="p-1.5 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                title={t('common.closeEsc', 'Fechar (Esc)')}
               >
                 <X size={18} />
               </button>

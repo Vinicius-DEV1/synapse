@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Settings, Wallet, Layers } from 'lucide-react';
 import type { Account, Transaction } from '../../../types';
+import { useTranslation } from '../../../i18n';
 
 interface AccountCardsProps {
   accounts: Account[];
@@ -45,6 +46,8 @@ export function AccountCards({
   onSelectAccount,
   onOpenAccountManager,
 }: AccountCardsProps) {
+  const { t } = useTranslation();
+
   const accountBalances = useMemo(() => {
     return accounts.map((acc) => ({
       account: acc,
@@ -65,14 +68,14 @@ export function AccountCards({
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1.5">
           <Wallet size={13} />
-          <span>Contas & Carteiras</span>
+          <span>{t('finance.accountsAndWallets', 'Contas & Carteiras')}</span>
         </span>
         <button
           onClick={onOpenAccountManager}
           className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 font-medium transition-colors"
         >
           <Settings size={12} />
-          <span>Gerenciar Bancos</span>
+          <span>{t('finance.manageBanks', 'Gerenciar Bancos')}</span>
         </button>
       </div>
 
@@ -90,13 +93,13 @@ export function AccountCards({
           <div className="flex items-center justify-between w-full mb-1.5">
             <span className="text-[11px] font-medium text-dark-subtext flex items-center gap-1">
               <Layers size={12} className="text-brand-400" />
-              <span>Consolidado</span>
+              <span>{t('finance.consolidated', 'Consolidado')}</span>
             </span>
             {selectedAccountId === 'all' && (
               <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
             )}
           </div>
-          <div className="text-xs font-semibold text-dark-text truncate w-full">Todas as Contas</div>
+          <div className="text-xs font-semibold text-dark-text truncate w-full">{t('finance.allAccountsTitle', 'Todas as Contas')}</div>
           <div className={`text-sm font-bold mt-0.5 ${totalConsolidated >= 0 ? 'text-brand-400' : 'text-rose-400'}`}>
             R$ {totalConsolidated.toFixed(2)}
           </div>

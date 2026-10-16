@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Folder, Check, X } from 'lucide-react';
 import { Modal } from '../../ui/Modal';
 import type { VaultGroup } from '../../../types';
+import { useTranslation } from '../../../i18n';
 
 export const VAULT_GROUP_PALETTE = [
   { label: 'Azul', value: '#3b82f6' },
@@ -24,6 +25,7 @@ interface VaultGroupModalProps {
 }
 
 export function VaultGroupModal({ isOpen, group, onClose, onSave }: VaultGroupModalProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [color, setColor] = useState('#3b82f6');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,7 +66,7 @@ export function VaultGroupModal({ isOpen, group, onClose, onSave }: VaultGroupMo
             </div>
             <div>
               <h3 className="text-base font-semibold text-white">
-                {group ? 'Editar Grupo' : 'Novo Grupo'}
+                {group ? t('vault.editGroup', 'Editar Grupo') : t('vault.newGroup', 'Novo Grupo')}
               </h3>
               <p className="text-xs text-zinc-400">
                 {group ? 'Altere o nome e a cor do grupo' : 'Organize seus itens com um grupo personalizado'}
@@ -151,14 +153,14 @@ export function VaultGroupModal({ isOpen, group, onClose, onSave }: VaultGroupMo
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
             >
-              Cancelar
+              {t('vault.cancel', 'Cancelar')}
             </button>
             <button
               type="submit"
               disabled={!name.trim() || isSubmitting}
               className="px-5 py-2 text-xs font-semibold bg-brand-500 hover:bg-brand-400 disabled:opacity-50 text-white rounded-xl shadow-md shadow-brand-500/20 transition-all active:scale-95"
             >
-              {group ? 'Salvar Alterações' : 'Criar Grupo'}
+              {group ? t('vault.saveChanges', 'Salvar Alterações') : t('vault.createGroup', 'Criar Grupo')}
             </button>
           </div>
         </form>

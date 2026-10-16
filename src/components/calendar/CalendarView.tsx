@@ -5,8 +5,10 @@ import EventModal from './EventModal';
 import DayModal from './DayModal';
 import type { CalendarEvent } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 export default function CalendarView() {
+  const { t } = useTranslation();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -22,7 +24,7 @@ export default function CalendarView() {
         setEvents(data || []);
       } catch (err: unknown) {
         console.error('Failed to load events:', err);
-        const msg = err instanceof Error ? err.message : 'Erro ao carregar eventos do calendário';
+        const msg = err instanceof Error ? err.message : t('calendar.errorLoading', 'Erro ao carregar eventos do calendário');
         triggerToast(msg, 'error');
       }
     }
@@ -37,12 +39,24 @@ export default function CalendarView() {
     return cleanup;
   }, []);
 
+  // Android hardware back press navigation: return from feed tab to calendar tab
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (mobileTab === 'feed') {
+        e.preventDefault();
+        setMobileTab('calendar');
+      }
+    };
+    window.addEventListener('caderno-back-press', handleBack);
+    return () => window.removeEventListener('caderno-back-press', handleBack);
+  }, [mobileTab]);
+
   const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
     if (window.api?.calendar) {
       try {
         if (editingEvent) {
           await window.api.calendar.updateEvent(editingEvent.id, eventData);
-          triggerToast('Evento atualizado com sucesso!', 'success');
+          triggerToast(t('calendar.eventUpdated', 'Evento atualizado com sucesso!'), 'success');
         } else {
           const recRule = eventData.recurrence_rule;
           if (recRule && ['daily', 'weekly', 'monthly', 'yearly'].includes(recRule)) {
@@ -81,11 +95,11 @@ export default function CalendarView() {
             for (const copy of copies) {
               await window.api.calendar.createEvent(copy);
             }
-            triggerToast(`${copies.length} eventos recorrentes criados!`, 'success');
+            triggerToast(t('calendar.recurringCreated', { count: copies.length, defaultValue: `${copies.length} eventos recorrentes criados!` }), 'success');
           } else {
             const newEvent = { ...eventData, id: crypto.randomUUID() };
             await window.api.calendar.createEvent(newEvent);
-            triggerToast('Evento adicionado ao calendário!', 'success');
+            triggerToast(t('calendar.eventCreated', 'Evento adicionado ao calendário!'), 'success');
           }
         }
         setIsModalOpen(false);
@@ -93,7 +107,7 @@ export default function CalendarView() {
         loadEvents();
       } catch (e: unknown) {
         console.error("Erro ao salvar eventos:", e);
-        const msg = e instanceof Error ? e.message : 'Erro ao salvar evento.';
+        const msg = e instanceof Error ? e.message : t('calendar.errorSaving', 'Erro ao salvar evento.');
         triggerToast(msg, 'error');
       }
     }
@@ -108,15 +122,15 @@ export default function CalendarView() {
           for (const ge of groupEvents) {
             await window.api.calendar.deleteEvent(ge.id);
           }
-          triggerToast(`${groupEvents.length} eventos da série foram excluídos.`, 'info');
+          triggerToast(t('calendar.seriesDeleted', { count: groupEvents.length, defaultValue: `${groupEvents.length} eventos da série foram excluídos.` }), 'info');
         } else {
           await window.api.calendar.deleteEvent(id);
-          triggerToast('Evento excluído do calendário.', 'info');
+          triggerToast(t('calendar.eventDeleted', 'Evento excluído do calendário.'), 'info');
         }
         loadEvents();
       } catch (e: unknown) {
         console.error("Erro ao deletar eventos:", e);
-        const msg = e instanceof Error ? e.message : 'Erro ao excluir evento.';
+        const msg = e instanceof Error ? e.message : t('calendar.errorDeleting', 'Erro ao excluir evento.');
         triggerToast(msg, 'error');
       }
     }
@@ -127,7 +141,7 @@ export default function CalendarView() {
       {/* Main Calendar Area */}
       <div className={`flex-1 flex flex-col p-3 sm:p-6 overflow-hidden ${mobileTab === 'feed' ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex justify-between items-center mb-3 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold font-serif text-dark-text">Calendário</h1>
+          <h1 className="text-xl sm:text-2xl font-bold font-serif text-dark-text">{t('calendar.title', 'Calendário')}</h1>
           <button
             onClick={() => {
               setEditingEvent(null);
@@ -136,7 +150,7 @@ export default function CalendarView() {
             }}
             className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-95"
           >
-            + Novo
+            {t('calendar.newEvent', '+ Novo')}
           </button>
         </div>
 
@@ -151,7 +165,7 @@ export default function CalendarView() {
                 : 'text-dark-subtext hover:text-white'
             }`}
           >
-            Calendário
+            {t('calendar.title', 'Calendário')}
           </button>
           <button
             type="button"
@@ -162,7 +176,7 @@ export default function CalendarView() {
                 : 'text-dark-subtext hover:text-white'
             }`}
           >
-            Tarefas ({pendingTasksCount})
+            {t('calendar.tasks', 'Tarefas')} ({pendingTasksCount})
           </button>
         </div>
         
@@ -193,9 +207,9 @@ export default function CalendarView() {
             onClick={() => setMobileTab('calendar')}
             className="text-xs text-brand-400 font-medium hover:underline flex items-center gap-1"
           >
-            ← Voltar ao Calendário
+            {t('calendar.backToCalendar', '← Voltar ao Calendário')}
           </button>
-          <span className="text-xs text-dark-subtext font-medium">Tarefas & Compromissos</span>
+          <span className="text-xs text-dark-subtext font-medium">{t('calendar.tasksAndAppointments', 'Tarefas & Compromissos')}</span>
         </div>
         <div className="flex-1 overflow-hidden min-h-0">
           <TaskFeed 

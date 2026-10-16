@@ -130,6 +130,39 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     });
   };
 
+  useEffect(() => {
+    const handleBackPress = (e: Event) => {
+      if (activeVideo) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeVideoSrcRef.current) {
+          revokeVideoStreamLink(activeVideoSrcRef.current);
+          activeVideoSrcRef.current = null;
+        }
+        setActiveVideo(null);
+        setActiveVideoSrc(null);
+        loadVideos();
+      } else if (webVersionVideo) {
+        e.preventDefault();
+        e.stopPropagation();
+        setWebVersionVideo(null);
+      } else if (showYoutubeModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowYoutubeModal(false);
+      } else if (showUploadModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowUploadModal(false);
+      }
+    };
+
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [activeVideo, webVersionVideo, showYoutubeModal, showUploadModal, loadVideos]);
+
   const handleDownload = useCallback(async (video: VideoItem) => {
     let forceOriginal = false;
     const ext = video.original_name.split('.').pop()?.toLowerCase() || '';
@@ -137,7 +170,11 @@ export default function VideoView({ tabId }: { tabId?: string }) {
     
     if (isUnsupported && video.drive_web_file_id) {
       const confirm = window.api?.app?.showConfirm ? 
-        await window.api.app.showConfirm(`Este vídeo (${video.original_name}) possui um formato que não roda nativamente na web.\n\nPor padrão, o Caderno baixará a "Versão Web" convertida (muito mais leve).\n\nDeseja forçar o download do ARQUIVO ORIGINAL pesado em vez da versão web?`) 
+        await window.api.app.showConfirm({
+          title: 'Formato Não Suportado',
+          message: `Este vídeo (${video.original_name}) possui um formato que não roda nativamente na web.\n\nPor padrão, o Caderno baixará a "Versão Web" convertida (muito mais leve).\n\nDeseja forçar o download do ARQUIVO ORIGINAL pesado em vez da versão web?`,
+          kind: 'warning'
+        }) 
         : 0;
       if (confirm === 1) forceOriginal = true;
     }
@@ -158,7 +195,11 @@ export default function VideoView({ tabId }: { tabId?: string }) {
 
   const handleDeleteLocal = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
-      await window.api.app.showConfirm(`Deseja excluir '${video.title}' apenas deste computador? O vídeo permanecerá seguro no seu Google Drive.`) 
+      await window.api.app.showConfirm({
+        title: 'Excluir Cópia Local',
+        message: `Deseja excluir '${video.title}' apenas deste computador? O vídeo permanecerá seguro no seu Google Drive.`,
+        kind: 'warning'
+      }) 
       : 0;
       
     if (confirm !== 1) return;
@@ -186,7 +227,11 @@ export default function VideoView({ tabId }: { tabId?: string }) {
 
   const handleDeleteCloud = useCallback(async (video: VideoItem) => {
     const confirm = window.api?.app?.showConfirm ? 
-      await window.api.app.showConfirm(`Tem certeza que deseja excluir totalmente '${video.title}'? Todos os arquivos do computador (vídeo, áudios, legendas) e do Google Drive serão apagados permanentemente.`) 
+      await window.api.app.showConfirm({
+        title: 'Excluir Totalmente',
+        message: `Tem certeza que deseja excluir totalmente '${video.title}'? Todos os arquivos do computador (vídeo, áudios, legendas) e do Google Drive serão apagados permanentemente.`,
+        kind: 'warning'
+      }) 
       : 0;
 
     if (confirm !== 1) return;

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Flame, Plus, Search, X, Check } from 'lucide-react';
 import type { Habit } from '../../types/habits';
 import { playUiClickSound } from '../../utils/uiSounds';
+import { useTranslation } from '../../i18n';
 
 export interface HabitSelectModalProps {
   isOpen: boolean;
@@ -16,12 +17,25 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(initialQuery);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => window.removeEventListener('caderno-back-press', handleBackPress);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -135,7 +149,7 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Vincular ou Criar Hábito"
+      aria-label={t('habits.selectModalTitle', 'Vincular ou Criar Hábito')}
       className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
@@ -152,12 +166,13 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pesquisar ou criar hábito..."
+            placeholder={t('habits.searchPlaceholder', 'Pesquisar ou criar hábito...')}
             className="w-full bg-transparent text-sm text-white placeholder-zinc-500 focus:outline-none"
           />
           <button
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded-lg transition-colors"
+            className="p-1 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+            title={t('common.closeEsc', 'Fechar (Esc)')}
           >
             <X size={16} />
           </button>
@@ -167,11 +182,11 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
         <div className="max-h-72 overflow-y-auto p-2 flex flex-col gap-1 custom-scrollbar">
           {loading ? (
             <div className="py-8 text-center text-xs text-zinc-500">
-              Carregando hábitos...
+              {t('habits.loadingHabits', 'Carregando hábitos...')}
             </div>
           ) : options.length === 0 ? (
             <div className="py-8 text-center text-xs text-zinc-500">
-              Nenhum hábito cadastrado. Digite um nome para criar.
+              {t('habits.noHabitsRegistered', 'Nenhum hábito cadastrado. Digite um nome para criar.')}
             </div>
           ) : (
             options.map((opt, idx) => {
@@ -184,7 +199,7 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
                   type="button"
                   onClick={() => handleConfirmSelect(idx)}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'
                       : 'hover:bg-white/[0.04] text-zinc-200 border border-transparent'
@@ -203,11 +218,13 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
 
                     <div className="flex flex-col truncate">
                       <span className="text-sm font-medium truncate">
-                        {isExisting ? opt.title : `Criar novo hábito: "${opt.title}"`}
+                        {isExisting
+                          ? opt.title
+                          : t('habits.createNewHabit', 'Criar novo hábito: "{{title}}"', { title: opt.title })}
                       </span>
                       {isExisting && (
                         <span className="text-[11px] text-zinc-500">
-                          Hábito vinculado existente
+                          {t('habits.existingLinkedHabit', 'Hábito vinculado existente')}
                         </span>
                       )}
                     </div>
@@ -232,12 +249,10 @@ export const HabitSelectModal: React.FC<HabitSelectModalProps> = ({
         {/* Footer info */}
         <div className="flex items-center justify-between px-4 py-2 bg-zinc-950/60 border-t border-white/[0.04] text-[11px] text-zinc-500">
           <span>
-            Navegue com <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">↑</kbd>{' '}
-            <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">↓</kbd> e pressione{' '}
-            <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">Enter</kbd>
+            {t('habits.navHelp', 'Navegue com ↑ ↓ e pressione Enter')}
           </span>
           <span>
-            <kbd className="px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">Esc</kbd> para fechar
+            {t('habits.escToClose', 'Esc para fechar')}
           </span>
         </div>
       </div>

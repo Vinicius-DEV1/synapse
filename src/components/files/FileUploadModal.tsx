@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { X, UploadCloud, File, AlertCircle, CloudOff, Cloud } from 'lucide-react';
 import type { FileItem } from '../../types';
 import { Portal } from '../ui/Portal';
 import { useFileUploadLogic } from './hooks/useFileUploadLogic';
+import { useTranslation } from '../../i18n';
 
 interface FileUploadModalProps {
   onClose: () => void;
@@ -20,6 +22,7 @@ export default function FileUploadModal({
   currentFolderId = null,
   initialFiles = [],
 }: FileUploadModalProps) {
+  const { t } = useTranslation();
   const {
     isDraggingOver,
     selectedFiles,
@@ -43,13 +46,36 @@ export default function FileUploadModal({
     onUploaded,
   });
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isUploading) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isUploading) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isUploading, onClose]);
+
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
         <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-white">Enviar Arquivo(s)</h2>
+              <h2 className="text-lg font-semibold text-white">{t('files.uploadFiles')}</h2>
               {driveStatus === 'connected' ? (
                 <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   <Cloud size={12} />
@@ -73,7 +99,7 @@ export default function FileUploadModal({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <CloudOff size={18} className="text-amber-400 shrink-0" />
                   <p className="text-amber-200/90 text-xs leading-relaxed">
-                    <strong>Google Drive desconectado:</strong> os arquivos serão salvos apenas localmente neste dispositivo.
+                    {t('files.driveDisconnectedWarning')}
                   </p>
                 </div>
                 <button
@@ -83,7 +109,7 @@ export default function FileUploadModal({
                   }}
                   className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-medium rounded-lg shrink-0 transition-colors"
                 >
-                  Conectar
+                  {t('files.connect')}
                 </button>
               </div>
             )}
@@ -113,9 +139,9 @@ export default function FileUploadModal({
                   }`}
                 />
                 <p className="text-white font-medium mb-1">
-                  {isDraggingOver ? 'Solte os arquivos aqui' : 'Clique ou arraste arquivo(s)'}
+                  {isDraggingOver ? t('files.dropFilesHere') : t('files.clickOrDragFiles')}
                 </p>
-                <p className="text-dark-subtext text-sm">PDFs, Imagens, Slides, Vídeos e mais (vários simultâneos)</p>
+                <p className="text-dark-subtext text-sm">{t('files.supportedFormatsHint')}</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -168,7 +194,7 @@ export default function FileUploadModal({
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <UploadCloud size={14} />
-                    <span>+ Adicionar mais arquivos (ou arraste aqui)</span>
+                    <span>{t('files.addMoreFiles')}</span>
                   </div>
                 )}
 
@@ -181,7 +207,7 @@ export default function FileUploadModal({
                         onChange={(e) => setGroupAsBundle(e.target.checked)}
                         className="rounded bg-black/40 border-white/20 text-brand-500 focus:ring-brand-400 focus:ring-offset-0 cursor-pointer"
                       />
-                      <span>Agrupar arquivos em um único widget</span>
+                      <span>{t('files.groupAsBundle')}</span>
                     </label>
                   </div>
                 )}
@@ -198,7 +224,7 @@ export default function FileUploadModal({
             {isUploading && (
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between text-sm text-dark-subtext">
-                  <span>{uploadStatusText || 'Enviando...'}</span>
+                  <span>{uploadStatusText || t('files.uploading')}</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
                 <div className="h-2 bg-dark-bg rounded-full overflow-hidden">
@@ -217,7 +243,7 @@ export default function FileUploadModal({
               disabled={isUploading}
               className="px-4 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors"
             >
-              Cancelar
+              {t('files.cancel')}
             </button>
             <button
               onClick={handleUpload}
@@ -228,7 +254,7 @@ export default function FileUploadModal({
                   : 'bg-brand-500 text-white hover:bg-brand-600'
               }`}
             >
-              {isUploading ? 'Enviando...' : `Fazer Upload (${selectedFiles.length})`}
+              {isUploading ? t('files.uploading') : t('files.uploadAction', { count: selectedFiles.length })}
             </button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, HardDrive, FileVideo, Clock, Play } from 'lucide-react';
 import type { VideoItem } from '../../types';
 import { Portal } from '../ui/Portal';
@@ -16,6 +17,27 @@ interface VideoInfoModalProps {
 }
 
 export default function VideoInfoModal({ video, onClose, onVideoUpdated, onPlayVideo }: VideoInfoModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
+
   const {
     currentVideo,
     activeTab,

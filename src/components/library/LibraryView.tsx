@@ -17,8 +17,10 @@ import { useStore } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
 import { triggerToast } from '../ui/ToastContext';
+import { useI18n } from '../../i18n';
 
 export default function LibraryView({ tabId }: { tabId?: string }) {
+  const { t } = useI18n();
   const { state, dispatch } = useStore();
   const activeTab = state.tabs.find((t) => t.id === tabId) || state.tabs[0];
   const selectedBookId = activeTab.module === 'library' ? activeTab.bookId : null;
@@ -408,8 +410,8 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
               />
               <span>
                 {selectedIds.size === filteredAndSorted.length
-                  ? 'Desmarcar todos'
-                  : 'Selecionar todos os filtrados'}
+                  ? t('library.deselectAll')
+                  : t('library.selectAllFiltered')}
               </span>
             </button>
           </div>

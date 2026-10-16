@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { X, Plus, Edit2, Archive, Check, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Edit2, Archive, Check, Building2, AlertTriangle } from 'lucide-react';
 import type { Account } from '../../../types';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
+import { useTranslation } from '../../../i18n';
 
 interface AccountManagerModalProps {
   accounts: Account[];
@@ -31,12 +32,46 @@ export function AccountManagerModal({
   onUpdateAccount,
   onDeleteAccount,
 }: AccountManagerModalProps) {
+  const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [accountToArchive, setAccountToArchive] = useState<Account | null>(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#10b981');
   const [initialBalance, setInitialBalance] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (accountToArchive) {
+          setAccountToArchive(null);
+        } else if (isAddingNew || editingId) {
+          resetForm();
+        } else {
+          onClose();
+        }
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      if (accountToArchive) {
+        setAccountToArchive(null);
+      } else if (isAddingNew || editingId) {
+        resetForm();
+      } else {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [accountToArchive, isAddingNew, editingId, onClose]);
 
   const startEdit = (acc: Account) => {
     setEditingId(acc.id);
@@ -96,22 +131,24 @@ export function AccountManagerModal({
 
   const handleDelete = async (acc: Account) => {
     if (accounts.length <= 1) {
-      triggerToast('Você precisa manter ao menos uma conta cadastrada.', 'error');
+      triggerToast(t('finance.mustKeepOneAccount', 'Você precisa manter ao menos uma conta cadastrada.'), 'error');
       return;
     }
-    const msg = `Deseja arquivar a conta "${acc.name}"? Ela deixará de aparecer em novas transações, mas seu histórico permanecerá salvo.`;
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm({
-          title: 'Arquivar Conta',
-          message: msg,
-          kind: 'warning',
-        })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-    if (!confirmed) {
-      return;
+    const msg = t('finance.archiveAccountDesc', 'Deseja arquivar a conta "{{name}}"? Ela deixará de aparecer em novas transações, mas seu histórico permanecerá salvo.', { name: acc.name });
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: t('finance.archiveAccountTitle', 'Arquivar Conta'),
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (!confirmed) {
+        return;
+      }
+      await onDeleteAccount(acc.id);
+      if (editingId === acc.id) resetForm();
+    } else {
+      setAccountToArchive(acc);
     }
-    await onDeleteAccount(acc.id);
-    if (editingId === acc.id) resetForm();
   };
 
   return (
@@ -124,18 +161,54 @@ export function AccountManagerModal({
               <div className="p-1.5 rounded-md bg-brand-500/15 text-brand-400">
                 <Building2 size={16} />
               </div>
-              <h2 className="text-base font-semibold text-dark-text">Contas & Bancos</h2>
+              <h2 className="text-base font-semibold text-dark-text">{t('finance.accountsAndBanks', 'Contas & Bancos')}</h2>
             </div>
-            <button onClick={onClose} className="p-1 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors">
+            <button
+              onClick={onClose}
+              className="p-1 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              title={t('common.closeEsc', 'Fechar (Esc)')}
+            >
               <X size={18} />
             </button>
           </div>
+
+          {/* Archive Confirmation Banner */}
+          {accountToArchive && (
+            <div className="mx-4 mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  {t('finance.archiveAccountDesc', 'Deseja arquivar a conta "{{name}}"? Ela deixará de aparecer em novas transações, mas seu histórico permanecerá salvo.', { name: accountToArchive.name })}
+                </span>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAccountToArchive(null)}
+                  className="px-2.5 py-1 text-xs text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  {t('common.cancel', 'Cancelar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await onDeleteAccount(accountToArchive.id);
+                    if (editingId === accountToArchive.id) resetForm();
+                    setAccountToArchive(null);
+                  }}
+                  className="px-3 py-1 text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors cursor-pointer shadow-md shadow-amber-600/20 active:scale-95"
+                >
+                  {t('common.confirm', 'Sim, Arquivar')}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="p-4 flex flex-col gap-4 overflow-y-auto">
             {/* Accounts List */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-dark-subtext uppercase tracking-wider">Suas Contas</span>
+                <span className="text-xs font-semibold text-dark-subtext uppercase tracking-wider">{t('finance.yourAccounts', 'Suas Contas')}</span>
                 {!isAddingNew && !editingId && (
                   <button
                     onClick={startNew}

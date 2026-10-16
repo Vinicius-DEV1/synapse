@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, File, Calendar, HardDrive, Type, Share2, Tag } from 'lucide-react';
 import type { FileItem, FilePageLink } from '../../types';
 import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 
 interface FileInfoModalProps {
   item: FileItem;
@@ -9,8 +10,30 @@ interface FileInfoModalProps {
 }
 
 export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
+  const { t } = useTranslation();
   const [links, setLinks] = useState<FilePageLink[]>([]);
   const [linksLoading, setLinksLoading] = useState(true);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
   
   useEffect(() => {
     let active = true;
@@ -46,7 +69,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-dark-bg/50">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <File size={20} className="text-brand-400" />
-            Detalhes do Arquivo
+            {t('files.details')}
           </h2>
           <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
@@ -68,7 +91,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
             <div className="bg-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex items-center gap-2 text-dark-subtext mb-1">
                 <HardDrive size={14} />
-                <span className="text-xs font-medium">Tamanho</span>
+                <span className="text-xs font-medium">{t('files.size')}</span>
               </div>
               <p className="text-white text-sm">{sizeStr}</p>
             </div>
@@ -76,7 +99,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
             <div className="bg-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex items-center gap-2 text-dark-subtext mb-1">
                 <Type size={14} />
-                <span className="text-xs font-medium">Mime Type</span>
+                <span className="text-xs font-medium">{t('files.mimeType')}</span>
               </div>
               <p className="text-white text-sm truncate" title={item.mime_type || 'N/A'}>{item.mime_type || 'N/A'}</p>
             </div>
@@ -84,7 +107,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
             <div className="bg-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex items-center gap-2 text-dark-subtext mb-1">
                 <Calendar size={14} />
-                <span className="text-xs font-medium">Criado em</span>
+                <span className="text-xs font-medium">{t('files.createdAt')}</span>
               </div>
               <p className="text-white text-sm">{createdDate}</p>
             </div>
@@ -92,7 +115,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
             <div className="bg-white/5 p-3 rounded-xl border border-white/5">
               <div className="flex items-center gap-2 text-dark-subtext mb-1">
                 <Calendar size={14} />
-                <span className="text-xs font-medium">Modificado</span>
+                <span className="text-xs font-medium">{t('files.updatedAt')}</span>
               </div>
               <p className="text-white text-sm">{updatedDate}</p>
             </div>
@@ -101,25 +124,25 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
           <div className="border-t border-white/10 pt-4">
             <h4 className="text-sm font-medium text-white flex items-center gap-2 mb-3">
               <Share2 size={16} className="text-blue-400" />
-              Vínculos e Origens
+              {t('files.linksAndSources')}
             </h4>
             
             <div className="flex flex-wrap gap-2">
               {item.drive_file_id && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium border border-green-500/20">
-                  ☁️ Salvo no Drive
+                  ☁️ {t('files.savedInDrive')}
                 </span>
               )}
               
               {links.map(link => (
                 <span key={link.id} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-500/10 text-brand-400 text-xs font-medium border border-brand-500/20">
                   <Tag size={12} />
-                  Página vinculada
+                  {t('files.linkedPage')}
                 </span>
               ))}
               
               {!linksLoading && !item.drive_file_id && links.length === 0 && (
-                <span className="text-dark-subtext text-sm italic">Nenhum vínculo externo encontrado.</span>
+                <span className="text-dark-subtext text-sm italic">{t('files.noExternalLinks')}</span>
               )}
             </div>
           </div>
@@ -130,7 +153,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
             onClick={onClose}
             className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-colors"
           >
-            Fechar
+            {t('files.close')}
           </button>
         </div>
       </div>

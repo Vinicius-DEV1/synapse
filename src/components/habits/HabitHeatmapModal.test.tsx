@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import HabitHeatmapModal from './HabitHeatmapModal';
+import { I18nProvider } from '../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('HabitHeatmapModal', () => {
   const mockHabit = {
@@ -44,7 +48,7 @@ describe('HabitHeatmapModal', () => {
   });
 
   it('renders habit title and statistics scorecards', async () => {
-    render(
+    renderWithI18n(
       <HabitHeatmapModal
         habitId="habit-1"
         initialDate="2026-09-25"
@@ -63,7 +67,7 @@ describe('HabitHeatmapModal', () => {
 
   it('calls onClose when close button is clicked', async () => {
     const onClose = vi.fn();
-    render(
+    renderWithI18n(
       <HabitHeatmapModal
         habitId="habit-1"
         initialDate="2026-09-25"
@@ -81,7 +85,7 @@ describe('HabitHeatmapModal', () => {
   });
 
   it('toggles day log when a heatmap cell is clicked', async () => {
-    render(
+    renderWithI18n(
       <HabitHeatmapModal
         habitId="habit-1"
         initialDate="2026-09-25"

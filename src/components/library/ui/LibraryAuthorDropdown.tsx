@@ -1,4 +1,5 @@
 import { BookOpen, ChevronDown } from 'lucide-react';
+import { useI18n } from '../../../i18n';
 
 interface LibraryAuthorDropdownProps {
   authors: string[];
@@ -17,6 +18,8 @@ export function LibraryAuthorDropdown({
   setShowAuthorDropdown,
   onOpen,
 }: LibraryAuthorDropdownProps) {
+  const { t } = useI18n();
+
   if (authors.length === 0) return null;
 
   return (
@@ -31,7 +34,7 @@ export function LibraryAuthorDropdown({
       >
         <BookOpen size={14} className="opacity-70" />
         <span className="truncate max-w-[120px]">
-          {selectedAuthor || 'Autor'}
+          {selectedAuthor || t('library.author')}
         </span>
         <ChevronDown size={14} />
       </button>
@@ -50,7 +53,7 @@ export function LibraryAuthorDropdown({
                   : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
               }`}
             >
-              Todos os autores
+              {t('library.allAuthors')}
             </button>
             {authors.map((author) => (
               <button

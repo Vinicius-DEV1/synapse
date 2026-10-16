@@ -5,10 +5,12 @@ import { isInterviewSession } from '../../types';
 import PracticeChat from './PracticeChat';
 import { NewPracticeSessionModal } from './modals/NewPracticeSessionModal';
 import { InterviewSetupModal } from './modals/InterviewSetupModal';
-
+import { PracticeDeleteModal } from './modals/PracticeDeleteModal';
+import { useTranslation } from '../../i18n/I18nContext';
 import { isMobileScreen } from '../../services/platform';
 
 export default function PracticeView() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<TutorSession[]>([]);
   const [activeSession, setActiveSession] = useState<TutorSession | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -16,6 +18,7 @@ export default function PracticeView() {
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isInterviewSetupOpen, setIsInterviewSetupOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<TutorSession | null>(null);
 
   const loadSessions = async () => {
     if (!window.api?.practice) return;
@@ -94,32 +97,28 @@ export default function PracticeView() {
     }
   };
 
-  const handleDeleteSession = async (id: string, e: MouseEvent) => {
+  const handleDeleteClick = (session: TutorSession, e: MouseEvent) => {
     e.stopPropagation();
-    if (!window.api?.practice) return;
-    
-    const isConfirm = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados do disco)')) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function'
-      ? window.confirm('Deseja excluir esta sessão de prática? (Todos os áudios associados também serão apagados do disco)')
-      : false;
-    
-    if (!isConfirm) return;
+    setSessionToDelete(session);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!sessionToDelete || !window.api?.practice) return;
+    const id = sessionToDelete.id;
 
     try {
-      const sessionToUpdate = sessions.find(s => s.id === id);
-      if (sessionToUpdate) {
-        await window.api.practice.updateSession({
-          ...sessionToUpdate,
-          deleted_at: new Date().toISOString()
-        });
-        setSessions(prev => prev.filter(s => s.id !== id));
-        if (activeSession?.id === id) {
-          setActiveSession(null);
-        }
+      await window.api.practice.updateSession({
+        ...sessionToDelete,
+        deleted_at: new Date().toISOString(),
+      });
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (activeSession?.id === id) {
+        setActiveSession(null);
       }
     } catch (err) {
       console.error('Failed to delete session:', err);
+    } finally {
+      setSessionToDelete(null);
     }
   };
 
@@ -151,13 +150,13 @@ export default function PracticeView() {
       } flex flex-col`}>
         <div className="p-4 border-b border-white/5 flex justify-between items-center">
           <h2 className="text-sm font-semibold tracking-wide text-brand-400 flex items-center gap-2">
-            <Mic size={16} /> Histórico
+            <Mic size={16} /> {t('practice.history', 'Histórico')}
           </h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsNewModalOpen(true)}
               className="p-1.5 rounded-lg bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition-colors active:scale-95"
-              title="Nova Sessão"
+              title={t('practice.newSession', 'Nova Sessão')}
             >
               <Plus size={16} />
             </button>
@@ -175,7 +174,7 @@ export default function PracticeView() {
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
           {sessions.length === 0 && (
             <div className="text-xs text-dark-subtext text-center mt-6 px-4">
-              Nenhuma sessão de prática ainda. Comece uma nova conversa!
+              {t('practice.emptyState', 'Nenhuma sessão de prática ainda. Comece uma nova conversa!')}
             </div>
           )}
           
@@ -208,18 +207,19 @@ export default function PracticeView() {
                     <span className="text-sm font-medium truncate pr-2">{session.title}</span>
                   </div>
                   <button
-                    onClick={(e) => handleDeleteSession(session.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-dark-subtext hover:text-red-400 transition-opacity shrink-0"
+                    onClick={(e) => handleDeleteClick(session, e)}
+                    className="opacity-80 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-dark-subtext hover:text-red-400 transition-opacity shrink-0"
+                    title={t('practice.deleteModal.confirm', 'Excluir Sessão')}
                   >
                     <Trash2 size={12} />
                   </button>
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-dark-subtext ml-5">
                   <Clock size={10} />
-                  {dateStr} às {timeStr}
+                  {dateStr} {t('practice.at', 'às')} {timeStr}
                   {isInterview && (
                     <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 font-semibold uppercase">
-                      Entrevista
+                      {t('practice.interview', 'Entrevista')}
                     </span>
                   )}
                 </div>
@@ -236,8 +236,8 @@ export default function PracticeView() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center opacity-40 select-none">
             <Mic size={64} className="text-brand-500 mb-4" />
-            <h1 className="text-2xl font-bold tracking-tight mb-2">Prática & Entrevistas com IA</h1>
-            <p className="text-sm">Selecione uma sessão ou crie uma nova para conversar ou simular entrevistas.</p>
+            <h1 className="text-2xl font-bold tracking-tight mb-2">{t('practice.mainTitle', 'Prática & Entrevistas com IA')}</h1>
+            <p className="text-sm">{t('practice.mainSubtitle', 'Selecione uma sessão ou crie uma nova para conversar ou simular entrevistas.')}</p>
           </div>
         )}
       </div>
@@ -262,6 +262,14 @@ export default function PracticeView() {
           setIsNewModalOpen(true);
         }}
         onSubmit={handleCreateInterviewSession}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <PracticeDeleteModal
+        isOpen={Boolean(sessionToDelete)}
+        sessionTitle={sessionToDelete?.title ?? ''}
+        onClose={() => setSessionToDelete(null)}
+        onConfirmDelete={handleConfirmDelete}
       />
     </div>
   );

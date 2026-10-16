@@ -1,4 +1,5 @@
 import { Plus, Calendar, BrainCircuit, FolderUp } from 'lucide-react';
+import { useI18n } from '../../../i18n';
 
 interface HomeQuickActionsProps {
   onNewPage: () => void;
@@ -13,6 +14,8 @@ export function HomeQuickActions({
   onOpenAnki,
   onOpenFiles
 }: HomeQuickActionsProps) {
+  const { t } = useI18n();
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       <button 
@@ -23,7 +26,7 @@ export function HomeQuickActions({
           <Plus size={20} />
         </div>
         <div className="text-left">
-          <p className="font-medium text-white text-sm">Nova Página</p>
+          <p className="font-medium text-white text-sm">{t('home.quickActions.newPage')}</p>
         </div>
       </button>
       
@@ -35,7 +38,7 @@ export function HomeQuickActions({
           <Calendar size={20} />
         </div>
         <div className="text-left">
-          <p className="font-medium text-white text-sm">Ver Agenda</p>
+          <p className="font-medium text-white text-sm">{t('home.quickActions.calendar')}</p>
         </div>
       </button>
 
@@ -47,7 +50,7 @@ export function HomeQuickActions({
           <BrainCircuit size={20} />
         </div>
         <div className="text-left">
-          <p className="font-medium text-white text-sm">Flashcards</p>
+          <p className="font-medium text-white text-sm">{t('home.quickActions.flashcards')}</p>
         </div>
       </button>
       
@@ -59,7 +62,7 @@ export function HomeQuickActions({
           <FolderUp size={20} />
         </div>
         <div className="text-left">
-          <p className="font-medium text-white text-sm">Arquivos</p>
+          <p className="font-medium text-white text-sm">{t('home.quickActions.files')}</p>
         </div>
       </button>
     </div>

@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import FinanceView from './FinanceView';
 import type { Tab } from '../../types';
+import { I18nProvider } from '../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 /** Helper to build a minimal finance tab with a given pageId. */
 function makeTab(pageId: string | null = null): Tab {
@@ -53,7 +57,7 @@ describe('FinanceView component', () => {
   });
 
   it('renders finance dashboard with header and action buttons', async () => {
-    render(<FinanceView tab={makeTab('dashboard')} />);
+    renderWithI18n(<FinanceView tab={makeTab('dashboard')} />);
 
     await waitFor(() => {
       expect(screen.getByText('Finanças Pessoais')).toBeInTheDocument();
@@ -62,7 +66,7 @@ describe('FinanceView component', () => {
   });
 
   it('renders loans section when tab pageId is loans', async () => {
-    render(<FinanceView tab={makeTab('loans')} />);
+    renderWithI18n(<FinanceView tab={makeTab('loans')} />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'A Receber' })).toBeInTheDocument();
@@ -71,7 +75,7 @@ describe('FinanceView component', () => {
   });
 
   it('renders transactions section when tab pageId is transactions', async () => {
-    render(<FinanceView tab={makeTab('transactions')} />);
+    renderWithI18n(<FinanceView tab={makeTab('transactions')} />);
 
     await waitFor(() => {
       expect(screen.getByText('Salário')).toBeInTheDocument();
@@ -79,7 +83,7 @@ describe('FinanceView component', () => {
   });
 
   it('renders wishlist section when tab pageId is wishlist', async () => {
-    render(<FinanceView tab={makeTab('wishlist')} />);
+    renderWithI18n(<FinanceView tab={makeTab('wishlist')} />);
 
     await waitFor(() => {
       expect(screen.getByText('Adicionar Desejo')).toBeInTheDocument();
@@ -87,7 +91,7 @@ describe('FinanceView component', () => {
   });
 
   it('defaults to dashboard when pageId is null', async () => {
-    render(<FinanceView tab={makeTab(null)} />);
+    renderWithI18n(<FinanceView tab={makeTab(null)} />);
 
     await waitFor(() => {
       expect(screen.getByText('Finanças Pessoais')).toBeInTheDocument();

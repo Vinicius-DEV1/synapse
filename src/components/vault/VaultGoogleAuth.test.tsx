@@ -4,6 +4,7 @@ import { VaultItemList } from './VaultItemList';
 import { VaultItemDetails } from './VaultItemDetails';
 import { VaultItemForm } from './VaultItemForm';
 import type { VaultItem, VaultGroup } from '../../types/vault';
+import { I18nProvider } from '../../i18n';
 
 describe('Vault Google Auth Feature', () => {
   const googleItem: VaultItem = {
@@ -49,15 +50,17 @@ describe('Vault Google Auth Feature', () => {
     const handleNew = vi.fn();
 
     render(
-      <VaultItemList
-        searchQuery=""
-        setSearchQuery={vi.fn()}
-        filteredItems={[googleItem, passwordItem]}
-        selectedItem={null}
-        isLoading={false}
-        handleSelectItem={handleSelect}
-        onNewItem={handleNew}
-      />
+      <I18nProvider initialLanguage="pt">
+        <VaultItemList
+          searchQuery=""
+          setSearchQuery={vi.fn()}
+          filteredItems={[googleItem, passwordItem]}
+          selectedItem={null}
+          isLoading={false}
+          handleSelectItem={handleSelect}
+          onNewItem={handleNew}
+        />
+      </I18nProvider>
     );
 
     // Spotify Google Account has Google SSO avatar with title
@@ -70,11 +73,13 @@ describe('Vault Google Auth Feature', () => {
 
   it('renders Google SSO badge and hides password field in VaultItemDetails', () => {
     render(
-      <VaultItemDetails
-        item={googleItem}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt">
+        <VaultItemDetails
+          item={googleItem}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     expect(screen.getByText('Spotify Google Account')).toBeDefined();
@@ -94,13 +99,15 @@ describe('Vault Google Auth Feature', () => {
     const handleCancel = vi.fn();
 
     render(
-      <VaultItemForm
-        item={null}
-        groups={mockGroups}
-        groupId={null}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
+      <I18nProvider initialLanguage="pt">
+        <VaultItemForm
+          item={null}
+          groups={mockGroups}
+          groupId={null}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+      </I18nProvider>
     );
 
     // Initially password field is visible

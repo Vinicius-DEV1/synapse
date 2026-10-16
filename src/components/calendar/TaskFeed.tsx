@@ -3,6 +3,7 @@ import type { CalendarEvent } from '../../types';
 import { format } from 'date-fns';
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
 import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
+import { useTranslation } from '../../i18n';
 
 interface TaskFeedProps {
   events: CalendarEvent[];
@@ -11,6 +12,7 @@ interface TaskFeedProps {
 }
 
 export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFeedProps) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<'all' | 'tasks'>('all');
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -79,28 +81,28 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
   return (
     <div className="flex flex-col h-full bg-dark-bg text-dark-text">
       <div className="p-4 border-b border-dark-border">
-        <h2 className="text-lg font-medium font-serif mb-3">Agenda</h2>
+        <h2 className="text-lg font-medium font-serif mb-3">{t('calendar.schedule', 'Agenda')}</h2>
         <div className="flex gap-2">
           <button 
             onClick={() => setFilter('all')}
             className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${filter === 'all' ? 'bg-dark-hover text-white' : 'text-dark-subtext'}`}
           >
-            Tudo
+            {t('calendar.all', 'Tudo')}
           </button>
           <button 
             onClick={() => setFilter('tasks')}
             className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${filter === 'tasks' ? 'bg-dark-hover text-white' : 'text-dark-subtext'}`}
           >
-            Apenas Tarefas
+            {t('calendar.onlyTasks', 'Apenas Tarefas')}
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <div>
-          <h3 className="text-xs font-bold text-dark-subtext uppercase tracking-wider mb-3">Hoje</h3>
+          <h3 className="text-xs font-bold text-dark-subtext uppercase tracking-wider mb-3">{t('calendar.today', 'Hoje')}</h3>
           {todayEvents.length === 0 ? (
-            <p className="text-sm text-dark-subtext italic">Nada para hoje.</p>
+            <p className="text-sm text-dark-subtext italic">{t('calendar.nothingToday', 'Nada para hoje.')}</p>
           ) : (
             <div className="space-y-1">
               {todayEvents.map(renderEventItem)}
@@ -109,9 +111,9 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
         </div>
 
         <div>
-          <h3 className="text-xs font-bold text-dark-subtext uppercase tracking-wider mb-3">Próximos Dias</h3>
+          <h3 className="text-xs font-bold text-dark-subtext uppercase tracking-wider mb-3">{t('calendar.upcomingDays', 'Próximos Dias')}</h3>
           {upcomingEvents.length === 0 ? (
-            <p className="text-sm text-dark-subtext italic">Nenhum evento futuro.</p>
+            <p className="text-sm text-dark-subtext italic">{t('calendar.noUpcomingEvents', 'Nenhum evento futuro.')}</p>
           ) : (
             <div className="space-y-1">
               {upcomingEvents.slice(0, 15).map(renderEventItem)}

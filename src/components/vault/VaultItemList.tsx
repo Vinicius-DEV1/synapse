@@ -2,6 +2,7 @@ import { Search, Plus, Key, Star, GripVertical } from 'lucide-react';
 import type { VaultItem, VaultGroup } from '../../types';
 import { isMobileScreen } from '../../services/platform';
 import { GoogleGIcon } from './ui/GoogleGIcon';
+import { useTranslation } from '../../i18n';
 import {
   DndContext,
   closestCenter,
@@ -98,7 +99,7 @@ function SortableVaultItem({ item, isSelected, onSelect, isDragDisabled }: Sorta
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="text-dark-subtext/40 hover:text-white p-1 rounded cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-dark-subtext/40 hover:text-white p-1 rounded cursor-grab active:cursor-grabbing opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
           title="Arrastar para reordenar"
         >
           <GripVertical size={14} />
@@ -122,6 +123,7 @@ export function VaultItemList({
   onSelectGroup,
   className = '',
 }: VaultItemListProps) {
+  const { t } = useTranslation();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -150,7 +152,7 @@ export function VaultItemList({
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" />
             <input
               type="text"
-              placeholder="Buscar itens..."
+              placeholder={t('vault.searchPlaceholder', 'Buscar itens...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-dark-bg border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-500 transition-colors"
@@ -159,10 +161,10 @@ export function VaultItemList({
           <button
             onClick={onNewItem}
             className="md:hidden flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shrink-0 active:scale-95 transition-all"
-            title="Novo Item"
+            title={t('vault.newItem', 'Novo Item')}
           >
             <Plus size={14} />
-            <span>Novo</span>
+            <span>{t('vault.new', 'Novo')}</span>
           </button>
         </div>
 
@@ -178,7 +180,7 @@ export function VaultItemList({
                   : 'text-dark-subtext hover:text-white bg-white/5'
               }`}
             >
-              Todos
+              {t('vault.all', 'Todos')}
             </button>
             {groups.map(g => (
               <button
@@ -200,9 +202,9 @@ export function VaultItemList({
 
       <div className="flex-1 overflow-y-auto p-2">
         {isLoading ? (
-          <div className="text-center py-10 text-dark-subtext text-sm">Carregando...</div>
+          <div className="text-center py-10 text-dark-subtext text-sm">{t('vault.loading', 'Carregando...')}</div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-10 text-dark-subtext text-sm">Nenhum item encontrado</div>
+          <div className="text-center py-10 text-dark-subtext text-sm">{t('vault.noItemsFound', 'Nenhum item encontrado')}</div>
         ) : (
           <DndContext
             sensors={sensors}
@@ -233,7 +235,7 @@ export function VaultItemList({
           className="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-brand-500/20"
         >
           <Plus size={16} />
-          <span>Novo Item</span>
+          <span>{t('vault.newItem', 'Novo Item')}</span>
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { CheckCircle, Music } from 'lucide-react';
 import type { Session } from './types';
 import { Portal } from '../ui/Portal';
 import { startProceduralAlarm } from '../../store/focus/focus-sound';
+import { useTranslation } from '../../i18n';
 
 interface SuccessModalProps {
   onSave: (summary: string) => void;
@@ -12,22 +13,36 @@ interface SuccessModalProps {
   onCancel: () => void;
 }
 
-const ALARM_TYPES = [
-  { id: 'beep', name: 'Digital Beep' },
-  { id: 'retro', name: 'Retro Alarm' },
-  { id: 'bell', name: 'Tibetan Bell' }
-];
-
 const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreTime, onCancel }) => {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState('');
   const [alarmType, setAlarmType] = useState(localStorage.getItem('defaultAlarmType') || 'beep');
   const [overtime, setOvertime] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const stopAlarmRef = useRef<(() => void) | null>(null);
 
+  const alarmOptions = [
+    { id: 'beep', name: t('focus.digitalBeep', 'Beep Digital') },
+    { id: 'retro', name: t('focus.retroAlarm', 'Alarme Retrô') },
+    { id: 'bell', name: t('focus.tibetanBell', 'Sino Tibetano') },
+  ];
+
   useEffect(() => {
     const timer = setInterval(() => setOvertime(prev => prev + 1), 1000);
-    return () => clearInterval(timer);
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener('caderno-back-press', handleBackPress);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+      stopAlarm();
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+    };
   }, []);
 
   const stopAlarm = () => {
@@ -62,7 +77,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
 
   return (
     <Portal>
-      <div className="absolute inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-hidden">
+      <div className="fixed inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-hidden animate-fade-in">
       <div className="bg-dark-card rounded-3xl w-full max-w-md border border-emerald-500/30 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-300">
         <div className="p-6 sm:p-8 flex flex-col items-center justify-center bg-gradient-to-b from-emerald-500/20 to-transparent relative overflow-hidden sticky top-0 z-10 backdrop-blur-md">
           {/* Confetti / Glow effect */}
@@ -72,9 +87,10 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
             <CheckCircle size={32} />
           </div>
           
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 relative z-10 tracking-tight text-center">Session Complete!</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 relative z-10 tracking-tight text-center">{t('focus.sessionComplete', 'Sessão Concluída!')}</h2>
           <p className="text-emerald-400 font-medium relative z-10 text-center mb-4">
-            Great job! You focused for <span className="font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded">{session.target_time_minutes} min</span>.
+            {t('focus.greatJob', 'Excelente trabalho! Você focou por')}{' '}
+            <span className="font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded">{session.target_time_minutes} min</span>.
           </p>
 
           <div className="text-3xl font-bold text-rose-400 font-mono tracking-widest relative z-10 bg-rose-500/10 px-4 py-2 rounded-xl border border-rose-500/20 mb-4 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
@@ -103,14 +119,14 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
           {/* Alarm Control */}
           <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium text-dark-subtext">
-              <Music size={16} className="text-brand-400" /> Alarm Sound
+              <Music size={16} className="text-brand-400" /> {t('focus.alarmSound', 'Som do Alarme')}
             </div>
             <select 
               value={alarmType} 
               onChange={(e) => setAlarmType(e.target.value)}
               className="bg-dark-bg text-white border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500"
             >
-              {ALARM_TYPES.map(type => (
+              {alarmOptions.map(type => (
                 <option className="bg-dark-bg text-white" key={type.id} value={type.id}>{type.name}</option>
               ))}
             </select>
@@ -118,10 +134,10 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
 
           <div>
             <label className="block text-sm font-medium text-dark-subtext mb-2">
-              What did you accomplish?
+              {t('focus.whatAccomplished', 'O que você realizou?')}
             </label>
             <textarea 
-              placeholder="Summarize your progress..." 
+              placeholder={t('focus.summarizeProgress', 'Resuma seu progresso...')} 
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-white/20 min-h-[100px] resize-none"
@@ -135,7 +151,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
             disabled={!summary.trim()}
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-emerald-600/20"
           >
-            TURN OFF ALARM & SAVE
+            {t('focus.turnOffAlarmSave', 'DESLIGAR ALARME E SALVAR')}
           </button>
 
           <button 
@@ -146,7 +162,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ onSave, session, onAddMoreT
             }}
             className="w-full flex justify-center text-sm bg-transparent hover:bg-rose-500/10 text-rose-400 py-3 rounded-xl font-bold transition-all active:scale-[0.98]"
           >
-            Abort Session
+            {t('focus.abortSession', 'Abortar Sessão')}
           </button>
         </form>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Settings2, MonitorPlay } from 'lucide-react';
 
@@ -11,6 +11,20 @@ interface WebVersionModalProps {
 
 export default function WebVersionModal({ isOpen, onClose, onConfirm, videoTitle }: WebVersionModalProps) {
   const [quality, setQuality] = useState('720p');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

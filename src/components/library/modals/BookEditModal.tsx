@@ -141,9 +141,9 @@ export default function BookEditModal({
       await window.api.library.setBookCollections(book.id, finalCollections);
       await onSave();
       triggerToast('Livro salvo com sucesso!', 'success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save book', err);
-      triggerToast(err.message || 'Falha ao salvar as alterações do livro.', 'error');
+      triggerToast(err instanceof Error ? err.message : 'Falha ao salvar as alterações do livro.', 'error');
     } finally {
       setLoading(false);
     }

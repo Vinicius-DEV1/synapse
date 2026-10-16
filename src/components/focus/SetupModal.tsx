@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Clock, Tag, AlignLeft, X } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 
 interface SetupModalProps {
   onStart: (tag: string, description: string, targetTime: number) => void;
@@ -14,9 +15,30 @@ interface SetupModalProps {
 const PRESET_TIMES = [15, 25, 30, 45, 60];
 
 const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags = [], initialTag = '', initialDescription = '', initialTargetTime = 30 }) => {
+  const { t } = useTranslation();
   const [tag, setTag] = useState(initialTag);
   const [description, setDescription] = useState(initialDescription);
   const [targetTime, setTargetTime] = useState(initialTargetTime);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onCancel();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onCancel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,13 +57,19 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
 
   return (
     <Portal>
-      <div className="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden">
-      <div className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200">
+      <div 
+        className="fixed inset-0 bg-dark-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden animate-fade-in"
+        onClick={onCancel}
+      >
+      <div 
+        className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            <span className="text-brand-400">⏰</span> New Session
+            <span className="text-brand-400">⏰</span> {t('focus.newSession', 'Nova Sessão')}
           </h2>
-          <button onClick={onCancel} className="text-dark-subtext hover:text-white transition-colors">
+          <button onClick={onCancel} className="text-dark-subtext hover:text-white transition-colors" title={t('common.cancel', 'Cancelar')}>
             <X size={20} />
           </button>
         </div>
@@ -50,11 +78,11 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
           {/* Tag Input */}
           <div className="relative">
             <label className="flex items-center gap-2 text-sm font-medium text-dark-subtext mb-2">
-              <Tag size={16} className="text-brand-400" /> Session Tag
+              <Tag size={16} className="text-brand-400" /> {t('focus.sessionTag', 'Tag da Sessão')}
             </label>
             <input 
               type="text" 
-              placeholder="e.g. Study, Work, Reading" 
+              placeholder={t('focus.tagPlaceholder', 'Ex: Estudo, Trabalho, Leitura')} 
               value={tag}
               onChange={(e) => setTag(e.target.value)}
               className={`w-full bg-dark-bg border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-white/20 ${
@@ -83,18 +111,18 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
             )}
             
             {isExisting && tag.trim().length > 0 && (
-              <p className="text-xs text-brand-400 mt-2 font-medium animate-in fade-in">✓ Existing tag matched!</p>
+              <p className="text-xs text-brand-400 mt-2 font-medium animate-in fade-in">{t('focus.existingTagMatched', '✓ Tag existente reconhecida!')}</p>
             )}
           </div>
 
           {/* Description Input */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-dark-subtext mb-2">
-              <AlignLeft size={16} className="text-brand-400" /> Description
+              <AlignLeft size={16} className="text-brand-400" /> {t('focus.description', 'Descrição')}
             </label>
             <input 
               type="text" 
-              placeholder="e.g. Studying Calculus Chapter 4" 
+              placeholder={t('focus.descPlaceholder', 'Ex: Estudando Cálculo Capítulo 4')} 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all placeholder:text-white/20"
@@ -105,7 +133,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
           {/* Time Selection */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-dark-subtext mb-2">
-              <Clock size={16} className="text-brand-400" /> Duration (minutes)
+              <Clock size={16} className="text-brand-400" /> {t('focus.targetTime', 'Tempo Alvo')} ({t('focus.minutes', 'minutos')})
             </label>
             <div className="flex flex-wrap gap-2 mb-3">
               {PRESET_TIMES.map(time => (
@@ -138,7 +166,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
             disabled={!tag.trim() || !description.trim() || targetTime <= 0}
             className="w-full bg-brand-600 hover:bg-brand-500 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-brand-600/20"
           >
-            START FOCUSING
+            {t('focus.startTimer', 'INICIAR TEMPORIZADOR')}
           </button>
         </form>
       </div>

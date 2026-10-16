@@ -21,6 +21,16 @@ export function playAlarmSound(): void {
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
 
+    osc.onended = () => {
+      ctx.close().catch(() => {});
+    };
+    // Fallback safety timeout to prevent dangling audio contexts
+    setTimeout(() => {
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
+    }, 1000);
+
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.5);
   } catch (e) {
@@ -91,6 +101,12 @@ export function startProceduralAlarm(ctx: AudioContext, type: string = 'beep'): 
   return () => {
     if (intervalId !== null) {
       clearInterval(intervalId);
+      intervalId = null;
+    }
+    try {
+      masterGain.disconnect();
+    } catch {
+      // Ignored if already disconnected
     }
   };
 }

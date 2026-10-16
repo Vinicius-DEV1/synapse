@@ -3,6 +3,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DeleteTransactionModal } from './DeleteTransactionModal';
 import type { Transaction } from '../../../types';
+import { I18nProvider } from '../../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('DeleteTransactionModal Component', () => {
   const mockTx: Transaction = {
@@ -19,7 +23,7 @@ describe('DeleteTransactionModal Component', () => {
     const onClose = vi.fn();
     const onConfirm = vi.fn().mockResolvedValue(undefined);
 
-    render(
+    renderWithI18n(
       <DeleteTransactionModal
         transaction={mockTx}
         onClose={onClose}
@@ -45,7 +49,7 @@ describe('DeleteTransactionModal Component', () => {
     const onClose = vi.fn();
     const onConfirm = vi.fn();
 
-    render(
+    renderWithI18n(
       <DeleteTransactionModal
         transaction={mockTx}
         onClose={onClose}
@@ -71,7 +75,7 @@ describe('DeleteTransactionModal Component', () => {
       linked_loan_id: 'loan_parent_123',
     };
 
-    render(
+    renderWithI18n(
       <DeleteTransactionModal
         transaction={linkedTx}
         onClose={vi.fn()}
@@ -93,7 +97,7 @@ describe('DeleteTransactionModal Component', () => {
       date: '2026-08-25',
     };
 
-    render(
+    renderWithI18n(
       <DeleteTransactionModal
         transaction={loanTx}
         onClose={vi.fn()}

@@ -6,6 +6,7 @@ import { GoogleGIcon } from './ui/GoogleGIcon';
 import { VaultPasswordHistory } from './VaultPasswordHistory';
 import { VaultBreachBadge } from './VaultBreachBadge';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface VaultItemDetailsProps {
   item: VaultItem;
@@ -14,6 +15,7 @@ interface VaultItemDetailsProps {
 }
 
 export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsProps) {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -25,7 +27,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err: unknown) {
       console.error('[Vault] Failed to copy to clipboard:', err);
-      triggerToast('Falha ao copiar para a área de transferência', 'error');
+      triggerToast(t('vault.copyError', 'Falha ao copiar para a área de transferência'), 'error');
     }
   };
 
@@ -75,11 +77,12 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
             onClick={onEdit}
             className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition-colors"
           >
-            Editar
+            {t('vault.edit', 'Editar')}
           </button>
           <button
             onClick={onDelete}
             className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+            title={t('vault.delete', 'Deletar')}
           >
             <Trash2 size={16} />
           </button>
@@ -89,7 +92,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
       <div className="space-y-6">
         {/* Credenciais Base */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-          <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">Credenciais</h3>
+          <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">{t('vault.credentials', 'Credenciais')}</h3>
 
           {isGoogle && (
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between gap-3">
@@ -98,12 +101,12 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
                   <GoogleGIcon size={18} />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-dark-text">Conta vinculada ao Google</div>
-                  <div className="text-[11px] text-dark-subtext">Acesso direto via autenticação federada (sem senha dedicada)</div>
+                  <div className="text-xs font-semibold text-dark-text">{t('vault.googleAccountLinked', 'Conta vinculada ao Google')}</div>
+                  <div className="text-[11px] text-dark-subtext">{t('vault.googleAccountDesc', 'Acesso direto via autenticação federada (sem senha dedicada)')}</div>
                 </div>
               </div>
               <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium whitespace-nowrap">
-                SSO Ativo
+                {t('vault.ssoActive', 'SSO Ativo')}
               </span>
             </div>
           )}
@@ -111,7 +114,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
           {item.username && (
             <div className="group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
               <div className="flex flex-col">
-                <span className="text-xs text-dark-subtext">Nome de Usuário</span>
+                <span className="text-xs text-dark-subtext">{t('vault.usernameOptional', 'Nome de Usuário')}</span>
                 <span className="text-dark-text font-medium">{item.username}</span>
               </div>
               <button
@@ -126,7 +129,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
           {item.email && (
             <div className="group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
               <div className="flex flex-col">
-                <span className="text-xs text-dark-subtext">{isGoogle ? 'E-mail da Conta Google' : 'E-mail'}</span>
+                <span className="text-xs text-dark-subtext">{isGoogle ? t('vault.googleAccountEmail', 'E-mail da Conta Google') : t('vault.email', 'E-mail')}</span>
                 <span className="text-dark-text font-medium">{item.email}</span>
               </div>
               <button
@@ -145,14 +148,14 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
               rel="noreferrer"
               className="w-full py-2.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-xl flex items-center justify-center gap-2 text-xs font-medium transition-all"
             >
-              <ExternalLink size={14} /> Abrir serviço para Entrar com Google
+              <ExternalLink size={14} /> {t('vault.openGoogleSso', 'Abrir serviço para Entrar com Google')}
             </a>
           )}
 
           {item.password && (
             <div className="group flex items-center justify-between p-3 rounded-xl bg-brand-500/5 border border-brand-500/10 hover:bg-brand-500/10 transition-colors">
               <div className="flex flex-col flex-1">
-                <span className="text-xs text-dark-subtext">Senha</span>
+                <span className="text-xs text-dark-subtext">{t('vault.password', 'Senha')}</span>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-dark-text font-mono text-lg tracking-wider">
                     {showPassword ? item.password : '••••••••••••'}
@@ -163,6 +166,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
                 <button
                   onClick={() => setShowPassword(!showPassword)}
                   className="p-2 text-dark-subtext hover:text-white transition-colors"
+                  title={showPassword ? t('vault.hidePassword', 'Ocultar senha') : t('vault.showPassword', 'Ver senha')}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -186,7 +190,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
         {/* Campos Personalizados */}
         {parsedCustomFields.length > 0 && (
           <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-            <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">Campos Adicionais</h3>
+            <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">{t('vault.customFields', 'Campos Adicionais')}</h3>
             <div className="grid grid-cols-2 gap-4">
               {parsedCustomFields.map((field, idx: number) => (
                 <div key={idx} className="flex flex-col p-3 rounded-xl bg-white/5">
@@ -215,7 +219,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
         {/* Notas */}
         {item.notes && (
           <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-            <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-3">Anotações Seguras</h3>
+            <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-3">{t('vault.secureNotes', 'Anotações Seguras')}</h3>
             <div className="whitespace-pre-wrap text-sm text-dark-subtext/90 leading-relaxed font-mono bg-black/20 p-4 rounded-xl border border-white/5">
               {item.notes}
             </div>
@@ -226,7 +230,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
         {(!isGoogle || Boolean(item.password)) && (
           <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-4 flex items-center gap-2">
-              <History size={16} /> Histórico de Senhas
+              <History size={16} /> {t('vault.passwordHistory', 'Histórico de Senhas')}
             </h3>
             <VaultPasswordHistory itemId={item.id} />
           </div>

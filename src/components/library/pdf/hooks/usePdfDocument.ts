@@ -30,6 +30,7 @@ export function usePdfDocument(
   const sessionIdRef = useRef<string | null>(null);
   const startPageRef = useRef<number>(1);
   const loadingTaskRef = useRef<pdfjsLib.PDFDocumentLoadingTask | null>(null);
+  const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
 
   const currentPageRef = useRef(currentPage);
   useEffect(() => {
@@ -96,6 +97,7 @@ export function usePdfDocument(
 
         if (!active) return;
 
+        pdfDocRef.current = pdf;
         setPdfDoc(pdf);
         setTotalPages(pdf.numPages);
 
@@ -209,6 +211,14 @@ export function usePdfDocument(
       active = false;
       loadingTaskRef.current?.destroy();
       loadingTaskRef.current = null;
+      try {
+        const doc = pdfDocRef.current as { cleanup?: () => void; destroy?: () => void } | null;
+        doc?.cleanup?.();
+        doc?.destroy?.();
+      } catch (e) {
+        console.debug('[usePdfDocument] Error cleaning up PDF document on unmount:', e);
+      }
+      pdfDocRef.current = null;
     };
   }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys, reloadCounter]);
 

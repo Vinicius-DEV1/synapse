@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import { Portal } from '../../../../ui/Portal';
+import { useTranslation } from '../../../../../i18n';
 import QuizSequentialPlayer from '../QuizSequentialPlayer';
 import QuizAIAssistant from '../QuizAIAssistant';
 import { useQuizAiChat } from '../../hooks/useQuizAiChat';
@@ -41,6 +42,7 @@ export function QuizSequentialFocusModal({
   onOpenAiAssistant,
   onEditQuestion,
 }: QuizSequentialFocusModalProps) {
+  const { t } = useTranslation();
   const modalContainerRef = useRef<HTMLDivElement>(null);
   const [showAiAssistantModal, setShowAiAssistantModal] = useState(false);
   const [chatHistory, setChatHistory] = useState<QuizChatMessage[]>([]);
@@ -182,10 +184,10 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
               <HelpCircle size={16} />
             </div>
             <h3 className="text-sm font-medium text-zinc-200 truncate max-w-xs sm:max-w-md">
-              {title || 'Bateria de Exercícios'}
+              {title || t('questions.focus.batteryTitleDefault', 'Bateria de Exercícios')}
             </h3>
             <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-              Modo Foco
+              {t('questions.focus.modeTitle', 'Modo Foco')}
             </span>
           </div>
 
@@ -193,12 +195,12 @@ Poderia me explicar detalhadamente os conceitos envolvidos, onde posso melhorar 
             <button
               onClick={onClose}
               className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/[0.06] transition-colors flex items-center gap-1.5 text-xs cursor-pointer shadow-xs"
-              title="Fechar (Esc)"
+              title={t('questions.focus.closeEsc', 'Fechar (Esc)')}
             >
               <kbd className="px-1 py-0.5 text-[10px] font-mono bg-black/40 border border-white/10 rounded text-zinc-400">
                 Esc
               </kbd>
-              <span className="hidden sm:inline">Sair</span>
+              <span className="hidden sm:inline">{t('questions.focus.exit', 'Sair')}</span>
               <X size={14} />
             </button>
           </div>

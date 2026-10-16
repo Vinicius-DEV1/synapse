@@ -98,8 +98,9 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
     try {
       const fetched = await fetchGeminiModels();
       setModels(fetched);
-    } catch (err: any) {
-      setModelsError(err.message || 'Erro ao carregar modelos');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao carregar modelos';
+      setModelsError(message);
     } finally {
       setLoadingModels(false);
     }

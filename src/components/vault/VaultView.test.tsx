@@ -5,6 +5,7 @@ import VaultView from './VaultView';
 import { VaultItemDetails } from './VaultItemDetails';
 import type { VaultGroup, VaultItem } from '../../types/vault';
 import type { ICadernoAPI } from '../../api/types';
+import { I18nProvider } from '../../i18n';
 
 describe('VaultView component', () => {
   const mockGroup: VaultGroup = {
@@ -57,7 +58,11 @@ describe('VaultView component', () => {
   });
 
   it('renders vault groups sidebar and items list', async () => {
-    render(<VaultView />);
+    render(
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultView />
+      </I18nProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Trabalho')).toBeInTheDocument();
@@ -66,7 +71,11 @@ describe('VaultView component', () => {
   });
 
   it('displays empty selection state initially', async () => {
-    render(<VaultView />);
+    render(
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultView />
+      </I18nProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Cofre de Senhas')).toBeInTheDocument();
@@ -75,7 +84,11 @@ describe('VaultView component', () => {
   });
 
   it('shows item details when an item is selected from the list', async () => {
-    render(<VaultView />);
+    render(
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultView />
+      </I18nProvider>
+    );
 
     const itemCard = await screen.findByTestId('vault-item-item-1');
     expect(itemCard).toBeInTheDocument();
@@ -92,7 +105,11 @@ describe('VaultView component', () => {
   });
 
   it('switches to security dashboard view mode when clicking on Painel de Segurança', async () => {
-    render(<VaultView />);
+    render(
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultView />
+      </I18nProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Painel de Segurança')).toBeInTheDocument();
@@ -108,11 +125,13 @@ describe('VaultView component', () => {
 
   it('renders VaultItemDetails directly', () => {
     render(
-      <VaultItemDetails
-        item={mockItem}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultItemDetails
+          item={mockItem}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </I18nProvider>
     );
     expect(screen.getByText('Credenciais')).toBeInTheDocument();
     expect(screen.getByText('octocat')).toBeInTheDocument();

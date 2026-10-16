@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CalendarView from './CalendarView';
 import { StoreProvider } from '../../store/useStore';
+import { I18nProvider } from '../../i18n';
 
 describe('CalendarView component', () => {
   beforeEach(() => {
@@ -26,9 +27,11 @@ describe('CalendarView component', () => {
 
   it('renders calendar view with event creation button and month header', async () => {
     render(
-      <StoreProvider>
-        <CalendarView />
-      </StoreProvider>
+      <I18nProvider initialLanguage="pt-BR">
+        <StoreProvider>
+          <CalendarView />
+        </StoreProvider>
+      </I18nProvider>
     );
 
     expect(screen.getByRole('heading', { level: 1, name: 'Calendário' })).toBeInTheDocument();

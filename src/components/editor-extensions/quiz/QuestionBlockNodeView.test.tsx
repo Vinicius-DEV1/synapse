@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import type { NodeViewProps } from '@tiptap/react';
 import QuestionBlockNodeView from './QuestionBlockNodeView';
+import { I18nProvider } from '../../../i18n';
 
 vi.mock('@tiptap/react', () => ({
   NodeViewWrapper: ({ children, className }: { children: React.ReactNode; className?: string }) => (
@@ -45,7 +46,11 @@ describe('QuestionBlockNodeView (Embed Card)', () => {
   });
 
   it('renders embed card with title, question count, tags and description', () => {
-    const { getByText, getByTitle } = render(<QuestionBlockNodeView {...mockProps} />);
+    const { getByText, getByTitle } = render(
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionBlockNodeView {...mockProps} />
+      </I18nProvider>
+    );
 
     expect(getByText('Bateria de Exercícios de Redes')).toBeDefined();
     expect(getByTitle('5 questões')).toBeDefined();
@@ -57,7 +62,11 @@ describe('QuestionBlockNodeView (Embed Card)', () => {
   });
 
   it('opens focus mode modal upon clicking "Iniciar no Modo Foco"', () => {
-    const { getByText } = render(<QuestionBlockNodeView {...mockProps} />);
+    const { getByText } = render(
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionBlockNodeView {...mockProps} />
+      </I18nProvider>
+    );
 
     const launchButton = getByText('Iniciar no Modo Foco');
     fireEvent.click(launchButton);

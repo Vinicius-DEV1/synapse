@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useStore } from '../../store/useStore';
+import { useI18n } from '../../i18n';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
 import GlobalSearchModal from '../modals/GlobalSearchModal';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
@@ -67,6 +68,7 @@ export function GlobalModals({
   handleCreateLinkedPage,
 }: GlobalModalsProps) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
 
   const [scrapActionData, setScrapActionData] = useState<ScrapModalData | null>(null);
   const [scrapViewerData, setScrapViewerData] = useState<ScrapModalData | null>(null);
@@ -139,7 +141,7 @@ export function GlobalModals({
       {state.confirmDelete && (
         <ConfirmModal
           pageId={state.confirmDelete}
-          pageName={state.pages.find((p) => p.id === state.confirmDelete)?.title || 'esta página'}
+          pageName={state.pages.find((p) => p.id === state.confirmDelete)?.title || t('modals.confirm.thisPage')}
           onConfirm={() => handleDeletePage(state.confirmDelete!)}
           onCancel={() => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null })}
         />

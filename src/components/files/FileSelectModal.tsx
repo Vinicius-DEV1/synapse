@@ -3,6 +3,7 @@ import { X, Search, File, Image as ImageIcon, Film, FileText, FileArchive, Folde
 import type { FileItem, FileFolder } from '../../types';
 import { detectFileType } from '../../utils/file-type-detector';
 import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 
 interface FileSelectModalProps {
   onClose: () => void;
@@ -10,10 +11,32 @@ interface FileSelectModalProps {
 }
 
 export default function FileSelectModal({ onClose, onSelect }: FileSelectModalProps) {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [folders, setFolders] = useState<FileFolder[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     let active = true;
@@ -62,7 +85,7 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[70vh] max-h-[600px]">
         <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
-          <h2 className="text-lg font-semibold text-white">Vincular Arquivo Existente</h2>
+          <h2 className="text-lg font-semibold text-white">{t('files.linkExistingFile')}</h2>
           <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
           </button>
@@ -73,7 +96,7 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" size={18} />
             <input
               type="text"
-              placeholder="Buscar arquivos..."
+              placeholder={t('files.searchFiles')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-dark-bg border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-primary"
@@ -83,11 +106,11 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
 
         <div className="flex-1 overflow-y-auto p-2">
           {loading ? (
-            <div className="flex justify-center items-center h-full text-dark-subtext">Carregando...</div>
+            <div className="flex justify-center items-center h-full text-dark-subtext">{t('files.loading')}</div>
           ) : !hasResults ? (
             <div className="flex flex-col items-center justify-center h-full text-dark-subtext">
               <File size={48} className="mb-4 opacity-50" />
-              <p>Nenhum item encontrado</p>
+              <p>{t('files.noItemsFound')}</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -102,7 +125,7 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{folder.name}</p>
-                    <p className="text-dark-subtext text-xs">Pasta</p>
+                    <p className="text-dark-subtext text-xs">{t('files.folder')}</p>
                   </div>
                 </button>
               ))}

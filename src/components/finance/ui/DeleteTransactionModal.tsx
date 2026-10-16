@@ -3,6 +3,7 @@ import { AlertTriangle, Trash2, X, RotateCcw } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import type { Transaction } from '../../../types';
 import { formatDateSafe } from './TransactionList';
+import { useTranslation } from '../../../i18n';
 
 interface DeleteTransactionModalProps {
   transaction: Transaction | null;
@@ -19,12 +20,26 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
     };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [onClose]);
 
   if (!transaction) return null;
@@ -35,12 +50,12 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
   const isExpense = transaction.type === 'expense' || transaction.type === 'loan_made';
 
   const modalTitle = isLoan
-    ? 'Excluir Empréstimo / Dívida'
+    ? t('finance.deleteLoanTitle', 'Excluir Empréstimo / Dívida')
     : isLinkedPayment
-    ? 'Excluir Pagamento de Empréstimo'
+    ? t('finance.deletePaymentTitle', 'Excluir Pagamento de Empréstimo')
     : isTransfer
-    ? 'Excluir Transferência'
-    : 'Excluir Transação';
+    ? t('finance.deleteTransferTitle', 'Excluir Transferência')
+    : t('finance.deleteTxTitle', 'Excluir Transação');
 
   return (
     <Portal>
@@ -124,9 +139,9 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             >
-              Cancelar
+              {t('common.cancel', 'Cancelar')}
             </button>
             <button
               type="button"
@@ -134,10 +149,10 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
                 await onConfirm(transaction.id);
                 onClose();
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-md shadow-rose-600/20 active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-md shadow-rose-600/20 active:scale-95 cursor-pointer"
             >
               <Trash2 size={13} />
-              <span>Sim, Excluir</span>
+              <span>{t('finance.yesDelete', 'Sim, Excluir')}</span>
             </button>
           </div>
         </div>

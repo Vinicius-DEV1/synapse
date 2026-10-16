@@ -4,10 +4,12 @@ import { useHomeDashboard } from './hooks/useHomeDashboard';
 import { HomeQuickActions } from './ui/HomeQuickActions';
 import { HomeAgendaSection } from './ui/HomeAgendaSection';
 import { HomePagesSection } from './ui/HomePagesSection';
+import { useI18n } from '../../i18n';
 import type { Page } from '../../types';
 
 export default function HomeView({ tabId }: { tabId: string }) {
   const { state, dispatch } = useStore();
+  const { t, language } = useI18n();
   const {
     greeting,
     todayEvents,
@@ -22,7 +24,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
     for (const p of state.pages) {
       if (p.is_pinned) {
         pinned.push(p);
-      } else if (p.title && p.title !== 'Nova Página') {
+      } else if (p.title && p.title !== 'Nova Página' && p.title !== 'New Page') {
         unpinned.push(p);
       }
     }
@@ -61,8 +63,8 @@ export default function HomeView({ tabId }: { tabId: string }) {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">{greeting}!</h1>
             <p className="text-dark-subtext">
-              Hoje é{' '}
-              {new Date().toLocaleDateString('pt-BR', {
+              {t('home.todayIs')}{' '}
+              {new Date().toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',

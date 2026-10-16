@@ -1,7 +1,11 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { I18nProvider } from '../../i18n';
 import CultureView from './CultureView';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('CultureView component', () => {
   beforeEach(() => {
@@ -28,7 +32,7 @@ describe('CultureView component', () => {
   });
 
   it('renders culture view with search input and culture items', async () => {
-    render(<CultureView />);
+    renderWithI18n(<CultureView />);
 
     expect(screen.getByPlaceholderText('Buscar título ou sinopse...')).toBeInTheDocument();
 

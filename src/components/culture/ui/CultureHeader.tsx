@@ -1,4 +1,5 @@
 import { Plus, Search, LayoutGrid, AlignJustify, Rows3, ArrowUpDown, Target, Sparkles, HelpCircle } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 import { SORT_OPTIONS, type SortMode, type FilterType } from '../hooks/useCulture';
 
 interface CultureHeaderProps {
@@ -30,20 +31,22 @@ export function CultureHeader({
   onOpenAddModal,
   onOpenHelpModal,
 }: CultureHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex-none px-6 pt-6 pb-4 border-b border-white/5 flex flex-col gap-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Área Cultura</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('culture.title', 'Área Cultura')}</h1>
         <div className="flex items-center gap-2 flex-wrap">
 
           {onOpenHelpModal && (
             <button
               onClick={onOpenHelpModal}
-              title="Guia da Área de Cultura"
+              title={t('culture.guide', 'Guia da Área de Cultura')}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium bg-white/5 text-dark-subtext border-white/10 hover:text-white hover:bg-white/10 transition-colors"
             >
               <HelpCircle size={14} className="text-purple-400" />
-              <span className="hidden sm:inline">Guia</span>
+              <span className="hidden sm:inline">{t('culture.guide', 'Guia')}</span>
             </button>
           )}
 
@@ -65,7 +68,7 @@ export function CultureHeader({
           <div className="flex items-center gap-1.5 border-r border-white/10 pr-3 mr-1">
             <button
               onClick={toggleGoalsSection}
-              title={showGoalsSection ? "Ocultar seção de Objetivos" : "Mostrar seção de Objetivos"}
+              title={showGoalsSection ? t('culture.goals', "Ocultar seção de Objetivos") : t('culture.goals', "Mostrar seção de Objetivos")}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 showGoalsSection 
                   ? 'bg-brand-500/20 text-brand-400 border-brand-500/30 hover:bg-brand-500/30' 
@@ -73,7 +76,7 @@ export function CultureHeader({
               }`}
             >
               <Target size={13} />
-              <span className="hidden sm:inline">Objetivos</span>
+              <span className="hidden sm:inline">{t('culture.goals', 'Objetivos')}</span>
             </button>
           </div>
 
@@ -81,21 +84,21 @@ export function CultureHeader({
             <button 
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-              title="Grade"
+              title={t('culture.grid', 'Grade')}
             >
               <LayoutGrid size={16} />
             </button>
             <button 
               onClick={() => setViewMode('compact')}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'compact' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-              title="Compacto"
+              title={t('culture.compact', 'Compacto')}
             >
               <Rows3 size={16} />
             </button>
             <button 
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
-              title="Lista"
+              title={t('culture.list', 'Lista')}
             >
               <AlignJustify size={16} />
             </button>
@@ -106,7 +109,7 @@ export function CultureHeader({
             className="flex items-center gap-2 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-all"
           >
             <Plus size={16} />
-            Adicionar
+            {t('common.add', 'Adicionar')}
           </button>
         </div>
       </div>
@@ -117,7 +120,7 @@ export function CultureHeader({
           <input
             type="text" value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar título ou sinopse..."
+            placeholder={t('culture.searchPlaceholder', 'Buscar título ou sinopse...')}
             className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand-500/50 transition-colors"
           />
         </div>
@@ -136,10 +139,23 @@ export function CultureHeader({
                   }`}
                 >
                   <Sparkles size={12} className={isRec ? 'animate-pulse text-amber-300' : 'text-amber-400/90'} />
-                  <span>Para Você</span>
+                  <span>{t('culture.forYou', 'Para Você')}</span>
                 </button>
               );
             }
+
+            const label = 
+              filter === 'all' ? t('culture.all', 'Tudo') :
+              filter === 'goals' ? t('culture.goals', 'Objetivos') :
+              filter === 'finished' ? t('culture.finished', 'Finalizados') :
+              filter === 'anime' ? t('culture.anime', 'Anime') :
+              filter === 'filme' ? t('culture.movies', 'Filmes') :
+              filter === 'série' ? t('culture.series', 'Séries') :
+              filter === 'hq' ? t('culture.comics', 'HQs') :
+              filter === 'manga' ? t('culture.manga', 'Mangás') :
+              filter === 'livro' ? t('culture.books', 'Livros') :
+              filter === 'novel' ? t('culture.novels', 'Novels') :
+              String(filter);
 
             return (
               <button
@@ -151,7 +167,7 @@ export function CultureHeader({
                     : 'bg-white/5 text-dark-subtext border border-transparent hover:bg-white/10 hover:text-dark-text'
                 }`}
               >
-                {filter === 'all' ? 'Tudo' : filter === 'goals' ? 'Objetivos' : filter === 'finished' ? 'Finalizados' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                {label}
               </button>
             );
           })}

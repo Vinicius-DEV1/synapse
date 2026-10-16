@@ -6,7 +6,9 @@ import type { CultureSearchResult } from '../../services/culture/culture-apis';
 import { Portal } from '../ui/Portal';
 import { useCultureMediaSearch } from './hooks/useCultureMediaSearch';
 import { CultureApiSearchPanel } from './ui/CultureApiSearchPanel';
+import { CultureDeleteModal } from './CultureDeleteModal';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface Props {
   isOpen: boolean;
@@ -26,6 +28,7 @@ const TYPES: { value: CultureType; label: string }[] = [
 ];
 
 export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit }: Props) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Partial<CultureItem>>({
     title: '',
     type: 'filme',
@@ -39,6 +42,29 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
 
   const {
     searchQuery,
@@ -105,14 +131,8 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
     }
   };
 
-  const handleDelete = async () => {
+  const confirmDelete = async () => {
     if (!itemToEdit) return;
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm(`Tem certeza que deseja excluir "${itemToEdit.title}"?`)) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function'
-      ? window.confirm(`Tem certeza que deseja excluir "${itemToEdit.title}"?`)
-      : false;
-    if (!confirmed) return;
     setIsSaving(true);
     try {
       await CultureService.deleteItem(itemToEdit.id);
@@ -125,6 +145,22 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
       triggerToast(message, 'error');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!itemToEdit) return;
+    const msg = t('culture.deleteModalDesc', 'Tem certeza que deseja excluir "{{title}}" do seu acervo? Esta ação não pode ser desfeita.', { title: itemToEdit.title });
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: t('culture.deleteModalTitle', 'Excluir Obra Cultural'),
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (!confirmed) return;
+      await confirmDelete();
+    } else {
+      setShowDeleteConfirm(true);
     }
   };
 
@@ -297,6 +333,15 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
           </div>
         </div>
       </div>
+
+      {itemToEdit && (
+        <CultureDeleteModal
+          isOpen={showDeleteConfirm}
+          itemTitle={itemToEdit.title}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </Portal>
   );
 }

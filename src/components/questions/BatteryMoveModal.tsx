@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Folder, ArrowRight, X } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { getAvailableParentOptions } from '../../services/quiz/quizHierarchy';
+import { useTranslation } from '../../i18n';
 import type { BatteryWithQuestions } from '../../types/quiz';
 
 interface BatteryMoveModalProps {
@@ -19,6 +20,7 @@ export function BatteryMoveModal({
   allBatteries,
   onConfirmMove,
 }: BatteryMoveModalProps) {
+  const { t } = useTranslation();
   const [selectedParentId, setSelectedParentId] = useState<string | null>(battery?.parent_id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -68,7 +70,7 @@ export function BatteryMoveModal({
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <div className="flex items-center gap-2 text-zinc-100 font-semibold text-sm">
               <Folder size={16} className="text-brand-400" />
-              <span>Mover Bateria para Grupo</span>
+              <span>{t('questions.modals.moveTitle', 'Mover Bateria para Grupo')}</span>
             </div>
             <button
               onClick={onClose}
@@ -80,10 +82,10 @@ export function BatteryMoveModal({
 
           <div className="space-y-1.5">
             <p className="text-xs text-zinc-300">
-              Mover <span className="font-semibold text-white">"{battery.title}"</span> para:
+              {t('questions.modals.moveDesc', 'Mover "{{title}}" para:', { title: battery.title })}
             </p>
             <p className="text-[11px] text-zinc-500">
-              Selecione o grupo pai ou envie para a raiz do Explorador.
+              {t('questions.modals.moveSubtitle', 'Selecione o grupo pai ou envie para a raiz do Explorador.')}
             </p>
           </div>
 
@@ -104,7 +106,7 @@ export function BatteryMoveModal({
                 className="hidden"
               />
               <span className="w-2 h-2 rounded-full border border-current shrink-0" />
-              <span className="font-medium">Nenhum (Nível Raiz)</span>
+              <span className="font-medium">{t('questions.modals.rootLevel', 'Nenhum (Nível Raiz)')}</span>
             </label>
 
             {/* Parent Options */}
@@ -140,7 +142,7 @@ export function BatteryMoveModal({
               disabled={isSubmitting}
               className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium transition-colors"
             >
-              Cancelar
+              {t('common.cancel', 'Cancelar')}
             </button>
             <button
               onClick={handleSave}
@@ -148,7 +150,7 @@ export function BatteryMoveModal({
               className="px-4 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
             >
               <ArrowRight size={13} />
-              <span>{isSubmitting ? 'Movendo...' : 'Confirmar'}</span>
+              <span>{isSubmitting ? t('common.saving', 'Movendo...') : t('common.confirm', 'Confirmar')}</span>
             </button>
           </div>
         </div>

@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, ImageIcon } from 'lucide-react';
 import type { WishlistItem } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { formatDateSafe } from './ui/TransactionList';
 import { CategorySelect } from './ui/CategorySelect';
+import { useTranslation } from '../../i18n';
 
 interface WishlistModalProps {
   initialData?: WishlistItem | null;
@@ -13,6 +14,7 @@ interface WishlistModalProps {
 }
 
 export default function WishlistModal({ initialData, onClose, onSave }: WishlistModalProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(initialData?.title || '');
   const [price, setPrice] = useState(initialData?.price ? String(initialData.price) : '');
   const [priority, setPriority] = useState<WishlistItem['priority']>(initialData?.priority || 'medium');
@@ -21,6 +23,26 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
   const [description, setDescription] = useState(initialData?.description || '');
   const [loading, setLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,16 +215,16 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel', 'Cancelar')}
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 rounded-lg text-sm text-white bg-brand-600 hover:bg-brand-500 transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-lg text-sm text-white bg-brand-600 hover:bg-brand-500 transition-colors disabled:opacity-50 cursor-pointer shadow-md shadow-brand-600/20 active:scale-95"
               >
-                {loading ? 'Salvando...' : 'Salvar'}
+                {loading ? t('common.saving', 'Salvando...') : t('finance.save', 'Salvar')}
               </button>
             </div>
           </form>

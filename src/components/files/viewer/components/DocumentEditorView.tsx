@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Check, X, Edit3, Loader2 } from 'lucide-react';
+import { Check, X, Edit3, Loader2, AlertTriangle } from 'lucide-react';
+import { Portal } from '../../../../components/ui/Portal';
+import { useTranslation } from '../../../../i18n';
 
 interface DocumentEditorViewProps {
   initialContent: string;
@@ -14,8 +16,10 @@ export function DocumentEditorView({
   onSave,
   onCancel,
 }: DocumentEditorViewProps) {
+  const { t } = useTranslation();
   const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isDirty = content !== initialContent;
@@ -32,22 +36,33 @@ export function DocumentEditorView({
 
   const handleCancel = useCallback(async () => {
     if (isDirty) {
-      const msg = 'Você possui alterações não salvas neste documento. Deseja realmente descartá-las e voltar à visualização?';
-      const confirmed = window.api?.app?.showConfirm
-        ? (await window.api.app.showConfirm({
-            title: 'Descartar Alterações',
-            message: msg,
-            kind: 'warning',
-          })) === 1
-        : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-      if (!confirmed) return;
+      if (window.api?.app?.showConfirm) {
+        const msg = t('files.discardChangesPrompt', 'Você possui alterações não salvas neste documento. Deseja realmente descartá-las e voltar à visualização?');
+        const confirmed = (await window.api.app.showConfirm({
+          title: t('files.discardChanges', 'Descartar Alterações'),
+          message: msg,
+          kind: 'warning',
+        })) === 1;
+        if (!confirmed) return;
+      } else {
+        setShowDiscardConfirm(true);
+        return;
+      }
     }
     onCancel();
-  }, [isDirty, onCancel]);
+  }, [isDirty, onCancel, t]);
 
   // Keyboard shortcut Ctrl+S or Cmd+S to save, Esc to cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showDiscardConfirm) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowDiscardConfirm(false);
+        }
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSave();
@@ -58,7 +73,18 @@ export function DocumentEditorView({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSave, handleCancel]);
+  }, [handleSave, handleCancel, showDiscardConfirm]);
+
+  // Android hardware back press listener for discard confirm modal
+  useEffect(() => {
+    if (!showDiscardConfirm) return;
+    const handleBack = (e: Event) => {
+      e.preventDefault();
+      setShowDiscardConfirm(false);
+    };
+    window.addEventListener('caderno-back-press', handleBack);
+    return () => window.removeEventListener('caderno-back-press', handleBack);
+  }, [showDiscardConfirm]);
 
   // Tab key indent support inside textarea
   const handleKeyDownTextarea = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -86,10 +112,10 @@ export function DocumentEditorView({
       <div className="flex items-center justify-between px-5 sm:px-8 py-2.5 border-b border-white/5 bg-[#0f0f11]/90 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-2.5 text-xs font-medium text-zinc-300">
           <Edit3 size={15} className="text-zinc-400" />
-          <span>Editando: <strong className="font-semibold text-white">{fileName}</strong></span>
+          <span>{t('files.editing', 'Editando:')} <strong className="font-semibold text-white">{fileName}</strong></span>
           {isDirty && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
-              Modificado
+              {t('files.modified', 'Modificado')}
             </span>
           )}
         </div>
@@ -106,7 +132,7 @@ export function DocumentEditorView({
             className="px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-40"
           >
             <X size={13} />
-            <span>Cancelar</span>
+            <span>{t('files.cancel', 'Cancelar')}</span>
           </button>
 
           <button
@@ -116,7 +142,7 @@ export function DocumentEditorView({
             className="px-3.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/15 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
           >
             {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            <span>Salvar</span>
+            <span>{t('files.save', 'Salvar')}</span>
           </button>
         </div>
       </div>
@@ -137,14 +163,52 @@ export function DocumentEditorView({
       {/* Status Bar */}
       <div className="flex items-center justify-between px-6 sm:px-8 py-2 border-t border-white/5 bg-[#0f0f11] text-[11px] font-mono text-zinc-500 shrink-0">
         <div className="flex items-center gap-4">
-          <span>{lineCount} linhas</span>
-          <span>{wordCount} palavras</span>
-          <span>{content.length} caracteres</span>
+          <span>{lineCount} {t('files.lines', 'linhas')}</span>
+          <span>{wordCount} {t('files.words', 'palavras')}</span>
+          <span>{content.length} {t('files.characters', 'caracteres')}</span>
         </div>
         <div>
           <span>Markdown UTF-8</span>
         </div>
       </div>
+
+      {/* Discard Changes Non-Blocking In-App Modal */}
+      {showDiscardConfirm && (
+        <Portal>
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col p-6 gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                <AlertTriangle size={24} />
+              </div>
+              <div className="text-center">
+                <h3 className="text-base font-semibold text-white mb-1.5">{t('files.discardChanges', 'Descartar Alterações')}</h3>
+                <p className="text-xs text-dark-subtext leading-relaxed">
+                  {t('files.discardChangesPrompt', 'Você possui alterações não salvas neste documento. Deseja realmente descartá-las e voltar à visualização?')}
+                </p>
+              </div>
+              <div className="flex gap-2 justify-end mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardConfirm(false)}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  {t('files.continueEditing', 'Continuar Editando')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDiscardConfirm(false);
+                    onCancel();
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition-colors"
+                >
+                  {t('files.discard', 'Descartar')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 }

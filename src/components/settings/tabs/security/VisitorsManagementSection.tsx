@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { KeyRound } from 'lucide-react';
 import { triggerToast } from '../../../ui/ToastContext';
+import { ConfirmDialog } from '../../../ui/ConfirmDialog';
+import { useI18n } from '../../../../i18n';
 
 export function VisitorsManagementSection() {
+  const { t } = useI18n();
   const [visitors, setVisitors] = useState<Array<{ id: string; modules: string[] }>>([]);
   const [showAddVisitor, setShowAddVisitor] = useState(false);
+  const [visitorToDelete, setVisitorToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [visitorPassword, setVisitorPassword] = useState('');
   const [visitorModules, setVisitorModules] = useState<Record<string, boolean>>({
     library: false,
@@ -20,15 +25,40 @@ export function VisitorsManagementSection() {
         const v = await window.api.auth.getVisitors();
         setVisitors(v);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      triggerToast(err.message || 'Erro ao carregar visitantes', 'error');
+      const message = err instanceof Error ? err.message : 'Erro ao carregar visitantes';
+      triggerToast(message, 'error');
     }
   };
 
   useEffect(() => {
     loadVisitors();
   }, []);
+
+  useEffect(() => {
+    if (!showAddVisitor) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowAddVisitor(false);
+      }
+    };
+
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      setShowAddVisitor(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [showAddVisitor]);
 
   const handleCreateVisitor = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -68,16 +98,8 @@ export function VisitorsManagementSection() {
     }
   };
 
-  const handleDeleteVisitor = async (id: string) => {
-    const msg = 'Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.';
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm({
-          title: 'Excluir Senha Extra',
-          message: msg,
-          kind: 'warning',
-        })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-    if (!confirmed) return;
+  const executeDeleteVisitor = async (id: string) => {
+    setIsDeleting(true);
     try {
       const res = await window.api.auth.deleteVisitor(id);
       if (res.success) {
@@ -89,6 +111,25 @@ export function VisitorsManagementSection() {
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao deletar visitante';
       triggerToast(errorMsg, 'error');
+    } finally {
+      setIsDeleting(false);
+      setVisitorToDelete(null);
+    }
+  };
+
+  const handleDeleteVisitor = async (id: string) => {
+    const msg = t('settings.security.deleteVisitorMessage') || 'Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.';
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: t('settings.security.deleteVisitorTitle') || 'Excluir Senha Extra',
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (confirmed) {
+        await executeDeleteVisitor(id);
+      }
+    } else {
+      setVisitorToDelete(id);
     }
   };
 
@@ -106,9 +147,9 @@ export function VisitorsManagementSection() {
         <button
           type="button"
           onClick={() => setShowAddVisitor(!showAddVisitor)}
-          className="px-3 py-1.5 text-xs font-medium bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 rounded-lg transition-colors"
+          className="px-3 py-1.5 text-xs font-medium bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 rounded-lg transition-colors cursor-pointer"
         >
-          + Adicionar
+          {showAddVisitor ? 'Fechar' : '+ Adicionar'}
         </button>
       </div>
 
@@ -196,6 +237,21 @@ export function VisitorsManagementSection() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!visitorToDelete}
+        title={t('settings.security.deleteVisitorTitle') || 'Excluir Senha Extra'}
+        message={t('settings.security.deleteVisitorMessage') || 'Deseja realmente deletar esta senha extra? O visitante perderá acesso a qualquer cofre configurado.'}
+        confirmText={t('common.confirm') || 'Sim, Excluir'}
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={() => {
+          if (visitorToDelete) {
+            return executeDeleteVisitor(visitorToDelete);
+          }
+        }}
+        onCancel={() => setVisitorToDelete(null)}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Plus, Search, Filter } from 'lucide-react';
 import type { Transaction } from '../../../types';
 import { LoanSummaryCards } from './LoanSummaryCards';
 import { LoanCard } from './LoanCard';
+import { useTranslation } from '../../../i18n';
 
 interface LoansTabProps {
   loans: Transaction[];
@@ -36,6 +37,7 @@ export function LoansTab({
   onEditLoan,
   onDeleteLoan
 }: LoansTabProps) {
+  const { t } = useTranslation();
   const [directionFilter, setDirectionFilter] = useState<'all' | 'loan_made' | 'loan_taken'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'overdue' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,7 +96,7 @@ export function LoansTab({
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
-              Todos
+              {t('finance.allDirections', 'Todos')}
             </button>
             <button
               onClick={() => setDirectionFilter('loan_made')}
@@ -104,7 +106,7 @@ export function LoansTab({
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
-              A Receber
+              {t('finance.toReceive', 'A Receber')}
             </button>
             <button
               onClick={() => setDirectionFilter('loan_taken')}
@@ -114,7 +116,7 @@ export function LoansTab({
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
-              A Pagar (Dívidas)
+              {t('finance.toPay', 'A Pagar (Dívidas)')}
             </button>
           </div>
 
@@ -128,7 +130,7 @@ export function LoansTab({
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
-              Todos Status
+              {t('finance.allStatus', 'Todos Status')}
             </button>
             <button
               onClick={() => setStatusFilter('active')}
@@ -138,7 +140,7 @@ export function LoansTab({
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
-              Ativos
+              {t('finance.active', 'Ativos')}
             </button>
             {overdueCount > 0 && (
               <button
@@ -149,7 +151,7 @@ export function LoansTab({
                     : 'text-rose-400/80 hover:text-rose-400'
                 }`}
               >
-                Vencidos ({overdueCount})
+                {t('finance.overdue', 'Vencidos')} ({overdueCount})
               </button>
             )}
             <button
@@ -160,7 +162,7 @@ export function LoansTab({
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
-              Quitados
+              {t('finance.completed', 'Quitados')}
             </button>
           </div>
         </div>
@@ -173,7 +175,7 @@ export function LoansTab({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
+              placeholder={t('finance.searchPlaceholder', 'Buscar...')}
               className="w-full bg-dark-bg border border-white/10 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none"
             />
           </div>
@@ -184,7 +186,7 @@ export function LoansTab({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 whitespace-nowrap shadow-md shadow-brand-600/20"
           >
             <Plus size={14} />
-            <span>Novo Empréstimo</span>
+            <span>{t('finance.newLoan', 'Novo Empréstimo')}</span>
           </button>
         </div>
       </div>
@@ -193,12 +195,12 @@ export function LoansTab({
       {filteredLoans.length === 0 ? (
         <div className="text-center text-dark-subtext py-12 bg-dark-bg/30 border border-white/5 rounded-xl flex flex-col items-center justify-center gap-2">
           <Filter size={24} className="text-dark-subtext/40 mb-1" />
-          <p className="text-sm">Nenhum empréstimo ou dívida encontrado para os filtros selecionados.</p>
+          <p className="text-sm">{t('finance.noLoansFound', 'Nenhum empréstimo ou dívida encontrado para os filtros selecionados.')}</p>
           <button
             onClick={onAddLoan}
             className="mt-2 text-xs text-brand-400 hover:underline"
           >
-            Registrar novo empréstimo agora
+            {t('finance.registerNewLoanNow', 'Registrar novo empréstimo agora')}
           </button>
         </div>
       ) : (

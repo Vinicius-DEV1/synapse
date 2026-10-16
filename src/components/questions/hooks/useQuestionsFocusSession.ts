@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { getDescendantQuestions } from '../../../services/quiz/quizHierarchy';
 import { useQuizEvaluation } from '../../editor-extensions/quiz/hooks/useQuizEvaluation';
-import type { BatteryWithQuestions } from '../../../types/quiz';
+import type { BatteryWithQuestions, QuizAttempt } from '../../../types/quiz';
 import type { QuestionItem } from '../../editor-extensions/quiz/types';
 import type { GeneratedStudySession } from '../../../services/quiz/quizSimulator';
 
@@ -25,7 +25,7 @@ export function useQuestionsFocusSession(batteries: BatteryWithQuestions[], onDa
       const allQuestions = getDescendantQuestions(battery.id, batteries);
 
       // Build quick lookup for latest attempts across all descendant batteries
-      const attemptLookup = new Map();
+      const attemptLookup = new Map<string, QuizAttempt>();
       for (const b of batteries) {
         if (b.latestAttempts) {
           for (const [qid, attempt] of Object.entries(b.latestAttempts)) {

@@ -76,15 +76,15 @@ export default function SyncMonitor() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex gap-4 items-start">
           <AlertTriangle className="text-red-400 shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-medium text-red-400 mb-1">Sincronização Bloqueada por Segurança!</h3>
+            <h3 className="font-medium text-red-400 mb-1">{t('settings.sync.emergencyTitle') || 'Sincronização Bloqueada por Segurança!'}</h3>
             <p className="text-sm text-red-200/70 mb-3">
-              Detectamos um número anormalmente alto de leituras/escritas em menos de um minuto (possível loop de sincronização). O envio para nuvem foi temporariamente pausado.
+              {t('settings.sync.emergencyDesc') || 'Detectamos um número anormalmente alto de leituras/escritas em menos de um minuto (possível loop de sincronização). O envio para nuvem foi temporariamente pausado.'}
             </p>
             <button 
               onClick={() => { clearEmergencyStop(); loadStats(); }}
-              className="px-3 py-1.5 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-md text-sm font-medium transition-colors"
+              className="px-3 py-1.5 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-md text-sm font-medium transition-colors cursor-pointer"
             >
-              Liberar Sincronização
+              {t('settings.sync.emergencyUnlock') || 'Liberar Sincronização'}
             </button>
           </div>
         </div>
@@ -168,9 +168,9 @@ export default function SyncMonitor() {
                 {/* Tooltip on hover */}
                 {total > 0 && (
                   <div className="absolute bottom-full mb-4 bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-xs opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-xl transition-opacity">
-                    <div className="font-bold text-white/90 mb-1">{h}:00 às {h}:59</div>
-                    <div className="text-blue-400 mb-0.5">{reads.toLocaleString()} leituras <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesDownloaded)})</span></div>
-                    <div className="text-orange-400">{writes.toLocaleString()} escritas <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesUploaded)})</span></div>
+                    <div className="font-bold text-white/90 mb-1">{h}:00 - {h}:59</div>
+                    <div className="text-blue-400 mb-0.5">{t('settings.sync.readsCount', { count: reads.toLocaleString() }) || `${reads.toLocaleString()} leituras`} <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesDownloaded)})</span></div>
+                    <div className="text-orange-400">{t('settings.sync.writesCount', { count: writes.toLocaleString() }) || `${writes.toLocaleString()} escritas`} <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesUploaded)})</span></div>
                   </div>
                 )}
               </div>

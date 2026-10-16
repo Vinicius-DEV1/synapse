@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
 import { CultureEpisodeModal } from './CultureEpisodeModal';
+import { CultureDeleteModal } from './CultureDeleteModal';
 import { getStatusInfo } from './cards/culture-status';
 import { CultureCardContextMenu } from './cards/CultureCardContextMenu';
 import { CultureCardList } from './cards/CultureCardList';
@@ -36,6 +37,7 @@ function CultureMediaCard({
 }: Props) {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const percent = item.total_progress > 0
     ? Math.min(100, Math.round((item.progress / item.total_progress) * 100))
@@ -120,24 +122,30 @@ function CultureMediaCard({
     }
   }, [item.id, item.progress, item.total_progress, onUpdate]);
 
-  const handleDelete = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const msg = `Tem certeza que deseja excluir '${item.title}'?`;
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm({
-          title: 'Excluir Obra Cultural',
-          message: msg,
-          kind: 'warning',
-        })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-    if (!confirmed) return;
+  const confirmDelete = useCallback(async () => {
     try { 
       await CultureService.deleteItem(item.id); 
       onUpdate(); 
     } catch (err) { 
       console.error(err); 
     }
-  }, [item.id, item.title, onUpdate]);
+  }, [item.id, onUpdate]);
+
+  const handleDelete = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const msg = `Tem certeza que deseja excluir '${item.title}'?`;
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: 'Excluir Obra Cultural',
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (!confirmed) return;
+      await confirmDelete();
+    } else {
+      setShowDeleteConfirm(true);
+    }
+  }, [item.title, confirmDelete]);
 
   const openEpisodes = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -219,6 +227,13 @@ function CultureMediaCard({
           onDelete={handleDelete}
         />
       )}
+
+      <CultureDeleteModal
+        isOpen={showDeleteConfirm}
+        itemTitle={item.title}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

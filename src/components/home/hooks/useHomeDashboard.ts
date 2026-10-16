@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CalendarEvent } from '../../../types/core';
 import { parseEventDate } from '../../../utils/date-utils';
+import { useI18n } from '../../../i18n';
 
 export function useHomeDashboard() {
+  const { t } = useI18n();
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [tomorrowEvents, setTomorrowEvents] = useState<CalendarEvent[]>([]);
   const [dueCardsCount, setDueCardsCount] = useState(0);
@@ -11,10 +13,10 @@ export function useHomeDashboard() {
 
   const computeGreeting = useCallback(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
-  }, []);
+    if (hour < 12) return t('home.greetings.morning');
+    if (hour < 18) return t('home.greetings.afternoon');
+    return t('home.greetings.evening');
+  }, [t]);
 
   const loadDashboardData = useCallback(async () => {
     try {

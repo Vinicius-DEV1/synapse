@@ -2,6 +2,7 @@ import React from 'react';
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import type { Transaction, Account } from '../../../types';
 import { AccountCards } from './AccountCards';
+import { useTranslation } from '../../../i18n';
 
 interface DashboardMetricsProps {
   totalIncome: number;
@@ -28,6 +29,7 @@ export const DashboardMetrics = React.memo(({
   onOpenAccountManager,
   onNavigateToLoans
 }: DashboardMetricsProps) => {
+  const { t } = useTranslation();
   const { toReceive, toPay } = React.useMemo(() => {
     let rec = 0;
     let pay = 0;
@@ -57,7 +59,7 @@ export const DashboardMetrics = React.memo(({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-dark-bg/80 border border-white/5 rounded-xl p-4 flex flex-col gap-1 hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-dark-subtext text-xs">
-            <span className="font-medium">Entradas</span>
+            <span className="font-medium">{t('finance.income', 'Entradas')}</span>
             <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
               <TrendingUp size={15} />
             </div>
@@ -69,7 +71,7 @@ export const DashboardMetrics = React.memo(({
 
         <div className="bg-dark-bg/80 border border-white/5 rounded-xl p-4 flex flex-col gap-1 hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-dark-subtext text-xs">
-            <span className="font-medium">Saídas</span>
+            <span className="font-medium">{t('finance.expense', 'Saídas')}</span>
             <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400">
               <TrendingDown size={15} />
             </div>
@@ -81,7 +83,7 @@ export const DashboardMetrics = React.memo(({
 
         <div className="bg-dark-bg/80 border border-white/5 rounded-xl p-4 flex flex-col gap-1 hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-dark-subtext text-xs">
-            <span className="font-medium">Saldo em Caixa</span>
+            <span className="font-medium">{t('finance.balance', 'Saldo em Caixa')}</span>
             <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-400">
               <Wallet size={15} />
             </div>
@@ -96,17 +98,17 @@ export const DashboardMetrics = React.memo(({
       {(toReceive > 0 || toPay > 0) && (
         <div className="bg-dark-bg/50 border border-white/5 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-4">
-            <span className="text-dark-subtext font-medium">Empréstimos Ativos:</span>
+            <span className="text-dark-subtext font-medium">{t('finance.activeLoans', 'Empréstimos Ativos:')}</span>
             {toReceive > 0 && (
               <span className="flex items-center gap-1.5 text-amber-400 font-semibold">
                 <ArrowUpRight size={14} />
-                A Receber: R$ {toReceive.toFixed(2)}
+                {t('finance.toReceive', 'A Receber')}: R$ {toReceive.toFixed(2)}
               </span>
             )}
             {toPay > 0 && (
               <span className="flex items-center gap-1.5 text-indigo-400 font-semibold">
                 <ArrowDownLeft size={14} />
-                A Pagar (Dívidas): R$ {toPay.toFixed(2)}
+                {t('finance.toPay', 'A Pagar (Dívidas)')}: R$ {toPay.toFixed(2)}
               </span>
             )}
           </div>
@@ -116,7 +118,7 @@ export const DashboardMetrics = React.memo(({
               onClick={onNavigateToLoans}
               className="text-xs text-brand-400 hover:text-brand-300 transition-colors self-start sm:self-auto font-medium"
             >
-              Ver detalhes de empréstimos →
+              {t('finance.viewLoansDetails', 'Ver detalhes de empréstimos →')}
             </button>
           )}
         </div>

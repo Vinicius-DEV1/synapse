@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { BatteryQuestionsPreview } from './BatteryQuestionsPreview';
 import type { BatteryTreeNode, BatteryWithQuestions } from '../../types/quiz';
+import { useI18n } from '../../i18n';
 
 interface BatteryTreeItemProps {
   node: BatteryTreeNode;
@@ -45,6 +46,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
   expandedBatteryIds,
   onToggleExpand,
 }: BatteryTreeItemProps) {
+  const { t } = useI18n();
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedBatteryIds.has(node.id);
   const isHighlighted = node.id === highlightedBatteryId;
@@ -83,7 +85,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             <button
               onClick={() => onToggleExpand(node.id)}
               className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 transition-colors mt-0.5 cursor-pointer shrink-0"
-              title={isExpanded ? 'Recolher questões' : 'Expandir questões'}
+              title={isExpanded ? t('questions.explorer.collapseQuestions') : t('questions.explorer.expandQuestions')}
             >
               {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
@@ -104,15 +106,15 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
                 {hasChildren ? (
                   <>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/15 border border-brand-500/30 text-brand-300 shrink-0">
-                      {node.children.length} {node.children.length === 1 ? 'subgrupo' : 'subgrupos'}
+                      {node.children.length} {node.children.length === 1 ? t('questions.explorer.subgroup') : t('questions.explorer.subgroups')}
                     </span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                      {totalQuestions} {totalQuestions === 1 ? 'questão' : 'questões'}
+                      {totalQuestions} {totalQuestions === 1 ? t('questions.explorer.question') : t('questions.explorer.questions')}
                     </span>
                   </>
                 ) : (
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                    {totalQuestions} {totalQuestions === 1 ? 'questão' : 'questões'}
+                    {totalQuestions} {totalQuestions === 1 ? t('questions.explorer.question') : t('questions.explorer.questions')}
                   </span>
                 )}
               </div>
@@ -153,7 +155,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
                 ) : (
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-1">
                     <Zap size={10} className="text-amber-400" />
-                    <span>Bateria Avulsa</span>
+                    <span>{t('questions.explorer.standaloneBattery')}</span>
                   </span>
                 )}
 
@@ -177,10 +179,10 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
               <button
                 onClick={() => onCreateSubgroup(node.id)}
                 className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
-                title={`Adicionar subgrupo dentro de "${node.title}"`}
+                title={t('questions.explorer.addSubgroupTitle', { title: node.title })}
               >
                 <Plus size={13} className="text-brand-400" />
-                <span className="hidden sm:inline">Subgrupo</span>
+                <span className="hidden sm:inline">{t('questions.explorer.addSubgroup')}</span>
               </button>
             )}
 
@@ -188,17 +190,17 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             <button
               onClick={() => onPlayBattery(node)}
               className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-              title={hasChildren ? 'Praticar todas as questões do grupo e subgrupos' : 'Praticar no Modo Foco'}
+              title={hasChildren ? t('questions.explorer.practiceAllDesc') : t('questions.explorer.practiceDesc')}
             >
               <Play size={13} className="fill-brand-300" />
-              <span className="hidden sm:inline">{hasChildren ? 'Praticar Tudo' : 'Praticar'}</span>
+              <span className="hidden sm:inline">{hasChildren ? t('questions.explorer.practiceAll') : t('questions.explorer.practice')}</span>
             </button>
 
             {/* Edit Button */}
             <button
               onClick={() => onEditBattery(node)}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-              title="Editar bateria"
+              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+              title={t('questions.explorer.editBattery')}
             >
               <Edit3 size={15} />
             </button>
@@ -207,8 +209,8 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {onOpenMoveModal && (
               <button
                 onClick={() => onOpenMoveModal(node)}
-                className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                title="Mover para outro grupo"
+                className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                title={t('questions.explorer.moveBattery')}
               >
                 <FolderInput size={15} />
               </button>
@@ -217,8 +219,8 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {/* Delete Button */}
             <button
               onClick={() => onDeleteBattery(node.id)}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-              title="Mover para lixeira"
+              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-all cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+              title={t('questions.explorer.moveToTrash')}
             >
               <Trash2 size={15} />
             </button>
@@ -230,11 +232,11 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
           <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center justify-between text-xs font-mono text-zinc-400">
             <div className="flex items-center gap-3">
               <span>
-                {answeredCount}/{totalQuestions} respondidas
+                {answeredCount}/{totalQuestions} {t('questions.explorer.answered')}
               </span>
               {answeredCount > 0 && (
                 <span className={accuracy >= 70 ? 'text-emerald-400' : 'text-amber-400'}>
-                  • {accuracy}% acertos
+                  • {accuracy}% {t('questions.explorer.accuracy')}
                 </span>
               )}
             </div>

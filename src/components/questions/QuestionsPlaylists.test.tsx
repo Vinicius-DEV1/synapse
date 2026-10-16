@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import { QuestionsPlaylists } from './QuestionsPlaylists';
+import { I18nProvider } from '../../i18n';
 
 vi.mock('../../services/quiz/quizSimulator', () => ({
   generateErrorNotebook: vi.fn().mockResolvedValue({
@@ -24,11 +25,13 @@ describe('QuestionsPlaylists Component', () => {
 
   it('renders Caderno de Erros and Simulado builder cards', () => {
     const { getByText } = render(
-      <QuestionsPlaylists
-        onStartSession={vi.fn()}
-        availableTags={['direito', 'redes']}
-        errorCount={7}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionsPlaylists
+          onStartSession={vi.fn()}
+          availableTags={['direito', 'redes']}
+          errorCount={7}
+        />
+      </I18nProvider>
     );
 
     expect(getByText('Caderno de Erros')).toBeDefined();
@@ -41,11 +44,13 @@ describe('QuestionsPlaylists Component', () => {
     const onStart = vi.fn();
 
     const { getByText } = render(
-      <QuestionsPlaylists
-        onStartSession={onStart}
-        availableTags={['direito', 'redes']}
-        errorCount={5}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionsPlaylists
+          onStartSession={onStart}
+          availableTags={['direito', 'redes']}
+          errorCount={5}
+        />
+      </I18nProvider>
     );
 
     fireEvent.click(getByText('Iniciar Caderno de Erros'));
@@ -63,11 +68,13 @@ describe('QuestionsPlaylists Component', () => {
     const onStart = vi.fn();
 
     const { getByText } = render(
-      <QuestionsPlaylists
-        onStartSession={onStart}
-        availableTags={['direito', 'redes']}
-        errorCount={5}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionsPlaylists
+          onStartSession={onStart}
+          availableTags={['direito', 'redes']}
+          errorCount={5}
+        />
+      </I18nProvider>
     );
 
     // Toggle tag #direito

@@ -213,7 +213,7 @@ export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoM
                 <span className="text-xs text-dark-subtext">Página Atual</span>
                 <span className="text-sm text-white font-medium">
                   {(() => {
-                    let page = (book as any).current_page || 1;
+                    let page = (book as LibraryBook & { current_page?: number }).current_page || 1;
                     if (typeof book.last_read_page === 'number') page = book.last_read_page;
                     else if (typeof book.last_read_page === 'string' && !book.last_read_page.includes('epubcfi')) {
                       const parsed = parseInt(book.last_read_page, 10);
@@ -232,7 +232,7 @@ export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoM
                 <span className="text-sm text-white font-medium">
                   {(() => {
                     if (!book.total_pages || book.total_pages <= 0) return '0%';
-                    let page = (book as any).current_page || 1;
+                    let page = (book as LibraryBook & { current_page?: number }).current_page || 1;
                     if (typeof book.last_read_page === 'number') page = book.last_read_page;
                     else if (typeof book.last_read_page === 'string' && !book.last_read_page.includes('epubcfi')) {
                       const parsed = parseInt(book.last_read_page, 10);

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface DeleteModalProps {
   item?: FileItem | FileFolder;
@@ -14,6 +15,7 @@ interface DeleteModalProps {
 }
 
 export default function DeleteModal({ item, isFolder, items, onClose, onDeleted }: DeleteModalProps) {
+  const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState(false);
   const [keepInDrive, setKeepInDrive] = useState(false);
 
@@ -21,6 +23,29 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
   const isBulk = list.length > 1;
   const hasDriveFile = list.some(x => !x.isFolder && (x.item as FileItem).drive_file_id);
   const foldersCount = list.filter(x => x.isFolder).length;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDeleting) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isDeleting) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isDeleting, onClose]);
 
   const handleDelete = async () => {
     if (!window.api.files) return;
@@ -78,15 +103,15 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
           
           <div className="text-center">
             <h2 className="text-lg font-semibold text-white mb-1">
-              {isBulk ? `Excluir ${list.length} itens` : `Excluir ${list[0]?.isFolder ? 'Pasta' : 'Arquivo'}`}
+              {isBulk ? t('files.confirmDeleteBulk', { count: list.length }) : (list[0]?.isFolder ? t('files.confirmDeleteSingle', { name: t('files.folder') }) : t('files.confirmDeleteSingle', { name: t('files.file') }))}
             </h2>
             <p className="text-dark-subtext text-sm">
               {isBulk ? (
-                <>Tem certeza que deseja excluir <strong>{list.length} itens selecionados</strong>?</>
+                <>{t('files.confirmDeleteBulkPrompt', { count: list.length })}</>
               ) : (
-                <>Tem certeza que deseja excluir <strong>{list[0]?.item.name}</strong>?</>
+                <>{t('files.confirmDeleteSinglePrompt', { name: list[0]?.item.name })}</>
               )}
-              {foldersCount > 0 && " Todos os arquivos desta pasta ficarão órfãos e irão para 'Todos os Arquivos'."}
+              {foldersCount > 0 && t('files.folderOrphanWarning')}
             </p>
           </div>
 
@@ -100,7 +125,7 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
                 className="rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500"
               />
               <label htmlFor="keepInDrive" className="text-sm text-dark-subtext cursor-pointer">
-                Manter cópia no Google Drive
+                {t('files.keepInDrive')}
               </label>
             </div>
           )}
@@ -112,14 +137,14 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
             disabled={isDeleting}
             className="px-4 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors"
           >
-            Cancelar
+            {t('files.cancel')}
           </button>
           <button 
             onClick={handleDelete}
             disabled={isDeleting}
             className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
           >
-            {isDeleting ? 'Excluindo...' : 'Sim, Excluir'}
+            {isDeleting ? t('files.deleting') : t('files.deleteConfirmBtn')}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TabContextMenu from './TabContextMenu';
 import type { Tab } from '../../types';
+import { I18nProvider } from '../../i18n';
 
 describe('TabContextMenu component', () => {
   const mockTab: Tab = {
@@ -28,31 +29,34 @@ describe('TabContextMenu component', () => {
     onClose: vi.fn(),
   };
 
-  it('renders correctly and shows "Fixar aba" when tab is not pinned', () => {
-    render(<TabContextMenu {...defaultProps} />);
+  const renderWithI18n = (ui: React.ReactElement, lang: 'en' | 'pt-BR' = 'en') =>
+    render(<I18nProvider initialLanguage={lang}>{ui}</I18nProvider>);
 
-    expect(screen.getByText('Fixar aba')).toBeDefined();
-    expect(screen.getByText('Nova aba')).toBeDefined();
-    expect(screen.getByText('Duplicar aba')).toBeDefined();
-    expect(screen.getByText('Fechar aba')).toBeDefined();
-    expect(screen.getByText('Fechar outras abas')).toBeDefined();
-    expect(screen.getByText('Fechar abas à direita')).toBeDefined();
+  it('renders correctly and shows "Pin tab" when tab is not pinned in English default', () => {
+    renderWithI18n(<TabContextMenu {...defaultProps} />, 'en');
+
+    expect(screen.getByText('Pin tab')).toBeDefined();
+    expect(screen.getByText('New Tab')).toBeDefined();
+    expect(screen.getByText('Duplicate tab')).toBeDefined();
+    expect(screen.getByText('Close tab')).toBeDefined();
+    expect(screen.getByText('Close other tabs')).toBeDefined();
+    expect(screen.getByText('Close tabs to the right')).toBeDefined();
   });
 
-  it('shows "Desfixar aba" when tab is already pinned', () => {
+  it('shows "Unpin tab" when tab is already pinned', () => {
     const pinnedTab: Tab = { ...mockTab, isPinned: true };
-    render(<TabContextMenu {...defaultProps} tab={pinnedTab} />);
+    renderWithI18n(<TabContextMenu {...defaultProps} tab={pinnedTab} />, 'en');
 
-    expect(screen.getByText('Desfixar aba')).toBeDefined();
-    expect(screen.queryByText('Fixar aba')).toBeNull();
+    expect(screen.getByText('Unpin tab')).toBeDefined();
+    expect(screen.queryByText('Pin tab')).toBeNull();
   });
 
   it('calls onTogglePin and onClose when clicking pin action', () => {
     const onTogglePin = vi.fn();
     const onClose = vi.fn();
-    render(<TabContextMenu {...defaultProps} onTogglePin={onTogglePin} onClose={onClose} />);
+    renderWithI18n(<TabContextMenu {...defaultProps} onTogglePin={onTogglePin} onClose={onClose} />, 'en');
 
-    fireEvent.click(screen.getByText('Fixar aba'));
+    fireEvent.click(screen.getByText('Pin tab'));
     expect(onTogglePin).toHaveBeenCalledWith('tab-test');
     expect(onClose).toHaveBeenCalled();
   });
@@ -60,16 +64,25 @@ describe('TabContextMenu component', () => {
   it('calls onDuplicateTab and onClose when clicking duplicate action', () => {
     const onDuplicateTab = vi.fn();
     const onClose = vi.fn();
-    render(<TabContextMenu {...defaultProps} onDuplicateTab={onDuplicateTab} onClose={onClose} />);
+    renderWithI18n(<TabContextMenu {...defaultProps} onDuplicateTab={onDuplicateTab} onClose={onClose} />, 'en');
 
-    fireEvent.click(screen.getByText('Duplicar aba'));
+    fireEvent.click(screen.getByText('Duplicate tab'));
     expect(onDuplicateTab).toHaveBeenCalledWith('tab-test');
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('supports Portuguese localization seamlessly', () => {
+    renderWithI18n(<TabContextMenu {...defaultProps} />, 'pt-BR');
+
+    expect(screen.getByText('Fixar guia')).toBeDefined();
+    expect(screen.getByText('Nova Guia')).toBeDefined();
+    expect(screen.getByText('Duplicar guia')).toBeDefined();
+    expect(screen.getByText('Fechar guia')).toBeDefined();
+  });
+
   it('closes on Escape key press', () => {
     const onClose = vi.fn();
-    render(<TabContextMenu {...defaultProps} onClose={onClose} />);
+    renderWithI18n(<TabContextMenu {...defaultProps} onClose={onClose} />, 'en');
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();

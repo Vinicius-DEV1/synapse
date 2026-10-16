@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, ArrowRightLeft, Gift, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video, CheckSquare, Share2 } from 'lucide-react';
+import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video, CheckSquare, Share2 } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import type { Tab, Page } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
@@ -227,20 +227,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.diagrams')}</div>
             <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.diagramsDesc')}</div>
           </div>
+        ) : activeModule === 'quiz' ? (
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.quiz')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.quizDesc')}</div>
+          </div>
         ) : activeModule === 'finance' ? (
           <div className="flex flex-col gap-1 mt-2">
-            <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-text bg-white/5">
-              <LayoutDashboard size={16} className="text-brand-400" />
-              <span>{t('common.view')}</span>
-            </button>
-            <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all">
-              <ArrowRightLeft size={16} className="text-brand-400" />
-              <span>{t('sidebar.finance')}</span>
-            </button>
-            <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all">
-              <Gift size={16} className="text-brand-400" />
-              <span>{t('common.options')}</span>
-            </button>
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.finance')}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.financeDesc')}</div>
           </div>
         ) : (
           <div className="mt-2" />

@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import LibraryGrid from './LibraryGrid';
 import type { LibraryBook } from '../../types';
+import { I18nProvider } from '../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) => render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 vi.mock('lucide-react', () => ({
   FileText: () => <div data-testid="icon-file-text" />,
@@ -51,7 +54,7 @@ describe('LibraryGrid Component', () => {
   ];
 
   it('renders correctly with given books', () => {
-    const { getByText, getByTestId, getAllByTestId } = render(
+    const { getByText, getByTestId, getAllByTestId } = renderWithI18n(
       <LibraryGrid
         books={mockBooks}
         collections={[]}
@@ -76,7 +79,7 @@ describe('LibraryGrid Component', () => {
 
   it('handles book selection properly', () => {
     const onSelectBook = vi.fn();
-    const { getByText } = render(
+    const { getByText } = renderWithI18n(
       <LibraryGrid
         books={mockBooks}
         collections={[]}
@@ -96,7 +99,7 @@ describe('LibraryGrid Component', () => {
     const mockCollections = [
       { id: 'c1', name: 'Tecnologia', color: '#6366f1', created_at: '' },
     ];
-    const { getByText } = render(
+    const { getByText } = renderWithI18n(
       <LibraryGrid
         books={mockBooks}
         collections={mockCollections}
@@ -119,7 +122,7 @@ describe('LibraryGrid Component', () => {
         is_archived: true,
       },
     ];
-    const { getByText } = render(
+    const { getByText } = renderWithI18n(
       <LibraryGrid
         books={archivedBooks}
         collections={[]}

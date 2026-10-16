@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen, ChevronDown, Edit2 } from 'lucide-react';
 import type { LibraryCollection } from '../../../types';
+import { useI18n } from '../../../i18n';
 
 interface LibraryCollectionDropdownProps {
   collections: LibraryCollection[];
@@ -31,6 +32,8 @@ export function LibraryCollectionDropdown({
   handleStartRename,
   onOpen,
 }: LibraryCollectionDropdownProps) {
+  const { t } = useI18n();
+
   if (collections.length === 0) return null;
 
   return (
@@ -46,8 +49,8 @@ export function LibraryCollectionDropdown({
         <BookOpen size={14} />
         <span>
           {selectedCollection
-            ? collections.find((c) => c.id === selectedCollection)?.name || 'Coleção'
-            : 'Coleções'}
+            ? collections.find((c) => c.id === selectedCollection)?.name || t('library.collection')
+            : t('library.collections')}
         </span>
         <ChevronDown size={14} />
       </button>
@@ -66,7 +69,7 @@ export function LibraryCollectionDropdown({
                   : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
               }`}
             >
-              Todas as coleções
+              {t('library.allCollections')}
             </button>
             {collections.map((col) => (
               <div key={col.id} className="relative group">

@@ -15,6 +15,7 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { LofiItem } from '../../../types';
+import { useTranslation } from '../../../i18n';
 
 export interface SortableLofiItemProps {
   lofi: LofiItem;
@@ -51,6 +52,7 @@ export function SortableLofiItem({
   isSelected,
   onToggleSelect,
 }: SortableLofiItemProps) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -170,7 +172,8 @@ export function SortableLofiItem({
             {lofi.title}
             <button 
               onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded text-dark-subtext transition-all"
+              className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1 hover:bg-white/10 rounded text-dark-subtext transition-all"
+              title={t('common.edit', 'Editar')}
             >
               <Edit2 size={12} />
             </button>
@@ -211,7 +214,7 @@ export function SortableLofiItem({
               onClick={(e) => onDownloadToLocal(lofi, e)}
               disabled={!!downloadingId}
               className="p-2 text-dark-subtext/50 hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors disabled:opacity-30"
-              title="Baixar para uso offline"
+              title={t('focus.downloadOffline', 'Baixar para offline')}
             >
               <DownloadCloud size={16} />
             </button>
@@ -221,7 +224,7 @@ export function SortableLofiItem({
         <button 
           onClick={(e) => { e.stopPropagation(); setDeletingId(deletingId === lofi.id ? null : lofi.id); }}
           className="p-2 text-dark-subtext/50 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors"
-          title="Opções de exclusão"
+          title={t('common.delete', 'Opções de exclusão')}
         >
           <Trash2 size={16} />
         </button>
@@ -233,14 +236,14 @@ export function SortableLofiItem({
                 onClick={(e) => onDeleteLocal(lofi, e)}
                 className="text-left px-3 py-2 text-xs text-dark-subtext hover:bg-white/5 hover:text-white transition-colors border-b border-white/5"
               >
-                Apagar apenas localmente
+                {t('focus.deleteLocal', 'Apagar localmente')}
               </button>
             )}
             <button 
               onClick={(e) => onDeleteCompletely(lofi, e)}
               className="text-left px-3 py-2 text-xs text-rose-400 hover:bg-rose-400/10 transition-colors font-semibold"
             >
-              Mover para a Lixeira
+              {t('focus.moveToTrash', 'Mover para a Lixeira')}
             </button>
           </div>
         )}

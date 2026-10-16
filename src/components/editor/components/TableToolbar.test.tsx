@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import TableToolbar from './TableToolbar';
+import type { Editor } from '@tiptap/react';
 
 describe('TableToolbar Component', () => {
-  let mockEditor: any;
-  let chainObj: any;
+  let mockEditor: unknown;
+  let chainObj: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +36,7 @@ describe('TableToolbar Component', () => {
   });
 
   it('triggers add row below and delete table commands', () => {
-    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+    const { getByTitle } = render(<TableToolbar editor={mockEditor as unknown as Editor} />);
 
     const addRowBtn = getByTitle(/Adicionar linha abaixo/i);
     fireEvent.click(addRowBtn);
@@ -54,7 +55,7 @@ describe('TableToolbar Component', () => {
     chainObj.toggleItalic = vi.fn().mockReturnThis();
     chainObj.toggleSpoiler = vi.fn().mockReturnThis();
 
-    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+    const { getByTitle } = render(<TableToolbar editor={mockEditor as unknown as Editor} />);
 
     const boldBtn = getByTitle(/Negrito/i);
     fireEvent.click(boldBtn);
@@ -70,7 +71,7 @@ describe('TableToolbar Component', () => {
   });
 
   it('renders excel selection buttons for column and row', () => {
-    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+    const { getByTitle } = render(<TableToolbar editor={mockEditor as unknown as Editor} />);
 
     const selectColBtn = getByTitle(/Selecionar Coluna \(Excel\)/i);
     expect(selectColBtn).toBeInTheDocument();
@@ -83,7 +84,7 @@ describe('TableToolbar Component', () => {
   });
 
   it('opens color popover when clicking cell background color button', () => {
-    const { getByTitle, getByText } = render(<TableToolbar editor={mockEditor} />);
+    const { getByTitle, getByText } = render(<TableToolbar editor={mockEditor as unknown as Editor} />);
 
     const cellBgBtn = getByTitle(/Cor da célula/i);
     fireEvent.click(cellBgBtn);
@@ -92,7 +93,7 @@ describe('TableToolbar Component', () => {
   });
 
   it('renders move row and column buttons', () => {
-    const { getByTitle } = render(<TableToolbar editor={mockEditor} />);
+    const { getByTitle } = render(<TableToolbar editor={mockEditor as unknown as Editor} />);
 
     expect(getByTitle(/Mover linha para cima/i)).toBeInTheDocument();
     expect(getByTitle(/Mover linha para baixo/i)).toBeInTheDocument();

@@ -177,16 +177,28 @@ export function useVault() {
     }
   }, [selectedGroupId, loadData]);
 
+  // Modal state for deleting groups or items without window.confirm
+  const [deleteModalState, setDeleteModalState] = useState<{
+    type: 'group' | 'item';
+    id: string;
+    title: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDeleteGroup = useCallback(async (group: VaultGroup) => {
-    const msg = `Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`;
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm(msg)) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function'
-      ? window.confirm(msg)
-      : false;
-    if (confirmed) {
-      await deleteGroup(group.id);
+    if (window.api?.app?.showConfirm) {
+      const msg = `Tem certeza que deseja apagar o grupo "${group.name}"?\nOs itens dentro dele NÃO serão apagados, mas ficarão sem grupo.`;
+      const confirmed = (await window.api.app.showConfirm(msg)) === 1;
+      if (confirmed) {
+        await deleteGroup(group.id);
+      }
+      return;
     }
+    setDeleteModalState({
+      type: 'group',
+      id: group.id,
+      title: group.name,
+    });
   }, [deleteGroup]);
 
   const handleSelectItem = useCallback((item: VaultItem) => {
@@ -196,24 +208,65 @@ export function useVault() {
   }, []);
 
   const handleDeleteItem = useCallback(async (id: string) => {
-    const msg = 'Tem certeza que deseja apagar este item do cofre?';
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm(msg)) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function'
-      ? window.confirm(msg)
-      : false;
-    if (!confirmed) return;
-    try {
-      await window.api?.vault?.deleteItem(id);
-      setSelectedItem(null);
-      triggerToast('Item excluído do cofre.', 'info');
-      await loadData();
-    } catch (error: unknown) {
-      const message = getErrorMessage(error, 'Erro ao excluir item do cofre');
-      console.error('[Vault] Error deleting item:', error);
-      triggerToast(message, 'error');
+    const item = items.find((i) => i.id === id);
+    const itemTitle = item?.label || 'este item';
+
+    if (window.api?.app?.showConfirm) {
+      const msg = `Tem certeza que deseja apagar "${itemTitle}" do cofre?`;
+      const confirmed = (await window.api.app.showConfirm(msg)) === 1;
+      if (!confirmed) return;
+      try {
+        await window.api?.vault?.deleteItem(id);
+        if (selectedItem?.id === id) {
+          setSelectedItem(null);
+        }
+        triggerToast('Item excluído do cofre.', 'info');
+        await loadData();
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, 'Erro ao excluir item do cofre');
+        console.error('[Vault] Error deleting item:', error);
+        triggerToast(message, 'error');
+      }
+      return;
     }
-  }, [loadData]);
+
+    setDeleteModalState({
+      type: 'item',
+      id,
+      title: itemTitle,
+    });
+  }, [items, selectedItem, loadData]);
+
+  const handleConfirmDeleteModal = useCallback(async () => {
+    if (!deleteModalState) return;
+    setIsDeleting(true);
+    try {
+      if (deleteModalState.type === 'group') {
+        await deleteGroup(deleteModalState.id);
+      } else {
+        await window.api?.vault?.deleteItem(deleteModalState.id);
+        if (selectedItem?.id === deleteModalState.id) {
+          setSelectedItem(null);
+        }
+        triggerToast('Item excluído do cofre.', 'info');
+        await loadData();
+      }
+      setDeleteModalState(null);
+    } catch (error: unknown) {
+      const fallback = deleteModalState.type === 'group' ? 'Erro ao excluir grupo' : 'Erro ao excluir item do cofre';
+      const message = getErrorMessage(error, fallback);
+      console.error('[Vault] Error deleting:', error);
+      triggerToast(message, 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteModalState, deleteGroup, selectedItem, loadData]);
+
+  const handleCloseDeleteModal = useCallback(() => {
+    if (!isDeleting) {
+      setDeleteModalState(null);
+    }
+  }, [isDeleting]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return items;
@@ -257,6 +310,10 @@ export function useVault() {
     handleReorderItems,
     handleSelectItem,
     handleDeleteItem,
+    deleteModalState,
+    isDeleting,
+    handleConfirmDeleteModal,
+    handleCloseDeleteModal,
     filteredItems,
   };
 }

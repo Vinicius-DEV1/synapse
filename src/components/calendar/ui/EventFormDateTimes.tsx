@@ -1,4 +1,5 @@
 import { Calendar as CalendarIcon } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 
 interface EventFormDateTimesProps {
   isAllDay: boolean;
@@ -25,6 +26,8 @@ export function EventFormDateTimes({
   endTime,
   setEndTime,
 }: EventFormDateTimesProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-2">
       <label className="flex items-center gap-2 cursor-pointer">
@@ -34,13 +37,13 @@ export function EventFormDateTimes({
           onChange={(e) => setIsAllDay(e.target.checked)}
           className="rounded border-dark-border bg-dark-bg text-emerald-500 focus:ring-emerald-500/20"
         />
-        <span className="text-sm text-dark-text">Dia inteiro</span>
+        <span className="text-sm text-dark-text">{t('calendar.allDay', 'Dia inteiro')}</span>
       </label>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
-            <CalendarIcon size={14} /> Início
+            <CalendarIcon size={14} /> {t('calendar.start', 'Início')}
           </label>
           <div className="flex gap-2">
             <input
@@ -64,7 +67,7 @@ export function EventFormDateTimes({
 
         <div className="space-y-1">
           <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
-            <CalendarIcon size={14} /> Fim
+            <CalendarIcon size={14} /> {t('calendar.end', 'Fim')}
           </label>
           <div className="flex gap-2">
             <input

@@ -143,7 +143,7 @@ export function useVideoInfoModal({ video, onVideoUpdated }: UseVideoInfoModalPr
           message: msg,
           kind: 'warning',
         })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
+      : true;
     if (!confirmed) return;
 
     try {

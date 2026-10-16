@@ -3,6 +3,7 @@ import { AlertTriangle, Sparkles, Shuffle, Play, Tag, Filter, Check } from 'luci
 import { triggerToast } from '../ui/ToastContext';
 import type { StudyFilterOptions, GeneratedStudySession } from '../../services/quiz/quizSimulator';
 import { generateErrorNotebook, generateFilteredStudySession } from '../../services/quiz/quizSimulator';
+import { useI18n } from '../../i18n';
 
 interface QuestionsPlaylistsProps {
   onStartSession: (session: GeneratedStudySession) => void;
@@ -15,6 +16,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
   availableTags,
   errorCount,
 }: QuestionsPlaylistsProps) {
+  const { t } = useI18n();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [questionLimit, setQuestionLimit] = useState<number>(10);
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'unanswered' | 'incorrect'>('all');
@@ -35,7 +37,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
       if (session) {
         onStartSession(session);
       } else {
-        triggerToast('Nenhuma questão pendente de revisão no momento.', 'info');
+        triggerToast(t('questions.playlists.noMistakesToast'), 'info');
       }
     } catch (err) {
       console.error('[QuestionsPlaylists] Falha ao gerar caderno de erros:', err);
@@ -59,7 +61,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
       if (session) {
         onStartSession(session);
       } else {
-        triggerToast('Nenhuma questão encontrada para os filtros selecionados.', 'info');
+        triggerToast(t('questions.playlists.noQuestionsToast'), 'info');
       }
     } catch (err) {
       console.error('[QuestionsPlaylists] Falha ao gerar simulado:', err);
@@ -77,16 +79,16 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
             <AlertTriangle size={22} />
           </div>
           <div className="min-w-0">
-            <h4 className="text-base font-semibold text-zinc-100">Caderno de Erros</h4>
+            <h4 className="text-base font-semibold text-zinc-100">{t('questions.playlists.mistakesTitle')}</h4>
             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              Pratique uma bateria dinâmica com todas as questões que você errou na última resolução para consolidar o aprendizado e zerar seus pontos fracos.
+              {t('questions.playlists.mistakesDesc')}
             </p>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-rose-500/10">
           <span className="text-xs font-mono text-zinc-400">
-            {errorCount === 1 ? '1 questão pendente de revisão' : `${errorCount} questões pendentes de revisão`}
+            {errorCount === 1 ? t('questions.playlists.pendingReview', { count: 1 }) : t('questions.playlists.pendingReviewPlural', { count: errorCount })}
           </span>
 
           <button
@@ -95,7 +97,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
             className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-95"
           >
             <Play size={13} className="fill-white" />
-            <span>Iniciar Caderno de Erros</span>
+            <span>{t('questions.playlists.startMistakes')}</span>
           </button>
         </div>
       </div>
@@ -107,9 +109,9 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
             <Sparkles size={20} />
           </div>
           <div>
-            <h4 className="text-base font-semibold text-zinc-100">Simulado Personalizado</h4>
+            <h4 className="text-base font-semibold text-zinc-100">{t('questions.playlists.customSimTitle')}</h4>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Escolha matérias, quantidade de questões e filtro de status para treinar em foco absoluto.
+              {t('questions.playlists.customSimDesc')}
             </p>
           </div>
         </div>
@@ -118,11 +120,11 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
         <div className="space-y-2 pt-2 border-t border-white/5">
           <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
             <Tag size={13} className="text-brand-400" />
-            <span>Filtrar por Matérias / Tags:</span>
+            <span>{t('questions.playlists.filterByTags')}:</span>
           </label>
           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar p-1">
             {availableTags.length === 0 ? (
-              <span className="text-xs text-zinc-500">Nenhuma tag cadastrada.</span>
+              <span className="text-xs text-zinc-500">{t('questions.playlists.noTags')}</span>
             ) : (
               availableTags.map((tag) => {
                 const isSelected = selectedTags.includes(tag);
@@ -149,7 +151,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
           {/* Question Count */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-300">Quantidade de Questões:</label>
+            <label className="text-xs font-medium text-zinc-300">{t('questions.playlists.questionQuantity')}:</label>
             <div className="flex items-center gap-1.5">
               {[5, 10, 20, 30, 50].map((num) => (
                 <button
@@ -171,7 +173,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-300 flex items-center gap-1">
               <Filter size={12} />
-              <span>Critério de Inclusão:</span>
+              <span>{t('questions.playlists.questionStatus')}:</span>
             </label>
             <div className="flex items-center gap-1.5">
               <button
@@ -182,7 +184,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                     : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
-                Todas as Questões
+                {t('questions.playlists.statusAll')}
               </button>
               <button
                 onClick={() => setSelectedStatus('unanswered')}
@@ -192,7 +194,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                     : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
-                Não Respondidas
+                {t('questions.playlists.statusUnanswered')}
               </button>
               <button
                 onClick={() => setSelectedStatus('incorrect')}
@@ -202,7 +204,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
                     : 'bg-dark-bg/50 border-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
-                Apenas Erros
+                {t('questions.playlists.statusIncorrect')}
               </button>
             </div>
           </div>
@@ -218,7 +220,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
               className="accent-brand-500 rounded"
             />
             <Shuffle size={13} />
-            <span>Embaralhar ordem das questões</span>
+            <span>{t('questions.playlists.shuffle')}</span>
           </label>
 
           <div className="flex items-center justify-end pt-2">
@@ -228,7 +230,7 @@ export const QuestionsPlaylists = React.memo(function QuestionsPlaylists({
               className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
             >
               <Play size={13} className="fill-white" />
-              <span>Iniciar Simulado</span>
+              <span>{t('questions.playlists.startSimulation')}</span>
             </button>
           </div>
         </div>

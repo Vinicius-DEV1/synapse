@@ -1,14 +1,15 @@
-import { useState, useMemo } from 'react';
-import { X, Search, File as FileIcon, Calendar } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { X, Search, File as FileIcon, Calendar, type LucideIcon } from 'lucide-react';
 import type { DriveFile } from '../../../services/drive';
 import { formatBytes } from '../../../utils/format';
 import { formatDateTime } from '../../../utils/date-utils';
+import { useI18n } from '../../../i18n';
 
 interface StorageFilesModalProps {
   isOpen: boolean;
   onClose: () => void;
   moduleName: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   bg: string;
   files: DriveFile[];
@@ -23,7 +24,32 @@ export default function StorageFilesModal({
   bg,
   files
 }: StorageFilesModalProps) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
 
   const filteredFiles = useMemo(() => {
     if (!searchTerm.trim()) return files;
@@ -43,8 +69,18 @@ export default function StorageFilesModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div 
+        className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/5">
@@ -54,12 +90,17 @@ export default function StorageFilesModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">{moduleName}</h2>
-              <p className="text-xs text-dark-subtext">{files.length} arquivo(s)</p>
+              <p className="text-xs text-dark-subtext">
+                {files.length} {t('settings.storage.filesCount') || 'arquivo(s)'}
+              </p>
             </div>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white rounded-lg transition-colors"
+            className="p-2 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white rounded-lg transition-colors cursor-pointer"
+            aria-label="Fechar"
+            title="Fechar"
           >
             <X size={20} />
           </button>
@@ -71,7 +112,7 @@ export default function StorageFilesModal({
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" />
             <input 
               type="text"
-              placeholder="Buscar arquivos..."
+              placeholder={t('settings.storage.searchFiles') || "Buscar arquivos..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-500/50 transition-colors"
@@ -84,7 +125,7 @@ export default function StorageFilesModal({
           {sortedFiles.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-dark-subtext py-12">
               <FileIcon size={32} className="opacity-20 mb-3" />
-              <p className="text-sm">Nenhum arquivo encontrado.</p>
+              <p className="text-sm">{t('settings.storage.noFilesFound') || "Nenhum arquivo encontrado."}</p>
             </div>
           ) : (
             <div className="space-y-1">

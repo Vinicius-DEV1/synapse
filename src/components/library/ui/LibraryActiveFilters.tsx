@@ -1,5 +1,6 @@
 import { X, RotateCcw, Filter } from 'lucide-react';
 import type { LibraryCollection, ReadingStatus, BookFormatFilter, BookArchiveFilter } from '../../../types';
+import { useI18n } from '../../../i18n';
 
 interface LibraryActiveFiltersProps {
   searchQuery: string;
@@ -20,12 +21,6 @@ interface LibraryActiveFiltersProps {
   onClearAll: () => void;
 }
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
-  not_started: 'Não iniciados',
-  reading: 'Lendo',
-  finished: 'Concluídos',
-};
-
 export function LibraryActiveFilters({
   searchQuery,
   onClearSearch,
@@ -44,6 +39,13 @@ export function LibraryActiveFilters({
   filteredBooks,
   onClearAll,
 }: LibraryActiveFiltersProps) {
+  const { t } = useI18n();
+
+  const statusLabels: Record<ReadingStatus, string> = {
+    not_started: t('library.status.not_started_plural'),
+    reading: t('library.status.reading'),
+    finished: t('library.status.finished_plural'),
+  };
   const collectionObj = selectedCollection
     ? collections.find((c) => c.id === selectedCollection)
     : null;
@@ -66,13 +68,13 @@ export function LibraryActiveFilters({
       <div className="flex items-center gap-2 flex-wrap flex-1">
         <span className="flex items-center gap-1.5 text-dark-subtext font-medium mr-1">
           <Filter size={13} className="text-brand-400" />
-          Filtros ativos:
+          {t('library.activeFilters')}
         </span>
 
         {/* Search */}
         {searchQuery.trim() && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-500/15 border border-brand-500/30 text-brand-300">
-            <span>Busca: &ldquo;{searchQuery}&rdquo;</span>
+            <span>{t('library.searchFilter')} &ldquo;{searchQuery}&rdquo;</span>
             <button
               onClick={onClearSearch}
               className="hover:text-white transition-colors"
@@ -86,7 +88,7 @@ export function LibraryActiveFilters({
         {/* Status */}
         {statusFilter !== 'all' && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/90">
-            <span>Status: {STATUS_LABELS[statusFilter]}</span>
+            <span>{t('library.statusFilter')} {statusLabels[statusFilter]}</span>
             <button
               onClick={onClearStatus}
               className="hover:text-white transition-colors text-white/50"
@@ -111,7 +113,7 @@ export function LibraryActiveFilters({
               className="w-1.5 h-1.5 rounded-full"
               style={{ backgroundColor: collectionObj.color }}
             />
-            <span>Coleção: {collectionObj.name}</span>
+            <span>{t('library.collection')}: {collectionObj.name}</span>
             <button
               onClick={onClearCollection}
               className="hover:opacity-75 transition-opacity"
@@ -125,7 +127,7 @@ export function LibraryActiveFilters({
         {/* Author */}
         {selectedAuthor && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/90">
-            <span>Autor: {selectedAuthor}</span>
+            <span>{t('library.author')}: {selectedAuthor}</span>
             <button
               onClick={onClearAuthor}
               className="hover:text-white transition-colors text-white/50"
@@ -139,7 +141,7 @@ export function LibraryActiveFilters({
         {/* Format */}
         {formatFilter !== 'all' && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/90 uppercase font-semibold text-[10px]">
-            <span>Formato: {formatFilter}</span>
+            <span>{t('library.formatFilter')} {formatFilter}</span>
             <button
               onClick={onClearFormat}
               className="hover:text-white transition-colors text-white/50"
@@ -153,11 +155,11 @@ export function LibraryActiveFilters({
         {/* Archive */}
         {archiveFilter === 'archived' && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300">
-            <span>Visualizando: Arquivados</span>
+            <span>Visualizando: {t('library.archived')}</span>
             <button
               onClick={onClearArchive}
               className="hover:text-white transition-colors text-amber-200"
-              title="Voltar para livros ativos"
+              title={t('library.backToActive')}
             >
               <X size={12} />
             </button>
@@ -170,13 +172,13 @@ export function LibraryActiveFilters({
           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-colors ml-1 font-medium"
         >
           <RotateCcw size={11} />
-          Limpar filtros
+          {t('library.clearFilters')}
         </button>
       </div>
 
       {/* Results counter */}
       <span className="text-dark-subtext text-xs whitespace-nowrap">
-        {filteredBooks} de {totalBooks} {totalBooks === 1 ? 'livro' : 'livros'}
+        {filteredBooks} {t('library.of')} {totalBooks} {totalBooks === 1 ? t('library.bookCount', { count: 1 }) : t('library.bookCountPlural', { count: totalBooks })}
       </span>
     </div>
   );

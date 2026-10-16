@@ -1,8 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore';
 
 export function useAiSidebarResize() {
   const { state, dispatch } = useStore();
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+    };
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -22,6 +32,12 @@ export function useAiSidebarResize() {
     const handleMouseUp = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      cleanupRef.current = null;
+    };
+
+    cleanupRef.current = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -38,3 +54,4 @@ export function useAiSidebarResize() {
     handleResetWidth
   };
 }
+

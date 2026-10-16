@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { VaultGroupModal } from './VaultGroupModal';
 import type { VaultGroup } from '../../../types';
+import { I18nProvider } from '../../../i18n';
 
 describe('VaultGroupModal', () => {
   const mockGroup: VaultGroup = {
@@ -17,11 +18,13 @@ describe('VaultGroupModal', () => {
 
   it('renders correctly for creating a new group', () => {
     render(
-      <VaultGroupModal
-        isOpen={true}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultGroupModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     expect(screen.getByText('Novo Grupo')).toBeInTheDocument();
@@ -31,12 +34,14 @@ describe('VaultGroupModal', () => {
 
   it('renders correctly for editing an existing group', () => {
     render(
-      <VaultGroupModal
-        isOpen={true}
-        group={mockGroup}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultGroupModal
+          isOpen={true}
+          group={mockGroup}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     expect(screen.getByText('Editar Grupo')).toBeInTheDocument();
@@ -49,11 +54,13 @@ describe('VaultGroupModal', () => {
     const onClose = vi.fn();
 
     render(
-      <VaultGroupModal
-        isOpen={true}
-        onClose={onClose}
-        onSave={onSave}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <VaultGroupModal
+          isOpen={true}
+          onClose={onClose}
+          onSave={onSave}
+        />
+      </I18nProvider>
     );
 
     const input = screen.getByPlaceholderText(/Ex: Trabalho/i);

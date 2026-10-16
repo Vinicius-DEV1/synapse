@@ -3,6 +3,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AccountCards, calculateAccountBalance } from './AccountCards';
 import type { Account, Transaction } from '../../../types';
+import { I18nProvider } from '../../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('AccountCards Component and balance calculations', () => {
   const mockAccounts: Account[] = [
@@ -73,7 +77,7 @@ describe('AccountCards Component and balance calculations', () => {
     const onSelectAccount = vi.fn();
     const onOpenAccountManager = vi.fn();
 
-    render(
+    renderWithI18n(
       <AccountCards
         accounts={mockAccounts}
         transactions={mockTransactions}

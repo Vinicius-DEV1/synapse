@@ -109,7 +109,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
 
       {/* Top right quick edit button on hover */}
       {onEdit && (
-        <div className="absolute top-1.5 right-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-1.5 right-1.5 z-20 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => {
               e.stopPropagation();

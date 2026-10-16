@@ -2,6 +2,9 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LibraryHeader } from './LibraryHeader';
+import { I18nProvider } from '../../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) => render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('LibraryHeader component', () => {
   const defaultProps = {
@@ -12,13 +15,13 @@ describe('LibraryHeader component', () => {
     handleImport: vi.fn(),
     searchQuery: '',
     setSearchQuery: vi.fn(),
-    sortBy: 'title' as any,
+    sortBy: 'title' as const,
     setSortBy: vi.fn(),
-    sortOrder: 'asc' as any,
+    sortOrder: 'asc' as const,
     setSortOrder: vi.fn(),
     showSortDropdown: false,
     setShowSortDropdown: vi.fn(),
-    statusFilter: 'all' as any,
+    statusFilter: 'all' as const,
     setStatusFilter: vi.fn(),
     collections: [],
     selectedCollection: null,
@@ -39,7 +42,7 @@ describe('LibraryHeader component', () => {
   };
 
   it('renders library title, books count and import button', () => {
-    render(<LibraryHeader {...defaultProps} />);
+    renderWithI18n(<LibraryHeader {...defaultProps} />);
 
     expect(screen.getByRole('heading', { name: 'Biblioteca' })).toBeInTheDocument();
     expect(screen.getByText('12 livros')).toBeInTheDocument();
@@ -48,7 +51,7 @@ describe('LibraryHeader component', () => {
 
   it('updates search query on typing', () => {
     const setSearchQuery = vi.fn();
-    render(<LibraryHeader {...defaultProps} setSearchQuery={setSearchQuery} />);
+    renderWithI18n(<LibraryHeader {...defaultProps} setSearchQuery={setSearchQuery} />);
 
     const input = screen.getByPlaceholderText('Buscar por título ou autor...');
     fireEvent.change(input, { target: { value: 'Foundation' } });
@@ -58,7 +61,7 @@ describe('LibraryHeader component', () => {
 
   it('changes reading status filter on click', () => {
     const setStatusFilter = vi.fn();
-    render(<LibraryHeader {...defaultProps} setStatusFilter={setStatusFilter} />);
+    renderWithI18n(<LibraryHeader {...defaultProps} setStatusFilter={setStatusFilter} />);
 
     fireEvent.click(screen.getByText('Lendo'));
     expect(setStatusFilter).toHaveBeenCalledWith('reading');
@@ -66,7 +69,7 @@ describe('LibraryHeader component', () => {
 
   it('toggles view mode between books and collections', () => {
     const setViewMode = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryHeader
         {...defaultProps}
         viewMode="books"
@@ -81,7 +84,7 @@ describe('LibraryHeader component', () => {
 
   it('changes format filter on click', () => {
     const setFormatFilter = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryHeader
         {...defaultProps}
         formatFilter="all"
@@ -95,7 +98,7 @@ describe('LibraryHeader component', () => {
 
   it('toggles archive filter when clicking archive button', () => {
     const setArchiveFilter = vi.fn();
-    render(
+    renderWithI18n(
       <LibraryHeader
         {...defaultProps}
         archiveFilter="active"
@@ -109,7 +112,7 @@ describe('LibraryHeader component', () => {
   });
 
   it('opens LibraryHelpModal when clicking Guia button', () => {
-    render(<LibraryHeader {...defaultProps} />);
+    renderWithI18n(<LibraryHeader {...defaultProps} />);
 
     const guideBtn = screen.getByRole('button', { name: 'Guia da Biblioteca' });
     expect(guideBtn).toBeDefined();

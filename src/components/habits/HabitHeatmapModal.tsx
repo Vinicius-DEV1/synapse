@@ -11,6 +11,7 @@ import { HabitScorecards } from './ui/HabitScorecards';
 import { HabitHeatmapGrid } from './ui/HabitHeatmapGrid';
 import { useHabitHeatmapData } from './hooks/useHabitHeatmapData';
 import { HabitsHelpModal } from './HabitsHelpModal';
+import { useTranslation } from '../../i18n';
 
 export interface HabitHeatmapModalProps {
   habitId: string;
@@ -25,6 +26,7 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
   onClose,
   onHabitUpdated,
 }) => {
+  const { t } = useTranslation();
   const [showHelpModal, setShowHelpModal] = useState(false);
   const {
     habit,
@@ -54,7 +56,7 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Mapa de Atividade do Hábito"
+      aria-label={t('habits.activityMap', 'Mapa de Atividade do Hábito')}
       className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
@@ -85,7 +87,7 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
                 <button
                   onClick={handleSaveTitle}
                   className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors cursor-pointer"
-                  title="Salvar título"
+                  title={t('habits.saveTitle', 'Salvar título')}
                 >
                   <Check size={18} />
                 </button>
@@ -93,12 +95,12 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
             ) : (
               <div className="flex items-center gap-2 group">
                 <h2 className="text-xl font-semibold text-white tracking-tight truncate">
-                  {habit?.title || 'Carregando hábito...'}
+                  {habit?.title || t('habits.loadingHabit', 'Carregando hábito...')}
                 </h2>
                 <button
                   onClick={() => setIsEditingTitle(true)}
-                  className="p-1 text-zinc-500 hover:text-zinc-200 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  title="Renomear hábito"
+                  className="p-1 text-zinc-500 hover:text-zinc-200 rounded opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                  title={t('habits.renameHabit', 'Renomear hábito')}
                 >
                   <Edit2 size={14} />
                 </button>
@@ -111,22 +113,22 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
               type="button"
               onClick={() => setShowHelpModal(true)}
               className="p-2 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-colors cursor-pointer"
-              title="Guia do Sistema de Hábitos"
-              aria-label="Guia de Hábitos"
+              title={t('habits.guide', 'Guia do Sistema de Hábitos')}
+              aria-label={t('habits.guideTitle', 'Guia de Hábitos')}
             >
               <HelpCircle size={18} />
             </button>
             <button
               onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
               className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
-              title="Excluir hábito"
+              title={t('habits.deleteHabit', 'Excluir hábito')}
             >
               <Trash2 size={18} />
             </button>
             <button
               onClick={onClose}
               className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
-              title="Fechar (Esc)"
+              title={t('common.closeEsc', 'Fechar (Esc)')}
             >
               <X size={18} />
             </button>
@@ -136,19 +138,19 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
         {/* Delete Confirmation Notice */}
         {showDeleteConfirm && (
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs animate-in slide-in-from-top-2 duration-150">
-            <span>Deseja realmente excluir este hábito e seu histórico?</span>
+            <span>{t('habits.deleteHabitConfirm', 'Deseja realmente excluir este hábito e seu histórico?')}</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel', 'Cancelar')}
               </button>
               <button
                 onClick={handleDeleteHabit}
                 className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium cursor-pointer"
               >
-                Excluir
+                {t('common.delete', 'Excluir')}
               </button>
             </div>
           </div>
@@ -172,14 +174,17 @@ export const HabitHeatmapModal: React.FC<HabitHeatmapModalProps> = ({
         <div className="flex items-center justify-between text-xs text-zinc-500 border-t border-white/[0.06] pt-3">
           <span>
             {stats.currentStreak > 0
-              ? `🔥 Você está consistente há ${stats.currentStreak} ${stats.currentStreak === 1 ? 'dia' : 'dias'}!`
-              : 'Marque o dia de hoje para continuar sua sequência.'}
+              ? t('habits.streakFooterConsistent', '🔥 Você está consistente há {{count}} {{unit}}!', {
+                  count: stats.currentStreak,
+                  unit: stats.currentStreak === 1 ? t('habits.day', 'dia') : t('habits.days', 'dias'),
+                })
+              : t('habits.streakFooterPrompt', 'Marque o dia de hoje para continuar sua sequência.')}
           </span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer"
           >
-            Fechar
+            {t('habits.close', 'Fechar')}
           </button>
         </div>
       </div>

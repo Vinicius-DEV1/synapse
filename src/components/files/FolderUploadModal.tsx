@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { X, UploadCloud, Folder, Loader2, CloudOff, Cloud } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { useFolderUpload } from './hooks/useFolderUpload';
 import { FolderUploadTaskList } from './ui/FolderUploadTaskList';
+import { useTranslation } from '../../i18n';
 
 interface FolderUploadModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface FolderUploadModalProps {
 }
 
 export default function FolderUploadModal({ onClose, onUploadComplete, currentFolderId = null }: FolderUploadModalProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -26,6 +28,29 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
     handleRetry,
   } = useFolderUpload({ currentFolderId, onUploadComplete });
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (!isUploading || completedCount === tasks.length)) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isUploading || completedCount === tasks.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isUploading, completedCount, tasks.length, onClose]);
+
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -37,7 +62,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-white tracking-wide">Upload de Pasta</h2>
+                  <h2 className="text-lg font-bold text-white tracking-wide">{t('files.uploadFolder')}</h2>
                   {driveStatus === 'connected' ? (
                     <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                       <Cloud size={12} />
@@ -50,7 +75,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                     </span>
                   ) : null}
                 </div>
-                <p className="text-sm text-dark-subtext">Importe diretórios inteiros mantendo a estrutura original</p>
+                <p className="text-sm text-dark-subtext">{t('files.folderUploadSubtitle')}</p>
               </div>
             </div>
             <button 
@@ -68,7 +93,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                 <div className="flex items-center gap-2.5 min-w-0">
                   <CloudOff size={18} className="text-amber-400 shrink-0" />
                   <p className="text-amber-200/90 text-xs leading-relaxed">
-                    <strong>Google Drive desconectado:</strong> os arquivos da pasta serão importados apenas localmente.
+                    {t('files.folderUploadDriveDisconnected')}
                   </p>
                 </div>
                 <button
@@ -78,7 +103,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                   }}
                   className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-medium rounded-lg shrink-0 transition-colors"
                 >
-                  Conectar
+                  {t('files.connect')}
                 </button>
               </div>
             )}
@@ -96,9 +121,9 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                   multiple 
                 />
                 <Folder size={48} className="text-brand-500/50 mb-4" />
-                <p className="text-white font-medium mb-2">Selecione uma pasta para enviar</p>
+                <p className="text-white font-medium mb-2">{t('files.selectFolderToUpload')}</p>
                 <p className="text-dark-subtext text-sm text-center max-w-md mb-6">
-                  Todos os arquivos e subpastas serão importados e criptografados localmente e na nuvem de forma sequencial.
+                  {t('files.folderUploadSequentialHint')}
                 </p>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
@@ -106,7 +131,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                   className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
                 >
                   {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-                  Selecionar Pasta
+                  {t('files.selectFolder')}
                 </button>
               </div>
             ) : (
@@ -127,7 +152,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                 disabled={isUploading && completedCount < tasks.length}
                 className="px-4 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors text-sm"
               >
-                {completedCount === tasks.length ? 'Fechar' : 'Cancelar'}
+                {completedCount === tasks.length ? t('files.close') : t('files.cancel')}
               </button>
               {completedCount < tasks.length && (
                 <button 
@@ -139,7 +164,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
                       : 'bg-brand-500 text-white hover:bg-brand-600'
                   }`}
                 >
-                  {isUploading ? 'Enviando...' : (errorCount > 0 ? 'Tentar Falhas' : 'Iniciar Upload')}
+                  {isUploading ? t('files.uploading') : (errorCount > 0 ? t('files.retryFailed') : t('files.startUpload'))}
                 </button>
               )}
             </div>

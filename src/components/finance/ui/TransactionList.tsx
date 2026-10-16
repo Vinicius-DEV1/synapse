@@ -1,14 +1,15 @@
 import React, { useMemo } from 'react';
 import { Trash2, ArrowRight, Edit2 } from 'lucide-react';
 import type { Transaction, Account } from '../../../types';
+import { useTranslation } from '../../../i18n';
 
-const typeLabels: Record<string, { label: string; color: string }> = {
-  income: { label: 'Entrada', color: 'text-emerald-400' },
-  expense: { label: 'Saída', color: 'text-red-400' },
-  transfer: { label: 'Transferência', color: 'text-indigo-400' },
-  loan_made: { label: 'Emprestei', color: 'text-amber-400' },
-  loan_taken: { label: 'Peguei Emprestado', color: 'text-indigo-400' }
-};
+const getTypeLabels = (t: (key: string, fallback: string) => string): Record<string, { label: string; color: string }> => ({
+  income: { label: t('finance.income', 'Entrada'), color: 'text-emerald-400' },
+  expense: { label: t('finance.expense', 'Saída'), color: 'text-red-400' },
+  transfer: { label: t('finance.transfer', 'Transferência'), color: 'text-indigo-400' },
+  loan_made: { label: t('finance.loanMade', 'Emprestei'), color: 'text-amber-400' },
+  loan_taken: { label: t('finance.loanTaken', 'Peguei Emprestado'), color: 'text-indigo-400' }
+});
 
 export function formatDateSafe(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
@@ -52,6 +53,9 @@ export const TransactionList = React.memo(({
   onDelete,
   onPayLoan
 }: TransactionListProps) => {
+  const { t } = useTranslation();
+  const typeLabels = useMemo(() => getTypeLabels(t), [t]);
+
   const accountsMap = useMemo(() => {
     const map = new Map<string, Account>();
     for (const acc of accounts) {
@@ -79,7 +83,7 @@ export const TransactionList = React.memo(({
   if (filteredTransactions.length === 0) {
     return (
       <div className="text-center text-dark-subtext py-12">
-        Nenhuma transação encontrada.
+        {t('finance.noTransactions', 'Nenhuma transação encontrada.')}
       </div>
     );
   }
@@ -96,12 +100,12 @@ export const TransactionList = React.memo(({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-dark-subtext text-xs">
-                  <th className="py-2 font-medium">Data</th>
-                  <th className="py-2 font-medium">Descrição</th>
-                  <th className="py-2 font-medium">Conta</th>
-                  <th className="py-2 font-medium">Categoria</th>
-                  <th className="py-2 font-medium">Tipo</th>
-                  <th className="py-2 font-medium text-right">Valor</th>
+                  <th className="py-2 font-medium">{t('finance.date', 'Data')}</th>
+                  <th className="py-2 font-medium">{t('finance.description', 'Descrição')}</th>
+                  <th className="py-2 font-medium">{t('finance.account', 'Conta')}</th>
+                  <th className="py-2 font-medium">{t('finance.category', 'Categoria')}</th>
+                  <th className="py-2 font-medium">{t('finance.type', 'Tipo')}</th>
+                  <th className="py-2 font-medium text-right">{t('finance.value', 'Valor')}</th>
                   <th className="py-2 font-medium"></th>
                 </tr>
               </thead>
@@ -125,8 +129,8 @@ export const TransactionList = React.memo(({
                         {isLoan && (
                           <div className="mt-1 w-40">
                             <div className="flex justify-between text-[11px] text-dark-subtext mb-0.5">
-                              <span>Pago: R$ {paidAmount.toFixed(2)}</span>
-                              <span>{tx.is_paid ? 'Concluído' : `${progress.toFixed(0)}%`}</span>
+                              <span>{t('finance.paid', 'Pago')}: R$ {paidAmount.toFixed(2)}</span>
+                              <span>{tx.is_paid ? t('finance.completed', 'Concluído') : `${progress.toFixed(0)}%`}</span>
                             </div>
                             <div className="h-1.5 w-full bg-dark-bg rounded-full overflow-hidden">
                               <div 
@@ -175,14 +179,14 @@ export const TransactionList = React.memo(({
                             onClick={() => onPayLoan(tx)}
                             className="px-2 py-1 text-xs bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 rounded transition-colors"
                           >
-                            Pagar
+                            {t('finance.pay', 'Pagar')}
                           </button>
                         )}
                         {onEdit && (
                           <button 
                             onClick={() => onEdit(tx)}
                             className="p-1 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded transition-colors"
-                            title="Editar Transação"
+                            title={t('finance.editTransaction', 'Editar Transação')}
                           >
                             <Edit2 size={15} />
                           </button>
@@ -190,7 +194,7 @@ export const TransactionList = React.memo(({
                         <button 
                           onClick={() => onDelete(tx.id)}
                           className="p-1 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                          title="Excluir"
+                          title={t('finance.delete', 'Excluir')}
                         >
                           <Trash2 size={15} />
                         </button>

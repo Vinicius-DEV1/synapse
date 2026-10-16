@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import TransactionModal from './TransactionModal';
+import { I18nProvider } from '../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 vi.mock('../ui/Portal', () => ({
   Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="tx-portal">{children}</div>,
@@ -11,7 +15,7 @@ describe('TransactionModal Component', () => {
     const onClose = vi.fn();
     const onSave = vi.fn().mockResolvedValue(undefined);
 
-    const { getByPlaceholderText, getAllByRole, getByRole } = render(
+    const { getByPlaceholderText, getAllByRole, getByRole } = renderWithI18n(
       <TransactionModal onClose={onClose} onSave={onSave} />
     );
 

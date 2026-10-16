@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, getDay, isToday } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DndContext } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
 import { DraggableEvent } from './DraggableEvent';
 import { DroppableDay } from './DroppableDay';
+import { useTranslation } from '../../i18n';
 
 interface CalendarGridProps {
   events: CalendarEvent[];
@@ -17,6 +18,7 @@ interface CalendarGridProps {
 }
 
 export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDayClick }: CalendarGridProps) {
+  const { t, language } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const todayRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,7 +42,9 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
   endDate.setDate(endDate.getDate() + (6 - getDay(monthEnd)));
 
   const days = useMemo(() => eachDayOfInterval({ start: startDate, end: endDate }), [startDate.getTime(), endDate.getTime()]);
-  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const weekDays = language === 'en'
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -81,7 +85,7 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-dark-border">
         <h2 className="text-lg font-medium text-dark-text capitalize">
-          {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
+          {format(currentDate, 'MMMM yyyy', { locale: language === 'en' ? enUS : ptBR })}
         </h2>
         <div className="flex gap-2">
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-dark-hover text-dark-subtext">
@@ -98,7 +102,7 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
             }} 
             className="px-3 py-1 text-sm rounded hover:bg-dark-hover text-dark-subtext"
           >
-            Hoje
+            {t('calendar.today', 'Hoje')}
           </button>
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-dark-hover text-dark-subtext">
             <ChevronRight size={20} />

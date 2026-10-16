@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Check, X } from 'lucide-react';
 import { useLocalStorage } from '../../../hooks/useLocalStorage';
 import { STORAGE_KEYS } from '../../../utils/constants';
+import { useTranslation } from '../../../i18n';
 
 export const DEFAULT_FINANCE_CATEGORIES = [
   'Geral',
@@ -33,6 +34,7 @@ export function CategorySelect({
   defaultCategories = DEFAULT_FINANCE_CATEGORIES,
   selectClassName,
 }: CategorySelectProps) {
+  const { t } = useTranslation();
   const [customCategories, setCustomCategories] = useLocalStorage<string[]>(
     STORAGE_KEYS.FINANCE_CUSTOM_CATEGORIES,
     []
@@ -90,14 +92,14 @@ export function CategorySelect({
             value={newCategoryInput}
             onChange={(e) => setNewCategoryInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nova categoria..."
+            placeholder={t('finance.newCategory', 'Nova categoria...')}
             className="flex-1 bg-dark-bg border border-brand-500/50 rounded-lg px-2.5 py-1.5 text-xs text-dark-text focus:outline-none"
           />
           <button
             type="button"
             onClick={() => handleSaveNewCategory()}
             className="p-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs transition-colors flex items-center justify-center shadow-sm"
-            title="Salvar Categoria"
+            title={t('finance.saveCategory', 'Salvar Categoria')}
           >
             <Check size={14} />
           </button>
@@ -108,7 +110,7 @@ export function CategorySelect({
               setNewCategoryInput('');
             }}
             className="p-1.5 bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-dark-text rounded-lg text-xs transition-colors flex items-center justify-center"
-            title="Cancelar"
+            title={t('common.cancel', 'Cancelar')}
           >
             <X size={14} />
           </button>
@@ -136,7 +138,7 @@ export function CategorySelect({
               </option>
             ))}
             <option value="__NEW__" className="bg-dark-bg text-brand-400 font-medium">
-              + Nova Categoria...
+              {t('finance.addNewCategory', '+ Nova Categoria...')}
             </option>
           </select>
 
@@ -144,7 +146,7 @@ export function CategorySelect({
             type="button"
             onClick={() => setIsCreating(true)}
             className="p-1.5 bg-dark-bg hover:bg-white/10 border border-white/10 rounded-lg text-brand-400 hover:text-brand-300 transition-colors flex items-center justify-center flex-shrink-0"
-            title="Adicionar nova categoria"
+            title={t('finance.addCategoryTitle', 'Adicionar nova categoria')}
           >
             <Plus size={14} />
           </button>

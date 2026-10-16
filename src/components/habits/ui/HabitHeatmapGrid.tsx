@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../../../i18n';
 
 export interface HeatmapCell {
   date: string;
@@ -31,17 +32,23 @@ export const HabitHeatmapGrid = React.memo(function HabitHeatmapGrid({
   onMouseEnterCell,
   onMouseLeaveCell,
 }: HabitHeatmapGridProps) {
+  const { t, language } = useTranslation();
+
+  const weekdayLabels = language === 'pt-BR'
+    ? ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   return (
     <div className="bg-zinc-950/40 border border-white/[0.04] p-4 sm:p-5 rounded-2xl flex flex-col gap-3 overflow-hidden">
       <div className="flex items-center justify-between text-xs text-zinc-400">
         <span className="font-medium text-zinc-300">
-          Consistência Anual (52 Semanas)
+          {t('habits.annualConsistency', 'Consistência Anual (52 Semanas)')}
         </span>
         <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-          <span>Menos</span>
+          <span>{t('habits.less', 'Menos')}</span>
           <div className="w-2.5 h-2.5 rounded-sm bg-white/[0.05]" />
           <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500 shadow-sm shadow-emerald-500/30" />
-          <span>Mais</span>
+          <span>{t('habits.more', 'Mais')}</span>
         </div>
       </div>
 
@@ -64,19 +71,18 @@ export const HabitHeatmapGrid = React.memo(function HabitHeatmapGrid({
           <div className="flex gap-2">
             {/* Weekday labels */}
             <div className="grid grid-rows-7 gap-1 text-[9px] text-zinc-500 leading-[13px]">
-              <span>Dom</span>
-              <span>Seg</span>
-              <span>Ter</span>
-              <span>Qua</span>
-              <span>Qui</span>
-              <span>Sex</span>
-              <span>Sáb</span>
+              {weekdayLabels.map((day) => (
+                <span key={day}>{day}</span>
+              ))}
             </div>
 
             {/* Days matrix */}
             <div className="grid grid-rows-7 grid-flow-col gap-1">
               {heatmapGrid.map((c) => {
                 const isDone = completedDateSet.has(c.date);
+                const statusLabel = isDone
+                  ? t('habits.completedStatus', 'Concluído')
+                  : t('habits.notCompletedStatus', 'Não realizado');
                 return (
                   <button
                     key={c.date}
@@ -89,7 +95,7 @@ export const HabitHeatmapGrid = React.memo(function HabitHeatmapGrid({
                         ? 'bg-emerald-500 hover:bg-emerald-400 shadow-sm shadow-emerald-500/20'
                         : 'bg-white/[0.05] hover:bg-white/[0.15]'
                     } ${c.isToday ? 'ring-1.5 ring-amber-400/80 ring-offset-1 ring-offset-zinc-900' : ''}`}
-                    title={`${c.date} • ${isDone ? 'Concluído' : 'Não realizado'}`}
+                    title={`${c.date} • ${statusLabel}`}
                   />
                 );
               })}
@@ -105,13 +111,15 @@ export const HabitHeatmapGrid = React.memo(function HabitHeatmapGrid({
             <span className="font-mono">{hoveredCell.date}</span>
             <span>•</span>
             <span className={hoveredCell.completed ? 'text-emerald-400 font-medium' : 'text-zinc-500'}>
-              {hoveredCell.completed ? '✓ Concluído' : '○ Não realizado'}
+              {hoveredCell.completed
+                ? `✓ ${t('habits.completedStatus', 'Concluído')}`
+                : `○ ${t('habits.notCompletedStatus', 'Não realizado')}`}
             </span>
-            <span className="text-zinc-600 text-[11px]">(Clique para alternar)</span>
+            <span className="text-zinc-600 text-[11px]">{t('habits.clickToToggle', '(Clique para alternar)')}</span>
           </span>
         ) : (
           <span className="text-zinc-600 text-[11px]">
-            Passe o cursor sobre os dias para ver detalhes ou clique para marcar retroativamente.
+            {t('habits.hoverDetailsHelp', 'Passe o cursor sobre os dias para ver detalhes ou clique para marcar retroativamente.')}
           </span>
         )}
       </div>

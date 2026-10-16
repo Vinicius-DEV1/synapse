@@ -6,6 +6,7 @@ import { useStore } from '../../store/useStore';
 import { SortableLofiItem } from './lofi/SortableLofiItem';
 import { useLofiViewActions } from './hooks/useLofiViewActions';
 import { formatDuration } from '../../utils/format';
+import { useTranslation } from '../../i18n';
 
 import {
   DndContext,
@@ -24,6 +25,7 @@ import {
 } from '@dnd-kit/sortable';
 
 export const LofiView: React.FC = () => {
+  const { t } = useTranslation();
   const { view, setView, lofis, activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, loadLofis } = useFocusContext();
   const { state } = useStore();
   const masterKey = state.moduleKeys['focus'];
@@ -116,12 +118,13 @@ export const LofiView: React.FC = () => {
           <button 
             onClick={() => setView('dashboard')}
             className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors"
+            title={t('common.back', 'Voltar')}
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Lofi Station</h1>
-            <p className="text-dark-subtext text-xs font-medium">Suas músicas para focar</p>
+            <h1 className="text-xl font-bold text-white tracking-tight">{t('focus.lofiStation', 'Lofi Station')}</h1>
+            <p className="text-dark-subtext text-xs font-medium">{t('focus.musicSubtitle', 'Suas músicas para focar')}</p>
           </div>
         </div>
         
@@ -131,9 +134,9 @@ export const LofiView: React.FC = () => {
             onChange={e => setSortMode(e.target.value as 'manual' | 'date' | 'alpha')}
             className="bg-dark-card border border-white/10 text-dark-subtext text-sm rounded-lg px-2 py-2 outline-none focus:border-brand-500"
           >
-            <option className="bg-dark-bg text-white" value="manual">Manual</option>
-            <option className="bg-dark-bg text-white" value="date">Mais Recentes</option>
-            <option className="bg-dark-bg text-white" value="alpha">A-Z</option>
+            <option className="bg-dark-bg text-white" value="manual">{t('focus.manual', 'Manual')}</option>
+            <option className="bg-dark-bg text-white" value="date">{t('focus.mostRecent', 'Mais Recentes')}</option>
+            <option className="bg-dark-bg text-white" value="alpha">{t('focus.alphabetical', 'A-Z')}</option>
           </select>
           <button
             onClick={() => {
@@ -146,7 +149,7 @@ export const LofiView: React.FC = () => {
             disabled={lofis.length === 0}
             className="px-3 py-2 rounded-lg border border-white/10 bg-dark-card text-dark-subtext hover:text-white text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {selectedIds.size === lofis.length && lofis.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            {selectedIds.size === lofis.length && lofis.length > 0 ? t('focus.deselectAll', 'Desmarcar Todos') : t('focus.selectAll', 'Selecionar Todos')}
           </button>
           <button 
             onClick={handleImport}
@@ -158,7 +161,7 @@ export const LofiView: React.FC = () => {
             ) : (
               <>
                 <Plus size={16} />
-                <span>Importar</span>
+                <span>{t('focus.import', 'Importar')}</span>
               </>
             )}
           </button>
@@ -169,8 +172,8 @@ export const LofiView: React.FC = () => {
         {lofis.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-dark-subtext">
             <Music size={48} className="mb-4 opacity-20" />
-            <p className="text-sm">Nenhum lofi importado.</p>
-            <p className="text-xs opacity-60">Clique em Importar para adicionar áudios ou vídeos.</p>
+            <p className="text-sm">{t('focus.noLofi', 'Nenhum lofi importado.')}</p>
+            <p className="text-xs opacity-60">{t('focus.noLofiDesc', 'Clique em Importar para adicionar áudios ou vídeos.')}</p>
           </div>
         ) : (
           <DndContext
@@ -219,7 +222,7 @@ export const LofiView: React.FC = () => {
             onClick={() => setSelectedIds(new Set())}
             className="text-xs text-dark-subtext hover:text-white transition-colors"
           >
-            Desmarcar
+            {t('focus.deselectAll', 'Desmarcar')}
           </button>
           <div className="h-4 w-px bg-white/15" />
           {hasCloudOnlySelected && window.api?.lofi && (
@@ -236,7 +239,7 @@ export const LofiView: React.FC = () => {
               ) : (
                 <>
                   <DownloadCloud size={13} />
-                  <span>Baixar para offline</span>
+                  <span>{t('focus.downloadOffline', 'Baixar para offline')}</span>
                 </>
               )}
             </button>
@@ -246,14 +249,14 @@ export const LofiView: React.FC = () => {
             className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
           >
             <Trash2 size={13} />
-            Apagar localmente ({selectedIds.size})
+            {t('focus.deleteLocal', 'Apagar localmente')} ({selectedIds.size})
           </button>
           <button
             onClick={handleBulkDeleteCompletely}
             className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
           >
             <Trash2 size={13} />
-            Mover para a Lixeira ({selectedIds.size})
+            {t('focus.moveToTrash', 'Mover para a Lixeira')} ({selectedIds.size})
           </button>
         </div>
       )}

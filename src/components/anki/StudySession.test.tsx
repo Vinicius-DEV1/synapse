@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import StudySession from './StudySession';
+import { I18nProvider } from '../../i18n';
 
 const mockHandleRating = vi.fn();
 const mockRevealAnswer = vi.fn();
@@ -71,7 +72,9 @@ describe('StudySession Component', () => {
   it('renders front card and shows answer button', () => {
     const onClose = vi.fn();
     const { getByText } = render(
-      <StudySession deckId="deck_1" onClose={onClose} />
+      <I18nProvider initialLanguage="pt-BR">
+        <StudySession deckId="deck_1" onClose={onClose} />
+      </I18nProvider>
     );
 
     expect(getByText('Serendipity')).toBeDefined();

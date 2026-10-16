@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import QuestionsView, { resetQuestionsViewCache } from './QuestionsView';
+import { I18nProvider } from '../../i18n';
+
+function renderWithI18n(ui: React.ReactElement) {
+  return render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
+}
 
 vi.mock('../../store/useStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../store/useStore')>();
@@ -86,7 +91,7 @@ describe('QuestionsView Component', () => {
   });
 
   it('renders module header and navigation sections', async () => {
-    const { getByText } = render(<QuestionsView />);
+    const { getByText } = renderWithI18n(<QuestionsView />);
 
     expect(getByText('Central de Questões')).toBeDefined();
     expect(getByText('Explorador')).toBeDefined();
@@ -101,7 +106,7 @@ describe('QuestionsView Component', () => {
   });
 
   it('switches to Métricas tab and displays dashboard stats', async () => {
-    const { getByText } = render(<QuestionsView />);
+    const { getByText } = renderWithI18n(<QuestionsView />);
 
     const metricsTab = getByText('Métricas');
     fireEvent.click(metricsTab);
@@ -113,7 +118,7 @@ describe('QuestionsView Component', () => {
   });
 
   it('switches to Simulados & Erros tab', async () => {
-    const { getByText } = render(<QuestionsView />);
+    const { getByText } = renderWithI18n(<QuestionsView />);
 
     const playlistsTab = getByText('Simulados & Erros');
     fireEvent.click(playlistsTab);
@@ -125,7 +130,7 @@ describe('QuestionsView Component', () => {
   });
 
   it('opens full-page editor upon clicking "Nova Bateria" and returns to explorer on Voltar click', async () => {
-    const { getByText, getByPlaceholderText, getByTitle } = render(<QuestionsView />);
+    const { getByText, getByPlaceholderText, getByTitle } = renderWithI18n(<QuestionsView />);
 
     const newBtn = getByText('Nova Bateria');
     fireEvent.click(newBtn);
@@ -150,7 +155,7 @@ describe('QuestionsView Component', () => {
     window.api.quiz.saveBattery = saveBatteryMock;
     window.api.quiz.saveQuestionsBatch = saveQuestionsBatchMock;
 
-    const { getByText, getByTitle, getByPlaceholderText } = render(<QuestionsView />);
+    const { getByText, getByTitle, getByPlaceholderText } = renderWithI18n(<QuestionsView />);
 
     await waitFor(() => {
       expect(getByText('Bateria Redes')).toBeDefined();

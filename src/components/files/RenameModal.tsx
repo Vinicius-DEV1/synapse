@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import type { FileItem, FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface RenameModalProps {
   item: FileItem | FileFolder;
@@ -12,9 +13,33 @@ interface RenameModalProps {
 }
 
 export default function RenameModal({ item, isFolder, onClose, onRename }: RenameModalProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(item.name);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isSubmitting) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isSubmitting, onClose]);
 
   useEffect(() => {
     // Focus the input and select the text (excluding extension if it's a file)
@@ -43,7 +68,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
     setIsSubmitting(true);
     try {
       await onRename(item.id, name.trim(), isFolder);
-      triggerToast(isFolder ? 'Pasta renomeada com sucesso!' : 'Arquivo renomeado com sucesso!', 'success');
+      triggerToast(isFolder ? t('files.folderRenamed') : t('files.fileRenamed'), 'success');
       onClose();
     } catch (err: unknown) {
       console.error("Failed to rename:", err);
@@ -60,7 +85,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">
-            Renomear {isFolder ? 'Pasta' : 'Arquivo'}
+            {isFolder ? t('files.renameFolder') : t('files.renameFile')}
           </h2>
           <button onClick={onClose} disabled={isSubmitting} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
@@ -70,7 +95,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           <div>
             <label className="block text-xs font-medium text-dark-subtext mb-1 uppercase tracking-wider">
-              Novo Nome
+              {t('files.newName')}
             </label>
             <input
               ref={inputRef}
@@ -79,7 +104,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
               className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-primary"
-              placeholder="Digite o novo nome..."
+              placeholder={t('files.enterNewName')}
               required
             />
           </div>
@@ -91,14 +116,14 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
               disabled={isSubmitting}
               className="flex-1 py-2.5 rounded-xl font-medium text-dark-subtext hover:bg-white/5 transition-colors"
             >
-              Cancelar
+              {t('files.cancel')}
             </button>
             <button 
               type="submit"
               disabled={isSubmitting || !name.trim()}
               className="flex-1 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
             >
-              {isSubmitting ? 'Salvando...' : 'Salvar'}
+              {isSubmitting ? t('files.saving') : t('files.save')}
             </button>
           </div>
         </form>

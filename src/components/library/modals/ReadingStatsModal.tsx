@@ -107,7 +107,7 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
 
   const getProgress = (book: LibraryBook) => {
     if (!book.total_pages || book.total_pages <= 0) return 0;
-    let page = (book as any).current_page || 1;
+    let page = (book as LibraryBook & { current_page?: number }).current_page || 1;
     if (typeof book.last_read_page === 'number') page = book.last_read_page;
     else if (
       typeof book.last_read_page === 'string' &&

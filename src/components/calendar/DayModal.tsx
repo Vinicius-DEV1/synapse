@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import type { CalendarEvent } from '../../types';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS } from 'date-fns/locale';
 import { X, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { parseEventDate, getEventDayStr } from '../../utils/date-utils';
+import { useTranslation } from '../../i18n';
 
 interface DayModalProps {
   date: Date;
@@ -15,6 +17,33 @@ interface DayModalProps {
 }
 
 export default function DayModal({ date, events, onClose, onNewEvent, onEditEvent, onToggleTask }: DayModalProps) {
+  const { t, language } = useTranslation();
+
+  // Keyboard Escape & Android Hardware Back navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBack = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBack);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBack);
+    };
+  }, [onClose]);
+
+  const dateLocale = language === 'en' ? enUS : ptBR;
+  const formattedDate = language === 'en'
+    ? format(date, "EEEE, MMMM d", { locale: dateLocale })
+    : format(date, "EEEE, d 'de' MMMM", { locale: dateLocale });
+
   const dayEvents = events.filter(e => {
     return getEventDayStr(e.start_date) === format(date, 'yyyy-MM-dd');
   }).sort((a, b) => parseEventDate(a.start_date).getTime() - parseEventDate(b.start_date).getTime());
@@ -28,16 +57,16 @@ export default function DayModal({ date, events, onClose, onNewEvent, onEditEven
       >
         <div className="flex justify-between items-center p-4 border-b border-dark-border">
           <h2 className="text-lg font-medium text-dark-text capitalize">
-            {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
+            {formattedDate}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-dark-hover text-dark-subtext">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-dark-hover text-dark-subtext" title={t('calendar.cancel', 'Fechar')}>
             <X size={20} />
           </button>
         </div>
 
         <div className="p-4 flex-1 overflow-y-auto max-h-[60vh] space-y-2">
           {dayEvents.length === 0 ? (
-            <p className="text-sm text-dark-subtext text-center py-4 italic">Nenhum evento neste dia.</p>
+            <p className="text-sm text-dark-subtext text-center py-4 italic">{t('calendar.noEventsThisDay', 'Nenhum evento neste dia.')}</p>
           ) : (
             dayEvents.map(event => {
               const isTask = event.type === 'task';
@@ -93,7 +122,7 @@ export default function DayModal({ date, events, onClose, onNewEvent, onEditEven
             onClick={onNewEvent}
             className="w-full px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors shadow-sm"
           >
-            + Novo Agendamento
+            {t('calendar.newSchedule', '+ Novo Agendamento')}
           </button>
         </div>
       </div>

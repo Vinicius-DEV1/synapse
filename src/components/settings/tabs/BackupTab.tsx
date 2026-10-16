@@ -51,8 +51,9 @@ export function BackupTab() {
       if (folder) {
         setDestination(folder);
       }
-    } catch (e: any) {
-      triggerToast(e.message || 'Erro ao selecionar pasta de destino', 'error');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Erro ao selecionar pasta de destino';
+      triggerToast(message, 'error');
     }
   };
 
@@ -93,11 +94,13 @@ export function BackupTab() {
 
       if (!res.success) {
         setIsBackingUp(false);
-        triggerToast((res as any).error || res.message || 'Erro ao iniciar processo de backup.', 'error');
+        const resObj = res as { error?: string; message?: string };
+        triggerToast(resObj.error || resObj.message || 'Erro ao iniciar processo de backup.', 'error');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsBackingUp(false);
-      triggerToast(err.message || 'Falha ao executar o backup.', 'error');
+      const message = err instanceof Error ? err.message : 'Falha ao executar o backup.';
+      triggerToast(message, 'error');
     }
   };
 

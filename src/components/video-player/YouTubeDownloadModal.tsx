@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, Loader2, Download, Video, FolderPlus, MonitorPlay, CloudOff, Cloud } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { YouTubeSubtitleSelector } from './ui/YouTubeSubtitleSelector';
@@ -34,6 +35,29 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
     handleToggleSub,
     handleDownload,
   } = useYouTubeDownload({ onClose, onSuccess });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDownloading) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isDownloading) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isDownloading, onClose]);
 
   return (
     <Portal>

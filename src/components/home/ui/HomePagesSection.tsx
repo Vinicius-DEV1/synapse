@@ -1,5 +1,6 @@
 import { Pin, Clock, ChevronRight } from 'lucide-react';
 import type { Page } from '../../../types/core';
+import { useI18n } from '../../../i18n';
 
 interface HomePagesSectionProps {
   pinnedPages: Page[];
@@ -12,15 +13,17 @@ export function HomePagesSection({
   recentPages,
   onOpenPage
 }: HomePagesSectionProps) {
+  const { t } = useI18n();
+
   const formatRelativeDate = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60_000);
-    if (mins < 1) return 'agora';
-    if (mins < 60) return `${mins}min atrás`;
+    if (mins < 1) return t('home.pages.now');
+    if (mins < 60) return t('home.pages.minutesAgo', { count: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h atrás`;
+    if (hours < 24) return t('home.pages.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    return `${days}d atrás`;
+    return t('home.pages.daysAgo', { count: days });
   };
 
   return (
@@ -32,7 +35,7 @@ export function HomePagesSection({
             <div className="p-2 rounded-lg bg-violet-500/20 text-violet-400">
               <Clock size={20} />
             </div>
-            <h2 className="text-lg font-semibold text-white">Recentes</h2>
+            <h2 className="text-lg font-semibold text-white">{t('home.pages.recent')}</h2>
           </div>
           <div className="space-y-2">
             {recentPages.map((p) => (
@@ -68,12 +71,12 @@ export function HomePagesSection({
           <div className="p-2 rounded-lg bg-brand-500/20 text-brand-400">
             <Pin size={20} />
           </div>
-          <h2 className="text-lg font-semibold text-white">Fixados</h2>
+          <h2 className="text-lg font-semibold text-white">{t('home.pages.pinned')}</h2>
         </div>
 
         {pinnedPages.length === 0 ? (
           <div className="py-6 text-center text-dark-subtext text-sm">
-            <p>Nenhuma página fixada.</p>
+            <p>{t('home.pages.noPinned')}</p>
           </div>
         ) : (
           <div className="space-y-2">

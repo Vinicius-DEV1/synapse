@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FileUploadModal from './FileUploadModal';
+import { I18nProvider } from '../../i18n';
 
 vi.mock('../../store/useStore', () => ({
   useStore: () => ({
@@ -21,6 +22,10 @@ vi.mock('../../services/storage', () => ({
   encryptFile: vi.fn().mockImplementation((buf) => Promise.resolve(buf)),
 }));
 
+const renderWithI18n = (ui: React.ReactElement) => {
+  return render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
+};
+
 describe('FileUploadModal Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,14 +39,14 @@ describe('FileUploadModal Component', () => {
 
   it('renders initial empty dropzone state correctly', async () => {
     await waitFor(() => {
-      render(<FileUploadModal onClose={vi.fn()} />);
+      renderWithI18n(<FileUploadModal onClose={vi.fn()} />);
     });
     expect(screen.getByText('Enviar Arquivo(s)')).toBeInTheDocument();
     expect(screen.getByText('Clique ou arraste arquivo(s)')).toBeInTheDocument();
   });
 
   it('handles drag-and-drop of files into the dropzone', async () => {
-    render(<FileUploadModal onClose={vi.fn()} />);
+    renderWithI18n(<FileUploadModal onClose={vi.fn()} />);
 
     const dropZoneText = screen.getByText('Clique ou arraste arquivo(s)');
     const dropZone = dropZoneText.closest('div')!;
@@ -71,7 +76,7 @@ describe('FileUploadModal Component', () => {
     const file1 = new File(['content 1'], 'file1.pdf', { type: 'application/pdf' });
     const file2 = new File(['content 2'], 'file2.png', { type: 'image/png' });
 
-    render(<FileUploadModal onClose={vi.fn()} initialFiles={[file1]} />);
+    renderWithI18n(<FileUploadModal onClose={vi.fn()} initialFiles={[file1]} />);
 
     expect(screen.getByText('file1.pdf')).toBeInTheDocument();
 
@@ -89,7 +94,7 @@ describe('FileUploadModal Component', () => {
 
   it('calls onClose when clicking Cancelar', () => {
     const onCloseMock = vi.fn();
-    render(<FileUploadModal onClose={onCloseMock} />);
+    renderWithI18n(<FileUploadModal onClose={onCloseMock} />);
 
     fireEvent.click(screen.getByText('Cancelar'));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
@@ -100,7 +105,7 @@ describe('FileUploadModal Component', () => {
     const file2 = new File(['content 2'], 'file2.md', { type: 'text/markdown' });
     const onUploadCompleteMock = vi.fn();
 
-    render(
+    renderWithI18n(
       <FileUploadModal
         onClose={vi.fn()}
         onUploadComplete={onUploadCompleteMock}

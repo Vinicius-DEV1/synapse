@@ -22,7 +22,7 @@ function isEventExpired(ev: CalendarEvent): boolean {
 }
 
 export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: ConfirmModalProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { state } = useStore();
   const [activeEvents, setActiveEvents] = useState<CalendarEvent[]>([]);
   const [_isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -150,11 +150,11 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
               <div className="flex items-center gap-2 font-semibold text-amber-300">
                 <AlertTriangle size={15} className="flex-shrink-0" />
                 <span>
-                  Atenção: Há {activeEvents.length} evento(s) na agenda não expirado(s)!
+                  {t('modals.confirm.attentionEvents', { count: activeEvents.length })}
                 </span>
               </div>
               <p className="leading-relaxed text-amber-200/90">
-                Os widgets da agenda em <strong>{pageName}</strong> (e subpáginas) têm prazos ainda não executados. Ao confirmar, <strong>os eventos também serão removidos da agenda</strong>.
+                {t('modals.confirm.eventsNoticeDetail', { pageName })}
               </p>
 
               {/* Lista rolável de eventos afetados */}
@@ -173,20 +173,20 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
                         </p>
                         <p className="text-[10px] text-amber-400/80 truncate flex items-center gap-1 mt-0.5">
                           <BookOpen size={10} />
-                          <span>Em: {pageTitle}</span>
+                          <span>{t('modals.confirm.inPage', { page: pageTitle })}</span>
                         </p>
                       </div>
                       <div className="flex items-center gap-1 text-[11px] text-amber-300/90 flex-shrink-0">
                         <Clock size={11} />
                         <span>
                           {ev.start_date
-                            ? new Date(ev.start_date).toLocaleDateString('pt-BR', {
+                            ? new Date(ev.start_date).toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })
-                            : 'Sem data'}
+                            : t('modals.confirm.noDate')}
                         </span>
                       </div>
                     </div>

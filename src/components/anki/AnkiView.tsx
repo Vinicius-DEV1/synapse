@@ -6,9 +6,11 @@ import AnkiStats from './AnkiStats';
 import CreateDeckModal from './CreateDeckModal';
 import AnkiHelpModal from './AnkiHelpModal';
 import { DeckListItem } from './DeckListItem';
+import { useTranslation } from '../../i18n';
 import type { Deck, DeckTreeNode } from './types';
 
 export default function AnkiView() {
+  const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [studyingDeckId, setStudyingDeckId] = useState<string | null>(null);
   const [managingDeck, setManagingDeck] = useState<Deck | null>(null);
@@ -130,14 +132,14 @@ export default function AnkiView() {
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-3">
                 <BrainCircuit className="w-8 h-8 text-indigo-500" />
-                Flashcards
+                {t('anki.title', 'Flashcards')}
               </h1>
               <div className="flex items-center gap-2 mt-2">
-                <p className="text-dark-subtext">FSRS Spaced Repetition System</p>
+                <p className="text-dark-subtext">{t('anki.fsrsSubtitle', 'FSRS Spaced Repetition System')}</p>
                 <button 
                   onClick={() => setShowHelpModal(true)}
                   className="text-dark-subtext hover:text-indigo-400 transition-colors p-1 rounded-full hover:bg-white/5 flex items-center justify-center cursor-pointer"
-                  title="Como funciona o algoritmo?"
+                  title={t('anki.howAlgorithmWorks', 'Como funciona o algoritmo?')}
                 >
                   <HelpCircle className="w-4 h-4" />
                 </button>
@@ -146,17 +148,17 @@ export default function AnkiView() {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setShowStats(true)}
-                className="flex items-center gap-2 bg-dark-card hover:bg-white/5 border border-white/10 text-white px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-dark-card hover:bg-white/5 border border-white/10 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
               >
                 <BarChart2 className="w-4 h-4 text-indigo-400" />
-                Estatísticas
+                {t('anki.stats', 'Estatísticas')}
               </button>
               <button 
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                Criar Baralho
+                {t('anki.createDeck', 'Criar Baralho')}
               </button>
             </div>
           </header>
@@ -166,10 +168,10 @@ export default function AnkiView() {
           <div className="flex flex-col w-full pb-20">
             {deckTree.length > 0 && (
               <div className="flex items-center justify-between px-4 pb-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider border-b border-white/5 mb-2">
-              <span>Baralho</span>
+              <span>{t('anki.deck', 'Baralho')}</span>
               <div className="flex gap-16 mr-[200px]">
-                <span>Estatísticas</span>
-                <span>Ações</span>
+                <span>{t('anki.stats', 'Estatísticas')}</span>
+                <span>{t('anki.actions', 'Ações')}</span>
               </div>
             </div>
           )}
@@ -190,8 +192,8 @@ export default function AnkiView() {
           {deckTree.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center text-dark-subtext bg-dark-card border border-white/5 rounded-2xl">
               <BrainCircuit className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-lg font-medium">Nenhum baralho encontrado</p>
-              <p className="text-sm mt-1">Crie um baralho para começar a estudar.</p>
+              <p className="text-lg font-medium">{t('anki.noDecksFound', 'Nenhum baralho encontrado')}</p>
+              <p className="text-sm mt-1">{t('anki.createDeckToStart', 'Crie um baralho para começar a estudar.')}</p>
             </div>
           )}
         </div>

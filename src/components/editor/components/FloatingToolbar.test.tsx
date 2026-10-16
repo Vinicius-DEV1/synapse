@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import FloatingToolbar from './FloatingToolbar';
+import { I18nProvider } from '../../../i18n';
+import type { Editor } from '@tiptap/react';
 
 describe('FloatingToolbar Component', () => {
-  let mockEditor: any;
-  let chainObj: any;
+  let mockEditor: unknown;
+  let chainObj: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,21 +35,31 @@ describe('FloatingToolbar Component', () => {
     };
   });
 
+  const renderWithI18n = (ui: React.ReactElement) => {
+    return render(
+      <I18nProvider initialLanguage="pt-BR">
+        {ui}
+      </I18nProvider>
+    );
+  };
+
   it('triggers bold command when bold button is clicked', () => {
-    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+    const { getByTitle } = renderWithI18n(
+      <FloatingToolbar editor={mockEditor as unknown as Editor} />
+    );
 
     const boldBtn = getByTitle(/Negrito/i);
     fireEvent.click(boldBtn);
 
-    expect(mockEditor.chain).toHaveBeenCalled();
+    expect((mockEditor as { chain: () => unknown }).chain).toHaveBeenCalled();
     expect(chainObj.toggleBold).toHaveBeenCalled();
     expect(chainObj.run).toHaveBeenCalled();
   });
 
   it('calls onAiClick when AI sparkles button is clicked', () => {
     const onAiClick = vi.fn();
-    const { getByTitle } = render(
-      <FloatingToolbar editor={mockEditor} onAiClick={onAiClick} />
+    const { getByTitle } = renderWithI18n(
+      <FloatingToolbar editor={mockEditor as unknown as Editor} onAiClick={onAiClick} />
     );
 
     const aiBtn = getByTitle(/Assistente IA/i);
@@ -57,18 +69,22 @@ describe('FloatingToolbar Component', () => {
   });
 
   it('triggers spoiler command when spoiler button is clicked', () => {
-    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+    const { getByTitle } = renderWithI18n(
+      <FloatingToolbar editor={mockEditor as unknown as Editor} />
+    );
 
-    const spoilerBtn = getByTitle(/Fumaça \/ Spoiler/i);
+    const spoilerBtn = getByTitle(/Fumaça \/ Spoiler|Spoiler/i);
     fireEvent.click(spoilerBtn);
 
-    expect(mockEditor.chain).toHaveBeenCalled();
+    expect((mockEditor as { chain: () => unknown }).chain).toHaveBeenCalled();
     expect(chainObj.toggleSpoiler).toHaveBeenCalled();
     expect(chainObj.run).toHaveBeenCalled();
   });
 
   it('opens color menu and applies text color', () => {
-    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+    const { getByTitle } = renderWithI18n(
+      <FloatingToolbar editor={mockEditor as unknown as Editor} />
+    );
 
     const paletteBtn = getByTitle(/Cores e Destaque/i);
     fireEvent.click(paletteBtn);
@@ -76,13 +92,15 @@ describe('FloatingToolbar Component', () => {
     const blueColorBtn = getByTitle('Azul');
     fireEvent.click(blueColorBtn);
 
-    expect(mockEditor.chain).toHaveBeenCalled();
+    expect((mockEditor as { chain: () => unknown }).chain).toHaveBeenCalled();
     expect(chainObj.setColor).toHaveBeenCalledWith('#3B82F6');
     expect(chainObj.run).toHaveBeenCalled();
   });
 
   it('unsets text color when Padrão is selected', () => {
-    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+    const { getByTitle } = renderWithI18n(
+      <FloatingToolbar editor={mockEditor as unknown as Editor} />
+    );
 
     const paletteBtn = getByTitle(/Cores e Destaque/i);
     fireEvent.click(paletteBtn);
@@ -90,13 +108,15 @@ describe('FloatingToolbar Component', () => {
     const defaultColorBtn = getByTitle('Cor padrão');
     fireEvent.click(defaultColorBtn);
 
-    expect(mockEditor.chain).toHaveBeenCalled();
+    expect((mockEditor as { chain: () => unknown }).chain).toHaveBeenCalled();
     expect(chainObj.unsetColor).toHaveBeenCalled();
     expect(chainObj.run).toHaveBeenCalled();
   });
 
   it('opens color menu and applies highlight color', () => {
-    const { getByTitle } = render(<FloatingToolbar editor={mockEditor} />);
+    const { getByTitle } = renderWithI18n(
+      <FloatingToolbar editor={mockEditor as unknown as Editor} />
+    );
 
     const paletteBtn = getByTitle(/Cores e Destaque/i);
     fireEvent.click(paletteBtn);
@@ -104,7 +124,7 @@ describe('FloatingToolbar Component', () => {
     const blueBgBtn = getByTitle('Fundo Azul');
     fireEvent.click(blueBgBtn);
 
-    expect(mockEditor.chain).toHaveBeenCalled();
+    expect((mockEditor as { chain: () => unknown }).chain).toHaveBeenCalled();
     expect(chainObj.toggleHighlight).toHaveBeenCalledWith({ color: '#3B82F6' });
     expect(chainObj.run).toHaveBeenCalled();
   });

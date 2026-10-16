@@ -9,6 +9,7 @@ import { triggerToast } from '../ui/ToastContext';
 import { Portal } from '../ui/Portal';
 import { isBookEpub } from '../../utils/book-format';
 import { LibraryCollectionCard, NewCollectionCard } from './ui/LibraryCollectionCard';
+import { useI18n } from '../../i18n';
 
 interface LibraryGridProps {
   books: LibraryBook[];
@@ -38,11 +39,7 @@ interface LibraryGridProps {
   onClearArchivedView?: () => void;
 }
 
-const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
-  not_started: { label: 'Não iniciado', color: 'text-gray-400', icon: Circle },
-  reading: { label: 'Lendo', color: 'text-emerald-400', icon: BookOpen },
-  finished: { label: 'Concluído', color: 'text-brand-400', icon: CheckCircle2 },
-};
+
 
 function BookCardCover({ coverImage }: { coverImage?: string; title?: string }) {
   const [hasError, setHasError] = useState(false);
@@ -99,10 +96,17 @@ export default function LibraryGrid({
   isViewingArchived = false,
   onClearArchivedView,
 }: LibraryGridProps) {
+  const { t } = useI18n();
   const [menuBookId, setMenuBookId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const statusConfig: Record<ReadingStatus, { label: string; color: string; icon: typeof Circle }> = {
+    not_started: { label: t('library.status.not_started'), color: 'text-gray-400', icon: Circle },
+    reading: { label: t('library.status.reading'), color: 'text-emerald-400', icon: BookOpen },
+    finished: { label: t('library.status.finished'), color: 'text-brand-400', icon: CheckCircle2 },
+  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -164,10 +168,10 @@ export default function LibraryGrid({
               <Layers size={40} className="text-brand-400" />
             </div>
             <h3 className="text-lg font-semibold text-dark-text mb-1">
-              Nenhuma coleção criada
+              {t('library.emptyCollectionTitle')}
             </h3>
             <p className="text-sm text-dark-subtext max-w-sm mb-4">
-              Crie coleções para agrupar livros com cards de capas empilhadas, cores temáticas e navegação por temas.
+              {t('library.emptyCollectionDesc')}
             </p>
             {onOpenCreateCollection && (
               <button
@@ -175,7 +179,7 @@ export default function LibraryGrid({
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2"
               >
                 <Plus size={16} />
-                Criar Primeira Coleção
+                {t('library.createFirstCollection')}
               </button>
             )}
           </div>
@@ -200,7 +204,7 @@ export default function LibraryGrid({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-white transition-colors"
               >
                 <ArrowLeft size={14} />
-                Voltar para Todas
+                {t('library.backToAll')}
               </button>
             )}
             <div className="h-4 w-px bg-white/10" />
@@ -213,7 +217,7 @@ export default function LibraryGrid({
                 {activeCollectionObj.name}
               </h2>
               <span className="text-xs text-dark-subtext">
-                ({books.length} {books.length === 1 ? 'livro' : 'livros'})
+                ({books.length} {books.length === 1 ? t('library.bookCount', { count: 1 }) : t('library.bookCountPlural', { count: books.length })})
               </span>
             </div>
           </div>
@@ -222,7 +226,7 @@ export default function LibraryGrid({
             <button
               onClick={() => onEditCollection(activeCollectionObj)}
               className="p-1.5 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-colors"
-              title="Editar coleção"
+              title={t('library.editCollection')}
             >
               <Pencil size={15} />
             </button>
@@ -236,7 +240,7 @@ export default function LibraryGrid({
           <div className="flex items-center gap-2.5 text-amber-300 text-xs font-medium">
             <Archive size={16} className="text-amber-400 flex-shrink-0" />
             <span>
-              Visualizando Livros Arquivados — Estes livros estão guardados fora da sua biblioteca principal.
+              {t('library.archivedBanner')}
             </span>
           </div>
           {onClearArchivedView && (
@@ -244,7 +248,7 @@ export default function LibraryGrid({
               onClick={onClearArchivedView}
               className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-xs font-semibold text-amber-200 transition-colors whitespace-nowrap"
             >
-              Voltar para Ativos
+              {t('library.backToActive')}
             </button>
           )}
         </div>
@@ -253,7 +257,7 @@ export default function LibraryGrid({
       {/* Book Cards */}
       {books.map((book, index) => {
         const progress = getProgress(book);
-        const status = STATUS_CONFIG[book.reading_status || 'not_started'];
+        const status = statusConfig[book.reading_status || 'not_started'];
         const isEpub = isBookEpub(book);
         const isSelected = selectedIds?.has(book.id);
         const hasExplicitFilePath = Boolean(book.file_path && book.file_path.trim() !== '' && !book.file_path.startsWith('drive://'));
@@ -319,7 +323,7 @@ export default function LibraryGrid({
 
                 {book.is_archived && (
                   <span className="px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm bg-amber-500/20 text-amber-300 border-amber-500/30">
-                    Arquivado
+                    {t('library.archivedBadge')}
                   </span>
                 )}
                 
@@ -386,7 +390,7 @@ export default function LibraryGrid({
                     className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                   >
                     <Pencil size={14} />
-                    Editar
+                    {t('library.actions.edit')}
                   </button>
 
                   <div className="border-t border-white/5 my-1" />
@@ -400,7 +404,7 @@ export default function LibraryGrid({
                       className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                     >
                       <Circle size={14} />
-                      Marcar como Não iniciado
+                      {t('library.actions.markNotStarted')}
                     </button>
                   )}
                   {book.reading_status !== 'reading' && (
@@ -412,7 +416,7 @@ export default function LibraryGrid({
                       className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                     >
                       <BookOpen size={14} />
-                      Marcar como Lendo
+                      {t('library.actions.markReading')}
                     </button>
                   )}
                   {book.reading_status !== 'finished' && (
@@ -424,7 +428,7 @@ export default function LibraryGrid({
                       className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                     >
                       <CheckCircle2 size={14} />
-                      Marcar como Concluído
+                      {t('library.actions.markFinished')}
                     </button>
                   )}
 
@@ -437,7 +441,7 @@ export default function LibraryGrid({
                       className="w-full text-left px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-colors"
                     >
                       <CloudOff size={14} />
-                      Remover Download Local
+                      {t('library.actions.removeLocalDownload')}
                     </button>
                   )}
 
@@ -450,7 +454,7 @@ export default function LibraryGrid({
                       className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 flex items-center gap-2 transition-colors"
                     >
                       <CloudDownload size={14} />
-                      Baixar para Offline
+                      {t('library.actions.downloadOffline')}
                     </button>
                   )}
 
@@ -466,7 +470,7 @@ export default function LibraryGrid({
                         className="w-full text-left px-3 py-2 text-sm text-amber-300 hover:bg-amber-500/10 flex items-center gap-2 transition-colors"
                       >
                         <ArchiveRestore size={14} />
-                        Desarquivar Livro
+                        {t('library.actions.unarchive')}
                       </button>
                     )
                   ) : (
@@ -479,7 +483,7 @@ export default function LibraryGrid({
                         className="w-full text-left px-3 py-2 text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 flex items-center gap-2 transition-colors"
                       >
                         <Archive size={14} className="text-amber-400" />
-                        Arquivar Livro
+                        {t('library.actions.archive')}
                       </button>
                     )
                   )}
@@ -488,7 +492,7 @@ export default function LibraryGrid({
 
                   {confirmDeleteId === book.id ? (
                     <div className="px-3 py-2 flex flex-col gap-2">
-                      <span className="text-xs text-red-400">Tem certeza?</span>
+                      <span className="text-xs text-red-400">{t('library.actions.confirmDelete')}</span>
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
@@ -498,13 +502,13 @@ export default function LibraryGrid({
                           }}
                           className="flex-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
                         >
-                          Excluir
+                          {t('library.actions.delete')}
                         </button>
                         <button
                           onClick={() => setConfirmDeleteId(null)}
                           className="flex-1 px-2 py-1 text-xs rounded bg-white/5 text-dark-subtext hover:bg-white/10 transition-colors"
                         >
-                          Cancelar
+                          {t('library.actions.cancel')}
                         </button>
                       </div>
                     </div>
@@ -514,7 +518,7 @@ export default function LibraryGrid({
                       className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
                     >
                       <Trash2 size={14} />
-                      Excluir
+                      {t('library.actions.delete')}
                     </button>
                   )}
                 </div>
@@ -578,7 +582,7 @@ export default function LibraryGrid({
           <div className="p-4 rounded-full bg-white/5 group-hover:bg-brand-500/10 transition-all group-hover:scale-110 duration-300">
             <Plus size={28} />
           </div>
-          <span className="text-sm font-medium">Importar Livro</span>
+          <span className="text-sm font-medium">{t('library.importBook')}</span>
           <span className="text-[11px] text-dark-subtext/70 -mt-1.5">PDF ou EPUB</span>
         </div>
       </div>
@@ -590,10 +594,10 @@ export default function LibraryGrid({
             <BookMarked size={40} className="text-brand-400" />
           </div>
           <h3 className="text-lg font-semibold text-dark-text mb-1">
-            Sua biblioteca está vazia
+            {t('library.emptyLibraryTitle')}
           </h3>
           <p className="text-sm text-dark-subtext max-w-xs">
-            Importe seu primeiro livro (PDF ou EPUB) para começar a organizar sua leitura.
+            {t('library.emptyLibraryDesc')}
           </p>
         </div>
       )}

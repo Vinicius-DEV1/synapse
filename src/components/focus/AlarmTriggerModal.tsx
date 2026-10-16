@@ -3,6 +3,7 @@ import { Bell, BellOff } from 'lucide-react';
 import type { Alarm } from './types';
 import { Portal } from '../ui/Portal';
 import { startProceduralAlarm } from '../../store/focus/focus-sound';
+import { useTranslation } from '../../i18n';
 
 interface AlarmTriggerModalProps {
   alarm: Alarm;
@@ -10,6 +11,7 @@ interface AlarmTriggerModalProps {
 }
 
 const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss }) => {
+  const { t } = useTranslation();
   const audioContextRef = useRef<AudioContext | null>(null);
   const stopAlarmRef = useRef<(() => void) | null>(null);
 
@@ -34,7 +36,20 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
 
   useEffect(() => {
     playAlarm();
-    return () => stopAlarm();
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      handleDismiss();
+    };
+    window.addEventListener('caderno-back-press', handleBackPress);
+
+    return () => {
+      window.removeEventListener('caderno-back-press', handleBackPress);
+      stopAlarm();
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+    };
   }, []);
 
   const handleDismiss = () => {
@@ -44,7 +59,7 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
 
   return (
     <Portal>
-      <div className="absolute inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] overflow-hidden">
+      <div className="fixed inset-0 bg-brand-900/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] overflow-hidden animate-fade-in">
       <div className="bg-dark-card rounded-3xl w-full max-w-sm border border-brand-500/30 shadow-2xl flex flex-col items-center justify-center p-8 relative animate-in zoom-in duration-300">
         <div className="absolute inset-0 bg-brand-500/10 animate-pulse-slow rounded-3xl"></div>
         
@@ -57,7 +72,7 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
         </h2>
         
         <p className="text-brand-300 font-medium text-lg relative z-10 text-center mb-10 max-w-full break-words">
-          {alarm.label || 'Alarm'}
+          {alarm.label || t('focus.alarm', 'Alarme')}
         </p>
 
         <button 
@@ -65,7 +80,7 @@ const AlarmTriggerModal: React.FC<AlarmTriggerModalProps> = ({ alarm, onDismiss 
           className="w-full bg-brand-600 hover:bg-brand-500 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-brand-600/30 relative z-10"
         >
           <BellOff size={24} />
-          TURN OFF ALARM
+          {t('focus.turnOffAlarm', 'DESLIGAR ALARME')}
         </button>
       </div>
     </div>

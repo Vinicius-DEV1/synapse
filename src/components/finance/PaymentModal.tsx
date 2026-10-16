@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ArrowUpRight, ArrowDownLeft, Building2 } from 'lucide-react';
 import type { Transaction, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface PaymentModalProps {
   transaction: Transaction;
@@ -19,11 +20,32 @@ export default function PaymentModal({
   onSave,
   onPayLoanWithAccount
 }: PaymentModalProps) {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [targetAccountId, setTargetAccountId] = useState<string>(
     transaction.account_id || (accounts.length > 0 ? accounts[0].id : 'default-wallet')
   );
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   const isLoanMade = transaction.type === 'loan_made';
   const targetTotal = Number(transaction.expected_amount || transaction.amount || 0);
@@ -161,16 +183,16 @@ export default function PaymentModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-3 py-1.5 text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-md transition-colors"
+                  className="px-3 py-1.5 text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-md transition-colors cursor-pointer"
                 >
-                  Cancelar
+                  {t('common.cancel', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all disabled:opacity-50 shadow-md shadow-brand-600/20 active:scale-95"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all disabled:opacity-50 shadow-md shadow-brand-600/20 active:scale-95 cursor-pointer"
                 >
-                  {loading ? 'Salvando...' : 'Confirmar'}
+                  {loading ? t('common.saving', 'Salvando...') : t('common.confirm', 'Confirmar')}
                 </button>
               </div>
             </div>

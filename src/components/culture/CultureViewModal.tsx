@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ExternalLink, Target, CheckCircle, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import type { CultureItem, CultureEpisode } from '../../types';
 import { CultureService } from '../../services/culture';
@@ -7,7 +7,9 @@ import { CultureMetaGrid } from './ui/CultureMetaGrid';
 import { CultureTrailerSection } from './ui/CultureTrailerSection';
 import { CultureEpisodesSection } from './ui/CultureEpisodesSection';
 import { CultureModalPoster } from './ui/CultureModalPoster';
+import { CultureDeleteModal } from './CultureDeleteModal';
 import { useCultureMetadataRefresh } from './hooks/useCultureMetadataRefresh';
+import { useTranslation } from '../../i18n';
 
 import { getStatusInfo, typeLabel } from './cards/culture-status';
 
@@ -20,10 +22,35 @@ interface Props {
 }
 
 export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEdit }: Props) {
+  const { t } = useTranslation();
   const [currentItem, setCurrentItem] = useState<CultureItem>(item);
   const [episodes, setEpisodes] = useState<CultureEpisode[]>([]);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
+
   const {
     refreshing,
     feedbackMessage,
@@ -62,22 +89,28 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
     }
   };
 
-  const handleDelete = async () => {
-    const msg = `Tem certeza que deseja excluir "${currentItem.title}" do seu acervo?`;
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm({
-          title: 'Excluir Obra Cultural',
-          message: msg,
-          kind: 'warning',
-        })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-    if (!confirmed) return;
+  const confirmDelete = async () => {
     try {
       await CultureService.deleteItem(currentItem.id);
       onUpdate?.();
       onClose();
     } catch (err) {
       console.error('[CultureViewModal] Erro ao excluir:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    const msg = t('culture.deleteModalDesc', 'Tem certeza que deseja excluir "{{title}}" do seu acervo? Esta ação não pode ser desfeita.', { title: currentItem.title });
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: t('culture.deleteModalTitle', 'Excluir Obra Cultural'),
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (!confirmed) return;
+      await confirmDelete();
+    } else {
+      setShowDeleteConfirm(true);
     }
   };
 
@@ -284,7 +317,7 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
                   className="flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 transition-colors font-medium"
                 >
                   <ExternalLink size={14} />
-                  Abrir link de acesso
+                  {t('culture.openLink', 'Abrir link de acesso')}
                 </button>
               ) : <div />}
 
@@ -292,12 +325,19 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
                 onClick={onClose}
                 className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors"
               >
-                Fechar
+                {t('common.close', 'Fechar')}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      <CultureDeleteModal
+        isOpen={showDeleteConfirm}
+        itemTitle={currentItem.title}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+      />
     </Portal>
   );
 }

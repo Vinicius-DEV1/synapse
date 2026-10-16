@@ -10,6 +10,7 @@ import { PageCover } from './PageCover';
 import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';
 import { getEditorBackupMap } from '../editor/hooks/editorBackupStore';
+import { useI18n } from '../../i18n';
 
 import { LruMap } from '../../utils/lru-cache';
 
@@ -39,6 +40,7 @@ interface PageViewProps {
 
 export default function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage, isActive = true }: PageViewProps) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [loadedData, setLoadedData] = useState<{ pageId: string; data: PageContentData } | null>(null);
   const [unlockedPageIds, setUnlockedPageIds] = useState<Set<string>>(() => new Set());
@@ -161,7 +163,7 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
         )}
 
         {!contentData ? (
-           <div className="text-dark-subtext mt-8 flex justify-center">Carregando conteúdo...</div>
+           <div className="text-dark-subtext mt-8 flex justify-center">{t('notes.loadingContent')}</div>
         ) : page.is_locked && !isUnlocked ? (
            <PageUnlockForm 
              page={page} 

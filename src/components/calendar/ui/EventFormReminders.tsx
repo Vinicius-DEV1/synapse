@@ -1,25 +1,28 @@
 import { Bell } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 
 interface EventFormRemindersProps {
   reminders: number[];
   toggleReminder: (val: number) => void;
 }
 
-const REMINDER_OPTIONS = [
-  { value: 1440, label: '1 dia antes (24h)' },
-  { value: 120, label: '2 horas antes' },
-  { value: 15, label: '15 minutos antes' },
-  { value: 0, label: 'No momento do evento' },
-];
-
 export function EventFormReminders({ reminders, toggleReminder }: EventFormRemindersProps) {
+  const { t } = useTranslation();
+
+  const reminderOptions = [
+    { value: 1440, label: t('calendar.reminder1Day', '1 dia antes (24h)') },
+    { value: 120, label: t('calendar.reminder2Hours', '2 horas antes') },
+    { value: 15, label: t('calendar.reminder15Mins', '15 minutos antes') },
+    { value: 0, label: t('calendar.reminderAtTime', 'No momento do evento') },
+  ];
+
   return (
     <div className="space-y-1.5 pt-2 border-t border-white/5">
       <label className="text-xs font-medium text-dark-subtext flex items-center gap-1.5">
-        <Bell size={14} className="text-brand-400" /> Avisos / Lembretes Automáticos
+        <Bell size={14} className="text-brand-400" /> {t('calendar.reminders', 'Avisos / Lembretes Automáticos')}
       </label>
       <div className="grid grid-cols-2 gap-1.5">
-        {REMINDER_OPTIONS.map((opt) => {
+        {reminderOptions.map((opt) => {
           const checked = reminders.includes(opt.value);
           return (
             <div

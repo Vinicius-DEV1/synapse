@@ -7,10 +7,16 @@ import {
   broadcastHabitUpdate,
 } from '../../../utils/habitUtils';
 import { playUiToggleSound, playUiClickSound, playUiDeleteSound } from '../../../utils/uiSounds';
+import { useTranslation } from '../../../i18n';
 
-const MONTH_NAMES = [
+const MONTH_NAMES_PT = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
   'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+];
+
+const MONTH_NAMES_EN = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
 interface UseHabitHeatmapDataProps {
@@ -26,12 +32,17 @@ export function useHabitHeatmapData({
   onClose,
   onHabitUpdated,
 }: UseHabitHeatmapDataProps) {
+  const { language } = useTranslation();
   const [habit, setHabit] = useState<Habit | null>(null);
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hoveredCell, setHoveredCell] = useState<{ date: string; completed: boolean } | null>(null);
+
+  const monthNames = useMemo(() => {
+    return language === 'en' ? MONTH_NAMES_EN : MONTH_NAMES_PT;
+  }, [language]);
 
   const todayStr = useMemo(() => getLocalDateString(), []);
   const referenceDate = initialDate || todayStr;
@@ -65,7 +76,7 @@ export function useHabitHeatmapData({
     return () => window.removeEventListener('caderno-habit-updated', handleHabitUpdate);
   }, [habitId, loadHabitData]);
 
-  // Keyboard navigation: Escape closes modal
+  // Keyboard navigation: Escape closes modal, and Android hardware back button
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -73,8 +84,17 @@ export function useHabitHeatmapData({
         onClose();
       }
     };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [onClose]);
 
   // Set of completed date strings for O(1) lookup
@@ -126,11 +146,11 @@ export function useHabitHeatmapData({
       const cell = heatmapGrid[i];
       if (cell && cell.month !== lastMonth) {
         lastMonth = cell.month;
-        labels.push({ index: Math.floor(i / 7), name: MONTH_NAMES[cell.month] });
+        labels.push({ index: Math.floor(i / 7), name: monthNames[cell.month] });
       }
     }
     return labels;
-  }, [heatmapGrid]);
+  }, [heatmapGrid, monthNames]);
 
   const handleToggleDay = async (date: string) => {
     if (!window.api?.habits || !habit) return;

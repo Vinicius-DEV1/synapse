@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Loader2, Building2, HelpCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Loader2, Building2, HelpCircle, Trash2, X } from 'lucide-react';
 import type { Transaction, WishlistItem, Tab } from '../../types';
 import { useFinance } from './hooks/useFinance';
 import { useFinanceMetrics } from './hooks/useFinanceMetrics';
@@ -11,6 +11,8 @@ import { LoansTab } from './ui/LoansTab';
 import { WishlistTab } from './ui/WishlistTab';
 import { FinanceModalsHost } from './ui/FinanceModalsHost';
 import { FinanceHelpModal } from './FinanceHelpModal';
+import { Portal } from '../ui/Portal';
+import { useTranslation } from '../../i18n';
 
 type FinanceSection = 'dashboard' | 'transactions' | 'loans' | 'wishlist';
 
@@ -24,6 +26,7 @@ function resolveSection(pageId: string | null): FinanceSection {
 }
 
 export default function FinanceView({ tab }: { tab?: Tab }) {
+  const { t } = useTranslation();
   const activeSection = resolveSection(tab?.pageId ?? null);
 
   const {
@@ -57,6 +60,28 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
   const [selectedWishlistDetails, setSelectedWishlistDetails] = useState<WishlistItem | null>(null);
   const [selectedTxForPayment, setSelectedTxForPayment] = useState<Transaction | null>(null);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
+  const [wishlistToDeleteId, setWishlistToDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!wishlistToDeleteId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setWishlistToDeleteId(null);
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      setWishlistToDeleteId(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [wishlistToDeleteId]);
 
   const handleDeleteRequested = (idOrTx: string | Transaction) => {
     if (typeof idOrTx === 'string') {
@@ -105,17 +130,19 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
 
   const handleDeleteWishlist = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const msg = 'Tem certeza que deseja apagar este desejo?';
-    const confirmed = window.api?.app?.showConfirm
-      ? (await window.api.app.showConfirm({
-          title: 'Excluir Item dos Desejos',
-          message: msg,
-          kind: 'warning',
-        })) === 1
-      : typeof window !== 'undefined' && typeof window.confirm === 'function' && window.confirm(msg);
-    if (!confirmed) return;
-    await deleteWishlistItem(id);
-    if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
+    const msg = t('finance.deleteWishlistDesc', 'Tem certeza que deseja apagar este desejo?');
+    if (window.api?.app?.showConfirm) {
+      const confirmed = (await window.api.app.showConfirm({
+        title: t('finance.deleteWishlistTitle', 'Excluir Item dos Desejos'),
+        message: msg,
+        kind: 'warning',
+      })) === 1;
+      if (!confirmed) return;
+      await deleteWishlistItem(id);
+      if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
+    } else {
+      setWishlistToDeleteId(id);
+    }
   };
 
   // Dashboard calculations with account awareness
@@ -136,7 +163,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
   if (error) {
     return (
       <div className="h-full flex items-center justify-center bg-dark-bg text-rose-400">
-        <p className="text-sm">Ocorreu um erro ao carregar os dados financeiros.</p>
+        <p className="text-sm">{t('finance.errorLoading', 'Ocorreu um erro ao carregar os dados financeiros.')}</p>
       </div>
     );
   }
@@ -146,38 +173,38 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
       <div className="flex-1 overflow-auto p-4 sm:p-5">
         <div className="max-w-5xl mx-auto flex flex-col gap-4">
           {/* Header */}
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-dark-text tracking-tight">Finanças Pessoais</h1>
-              <p className="text-xs text-dark-subtext mt-0.5">Controle de contas bancárias, receitas, despesas, transferências e metas</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-dark-text tracking-tight">{t('finance.title', 'Finanças Pessoais')}</h1>
+              <p className="text-xs text-dark-subtext mt-0.5">{t('finance.subtitle', 'Controle de contas bancárias, receitas, despesas, transferências e metas')}</p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowHelpModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95"
-                title="Guia do Sistema Financeiro"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95 cursor-pointer"
+                title={t('finance.guideTitle', 'Guia do Sistema Financeiro')}
               >
                 <HelpCircle size={14} className="text-emerald-400" />
-                <span>Guia</span>
+                <span>{t('finance.guide', 'Guia')}</span>
               </button>
               <button
                 onClick={() => setShowAccountModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95"
-                title="Gerenciar Contas Bancárias"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95 cursor-pointer"
+                title={t('finance.manageBanksTitle', 'Gerenciar Contas Bancárias')}
               >
                 <Building2 size={14} className="text-brand-400" />
-                <span>Bancos ({accounts.length})</span>
+                <span>{t('finance.accountsCount', 'Bancos ({{count}})', { count: accounts.length })}</span>
               </button>
               <button
                 onClick={() => {
                   setTxToEdit(null);
                   setShowTxModal(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-md shadow-brand-600/20"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-md shadow-brand-600/20 cursor-pointer"
               >
                 <Plus size={15} />
-                <span>Nova Transação</span>
+                <span>{t('finance.newTransaction', 'Nova Transação')}</span>
               </button>
             </div>
           </div>
@@ -292,6 +319,62 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
       />
+
+      {wishlistToDeleteId && (
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
+            <div
+              className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-scale-in overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center">
+                    <Trash2 size={17} />
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">
+                    {t('finance.deleteWishlistTitle', 'Excluir Item dos Desejos')}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWishlistToDeleteId(null)}
+                  className="p-1 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="py-4">
+                <p className="text-xs text-dark-subtext leading-relaxed">
+                  {t('finance.deleteWishlistDesc', 'Tem certeza que deseja apagar este desejo?')}
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setWishlistToDeleteId(null)}
+                  className="px-3.5 py-1.5 text-xs text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors font-medium"
+                >
+                  {t('common.cancel', 'Cancelar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const id = wishlistToDeleteId;
+                    setWishlistToDeleteId(null);
+                    await deleteWishlistItem(id);
+                    if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
+                  }}
+                  className="px-3.5 py-1.5 text-xs bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors font-medium flex items-center gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  {t('common.delete', 'Excluir')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 }

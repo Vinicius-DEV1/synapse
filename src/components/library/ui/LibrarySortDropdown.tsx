@@ -1,7 +1,10 @@
 import { ArrowUpDown, ChevronDown } from 'lucide-react';
+import { useI18n } from '../../../i18n';
 
 export type SortBy = 'last_read' | 'title' | 'created' | 'author';
 export type SortOrder = 'asc' | 'desc';
+
+export const SORT_KEYS: SortBy[] = ['last_read', 'title', 'created', 'author'];
 
 export const SORT_LABELS: Record<SortBy, string> = {
   last_read: 'Último lido',
@@ -29,6 +32,15 @@ export function LibrarySortDropdown({
   setShowSortDropdown,
   onOpen,
 }: LibrarySortDropdownProps) {
+  const { t } = useI18n();
+
+  const labels: Record<SortBy, string> = {
+    last_read: t('library.sort.last_read'),
+    title: t('library.sort.title'),
+    created: t('library.sort.created'),
+    author: t('library.sort.author'),
+  };
+
   return (
     <div className="relative">
       <button
@@ -36,14 +48,14 @@ export function LibrarySortDropdown({
         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-white/5 transition-all"
       >
         <ArrowUpDown size={14} />
-        <span>{SORT_LABELS[sortBy]}</span>
+        <span>{labels[sortBy]}</span>
         <ChevronDown size={14} />
       </button>
       {showSortDropdown && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowSortDropdown(false)} />
           <div className="absolute top-full mt-1 right-0 z-50 bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in">
-            {(Object.keys(SORT_LABELS) as SortBy[]).map((key) => (
+            {SORT_KEYS.map((key) => (
               <button
                 key={key}
                 onClick={() => {
@@ -61,7 +73,7 @@ export function LibrarySortDropdown({
                     : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
                 }`}
               >
-                {SORT_LABELS[key]}
+                {labels[key]}
                 {sortBy === key && (
                   <span className="ml-2 text-xs opacity-60">
                     {sortOrder === 'asc' ? '↑' : '↓'}

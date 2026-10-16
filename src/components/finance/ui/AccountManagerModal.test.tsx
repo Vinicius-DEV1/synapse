@@ -3,6 +3,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AccountManagerModal } from './AccountManagerModal';
 import type { Account } from '../../../types';
+import { I18nProvider } from '../../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('AccountManagerModal Component', () => {
   const mockAccounts: Account[] = [
@@ -21,7 +25,7 @@ describe('AccountManagerModal Component', () => {
     const onUpdateAccount = vi.fn().mockResolvedValue(undefined);
     const onDeleteAccount = vi.fn().mockResolvedValue(undefined);
 
-    render(
+    renderWithI18n(
       <AccountManagerModal
         accounts={mockAccounts}
         onClose={onClose}

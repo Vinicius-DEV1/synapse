@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { FileFolder } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface FolderModalProps {
   onClose: () => void;
@@ -17,15 +18,39 @@ const COLORS = [
 ];
 
 export default function FolderModal({ onClose, onSave, existingFolder, parentId = null }: FolderModalProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(existingFolder?.name || '');
   const [color, setColor] = useState(existingFolder?.color || COLORS[7]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isSubmitting) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isSubmitting, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     if (!window.api.files) {
-      triggerToast('Módulo de arquivos indisponível', 'error');
+      triggerToast(t('files.moduleUnavailable'), 'error');
       return;
     }
 
@@ -35,7 +60,7 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
       if (existingFolder) {
         const updatedFolder: FileFolder = { ...existingFolder, name: name.trim(), color };
         await window.api.files.folders.update(updatedFolder);
-        triggerToast('Pasta atualizada com sucesso!', 'success');
+        triggerToast(t('files.folderUpdated'), 'success');
         onSave(updatedFolder);
       } else {
         const newFolder = {
@@ -45,7 +70,7 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
           color
         };
         const created = await window.api.files.folders.create(newFolder);
-        triggerToast('Pasta criada com sucesso!', 'success');
+        triggerToast(t('files.folderCreated'), 'success');
         onSave(created);
       }
       onClose();
@@ -63,7 +88,7 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
       <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">
-            {existingFolder ? 'Editar Pasta' : 'Nova Pasta'}
+            {existingFolder ? t('files.editFolder') : t('files.newFolder')}
           </h2>
           <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
@@ -72,7 +97,7 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
         
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-dark-subtext mb-1">Nome da Pasta</label>
+            <label className="block text-sm font-medium text-dark-subtext mb-1">{t('files.folderName')}</label>
             <input 
               type="text" 
               value={name}
@@ -84,7 +109,7 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-dark-subtext mb-2">Cor</label>
+            <label className="block text-sm font-medium text-dark-subtext mb-2">{t('files.folderColor')}</label>
             <div className="flex flex-wrap gap-2">
               {COLORS.map(c => (
                 <button
@@ -104,14 +129,14 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
               onClick={onClose}
               className="px-4 py-2 rounded-lg font-medium text-dark-subtext hover:bg-white/10 transition-colors"
             >
-              Cancelar
+              {t('files.cancel')}
             </button>
             <button 
               type="submit"
               disabled={!name.trim() || isSubmitting}
               className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Salvando...' : 'Salvar'}
+              {isSubmitting ? t('files.saving') : t('files.save')}
             </button>
           </div>
         </form>

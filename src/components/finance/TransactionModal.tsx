@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { X, Calendar, Building2 } from 'lucide-react';
 import type { Transaction, TransactionType, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { formatDateSafe } from './ui/TransactionList';
 import { CategorySelect } from './ui/CategorySelect';
 import { useTransactionForm } from './hooks/useTransactionForm';
+import { useTranslation } from '../../i18n';
 
 interface TransactionModalProps {
   initialData?: Transaction | null;
@@ -22,6 +24,27 @@ export default function TransactionModal({
   accounts = [],
   defaultAccountId,
 }: TransactionModalProps) {
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
   const {
     type,
     setType,
@@ -263,16 +286,16 @@ export default function TransactionModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors"
+                className="px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel', 'Cancelar')}
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-md shadow-brand-600/20 active:scale-95"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-md shadow-brand-600/20 active:scale-95 cursor-pointer"
               >
-                {loading ? 'Salvando...' : 'Salvar'}
+                {loading ? t('common.saving', 'Salvando...') : t('finance.save', 'Salvar')}
               </button>
             </div>
           </form>

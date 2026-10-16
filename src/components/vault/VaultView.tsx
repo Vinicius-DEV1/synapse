@@ -6,9 +6,12 @@ import { VaultSidebar } from './VaultSidebar';
 import { VaultItemList } from './VaultItemList';
 import { VaultItemDetails } from './VaultItemDetails';
 import { VaultGroupModal } from './ui/VaultGroupModal';
+import { VaultDeleteModal } from './ui/VaultDeleteModal';
 import { useVault } from './hooks/useVault';
+import { useTranslation } from '../../i18n';
 
 export default function VaultView() {
+  const { t } = useTranslation();
   const {
     groups,
     items,
@@ -36,6 +39,10 @@ export default function VaultView() {
     handleReorderItems,
     handleSelectItem,
     handleDeleteItem,
+    deleteModalState,
+    isDeleting,
+    handleConfirmDeleteModal,
+    handleCloseDeleteModal,
     filteredItems,
   } = useVault();
 
@@ -111,18 +118,18 @@ export default function VaultView() {
                   }}
                   className="text-xs text-brand-400 font-medium hover:underline flex items-center gap-1 active:scale-95"
                 >
-                  ← Voltar para lista
+                  {t('vault.backToList', '← Voltar para lista')}
                 </button>
                 <span className="text-xs text-dark-subtext font-medium truncate max-w-[200px]">
-                  {selectedItem?.label || (isEditingItem ? 'Novo Item' : '')}
+                  {selectedItem?.label || (isEditingItem ? t('vault.newItem', 'Novo Item') : '')}
                 </span>
               </div>
             )}
             {!selectedItem && !isEditingItem ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-dark-subtext">
                 <Shield size={64} className="mb-4 opacity-20" />
-                <p className="text-lg font-medium">Cofre de Senhas</p>
-                <p className="text-sm opacity-60">Selecione um item ou crie um novo</p>
+                <p className="text-lg font-medium">{t('vault.title', 'Cofre de Senhas')}</p>
+                <p className="text-sm opacity-60">{t('vault.subtitle', 'Selecione um item ou crie um novo')}</p>
               </div>
             ) : isEditingItem ? (
               <VaultItemForm
@@ -159,6 +166,40 @@ export default function VaultView() {
           group={groupModal.group}
           onClose={handleCloseGroupModal}
           onSave={handleSaveGroupModal}
+        />
+      )}
+
+      {/* Modal para confirmação de exclusão não-bloqueante */}
+      {deleteModalState && (
+        <VaultDeleteModal
+          isOpen={Boolean(deleteModalState)}
+          title={
+            deleteModalState.type === 'group'
+              ? t('vault.deleteGroupModal.title', 'Excluir Grupo')
+              : t('vault.deleteItemModal.title', 'Excluir Item')
+          }
+          description={
+            deleteModalState.type === 'group'
+              ? t(
+                  'vault.deleteGroupModal.description',
+                  'Tem certeza que deseja apagar o grupo "{{name}}"? Os itens dentro dele NÃO serão apagados, mas ficarão sem grupo.',
+                  { name: deleteModalState.title }
+                )
+              : t(
+                  'vault.deleteItemModal.description',
+                  'Tem certeza que deseja apagar "{{title}}" do cofre? Esta ação não pode ser desfeita.',
+                  { title: deleteModalState.title }
+                )
+          }
+          confirmLabel={
+            deleteModalState.type === 'group'
+              ? t('vault.deleteGroupModal.confirm', 'Excluir Grupo')
+              : t('vault.deleteItemModal.confirm', 'Excluir Item')
+          }
+          cancelLabel={t('vault.cancel', 'Cancelar')}
+          onClose={handleCloseDeleteModal}
+          onConfirm={handleConfirmDeleteModal}
+          isDeleting={isDeleting}
         />
       )}
     </div>

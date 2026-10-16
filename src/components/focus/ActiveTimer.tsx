@@ -2,8 +2,10 @@ import React from 'react';
 import { XSquare, Play, Pause } from 'lucide-react';
 import { useFocusContext } from '../../store/FocusContext';
 import type { Session } from './types';
+import { useTranslation } from '../../i18n';
 
 const ActiveTimer: React.FC = () => {
+  const { t } = useTranslation();
   const { 
     currentSession, 
     timeLeft, 
@@ -35,7 +37,7 @@ const ActiveTimer: React.FC = () => {
       <div className="z-10 flex flex-col items-center w-full max-w-lg mt-16 sm:mt-0">
         {/* Session Info */}
         <div className="bg-dark-card/50 border border-white/5 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 mb-6 sm:mb-12 flex flex-col items-center w-full backdrop-blur-sm shadow-xl shadow-black/20">
-          <span className="text-brand-400 font-bold tracking-widest uppercase text-[10px] sm:text-xs mb-1 sm:mb-2">Current Focus</span>
+          <span className="text-brand-400 font-bold tracking-widest uppercase text-[10px] sm:text-xs mb-1 sm:mb-2">{t('focus.currentFocus', 'Current Focus')}</span>
           <h2 className="text-lg sm:text-2xl font-bold text-white mb-2 text-center break-words max-w-full">{session.description}</h2>
           <span className="bg-brand-500/20 text-brand-300 px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold max-w-full truncate border border-brand-500/10">
             {session.tag}
@@ -53,7 +55,7 @@ const ActiveTimer: React.FC = () => {
               {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
             </div>
             {isPaused && (
-              <span className="text-brand-400 text-sm mt-2 uppercase tracking-widest font-bold">Paused</span>
+              <span className="text-brand-400 text-sm mt-2 uppercase tracking-widest font-bold">{t('focus.paused', 'Paused')}</span>
             )}
           </div>
         </div>
@@ -76,6 +78,7 @@ const ActiveTimer: React.FC = () => {
 
           <button
             onClick={handleTimerCancel}
+            title={t('focus.cancelTimer', 'Cancelar Temporizador')}
             className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-dark-card border border-white/5 text-red-400/50 hover:text-red-400 hover:border-red-400/20 hover:bg-red-400/5 transition-all flex items-center justify-center"
           >
             <XSquare size={20} className="sm:w-6 sm:h-6" />

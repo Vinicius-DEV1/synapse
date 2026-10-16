@@ -4,6 +4,7 @@ import { VaultBreachBadge } from './VaultBreachBadge';
 import { VaultCustomFieldsEditor } from './ui/VaultCustomFieldsEditor';
 import { VaultAuthTypeToggle } from './ui/VaultAuthTypeToggle';
 import { useVaultItemFormLogic } from './hooks/useVaultItemFormLogic';
+import { useTranslation } from '../../i18n';
 
 interface VaultItemFormProps {
   item: VaultItem | null;
@@ -17,6 +18,7 @@ const strengthLabels = ['Muito Fraca', 'Fraca', 'Média', 'Forte', 'Muito Forte'
 const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-emerald-500'];
 
 export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: VaultItemFormProps) {
+  const { t } = useTranslation();
   const {
     label,
     setLabel,
@@ -55,9 +57,9 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-dark-text flex items-center gap-3">
-              {item ? 'Editar Item' : 'Novo Item do Cofre'}
+              {item ? t('vault.editItem', 'Editar Item') : t('vault.newItemTitle', 'Novo Item do Cofre')}
             </h1>
-            <p className="text-dark-subtext text-xs mt-1">Armazene credenciais de forma segura com criptografia de ponta a ponta.</p>
+            <p className="text-dark-subtext text-xs mt-1">{t('vault.formSubtitle', 'Armazene credenciais de forma segura com criptografia de ponta a ponta.')}</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -66,7 +68,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
               onClick={() => setIsFavorite(!isFavorite)}
               disabled={isSaving}
               className={`p-2 rounded-xl border transition-colors ${isFavorite ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' : 'bg-black/20 border-white/5 text-dark-subtext hover:text-dark-text'} disabled:opacity-50`}
-              title={isFavorite ? "Remover dos Favoritos" : "Marcar como Favorito"}
+              title={isFavorite ? t('vault.removeFromFavorites', 'Remover dos Favoritos') : t('vault.markAsFavorite', 'Marcar como Favorito')}
             >
               <Star size={18} fill={isFavorite ? "currentColor" : "none"} />
             </button>
@@ -76,7 +78,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
               disabled={isSaving}
               className="px-4 py-2 bg-dark-card border border-white/5 hover:bg-white/5 text-dark-text rounded-xl text-sm transition-colors disabled:opacity-50"
             >
-              Cancelar
+              {t('vault.cancel', 'Cancelar')}
             </button>
             <button 
               type="button"
@@ -87,12 +89,12 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
               {isSaving ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Salvando...</span>
+                  <span>{t('vault.saving', 'Salvando...')}</span>
                 </>
               ) : (
                 <>
                   <Save size={16} />
-                  <span>Salvar</span>
+                  <span>{t('vault.save', 'Salvar')}</span>
                 </>
               )}
             </button>
@@ -101,11 +103,11 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
 
         {/* Informações Básicas */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Identificação</h2>
+          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">{t('vault.identification', 'Identificação')}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-xs text-dark-subtext mb-1.5">Nome / Serviço *</label>
+              <label className="block text-xs text-dark-subtext mb-1.5">{t('vault.nameService', 'Nome / Serviço *')}</label>
               <input 
                 type="text" 
                 value={label} 
@@ -117,13 +119,13 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
             </div>
             
             <div>
-              <label className="block text-xs text-dark-subtext mb-1.5">Pasta</label>
+              <label className="block text-xs text-dark-subtext mb-1.5">{t('vault.folder', 'Pasta')}</label>
               <select 
                 value={selectedGroupId} 
                 onChange={e => setSelectedGroupId(e.target.value)}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-dark-text focus:outline-none focus:border-brand-500 transition-colors"
               >
-                <option value="">Nenhuma pasta</option>
+                <option value="">{t('vault.noFolder', 'Nenhuma pasta')}</option>
                 {groups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -140,12 +142,12 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
 
         {/* Credenciais de Acesso */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Credenciais</h2>
+          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">{t('vault.credentials', 'Credenciais')}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-dark-subtext mb-1.5">
-                {loginType === 'google' ? 'E-mail da Conta Google' : 'E-mail'}
+                {loginType === 'google' ? t('vault.googleAccountEmail', 'E-mail da Conta Google') : t('vault.email', 'E-mail')}
               </label>
               <input 
                 type="email" 
@@ -157,7 +159,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
             </div>
             
             <div>
-              <label className="block text-xs text-dark-subtext mb-1.5">Usuário (Opcional)</label>
+              <label className="block text-xs text-dark-subtext mb-1.5">{t('vault.usernameOptional', 'Usuário (Opcional)')}</label>
               <input 
                 type="text" 
                 value={username} 
@@ -171,13 +173,13 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
           {loginType !== 'google' && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs text-dark-subtext">Senha</label>
+                <label className="block text-xs text-dark-subtext">{t('vault.password', 'Senha')}</label>
                 <button 
                   type="button" 
                   onClick={generatePassword}
                   className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium transition-colors"
                 >
-                  <RefreshCw size={12} /> Gerar Senha Forte
+                  <RefreshCw size={12} /> {t('vault.generateStrongPassword', 'Gerar Senha Forte')}
                 </button>
               </div>
               <div className="relative flex items-center">
@@ -188,7 +190,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
                     setPassword(e.target.value);
                     checkStrength(e.target.value);
                   }}
-                  placeholder="Digite ou gere uma senha"
+                  placeholder={t('vault.passwordPlaceholder', 'Digite ou gere uma senha')}
                   className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-dark-text font-mono focus:outline-none focus:border-brand-500 transition-colors"
                 />
                 {password ? (
@@ -196,7 +198,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 p-1 text-dark-subtext hover:text-white transition-colors"
-                    title={showPassword ? "Ocultar senha" : "Ver senha"}
+                    title={showPassword ? t('vault.hidePassword', 'Ocultar senha') : t('vault.showPassword', 'Ver senha')}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -228,7 +230,7 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
           )}
 
           <div>
-            <label className="block text-xs text-dark-subtext mb-1.5">URL / Site</label>
+            <label className="block text-xs text-dark-subtext mb-1.5">{t('vault.urlSite', 'URL / Site')}</label>
             <input 
               type="text" 
               value={url} 
@@ -247,12 +249,12 @@ export function VaultItemForm({ item, groups, groupId, onSave, onCancel }: Vault
 
         {/* Anotações Seguras */}
         <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">Anotações Seguras</h2>
+          <h2 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider">{t('vault.secureNotes', 'Anotações Seguras')}</h2>
           <textarea 
             value={notes} 
             onChange={e => setNotes(e.target.value)}
             className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-dark-text focus:outline-none focus:border-brand-500 min-h-[120px] font-mono resize-y"
-            placeholder="Anotações criptografadas..."
+            placeholder={t('vault.secureNotesPlaceholder', 'Anotações criptografadas...')}
           />
         </div>
 

@@ -62,7 +62,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
         <div className="absolute inset-0 bg-gradient-to-t from-dark-card via-transparent to-transparent opacity-80" />
 
         {/* Top action buttons */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20">
           {onEdit && (
             <button
               onClick={(e) => {

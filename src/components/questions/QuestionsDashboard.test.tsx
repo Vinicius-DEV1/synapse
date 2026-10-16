@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { QuestionsDashboard } from './QuestionsDashboard';
+import { I18nProvider } from '../../i18n';
 import type { QuizStats } from '../../types/quiz';
 
 const mockStats: QuizStats = {
@@ -19,12 +20,14 @@ const mockStats: QuizStats = {
 describe('QuestionsDashboard Component', () => {
   it('renders overall metrics correctly', () => {
     const { getByText } = render(
-      <QuestionsDashboard
-        stats={mockStats}
-        onLaunchErrorNotebook={vi.fn()}
-        onLaunchQuickSimulation={vi.fn()}
-        onCreateBattery={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionsDashboard
+          stats={mockStats}
+          onLaunchErrorNotebook={vi.fn()}
+          onLaunchQuickSimulation={vi.fn()}
+          onCreateBattery={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     expect(getByText('25')).toBeDefined();
@@ -36,12 +39,14 @@ describe('QuestionsDashboard Component', () => {
 
   it('renders tag performance bars', () => {
     const { getByText } = render(
-      <QuestionsDashboard
-        stats={mockStats}
-        onLaunchErrorNotebook={vi.fn()}
-        onLaunchQuickSimulation={vi.fn()}
-        onCreateBattery={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionsDashboard
+          stats={mockStats}
+          onLaunchErrorNotebook={vi.fn()}
+          onLaunchQuickSimulation={vi.fn()}
+          onCreateBattery={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     expect(getByText('#react')).toBeDefined();
@@ -53,12 +58,14 @@ describe('QuestionsDashboard Component', () => {
     const onLaunchSim = vi.fn();
 
     const { getByText } = render(
-      <QuestionsDashboard
-        stats={mockStats}
-        onLaunchErrorNotebook={onLaunchError}
-        onLaunchQuickSimulation={onLaunchSim}
-        onCreateBattery={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt-BR">
+        <QuestionsDashboard
+          stats={mockStats}
+          onLaunchErrorNotebook={onLaunchError}
+          onLaunchQuickSimulation={onLaunchSim}
+          onCreateBattery={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     fireEvent.click(getByText(`Revisar Erros (${mockStats.incorrectAnswers})`));

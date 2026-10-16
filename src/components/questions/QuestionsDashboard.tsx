@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, XCircle, HelpCircle, BookOpen, Sparkles, Flame, TrendingUp, AlertTriangle } from 'lucide-react';
 import type { QuizStats } from '../../types/quiz';
+import { useI18n } from '../../i18n';
 
 interface QuestionsDashboardProps {
   stats: QuizStats;
@@ -15,6 +16,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
   onLaunchQuickSimulation,
   onCreateBattery,
 }: QuestionsDashboardProps) {
+  const { t } = useI18n();
   const sortedTags = Object.entries(stats.tagStats || {}).sort(
     ([, a], [, b]) => b.total - a.total
   );
@@ -26,21 +28,21 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
         {/* Total Questions */}
         <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Questões</span>
+            <span className="text-xs font-medium uppercase tracking-wider">{t('questions.dashboard.totalQuestions')}</span>
             <HelpCircle size={16} className="text-brand-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-semibold text-zinc-100 font-mono">
               {stats.totalQuestions}
             </span>
-            <span className="text-xs text-zinc-500">em {stats.totalBatteries} baterias</span>
+            <span className="text-xs text-zinc-500">{t('questions.dashboard.inBatteries', { count: stats.totalBatteries })}</span>
           </div>
         </div>
 
         {/* Answered vs Pending */}
         <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Respondidas</span>
+            <span className="text-xs font-medium uppercase tracking-wider">{t('questions.dashboard.answered')}</span>
             <TrendingUp size={16} className="text-blue-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -56,28 +58,28 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
         {/* Accuracy Rate */}
         <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Taxa de Acertos</span>
+            <span className="text-xs font-medium uppercase tracking-wider">{t('questions.dashboard.accuracyRate')}</span>
             <CheckCircle2 size={16} className="text-emerald-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-semibold text-emerald-400 font-mono">
               {stats.accuracyRate}%
             </span>
-            <span className="text-xs text-zinc-500">{stats.correctAnswers} acertos</span>
+            <span className="text-xs text-zinc-500">{t('questions.dashboard.correctAnswers', { count: stats.correctAnswers })}</span>
           </div>
         </div>
 
         {/* Errors Pending Review */}
         <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
           <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Erros Recentes</span>
+            <span className="text-xs font-medium uppercase tracking-wider">{t('questions.dashboard.recentMistakes')}</span>
             <XCircle size={16} className="text-rose-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-semibold text-rose-400 font-mono">
               {stats.incorrectAnswers}
             </span>
-            <span className="text-xs text-zinc-500">precisam revisão</span>
+            <span className="text-xs text-zinc-500">{t('questions.dashboard.needReview')}</span>
           </div>
         </div>
       </div>
@@ -91,9 +93,9 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-zinc-100">Caderno de Erros</h4>
+              <h4 className="text-sm font-semibold text-zinc-100">{t('questions.playlists.mistakesTitle')}</h4>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Pratique uma sessão focada exclusivamente nas {stats.incorrectAnswers} questões que você errou anteriormente.
+                {t('questions.dashboard.mistakesDesc', { count: stats.incorrectAnswers })}
               </p>
             </div>
           </div>
@@ -104,7 +106,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
               className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
             >
               <Flame size={14} />
-              <span>Revisar Erros ({stats.incorrectAnswers})</span>
+              <span>{t('questions.dashboard.openMistakes')} ({stats.incorrectAnswers})</span>
             </button>
           </div>
         </div>
@@ -116,9 +118,9 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
               <Sparkles size={20} />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-zinc-100">Simulado Dinâmico</h4>
+              <h4 className="text-sm font-semibold text-zinc-100">{t('questions.dashboard.quickSimTitle')}</h4>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Gere uma sessão rápida com questões aleatórias ou focadas para manter seu ritmo de estudos diário.
+                {t('questions.dashboard.quickSimDesc')}
               </p>
             </div>
           </div>
@@ -129,7 +131,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
               className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 shadow-sm"
             >
               <CheckCircle2 size={14} />
-              <span>Simulado Rápido</span>
+              <span>{t('questions.dashboard.startQuickSim')}</span>
             </button>
           </div>
         </div>
@@ -140,21 +142,21 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
             <BookOpen size={16} className="text-brand-400" />
-            <span>Desempenho por Matéria / Tags</span>
+            <span>{t('questions.dashboard.performanceByTag')}</span>
           </h4>
-          <span className="text-xs text-zinc-500">{sortedTags.length} tags registradas</span>
+          <span className="text-xs text-zinc-500">{sortedTags.length} tags</span>
         </div>
 
         {sortedTags.length === 0 ? (
           <div className="p-6 text-center space-y-3">
             <p className="text-xs text-zinc-400">
-              Você ainda não respondeu a nenhuma questão para gerar estatísticas detalhadas por matéria.
+              {t('questions.dashboard.noTagsRegistered')}
             </p>
             <button
               onClick={onCreateBattery}
               className="px-3.5 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 text-xs font-medium transition-colors cursor-pointer"
             >
-              Criar Bateria de Questões
+              {t('questions.header.newBattery')}
             </button>
           </div>
         ) : (
@@ -173,7 +175,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
                       #{tag}
                     </span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-zinc-400 shrink-0">
-                      {tStat.total} {tStat.total === 1 ? 'questão' : 'questões'}
+                      {tStat.total} {tStat.total === 1 ? t('questions.explorer.question') : t('questions.explorer.questions')}
                     </span>
                   </div>
 
@@ -181,7 +183,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
                     {/* Mini progress bar */}
                     <div className="w-28 sm:w-36 flex flex-col gap-1">
                       <div className="flex justify-between text-[10px] font-mono text-zinc-400">
-                        <span>{tStat.answered}/{tStat.total} resolvidas</span>
+                        <span>{tStat.answered}/{tStat.total} {t('questions.explorer.answered')}</span>
                         <span className={tagAccuracy >= 70 ? 'text-emerald-400' : 'text-amber-400'}>
                           {tagAccuracy}%
                         </span>
@@ -197,7 +199,7 @@ export const QuestionsDashboard = React.memo(function QuestionsDashboard({
                     </div>
 
                     <div className="text-right text-xs font-mono">
-                      <span className="text-emerald-400">{tStat.correct} acertos</span>
+                      <span className="text-emerald-400">{t('questions.dashboard.correctAnswers', { count: tStat.correct })}</span>
                     </div>
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, ChevronDown, ChevronRight, Trash2, Calendar } from 'lucide-react';
 import type { WishlistItem } from '../../../types';
 import { formatDateSafe } from './TransactionList';
+import { useTranslation } from '../../../i18n';
 
 interface WishlistTabProps {
   wishlist: WishlistItem[];
@@ -20,6 +21,8 @@ export function WishlistTab({
   onSelectWishlist,
   onDeleteWishlist,
 }: WishlistTabProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center pb-1 border-b border-white/5">
@@ -31,13 +34,13 @@ export function WishlistTab({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/20 active:scale-95"
         >
           <Plus size={14} />
-          <span>Adicionar Desejo</span>
+          <span>{t('finance.addWishlist', 'Adicionar Desejo')}</span>
         </button>
       </div>
 
       {wishlist.length === 0 ? (
         <div className="text-center text-dark-subtext py-12 bg-dark-bg/30 border border-white/5 rounded-xl text-xs">
-          Lista de desejos vazia.
+          {t('finance.emptyWishlist', 'Lista de desejos vazia.')}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -115,10 +118,10 @@ export function WishlistTab({
                               }`}
                             >
                               {item.priority === 'high'
-                                ? 'Alta'
+                                ? t('finance.highPriority', 'Alta')
                                 : item.priority === 'medium'
-                                ? 'Média'
-                                : 'Baixa'}
+                                ? t('finance.mediumPriority', 'Média')
+                                : t('finance.lowPriority', 'Baixa')}
                             </span>
 
                             <span className="text-xs sm:text-sm font-bold text-brand-400 min-w-[70px] text-right">
@@ -127,8 +130,8 @@ export function WishlistTab({
 
                             <button
                               onClick={(e) => onDeleteWishlist(item.id, e)}
-                              className="p-1 text-dark-subtext opacity-60 group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all"
-                              title="Excluir Desejo"
+                              className="p-1 text-dark-subtext opacity-70 sm:opacity-0 sm:group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all"
+                              title={t('finance.deleteWishlist', 'Excluir Desejo')}
                             >
                               <Trash2 size={14} />
                             </button>

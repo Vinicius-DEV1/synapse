@@ -10,6 +10,7 @@ import {
   getBatteryBreadcrumb,
 } from '../../services/quiz/quizHierarchy';
 import type { BatteryWithQuestions } from '../../types/quiz';
+import { useI18n } from '../../i18n';
 
 interface QuestionsExplorerProps {
   batteries: BatteryWithQuestions[];
@@ -36,6 +37,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   onCreateSubgroup,
   onMoveBattery,
 }: QuestionsExplorerProps) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrigin, setSelectedOrigin] = useState<'all' | 'linked' | 'standalone'>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -169,9 +171,9 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
         {filteredTree.length === 0 ? (
           <div className="bg-dark-card/30 border border-dashed border-white/5 rounded-2xl p-10 text-center space-y-2">
             <HelpCircle size={24} className="mx-auto text-zinc-500" />
-            <h4 className="text-sm font-medium text-zinc-300">Nenhuma bateria de questões encontrada</h4>
+            <h4 className="text-sm font-medium text-zinc-300">{t('questions.explorer.emptyTitle')}</h4>
             <p className="text-xs text-zinc-500">
-              Tente ajustar os filtros de busca ou crie uma nova bateria de exercícios.
+              {t('questions.explorer.emptyDesc')}
             </p>
           </div>
         ) : (

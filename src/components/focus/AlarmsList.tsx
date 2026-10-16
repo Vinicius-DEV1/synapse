@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Bell, Plus, ArrowLeft, Trash2, Clock } from 'lucide-react';
 import type { Alarm } from './types';
+import { useTranslation } from '../../i18n';
+import { FocusDeleteModal } from './FocusDeleteModal';
 
 interface AlarmsListProps {
   alarms: Alarm[];
@@ -11,11 +13,14 @@ interface AlarmsListProps {
 }
 
 const AlarmsList: React.FC<AlarmsListProps> = ({ alarms, onBack, onNew, onToggle, onDelete }) => {
+  const { t } = useTranslation();
+  const [alarmToDelete, setAlarmToDelete] = useState<Alarm | null>(null);
+
   return (
     <div className="flex-1 flex flex-col p-4 sm:p-8 animate-in fade-in duration-300">
       <header className="flex justify-between items-center mb-8 sticky top-0 bg-dark-bg/80 backdrop-blur-md z-10 py-4 -mt-4 border-b border-white/5">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-dark-card border border-white/10 rounded-xl text-dark-subtext hover:text-white hover:bg-white/5 transition-all shadow-lg active:scale-95">
+          <button onClick={onBack} className="p-2 bg-dark-card border border-white/10 rounded-xl text-dark-subtext hover:text-white hover:bg-white/5 transition-all shadow-lg active:scale-95" title={t('common.back', 'Voltar')}>
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-3">
@@ -23,14 +28,14 @@ const AlarmsList: React.FC<AlarmsListProps> = ({ alarms, onBack, onNew, onToggle
               <Bell className="text-brand-400" size={24} />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">Alarms</h1>
-              <p className="text-dark-subtext text-xs font-medium">Manage your daily alerts</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">{t('focus.alarmsTitle', 'Alarms')}</h1>
+              <p className="text-dark-subtext text-xs font-medium">{t('focus.manageAlerts', 'Manage your daily alerts')}</p>
             </div>
           </div>
         </div>
         <button onClick={onNew} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-600/20 active:scale-95 text-sm shrink-0">
           <Plus size={18} />
-          <span className="hidden sm:inline">New Alarm</span>
+          <span className="hidden sm:inline">{t('focus.newAlarm', 'New Alarm')}</span>
         </button>
       </header>
 
@@ -38,8 +43,8 @@ const AlarmsList: React.FC<AlarmsListProps> = ({ alarms, onBack, onNew, onToggle
         {alarms.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-dark-subtext gap-4">
             <Clock size={48} className="opacity-20" />
-            <p>No alarms defined yet.</p>
-            <button onClick={onNew} className="text-brand-400 font-semibold hover:underline">Create one now</button>
+            <p>{t('focus.noAlarms', 'No alarms defined yet.')}</p>
+            <button onClick={onNew} className="text-brand-400 font-semibold hover:underline">{t('focus.createOneNow', 'Create one now')}</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -59,9 +64,13 @@ const AlarmsList: React.FC<AlarmsListProps> = ({ alarms, onBack, onNew, onToggle
                 
                 <div className="flex justify-between items-end">
                   <div className="text-sm font-medium text-dark-subtext truncate pr-4">
-                    {alarm.label || 'Alarm'}
+                    {alarm.label || t('focus.alarm', 'Alarm')}
                   </div>
-                  <button onClick={() => alarm.id && onDelete(alarm.id)} className="p-2 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors">
+                  <button 
+                    onClick={() => setAlarmToDelete(alarm)} 
+                    className="p-2 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                    title={t('common.delete', 'Excluir')}
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -70,6 +79,19 @@ const AlarmsList: React.FC<AlarmsListProps> = ({ alarms, onBack, onNew, onToggle
           </div>
         )}
       </div>
+
+      <FocusDeleteModal
+        isOpen={!!alarmToDelete}
+        title={t('focus.deleteAlarmTitle', 'Excluir Alarme')}
+        description={alarmToDelete ? t('focus.deleteAlarmDesc', 'Deseja realmente excluir este alarme?') : ''}
+        onClose={() => setAlarmToDelete(null)}
+        onConfirm={() => {
+          if (alarmToDelete?.id) {
+            onDelete(alarmToDelete.id);
+          }
+          setAlarmToDelete(null);
+        }}
+      />
     </div>
   );
 };

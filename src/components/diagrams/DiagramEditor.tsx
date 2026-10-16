@@ -5,6 +5,7 @@ import 'tldraw/tldraw.css';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import type { DiagramMeta } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
+import { useTranslation } from '../../i18n';
 
 interface DiagramEditorProps {
   diagram: DiagramMeta;
@@ -12,12 +13,48 @@ interface DiagramEditorProps {
 }
 
 const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
+  const { t } = useTranslation();
   const [store, setStore] = useState<TLStore | null>(null);
   const [loading, setLoading] = useState(true);
   const editorRef = useRef<Editor | null>(null);
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const unlistenRef = useRef<(() => void) | null>(null);
+
+  const saveCurrentDiagram = useCallback(async () => {
+    if (!editorRef.current || !window.api?.diagrams) return;
+    try {
+      const snapshot = getSnapshot(editorRef.current.store);
+      const jsonStr = JSON.stringify(snapshot);
+      await window.api.diagrams.update({
+        id: diagram.id,
+        content: jsonStr
+      });
+    } catch (err) {
+      console.error("Erro ao salvar diagrama", err);
+    }
+  }, [diagram.id]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onBack();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onBack();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onBack]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -35,14 +72,14 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
               loadSnapshot(newStore, snapshot);
             } catch (e) {
               console.error("Failed to load snapshot", e);
-              triggerToast('Falha ao restaurar dados salvos do diagrama.', 'error');
+              triggerToast(t('diagrams.restoreError'), 'error');
             }
           }
           
           setStore(newStore);
         } catch (e: unknown) {
           console.error(e);
-          const errorMsg = e instanceof Error ? e.message : 'Erro ao carregar conteúdo do diagrama.';
+          const errorMsg = e instanceof Error ? e.message : t('diagrams.contentLoadError');
           triggerToast(errorMsg, 'error');
         } finally {
           if (!isCancelled) setLoading(false);
@@ -53,13 +90,18 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
     
     return () => {
       isCancelled = true;
-      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current);
+        saveTimeout.current = null;
+        // Flush pending changes on unmount to guarantee zero data loss
+        saveCurrentDiagram();
+      }
       if (unlistenRef.current) {
         unlistenRef.current();
         unlistenRef.current = null;
       }
     };
-  }, [diagram.id]);
+  }, [diagram.id, saveCurrentDiagram, t]);
 
   const handleMount = useCallback((editor: Editor) => {
     editorRef.current = editor;

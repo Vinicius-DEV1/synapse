@@ -81,4 +81,20 @@ describe('ConfirmDialog UI Component', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(handleCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onCancel on caderno-back-press custom event', () => {
+    const handleCancel = vi.fn();
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        title="Confirmar"
+        message="Deseja continuar?"
+        onConfirm={vi.fn()}
+        onCancel={handleCancel}
+      />
+    );
+
+    window.dispatchEvent(new CustomEvent('caderno-back-press'));
+    expect(handleCancel).toHaveBeenCalledTimes(1);
+  });
 });

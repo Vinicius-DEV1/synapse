@@ -93,7 +93,7 @@ export function CultureCardList({
       </div>
 
       {/* Actions */}
-      <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex-shrink-0 flex items-center gap-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         {hasEpisodes ? (
           <button onClick={onOpenEpisodes} className="p-1.5 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 text-brand-400 transition-colors" title="Ver episódios">
             <List size={13} />

@@ -6,12 +6,13 @@ import { usePageMentions } from './ai-sidebar/usePageMentions';
 import { useAiChatSubmit } from './ai-sidebar/useAiChatSubmit';
 import { AiChatMessageItem } from './ai-sidebar/AiChatMessageItem';
 import { AiChatSessionList } from './ai-sidebar/AiChatSessionList';
-
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { triggerToast } from './ui/ToastContext';
 
 export default function AiSidebar() {
   const { state, dispatch } = useStore();
   const [prompt, setPrompt] = useState('');
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { width, handleMouseDown, handleResetWidth } = useAiSidebarResize();
@@ -52,7 +53,42 @@ export default function AiSidebar() {
 
   useEffect(() => {
     if (!state.showAiSidebar) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showMentionMenu) {
+          e.preventDefault();
+          setShowMentionMenu(false);
+          return;
+        }
+        if (sessionToDelete) {
+          e.preventDefault();
+          setSessionToDelete(null);
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (state.activeAiChatId) {
+          dispatch({ type: 'OPEN_AI_CHAT', chatId: null });
+        } else {
+          dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
+        }
+      }
+    };
+
     const handleBackPress = (e: Event) => {
+      if (showMentionMenu) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowMentionMenu(false);
+        return;
+      }
+      if (sessionToDelete) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSessionToDelete(null);
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       if (state.activeAiChatId) {
@@ -61,9 +97,14 @@ export default function AiSidebar() {
         dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
       }
     };
+
+    window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('caderno-back-press', handleBackPress);
-    return () => window.removeEventListener('caderno-back-press', handleBackPress);
-  }, [state.showAiSidebar, state.activeAiChatId, dispatch]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [state.showAiSidebar, state.activeAiChatId, showMentionMenu, setShowMentionMenu, sessionToDelete, dispatch]);
 
   if (!state.showAiSidebar) return null;
 
@@ -165,7 +206,7 @@ export default function AiSidebar() {
         <AiChatSessionList
           sessions={sessions}
           onOpenSession={(id) => dispatch({ type: 'OPEN_AI_CHAT', chatId: id })}
-          onDeleteSession={(id) => dispatch({ type: 'DELETE_AI_CHAT', id })}
+          onDeleteSession={(id) => setSessionToDelete(id)}
           onNewQuickChat={handleNewQuickChat}
           onNavigate={handleNavigate}
         />
@@ -344,6 +385,22 @@ export default function AiSidebar() {
           </form>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!sessionToDelete}
+        title="Excluir Conversa"
+        message="Deseja realmente excluir esta conversa com o assistente de IA? O histórico de mensagens será apagado."
+        confirmText="Sim, Excluir"
+        variant="danger"
+        onConfirm={() => {
+          if (sessionToDelete) {
+            dispatch({ type: 'DELETE_AI_CHAT', id: sessionToDelete });
+            setSessionToDelete(null);
+          }
+        }}
+        onCancel={() => setSessionToDelete(null)}
+      />
     </div>
   );
 }
+

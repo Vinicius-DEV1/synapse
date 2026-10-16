@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   X, RefreshCw, AlertCircle, PlayCircle,
   ChevronDown, ChevronRight, CalendarClock, Search
@@ -16,6 +17,28 @@ interface CultureEpisodeModalProps {
 }
 
 export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }: CultureEpisodeModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
+
   const {
     episodes,
     isSyncing,

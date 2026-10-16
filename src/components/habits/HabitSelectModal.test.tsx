@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import HabitSelectModal from './HabitSelectModal';
+import { I18nProvider } from '../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) =>
+  render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 
 describe('HabitSelectModal', () => {
   const mockHabits = [
@@ -43,7 +47,7 @@ describe('HabitSelectModal', () => {
   });
 
   it('renders habits list when opened', async () => {
-    render(
+    renderWithI18n(
       <HabitSelectModal
         isOpen={true}
         onSelect={vi.fn()}
@@ -59,7 +63,7 @@ describe('HabitSelectModal', () => {
 
   it('filters habits by search query and selects an existing habit', async () => {
     const onSelect = vi.fn();
-    render(
+    renderWithI18n(
       <HabitSelectModal
         isOpen={true}
         initialQuery="Acad"
@@ -83,7 +87,7 @@ describe('HabitSelectModal', () => {
 
   it('allows creating a new habit when typing an unmatched query', async () => {
     const onSelect = vi.fn();
-    render(
+    renderWithI18n(
       <HabitSelectModal
         isOpen={true}
         initialQuery="Meditar 20 min"

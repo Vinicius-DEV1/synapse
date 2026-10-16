@@ -45,11 +45,14 @@ export function AiChatSessionList({
                 {new Date(session.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
               </span>
               <button 
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteSession(session.id);
                 }}
-                className="text-dark-subtext hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="text-dark-subtext hover:text-red-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/5 cursor-pointer"
+                title="Excluir conversa"
+                aria-label="Excluir conversa"
               >
                 <Trash2 size={14} />
               </button>

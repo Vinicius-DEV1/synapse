@@ -4,6 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { getLocalIsoDate } from '../../utils/date-utils';
 import type { Session } from './types';
 import FocusHelpModal from './FocusHelpModal';
+import { FocusDeleteModal } from './FocusDeleteModal';
+import { useTranslation } from '../../i18n';
 
 interface DashboardProps {
   sessions: Session[];
@@ -16,10 +18,12 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings, onOpenAlarms, onOpenLofi, onOpenStats, onDeleteSession }) => {
+  const { t, language } = useTranslation();
   const [dailyGoal, setDailyGoal] = useState<number>(120);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('120');
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('dailyGoal');
@@ -69,7 +73,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
     );
     const focusTime = daySessions.reduce((acc, s) => acc + (s.status === 'completed' ? s.target_time_minutes : 0), 0);
     const d = new Date(dateStr + 'T00:00:00'); 
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayName = d.toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { weekday: 'short' });
     return { name: dayName, "Focus Time (min)": focusTime };
   });
 
@@ -88,9 +92,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
   const yesterdayStr = getLocalIsoDate(yesterdayDate);
 
   const formatDateHeader = (dateStr: string) => {
-    if (dateStr === todayStr) return "Hoje";
-    if (dateStr === yesterdayStr) return "Ontem";
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString();
+    if (dateStr === todayStr) return t('focus.today', 'Hoje');
+    if (dateStr === yesterdayStr) return t('focus.yesterday', 'Ontem');
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US');
   };
 
   return (
@@ -102,31 +106,31 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
             ⏰
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Focus Tracker</h1>
-            <p className="text-dark-subtext text-xs font-medium">Ready for another session?</p>
+            <h1 className="text-xl font-bold text-white tracking-tight">{t('focus.trackerTitle', 'Focus Tracker')}</h1>
+            <p className="text-dark-subtext text-xs font-medium">{t('focus.readyForSession', 'Ready for another session?')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsHelpOpen(true)} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0 flex items-center gap-1.5" title="Guia do Focus Tracker">
+          <button onClick={() => setIsHelpOpen(true)} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0 flex items-center gap-1.5" title={t('focus.guideTitle', 'Guia do Focus Tracker')}>
             <HelpCircle size={18} />
-            <span className="hidden md:inline text-xs font-medium">Guia</span>
+            <span className="hidden md:inline text-xs font-medium">{t('focus.guide', 'Guia')}</span>
           </button>
-          <button onClick={onOpenLofi} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Lofi">
+          <button onClick={onOpenLofi} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title={t('focus.lofi', 'Lofi')}>
             <Music size={18} />
           </button>
-          <button onClick={onOpenAlarms} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Alarms">
+          <button onClick={onOpenAlarms} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title={t('focus.alarms', 'Alarms')}>
             <Bell size={18} />
           </button>
-          <button onClick={onOpenStats} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Estatísticas">
+          <button onClick={onOpenStats} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title={t('focus.stats', 'Estatísticas')}>
             <Activity size={18} />
           </button>
-          <button onClick={onOpenSettings} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title="Settings">
+          <button onClick={onOpenSettings} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title={t('focus.settings', 'Settings')}>
             <Settings size={18} />
           </button>
           <button onClick={onStart} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 text-sm shrink-0">
             <Play size={16} />
-            <span className="hidden sm:inline">Start Session</span>
-            <span className="sm:hidden">Start</span>
+            <span className="hidden sm:inline">{t('focus.startSession', 'Start Session')}</span>
+            <span className="sm:hidden">{t('focus.start', 'Start')}</span>
           </button>
         </div>
       </header>
@@ -140,7 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           <div className="bg-dark-card rounded-xl p-3 border border-white/5 shadow-lg flex flex-col items-center justify-center col-span-2 sm:col-span-1">
             <div className="w-full flex justify-between items-center mb-2">
               <span className="text-xs font-medium text-dark-subtext uppercase tracking-widest flex items-center gap-1">
-                <Target size={12} className="text-brand-400" /> Daily Goal
+                <Target size={12} className="text-brand-400" /> {t('focus.dailyGoal', 'Daily Goal')}
               </span>
               {isEditingGoal ? (
                 <div className="flex items-center gap-1">
@@ -166,9 +170,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           </div>
 
           <div className="flex flex-col gap-2 col-span-2 sm:col-span-1">
-            <StatCard title="Sessions" value={todayTotalSessions} icon={<Play />} color="text-blue-400" bg="bg-blue-400/10" />
-            <StatCard title="Completed" value={todayCompleted} icon={<CheckCircle />} color="text-emerald-400" bg="bg-emerald-400/10" />
-            <StatCard title="Success" value={`${todaySuccessRate}%`} icon={<XCircle />} color={todaySuccessRate >= 50 ? "text-emerald-400" : "text-rose-400"} bg={todaySuccessRate >= 50 ? "bg-emerald-400/10" : "bg-rose-400/10"} />
+            <StatCard title={t('focus.sessions', 'Sessions')} value={todayTotalSessions} icon={<Play />} color="text-blue-400" bg="bg-blue-400/10" />
+            <StatCard title={t('focus.completed', 'Completed')} value={todayCompleted} icon={<CheckCircle />} color="text-emerald-400" bg="bg-emerald-400/10" />
+            <StatCard title={t('focus.success', 'Success')} value={`${todaySuccessRate}%`} icon={<XCircle />} color={todaySuccessRate >= 50 ? "text-emerald-400" : "text-rose-400"} bg={todaySuccessRate >= 50 ? "bg-emerald-400/10" : "bg-rose-400/10"} />
           </div>
         </div>
 
@@ -176,7 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
         <div className="lg:col-span-2 bg-dark-card rounded-xl p-3 sm:p-4 border border-white/5 shadow-lg flex flex-col h-40 lg:h-auto min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <Calendar size={14} className="text-brand-400" />
-            <h2 className="text-xs font-semibold text-dark-subtext uppercase tracking-widest">Weekly Focus Trend</h2>
+            <h2 className="text-xs font-semibold text-dark-subtext uppercase tracking-widest">{t('focus.weeklyTrend', 'Weekly Focus Trend')}</h2>
           </div>
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -200,13 +204,13 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
       {/* History List Grouped */}
       <div className="flex-1 overflow-hidden flex flex-col bg-dark-card rounded-xl border border-white/5 shadow-xl">
         <div className="p-3 border-b border-white/5 bg-white/[0.02]">
-          <h2 className="text-base font-semibold text-white">Recent History</h2>
+          <h2 className="text-base font-semibold text-white">{t('focus.recentHistory', 'Recent History')}</h2>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-3">
           {sessions.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-dark-subtext">
               <Clock size={32} className="mb-2 opacity-20" />
-              <p className="text-sm">No sessions recorded yet.</p>
+              <p className="text-sm">{t('focus.noSessions', 'No sessions recorded yet.')}</p>
             </div>
           ) : (
             sortedDates.map(dateStr => (
@@ -231,7 +235,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
                         <span className="text-white text-sm font-medium truncate flex-1">{session.description}</span>
                       </div>
                       <p className="text-xs text-dark-subtext truncate">
-                        {session.status === 'completed' ? session.summary : `Reason: ${session.justification}`}
+                        {session.status === 'completed' ? session.summary : `${t('focus.reason', 'Motivo: ')}${session.justification}`}
                       </p>
                     </div>
                     <div className="text-right shrink-0 flex flex-col items-end gap-1">
@@ -247,8 +251,12 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
                           return endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                         })()}
                       </div>
-                      <button onClick={() => session.id && onDeleteSession(session.id)} className="text-dark-subtext/50 hover:text-rose-400 transition-colors">
-                        <Trash2 size={12} />
+                      <button 
+                        onClick={() => setSessionToDelete(session)} 
+                        className="p-1.5 text-dark-subtext/50 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        title={t('common.delete', 'Excluir')}
+                      >
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -260,6 +268,19 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
       </div>
 
       <FocusHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+
+      <FocusDeleteModal
+        isOpen={!!sessionToDelete}
+        title={t('focus.deleteSessionConfirmTitle', 'Excluir Sessão de Foco')}
+        description={t('focus.deleteSessionConfirmDesc', 'Deseja realmente excluir esta sessão de foco do histórico?')}
+        onClose={() => setSessionToDelete(null)}
+        onConfirm={() => {
+          if (sessionToDelete?.id) {
+            onDeleteSession(sessionToDelete.id);
+          }
+          setSessionToDelete(null);
+        }}
+      />
     </div>
   );
 };

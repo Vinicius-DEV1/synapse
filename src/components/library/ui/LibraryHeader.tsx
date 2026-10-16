@@ -11,13 +11,7 @@ import { LibrarySortDropdown, type SortBy, type SortOrder } from './LibrarySortD
 import { LibraryCollectionDropdown } from './LibraryCollectionDropdown';
 import { LibraryAuthorDropdown } from './LibraryAuthorDropdown';
 import { LibraryHelpModal } from '../modals/LibraryHelpModal';
-
-const STATUS_LABELS: Record<ReadingStatus | 'all', string> = {
-  all: 'Todos',
-  not_started: 'Não iniciados',
-  reading: 'Lendo',
-  finished: 'Concluídos',
-};
+import { useI18n } from '../../../i18n';
 
 interface LibraryHeaderProps {
   booksCount: number;
@@ -81,7 +75,15 @@ export function LibraryHeader({
   archivedCount = 0,
   onOpenCreateCollection,
 }: LibraryHeaderProps) {
+  const { t } = useI18n();
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  const statusLabels: Record<ReadingStatus | 'all', string> = {
+    all: t('library.status.all'),
+    not_started: t('library.status.not_started_plural'),
+    reading: t('library.status.reading'),
+    finished: t('library.status.finished_plural'),
+  };
 
   return (
     <div className="relative z-50 flex-shrink-0 border-b border-white/5 bg-dark-bg/80 backdrop-blur-sm">
@@ -94,13 +96,13 @@ export function LibraryHeader({
                 <Library size={22} className="text-brand-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-dark-text">Biblioteca</h1>
+                <h1 className="text-2xl font-bold text-dark-text">{t('library.title')}</h1>
                 <p className="text-xs text-dark-subtext mt-0.5">
                   {viewMode === 'collections'
-                    ? `${collections.length} ${collections.length === 1 ? 'coleção' : 'coleções'}`
+                    ? (collections.length === 1 ? t('library.collectionCount', { count: 1 }) : t('library.collectionCountPlural', { count: collections.length }))
                     : archiveFilter === 'archived'
-                    ? `${booksCount} ${booksCount === 1 ? 'livro arquivado' : 'livros arquivados'}`
-                    : `${booksCount} ${booksCount === 1 ? 'livro' : 'livros'}`}
+                    ? (booksCount === 1 ? t('library.archivedCount', { count: 1 }) : t('library.archivedCountPlural', { count: booksCount }))
+                    : (booksCount === 1 ? t('library.bookCount', { count: 1 }) : t('library.bookCountPlural', { count: booksCount }))}
                 </p>
               </div>
             </div>
@@ -119,7 +121,7 @@ export function LibraryHeader({
                   }`}
                 >
                   <BookOpen size={14} />
-                  <span>Livros</span>
+                  <span>{t('library.books')}</span>
                 </button>
                 <button
                   type="button"
@@ -132,7 +134,7 @@ export function LibraryHeader({
                   }`}
                 >
                   <Folder size={14} />
-                  <span>Coleções</span>
+                  <span>{t('library.collections')}</span>
                   {collections.length > 0 && (
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/80 font-semibold">
                       {collections.length}
@@ -153,22 +155,22 @@ export function LibraryHeader({
               }`}
             >
               <Cloud size={16} />
-              <span className="hidden sm:inline">Drive</span>
+              <span className="hidden sm:inline">{t('library.drive')}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-white/5 text-dark-subtext hover:bg-white/10 hover:text-white border border-white/10 transition-colors"
-              title="Guia completo de uso da Biblioteca"
+              title={t('library.guideTitle')}
               aria-label="Guia da Biblioteca"
             >
               <HelpCircle size={16} />
-              <span className="hidden sm:inline">Guia</span>
+              <span className="hidden sm:inline">{t('library.guide')}</span>
             </button>
             <button
               onClick={() => setShowStats(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all"
-              title="Estatísticas de leitura"
+              title={t('library.stats')}
             >
               <BarChart3 size={18} />
             </button>
@@ -178,7 +180,7 @@ export function LibraryHeader({
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-lg shadow-brand-500/20"
               >
                 <FolderPlus size={16} />
-                <span>Nova Coleção</span>
+                <span>{t('library.newCollection')}</span>
               </button>
             ) : (
               <button
@@ -186,7 +188,7 @@ export function LibraryHeader({
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 shadow-lg shadow-brand-500/20"
               >
                 <Plus size={16} />
-                <span>Importar PDF / EPUB</span>
+                <span>{t('library.importPdfEpub')}</span>
               </button>
             )}
           </div>
@@ -204,7 +206,7 @@ export function LibraryHeader({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por título ou autor..."
+              placeholder={t('library.searchPlaceholder')}
               className="w-full pl-9 pr-3 py-2 bg-dark-card border border-white/5 rounded-lg text-sm text-dark-text placeholder:text-dark-subtext/50 focus:border-brand-500/50 outline-none transition-colors"
             />
           </div>
@@ -226,7 +228,7 @@ export function LibraryHeader({
 
           {/* Status pills */}
           <div className="flex items-center gap-1 bg-dark-card rounded-lg p-1 border border-white/5">
-            {(Object.keys(STATUS_LABELS) as (ReadingStatus | 'all')[]).map((status) => (
+            {(Object.keys(statusLabels) as (ReadingStatus | 'all')[]).map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -236,7 +238,7 @@ export function LibraryHeader({
                     : 'text-dark-subtext hover:text-dark-text'
                 }`}
               >
-                {STATUS_LABELS[status]}
+                {statusLabels[status]}
               </button>
             ))}
           </div>
@@ -254,7 +256,7 @@ export function LibraryHeader({
                       : 'text-dark-subtext hover:text-dark-text'
                   }`}
                 >
-                  {fmt === 'all' ? 'Formatos' : fmt.toUpperCase()}
+                  {fmt === 'all' ? t('library.formats') : fmt.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -271,10 +273,10 @@ export function LibraryHeader({
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 shadow-sm'
                   : 'bg-dark-card border-white/5 text-dark-subtext hover:text-white'
               }`}
-              title={archiveFilter === 'archived' ? 'Voltar para livros ativos' : 'Ver livros arquivados'}
+              title={archiveFilter === 'archived' ? t('library.backToActive') : t('library.archived')}
             >
               <Archive size={14} className={archiveFilter === 'archived' ? 'text-amber-400' : 'text-dark-subtext'} />
-              <span>Arquivados</span>
+              <span>{t('library.archived')}</span>
               {archivedCount > 0 && (
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${

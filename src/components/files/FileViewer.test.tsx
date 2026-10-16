@@ -4,6 +4,11 @@ import FileViewer from './FileViewer';
 import type { FileItem } from '../../types';
 import * as fileFetcher from '../../utils/file-fetcher';
 import * as downloadUtils from './viewer/utils/documentDownloadUtils';
+import { I18nProvider } from '../../i18n';
+
+const renderWithI18n = (ui: React.ReactElement) => {
+  return render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
+};
 
 vi.mock('../../store/useStore', () => ({
   useStore: () => ({
@@ -62,7 +67,7 @@ describe('FileViewer Component', () => {
       text: () => Promise.resolve('Hello world text content'),
     } as any);
 
-    render(<FileViewer item={baseMockItem} onClose={() => {}} />);
+    renderWithI18n(<FileViewer item={baseMockItem} onClose={() => {}} />);
     expect(screen.getByText('document.txt')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -80,7 +85,7 @@ describe('FileViewer Component', () => {
       mime_type: 'image/png',
     };
 
-    render(<FileViewer item={imageItem} onClose={() => {}} />);
+    renderWithI18n(<FileViewer item={imageItem} onClose={() => {}} />);
     expect(screen.getByText('photo.png')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -100,7 +105,7 @@ describe('FileViewer Component', () => {
       mime_type: 'application/pdf',
     };
 
-    render(<FileViewer item={pdfItem} onClose={() => {}} />);
+    renderWithI18n(<FileViewer item={pdfItem} onClose={() => {}} />);
     expect(screen.getByText('manual.pdf')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -113,7 +118,7 @@ describe('FileViewer Component', () => {
   it('renders fallback error message when file resolution fails', async () => {
     vi.mocked(fileFetcher.getDecryptedFileUrl).mockResolvedValue(null);
 
-    render(<FileViewer item={baseMockItem} onClose={() => {}} />);
+    renderWithI18n(<FileViewer item={baseMockItem} onClose={() => {}} />);
 
     await waitFor(() => {
       expect(screen.getByText('Não foi possível carregar o arquivo')).toBeInTheDocument();
@@ -127,7 +132,7 @@ describe('FileViewer Component', () => {
       text: () => Promise.resolve('# Markdown Content'),
     } as any);
 
-    render(<FileViewer item={mdMockItem} onClose={() => {}} />);
+    renderWithI18n(<FileViewer item={mdMockItem} onClose={() => {}} />);
 
     await waitFor(() => {
       const aiBtn = screen.getByTitle(/Assistente de IA para este documento/i);
@@ -151,7 +156,7 @@ describe('FileViewer Component', () => {
       text: () => Promise.resolve('File text'),
     } as any);
 
-    render(<FileViewer item={baseMockItem} onClose={() => {}} />);
+    renderWithI18n(<FileViewer item={baseMockItem} onClose={() => {}} />);
 
     await waitFor(() => {
       const downloadBtn = screen.getByTitle('Download');

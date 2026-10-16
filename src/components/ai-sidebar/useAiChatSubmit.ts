@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { promptGemini } from '../../services/gemini';
 import { stripHtml, extractImagesFromHtml } from '../../utils/content-extractor';
+import { triggerToast } from '../ui/ToastContext';
 import type { Page as _Page } from '../../types';
 
 import type { AttachedPage } from './usePageMentions';
@@ -92,8 +93,10 @@ export function useAiChatSubmit({
       setPrompt('');
       setAttachedPages([]);
       setShowMentionMenu(false);
-    } catch (err) {
-      console.error(err);
+    } catch (err: unknown) {
+      console.error('Erro na resposta do Gemini no AI Chat:', err);
+      const message = err instanceof Error ? err.message : 'Falha ao obter resposta da IA';
+      triggerToast(message, 'error');
     } finally {
       setLoading(false);
     }

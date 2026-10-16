@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckSquare, LayoutDashboard, Compass, Sparkles, Plus, HelpCircle } from 'lucide-react';
 import { QuestionsHelpModal } from './QuestionsHelpModal';
+import { useI18n } from '../../i18n';
 
 interface QuestionsHeaderProps {
   totalQuestions: number;
@@ -15,6 +16,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
   onSelectTabSection,
   onNewBattery,
 }: QuestionsHeaderProps) {
+  const { t } = useI18n();
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   return (
@@ -27,13 +29,13 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Central de Questões</h1>
+              <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">{t('questions.header.title')}</h1>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-zinc-400">
-                {totalQuestions} questões
+                {totalQuestions === 1 ? t('questions.header.count', { count: 1 }) : t('questions.header.countPlural', { count: totalQuestions })}
               </span>
             </div>
             <p className="text-sm text-zinc-400 mt-1">
-              Pratique exercícios, acompanhe sua taxa de acerto e monte simulados sob medida.
+              {t('questions.header.subtitle')}
             </p>
           </div>
         </div>
@@ -42,11 +44,11 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
           type="button"
           onClick={() => setShowHelpModal(true)}
           className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-          title="Guia do Banco de Questões"
-          aria-label="Guia de Questões"
+          title={t('questions.header.guideTitle')}
+          aria-label={t('questions.header.guideTitle')}
         >
           <HelpCircle size={15} />
-          <span>Guia</span>
+          <span>{t('questions.header.guide')}</span>
         </button>
       </header>
 
@@ -63,7 +65,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
             }`}
           >
             <Compass size={14} />
-            <span>Explorador</span>
+            <span>{t('questions.header.tabs.explorer')}</span>
           </button>
 
           <button
@@ -75,7 +77,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
             }`}
           >
             <LayoutDashboard size={14} />
-            <span>Métricas</span>
+            <span>{t('questions.header.tabs.dashboard')}</span>
           </button>
 
           <button
@@ -87,7 +89,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
             }`}
           >
             <Sparkles size={14} />
-            <span>Simulados & Erros</span>
+            <span>{t('questions.header.tabs.playlists')}</span>
           </button>
         </div>
 
@@ -97,7 +99,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
           className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <Plus size={15} />
-          <span>Nova Bateria</span>
+          <span>{t('questions.header.newBattery')}</span>
         </button>
       </div>
 

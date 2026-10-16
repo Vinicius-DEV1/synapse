@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CreateDeckModal from './CreateDeckModal';
+import { I18nProvider } from '../../i18n';
 
 describe('CreateDeckModal component', () => {
   it('renders form inputs and handles deck submission', async () => {
@@ -9,11 +10,13 @@ describe('CreateDeckModal component', () => {
     const handleCreate = vi.fn().mockResolvedValue(undefined);
 
     render(
-      <CreateDeckModal
-        parentId={null}
-        onClose={handleClose}
-        onCreate={handleCreate}
-      />
+      <I18nProvider initialLanguage="pt">
+        <CreateDeckModal
+          parentId={null}
+          onClose={handleClose}
+          onCreate={handleCreate}
+        />
+      </I18nProvider>
     );
 
     expect(screen.getByRole('heading', { name: 'Novo Baralho' })).toBeInTheDocument();
@@ -40,11 +43,13 @@ describe('CreateDeckModal component', () => {
 
   it('displays Subbaralho title when parentId is provided', () => {
     render(
-      <CreateDeckModal
-        parentId="parent-deck-id"
-        onClose={vi.fn()}
-        onCreate={vi.fn()}
-      />
+      <I18nProvider initialLanguage="pt">
+        <CreateDeckModal
+          parentId="parent-deck-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />
+      </I18nProvider>
     );
 
     expect(screen.getByRole('heading', { name: 'Novo Subbaralho' })).toBeInTheDocument();
