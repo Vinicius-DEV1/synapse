@@ -9,6 +9,7 @@
 [![Rust](https://img.shields.io/badge/Rust-Edição_2021-orange?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![CI](https://github.com/Vinicius-DEV1/synapse/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Vinicius-DEV1/synapse/actions/workflows/ci.yml)
 [![Licença: BSL 1.1](https://img.shields.io/badge/Licença-BSL_1.1-indigo?style=for-the-badge)](./LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Pronto-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 

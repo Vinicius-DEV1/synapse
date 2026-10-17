@@ -34,6 +34,7 @@ This document provides a comprehensive technical overview of the functional modu
   - **Collaborative CRDT Document Model**: Multi-device synchronization without merge conflicts, powered by Yjs state vectors.
   - **Visual Revision History**: Snapshot diffing via `htmldiff-js`, allowing users to inspect word-level additions and deletions across historical versions.
   - **Hierarchical Organizing**: Nested tree structure with drag-and-drop reorganization (`@dnd-kit`).
+- **Deep-Dive Specification**: See [**`docs/modules/notes.md`**](./notes.md) for ProseMirror schemas, custom node definitions, and Yjs synchronization details.
 
 ---
 
@@ -44,6 +45,7 @@ This document provides a comprehensive technical overview of the functional modu
   - **Field-Level Isolation**: Sensitive fields (`password`, `notes`, `totp_secret`) are encrypted individually before database insertion.
   - **HIBP Compromise Detection**: Queries the *Have I Been Pwned* API using **k-Anonymity** (only the first 5 characters of the SHA-1 password hash are transmitted), preserving 100% credential privacy.
   - **Password Generator**: Cryptographically random generator (`crypto.getRandomValues`) with customizable character sets and Shannon entropy scoring.
+- **Deep-Dive Specification**: See [**`docs/modules/vault.md`**](./vault.md) for field-level encryption wire formats and k-Anonymity breach checking mechanics.
 
 ---
 
@@ -75,6 +77,7 @@ This document provides a comprehensive technical overview of the functional modu
   - **Modern Cognitive Scheduling**: Implements FSRS (DSR model), outperforming traditional SM-2 by optimizing memory stability ($S$) and retrievability ($R$).
   - **AI Deck Synthesis**: Integrates Google Gemini to automatically transform notes and web clippings into structured flashcard decks.
   - **Review Analytics**: Visual heatmap, retention curves, and daily forecast metrics.
+- **Deep-Dive Specification**: See [**`docs/modules/anki-fsrs.md`**](./anki-fsrs.md) for the mathematical DSR formulation, rating curves, and AI synthesis prompts.
 
 ---
 

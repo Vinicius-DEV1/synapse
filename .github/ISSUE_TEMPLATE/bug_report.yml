@@ -1,0 +1,63 @@
+name: 🐛 Bug Report
+description: Create a report to help us reproduce and fix a bug in Synapse
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please ensure that no sensitive credentials, API keys, or personal notes are included in your report.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: When attempting to open an EPUB file...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Execution Environment
+      description: Where are you experiencing this issue?
+      options:
+        - Linux Desktop (Tauri)
+        - Windows Desktop (Tauri)
+        - macOS Desktop (Tauri)
+        - Web Browser (Chrome / Chromium)
+        - Web Browser (Firefox)
+        - Web Browser (Safari)
+        - Mobile Companion (Android)
+        - Docker Self-Hosted
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Open Synapse
+        2. Navigate to 'Synapse Notes'
+        3. Create a new LaTeX formula block
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs / Stack Traces
+      description: Please copy and paste relevant console errors or terminal logs here (if applicable).
+      render: shell
