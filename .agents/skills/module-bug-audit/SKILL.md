@@ -118,7 +118,7 @@ Perform a thorough, multi-stage inspection to:
 ### [BUG-01] [Descriptive Title]
 - **Severity**: Critical | High | Medium | Low
 - **Category**: SOLID | Memory Leak | Race Condition | Type Vulnerability | Platform | Panic | SQL
-- **Location**: [file.ts:L12-L34](file:///path/to/file.ts#L12-L34)
+- **Location**: `src/path/to/file.ts#L12-L34`
 - **Root Cause**: Concise explanation.
 - **Risk Scenario**: How and when the failure triggers.
 - **Estimated Fix Effort**: Trivial (< 15min) | Moderate (15min–1h) | Complex (1h+)

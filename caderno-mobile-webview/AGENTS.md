@@ -1,6 +1,6 @@
-# Caderno Mobile WebView — Agent Guidelines & Architecture
+# Synapse Mobile Companion (WebView Shell) — Architecture & Guidelines
 
-> This repository houses the native Android shell (`caderno-mobile-webview`) built with **Expo SDK 54** (`expo ~54.0.37`), React Native 0.81.5, and `react-native-webview` 13.15.0.
+> This directory houses the native Android companion shell (`caderno-mobile-webview`) built with **Expo SDK 54** (`expo ~54.0.37`), React Native 0.81.5, and `react-native-webview` 13.15.0.
 
 ## 1. Expo & React Native Versioning Standard
 - **Active Version**: Expo SDK 54 (`https://docs.expo.dev/versions/v54.0.0/`).

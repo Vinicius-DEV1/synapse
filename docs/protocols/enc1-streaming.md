@@ -1,18 +1,18 @@
 # 🎥 Encrypted Media Streaming & The ENC1 Protocol Specification
 
-This document defines the architecture, binary container specification, and dual-platform decryption pipelines governing encrypted media streaming in **Caderno**.
+This document defines the architecture, binary container specification, and dual-platform decryption pipelines governing encrypted media streaming in **Synapse**.
 
 ---
 
 ## 1. Technical Abstract & Problem Statement
 
-Modern multimedia files (such as 4K video lectures, cinema, and documentaries) routinely range from 1GB to over 10GB. Supporting these files in a **Zero-Knowledge, privacy-first** application introduces severe engineering challenges:
+Modern multimedia files (such as 4K video lectures, cinema, and audiobooks) routinely range from 1GB to over 10GB. Supporting these files in a **Zero-Knowledge, privacy-first** application introduces severe engineering challenges:
 
-1. **RAM Boundary Constraints**: Decrypting an entire multi-gigabyte video into RAM prior to playback will immediately trigger Out-Of-Memory (OOM) crashes, particularly on constrained mobile and desktop devices.
+1. **RAM Boundary Constraints**: Decrypting an entire multi-gigabyte video into RAM prior to playback will immediately trigger Out-Of-Memory (OOM) crashes, particularly on memory-constrained devices.
 2. **Arbitrary Seek Latency**: Users expect instant scrub and seek operations to arbitrary timestamps without waiting to decrypt preceding footage.
-3. **Multiplatform Parity**: The playback engine must operate natively on the Desktop (Tauri v2 with WebKitGTK, MSHTML/WebView2, and Safari WebKit) and seamlessly within modern Web browsers (Progressive Web Application).
+3. **Multiplatform Parity**: The playback engine must operate natively on Desktop (Tauri v2 with WebKitGTK on Linux, WebView2 on Windows, WKWebView on macOS) and seamlessly within modern Web browsers (Progressive Web Application).
 
-Caderno resolves this through **ENC1**: a chunked, authenticated binary container paired with asynchronous streaming decryption engines.
+Synapse resolves this through **ENC1**: a chunked, authenticated binary container paired with asynchronous streaming decryption engines.
 
 ---
 
@@ -35,7 +35,7 @@ Files encrypted with the ENC1 specification adhere to a fixed binary header foll
 ```
 
 ### 2.1. Structural Breakdown
-- **Magic Signature (4 bytes)**: Identifies the file as an authenticated ENC1 container.
+- **Magic Signature (4 bytes)**: Identifies the file as an authenticated ENC1 container (`0x45`, `0x4E`, `0x43`, `0x31`).
 - **Original File Size (8 bytes)**: Represents the exact uncompressed byte length of the media file, enabling accurate `Content-Range` HTTP headers without decrypting the stream.
 - **Chunk Size (4 bytes)**: Specifies the unencrypted payload size per block (typically 1,048,576 bytes / 1MB).
 - **Encrypted Chunk Overhead**: Each chunk carries an independent 12-byte random IV and a 16-byte GCM authentication tag, introducing an overhead of exactly **28 bytes per chunk**.
@@ -129,21 +129,9 @@ In standard Web browsers where native Rust binaries are unavailable, the streami
 
 ---
 
-## 6. WebKitGTK & Browser Engine Nuances
+## 6. Performance & Memory Profile
 
-During testing across Linux (WebKitGTK) and Windows (WebView2), several browser rendering quirks were resolved:
-
-1. **WebKitGTK Buffering Lockups**:
-   - WebKitGTK on Linux frequently fails to dispatch the `onPlaying` event following a seek operation if a loading spinner is active.
-   - **Resolution**: Always clear loading/buffering states inside `onSeeked` and `onTimeUpdate` handlers once playback progress is confirmed.
-2. **Subtitle Track Memory Isolation**:
-   - Subtitles (`.vtt`, `.srt`) are decrypted in memory and injected directly via the HTML5 `TextTrack` API rather than leaking decrypted Blobs through object URLs.
-
----
-
-## 7. Performance & Memory Profile
-
-| Metric | Traditional Decrypt-to-Disk | Caderno ENC1 Streaming |
+| Metric | Traditional Decrypt-to-Disk | Synapse ENC1 Streaming |
 | :----- | :-------------------------- | :--------------------- |
 | **RAM Utilization (10GB File)** | 10+ GB (Crash/OOM) | **< 15 MB** constant |
 | **Time to First Frame (TTFF)** | 30–60 seconds | **< 200 ms** |

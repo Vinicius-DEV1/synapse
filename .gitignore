@@ -77,7 +77,7 @@ caderno-mobile-webview/.expo/
 caderno-mobile-webview/web-build/
 
 # Audit Reports & Agent Swarm Worktrees (Internal - Never Commit)
-docs/audit/
+archive/
 audit_report_*.md
 .worktrees/
 /scripts/

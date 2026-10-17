@@ -1,8 +1,8 @@
-# 🛠️ Caderno Engineering Skills & Architecture Playbooks
+# 🛠️ Synapse Engineering Skills & Architecture Playbooks
 
-Welcome to the **Caderno Engineering Skills** repository. These playbooks document the architectural patterns, security standards, design system tokens, and automated quality protocols governing the Caderno codebase.
+Welcome to the **Synapse Engineering Skills** repository. These playbooks document the architectural patterns, security standards, design system tokens, and automated quality protocols governing the Synapse codebase.
 
-Whether you are an engineering recruiter, tech lead, or contributor, this directory outlines the rigor and modern Big Tech engineering practices baked into Caderno's hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeScript / Vite) architecture.
+Whether you are an engineering recruiter, tech lead, or contributor, this directory outlines the rigor and modern Big Tech engineering practices baked into Synapse's hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeScript / Vite) architecture.
 
 ---
 

@@ -1,6 +1,6 @@
-# Caderno Project Rules & Guidelines
+# Synapse Project Rules & Guidelines
 
-This document defines the mandatory architectural, code quality, design integrity, and engineering standards for the **Caderno** project. The AI agent must strictly follow these rules across all sessions, tasks, and code modifications.
+This document defines the mandatory architectural, code quality, design integrity, and engineering standards for the **Synapse** project (formerly Caderno). The AI agent must strictly follow these rules across all sessions, tasks, and code modifications.
 
 ---
 
@@ -47,7 +47,7 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 - **Registry & Strategy Patterns**: Prefer registries and strategy maps (e.g., `ViewFactory`, editor node extensions, custom formatters) over massive, hard-coded `switch/case` statements that require modifying core files when adding new variants.
 
 ### 3.3. Liskov Substitution Principle (LSP)
-- **Interchangeable Platform Adapters**: All platform implementations (e.g., `TauriStorageService` and `WebStorageService`) must strictly adhere to the same contract interface (`IStorageService`).
+- **Interchangeable Platform Adapters**: All platform implementations (e.g., `tauriApi` in `src/tauri-api.ts` and `webApi` in `src/services/web-api.ts`) must strictly adhere to the same contract interface (`window.api` typed in `src/api/types.ts`).
 - Subtypes and adapter implementations must not throw unexpected exceptions, violate method signatures, or alter the expected contract behavior when substituted in different environments (Web vs Tauri).
 
 ### 3.4. Interface Segregation Principle (ISP)
@@ -81,7 +81,7 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 2. **Async Memory Leaks & Stale Closures**:
    - Always cancel unmounted asynchronous operations (`AbortController`, mounted flags, or subscription teardown in `useEffect`).
    - Keep dependency arrays in `useEffect`, `useCallback`, and `useMemo` strictly accurate and exhaustive.
-3. **Prop Drilling**: Avoid passing props through more than 2 intermediate components. Use React Context, Zustand/Store, or component composition.
+3. **Prop Drilling**: Avoid passing props through more than 2 intermediate components. Use React Context / Store reducers or component composition.
 4. **Magic Values & Hardcoded Strings**:
    - Extract raw constants, numeric thresholds, timeout intervals, and action keys into well-named constants or `const` enums.
 5. **Direct State Mutations**:

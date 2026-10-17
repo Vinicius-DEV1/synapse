@@ -1,6 +1,7 @@
 {
   "name": "caderno",
   "private": true,
+  "license": "BSL-1.1",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

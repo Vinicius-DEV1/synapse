@@ -11,7 +11,7 @@
 
 Language learners and researchers reading foreign literature in digital formats (EPUB, PDF) frequently look up unknown words and idioms using the built-in AI Dictionary. However, when learners exit the reading modal or finish a chapter, the extracted definitions and vocabulary insights are currently discarded.
 
-**Objective**: Provide a seamless, zero-friction pipeline that enables users to capture looked-up words, AI-generated phonetic transcriptions, definitions, and **their exact sentence context** directly into Caderno's Spaced Repetition (Anki) engine with a single click.
+**Objective**: Provide a seamless, zero-friction pipeline that enables users to capture looked-up words, AI-generated phonetic transcriptions, definitions, and **their exact sentence context** directly into Synapse's Spaced Repetition (Anki) engine with a single click.
 
 ---
 

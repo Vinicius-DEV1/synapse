@@ -152,7 +152,7 @@ Format all findings using the template below.
 ### [FIND-01] [Descriptive Title]
 - **Dimension**: 🐛 | 🏗️ | 🔒 | ⚡ | 🛡️ | 🎨
 - **Severity**: Critical | High | Medium | Low
-- **Location**: [file.ts:L12-L34](file:///path/to/file.ts#L12-L34)
+- **Location**: `src/path/to/file.ts#L12-L34`
 - **Description**: What the issue is and why it matters.
 - **Risk Scenario**: When and how this causes user-visible impact.
 - **Proposed Fix**: Concrete remediation preserving 100% parity.

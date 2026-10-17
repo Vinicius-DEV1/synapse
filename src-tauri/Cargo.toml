@@ -1,10 +1,10 @@
 [package]
 name = "caderno"
 version = "1.0.0"
-description = "Caderno - Seu Segundo Cérebro"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Synapse - Personal Knowledge Management & Zero-Knowledge Vault"
+authors = ["Vinicius Calado <https://github.com/Vinicius-DEV1>"]
+license = "BSL-1.1"
+repository = "https://github.com/Vinicius-DEV1/synapse"
 edition = "2021"
 rust-version = "1.77.2"
 
