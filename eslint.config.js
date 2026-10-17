@@ -45,6 +45,8 @@ export default defineConfig([
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'off',
+      'no-useless-assignment': 'off',
+      'prefer-const': 'warn',
     },
   },
   {
