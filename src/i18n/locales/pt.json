@@ -34,6 +34,7 @@
     "previous": "Anterior",
     "warning": "Aviso",
     "info": "Informação",
+    "offline": "Offline",
     "featureNotAvailable": "Recurso não disponível nesta versão."
   },
   "sidebar": {
@@ -74,7 +75,18 @@
     "trashDesc": "Restaure páginas e estações lofi ou exclua itens permanentemente.",
     "diagramsDesc": "Crie, conecte e estruture fluxogramas visuais no painel principal.",
     "quizDesc": "Pratique questões, simulados e acompanhe seu desempenho em provas.",
-    "financeDesc": "Acompanhe receitas, despesas, orçamentos e metas financeiras no painel principal."
+    "financeDesc": "Acompanhe receitas, despesas, orçamentos e metas financeiras no painel principal.",
+    "searchPages": "Buscar páginas...",
+    "importPage": "Importar Página",
+    "pinned": "Fixados",
+    "showMore": "Exibir mais ({{count}})",
+    "noPagesCreated": "Nenhuma página criada",
+    "reorderPinnedError": "Falha ao reordenar páginas fixadas.",
+    "movePageError": "Falha ao mover a página.",
+    "moveIntoSelfError": "Não é possível mover uma página para dentro dela mesma.",
+    "moveToRootError": "Falha ao mover a página para a raiz.",
+    "newSubPage": "Nova sub-página",
+    "moreOptions": "Mais opções"
   },
   "tabBar": {
     "newTab": "Nova Guia",
@@ -146,6 +158,22 @@
     "moveTooltip": "Mover página para outro local...",
     "history": "Histórico",
     "historyTooltip": "Histórico de edições",
+    "cover": {
+      "changeCover": "Trocar Capa",
+      "removeCover": "Remover",
+      "addCover": "Adicionar capa",
+      "coverModalTitle": "Adicionar Capa",
+      "uploadFromComputer": "Fazer upload do computador",
+      "or": "ou",
+      "imageUrl": "Link da Imagem",
+      "saveCover": "Salvar",
+      "generatingCover": "Baixando e gerando capa...",
+      "randomCover": "Gerar Capa Aleatória",
+      "readImageError": "Falha ao ler arquivo de imagem.",
+      "processImageError": "Falha ao processar imagem da capa.",
+      "readBlobError": "Falha ao ler dados da imagem.",
+      "generateRandomError": "Falha ao gerar capa aleatória. Verifique sua conexão."
+    },
     "toolbar": {
       "bold": "Negrito (Ctrl+B)",
       "italic": "Itálico (Ctrl+I)",
@@ -1267,6 +1295,50 @@
     "deleteCloudBtn": "Excluir Totalmente",
     "performanceWarningTitle": "Aviso de Desempenho (Web)",
     "performanceWarning": "Atenção: Converter vídeos maiores que 500MB na versão Web pode causar lentidão severa ou travamento da aba por falta de memória. Recomenda-se usar o Desktop para conversão ou marcar a qualidade como 'Original'.\n\nDeseja continuar mesmo assim?"
+  },
+  "backgroundTasks": {
+    "completed": "{{progress}}% concluído",
+    "cancelled": "Cancelado",
+    "cancelTask": "Cancelar tarefa",
+    "close": "Fechar"
+  },
+  "windowControls": {
+    "minimize": "Minimizar",
+    "minimizeAria": "Minimizar janela",
+    "maximize": "Maximizar",
+    "maximizeAria": "Maximizar janela",
+    "restore": "Restaurar",
+    "restoreAria": "Restaurar janela",
+    "close": "Fechar",
+    "closeAria": "Fechar janela"
+  },
+  "pageSearchMenu": {
+    "createTitle": "Criar Nova Página",
+    "linkTitle": "Vincular Página",
+    "createPage": "Criar página \"{{title}}\"",
+    "createPlaceholder": "Nome da nova página...",
+    "searchPlaceholder": "Buscar página existente...",
+    "noPagesFound": "Nenhuma página encontrada"
+  },
+  "notifications": {
+    "centerTitle": "Central de Notificações",
+    "tooltip": "Notificações",
+    "newBadge": "{{count}} nova(s)",
+    "readAll": "Ler todas",
+    "readAllTitle": "Marcar todas como lidas",
+    "emptyTitle": "Nenhuma notificação",
+    "emptyDesc": "Você está em dia com toda a sua agenda e lembretes!",
+    "openPage": "Abrir Página",
+    "snooze": "Adiar {{minutes}}m",
+    "snoozeTitle": "Adiar {{minutes}} minutos",
+    "snoozeTag": "Adiado",
+    "complete": "Concluir",
+    "completeTitle": "Concluir Evento",
+    "markAsRead": "Marcar como lida",
+    "remove": "Remover",
+    "now": "agora",
+    "minutesAgo": "há {{count}}m",
+    "hoursAgo": "há {{count}}h"
   }
 }
 

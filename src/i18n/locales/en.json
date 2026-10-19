@@ -34,6 +34,7 @@
     "previous": "Previous",
     "warning": "Warning",
     "info": "Information",
+    "offline": "Offline",
     "featureNotAvailable": "Feature not available in this version."
   },
   "sidebar": {
@@ -74,7 +75,18 @@
     "trashDesc": "Restore pages and lofi stations or permanently delete items.",
     "diagramsDesc": "Create, connect and structure visual flowcharts in the main panel.",
     "quizDesc": "Practice questions, mock exams and track your test performance.",
-    "financeDesc": "Track income, expenses, budgets and financial goals in the main panel."
+    "financeDesc": "Track income, expenses, budgets and financial goals in the main panel.",
+    "searchPages": "Search pages...",
+    "importPage": "Import Page",
+    "pinned": "Pinned",
+    "showMore": "Show more ({{count}})",
+    "noPagesCreated": "No pages created",
+    "reorderPinnedError": "Failed to reorder pinned pages.",
+    "movePageError": "Failed to move page.",
+    "moveIntoSelfError": "Cannot move a page inside itself.",
+    "moveToRootError": "Failed to move page to root.",
+    "newSubPage": "New sub-page",
+    "moreOptions": "More options"
   },
   "tabBar": {
     "newTab": "New Tab",
@@ -146,6 +158,22 @@
     "moveTooltip": "Move page to another location...",
     "history": "History",
     "historyTooltip": "Edit history",
+    "cover": {
+      "changeCover": "Change Cover",
+      "removeCover": "Remove",
+      "addCover": "Add cover",
+      "coverModalTitle": "Add Cover",
+      "uploadFromComputer": "Upload from computer",
+      "or": "or",
+      "imageUrl": "Image Link",
+      "saveCover": "Save",
+      "generatingCover": "Generating cover...",
+      "randomCover": "Generate Random Cover",
+      "readImageError": "Failed to read image file.",
+      "processImageError": "Failed to process cover image.",
+      "readBlobError": "Failed to read image data.",
+      "generateRandomError": "Failed to generate random cover. Check your connection."
+    },
     "toolbar": {
       "bold": "Bold (Ctrl+B)",
       "italic": "Italic (Ctrl+I)",
@@ -1267,6 +1295,50 @@
     "deleteCloudBtn": "Delete Completely",
     "performanceWarningTitle": "Performance Warning (Web)",
     "performanceWarning": "Warning: Converting videos larger than 500MB in the Web version may cause severe lag or browser tab crash due to memory exhaustion. It is recommended to use the Desktop app for conversion or select 'Original' quality.\n\nDo you want to continue anyway?"
+  },
+  "backgroundTasks": {
+    "completed": "{{progress}}% completed",
+    "cancelled": "Cancelled",
+    "cancelTask": "Cancel task",
+    "close": "Close"
+  },
+  "windowControls": {
+    "minimize": "Minimize",
+    "minimizeAria": "Minimize window",
+    "maximize": "Maximize",
+    "maximizeAria": "Maximize window",
+    "restore": "Restore",
+    "restoreAria": "Restore window",
+    "close": "Close",
+    "closeAria": "Close window"
+  },
+  "pageSearchMenu": {
+    "createTitle": "Create New Page",
+    "linkTitle": "Link Page",
+    "createPage": "Create page \"{{title}}\"",
+    "createPlaceholder": "New page name...",
+    "searchPlaceholder": "Search existing page...",
+    "noPagesFound": "No pages found"
+  },
+  "notifications": {
+    "centerTitle": "Notification Center",
+    "tooltip": "Notifications",
+    "newBadge": "{{count}} new",
+    "readAll": "Read all",
+    "readAllTitle": "Mark all as read",
+    "emptyTitle": "No notifications",
+    "emptyDesc": "You are up to date with your schedule and reminders!",
+    "openPage": "Open Page",
+    "snooze": "Snooze {{minutes}}m",
+    "snoozeTitle": "Snooze for {{minutes}} minutes",
+    "snoozeTag": "Snoozed",
+    "complete": "Complete",
+    "completeTitle": "Complete Event",
+    "markAsRead": "Mark as read",
+    "remove": "Remove",
+    "now": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago"
   }
 }
 

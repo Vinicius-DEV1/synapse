@@ -5,6 +5,7 @@ import { getStoreDispatch, getStoreState } from '../../../store/useStore';
 import type { Page } from '../../../types';
 import EmojiPopover from '../../EmojiPopover';
 import RenamePageModal from '../../modals/RenamePageModal';
+import { useI18n } from '../../../i18n';
 
 export interface SidebarItemProps {
   page: Page;
@@ -31,6 +32,7 @@ function SidebarItemComponent({
   isExpanded: isExpandedProp,
   expandedSet,
 }: SidebarItemProps) {
+  const { t } = useI18n();
   const [showRenameModal, setShowRenameModal] = useState(false);
 
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
@@ -137,7 +139,7 @@ function SidebarItemComponent({
               onCreatePage(page.id);
             }}
             className="p-0.5 rounded hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-colors"
-            title="Nova sub-página"
+            title={t('sidebar.newSubPage')}
           >
             <Plus size={13} />
           </button>
@@ -147,7 +149,7 @@ function SidebarItemComponent({
               getStoreDispatch()({ type: 'SHOW_CONTEXT_MENU', x: e.clientX, y: e.clientY, pageId: page.id });
             }}
             className="p-0.5 rounded hover:bg-white/10 text-dark-subtext hover:text-dark-text transition-colors"
-            title="Mais opções"
+            title={t('sidebar.moreOptions')}
           >
             <MoreHorizontal size={13} />
           </button>

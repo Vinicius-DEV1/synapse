@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Minus, Square, Copy, X } from 'lucide-react';
 import { windowService } from '../../services/windowService';
+import { useI18n } from '../../i18n';
 
 export default function WindowControls() {
+  const { t } = useI18n();
   const [isDesktop, setIsDesktop] = useState(() => windowService.isSupported());
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -62,8 +64,8 @@ export default function WindowControls() {
       <button
         onClick={handleMinimize}
         className="w-8 h-7 flex items-center justify-center rounded-md text-dark-subtext hover:text-white hover:bg-white/10 transition-colors active:scale-95"
-        title="Minimizar"
-        aria-label="Minimizar janela"
+        title={t('windowControls.minimize')}
+        aria-label={t('windowControls.minimizeAria')}
       >
         <Minus size={13} />
       </button>
@@ -71,8 +73,8 @@ export default function WindowControls() {
       <button
         onClick={handleToggleMaximize}
         className="w-8 h-7 flex items-center justify-center rounded-md text-dark-subtext hover:text-white hover:bg-white/10 transition-colors active:scale-95"
-        title={isMaximized ? 'Restaurar' : 'Maximizar'}
-        aria-label={isMaximized ? 'Restaurar janela' : 'Maximizar janela'}
+        title={isMaximized ? t('windowControls.restore') : t('windowControls.maximize')}
+        aria-label={isMaximized ? t('windowControls.restoreAria') : t('windowControls.maximizeAria')}
       >
         {isMaximized ? <Copy size={11} className="rotate-180" /> : <Square size={11} />}
       </button>
@@ -80,8 +82,8 @@ export default function WindowControls() {
       <button
         onClick={handleClose}
         className="w-8 h-7 flex items-center justify-center rounded-md text-dark-subtext hover:text-white hover:bg-red-500/80 transition-colors active:scale-95"
-        title="Fechar"
-        aria-label="Fechar janela"
+        title={t('windowControls.close')}
+        aria-label={t('windowControls.closeAria')}
       >
         <X size={14} />
       </button>

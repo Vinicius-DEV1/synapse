@@ -36,9 +36,9 @@ describe('WindowControls component', () => {
 
     render(<WindowControls />);
 
-    const minimizeBtn = await screen.findByTitle('Minimizar');
-    const maximizeBtn = await screen.findByTitle('Maximizar');
-    const closeBtn = await screen.findByTitle('Fechar');
+    const minimizeBtn = await screen.findByTitle('Minimize');
+    const maximizeBtn = await screen.findByTitle('Maximize');
+    const closeBtn = await screen.findByTitle('Close');
 
     expect(minimizeBtn).toBeInTheDocument();
     expect(maximizeBtn).toBeInTheDocument();
@@ -50,9 +50,9 @@ describe('WindowControls component', () => {
 
     render(<WindowControls />);
 
-    const minimizeBtn = await screen.findByTitle('Minimizar');
-    const maximizeBtn = await screen.findByTitle('Maximizar');
-    const closeBtn = await screen.findByTitle('Fechar');
+    const minimizeBtn = await screen.findByTitle('Minimize');
+    const maximizeBtn = await screen.findByTitle('Maximize');
+    const closeBtn = await screen.findByTitle('Close');
 
     fireEvent.click(minimizeBtn);
     expect(mockMinimize).toHaveBeenCalledTimes(1);

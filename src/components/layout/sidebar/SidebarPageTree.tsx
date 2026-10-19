@@ -11,6 +11,7 @@ import { triggerToast } from '../../ui/ToastContext';
 import { PinnedSidebarItem } from './PinnedSidebarItem';
 import { RootDroppable } from './RootDroppable';
 import type { Page, Tab } from '../../../types';
+import { useI18n } from '../../../i18n';
 
 interface SidebarPageTreeProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
@@ -20,6 +21,7 @@ interface SidebarPageTreeProps {
 
 export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const { handleImportPage } = usePageActions();
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
@@ -73,7 +75,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       if (p.pinned_order !== idx) {
         onUpdatePage(p.id, { pinned_order: idx }).catch((err) => {
           console.error('[Sidebar] Falha ao atualizar ordem de fixados:', err);
-          triggerToast('Falha ao reordenar páginas fixadas.', 'error');
+          triggerToast(t('sidebar.reorderPinnedError'), 'error');
         });
       }
     });
@@ -121,17 +123,17 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             })
             .catch((err) => {
               console.error('[Sidebar] Falha ao atualizar hierarquia:', err);
-              triggerToast('Falha ao mover a página.', 'error');
+              triggerToast(t('sidebar.movePageError'), 'error');
             });
         } else {
-          triggerToast('Não é possível mover uma página para dentro dela mesma.', 'error');
+          triggerToast(t('sidebar.moveIntoSelfError'), 'error');
         }
       }
     } else if (active.data.current?.type === 'hierarchy' && over.id === 'root-droppable') {
       const draggedId = active.data.current.page.id;
       onUpdatePage(draggedId, { parent_id: null }).catch((err) => {
         console.error('[Sidebar] Falha ao mover para a raiz:', err);
-        triggerToast('Falha ao mover a página para a raiz.', 'error');
+        triggerToast(t('sidebar.moveToRootError'), 'error');
       });
     }
   };
@@ -144,7 +146,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
           className="w-full flex items-center gap-2 bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-left text-dark-subtext hover:bg-white/10 hover:text-dark-text focus:outline-none transition-colors group"
         >
           <Search size={14} className="group-hover:text-brand-400 transition-colors" />
-          <span className="flex-1">Buscar páginas...</span>
+          <span className="flex-1">{t('sidebar.searchPages')}</span>
           <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded text-white/40 font-mono">⌘K</span>
         </button>
       </div>
@@ -155,12 +157,12 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
           className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
         >
           <Plus size={14} className="text-brand-400" />
-          <span>Nova Página</span>
+          <span>{t('sidebar.newPage')}</span>
         </button>
         <button
           onClick={() => handleImportPage(null)}
           className="flex items-center justify-center p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
-          title="Importar Página"
+          title={t('sidebar.importPage')}
         >
           <Upload size={14} className="text-brand-400" />
         </button>
@@ -170,7 +172,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
         {pinnedPages.length > 0 && (
           <div className="mb-4">
             <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider flex items-center gap-1">
-              <Pin size={12} /> Fixados
+              <Pin size={12} /> {t('sidebar.pinned')}
             </div>
             <SortableContext
               items={pinnedPages.slice(0, visiblePinnedCount).map((p) => `pinned-sort-${p.id}`)}
@@ -195,7 +197,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
                 onClick={() => setVisiblePinnedCount(prev => prev + 10)}
                 className="w-full text-left px-4 py-1.5 mt-1 text-xs text-brand-400 hover:bg-white/5 rounded-lg transition-colors"
               >
-                Exibir mais ({pinnedPages.length - visiblePinnedCount})
+                {t('sidebar.showMore', { count: pinnedPages.length - visiblePinnedCount })}
               </button>
             )}
           </div>
@@ -203,13 +205,13 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
         
         {pinnedPages.length > 0 && (
           <div className="px-3 py-1 text-xs font-semibold text-dark-subtext uppercase tracking-wider mt-2">
-            Páginas
+            {t('sidebar.pages')}
           </div>
         )}
 
         {rootPages.length === 0 && (
           <div className="text-center text-dark-subtext text-xs py-8 px-4">
-            Nenhuma página criada
+            {t('sidebar.noPagesCreated')}
           </div>
         )}
         {rootPages.slice(0, visiblePagesCount).map((page) => (
@@ -232,7 +234,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             onClick={() => setVisiblePagesCount(prev => prev + 10)}
             className="w-full text-left px-4 py-1.5 mt-1 text-xs text-brand-400 hover:bg-white/5 rounded-lg transition-colors"
           >
-            Exibir mais ({rootPages.length - visiblePagesCount})
+            {t('sidebar.showMore', { count: rootPages.length - visiblePagesCount })}
           </button>
         )}
       </RootDroppable>

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Home, PanelLeftClose, PanelLeft, BookOpen, Library, Wallet, Film, PlaySquare, BrainCircuit, Timer, Calendar as CalendarIcon, FolderOpen, Shield, Mic, ChevronUp, ChevronDown, LayoutDashboard, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Trash2, Network, Video, CheckSquare, Share2 } from 'lucide-react';
+import { Home, PanelLeftClose, PanelLeft, Shield, ChevronUp, ChevronDown, LayoutDashboard, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import type { Tab, Page } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
+import { MODULE_CONFIG_MAP } from './modules.config';
 import { isDesktopApp } from '../../../services/platform';
 import { windowService } from '../../../services/windowService';
 import { useI18n } from '../../../i18n';
@@ -75,25 +76,15 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   }
 
   const renderModuleHeaderIcon = () => {
-    switch (activeModule) {
-      case 'home': return <Home size={20} className="text-brand-400" />;
-      case 'notes': return <BookOpen size={20} className="text-brand-400" />;
-      case 'library': return <Library size={20} className="text-brand-400" />;
-      case 'culture': return <Film size={20} className="text-brand-400" />;
-      case 'video': return <PlaySquare size={20} className="text-brand-400" />;
-      case 'anki': return <BrainCircuit size={20} className="text-brand-400" />;
-      case 'focus': return <Timer size={20} className="text-brand-400" />;
-      case 'calendar': return <CalendarIcon size={20} className="text-brand-400" />;
-      case 'files': return <FolderOpen size={20} className="text-brand-400" />;
-      case 'vault': return <Shield size={20} className="text-brand-400" />;
-      case 'practice': return <Mic size={20} className="text-brand-400" />;
-      case 'quiz': return <CheckSquare size={20} className="text-brand-400" />;
-      case 'settings': return <Settings size={20} className="text-brand-400" />;
-      case 'trash': return <Trash2 size={20} className="text-brand-400" />;
-      case 'diagrams': return <Network size={20} className="text-brand-400" />;
-      case 'finance': return <Wallet size={20} className="text-brand-400" />;
-      default: return <Home size={20} className="text-brand-400" />;
+    if (activeModule === 'settings') {
+      return <Settings size={20} className="text-brand-400" />;
     }
+    const config = MODULE_CONFIG_MAP.get(activeModule);
+    if (config) {
+      const Icon = config.icon;
+      return <Icon size={20} className="text-brand-400" />;
+    }
+    return <Home size={20} className="text-brand-400" />;
   };
 
   const renderModuleHeaderLabel = () => {
@@ -137,51 +128,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
             onUpdatePage={onUpdatePage} 
             activeTab={activeTab} 
           />
-        ) : activeModule === 'library' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.library')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.libraryDesc')}</div>
-          </div>
-        ) : activeModule === 'culture' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.culture')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.cultureDesc')}</div>
-          </div>
-        ) : activeModule === 'video' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.video')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.videoDesc')}</div>
-          </div>
-        ) : activeModule === 'anki' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.anki')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.ankiDesc')}</div>
-          </div>
-        ) : activeModule === 'focus' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.focus')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.focusDesc')}</div>
-          </div>
-        ) : activeModule === 'calendar' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.calendar')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.calendarDesc')}</div>
-          </div>
-        ) : activeModule === 'files' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.files')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.filesDesc')}</div>
-          </div>
-        ) : activeModule === 'vault' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.vault')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.vaultDesc')}</div>
-          </div>
-        ) : activeModule === 'practice' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.practice')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.practiceDesc')}</div>
-          </div>
         ) : activeModule === 'settings' ? (
           <div className="flex flex-col gap-1 mt-2 flex-1 overflow-y-auto custom-scrollbar pb-2">
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider shrink-0">{t('sidebar.dashboard')}</div>
@@ -212,33 +158,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               </button>
             ))}
           </div>
-        ) : activeModule === 'home' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.home')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.homeDesc')}</div>
-          </div>
-        ) : activeModule === 'trash' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.trash')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.trashDesc')}</div>
-          </div>
-        ) : activeModule === 'diagrams' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.diagrams')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.diagramsDesc')}</div>
-          </div>
-        ) : activeModule === 'quiz' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.quiz')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.quizDesc')}</div>
-          </div>
-        ) : activeModule === 'finance' ? (
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{t('sidebar.finance')}</div>
-            <div className="px-3 py-1 text-xs text-dark-subtext">{t('sidebar.financeDesc')}</div>
-          </div>
         ) : (
-          <div className="mt-2" />
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider">{renderModuleHeaderLabel()}</div>
+            <div className="px-3 py-1 text-xs text-dark-subtext">{t(`sidebar.${activeModule}Desc`)}</div>
+          </div>
         )}
 
         <div className="border-t border-white/5 flex flex-col mt-auto">

@@ -1,8 +1,10 @@
 import { useTasks } from '../../store/TaskContext';
 import { X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 export default function BackgroundTaskWidget() {
   const { tasks, cancelTask, removeTask } = useTasks();
+  const { t } = useI18n();
 
   if (tasks.length === 0) return null;
 
@@ -11,7 +13,7 @@ export default function BackgroundTaskWidget() {
       {tasks.map((task) => (
         <div
           key={task.id}
-          className="bg-dark-card border border-white/10 shadow-2xl rounded-xl p-3 w-72 pointer-events-auto animate-in slide-in-from-right-4 fade-in duration-300"
+          className="bg-dark-card border border-white/[0.06] shadow-2xl rounded-xl p-3 w-72 pointer-events-auto animate-in slide-in-from-right-4 fade-in duration-300"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -31,12 +33,12 @@ export default function BackgroundTaskWidget() {
                 )}
                 {task.status === 'running' && (
                   <span className="text-[10px] text-dark-subtext mt-0.5">
-                    {Math.round(task.progress)}% concluído
+                    {t('backgroundTasks.completed', { progress: Math.round(task.progress) })}
                   </span>
                 )}
                 {task.status === 'cancelled' && (
                   <span className="text-[10px] text-gray-400 mt-0.5">
-                    Cancelado
+                    {t('backgroundTasks.cancelled')}
                   </span>
                 )}
               </div>
@@ -51,7 +53,7 @@ export default function BackgroundTaskWidget() {
                 }
               }}
               className="text-dark-subtext hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors focus:outline-none"
-              title={task.status === 'running' ? 'Cancelar tarefa' : 'Fechar'}
+              title={task.status === 'running' ? t('backgroundTasks.cancelTask') : t('backgroundTasks.close')}
             >
               <X size={14} />
             </button>

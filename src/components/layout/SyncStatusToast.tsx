@@ -1,10 +1,13 @@
 import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 interface SyncStatusToastProps {
   status: 'idle' | 'syncing' | 'success' | 'error';
 }
 
 export function SyncStatusToast({ status }: SyncStatusToastProps) {
+  const { t } = useI18n();
+
   return (
     <div
       className={`fixed bottom-4 right-6 flex items-center gap-1.5 pointer-events-none transition-opacity duration-1000 z-[9999]
@@ -16,11 +19,11 @@ export function SyncStatusToast({ status }: SyncStatusToastProps) {
       {status === 'error' && <XCircle size={12} className="text-red-400" />}
       <span className="text-[10px] font-medium text-dark-subtext uppercase tracking-widest">
         {status === 'syncing'
-          ? 'Salvando'
+          ? t('common.saving')
           : status === 'success'
-          ? 'Salvo'
+          ? t('common.saved')
           : status === 'error'
-          ? (!navigator.onLine ? 'Offline' : 'Erro')
+          ? (!navigator.onLine ? t('common.offline') : t('common.error'))
           : ''}
       </span>
     </div>

@@ -59,7 +59,7 @@ export default function TabContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-[100] w-52 bg-dark-card border border-white/10 rounded-xl shadow-2xl py-1 text-xs select-none animate-scale-in"
+      className="fixed z-[100] w-52 bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl py-1 text-xs select-none animate-scale-in"
       style={{ left: adjustedX, top: adjustedY }}
       onClick={(e) => e.stopPropagation()}
     >
