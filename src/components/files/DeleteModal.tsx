@@ -116,7 +116,7 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
           </div>
 
           {hasDriveFile && (
-            <div className="w-full mt-2 flex items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10">
+            <div className="w-full mt-2 flex items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/[0.06]">
               <input 
                 type="checkbox" 
                 id="keepInDrive" 
@@ -131,7 +131,7 @@ export default function DeleteModal({ item, isFolder, items, onClose, onDeleted 
           )}
         </div>
         
-        <div className="p-4 border-t border-white/10 bg-dark-bg/50 flex justify-end gap-3">
+        <div className="p-4 border-t border-white/[0.06] bg-dark-bg/50 flex justify-end gap-3">
           <button 
             onClick={onClose}
             disabled={isDeleting}

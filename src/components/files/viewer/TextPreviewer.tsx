@@ -20,7 +20,7 @@ const mdRenderers: Components = {
   strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic text-zinc-300">{children}</em>,
   h1: ({ children }) => (
-    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 mt-10 text-white border-b border-white/10 pb-3">
+    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 mt-10 text-white border-b border-white/[0.06] pb-3">
       {children}
     </h1>
   ),
@@ -47,7 +47,7 @@ const mdRenderers: Components = {
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="border-white/10 my-8" />,
+  hr: () => <hr className="border-white/[0.06] my-8" />,
   a: ({ href, children }) => (
     <a
       href={href}
@@ -59,8 +59,8 @@ const mdRenderers: Components = {
     </a>
   ),
   table: ({ children }) => (
-    <ScrollableDiv className="overflow-x-auto my-6 border-y border-white/10">
-      <table className="min-w-full divide-y divide-white/10 text-left">{children}</table>
+    <ScrollableDiv className="overflow-x-auto my-6 border-y border-white/[0.06]">
+      <table className="min-w-full divide-y divide-white/[0.06] text-left">{children}</table>
     </ScrollableDiv>
   ),
   thead: ({ children }) => <thead className="bg-white/[0.02]">{children}</thead>,

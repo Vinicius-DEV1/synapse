@@ -83,15 +83,15 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[70vh] max-h-[600px]">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col h-[70vh] max-h-[600px]">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.06] shrink-0">
           <h2 className="text-lg font-semibold text-white">{t('files.linkExistingFile')}</h2>
           <button onClick={onClose} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
           </button>
         </div>
         
-        <div className="p-4 border-b border-white/10 shrink-0">
+        <div className="p-4 border-b border-white/[0.06] shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext" size={18} />
             <input
@@ -99,7 +99,7 @@ export default function FileSelectModal({ onClose, onSelect }: FileSelectModalPr
               placeholder={t('files.searchFiles')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-dark-bg border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-primary"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-xl py-2.5 pl-10 pr-4 text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-primary"
             />
           </div>
         </div>

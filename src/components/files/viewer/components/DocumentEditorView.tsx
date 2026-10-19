@@ -129,7 +129,7 @@ export function DocumentEditorView({
             type="button"
             onClick={handleCancel}
             disabled={isSaving}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-40"
+            className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/5 text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-40"
           >
             <X size={13} />
             <span>{t('files.cancel', 'Cancelar')}</span>
@@ -176,7 +176,7 @@ export function DocumentEditorView({
       {showDiscardConfirm && (
         <Portal>
           <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col p-6 gap-4">
+            <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col p-6 gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
                 <AlertTriangle size={24} />
               </div>

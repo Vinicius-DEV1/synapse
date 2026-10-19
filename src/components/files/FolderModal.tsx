@@ -85,8 +85,8 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
           <h2 className="text-lg font-semibold text-white">
             {existingFolder ? t('files.editFolder') : t('files.newFolder')}
           </h2>
@@ -102,7 +102,7 @@ export default function FolderModal({ onClose, onSave, existingFolder, parentId 
               type="text" 
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+              className="w-full bg-white/5 border border-white/[0.08] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-brand-500"
               placeholder="Ex: Documentos Pessoais"
               autoFocus
             />

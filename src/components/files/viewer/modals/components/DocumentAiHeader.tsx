@@ -17,7 +17,7 @@ export const DocumentAiHeader: React.FC<DocumentAiHeaderProps> = ({
   onClose,
 }) => {
   return (
-    <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-dark-bg/60">
+    <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/[0.06] bg-dark-bg/60">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-brand-500/20 text-brand-400 rounded-xl">
           <Sparkles size={18} />
@@ -35,7 +35,7 @@ export const DocumentAiHeader: React.FC<DocumentAiHeaderProps> = ({
 
       <div className="flex items-center gap-3">
         {/* Tabs Switcher */}
-        <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
+        <div className="flex items-center bg-white/5 border border-white/[0.08] rounded-xl p-1 gap-1">
           <button
             type="button"
             onClick={() => onSelectTab('chat')}

@@ -82,8 +82,8 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
   return (
     <Portal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
           <h2 className="text-lg font-semibold text-white">
             {isFolder ? t('files.renameFolder') : t('files.renameFile')}
           </h2>
@@ -103,7 +103,7 @@ export default function RenameModal({ item, isFolder, onClose, onRename }: Renam
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
-              className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-primary"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-primary"
               placeholder={t('files.enterNewName')}
               required
             />

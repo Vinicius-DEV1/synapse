@@ -65,8 +65,8 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-dark-bg/50">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.06] bg-dark-bg/50">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <File size={20} className="text-brand-400" />
             {t('files.details')}
@@ -121,7 +121,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-white/[0.06] pt-4">
             <h4 className="text-sm font-medium text-white flex items-center gap-2 mb-3">
               <Share2 size={16} className="text-blue-400" />
               {t('files.linksAndSources')}
@@ -148,7 +148,7 @@ export default function FileInfoModal({ item, onClose }: FileInfoModalProps) {
           </div>
         </div>
         
-        <div className="p-4 border-t border-white/10 bg-dark-bg/50 flex justify-end">
+        <div className="p-4 border-t border-white/[0.06] bg-dark-bg/50 flex justify-end">
           <button 
             onClick={onClose}
             className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-colors"

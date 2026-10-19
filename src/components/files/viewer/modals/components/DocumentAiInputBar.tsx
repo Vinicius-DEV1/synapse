@@ -30,11 +30,11 @@ export const DocumentAiInputBar: React.FC<DocumentAiInputBarProps> = ({
   onSubmit,
 }) => {
   return (
-    <div className="p-4 border-t border-white/10 bg-dark-bg/60 relative">
+    <div className="p-4 border-t border-white/[0.06] bg-dark-bg/60 relative">
       {/* Mention Autocomplete Dropdown */}
       {showMentionMenu && (
         <div className="absolute bottom-full left-4 right-4 mb-2 bg-dark-card border border-brand-500/40 rounded-xl shadow-2xl overflow-hidden z-50 max-h-56 overflow-y-auto animate-fade-in">
-          <div className="px-3 py-1.5 border-b border-white/10 bg-dark-bg/80 text-[11px] font-semibold text-brand-400 flex items-center gap-1.5">
+          <div className="px-3 py-1.5 border-b border-white/[0.06] bg-dark-bg/80 text-[11px] font-semibold text-brand-400 flex items-center gap-1.5">
             <Layers size={13} />
             <span>Baterias de Questões Disponíveis</span>
           </div>
@@ -85,7 +85,7 @@ export const DocumentAiInputBar: React.FC<DocumentAiInputBarProps> = ({
           onKeyDown={onKeyDown}
           placeholder="Peça à IA para editar o texto ou digite @ para marcar uma bateria de questões..."
           disabled={isLoading}
-          className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-xs text-white placeholder:text-dark-subtext outline-none transition-colors"
+          className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-xs text-white placeholder:text-dark-subtext outline-none transition-colors"
         />
 
         <button

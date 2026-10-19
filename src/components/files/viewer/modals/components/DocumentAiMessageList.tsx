@@ -51,7 +51,7 @@ export const DocumentAiMessageList: React.FC<DocumentAiMessageListProps> = ({
                 key={sug}
                 type="button"
                 onClick={() => onSelectSuggestion(sug)}
-                className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-brand-500/20 hover:border-brand-500/40 text-xs text-gray-300 hover:text-white transition-all text-left"
+                className="px-3 py-1.5 rounded-xl border border-white/[0.08] bg-white/5 hover:bg-brand-500/20 hover:border-brand-500/40 text-xs text-gray-300 hover:text-white transition-all text-left"
               >
                 {sug}
               </button>
@@ -69,7 +69,7 @@ export const DocumentAiMessageList: React.FC<DocumentAiMessageListProps> = ({
             className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed shadow-md ${
               msg.role === 'user'
                 ? 'bg-brand-600 text-white rounded-tr-sm'
-                : 'bg-dark-bg/80 border border-white/10 text-gray-200 rounded-tl-sm'
+                : 'bg-dark-bg/80 border border-white/[0.06] text-gray-200 rounded-tl-sm'
             }`}
           >
             <p className="whitespace-pre-wrap">{msg.text}</p>
@@ -88,7 +88,7 @@ export const DocumentAiMessageList: React.FC<DocumentAiMessageListProps> = ({
 
             {/* Proposed Markdown Diff Button */}
             {msg.proposedMarkdown && (
-              <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+              <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
                 <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
                   ✓ Nova versão do documento gerada
                 </span>
@@ -108,7 +108,7 @@ export const DocumentAiMessageList: React.FC<DocumentAiMessageListProps> = ({
 
       {isLoading && (
         <div className="flex justify-start">
-          <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-dark-bg/80 border border-white/10 text-brand-400 text-xs shadow-md">
+          <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-dark-bg/80 border border-white/[0.06] text-brand-400 text-xs shadow-md">
             <Loader2 size={15} className="animate-spin" />
             <span>Analisando documento e formulando resposta...</span>
           </div>

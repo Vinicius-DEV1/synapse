@@ -19,7 +19,7 @@ export function FolderUploadTaskList({
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Progress Summary */}
-      <div className="p-4 bg-white/5 rounded-xl border border-white/10 shrink-0">
+      <div className="p-4 bg-white/5 rounded-xl border border-white/[0.06] shrink-0">
         <div className="flex justify-between items-end mb-2">
           <div>
             <h3 className="text-sm font-medium text-white/90">Progresso Geral</h3>

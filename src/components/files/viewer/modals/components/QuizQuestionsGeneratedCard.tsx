@@ -57,7 +57,7 @@ export function QuizQuestionsGeneratedCard({
 
       {/* Expanded Questions Preview */}
       {isExpanded && (
-        <div className="mt-2 pt-2 border-t border-white/10 space-y-2.5 max-h-52 overflow-y-auto pr-1">
+        <div className="mt-2 pt-2 border-t border-white/[0.06] space-y-2.5 max-h-52 overflow-y-auto pr-1">
           {questions.map((q, idx) => (
             <div key={q.id || idx} className="p-2.5 rounded-lg bg-black/40 border border-white/5 space-y-1">
               <div className="flex items-center justify-between text-[10px] text-dark-subtext">
@@ -99,7 +99,7 @@ export function QuizQuestionsGeneratedCard({
       )}
 
       {/* Action Footer */}
-      <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2">
+      <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center justify-between gap-2">
         <span className="text-[10px] text-dark-subtext flex items-center gap-1">
           <HelpCircle size={12} />
           <span>Serão anexadas ao final da bateria</span>

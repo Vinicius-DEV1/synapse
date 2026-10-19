@@ -54,8 +54,8 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col h-[70vh]">
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col h-[70vh]">
+          <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center border border-brand-500/30">
                 <Folder size={20} className="text-brand-400" />
@@ -109,7 +109,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
             )}
 
             {tasks.length === 0 ? (
-              <div className="flex-1 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center p-8 bg-dark-bg/30">
+              <div className="flex-1 border-2 border-dashed border-white/[0.08] rounded-xl flex flex-col items-center justify-center p-8 bg-dark-bg/30">
                 <input 
                   type="file" 
                   ref={fileInputRef}
@@ -146,7 +146,7 @@ export default function FolderUploadModal({ onClose, onUploadComplete, currentFo
           </div>
           
           {tasks.length > 0 && (
-            <div className="p-4 border-t border-white/10 bg-dark-bg/50 flex justify-end gap-3 shrink-0">
+            <div className="p-4 border-t border-white/[0.06] bg-dark-bg/50 flex justify-end gap-3 shrink-0">
               <button 
                 onClick={onClose}
                 disabled={isUploading && completedCount < tasks.length}

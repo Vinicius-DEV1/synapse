@@ -72,8 +72,8 @@ export default function FileUploadModal({
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-white">{t('files.uploadFiles')}</h2>
               {driveStatus === 'connected' ? (
@@ -123,7 +123,7 @@ export default function FileUploadModal({
                 className={`relative border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all group ${
                   isDraggingOver
                     ? 'border-brand-500 bg-brand-500/10 ring-2 ring-brand-500/20'
-                    : 'border-white/20 hover:bg-white/5'
+                    : 'border-white/[0.08] hover:bg-white/5'
                 }`}
               >
                 <input
@@ -155,7 +155,7 @@ export default function FileUploadModal({
                   }`}
                 >
                   {selectedFiles.map((file, idx) => (
-                    <div key={idx} className="flex items-center p-3 bg-white/5 border border-white/10 rounded-xl gap-3">
+                    <div key={idx} className="flex items-center p-3 bg-white/5 border border-white/[0.06] rounded-xl gap-3">
                       <div className="p-2 bg-brand-500/20 text-brand-400 rounded-lg">
                         <File size={20} />
                       </div>
@@ -237,7 +237,7 @@ export default function FileUploadModal({
             )}
           </div>
 
-          <div className="p-4 border-t border-white/10 bg-dark-bg/50 flex justify-end gap-3">
+          <div className="p-4 border-t border-white/[0.06] bg-dark-bg/50 flex justify-end gap-3">
             <button
               onClick={onClose}
               disabled={isUploading}

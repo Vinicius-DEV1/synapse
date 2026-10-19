@@ -44,9 +44,9 @@ export function DocumentDiffViewer({
   }
 
   return (
-    <div className="flex flex-col h-full bg-dark-bg/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full bg-dark-bg/95 border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-dark-card/60 backdrop-blur-md">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-dark-card/60 backdrop-blur-md">
         <div className="flex items-center gap-2 text-brand-400 text-sm font-semibold">
           <FileDiff size={18} />
           <span>Revisão de Alterações Propostas pela IA</span>
@@ -72,7 +72,7 @@ export function DocumentDiffViewer({
           </div>
 
           {/* Toggle view: Diff vs Raw Proposed */}
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5">
+          <div className="flex items-center bg-white/5 border border-white/[0.08] rounded-lg p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('diff')}
@@ -114,7 +114,7 @@ export function DocumentDiffViewer({
       </div>
 
       {/* Action Footer */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-t border-white/10 bg-dark-card/60 backdrop-blur-md">
+      <div className="flex items-center justify-between px-5 py-3.5 border-t border-white/[0.06] bg-dark-card/60 backdrop-blur-md">
         <div className="text-xs text-dark-subtext flex items-center gap-2">
           <span className="inline-block w-2.5 h-2.5 bg-emerald-500/40 border border-emerald-500 rounded" />
           <span>Texto adicionado</span>
@@ -126,7 +126,7 @@ export function DocumentDiffViewer({
           <button
             type="button"
             onClick={onDiscard}
-            className="px-3.5 py-1.5 rounded-xl border border-white/10 text-dark-subtext hover:text-white hover:bg-white/10 text-xs font-medium transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-xl border border-white/[0.08] text-dark-subtext hover:text-white hover:bg-white/10 text-xs font-medium transition-colors flex items-center gap-1.5"
           >
             <X size={14} />
             <span>Descartar</span>

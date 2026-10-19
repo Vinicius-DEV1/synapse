@@ -68,8 +68,8 @@ export function BookmarksDrawer({
       </button>
 
       {showBookmarksMenu && (
-        <div className="absolute right-0 top-full mt-2 w-72 bg-dark-card/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+        <div className="absolute right-0 top-full mt-2 w-72 bg-dark-card/95 backdrop-blur-md border border-white/[0.06] rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-2">
             <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
               <Bookmark size={14} className="text-amber-400" />
               Marcadores Salvos
@@ -89,7 +89,7 @@ export function BookmarksDrawer({
               placeholder="Nome do marcador..."
               value={newBookmarkLabel}
               onChange={(e) => setNewBookmarkLabel(e.target.value)}
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-500"
+              className="flex-1 bg-white/5 border border-white/[0.08] rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-500"
             />
             <button
               type="submit"

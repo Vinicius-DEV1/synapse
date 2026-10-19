@@ -90,8 +90,8 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
   return (
     <Portal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[70vh]">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[70vh]">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.06] shrink-0">
           <h2 className="text-lg font-semibold text-white">{t('files.moveTo')}</h2>
           <button onClick={onClose} disabled={isSubmitting} className="p-2 text-dark-subtext hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X size={20} />
@@ -148,7 +148,7 @@ export default function MoveModal({ item, items, isFolder = false, folders, onCl
             </div>
           </div>
           
-          <div className="p-4 border-t border-white/10 flex gap-3 shrink-0">
+          <div className="p-4 border-t border-white/[0.06] flex gap-3 shrink-0">
             <button 
               type="button"
               onClick={onClose}
