@@ -109,7 +109,7 @@ export function VideoControlsOverlay({
           {audioTracks.length > 0 && (
             <button
               onClick={() => setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
+              className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08]"
               title="Trocar Idioma (A)"
             >
               <Languages size={16} className="text-brand-400" />
@@ -119,7 +119,7 @@ export function VideoControlsOverlay({
             </button>
           )}
 
-          <div className="flex items-center bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10 overflow-hidden">
+          <div className="flex items-center bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08] overflow-hidden">
             <button
               onClick={() => {
                 if (subtitleTracks.length > 1) {
@@ -150,7 +150,7 @@ export function VideoControlsOverlay({
               <button
                 type="button"
                 onClick={() => quickSubFileInputRef.current?.click()}
-                className="px-2 py-2 text-purple-400 hover:text-purple-300 hover:bg-white/10 border-l border-white/10 transition-colors"
+                className="px-2 py-2 text-purple-400 hover:text-purple-300 hover:bg-white/10 border-l border-white/5 transition-colors"
                 title="Carregar nova legenda externa (.srt / .vtt)"
               >
                 <Plus size={14} />
@@ -164,7 +164,7 @@ export function VideoControlsOverlay({
                 clearLoop();
               }
             }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10 ${loopA !== null || loopB !== null ? 'bg-brand-500/30 hover:bg-brand-500/50 border-brand-500/50' : 'bg-black/40 hover:bg-white/20'}`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08] ${loopA !== null || loopB !== null ? 'bg-brand-500/30 hover:bg-brand-500/50 border-brand-500/50' : 'bg-black/40 hover:bg-white/20'}`}
             title={loopA !== null || loopB !== null ? 'Remover Loop A-B (P)' : 'Loop A-B (I, O)'}
           >
             <Repeat size={16} className={loopA !== null || loopB !== null ? "text-brand-300" : "text-white/70"} />
@@ -180,7 +180,7 @@ export function VideoControlsOverlay({
               const newRate = playbackRate >= 2 ? 0.25 : playbackRate + 0.25;
               changePlaybackRate(newRate);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-white/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
+            className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-white/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08]"
             title="Velocidade (Shift + >)"
           >
             <Gauge size={16} className="text-brand-400" />
@@ -192,7 +192,7 @@ export function VideoControlsOverlay({
               setShowVocabDrawer(true);
               onPauseForDrawer();
             }}
-            className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-brand-500/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/10"
+            className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-brand-500/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08]"
             title="Palavras Salvas"
           >
             <BookOpen size={16} className={videoWordsCount > 0 ? "text-yellow-400" : "text-white/70"} />
@@ -206,7 +206,7 @@ export function VideoControlsOverlay({
               setShowHelpModal(true);
               onPauseForDrawer();
             }}
-            className="flex items-center justify-center p-2 bg-black/40 hover:bg-white/20 rounded-full text-white/70 hover:text-white backdrop-blur-md transition-colors border border-white/10"
+            className="flex items-center justify-center p-2 bg-black/40 hover:bg-white/20 rounded-full text-white/70 hover:text-white backdrop-blur-md transition-colors border border-white/[0.08]"
             title="Ajuda e Atalhos"
           >
             <HelpCircle size={18} />

@@ -14,7 +14,7 @@ export function VideoQualitySelector({ webQuality, onChangeQuality, disabled }: 
         value={webQuality}
         onChange={(e) => onChangeQuality(e.target.value as WebQualityType)}
         disabled={disabled}
-        className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-sm text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors cursor-pointer"
+        className="w-full bg-dark-bg border border-white/[0.08] rounded-xl p-3 text-sm text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-colors cursor-pointer"
       >
         <option className="bg-dark-bg text-white" value="original">Original (Nenhuma Conversão - Pesado)</option>
         <option className="bg-dark-bg text-white" value="remux">Clonar Original (Remux MP4 Ultra Rápido)</option>

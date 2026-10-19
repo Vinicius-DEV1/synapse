@@ -41,10 +41,10 @@ export function YouTubeSubtitleSelector({
           placeholder="Buscar idioma..."
           value={subSearch}
           onChange={(e) => setSubSearch(e.target.value)}
-          className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-brand-500 w-32"
+          className="bg-black/20 border border-white/[0.08] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-brand-500 w-32"
         />
       </div>
-      <div className="max-h-[120px] overflow-y-auto bg-black/20 border border-white/10 rounded-lg p-2 flex flex-col gap-1">
+      <div className="max-h-[120px] overflow-y-auto bg-black/20 border border-white/[0.06] rounded-lg p-2 flex flex-col gap-1">
         {filtered.map(sub => (
           <label key={sub.lang} className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded-md cursor-pointer transition-colors group">
             <input

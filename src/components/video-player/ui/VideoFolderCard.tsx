@@ -40,7 +40,7 @@ export function VideoFolderCard({
 
   return (
     <div
-      className={`cursor-pointer group relative bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all duration-300 ${
+      className={`cursor-pointer group relative bg-white/5 border border-white/[0.06] rounded-xl overflow-hidden transition-all duration-300 ${
         isList
           ? 'hover:bg-white/10 flex items-center p-2 gap-4'
           : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1 flex-col'
@@ -58,7 +58,7 @@ export function VideoFolderCard({
             size={32}
             className="text-brand-400 opacity-80 group-hover:scale-110 transition-transform relative z-10"
           />
-          <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider backdrop-blur-md z-10 border border-white/10">
+          <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider backdrop-blur-md z-10 border border-white/[0.08]">
             {col.count} {col.count === 1 ? 'vídeo' : 'vídeos'}
           </div>
         </div>
@@ -132,7 +132,7 @@ export function VideoFolderCard({
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content
-              className="z-50 min-w-[160px] bg-dark-card border border-white/10 rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
+              className="z-50 min-w-[160px] bg-dark-card border border-white/[0.06] rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
               sideOffset={5}
               align="end"
               onClick={(e) => e.stopPropagation()}
@@ -232,7 +232,7 @@ export function NewFolderCard({
   return (
     <div
       onClick={onStartCreate}
-      className={`cursor-pointer group bg-white/[0.02] border border-dashed border-white/10 hover:border-brand-500/30 rounded-xl overflow-hidden transition-all duration-300 ${
+      className={`cursor-pointer group bg-white/[0.02] border border-dashed border-white/[0.08] hover:border-brand-500/30 rounded-xl overflow-hidden transition-all duration-300 ${
         isList ? 'flex items-center p-2 gap-4' : 'flex-col'
       }`}
     >

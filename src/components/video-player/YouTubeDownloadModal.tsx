@@ -62,7 +62,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-        <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
             <div className="flex items-center gap-2">
               <h2 className="text-white font-medium flex items-center gap-2">
@@ -102,7 +102,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
-                    className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors"
+                    className="flex-1 bg-black/20 border border-white/[0.08] rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors"
                     onKeyDown={(e) => e.key === 'Enter' && handleFetchInfo()}
                   />
                   <button 
@@ -119,7 +119,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
             {videoInfo && !isDownloading && (
               <div className="flex flex-col gap-4 animate-fade-in">
                 {/* Info Header */}
-                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/[0.06]">
                   {videoInfo.thumbnail ? (
                     <img
                       src={videoInfo.thumbnail}
@@ -150,7 +150,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                     <select 
                       value={selectedQuality}
                       onChange={(e) => setSelectedQuality(e.target.value)}
-                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+                      className="w-full bg-dark-bg border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
                     >
                       <option className="bg-dark-bg text-white" value="best">Melhor (Recomendado)</option>
                       <option className="bg-dark-bg text-white" value="bestvideo[height<=1080]+bestaudio/best[height<=1080]">1080p ou menor</option>
@@ -177,7 +177,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                         type="text" 
                         value={collectionName}
                         onChange={(e) => setCollectionName(e.target.value)}
-                        className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+                        className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
                       />
                     </div>
                   ) : (
@@ -187,7 +187,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                         type="text" 
                         value={filename}
                         onChange={(e) => setFilename(e.target.value)}
-                        className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+                        className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
                       />
                     </div>
                   )}
@@ -204,7 +204,7 @@ export default function YouTubeDownloadModal({ onClose, onSuccess }: YouTubeDown
                   </div>
                   <span className="text-brand-400 font-mono text-sm">{Math.round(progress)}%</span>
                 </div>
-                <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden border border-white/10 p-0.5">
+                <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden border border-white/[0.06] p-0.5">
                   <div 
                     className="bg-gradient-to-r from-red-500 to-brand-500 h-full rounded-full transition-all duration-300 ease-out shadow-lg shadow-brand-500/20"
                     style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}

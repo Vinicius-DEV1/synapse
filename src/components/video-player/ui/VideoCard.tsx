@@ -30,7 +30,7 @@ export const VideoCard = React.memo(({
 
   return (
     <div 
-      className={`group relative bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-300 ${(isDeleting || isDownloading) ? 'opacity-50 pointer-events-none' : (isList ? 'hover:bg-white/10 cursor-pointer' : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1')} ${isList ? 'flex items-center p-2 gap-4' : 'flex-col'}`}
+      className={`group relative bg-white/5 border border-white/[0.06] rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-300 ${(isDeleting || isDownloading) ? 'opacity-50 pointer-events-none' : (isList ? 'hover:bg-white/10 cursor-pointer' : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1')} ${isList ? 'flex items-center p-2 gap-4' : 'flex-col'}`}
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (!target.closest('button')) {
@@ -90,7 +90,7 @@ export const VideoCard = React.memo(({
           </div>
 
           {video.duration ? (
-            <div className="absolute bottom-2 right-2 bg-black/80 border border-white/10 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider">
+            <div className="absolute bottom-2 right-2 bg-black/80 border border-white/[0.08] px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider">
               {formatDuration(video.duration)}
             </div>
           ) : null}
@@ -153,7 +153,7 @@ export const VideoCard = React.memo(({
 
           <DropdownMenu.Portal>
             <DropdownMenu.Content 
-              className="z-50 min-w-[180px] bg-dark-card border border-white/10 rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
+              className="z-50 min-w-[180px] bg-dark-card border border-white/[0.06] rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
               sideOffset={5}
               align="end"
               onClick={(e) => e.stopPropagation()}
@@ -177,7 +177,7 @@ export const VideoCard = React.memo(({
                   </DropdownMenu.SubTrigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.SubContent
-                      className="z-[60] min-w-[160px] bg-dark-card border border-white/10 rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95"
+                      className="z-[60] min-w-[160px] bg-dark-card border border-white/[0.06] rounded-xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95"
                       sideOffset={8}
                     >
                       {video.collection_id && (

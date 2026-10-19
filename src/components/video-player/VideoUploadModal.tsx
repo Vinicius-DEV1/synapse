@@ -262,7 +262,7 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-        <div className="bg-dark-card border border-white/10 rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-white/[0.02]">
             <div className="flex items-center gap-2">
               <h2 className="text-white font-medium flex items-center gap-2">
@@ -329,13 +329,13 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
                     onDrop={handleVideoDrop}
                     disabled={isUploading}
                     className={`w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-all ${
-                      isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer focus:outline-none focus:border-brand-500'
+                      isUploading ? 'opacity-50 cursor-not-allowed border-white/[0.08]' : 'cursor-pointer focus:outline-none focus:border-brand-500'
                     } ${
                       isDraggingOver
                         ? 'border-brand-500 bg-brand-500/20 ring-2 ring-brand-500/30'
                         : videoFile
                         ? 'border-brand-500/50 bg-brand-500/10'
-                        : 'border-white/10 hover:border-white/30 hover:bg-white/5'
+                        : 'border-white/[0.08] hover:border-white/30 hover:bg-white/5'
                     }`}
                   >
                     <FileVideo size={24} className={isDraggingOver || videoFile ? 'text-brand-400' : 'text-dark-subtext'} />
@@ -418,9 +418,9 @@ export default function VideoUploadModal({ collectionId, collectionName, onClose
                   <label 
                     htmlFor="subtitle-upload"
                     className={`flex items-center justify-center gap-3 p-4 border-2 border-dashed rounded-xl transition-colors ${
-                      isUploading ? 'opacity-50 cursor-not-allowed border-white/10' : 'cursor-pointer'
+                      isUploading ? 'opacity-50 cursor-not-allowed border-white/[0.08]' : 'cursor-pointer'
                     } ${
-                      subtitleFile ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'
+                      subtitleFile ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/[0.08] hover:border-white/30 hover:bg-white/5'
                     }`}
                   >
                     <FileText size={24} className={subtitleFile ? 'text-purple-400' : 'text-dark-subtext'} />

@@ -17,7 +17,7 @@ export function VideoResumePrompt({
 
   return (
     <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto">
-      <div className="bg-dark-card border border-white/10 rounded-2xl p-6 flex flex-col items-center gap-5 shadow-2xl animate-in zoom-in-95 duration-200 max-w-sm w-full mx-4">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl p-6 flex flex-col items-center gap-5 shadow-2xl animate-in zoom-in-95 duration-200 max-w-sm w-full mx-4">
         <div className="flex flex-col items-center gap-2 text-center text-white">
           <span className="text-4xl mb-1">⏱️</span>
           <h3 className="text-xl font-bold">Continuar assistindo?</h3>

@@ -410,7 +410,7 @@ export default function VideoPlayer({ src, video, title, onClose, onDurationLoad
         }`}
       >
         {actionFeedback && (
-          <div className={`bg-black/50 backdrop-blur-sm rounded-full px-5 py-2.5 text-white flex items-center gap-3 shadow-2xl border border-white/10 ${actionFeedback ? 'animate-fade-in' : ''}`}>
+          <div className={`bg-black/50 backdrop-blur-sm rounded-full px-5 py-2.5 text-white flex items-center gap-3 shadow-2xl border border-white/[0.08] ${actionFeedback ? 'animate-fade-in' : ''}`}>
             {actionFeedback.icon === 'rewind' && <Rewind size={24} className="text-brand-400" />}
             {actionFeedback.icon === 'forward' && <FastForward size={24} className="text-brand-400" />}
             {actionFeedback.icon === 'speed' && <Gauge size={24} className="text-brand-400" />}

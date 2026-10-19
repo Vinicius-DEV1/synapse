@@ -26,7 +26,7 @@ export function VideoViewHeader({
       </div>
       
       <div className="flex items-center gap-4">
-        <div className="flex items-center bg-dark-card border border-white/10 rounded-lg p-1">
+        <div className="flex items-center bg-dark-card border border-white/[0.06] rounded-lg p-1">
           <button
             onClick={() => onViewModeChange('grid')}
             className={`p-1.5 rounded-md transition-colors ${
@@ -58,7 +58,7 @@ export function VideoViewHeader({
         <div className="flex items-center gap-2">
           <button 
             onClick={onOpenYoutubeModal}
-            className="flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 text-white text-sm font-medium rounded-lg transition-colors border border-white/10"
+            className="flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 text-white text-sm font-medium rounded-lg transition-colors border border-white/[0.08]"
             title="Baixar do YouTube"
           >
             <MonitorPlay size={16} className="text-red-500" />

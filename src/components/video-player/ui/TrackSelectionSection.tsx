@@ -32,7 +32,7 @@ export function TrackSelectionSection({
   if (embeddedAudios.length === 0 && embeddedSubs.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 p-4 bg-black/20 border border-white/10 rounded-xl">
+    <div className="flex flex-col gap-4 p-4 bg-black/20 border border-white/[0.06] rounded-xl">
       <h3 className="text-sm font-medium text-white flex items-center gap-2">
         <Settings2 size={16} className="text-brand-400" />
         Configuração de Faixas

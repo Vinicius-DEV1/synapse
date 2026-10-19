@@ -28,9 +28,9 @@ export const VideoHelpModal: React.FC<VideoHelpModalProps> = ({ onClose }) => {
   }, [onClose]);
   return (
     <div className="absolute inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm pointer-events-auto">
-      <div className="relative bg-[#1E1E24] border border-white/10 rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col overflow-hidden max-h-full">
+      <div className="relative bg-[#1E1E24] border border-white/[0.06] rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col overflow-hidden max-h-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-black/20">
+        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/20">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-brand-500/20 rounded-lg text-brand-400">
               <Keyboard size={24} />

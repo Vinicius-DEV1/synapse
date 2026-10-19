@@ -37,7 +37,7 @@ export default function WebVersionModal({ isOpen, onClose, onConfirm, videoTitle
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] max-w-[90vw] bg-dark-card border border-white/10 p-6 rounded-2xl shadow-2xl z-[1000] focus:outline-none flex flex-col">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] max-w-[90vw] bg-dark-card border border-white/[0.06] p-6 rounded-2xl shadow-2xl z-[1000] focus:outline-none flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <Dialog.Title className="text-lg font-semibold text-white flex items-center gap-2">
               <MonitorPlay size={20} className="text-brand-400" />
@@ -59,7 +59,7 @@ export default function WebVersionModal({ isOpen, onClose, onConfirm, videoTitle
             <select
               value={quality}
               onChange={e => setQuality(e.target.value)}
-              className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all cursor-pointer"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all cursor-pointer"
             >
               <option className="bg-dark-bg text-white" value="1080p">1080p Full HD (Alta Qualidade)</option>
               <option className="bg-dark-bg text-white" value="720p">720p HD (Rápido e Leve - Recomendado)</option>

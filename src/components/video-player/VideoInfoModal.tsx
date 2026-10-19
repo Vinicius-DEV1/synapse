@@ -69,10 +69,10 @@ export default function VideoInfoModal({ video, onClose, onVideoUpdated, onPlayV
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-fade-in">
-        <div className="bg-dark-card border border-white/10 rounded-2xl w-[660px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-[660px] max-w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
           
           {/* Compact Integrated Header Bar */}
-          <div className="px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02]">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="p-2.5 bg-brand-500/10 border border-brand-500/20 rounded-xl text-brand-400 shrink-0">
@@ -84,7 +84,7 @@ export default function VideoInfoModal({ video, onClose, onVideoUpdated, onPlayV
                       {getExtension(currentVideo.file_path || currentVideo.original_name)}
                     </span>
                     {currentVideo.collection_name && (
-                      <span className="px-2 py-0.5 text-[11px] font-medium bg-white/5 text-white/70 border border-white/10 rounded truncate max-w-[160px]">
+                      <span className="px-2 py-0.5 text-[11px] font-medium bg-white/5 text-white/70 border border-white/[0.08] rounded truncate max-w-[160px]">
                         📁 {currentVideo.collection_name}
                       </span>
                     )}
@@ -128,7 +128,7 @@ export default function VideoInfoModal({ video, onClose, onVideoUpdated, onPlayV
           </div>
 
           {/* Clean Segmented Navigation Tabs */}
-          <div className="flex px-6 border-b border-white/10 gap-6 text-sm font-medium bg-white/[0.01]">
+          <div className="flex px-6 border-b border-white/5 gap-6 text-sm font-medium bg-white/[0.01]">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-3 relative transition-colors ${activeTab === 'overview' ? 'text-brand-400 font-semibold' : 'text-white/60 hover:text-white'}`}
@@ -207,12 +207,12 @@ export default function VideoInfoModal({ video, onClose, onVideoUpdated, onPlayV
           </div>
 
           {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-white/10 bg-white/[0.02] flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
             <span className="text-xs text-white/40">Caderno Vídeos</span>
             <div className="flex items-center gap-2.5">
               <button 
                 onClick={onClose}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-sm font-medium rounded-xl transition-colors border border-white/10"
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-sm font-medium rounded-xl transition-colors border border-white/[0.08]"
               >
                 Fechar
               </button>

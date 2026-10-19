@@ -16,8 +16,8 @@ export function VideoVocabularySidebar({
   videoWords, setShowVocabDrawer, videoRef, loadVideoWords, setDictState
 }: VideoVocabularySidebarProps) {
   return (
-    <div className="absolute inset-y-0 right-0 w-96 max-w-full bg-dark-card border-l border-white/10 shadow-2xl z-50 flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
-      <div className="flex items-center justify-between p-6 border-b border-white/10">
+    <div className="absolute inset-y-0 right-0 w-96 max-w-full bg-dark-card border-l border-white/5 shadow-2xl z-50 flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
+      <div className="flex items-center justify-between p-6 border-b border-white/5">
         <div className="flex items-center gap-3">
           <BookOpen size={20} className="text-brand-400" />
           <h2 className="text-lg font-bold text-white">Vocabulário Salvo</h2>
@@ -42,7 +42,7 @@ export function VideoVocabularySidebar({
           </div>
         ) : (
           [...videoWords].sort((a, b) => a.timestamp - b.timestamp).map(vw => (
-            <div key={vw.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-2 group">
+            <div key={vw.id} className="bg-white/5 border border-white/[0.06] rounded-xl p-4 flex flex-col gap-2 group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: vw.color === 'yellow' ? '#facc15' : vw.color === 'green' ? '#4ade80' : vw.color === 'blue' ? '#60a5fa' : vw.color === 'purple' ? '#c084fc' : vw.color === 'pink' ? '#f472b6' : vw.color === 'red' ? '#f87171' : '#facc15' }} />
