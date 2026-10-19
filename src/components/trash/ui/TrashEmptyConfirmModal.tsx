@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 interface TrashEmptyConfirmModalProps {
@@ -15,6 +16,28 @@ export function TrashEmptyConfirmModal({
   onClose,
   onConfirm
 }: TrashEmptyConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isEmptying) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      if (!isEmptying) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, isEmptying, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -29,7 +52,7 @@ export function TrashEmptyConfirmModal({
           <button 
             onClick={onClose}
             disabled={isEmptying}
-            className="px-4 py-2 bg-dark-card border border-white/10 hover:bg-white/5 rounded-lg text-sm transition-colors"
+            className="px-4 py-2 bg-dark-card border border-white/[0.08] hover:bg-white/5 rounded-lg text-sm transition-colors"
           >
             Cancelar
           </button>

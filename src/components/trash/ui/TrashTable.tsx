@@ -76,7 +76,7 @@ export function TrashTable({
       ) : (
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
-            <thead className="border-b border-white/10">
+            <thead className="border-b border-white/[0.06]">
               <tr>
                 <th className="py-4 px-6 text-xs font-semibold text-dark-subtext uppercase tracking-wider">Item</th>
                 <th className="py-4 px-6 text-xs font-semibold text-dark-subtext uppercase tracking-wider w-32">Tipo</th>
