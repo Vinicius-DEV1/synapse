@@ -167,9 +167,9 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
   return (
     <Portal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div className="bg-dark-card w-full max-w-2xl rounded-2xl shadow-2xl border border-white/10 flex flex-col max-h-[90vh] overflow-hidden animate-scale-up">
+        <div className="bg-dark-card w-full max-w-2xl rounded-2xl shadow-2xl border border-white/[0.06] flex flex-col max-h-[90vh] overflow-hidden animate-scale-up">
           
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
             <h3 className="text-lg font-bold text-white">
               {itemToEdit ? 'Editar Obra' : 'Adicionar Obra'}
             </h3>
@@ -198,7 +198,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                   value={formData.title || ''}
                   onChange={e => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Nome da mídia"
-                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                  className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
                 />
               </div>
 
@@ -207,7 +207,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 <select
                   value={formData.type || 'filme'}
                   onChange={e => setFormData({ ...formData, type: e.target.value as CultureType })}
-                  className="bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                  className="bg-dark-bg border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
                 >
                   {TYPES.map(t => (
                     <option key={t.value} value={t.value} className="bg-dark-card text-white">
@@ -226,7 +226,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                   min="0"
                   value={formData.progress || 0}
                   onChange={e => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
-                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                  className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
                 />
               </div>
 
@@ -238,7 +238,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                   value={formData.total_progress || 0}
                   onChange={e => setFormData({ ...formData, total_progress: parseInt(e.target.value) || 0 })}
                   placeholder="Ex: 24 (Eps/Caps)"
-                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                  className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
                 />
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 value={formData.cover_image || ''}
                 onChange={e => setFormData({ ...formData, cover_image: e.target.value })}
                 placeholder="https://..."
-                className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
               />
             </div>
 
@@ -261,7 +261,7 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 value={formData.access_link || ''}
                 onChange={e => setFormData({ ...formData, access_link: e.target.value })}
                 placeholder="https://crunchyroll.com/..., https://netflix.com/..."
-                className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
               />
             </div>
 
@@ -272,11 +272,11 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                 value={formData.synopsis || ''}
                 onChange={e => setFormData({ ...formData, synopsis: e.target.value })}
                 placeholder="Descrição breve..."
-                className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50 resize-none"
+                className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50 resize-none"
               />
             </div>
 
-            <div className="border border-white/10 rounded-xl p-4 bg-white/[0.02] flex flex-col gap-3">
+            <div className="border border-white/[0.06] rounded-xl p-4 bg-white/[0.02] flex flex-col gap-3">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -295,14 +295,14 @@ export default function CultureAddModal({ isOpen, onClose, onSuccess, itemToEdit
                     value={formData.goal_note || ''}
                     onChange={e => setFormData({ ...formData, goal_note: e.target.value })}
                     placeholder="Escreva seu compromisso pessoal..."
-                    className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
+                    className="bg-black/20 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50"
                   />
                 </div>
               ) : null}
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 bg-dark-bg/50">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-white/5 bg-dark-bg/50">
             {itemToEdit ? (
               <button
                 onClick={handleDelete}

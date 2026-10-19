@@ -27,7 +27,7 @@ export function CultureCardContextMenu({
 }: CultureCardContextMenuProps) {
   return (
     <div
-      className="fixed z-[9999] bg-dark-card border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-scale-up"
+      className="fixed z-[9999] bg-dark-card border border-white/[0.06] rounded-lg shadow-2xl overflow-hidden animate-scale-up"
       style={{ top: pos.y, left: pos.x }}
       onClick={e => e.stopPropagation()}
     >

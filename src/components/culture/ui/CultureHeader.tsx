@@ -43,7 +43,7 @@ export function CultureHeader({
             <button
               onClick={onOpenHelpModal}
               title={t('culture.guide', 'Guia da Área de Cultura')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium bg-white/5 text-dark-subtext border-white/10 hover:text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium bg-white/5 text-dark-subtext border-white/[0.06] hover:text-white hover:bg-white/10 transition-colors"
             >
               <HelpCircle size={14} className="text-purple-400" />
               <span className="hidden sm:inline">{t('culture.guide', 'Guia')}</span>
@@ -51,7 +51,7 @@ export function CultureHeader({
           )}
 
           {/* Sort dropdown */}
-          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5">
+          <div className="flex items-center gap-1.5 bg-white/5 border border-white/[0.06] rounded-lg px-2.5 py-1.5">
             <ArrowUpDown size={13} className="text-dark-subtext flex-shrink-0" />
             <select
               value={sortMode}
@@ -65,14 +65,14 @@ export function CultureHeader({
           </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center gap-1.5 border-r border-white/10 pr-3 mr-1">
+          <div className="flex items-center gap-1.5 border-r border-white/5 pr-3 mr-1">
             <button
               onClick={toggleGoalsSection}
               title={showGoalsSection ? t('culture.goals', "Ocultar seção de Objetivos") : t('culture.goals', "Mostrar seção de Objetivos")}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 showGoalsSection 
                   ? 'bg-brand-500/20 text-brand-400 border-brand-500/30 hover:bg-brand-500/30' 
-                  : 'bg-white/5 text-dark-subtext border-white/10 hover:text-white hover:bg-white/10'
+                  : 'bg-white/5 text-dark-subtext border-white/[0.06] hover:text-white hover:bg-white/10'
               }`}
             >
               <Target size={13} />
@@ -80,7 +80,7 @@ export function CultureHeader({
             </button>
           </div>
 
-          <div className="flex bg-dark-card border border-white/10 rounded-lg p-0.5">
+          <div className="flex bg-dark-card border border-white/[0.06] rounded-lg p-0.5">
             <button 
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-brand-500 text-white' : 'text-dark-subtext hover:text-white hover:bg-white/5'}`}
@@ -121,7 +121,7 @@ export function CultureHeader({
             type="text" value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('culture.searchPlaceholder', 'Buscar título ou sinopse...')}
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand-500/50 transition-colors"
+            className="w-full bg-white/5 border border-white/[0.08] rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand-500/50 transition-colors"
           />
         </div>
         <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">

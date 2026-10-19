@@ -68,7 +68,7 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
   return (
     <Portal>
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-        <div className="bg-dark-card w-full max-w-3xl rounded-3xl shadow-2xl border border-white/10 flex flex-col h-[85vh] overflow-hidden">
+        <div className="bg-dark-card w-full max-w-3xl rounded-3xl shadow-2xl border border-white/[0.06] flex flex-col h-[85vh] overflow-hidden">
 
           {/* Header */}
           <div className="relative p-6 overflow-hidden flex-shrink-0">
@@ -171,7 +171,7 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
                   value={epSearch}
                   onChange={e => setEpSearch(e.target.value)}
                   placeholder="Buscar episódio por título ou número..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand-500/40 transition-colors"
+                  className="w-full bg-white/5 border border-white/[0.08] rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand-500/40 transition-colors"
                 />
                 {epSearch && (
                   <button onClick={() => setEpSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">

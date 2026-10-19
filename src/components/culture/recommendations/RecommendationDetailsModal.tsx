@@ -131,7 +131,7 @@ export function RecommendationDetailsModal({
         aria-labelledby="rec-modal-title"
       >
         <div
-          className="bg-zinc-900 border border-white/10 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-up max-h-[90vh]"
+          className="bg-zinc-900 border border-white/[0.06] w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-up max-h-[90vh]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header Bar */}
@@ -158,7 +158,7 @@ export function RecommendationDetailsModal({
             {/* Top Media Showcase */}
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Poster Image */}
-              <div className="w-36 sm:w-44 aspect-[2/3] flex-shrink-0 mx-auto sm:mx-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shadow-lg relative">
+              <div className="w-36 sm:w-44 aspect-[2/3] flex-shrink-0 mx-auto sm:mx-0 rounded-xl overflow-hidden bg-zinc-800 border border-white/[0.06] shadow-lg relative">
                 {item.cover_image && !imgError ? (
                   <img
                     src={item.cover_image}
@@ -220,7 +220,7 @@ export function RecommendationDetailsModal({
                   )}
 
                   {/* Thematic Cluster */}
-                  <div className="inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 rounded-lg text-xs bg-white/5 border border-white/10 text-zinc-300">
+                  <div className="inline-flex items-center gap-1.5 mt-2.5 px-2.5 py-1 rounded-lg text-xs bg-white/5 border border-white/[0.08] text-zinc-300">
                     <Layers size={12} className="text-amber-400" />
                     <span>Tema: {item.cluster}</span>
                   </div>

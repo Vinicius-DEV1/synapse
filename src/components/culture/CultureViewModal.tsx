@@ -137,7 +137,7 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
         onClick={onClose}
       >
         <div
-          className="bg-dark-card w-full max-w-3xl rounded-2xl shadow-2xl border border-white/10 flex overflow-hidden animate-scale-up max-h-[90vh]"
+          className="bg-dark-card w-full max-w-3xl rounded-2xl shadow-2xl border border-white/[0.06] flex overflow-hidden animate-scale-up max-h-[90vh]"
           onClick={e => e.stopPropagation()}
         >
           {/* Poster / Cover */}
@@ -207,7 +207,7 @@ export default function CultureViewModal({ item, isOpen, onClose, onUpdate, onEd
                   <button
                     onClick={handleRefreshMetadata}
                     disabled={refreshing}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white text-xs font-medium transition-colors disabled:opacity-50 active:scale-95"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.08] text-zinc-300 hover:text-white text-xs font-medium transition-colors disabled:opacity-50 active:scale-95"
                     title="Buscar na base do IMDb/Jikan para corrigir capa ou sinopse"
                   >
                     <RefreshCw size={13} className={refreshing ? 'animate-spin text-brand-400' : ''} />

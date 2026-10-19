@@ -143,7 +143,7 @@ export const CultureTrailerSection = memo(function CultureTrailerSection({
           </div>
         </div>
 
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-white/10 shadow-2xl">
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-white/[0.06] shadow-2xl">
           <iframe
             src={getYoutubeEmbedUrl(trailer.youtubeId, true)}
             title={`Trailer oficial de ${title}`}

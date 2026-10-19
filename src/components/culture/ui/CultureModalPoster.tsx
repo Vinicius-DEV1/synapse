@@ -23,7 +23,7 @@ export function CultureModalPoster({ coverImage, title, type }: CultureModalPost
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
       <div className="absolute bottom-3 left-3">
-        <span className="px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
+        <span className="px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-[10px] font-bold text-white uppercase tracking-wider border border-white/[0.08]">
           {typeLabel(type)}
         </span>
       </div>

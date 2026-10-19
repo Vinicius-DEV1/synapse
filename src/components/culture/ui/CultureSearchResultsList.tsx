@@ -9,7 +9,7 @@ export function CultureSearchResultsList({ searchResults, onSelectResult }: Cult
   if (searchResults.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 mt-2 max-h-48 overflow-y-auto scrollbar-custom border-t border-white/10 pt-2">
+    <div className="flex flex-col gap-2 mt-2 max-h-48 overflow-y-auto scrollbar-custom border-t border-white/5 pt-2">
       {searchResults.map((res, i) => (
         <div
           key={i}

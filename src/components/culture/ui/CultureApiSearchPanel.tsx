@@ -30,7 +30,7 @@ export function CultureApiSearchPanel({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Buscar título..."
-          className="flex-1 text-white placeholder-white/40 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500/50"
+          className="flex-1 text-white placeholder-white/40 bg-black/20 border border-white/[0.08] rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500/50"
         />
         <button
           onClick={() => onSearch(searchQuery)}

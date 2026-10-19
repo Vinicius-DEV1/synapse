@@ -90,7 +90,7 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
         {/* Right tools: Serendipity mode toggle & Recalculate */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Mode Switcher: Safe vs Explore */}
-          <div className="flex items-center p-0.5 rounded-xl bg-white/5 border border-white/10 text-xs">
+          <div className="flex items-center p-0.5 rounded-xl bg-white/5 border border-white/[0.06] text-xs">
             <button
               onClick={() => setSerendipityMode('safe')}
               className={`px-2.5 py-1 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
@@ -118,7 +118,7 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
           </div>
 
           {/* Edge AI / Hybrid Engine Toggle */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 text-xs px-2.5">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/[0.06] text-xs px-2.5">
             <span className="text-zinc-400 font-medium" title="Usa motor local WebGPU em vez de IA na Nuvem">Edge AI</span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -145,7 +145,7 @@ export function CultureRecommendationsView({ onLibraryUpdated }: Props) {
             onClick={() => refresh()}
             disabled={isLoading || isGenerating}
             title="Recalcular recomendações com inteligência artificial"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-zinc-200 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/[0.06] text-xs font-medium text-zinc-200 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw size={13} className={isGenerating ? 'animate-spin text-amber-400' : ''} />
             <span>{isGenerating ? 'Curando...' : 'Recalcular'}</span>

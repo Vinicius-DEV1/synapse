@@ -61,7 +61,7 @@ export function CultureDeleteModal({
         onClick={onClose}
       >
         <div
-          className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-scale-in overflow-hidden"
+          className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-scale-in overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

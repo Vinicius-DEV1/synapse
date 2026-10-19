@@ -106,7 +106,7 @@ export function RecommendationMediaSpecs({
             {item.genres.map((genre) => (
               <span
                 key={genre}
-                className="px-2.5 py-0.5 rounded-md text-xs bg-white/5 border border-white/10 text-zinc-300"
+                className="px-2.5 py-0.5 rounded-md text-xs bg-white/5 border border-white/[0.08] text-zinc-300"
               >
                 {genre}
               </span>

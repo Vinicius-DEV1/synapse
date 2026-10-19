@@ -28,7 +28,7 @@ export const RecommendationExpandCard = React.memo(function RecommendationExpand
       className={`group relative flex flex-col items-center justify-center p-4 rounded-xl border border-dashed transition-all duration-300 select-none cursor-pointer focus:outline-none overflow-hidden min-h-[280px] sm:min-h-[310px] ${
         isExpanding
           ? 'bg-zinc-900/80 border-amber-500/40 shadow-[0_0_25px_rgba(245,158,11,0.15)] cursor-wait'
-          : 'bg-zinc-900/30 hover:bg-zinc-900/70 border-white/10 hover:border-amber-400/40 hover:shadow-[0_0_24px_rgba(245,158,11,0.12)] hover:-translate-y-1'
+          : 'bg-zinc-900/30 hover:bg-zinc-900/70 border-white/[0.08] hover:border-amber-400/40 hover:shadow-[0_0_24px_rgba(245,158,11,0.12)] hover:-translate-y-1'
       }`}
     >
       {/* Background ambient glow effect on hover */}
@@ -48,7 +48,7 @@ export const RecommendationExpandCard = React.memo(function RecommendationExpand
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
             isExpanding
               ? 'bg-amber-500/20 text-amber-300 ring-2 ring-amber-400/40'
-              : 'bg-white/5 group-hover:bg-amber-400/10 text-zinc-400 group-hover:text-amber-300 border border-white/10 group-hover:border-amber-400/30 group-hover:scale-110 shadow-sm'
+              : 'bg-white/5 group-hover:bg-amber-400/10 text-zinc-400 group-hover:text-amber-300 border border-white/[0.08] group-hover:border-amber-400/30 group-hover:scale-110 shadow-sm'
           }`}
         >
           {isExpanding ? (

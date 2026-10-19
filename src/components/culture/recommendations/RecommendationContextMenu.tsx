@@ -25,7 +25,7 @@ export function RecommendationContextMenu({
 
   return (
     <div
-      className="fixed z-[9999] bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1.5 min-w-[210px] animate-scale-up backdrop-blur-md"
+      className="fixed z-[9999] bg-zinc-900 border border-white/[0.06] rounded-xl shadow-2xl overflow-hidden p-1.5 min-w-[210px] animate-scale-up backdrop-blur-md"
       style={{ top: safeY, left: safeX }}
       onClick={e => e.stopPropagation()}
     >

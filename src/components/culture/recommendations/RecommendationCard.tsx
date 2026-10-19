@@ -124,13 +124,13 @@ export const RecommendationCard = React.memo(function RecommendationCard({
         <div className="absolute inset-x-0 top-0 p-2 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/70 to-transparent">
           <span
             title={`Formato: ${item.type}`}
-            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-black/60 backdrop-blur-md text-xs shadow border border-white/10"
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-black/60 backdrop-blur-md text-xs shadow border border-white/[0.08]"
           >
             {getTypeEmoji()}
           </span>
           <span
             title={getTierLabel()}
-            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-black/60 backdrop-blur-md text-xs shadow border border-white/10"
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-black/60 backdrop-blur-md text-xs shadow border border-white/[0.08]"
           >
             {getTierEmoji()}
           </span>
@@ -226,7 +226,7 @@ export const RecommendationCard = React.memo(function RecommendationCard({
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-default'
                 : item.tier === 'upcoming'
                 ? 'bg-cyan-500/15 hover:bg-cyan-600/30 text-cyan-200 border border-cyan-500/30 active:scale-95'
-                : 'bg-white/10 hover:bg-amber-500/20 text-zinc-300 hover:text-amber-200 border border-white/10 hover:border-amber-500/30 active:scale-95'
+                : 'bg-white/10 hover:bg-amber-500/20 text-zinc-300 hover:text-amber-200 border border-white/[0.08] hover:border-amber-500/30 active:scale-95'
             }`}
           >
             {isAdded ? (
