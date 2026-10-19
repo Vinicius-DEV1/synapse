@@ -5,7 +5,7 @@ import { useHomeDashboard } from './useHomeDashboard';
 describe('useHomeDashboard Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (window as any).api = {
+    window.api = {
       calendar: {
         getEvents: vi.fn().mockResolvedValue([
           {
@@ -26,7 +26,7 @@ describe('useHomeDashboard Hook', () => {
           cards: [{ id: 'c1' }, { id: 'c2' }],
         }),
       },
-    };
+    } as unknown as typeof window.api;
   });
 
   it('computes greeting, loads calendar events and calculates due cards count', async () => {
@@ -44,7 +44,15 @@ describe('useHomeDashboard Hook', () => {
   });
 
   it('uses getTotalDueCount fast-path directly when available', async () => {
-    (window as any).api.anki.getTotalDueCount = vi.fn().mockResolvedValue(15);
+    const getTotalDueCount = vi.fn().mockResolvedValue(15);
+    window.api = {
+      ...window.api,
+      anki: {
+        ...window.api?.anki,
+        getTotalDueCount,
+        getDecks: vi.fn(),
+      },
+    } as unknown as typeof window.api;
 
     const { result } = renderHook(() => useHomeDashboard());
 
@@ -52,7 +60,7 @@ describe('useHomeDashboard Hook', () => {
       expect(result.current.dueCardsCount).toBe(15);
     });
 
-    expect((window as any).api.anki.getTotalDueCount).toHaveBeenCalledTimes(1);
-    expect((window as any).api.anki.getDecks).not.toHaveBeenCalled();
+    expect(getTotalDueCount).toHaveBeenCalledTimes(1);
+    expect(window.api?.anki?.getDecks).not.toHaveBeenCalled();
   });
 });

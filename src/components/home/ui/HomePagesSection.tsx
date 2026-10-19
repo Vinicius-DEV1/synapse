@@ -30,7 +30,7 @@ export function HomePagesSection({
     <>
       {/* Recent Pages */}
       {recentPages.length > 0 && (
-        <div className="bg-dark-card border border-white/5 rounded-2xl p-6 shadow-xl">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl p-6 shadow-xl">
           <div className="flex items-center gap-3 mb-5">
             <div className="p-2 rounded-lg bg-violet-500/20 text-violet-400">
               <Clock size={20} />
@@ -66,7 +66,7 @@ export function HomePagesSection({
       )}
 
       {/* Pinned Pages */}
-      <div className="bg-dark-card border border-white/5 rounded-2xl p-6 shadow-xl">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl p-6 shadow-xl">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg bg-brand-500/20 text-brand-400">
             <Pin size={20} />

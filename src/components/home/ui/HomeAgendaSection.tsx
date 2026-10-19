@@ -35,13 +35,13 @@ export function HomeAgendaSection({
           live 
             ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]' 
             : completed 
-            ? 'bg-white/[0.02] border-white/5 opacity-60' 
-            : 'bg-white/[0.04] border-white/5 hover:border-white/20 hover:bg-white/[0.06]'
+            ? 'bg-white/[0.02] border-white/[0.06] opacity-60' 
+            : 'bg-white/[0.04] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.06]'
         }`}
       >
         {/* Live indicator */}
         {live && <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />}
-        <div className="flex flex-col items-center justify-center min-w-[60px] border-r border-white/10 pr-4">
+        <div className="flex flex-col items-center justify-center min-w-[60px] border-r border-white/[0.08] pr-4">
           <span className={`text-lg font-bold ${live ? 'text-amber-400' : 'text-white'}`}>{formatTime(ev.start_date!)}</span>
           {live && <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider mt-1">{t('home.agenda.live')}</span>}
           {showDate && !live && <span className="text-[10px] text-dark-subtext mt-1">{t('home.agenda.tomorrowEvents')}</span>}
@@ -68,7 +68,7 @@ export function HomeAgendaSection({
   return (
     <div className="space-y-6">
       {/* Today's Agenda */}
-      <div className="bg-dark-card border border-white/5 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Calendar size={120} />
         </div>
@@ -87,7 +87,7 @@ export function HomeAgendaSection({
         </div>
 
         {todayEvents.length === 0 ? (
-          <div className="py-8 text-center text-dark-subtext bg-white/[0.02] rounded-xl border border-dashed border-white/10">
+          <div className="py-8 text-center text-dark-subtext bg-white/[0.02] rounded-xl border border-dashed border-white/[0.08]">
             <p>{t('home.agenda.freeToday')}</p>
           </div>
         ) : (
@@ -99,7 +99,7 @@ export function HomeAgendaSection({
 
       {/* Tomorrow's Events */}
       {tomorrowEvents.length > 0 && (
-        <div className="bg-dark-card border border-white/5 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div className="bg-dark-card border border-white/[0.06] rounded-2xl p-6 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
             <Sunrise size={100} />
           </div>

@@ -83,7 +83,7 @@ export function useHomeDashboard() {
         }
       }
     } catch (e) {
-      console.error('Erro ao carregar dados do dashboard:', e);
+      console.error('[HomeDashboard] Failed to load dashboard data:', e);
     }
   }, []);
 
@@ -104,12 +104,16 @@ export function useHomeDashboard() {
       setNowTs(Date.now());
       loadDashboardData();
     };
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        onFocus();
+      }
+    };
     window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) onFocus();
-    });
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [computeGreeting, loadDashboardData]);
 

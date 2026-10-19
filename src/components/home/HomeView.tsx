@@ -14,7 +14,8 @@ export default function HomeView({ tabId }: { tabId: string }) {
     greeting,
     todayEvents,
     tomorrowEvents,
-    isEventLive
+    isEventLive,
+    dueCardsCount
   } = useHomeDashboard();
 
   const { pinnedPages, recentPages } = useMemo(() => {
@@ -51,7 +52,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
       dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
       dispatch({ type: 'NAVIGATE_IN_TAB', pageId: page.id });
     } catch (e) {
-      console.error('Erro ao criar página:', e);
+      console.error('[HomeView] Failed to create page:', e);
     }
   };
 
@@ -79,6 +80,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
           onOpenCalendar={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'calendar' })}
           onOpenAnki={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'anki' })}
           onOpenFiles={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'files' })}
+          dueCardsCount={dueCardsCount}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
