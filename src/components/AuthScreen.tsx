@@ -242,7 +242,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
         </div>
       )}
       <div 
-        className={`bg-dark-card border border-white/10 rounded-2xl p-8 max-w-md w-full shadow-2xl transition-all ${shake ? 'animate-shake' : ''} ${lockoutTime > 0 ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.15)] bg-[#1a0f0f]' : ''}`}
+        className={`bg-dark-card border border-white/[0.06] rounded-2xl p-8 max-w-md w-full shadow-2xl transition-all ${shake ? 'animate-shake' : ''} ${lockoutTime > 0 ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.15)] bg-[#1a0f0f]' : ''}`}
       >
         {lockoutTime > 0 ? (
           <AuthLockoutView
@@ -278,7 +278,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoFocus
-              className="w-full bg-dark-bg border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all placeholder:text-white/10"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all placeholder:text-white/10"
               placeholder={t('auth.passwordPlaceholder')}
             />
           </div>

@@ -35,7 +35,7 @@ export const ShareManagementCard: React.FC<ShareManagementCardProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.06] hover:border-white/10 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.06] hover:border-white/15 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
       {/* Left Info */}
       <div className="flex items-start gap-3 min-w-0">
         <span className="text-3xl shrink-0 p-1">{share.icon || '📄'}</span>

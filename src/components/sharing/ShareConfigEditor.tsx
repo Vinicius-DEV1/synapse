@@ -58,16 +58,39 @@ export const ShareConfigEditor: React.FC<ShareConfigEditorProps> = ({
     }
   };
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[130] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-[130] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-md bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-zinc-950 border border-white/[0.06] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+            <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/[0.08] flex items-center justify-center text-zinc-300">
               <Settings size={20} />
             </div>
             <div>
@@ -166,7 +189,7 @@ export const ShareConfigEditor: React.FC<ShareConfigEditorProps> = ({
                 placeholder="Nova senha (deixe em branco para remover)..."
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full mt-2 px-3 py-2 rounded-lg bg-black/50 border border-white/10 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors"
+                className="w-full mt-2 px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors"
               />
             )}
           </div>

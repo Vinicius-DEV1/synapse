@@ -183,7 +183,7 @@ export const ShareCreationForm: React.FC<ShareCreationFormProps> = ({
               placeholder="Digite uma senha forte..."
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-2 px-3 py-2 rounded-lg bg-black/50 border border-white/10 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors"
+              className="w-full mt-2 px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors"
             />
           )}
         </div>
