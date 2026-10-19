@@ -31,7 +31,7 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
         content: jsonStr
       });
     } catch (err) {
-      console.error("Erro ao salvar diagrama", err);
+      console.error("Failed to save diagram", err);
     }
   }, [diagram.id]);
 
@@ -128,7 +128,7 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
             content: jsonStr
           });
         } catch (err) {
-          console.error("Erro ao salvar diagrama", err);
+          console.error("Failed to save diagram", err);
         }
       }, 1500);
     });
@@ -146,7 +146,7 @@ const DiagramEditor = ({ diagram, onBack }: DiagramEditorProps) => {
     <div className="w-full h-full flex flex-col relative" style={{ height: '100dvh' }}>
       <button 
         onClick={onBack}
-        className="absolute top-4 left-4 z-[9999] bg-dark-card border border-white/10 hover:bg-white/10 text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 font-medium transition-colors"
+        className="absolute top-4 left-4 z-[9999] bg-dark-card border border-white/[0.08] hover:bg-white/10 text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 font-medium transition-colors"
       >
         <ArrowLeft size={16} /> {diagram.title}
       </button>

@@ -14,6 +14,7 @@ export default function DiagramsModule() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [diagramToDelete, setDiagramToDelete] = useState<DiagramMeta | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function DiagramsModule() {
         if (diagramToDelete && !isDeleting) {
           e.stopPropagation();
           setDiagramToDelete(null);
-        } else if (showCreateModal) {
+        } else if (showCreateModal && !isCreating) {
           e.stopPropagation();
           setShowCreateModal(false);
         }
@@ -38,7 +39,7 @@ export default function DiagramsModule() {
         e.preventDefault();
         e.stopPropagation();
         setDiagramToDelete(null);
-      } else if (showCreateModal) {
+      } else if (showCreateModal && !isCreating) {
         e.preventDefault();
         e.stopPropagation();
         setShowCreateModal(false);
@@ -51,7 +52,7 @@ export default function DiagramsModule() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('caderno-back-press', handleBackPress);
     };
-  }, [diagramToDelete, isDeleting, showCreateModal]);
+  }, [diagramToDelete, isDeleting, showCreateModal, isCreating]);
 
   const loadDiagrams = async () => {
     if (window.api?.diagrams) {
@@ -66,7 +67,8 @@ export default function DiagramsModule() {
   };
 
   const handleCreate = async () => {
-    if (window.api?.diagrams) {
+    if (window.api?.diagrams && !isCreating) {
+      setIsCreating(true);
       try {
         const newDiagram = await window.api.diagrams.create({
           title: newTitle.trim() || t('diagrams.defaultTitle'),
@@ -80,6 +82,8 @@ export default function DiagramsModule() {
       } catch (e: unknown) {
         console.error(e);
         triggerToast(e instanceof Error ? e.message : t('diagrams.createError'), 'error');
+      } finally {
+        setIsCreating(false);
       }
     }
   };
@@ -177,11 +181,18 @@ export default function DiagramsModule() {
 
       {showCreateModal && (
         <Portal>
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-dark-bg border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+            onClick={() => !isCreating && setShowCreateModal(false)}
+          >
+            <div 
+              className="bg-dark-bg border border-white/[0.06] rounded-2xl p-6 w-full max-w-md shadow-2xl relative animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 text-dark-subtext hover:text-white transition-colors"
+                disabled={isCreating}
+                className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 text-dark-subtext hover:text-white transition-colors disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -197,7 +208,7 @@ export default function DiagramsModule() {
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                    className="w-full bg-dark-card border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    className="w-full bg-dark-card border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     placeholder={t('diagrams.placeholderTitle')}
                   />
                 </div>
@@ -205,14 +216,17 @@ export default function DiagramsModule() {
                 <div className="pt-4 flex gap-3">
                   <button
                     onClick={() => setShowCreateModal(false)}
-                    className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors font-medium"
+                    disabled={isCreating}
+                    className="flex-1 px-4 py-3 rounded-xl border border-white/[0.08] text-white hover:bg-white/5 transition-colors font-medium disabled:opacity-50"
                   >
                     {t('diagrams.cancel')}
                   </button>
                   <button
                     onClick={handleCreate}
-                    className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors font-medium"
+                    disabled={isCreating}
+                    className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   >
+                    {isCreating ? <Loader2 size={16} className="animate-spin" /> : null}
                     {t('diagrams.create')}
                   </button>
                 </div>
@@ -224,8 +238,14 @@ export default function DiagramsModule() {
 
       {diagramToDelete && (
         <Portal>
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-dark-card border border-red-500/20 rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col items-center text-center gap-4">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+            onClick={() => !isDeleting && setDiagramToDelete(null)}
+          >
+            <div 
+              className="bg-dark-card border border-white/[0.06] rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col items-center text-center gap-4 animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center">
                 <AlertTriangle size={24} />
               </div>
@@ -240,7 +260,7 @@ export default function DiagramsModule() {
                   type="button"
                   onClick={() => setDiagramToDelete(null)}
                   disabled={isDeleting}
-                  className="flex-1 py-2.5 rounded-xl font-medium text-dark-subtext hover:bg-white/5 transition-colors"
+                  className="flex-1 py-2.5 rounded-xl font-medium text-dark-subtext hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
                   {t('diagrams.cancel')}
                 </button>
@@ -248,8 +268,9 @@ export default function DiagramsModule() {
                   type="button"
                   onClick={confirmDelete}
                   disabled={isDeleting}
-                  className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+                  className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                 >
+                  {isDeleting ? <Loader2 size={16} className="animate-spin" /> : null}
                   {isDeleting ? t('diagrams.deleting') : t('diagrams.deleteConfirmBtn')}
                 </button>
               </div>
