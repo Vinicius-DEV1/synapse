@@ -92,7 +92,7 @@ export default function SyncMonitor() {
 
       <div className="grid grid-cols-2 gap-4">
         {/* Leituras */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+        <div className="bg-white/5 border border-white/[0.06] rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-white/70">{t('settings.sync.readsToday')}</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getStatusColor(readPercent)}`}>
@@ -106,7 +106,7 @@ export default function SyncMonitor() {
         </div>
 
         {/* Escritas */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+        <div className="bg-white/5 border border-white/[0.06] rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-white/70">{t('settings.sync.writesToday')}</span>
             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getStatusColor(writePercent)}`}>
@@ -122,7 +122,7 @@ export default function SyncMonitor() {
 
       {/* Tráfego de Rede */}
       <div className="grid grid-cols-2 gap-4 mt-6">
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-white/5 border border-white/[0.06] rounded-xl p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
             <ArrowDownToLine size={20} />
           </div>
@@ -131,7 +131,7 @@ export default function SyncMonitor() {
             <div className="text-xl font-bold">{formatBytes(today.bytesDownloaded)}</div>
           </div>
         </div>
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-white/5 border border-white/[0.06] rounded-xl p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
             <ArrowUpFromLine size={20} />
           </div>
@@ -143,12 +143,12 @@ export default function SyncMonitor() {
       </div>
 
       {/* Gráfico por Hora (Hoje) */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
+      <div className="bg-white/5 border border-white/[0.06] rounded-xl p-4 mt-6">
         <h3 className="text-sm font-medium text-white/70 mb-6 flex items-center gap-2">
           <Database size={14} />
           {t('settings.sync.hourlyUsage')}
         </h3>
-        <div className="flex items-end gap-1 h-32 w-full pt-4 border-b border-white/10">
+        <div className="flex items-end gap-1 h-32 w-full pt-4 border-b border-white/[0.06]">
           {Array.from({ length: 24 }).map((_, h) => {
             const hourStr = h.toString();
             const hourStats = today.hourly?.[hourStr];
@@ -167,7 +167,7 @@ export default function SyncMonitor() {
                 
                 {/* Tooltip on hover */}
                 {total > 0 && (
-                  <div className="absolute bottom-full mb-4 bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-xs opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-xl transition-opacity">
+                  <div className="absolute bottom-full mb-4 bg-dark-bg border border-white/[0.08] rounded-lg px-3 py-2 text-xs opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-xl transition-opacity">
                     <div className="font-bold text-white/90 mb-1">{h}:00 - {h}:59</div>
                     <div className="text-blue-400 mb-0.5">{t('settings.sync.readsCount', { count: reads.toLocaleString() }) || `${reads.toLocaleString()} leituras`} <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesDownloaded)})</span></div>
                     <div className="text-orange-400">{t('settings.sync.writesCount', { count: writes.toLocaleString() }) || `${writes.toLocaleString()} escritas`} <span className="text-white/40 ml-1">({formatBytes(hourStats?.bytesUploaded)})</span></div>
@@ -180,7 +180,7 @@ export default function SyncMonitor() {
       </div>
 
       {/* Histórico Semanal */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
+      <div className="bg-white/5 border border-white/[0.06] rounded-xl p-4 mt-6">
         <h3 className="text-sm font-medium text-white/70 mb-4 flex items-center gap-2">
           <Database size={14} />
           {t('settings.sync.last7Days')}
@@ -214,8 +214,8 @@ export default function SyncMonitor() {
       </div>
 
       {/* Sync Logs Console */}
-      <div className="bg-[#0f111a] border border-white/10 rounded-xl overflow-hidden mt-6 flex flex-col">
-        <div className="px-4 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between">
+      <div className="bg-[#0f111a] border border-white/[0.06] rounded-xl overflow-hidden mt-6 flex flex-col">
+        <div className="px-4 py-3 bg-white/5 border-b border-white/[0.06] flex items-center justify-between">
           <h3 className="text-sm font-medium text-white/70 flex items-center gap-2">
             <Terminal size={14} />
             {t('settings.sync.consoleTitle')}

@@ -198,7 +198,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           <select 
             value={appSettings.geminiModel ? (appSettings.geminiModel.startsWith('models/') ? appSettings.geminiModel : `models/${appSettings.geminiModel}`) : ''}
             onChange={(e) => setAppSettings({ ...appSettings, geminiModel: e.target.value })}
-            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+            className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
             {models.length > 0 ? (
               models.map(m => (
@@ -216,7 +216,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           <select 
             value={appSettings.geminiModelChat ? (appSettings.geminiModelChat.startsWith('models/') ? appSettings.geminiModelChat : `models/${appSettings.geminiModelChat}`) : ''}
             onChange={(e) => setAppSettings({ ...appSettings, geminiModelChat: e.target.value })}
-            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+            className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
             <option className="bg-dark-bg text-white" value="">(Usar Modelo Padrão)</option>
             {models.map(m => (
@@ -230,7 +230,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           <select 
             value={appSettings.geminiModelFlashcards ? (appSettings.geminiModelFlashcards.startsWith('models/') ? appSettings.geminiModelFlashcards : `models/${appSettings.geminiModelFlashcards}`) : ''}
             onChange={(e) => setAppSettings({ ...appSettings, geminiModelFlashcards: e.target.value })}
-            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+            className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
             <option className="bg-dark-bg text-white" value="">(Usar Modelo Padrão)</option>
             {models.map(m => (
@@ -245,7 +245,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
           <select 
             value={appSettings.geminiModelDictionary ? (appSettings.geminiModelDictionary.startsWith('models/') ? appSettings.geminiModelDictionary : `models/${appSettings.geminiModelDictionary}`) : ''}
             onChange={(e) => setAppSettings({ ...appSettings, geminiModelDictionary: e.target.value })}
-            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+            className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
           >
             <option className="bg-dark-bg text-white" value="">(Usar Modelo Padrão)</option>
             {models.map(m => (
@@ -301,7 +301,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
                       geminiModelQuizGenerator: e.target.value,
                     })
                   }
-                  className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                  className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
                 >
                   <option className="bg-dark-bg text-white" value="">
                     (Usar Modelo Chat / Padrão)
@@ -332,7 +332,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
                       geminiModelQuizValidator: e.target.value,
                     })
                   }
-                  className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                  className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
                 >
                   <option className="bg-dark-bg text-white" value="">
                     (Usar Modelo Chat / Padrão)
@@ -375,7 +375,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
                   cultureRecommendationsVolume: e.target.value as 'standard' | 'expanded' | 'quadruple',
                 })
               }
-              className="w-full bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
             >
               <option className="bg-dark-bg text-white" value="quadruple">
                 Volume Máximo Dobrado (4 a 5 coleções com 28 a 36 obras cada — 120 a 160+ sugestões) — Recomendado
@@ -454,7 +454,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
                   }
                 }}
                 placeholder="Ex: terror, reality show, gore, faroeste..."
-                className="flex-1 bg-dark-bg border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 transition-colors"
+                className="flex-1 bg-dark-bg border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 transition-colors"
               />
               <button
                 type="button"
@@ -502,7 +502,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         <select 
           value={appSettings.aiChatHighlight || 'glow'}
           onChange={(e) => setAppSettings({ ...appSettings, aiChatHighlight: e.target.value as 'glow' | 'underline' | 'none' })}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
           <option className="bg-dark-bg text-white" value="glow">Brilho Pulsante (Recomendado)</option>
           <option className="bg-dark-bg text-white" value="underline">Apenas Sublinhado (Sutil)</option>
@@ -518,7 +518,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         <select 
           value={appSettings.aiDictionaryLanguage || 'bilingual'}
           onChange={(e) => setAppSettings({ ...appSettings, aiDictionaryLanguage: e.target.value as 'bilingual' | 'english_only' })}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
           <option className="bg-dark-bg text-white" value="bilingual">Bilíngue (Inglês + Português)</option>
           <option className="bg-dark-bg text-white" value="english_only">100% Inglês (Foco e Economia)</option>
@@ -533,7 +533,7 @@ export default function AiTab({ appSettings, setAppSettings }: AiTabProps) {
         <select 
           value={appSettings.dictionaryMode || 'offline'}
           onChange={(e) => setAppSettings({ ...appSettings, dictionaryMode: e.target.value as 'offline' | 'online' })}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
           <option className="bg-dark-bg text-white" value="offline">Offline (Banco de Dados Local)</option>
           <option className="bg-dark-bg text-white" value="online">Online (IA Inteligente)</option>

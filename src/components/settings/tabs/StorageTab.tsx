@@ -99,7 +99,7 @@ export default function StorageTab() {
       </div>
 
       {/* Card de Armazenamento Total */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col items-center justify-center">
+      <div className="bg-white/5 border border-white/[0.06] rounded-xl p-5 flex flex-col items-center justify-center">
         <p className="text-xs text-dark-subtext uppercase tracking-wider font-semibold mb-1">{t('settings.storage.totalUsed')}</p>
         <p className="text-3xl font-bold text-white tracking-tight">{formatBytes(usage.total)}</p>
       </div>

@@ -44,7 +44,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
   return (
     <div className="space-y-6">
       {/* Language Selection */}
-      <div className="border-b border-white/10 pb-5">
+      <div className="border-b border-white/[0.06] pb-5">
         <div className="flex items-center gap-2 mb-1">
           <Globe size={16} className="text-brand-400" />
           <h4 className="text-sm font-medium text-white">{t('settings.language.title')}</h4>
@@ -95,7 +95,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
       </div>
 
       {/* Tab System */}
-      <div className="border-b border-white/10 pb-4">
+      <div className="border-b border-white/[0.06] pb-4">
         <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.tabSystem')}</h4>
         
         <label className="flex items-center justify-between cursor-pointer group mb-4">
@@ -177,7 +177,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
               onChange={(e) => setAppSettings({ ...appSettings, tabMaxWidth: parseInt(e.target.value, 10) })}
               className="w-28 accent-brand-500 cursor-pointer"
             />
-            <span className="text-xs font-mono px-2 py-1 bg-dark-bg border border-white/10 rounded text-brand-400 min-w-[58px] text-center">
+            <span className="text-xs font-mono px-2 py-1 bg-dark-bg border border-white/[0.08] rounded text-brand-400 min-w-[58px] text-center">
               {appSettings.tabMaxWidth ?? 400}px
             </span>
           </div>
@@ -205,7 +205,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
       </label>
 
       {/* Studies (Anki) */}
-      <div className="border-t border-white/10 pt-4 mb-4">
+      <div className="border-t border-white/[0.06] pt-4 mb-4">
         <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.studyAnki')}</h4>
         
         <label className="flex items-center justify-between cursor-pointer group mb-4">
@@ -250,12 +250,12 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
       </div>
 
       {/* Local Storage */}
-      <div className="border-t border-white/10 pt-4">
+      <div className="border-t border-white/[0.06] pt-4">
         <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.localStorage')}</h4>
         <div className="bg-black/20 border border-white/5 rounded-xl p-3">
           <label className="block text-xs font-medium text-dark-subtext mb-1">{t('settings.general.videoDownloadFolder')}</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-white/5 border border-white/10 text-white/80 text-xs px-3 py-2 rounded-lg font-mono truncate cursor-not-allowed">
+            <div className="flex-1 bg-white/5 border border-white/[0.08] text-white/80 text-xs px-3 py-2 rounded-lg font-mono truncate cursor-not-allowed">
               {videoPath}
             </div>
             <button
@@ -273,7 +273,7 @@ export default function GeneralTab({ appSettings, setAppSettings }: GeneralTabPr
       </div>
 
       {/* External Modules */}
-      <div className="border-t border-white/10 pt-4">
+      <div className="border-t border-white/[0.06] pt-4">
         <h4 className="text-sm font-medium text-white mb-3">{t('settings.general.externalModules')}</h4>
         <div className="bg-black/20 border border-white/5 rounded-xl p-3 flex justify-between items-center">
           <div>

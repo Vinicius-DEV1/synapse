@@ -108,7 +108,7 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
           value={newPassword}
           onChange={e => setNewPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
           placeholder={t('settings.security.newPasswordPlaceholder') || "Digite a nova senha..."}
           autoFocus
         />
@@ -122,7 +122,7 @@ export function MasterPasswordSection({ onCancel }: MasterPasswordSectionProps) 
           value={confirmPassword}
           onChange={e => setConfirmPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
           placeholder={t('settings.security.confirmPasswordPlaceholder') || "Digite a senha novamente..."}
         />
       </div>

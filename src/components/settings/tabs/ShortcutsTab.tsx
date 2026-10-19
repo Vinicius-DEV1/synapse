@@ -60,7 +60,7 @@ export default function ShortcutsTab() {
                   <span className="text-xs text-dark-subtext">{item.desc}</span>
                   <div className="flex items-center gap-1.5">
                     {item.keys.map((k, j) => (
-                      <span key={j} className="text-[10px] font-mono bg-white/10 text-white/80 px-2 py-0.5 rounded border border-white/10">
+                      <span key={j} className="text-[10px] font-mono bg-white/10 text-white/80 px-2 py-0.5 rounded border border-white/[0.08]">
                         {k}
                       </span>
                     ))}

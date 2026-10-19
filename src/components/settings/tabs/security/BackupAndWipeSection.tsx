@@ -62,7 +62,7 @@ export function BackupAndWipeSection() {
         <button 
           type="button"
           onClick={handleExportBackup}
-          className="w-full py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-2.5 rounded-xl border border-white/[0.08] text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           <DatabaseBackup size={16} />
           {t('settings.security.exportBackup') || 'Exportar DB Local (Backup)'}

@@ -78,7 +78,7 @@ export function ApiKeyPoolSection({
           </div>
         ))}
         {keys.length === 0 && (
-          <div className="text-center py-4 text-xs text-dark-subtext border border-dashed border-white/10 rounded-lg">
+          <div className="text-center py-4 text-xs text-dark-subtext border border-dashed border-white/[0.08] rounded-lg">
             Nenhuma chave cadastrada.
           </div>
         )}
@@ -89,7 +89,7 @@ export function ApiKeyPoolSection({
           type="password"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
-          className="flex-1 bg-dark-bg border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+          className="flex-1 bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
           placeholder="Adicionar nova chave..."
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

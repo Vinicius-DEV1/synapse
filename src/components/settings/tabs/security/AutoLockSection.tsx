@@ -36,7 +36,7 @@ export function AutoLockSection({ appSettings, setAppSettings }: AutoLockSection
         <select 
           value={appSettings.inactivityTimeoutMinutes}
           onChange={(e) => setAppSettings({ ...appSettings, inactivityTimeoutMinutes: parseInt(e.target.value, 10) })}
-          className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
+          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors cursor-pointer"
         >
           <option className="bg-dark-bg text-white" value="0">{t('settings.security.never')}</option>
           <option className="bg-dark-bg text-white" value="5">{t('settings.security.minutes', { count: 5 })}</option>

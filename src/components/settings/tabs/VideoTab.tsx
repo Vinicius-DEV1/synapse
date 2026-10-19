@@ -52,7 +52,7 @@ export default function VideoTab() {
                   onChange={() => handleSave({ ...settings, videoPlaybackPreference: 'auto' })}
                   className="peer sr-only" 
                 />
-                <div className="w-5 h-5 rounded-full border border-dark-border group-hover:border-purple-400 peer-checked:border-purple-500 transition-colors"></div>
+                <div className="w-5 h-5 rounded-full border border-white/[0.08] group-hover:border-purple-400 peer-checked:border-purple-500 transition-colors"></div>
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
               </div>
               <div>
@@ -70,7 +70,7 @@ export default function VideoTab() {
                   onChange={() => handleSave({ ...settings, videoPlaybackPreference: 'force_web' })}
                   className="peer sr-only" 
                 />
-                <div className="w-5 h-5 rounded-full border border-dark-border group-hover:border-purple-400 peer-checked:border-purple-500 transition-colors"></div>
+                <div className="w-5 h-5 rounded-full border border-white/[0.08] group-hover:border-purple-400 peer-checked:border-purple-500 transition-colors"></div>
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
               </div>
               <div>
@@ -88,7 +88,7 @@ export default function VideoTab() {
                   onChange={() => handleSave({ ...settings, videoPlaybackPreference: 'force_original' })}
                   className="peer sr-only" 
                 />
-                <div className="w-5 h-5 rounded-full border border-dark-border group-hover:border-purple-400 peer-checked:border-purple-500 transition-colors"></div>
+                <div className="w-5 h-5 rounded-full border border-white/[0.08] group-hover:border-purple-400 peer-checked:border-purple-500 transition-colors"></div>
                 <div className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
               </div>
               <div>
@@ -111,7 +111,7 @@ export default function VideoTab() {
             <select
               value={settings.videoConversionPreset}
               onChange={(e) => handleSave({ ...settings, videoConversionPreset: e.target.value as AppSettings['videoConversionPreset'] })}
-              className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
+              className="bg-black/40 border border-white/[0.08] rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
               <option className="bg-dark-bg text-white" value="ultrafast">Ultrafast</option>
               <option className="bg-dark-bg text-white" value="superfast">Superfast</option>
@@ -141,7 +141,7 @@ export default function VideoTab() {
             <select
               value={settings.videoDefaultWebQuality}
               onChange={(e) => handleSave({ ...settings, videoDefaultWebQuality: e.target.value as AppSettings['videoDefaultWebQuality'] })}
-              className="bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
+              className="bg-black/40 border border-white/[0.08] rounded-lg p-3 text-white focus:outline-none focus:border-brand-500 w-full md:w-1/2"
             >
               <option className="bg-dark-bg text-white" value="original">Original</option>
               <option className="bg-dark-bg text-white" value="remux">Remux MP4</option>

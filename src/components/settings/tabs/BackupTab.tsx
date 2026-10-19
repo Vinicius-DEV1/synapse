@@ -136,7 +136,7 @@ export function BackupTab() {
           className={`flex flex-col gap-2 p-4 rounded-xl border text-left transition-colors ${
             backupType === 'encrypted' 
               ? 'bg-brand-500/20 border-brand-500' 
-              : 'bg-white/5 border-white/10 hover:bg-white/10'
+              : 'bg-white/5 border-white/[0.08] hover:bg-white/10'
           } ${isBackingUp ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <div className="flex items-center gap-2">
@@ -154,7 +154,7 @@ export function BackupTab() {
           className={`flex flex-col gap-2 p-4 rounded-xl border text-left transition-colors ${
             backupType === 'decrypted' 
               ? 'bg-red-500/20 border-red-500' 
-              : 'bg-white/5 border-white/10 hover:bg-white/10'
+              : 'bg-white/5 border-white/[0.08] hover:bg-white/10'
           } ${isBackingUp ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export function BackupTab() {
       </div>
 
       {/* Opções extras */}
-      <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+      <div className="p-4 rounded-xl bg-white/5 border border-white/[0.06] space-y-4">
         <label className="flex items-start gap-3 cursor-pointer">
           <input 
             type="checkbox" 
@@ -188,7 +188,7 @@ export function BackupTab() {
       <div className="space-y-2">
         <span className="text-sm font-medium text-white">{t('settings.backup.destinationFolder')}</span>
         <div className="flex gap-2">
-          <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/70 overflow-hidden text-ellipsis whitespace-nowrap">
+          <div className="flex-1 bg-black/40 border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white/70 overflow-hidden text-ellipsis whitespace-nowrap">
             {destination || t('settings.backup.noFolderSelected')}
           </div>
           <button 
@@ -245,8 +245,8 @@ export function BackupTab() {
 
         {/* Console de Logs */}
         {(logs.length > 0 || isBackingUp) && (
-          <div className="mt-6 bg-black/80 rounded-xl border border-white/10 overflow-hidden flex flex-col h-64">
-            <div className="px-4 py-2 bg-white/5 border-b border-white/10 flex justify-between items-center text-xs text-white/50">
+          <div className="mt-6 bg-black/80 rounded-xl border border-white/[0.06] overflow-hidden flex flex-col h-64">
+            <div className="px-4 py-2 bg-white/5 border-b border-white/[0.06] flex justify-between items-center text-xs text-white/50">
               <span className="flex items-center gap-2">
                 {isBackingUp && <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />}
                 {isBackingUp ? t('settings.backup.inProgress') : isCompleted ? `✓ ${t('settings.backup.finished')}` : t('settings.backup.log')}

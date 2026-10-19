@@ -38,7 +38,7 @@ export default function SecurityTab({
         <button 
           type="button"
           onClick={() => setIsChangingPassword(true)}
-          className="w-full py-2.5 rounded-xl border border-white/10 text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-xl border border-white/[0.08] text-sm font-medium text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
         >
           <KeyRound size={16} />
           {t('settings.security.changeMasterPassword')}

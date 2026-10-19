@@ -78,7 +78,7 @@ export default function StorageFilesModal({
       aria-modal="true"
     >
       <div 
-        className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up"
+        className="bg-dark-bg border border-white/[0.06] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         
@@ -115,7 +115,7 @@ export default function StorageFilesModal({
               placeholder={t('settings.storage.searchFiles') || "Buscar arquivos..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-500/50 transition-colors"
+              className="w-full bg-white/5 border border-white/[0.08] rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-dark-subtext focus:outline-none focus:border-brand-500/50 transition-colors"
             />
           </div>
         </div>

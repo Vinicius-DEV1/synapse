@@ -162,7 +162,7 @@ export function VisitorsManagementSection() {
               value={visitorPassword}
               onChange={e => setVisitorPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreateVisitor()}
-              className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
               placeholder="Senha que destrancará os módulos escolhidos..."
             />
           </div>
@@ -204,7 +204,7 @@ export function VisitorsManagementSection() {
             <button
               type="button"
               onClick={() => setShowAddVisitor(false)}
-              className="px-4 border border-white/10 hover:bg-white/5 rounded-lg text-sm transition-colors"
+              className="px-4 border border-white/[0.08] hover:bg-white/5 rounded-lg text-sm transition-colors"
             >
               Cancelar
             </button>
@@ -232,7 +232,7 @@ export function VisitorsManagementSection() {
         ))}
         
         {visitors.length === 0 && !showAddVisitor && (
-          <div className="text-center p-4 border border-dashed border-white/10 rounded-xl text-dark-subtext text-sm">
+          <div className="text-center p-4 border border-dashed border-white/[0.08] rounded-xl text-dark-subtext text-sm">
             Nenhuma senha de visitante configurada.
           </div>
         )}
