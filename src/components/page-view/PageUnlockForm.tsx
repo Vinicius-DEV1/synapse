@@ -38,7 +38,7 @@ export const PageUnlockForm = memo(function PageUnlockForm({ page, encryptedCont
       triggerToast(t('notes.unlockedSuccess'), 'success');
       onUnlockSuccess(decrypted);
     } catch (err) {
-      console.warn(`[Caderno:Unlock] Falha ao descriptografar página ${page.id}:`, err);
+      console.warn(`[Caderno:Unlock] Failed to decrypt page ${page.id}:`, err);
       triggerToast(t('notes.incorrectPassword'), 'error');
     } finally {
       setIsSubmitting(false);
@@ -46,7 +46,7 @@ export const PageUnlockForm = memo(function PageUnlockForm({ page, encryptedCont
   };
 
   return (
-    <form onSubmit={handleUnlock} className="mt-8 p-6 bg-dark-card rounded-xl border border-dark-border text-center max-w-md mx-auto">
+    <form onSubmit={handleUnlock} className="mt-8 p-6 bg-dark-card rounded-xl border border-white/[0.06] text-center max-w-md mx-auto shadow-xl">
       <div className="text-4xl mb-4">🔒</div>
       <h3 className="text-xl text-dark-text font-bold mb-2">{t('notes.locked')}</h3>
       <p className="text-dark-subtext text-sm mb-4">{t('notes.lockedDesc')}</p>
@@ -55,7 +55,7 @@ export const PageUnlockForm = memo(function PageUnlockForm({ page, encryptedCont
         value={unlockPassword} 
         onChange={e => setUnlockPassword(e.target.value)} 
         placeholder={t('notes.passwordPlaceholder')} 
-        className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2 text-dark-text mb-4 focus:border-brand-500 outline-none" 
+        className="w-full bg-dark-bg border border-white/[0.08] rounded-lg px-4 py-2 text-dark-text mb-4 focus:border-brand-500 outline-none" 
         autoFocus 
         disabled={isSubmitting}
       />

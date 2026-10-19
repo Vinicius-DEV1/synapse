@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { filterActivePages } from '../utils/page-filter';
+import { useI18n } from '../i18n';
 
 interface PageSearchMenuProps {
   x: number;
@@ -13,6 +14,7 @@ interface PageSearchMenuProps {
 
 export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, onClose }: PageSearchMenuProps) {
   const { state } = useStore();
+  const { t } = useI18n();
   const [localQuery, setLocalQuery] = useState(query || '');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -30,19 +32,19 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
     });
   }, [state.pages, localQuery]);
 
-  const effectiveTitle = localQuery.trim() || 'Sem título';
+  const effectiveTitle = localQuery.trim() || t('notes.untitled');
 
   const options = useMemo(() => {
     return mode === 'create'
       ? [
-          { id: 'new', title: `Criar página "${effectiveTitle}"`, icon: '✨' },
-          ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' }))
+          { id: 'new', title: t('pageSearchMenu.createPage', { title: effectiveTitle }), icon: '✨' },
+          ...filteredPages.map(p => ({ id: p.id, title: p.title || t('notes.untitled'), icon: p.icon || '📄' }))
         ]
       : [
-          ...filteredPages.map(p => ({ id: p.id, title: p.title || 'Sem título', icon: p.icon || '📄' })),
-          ...(localQuery.trim() ? [{ id: 'new', title: `Criar página "${localQuery.trim()}"`, icon: '✨' }] : [])
+          ...filteredPages.map(p => ({ id: p.id, title: p.title || t('notes.untitled'), icon: p.icon || '📄' })),
+          ...(localQuery.trim() ? [{ id: 'new', title: t('pageSearchMenu.createPage', { title: localQuery.trim() }), icon: '✨' }] : [])
         ];
-  }, [mode, effectiveTitle, filteredPages, localQuery]);
+  }, [mode, effectiveTitle, filteredPages, localQuery, t]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -101,11 +103,11 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
+      className="fixed z-50 w-72 bg-dark-bg border border-white/[0.06] rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
       style={positionStyle}
     >
       <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/5">
-        {mode === 'create' ? 'Criar Nova Página' : 'Vincular Página'}
+        {mode === 'create' ? t('pageSearchMenu.createTitle') : t('pageSearchMenu.linkTitle')}
       </div>
       <div className="p-2 border-b border-white/5 bg-dark-card/30">
         <input
@@ -113,14 +115,14 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
           autoFocus
           value={localQuery}
           onChange={(e) => setLocalQuery(e.target.value)}
-          placeholder={mode === 'create' ? 'Nome da nova página...' : 'Buscar página existente...'}
+          placeholder={mode === 'create' ? t('pageSearchMenu.createPlaceholder') : t('pageSearchMenu.searchPlaceholder')}
           className="w-full bg-transparent text-sm text-dark-text outline-none placeholder-dark-subtext"
         />
       </div>
       <div className="overflow-y-auto custom-scrollbar p-1">
         {options.length === 0 ? (
           <div className="px-3 py-3 text-sm text-dark-subtext text-center">
-            Nenhuma página encontrada
+            {t('pageSearchMenu.noPagesFound')}
           </div>
         ) : options.map((opt, index) => {
             const isSelected = index === selectedIndex;
@@ -132,7 +134,7 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'}`}
               >
-                <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-dark-text text-sm">
+                <div className="w-8 h-8 rounded bg-white/5 border border-white/[0.06] flex items-center justify-center shrink-0 text-dark-text text-sm">
                   {opt.icon}
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">

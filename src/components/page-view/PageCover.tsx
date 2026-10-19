@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { Image as ImageIcon, X, Upload, Sparkles, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
+import { useI18n } from '../../i18n';
 import type { Page } from '../../types';
 
 interface PageCoverProps {
@@ -39,7 +40,7 @@ function convertImageToCoverDataUrl(img: HTMLImageElement): string | null {
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    console.error('[PageCover] Não foi possível obter contexto 2D do canvas para redimensionar capa');
+    console.error('[PageCover] Failed to get 2D canvas context for resizing cover');
     return null;
   }
   ctx.drawImage(img, 0, 0, width, height);
@@ -48,6 +49,7 @@ function convertImageToCoverDataUrl(img: HTMLImageElement): string | null {
 }
 
 export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCoverProps) {
+  const { t } = useI18n();
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [coverUrlInput, setCoverUrlInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -60,8 +62,16 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
         setShowCoverModal(false);
       }
     };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      setShowCoverModal(false);
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [showCoverModal]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,12 +80,12 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
 
     const reader = new FileReader();
     reader.onerror = () => {
-      triggerToast('Falha ao ler arquivo de imagem.', 'error');
+      triggerToast(t('notes.cover.readImageError'), 'error');
     };
     reader.onload = (event) => {
       const img = new Image();
       img.onerror = () => {
-        triggerToast('Falha ao processar imagem da capa.', 'error');
+        triggerToast(t('notes.cover.processImageError'), 'error');
       };
       img.onload = () => {
         const dataUrl = convertImageToCoverDataUrl(img);
@@ -83,7 +93,7 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
           onUpdatePage(page.id, { cover_image: dataUrl });
           setShowCoverModal(false);
         } else {
-          triggerToast('Não foi possível processar a imagem da capa.', 'error');
+          triggerToast(t('notes.cover.processImageError'), 'error');
         }
       };
       img.src = event.target?.result as string;
@@ -121,19 +131,19 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
           setShowCoverModal(false);
         };
         img.onerror = () => {
-          triggerToast('Falha ao processar a imagem gerada.', 'error');
+          triggerToast(t('notes.cover.processImageError'), 'error');
           setIsGenerating(false);
         };
         img.src = event.target?.result as string;
       };
       reader.onerror = () => {
-        triggerToast('Falha ao ler dados da imagem.', 'error');
+        triggerToast(t('notes.cover.readBlobError'), 'error');
         setIsGenerating(false);
       };
       reader.readAsDataURL(blob);
     } catch (err) {
       console.error('[PageCover] Failed to generate random cover:', err);
-      triggerToast('Falha ao gerar capa aleatória. Verifique sua conexão.', 'error');
+      triggerToast(t('notes.cover.generateRandomError'), 'error');
       setIsGenerating(false);
     }
   };
@@ -141,10 +151,10 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
   return (
     <>
       {page.cover_image ? (
-        <div className="w-full h-64 relative group border-b border-dark-border">
+        <div className="w-full h-64 relative group border-b border-white/[0.06]">
           <img
             src={getStableCoverUrl(page.cover_image, page.id)}
-            alt="Capa"
+            alt="Cover"
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover"
@@ -154,13 +164,13 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
               onClick={() => setShowCoverModal(true)}
               className="bg-black/50 hover:bg-black/70 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
-              <ImageIcon size={14} /> Trocar Capa
+              <ImageIcon size={14} /> {t('notes.cover.changeCover')}
             </button>
             <button 
               onClick={() => onUpdatePage(page.id, { cover_image: null })}
-              className="bg-black/50 hover:bg-red-500/80 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="bg-black/50 hover:bg-rose-500/80 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
             >
-              Remover
+              {t('notes.cover.removeCover')}
             </button>
           </div>
         </div>
@@ -171,7 +181,7 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
               onClick={() => setShowCoverModal(true)}
               className="text-dark-subtext hover:text-white flex items-center gap-1.5 text-sm font-medium px-2 py-1 hover:bg-white/5 rounded transition-colors"
             >
-              <ImageIcon size={16} /> Adicionar capa
+              <ImageIcon size={16} /> {t('notes.cover.addCover')}
             </button>
           </div>
         </div>
@@ -185,36 +195,36 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
           }}
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
         >
-          <div className="bg-dark-card border border-dark-border p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
+          <div className="bg-dark-card border border-white/[0.06] p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
             <button onClick={() => setShowCoverModal(false)} className="absolute top-4 right-4 text-dark-subtext hover:text-white transition-colors">
               <X size={20} />
             </button>
-            <h3 className="text-lg font-bold mb-6 text-dark-text">Adicionar Capa</h3>
+            <h3 className="text-lg font-bold mb-6 text-dark-text">{t('notes.cover.coverModalTitle')}</h3>
             
             <div className="space-y-4">
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-4 transition-colors text-white font-medium"
+                className="w-full flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/[0.06] rounded-xl py-4 transition-colors text-white font-medium"
               >
-                <Upload size={18} /> Fazer upload do computador
+                <Upload size={18} /> {t('notes.cover.uploadFromComputer')}
               </button>
               <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
               <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-white/10"></div>
-                <span className="flex-shrink-0 mx-4 text-dark-subtext text-xs uppercase font-medium">ou</span>
-                <div className="flex-grow border-t border-white/10"></div>
+                <div className="flex-grow border-t border-white/[0.06]"></div>
+                <span className="flex-shrink-0 mx-4 text-dark-subtext text-xs uppercase font-medium">{t('notes.cover.or')}</span>
+                <div className="flex-grow border-t border-white/[0.06]"></div>
               </div>
 
               <div>
-                <label className="block text-xs text-dark-subtext mb-2 font-medium">Link da Imagem</label>
+                <label className="block text-xs text-dark-subtext mb-2 font-medium">{t('notes.cover.imageUrl')}</label>
                 <div className="flex gap-2">
                   <input 
                     type="text" 
                     placeholder="https://..."
                     value={coverUrlInput}
                     onChange={e => setCoverUrlInput(e.target.value)}
-                    className="flex-1 bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+                    className="flex-1 bg-dark-bg border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
                   />
                   <button 
                     onClick={() => {
@@ -225,7 +235,7 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
                     }}
                     className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                   >
-                    Salvar
+                    {t('notes.cover.saveCover')}
                   </button>
                 </div>
               </div>
@@ -238,11 +248,11 @@ export const PageCover = memo(function PageCover({ page, onUpdatePage }: PageCov
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> Baixando e gerando capa...
+                      <Loader2 size={16} className="animate-spin" /> {t('notes.cover.generatingCover')}
                     </>
                   ) : (
                     <>
-                      <Sparkles size={16} /> Gerar Capa Aleatória
+                      <Sparkles size={16} /> {t('notes.cover.randomCover')}
                     </>
                   )}
                 </button>

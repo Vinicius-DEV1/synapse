@@ -114,11 +114,17 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', onClose);
     window.addEventListener('scroll', handleScroll, true);
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('caderno-back-press', handleBackPress);
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('resize', onClose);
       window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('caderno-back-press', handleBackPress);
     };
   }, [onClose]);
 
@@ -148,7 +154,7 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     return (
       <div 
         ref={menuRef}
-        className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden p-3 text-dark-subtext text-sm text-center"
+        className="fixed z-50 w-72 bg-dark-bg border border-white/[0.06] rounded-lg shadow-xl overflow-hidden p-3 text-dark-subtext text-sm text-center"
         style={positionStyle}
       >
         Nenhum bloco encontrado
@@ -159,10 +165,10 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-72 bg-dark-bg border border-white/10 rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
+      className="fixed z-50 w-72 bg-dark-bg border border-white/[0.06] rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
       style={positionStyle}
     >
-      <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/5">
+      <div className="px-3 py-2 text-xs font-semibold text-dark-subtext uppercase tracking-wider bg-dark-card/50 border-b border-white/[0.06]">
         Blocos Básicos
       </div>
       <div className="overflow-y-auto custom-scrollbar p-1">
@@ -177,7 +183,7 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
               onMouseEnter={() => setSelectedIndex(index)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'}`}
             >
-              <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-dark-text">
+              <div className="w-10 h-10 rounded bg-white/5 border border-white/[0.08] flex items-center justify-center shrink-0 text-dark-text">
                 <Icon size={18} />
               </div>
               <div className="flex flex-col">

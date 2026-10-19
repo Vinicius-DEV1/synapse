@@ -86,7 +86,7 @@ export default function BlockHandle({
       {isOpen && (
         <div 
           ref={menuRef}
-          className="absolute left-full top-0 ml-1 w-52 bg-dark-bg/95 border border-white/10 rounded-xl shadow-2xl backdrop-blur-xl overflow-hidden animate-fade-in z-50 py-1"
+          className="absolute left-full top-0 ml-1 w-52 bg-dark-bg/95 border border-white/[0.06] rounded-xl shadow-2xl backdrop-blur-xl overflow-hidden animate-fade-in z-50 py-1"
         >
           {!showColorSubmenu ? (
             <div className="py-0.5">

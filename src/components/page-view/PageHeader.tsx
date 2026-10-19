@@ -99,7 +99,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
     <>
       <div className="flex items-center gap-2 text-xs text-dark-subtext mb-6 flex-wrap">
         {/* Sequential Sibling Navigation Arrows */}
-        <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/5 rounded-lg p-0.5 shadow-sm">
+        <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.06] rounded-lg p-0.5 shadow-sm">
           <button
             onClick={() => prevPage && handleNavigate(prevPage.id)}
             disabled={!prevPage}
@@ -159,7 +159,8 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
             ref={titleRef}
             contentEditable
             suppressContentEditableWarning
-            className="text-4xl font-bold text-dark-text outline-none flex-1 min-w-0 leading-tight empty:before:content-['Sem_Título'] empty:before:text-dark-subtext/50"
+            data-placeholder={t('notes.untitled')}
+            className="text-4xl font-bold text-dark-text outline-none flex-1 min-w-0 leading-tight empty:before:content-[attr(data-placeholder)] empty:before:text-dark-subtext/50"
             onFocus={() => {
               isEditingTitleRef.current = true;
             }}
@@ -167,7 +168,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
               isEditingTitleRef.current = false;
               const newTitle = e.currentTarget.textContent?.trim();
               if (newTitle !== undefined && newTitle !== page.title) {
-                onUpdatePage(page.id, { title: newTitle || 'Sem Título' });
+                onUpdatePage(page.id, { title: newTitle || t('notes.untitled') });
               }
             }}
             onKeyDown={(e) => {
@@ -177,7 +178,7 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
               }
             }}
           >
-            {page.title === 'Sem Título' ? '' : page.title}
+            {page.title === 'Sem Título' || page.title === 'Untitled' ? '' : page.title}
           </h1>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity ml-4 shrink-0">
@@ -211,7 +212,8 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
           ref={descRef}
           contentEditable
           suppressContentEditableWarning
-          className="text-base text-dark-subtext outline-none empty:before:content-['Adicionar_descrição...'] empty:before:text-dark-subtext/30 focus:empty:before:text-dark-subtext/50 transition-colors"
+          data-placeholder={t('notes.addDescription')}
+          className="text-base text-dark-subtext outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-dark-subtext/30 focus:empty:before:text-dark-subtext/50 transition-colors"
           onFocus={() => {
             isEditingDescRef.current = true;
           }}

@@ -101,7 +101,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
               dispatch({ type: 'EXPAND_NODE', nodeId: targetId });
             })
             .catch((err) => {
-              console.error('[SubPageGrid] Falha ao atualizar hierarquia:', err);
+              console.error('[SubPageGrid] Failed to update hierarchy:', err);
               triggerToast('Falha ao mover a página.', 'error');
             });
         } else {
@@ -137,7 +137,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
 
           if (updates.length > 0) {
             Promise.all(updates).catch((err) => {
-              console.error('[SubPageGrid] Falha ao reordenar páginas:', err);
+              console.error('[SubPageGrid] Failed to reorder pages:', err);
               triggerToast('Falha ao salvar a nova ordem das páginas.', 'error');
             });
           }
@@ -171,7 +171,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
           </SortableContext>
           <button
             onClick={onCreatePage}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/10 hover:border-brand-500/50 hover:bg-brand-500/5 transition-all text-dark-subtext hover:text-brand-400 group h-[50px]"
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/[0.08] hover:border-brand-500/50 hover:bg-brand-500/5 transition-all text-dark-subtext hover:text-brand-400 group h-[50px]"
           >
             <Plus size={18} className="group-hover:scale-110 transition-transform" />
             <span className="text-sm font-medium">Nova Sub-página</span>

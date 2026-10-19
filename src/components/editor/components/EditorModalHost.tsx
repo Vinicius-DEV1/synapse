@@ -438,7 +438,7 @@ export default function EditorModalHost({
                       await window.api.quiz.linkBatteryToPage(battery.id, pageId);
                     }
                   } catch (err) {
-                    console.warn('[EditorModalHost] Falha ao criar bateria no banco:', err);
+                    console.warn('[EditorModalHost] Failed to save quiz battery in database:', err);
                   }
                 }
 
