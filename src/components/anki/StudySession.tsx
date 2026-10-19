@@ -129,8 +129,16 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
         }
       }
     };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [showingAnswer, currentIndex, currentCard, handleRating, handleRetryPractice, revealAnswer, onClose]);
 
   if (editingCard) {
@@ -159,10 +167,10 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
   if (loading) {
     return (
       <div className="fixed inset-0 bg-dark-bg flex items-center justify-center text-dark-text z-[200] p-4">
-        <div className="w-full max-w-2xl bg-dark-card border border-dark-border rounded-2xl p-10 flex flex-col items-center justify-center shadow-2xl min-h-[400px]">
+        <div className="w-full max-w-2xl bg-dark-card border border-white/[0.06] rounded-2xl p-10 flex flex-col items-center justify-center shadow-2xl min-h-[400px]">
           <div className="w-2/3 h-8 bg-white/5 rounded-lg animate-pulse mb-8" />
           <div className="w-1/2 h-6 bg-white/5 rounded-lg animate-pulse mb-12" />
-          <div className="w-full h-px bg-dark-border my-6" />
+          <div className="w-full h-px bg-white/[0.06] my-6" />
           <div className="w-3/4 h-6 bg-white/5 rounded-lg animate-pulse mb-4" />
           <div className="w-1/2 h-6 bg-white/5 rounded-lg animate-pulse" />
         </div>
@@ -201,7 +209,7 @@ function StudySessionContent({ deckId, onClose }: { deckId: string; onClose: () 
       <main className="flex-1 flex flex-col p-6 sm:p-12 pb-24 sm:pb-32 overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl flex flex-col items-center gap-8 shrink-0">
           <div
-            className="w-full bg-dark-card rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col min-h-[400px]"
+            className="w-full bg-dark-card rounded-2xl border border-white/[0.06] shadow-2xl overflow-hidden flex flex-col min-h-[400px]"
             style={{
               transform:
                 flipState === 'flipping-out'

@@ -21,8 +21,16 @@ export default function CreateDeckModal({ parentId, onClose, onCreate }: CreateD
         onClose();
       }
     };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [onClose]);
 
   const handleSubmit = async () => {
@@ -42,7 +50,7 @@ export default function CreateDeckModal({ parentId, onClose, onCreate }: CreateD
         onClick={onClose}
       >
         <div
-          className="bg-dark-card border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in"
+          className="bg-dark-card border border-white/[0.06] p-6 rounded-2xl w-full max-w-md shadow-2xl animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <h2 className="text-xl font-bold mb-4 text-white">
@@ -60,7 +68,7 @@ export default function CreateDeckModal({ parentId, onClose, onCreate }: CreateD
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
                 placeholder={t('anki.modal.deckNamePlaceholder', 'Ex: Inglês - Phrasal Verbs')}
-                className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors text-white"
+                className="w-full bg-dark-bg border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors text-white"
               />
             </div>
             <div>
@@ -72,7 +80,7 @@ export default function CreateDeckModal({ parentId, onClose, onCreate }: CreateD
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={t('anki.modal.descriptionPlaceholder', 'Ex: Verbos úteis para conversação')}
-                className="w-full bg-dark-bg border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors text-white"
+                className="w-full bg-dark-bg border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors text-white"
               />
             </div>
           </div>

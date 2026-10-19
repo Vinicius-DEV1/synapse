@@ -100,6 +100,25 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     };
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
+
   const handleDeleteSelected = async () => {
     const msg = `Tem certeza que deseja excluir ${selectedIds.size} cartões?`;
     const confirmed = window.api?.app?.showConfirm
@@ -242,7 +261,7 @@ export default function DeckBrowser({ deck, onClose, onDeckDeleted, onDeckUpdate
     <Portal>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={onClose}>
       <div 
-        className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-dark-border h-[90vh]"
+        className="bg-dark-card w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-white/[0.06] h-[90vh]"
         onMouseDown={e => e.stopPropagation()}
       >
         <div className={`flex-1 flex flex-col relative custom-scrollbar ${previewCard ? 'overflow-hidden' : 'overflow-y-auto'}`}>

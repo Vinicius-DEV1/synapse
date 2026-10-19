@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, BrainCircuit, Keyboard, Settings, Activity, Target, Database, Tag, Layers, Edit3 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 
@@ -18,10 +18,29 @@ interface AnkiHelpModalProps {
 export default function AnkiHelpModal({ onClose }: AnkiHelpModalProps) {
   const [activeTab, setActiveTab] = useState<'intro' | 'shortcuts' | 'fsrs' | 'ai' | 'tags' | 'ai_logs' | 'prompts' | 'types' | 'external_ai'>('intro');
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
+
   return (
     <Portal>
-    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-fade-in">
-      <div className="bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/10 h-[80vh] max-h-[700px]">
+    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-fade-in" onClick={onClose}>
+      <div className="bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/[0.06] h-[80vh] max-h-[700px]" onClick={e => e.stopPropagation()}>
         
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-dark-bg border-r border-white/5 p-6 flex flex-col gap-2 shrink-0 overflow-y-auto custom-scrollbar">

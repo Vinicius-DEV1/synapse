@@ -1,15 +1,28 @@
-import  { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Sparkles, Plus, Send } from 'lucide-react';
 import { fetchGeminiModels, type GeminiModel } from '../../services/gemini';
 import { getSettings } from '../../utils/settings';
 import AIGenerationView from './AIGenerationView';
 import AIChatAnalysisView from './AIChatAnalysisView';
 import { Portal } from '../ui/Portal';
+import type { Deck, CardDraft } from './types';
+import type { AnkiCard } from '../../types/anki';
+
+interface FooterState {
+  hasSuggestions?: boolean;
+  hasChatHistory?: boolean;
+  handleGenerate?: () => void;
+  cancelSuggestions?: () => void;
+  handleAddAll?: () => void;
+  chatPrompt?: string;
+  setChatPrompt?: (v: string) => void;
+  handleSendChatMessage?: () => void;
+}
 
 interface AIAssistantModalProps {
   deckId: string;
   onClose: () => void;
-  onAddCards: (cards: any[]) => void;
+  onAddCards: (cards: CardDraft[]) => void;
 }
 
 export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssistantModalProps) {
@@ -23,12 +36,31 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
   const [allDecksMap, setAllDecksMap] = useState<Record<string, string>>({});
   
   const isGeneratingRef = useRef(false);
-  const [footerState, setFooterState] = useState<any>({});
+  const [footerState, setFooterState] = useState<FooterState>({});
 
   useEffect(() => {
     loadModels();
     getContextData();
   }, [deckId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   const loadModels = async () => {
     try {
@@ -42,7 +74,7 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
         setSelectedModel(available[0].name);
       }
     } catch (err) {
-      console.error('Failed to load models:', err);
+      console.error('[AIAssistantModal] Failed to load models:', err);
     }
   };
 
@@ -51,27 +83,28 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
     const resDecks = await window.api.anki.getDecks();
     const resCards = await window.api.anki.getAllCards(deckId);
     
-    const decks = Array.isArray(resDecks) ? resDecks : resDecks.decks;
+    const decks: Deck[] = Array.isArray(resDecks) ? resDecks : (resDecks?.decks || []);
     const map: Record<string, string> = {};
-    decks?.forEach((d: any) => { map[d.id] = d.name; });
+    decks.forEach((d: Deck) => { map[d.id] = d.name; });
     setAllDecksMap(map);
     
-    const currentDeck = decks?.find((d: any) => d.id === deckId);
-    const subdecks = decks?.filter((d: any) => d.parent_id === deckId) || [];
-    const cards = Array.isArray(resCards) ? resCards : (resCards?.cards || []);
+    const currentDeck = decks.find((d: Deck) => d.id === deckId);
+    const subdecks = decks.filter((d: Deck) => d.parent_id === deckId);
+    const rawCards = Array.isArray(resCards) ? resCards : (resCards?.cards || []);
+    const cards: AnkiCard[] = rawCards;
     
     return {
       deck_name: currentDeck?.name || 'Desconhecido',
       deck_description: currentDeck?.description || '',
-      subdecks: subdecks.map((d: any) => ({ id: d.id, name: d.name, description: d.description })),
-      existing_cards: cards.map((c: any) => ({ id: c.id, deck_id: c.deck_id, front: c.front, back: c.back, type: c.card_type, tags: c.tags }))
+      subdecks: subdecks.map((d: Deck) => ({ id: d.id, name: d.name, description: d.description })),
+      existing_cards: cards.map((c: AnkiCard) => ({ id: c.id, deck_id: c.deck_id, front: c.front, back: c.back, type: c.card_type, tags: c.tags }))
     };
   };
 
   return (
     <Portal>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onMouseDown={e => e.stopPropagation()}>
-      <div className="bg-dark-card border border-indigo-500/30 w-full max-w-3xl rounded-2xl shadow-[0_0_50px_rgba(99,102,241,0.15)] flex flex-col overflow-hidden h-[85vh]">
+      <div className="bg-dark-card border border-indigo-500/25 w-full max-w-3xl rounded-2xl shadow-[0_0_50px_rgba(99,102,241,0.15)] flex flex-col overflow-hidden h-[85vh]">
         
         <header className="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-indigo-900/20 shrink-0">
           <h2 className="text-xl font-bold flex items-center gap-2 text-indigo-300">
@@ -178,13 +211,13 @@ export default function AIAssistantModal({ deckId, onClose, onAddCards }: AIAssi
              </div>
           ) : (
              <form 
-               onSubmit={e => { e.preventDefault(); footerState.handleSendChatMessage(); }}
+               onSubmit={e => { e.preventDefault(); footerState.handleSendChatMessage?.(); }}
                className="flex items-center gap-3 relative"
              >
                <input 
                  type="text"
                  value={footerState.chatPrompt || ''}
-                 onChange={e => footerState.setChatPrompt(e.target.value)}
+                 onChange={e => footerState.setChatPrompt?.(e.target.value)}
                  placeholder="Faça uma pergunta ou peça novos cartões..."
                  className="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-3 text-sm text-dark-text focus:outline-none focus:border-indigo-500 shadow-inner"
                  disabled={loading}
