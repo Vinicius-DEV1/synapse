@@ -49,7 +49,7 @@ export function QuestionsHelpModal({ onClose }: QuestionsHelpModalProps) {
         <div
           role="dialog"
           aria-label="Guia do Banco de Questões"
-          className="bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/10 h-[85vh] max-h-[720px] animate-in zoom-in-95 duration-200"
+          className="bg-dark-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/[0.06] h-[85vh] max-h-[720px] animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Sidebar */}

@@ -43,7 +43,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
         <button
           type="button"
           onClick={() => setShowHelpModal(true)}
-          className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+          className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/[0.06] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
           title={t('questions.header.guideTitle')}
           aria-label={t('questions.header.guideTitle')}
         >
@@ -53,9 +53,9 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
       </header>
 
       {/* Action Controls (Sticky) */}
-      <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/5 flex flex-wrap items-center justify-between gap-4">
+      <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-4">
         {/* Section Switcher Tabs */}
-        <div className="flex items-center bg-dark-card/50 p-1 rounded-xl border border-white/5 text-xs">
+        <div className="flex items-center bg-dark-card/50 p-1 rounded-xl border border-white/[0.06] text-xs">
           <button
             onClick={() => onSelectTabSection('explorer')}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${

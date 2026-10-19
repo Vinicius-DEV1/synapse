@@ -30,7 +30,7 @@ export function BatteryMoveModal({
     }
   }, [battery]);
 
-  // Tecla Esc para fechar o modal
+  // Tecla Esc e Android back-press para fechar o modal
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,8 +39,16 @@ export function BatteryMoveModal({
         onClose();
       }
     };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen || !battery) return null;
@@ -64,7 +72,7 @@ export function BatteryMoveModal({
         onClick={onClose}
       >
         <div
-          className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 animate-scale-in"
+          className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
