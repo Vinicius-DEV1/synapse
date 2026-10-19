@@ -62,7 +62,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
         onClick={onCancel}
       >
       <div 
-        className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200"
+        className="bg-dark-card rounded-3xl w-full max-w-md border border-white/[0.06] shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
@@ -87,8 +87,8 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
               onChange={(e) => setTag(e.target.value)}
               className={`w-full bg-dark-bg border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-white/20 ${
                 isExisting && tag.trim().length > 0
-                  ? 'border-brand-500 bg-brand-500/10 focus:border-brand-400 focus:ring-brand-400 text-brand-100 shadow-[0_0_10px_rgba(139,92,246,0.2)]'
-                  : 'border-white/10 focus:border-brand-500 focus:ring-brand-500'
+                   ? 'border-brand-500 bg-brand-500/10 focus:border-brand-400 focus:ring-brand-400 text-brand-100 shadow-[0_0_10px_rgba(139,92,246,0.2)]'
+                   : 'border-white/[0.08] focus:border-brand-500 focus:ring-brand-500'
               }`}
               autoFocus
               required
@@ -96,7 +96,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ onStart, onCancel, existingTags
             
             {/* Auto-suggestions */}
             {filteredTags.length > 0 && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-2 bg-dark-bg border border-white/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="absolute z-20 top-full left-0 right-0 mt-2 bg-dark-bg border border-white/[0.06] rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
                 {filteredTags.map((suggestion, i) => (
                   <button
                     key={i}

@@ -109,7 +109,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
         onClick={onClose}
       >
       <div 
-        className="bg-dark-card rounded-3xl w-full max-w-md border border-white/10 shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200"
+        className="bg-dark-card rounded-3xl w-full max-w-md border border-white/[0.06] shadow-2xl overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02] sticky top-0 z-10 backdrop-blur-md">
@@ -146,7 +146,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onRefresh }) => 
                         window.api.config.set('defaultAlarmType', e.target.value).catch(console.error);
                       }
                     }}
-                    className="bg-dark-bg text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-500"
+                    className="bg-dark-bg text-white border border-white/[0.08] rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-500"
                   >
                     <option className="bg-dark-bg text-white" value="beep">{t('focus.digitalBeep', 'Beep Digital')}</option>
                     <option className="bg-dark-bg text-white" value="retro">{t('focus.retroAlarm', 'Alarme Retrô')}</option>

@@ -62,7 +62,7 @@ export const FocusDeleteModal = React.memo(function FocusDeleteModal({
         }}
       >
         <div
-          className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-2xl animate-scale-in"
+          className="w-full max-w-md rounded-2xl border border-white/[0.06] bg-zinc-900 p-6 shadow-2xl animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start gap-4">
@@ -84,7 +84,7 @@ export const FocusDeleteModal = React.memo(function FocusDeleteModal({
               type="button"
               onClick={onClose}
               disabled={isDeleting}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs sm:text-sm font-medium text-zinc-300 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50"
+              className="rounded-xl border border-white/[0.06] bg-white/5 px-4 py-2 text-xs sm:text-sm font-medium text-zinc-300 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50"
             >
               {cancelLabel || t('common.cancel', 'Cancelar')}
             </button>

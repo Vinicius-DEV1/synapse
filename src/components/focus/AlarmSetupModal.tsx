@@ -64,7 +64,7 @@ const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel, ini
           <button 
             onClick={onCancel}
             title={t('common.cancel', 'Cancelar')}
-            className="p-2 bg-dark-card border border-white/10 rounded-xl text-dark-subtext hover:text-white hover:bg-white/5 transition-all shadow-lg active:scale-95"
+            className="p-2 bg-dark-card border border-white/[0.06] rounded-xl text-dark-subtext hover:text-white hover:bg-white/5 transition-all shadow-lg active:scale-95"
           >
             <X size={24} />
           </button>
@@ -80,7 +80,7 @@ const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel, ini
               value={timeStr}
               onChange={(e) => setTimeStr(e.target.value)}
               required
-              className="w-full bg-dark-bg text-4xl sm:text-6xl font-bold text-white tabular-nums tracking-tighter text-center py-6 rounded-xl border border-white/10 focus:outline-none focus:border-brand-500 transition-colors shadow-inner"
+              className="w-full bg-dark-bg text-4xl sm:text-6xl font-bold text-white tabular-nums tracking-tighter text-center py-6 rounded-xl border border-white/[0.08] focus:outline-none focus:border-brand-500 transition-colors shadow-inner"
             />
           </div>
 
@@ -94,7 +94,7 @@ const AlarmSetupModal: React.FC<AlarmSetupModalProps> = ({ onSave, onCancel, ini
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               maxLength={30}
-              className="w-full bg-dark-bg text-white text-lg px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-brand-500 transition-colors"
+              className="w-full bg-dark-bg text-white text-lg px-4 py-3 rounded-xl border border-white/[0.08] focus:outline-none focus:border-brand-500 transition-colors"
             />
           </div>
 

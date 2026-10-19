@@ -132,7 +132,7 @@ export const LofiView: React.FC = () => {
           <select 
             value={sortMode}
             onChange={e => setSortMode(e.target.value as 'manual' | 'date' | 'alpha')}
-            className="bg-dark-card border border-white/10 text-dark-subtext text-sm rounded-lg px-2 py-2 outline-none focus:border-brand-500"
+            className="bg-dark-card border border-white/[0.08] text-dark-subtext text-sm rounded-lg px-2 py-2 outline-none focus:border-brand-500"
           >
             <option className="bg-dark-bg text-white" value="manual">{t('focus.manual', 'Manual')}</option>
             <option className="bg-dark-bg text-white" value="date">{t('focus.mostRecent', 'Mais Recentes')}</option>
@@ -147,7 +147,7 @@ export const LofiView: React.FC = () => {
               }
             }}
             disabled={lofis.length === 0}
-            className="px-3 py-2 rounded-lg border border-white/10 bg-dark-card text-dark-subtext hover:text-white text-sm font-medium transition-colors disabled:opacity-50"
+            className="px-3 py-2 rounded-lg border border-white/[0.06] bg-dark-card text-dark-subtext hover:text-white text-sm font-medium transition-colors disabled:opacity-50"
           >
             {selectedIds.size === lofis.length && lofis.length > 0 ? t('focus.deselectAll', 'Desmarcar Todos') : t('focus.selectAll', 'Selecionar Todos')}
           </button>
