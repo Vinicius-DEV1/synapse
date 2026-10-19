@@ -59,8 +59,8 @@ export function CoverPickerSection({
         setCoverImage(compressed);
         setCoverLoadError(false);
         triggerToast('Nova capa carregada!', 'success');
-      } catch (err: any) {
-        triggerToast(err.message || 'Erro ao processar imagem de capa.', 'error');
+      } catch (err: unknown) {
+        triggerToast(err instanceof Error ? err.message : 'Erro ao processar imagem de capa.', 'error');
       }
     };
     reader.readAsDataURL(file);
@@ -100,9 +100,9 @@ export function CoverPickerSection({
       setCoverImage(compressed);
       setCoverLoadError(false);
       triggerToast('Capa extraída do PDF com sucesso!', 'success');
-    } catch (err: any) {
-      console.error('Falha ao extrair capa', err);
-      triggerToast(err.message || 'Erro ao extrair capa do PDF. O arquivo pode estar corrompido ou indisponível.', 'error');
+    } catch (err: unknown) {
+      console.error('Failed to extract cover', err);
+      triggerToast(err instanceof Error ? err.message : 'Erro ao extrair capa do PDF. O arquivo pode estar corrompido ou indisponível.', 'error');
     } finally {
       setExtractingCover(false);
     }
@@ -112,7 +112,7 @@ export function CoverPickerSection({
 
   return (
     <div className="flex gap-4 items-start">
-      <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/10 flex items-center justify-center overflow-visible shrink-0 group">
+      <div className="relative w-24 h-32 rounded-lg bg-dark-bg border border-white/[0.06] flex items-center justify-center overflow-visible shrink-0 group">
         <div className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center">
           {!isInvalidCover && !extractingCover ? (
             <img

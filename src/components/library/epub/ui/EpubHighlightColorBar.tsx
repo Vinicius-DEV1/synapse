@@ -1,8 +1,15 @@
 import { BookType, Trash2, X } from 'lucide-react';
 
+export interface EpubSelectionLike {
+  existingHighlightId?: string | null;
+  text?: string;
+  cfiRange?: string;
+  [key: string]: unknown;
+}
+
 interface EpubHighlightColorBarProps {
   noteMode: string | null;
-  selection: any;
+  selection: EpubSelectionLike;
   dividerClass: string;
   confirmDelete: boolean;
   onSelectColor: (color: string) => void;

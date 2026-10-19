@@ -328,7 +328,7 @@ export default function LibraryGrid({
                 )}
                 
                 {/* Storage & Cloud Status Badge */}
-                <div className="px-1.5 py-0.5 rounded-[5px] bg-black/50 backdrop-blur-md border border-white/10 text-white shadow-sm flex items-center gap-1">
+                <div className="px-1.5 py-0.5 rounded-[5px] bg-black/50 backdrop-blur-md border border-white/[0.06] text-white shadow-sm flex items-center gap-1">
                   {isLocal && isSynced ? (
                     <>
                       <HardDrive size={11} className="text-emerald-400" />
@@ -379,7 +379,7 @@ export default function LibraryGrid({
                 <div
                   ref={menuRef}
                   style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
-                  className="fixed z-[9999] bg-dark-card border border-white/10 rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in"
+                  className="fixed z-[9999] bg-dark-card border border-white/[0.06] rounded-lg shadow-2xl py-1 min-w-[180px] animate-scale-in"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button

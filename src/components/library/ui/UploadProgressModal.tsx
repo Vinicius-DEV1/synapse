@@ -28,9 +28,10 @@ export function UploadProgressModal() {
       }, 1000);
     };
 
-    const onProgress = (e: any) => {
+    const onProgress = (e: Event) => {
+      const customEvent = e as CustomEvent<ProgressData>;
       setIsVisible(true);
-      setProgressData(e.detail);
+      setProgressData(customEvent.detail);
     };
 
     window.addEventListener('library-upload-start', onStart);
@@ -52,7 +53,7 @@ export function UploadProgressModal() {
     <Portal>
       {/* Floating Card no canto inferior direito sem backdrop / sem bloqueio de tela */}
       <aside aria-label="Progresso de sincronização da biblioteca" className="fixed bottom-6 right-6 z-[9999] pointer-events-auto animate-slide-up">
-        <div className="w-84 bg-dark-bg/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-3 text-white">
+        <div className="w-84 bg-dark-bg/95 backdrop-blur-md border border-white/[0.06] rounded-2xl shadow-2xl p-4 flex flex-col gap-3 text-white">
           {/* Header */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">

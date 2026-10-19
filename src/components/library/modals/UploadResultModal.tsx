@@ -23,7 +23,7 @@ export function UploadResultModal({ result, onClose }: UploadResultModalProps) {
       backdropClassName="bg-black/60 backdrop-blur-sm"
       containerClassName="w-full max-w-sm flex flex-col items-center"
     >
-      <div className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full flex flex-col items-center text-center animate-scale-in">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl p-6 w-full flex flex-col items-center text-center animate-scale-in">
         {result.type === 'success' ? (
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/20">
             <CheckCircle2 size={32} />

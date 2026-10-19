@@ -11,6 +11,13 @@ interface EpubHighlightNoteEditorProps {
   onOpenDictionaryFull: () => void;
 }
 
+interface AiDictPayload {
+  english?: { word_class?: string; definition?: string; definitions?: string[] };
+  portuguese?: { word_class?: string; definition?: string; definitions?: string[] };
+  definitions?: string[];
+  definition?: string;
+}
+
 export function EpubHighlightNoteEditor({
   noteText,
   noteMode,
@@ -24,9 +31,9 @@ export function EpubHighlightNoteEditor({
   if (!noteMode) return null;
 
   if (noteText.startsWith('<!-- AI_DICT -->')) {
-    let parsedData: any = null;
+    let parsedData: AiDictPayload | null = null;
     try {
-      parsedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', ''));
+      parsedData = JSON.parse(noteText.replace('<!-- AI_DICT -->', '')) as AiDictPayload;
     } catch (err: unknown) {
       console.debug('[EpubHighlightNoteEditor] Failed to parse AI_DICT payload:', err);
     }

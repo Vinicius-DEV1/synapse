@@ -1,8 +1,14 @@
 import { useEffect } from 'react';
+import type { Action } from '../../../../types/store';
+
+export interface EpubRenditionLike {
+  on: (event: string, fn: (e: KeyboardEvent) => void) => void;
+  off: (event: string, fn: (e: KeyboardEvent) => void) => void;
+}
 
 interface UseEpubShortcutsProps {
-  rendition: any;
-  dispatch: React.Dispatch<any>;
+  rendition: EpubRenditionLike | null | undefined;
+  dispatch: React.Dispatch<Action>;
   isFullScreenRef: React.MutableRefObject<boolean>;
   turnPage: (direction: 'next' | 'prev') => void;
   cycleReadingMode: () => void;

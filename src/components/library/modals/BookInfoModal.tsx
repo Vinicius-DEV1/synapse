@@ -126,7 +126,7 @@ export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoM
       zIndexClassName="z-[100]"
       containerClassName="w-full max-w-2xl max-h-[90vh] flex flex-col"
     >
-      <div className="w-full bg-dark-card border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-scale-in">
+      <div className="w-full bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
           <div className="flex items-center gap-3">

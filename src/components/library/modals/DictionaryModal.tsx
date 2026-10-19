@@ -97,7 +97,7 @@ export default function DictionaryModal({
       backdropClassName="bg-black/40 backdrop-blur-sm"
       containerClassName="dictionary-modal-container select-none w-[600px] max-w-[95vw] max-h-[85dvh] flex flex-col"
     >
-      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden animate-scale-in">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl w-full max-h-[85dvh] flex flex-col shadow-2xl overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-dark-bg/50 shrink-0">
           <div className="flex items-center gap-2 text-brand-400">

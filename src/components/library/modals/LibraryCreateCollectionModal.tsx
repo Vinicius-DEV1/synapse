@@ -77,7 +77,7 @@ export function LibraryCreateCollectionModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md bg-dark-card border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md bg-dark-card border border-white/[0.06] rounded-2xl p-6 shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

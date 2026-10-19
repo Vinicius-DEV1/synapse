@@ -127,7 +127,7 @@ export function ReadingStatsModal({ onClose }: ReadingStatsModalProps) {
       zIndexClassName="z-50"
       containerClassName="w-full max-w-2xl max-h-[85vh] flex flex-col"
     >
-      <div className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl w-full max-h-[85vh] overflow-hidden animate-scale-in flex flex-col">
+      <div className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl w-full max-h-[85vh] overflow-hidden animate-scale-in flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
           <div className="flex items-center gap-3">
