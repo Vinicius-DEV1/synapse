@@ -61,7 +61,7 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
     <Portal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
         <div
-          className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-scale-in overflow-hidden"
+          className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-scale-in overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

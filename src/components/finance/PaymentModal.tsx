@@ -96,7 +96,7 @@ export default function PaymentModal({
   return (
     <Portal>
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between p-3.5 border-b border-white/5">
             <div className="flex items-center gap-2">
               <div className={`p-1.5 rounded-md ${isLoanMade ? 'bg-amber-500/15 text-amber-400' : 'bg-indigo-500/15 text-indigo-400'}`}>

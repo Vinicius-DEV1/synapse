@@ -47,7 +47,7 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
         onClick={onClose}
       >
         <div
-          className="bg-dark-card border border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-4 border-b border-white/5">
