@@ -35,7 +35,7 @@ export function EventFormDateTimes({
           type="checkbox"
           checked={isAllDay}
           onChange={(e) => setIsAllDay(e.target.checked)}
-          className="rounded border-dark-border bg-dark-bg text-emerald-500 focus:ring-emerald-500/20"
+          className="rounded border-white/20 bg-dark-bg text-emerald-500 focus:ring-emerald-500/20"
         />
         <span className="text-sm text-dark-text">{t('calendar.allDay', 'Dia inteiro')}</span>
       </label>
@@ -50,7 +50,7 @@ export function EventFormDateTimes({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
               required
             />
             {!isAllDay && (
@@ -58,7 +58,7 @@ export function EventFormDateTimes({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-24 bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
+                className="w-24 bg-dark-bg border border-white/[0.08] rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
                 required
               />
             )}
@@ -74,7 +74,7 @@ export function EventFormDateTimes({
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
+              className="w-full bg-dark-bg border border-white/[0.08] rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
               required
             />
             {!isAllDay && (
@@ -82,7 +82,7 @@ export function EventFormDateTimes({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-24 bg-dark-bg border border-dark-border rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
+                className="w-24 bg-dark-bg border border-white/[0.08] rounded-md px-2 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
                 required
               />
             )}

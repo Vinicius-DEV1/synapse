@@ -37,13 +37,13 @@ export const DroppableDay = memo(function DroppableDay({
     <div
       ref={combineRefs}
       onClick={onClick}
-      className={`min-h-[85px] border-r border-b border-dark-border p-1.5 transition-colors cursor-pointer relative ${
+      className={`min-h-[85px] border-r border-b border-white/5 p-1.5 transition-colors cursor-pointer relative ${
         !isCurrentMonth
           ? 'bg-dark-bg/40'
           : isToday(date)
           ? 'bg-emerald-500/[0.04] border-emerald-500/30'
           : 'bg-transparent'
-      } ${isOver ? 'bg-dark-hover/50' : 'hover:bg-dark-hover/30'}`}
+      } ${isOver ? 'bg-white/10' : 'hover:bg-white/5'}`}
     >
       <div
         className={`text-xs p-1 mb-1 font-medium w-6 h-6 flex items-center justify-center rounded-full ${

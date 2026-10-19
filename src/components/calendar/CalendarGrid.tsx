@@ -83,12 +83,12 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
   return (
     <div className="flex flex-col h-full bg-dark-bg">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-dark-border">
+      <div className="flex items-center justify-between p-4 border-b border-white/5">
         <h2 className="text-lg font-medium text-dark-text capitalize">
           {format(currentDate, 'MMMM yyyy', { locale: language === 'en' ? enUS : ptBR })}
         </h2>
         <div className="flex gap-2">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-dark-hover text-dark-subtext">
+          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-white/5 text-dark-subtext">
             <ChevronLeft size={20} />
           </button>
           <button 
@@ -100,11 +100,11 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
                 }
               }, 50);
             }} 
-            className="px-3 py-1 text-sm rounded hover:bg-dark-hover text-dark-subtext"
+            className="px-3 py-1 text-sm rounded hover:bg-white/5 text-dark-subtext"
           >
             {t('calendar.today', 'Hoje')}
           </button>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-dark-hover text-dark-subtext">
+          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-1.5 rounded hover:bg-white/5 text-dark-subtext">
             <ChevronRight size={20} />
           </button>
         </div>
@@ -113,9 +113,9 @@ export default function CalendarGrid({ events, onEditEvent, onUpdateEvent, onDay
       {/* Grid */}
       <DndContext onDragEnd={handleDragEnd}>
         <div className="flex-1 flex flex-col overflow-auto">
-          <div className="grid grid-cols-7 border-b border-dark-border">
+          <div className="grid grid-cols-7 border-b border-white/5">
             {weekDays.map(day => (
-              <div key={day} className="text-center py-2 text-xs font-medium text-dark-subtext border-r border-dark-border uppercase tracking-wider">
+              <div key={day} className="text-center py-2 text-xs font-medium text-dark-subtext border-r border-white/5 uppercase tracking-wider">
                 {day}
               </div>
             ))}

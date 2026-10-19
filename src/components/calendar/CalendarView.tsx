@@ -180,7 +180,7 @@ export default function CalendarView() {
           </button>
         </div>
         
-        <div className="flex-1 bg-dark-hover rounded-xl border border-dark-border overflow-hidden min-h-0">
+        <div className="flex-1 bg-dark-card rounded-xl border border-white/[0.06] overflow-hidden min-h-0">
           <CalendarGrid 
             events={events} 
             onEditEvent={(ev) => {
@@ -199,9 +199,9 @@ export default function CalendarView() {
       </div>
 
       {/* Task Feed Sidebar */}
-      <div className={`w-full md:w-80 border-t md:border-t-0 md:border-l border-dark-border bg-dark-bg flex flex-col ${mobileTab === 'calendar' ? 'hidden md:flex' : 'flex-1 md:flex-none'}`}>
+      <div className={`w-full md:w-80 border-t md:border-t-0 md:border-l border-white/5 bg-dark-bg flex flex-col ${mobileTab === 'calendar' ? 'hidden md:flex' : 'flex-1 md:flex-none'}`}>
         {/* Mobile Header for Feed */}
-        <div className="flex md:hidden items-center justify-between p-3 border-b border-dark-border shrink-0">
+        <div className="flex md:hidden items-center justify-between p-3 border-b border-white/5 shrink-0">
           <button
             type="button"
             onClick={() => setMobileTab('calendar')}

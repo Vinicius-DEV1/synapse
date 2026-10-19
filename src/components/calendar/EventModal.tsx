@@ -75,32 +75,32 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
         onClick={onClose}
       >
         <div 
-          className="bg-[#1a1924] border border-dark-border rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-hidden flex flex-col"
+          className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center px-4 py-3 border-b border-dark-border flex-shrink-0">
+          <div className="flex justify-between items-center px-4 py-3 border-b border-white/5 flex-shrink-0">
             <h2 className="text-lg font-medium text-dark-text">
               {event ? t('calendar.editSchedule', 'Editar Agendamento') : t('calendar.newSchedule', 'Novo Agendamento')}
             </h2>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-dark-hover text-dark-subtext" title={t('calendar.cancel', 'Cancelar')}>
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/5 text-dark-subtext" title={t('calendar.cancel', 'Cancelar')}>
               <X size={20} />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="p-4 space-y-3.5 flex-1 overflow-y-auto min-h-0">
             {/* Tipo Toggle */}
-            <div className="flex bg-dark-bg rounded-lg p-1 border border-dark-border">
+            <div className="flex bg-dark-bg rounded-lg p-1 border border-white/[0.06]">
               <button
                 type="button"
                 onClick={() => setType('event')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${type === 'event' ? 'bg-dark-hover text-white shadow-sm' : 'text-dark-subtext hover:text-dark-text'}`}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${type === 'event' ? 'bg-white/10 text-white shadow-sm' : 'text-dark-subtext hover:text-dark-text'}`}
               >
                 {t('calendar.event', 'Evento')}
               </button>
               <button
                 type="button"
                 onClick={() => setType('task')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${type === 'task' ? 'bg-dark-hover text-white shadow-sm' : 'text-dark-subtext hover:text-dark-text'}`}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${type === 'task' ? 'bg-white/10 text-white shadow-sm' : 'text-dark-subtext hover:text-dark-text'}`}
               >
                 {t('calendar.task', 'Tarefa')}
               </button>
@@ -116,7 +116,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="w-full bg-dark-bg border border-dark-border rounded-md px-3 py-2 text-sm text-dark-text focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-dark-bg border border-white/[0.08] rounded-md px-3 py-2 text-sm text-dark-text focus:outline-none focus:border-emerald-500 transition-colors"
                 placeholder={type === 'event' ? t('calendar.eventPlaceholder', 'Reunião de Alinhamento') : t('calendar.taskPlaceholder', 'Comprar leite')}
                 required
               />
@@ -146,7 +146,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
                   <select
                     value={recurrence}
                     onChange={e => setRecurrence(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly')}
-                    className="w-full bg-dark-bg border border-dark-border rounded-md px-3 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-dark-bg border border-white/[0.08] rounded-md px-3 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500"
                   >
                     <option className="bg-dark-bg text-white" value="none">{t('calendar.noRepeat', 'Não repetir')}</option>
                     <option className="bg-dark-bg text-white" value="daily">{t('calendar.daily', 'Todos os dias')}</option>
@@ -211,7 +211,7 @@ export default function EventModal({ event, onSave, onClose, onDelete, initialDa
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                className="w-full bg-dark-bg border border-dark-border rounded-md px-3 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500 min-h-[60px] max-h-[100px] resize-none"
+                className="w-full bg-dark-bg border border-white/[0.08] rounded-md px-3 py-1.5 text-sm text-dark-text focus:outline-none focus:border-emerald-500 min-h-[60px] max-h-[100px] resize-none"
                 placeholder={t('calendar.detailsPlaceholder', 'Detalhes adicionais...')}
               />
             </div>

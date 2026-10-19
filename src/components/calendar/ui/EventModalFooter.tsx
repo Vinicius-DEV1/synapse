@@ -14,7 +14,7 @@ export function EventModalFooter({ event, onDelete, onClose, onSubmit }: EventMo
   const [confirmingDelete, setConfirmingDelete] = useState<'single' | 'series' | null>(null);
 
   return (
-    <div className="px-4 py-3 border-t border-dark-border flex justify-between items-center bg-dark-bg/50 flex-shrink-0">
+    <div className="px-4 py-3 border-t border-white/5 flex justify-between items-center bg-dark-bg/50 flex-shrink-0">
       {onDelete && event ? (
         confirmingDelete ? (
           <div className="flex items-center gap-2">
@@ -78,7 +78,7 @@ export function EventModalFooter({ event, onDelete, onClose, onSubmit }: EventMo
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-1.5 text-sm font-medium text-dark-subtext hover:text-dark-text hover:bg-dark-hover rounded-md transition-colors"
+          className="px-4 py-1.5 text-sm font-medium text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-md transition-colors"
         >
           {t('calendar.cancel', 'Cancelar')}
         </button>

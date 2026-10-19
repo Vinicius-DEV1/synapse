@@ -52,14 +52,14 @@ export default function DayModal({ date, events, onClose, onNewEvent, onEditEven
     <Portal>
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className="bg-[#1a1924] border border-dark-border rounded-xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden" 
+        className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden" 
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b border-dark-border">
+        <div className="flex justify-between items-center p-4 border-b border-white/5">
           <h2 className="text-lg font-medium text-dark-text capitalize">
             {formattedDate}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-dark-hover text-dark-subtext" title={t('calendar.cancel', 'Fechar')}>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/5 text-dark-subtext" title={t('calendar.cancel', 'Fechar')}>
             <X size={20} />
           </button>
         </div>
@@ -76,7 +76,7 @@ export default function DayModal({ date, events, onClose, onNewEvent, onEditEven
                 <div 
                   key={event.id}
                   onClick={() => onEditEvent(event)}
-                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-dark-hover group border border-dark-border bg-dark-bg/50
+                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-white/5 group border border-white/[0.06] bg-dark-bg/50
                     ${isCompleted ? 'opacity-50' : 'opacity-100'}
                   `}
                 >
@@ -117,7 +117,7 @@ export default function DayModal({ date, events, onClose, onNewEvent, onEditEven
           )}
         </div>
 
-        <div className="p-4 border-t border-dark-border bg-dark-bg/50">
+        <div className="p-4 border-t border-white/5 bg-dark-bg/50">
           <button
             onClick={onNewEvent}
             className="w-full px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors shadow-sm"

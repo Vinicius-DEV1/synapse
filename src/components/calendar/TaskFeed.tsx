@@ -47,7 +47,7 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
       <div 
         key={event.id}
         onClick={() => onEditEvent(event)}
-        className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-dark-hover group
+        className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-white/5 group
           ${isCompleted ? 'opacity-50' : 'opacity-100'}
         `}
       >
@@ -80,18 +80,18 @@ export default function TaskFeed({ events, onUpdateEvent, onEditEvent }: TaskFee
 
   return (
     <div className="flex flex-col h-full bg-dark-bg text-dark-text">
-      <div className="p-4 border-b border-dark-border">
+      <div className="p-4 border-b border-white/5">
         <h2 className="text-lg font-medium font-serif mb-3">{t('calendar.schedule', 'Agenda')}</h2>
         <div className="flex gap-2">
           <button 
             onClick={() => setFilter('all')}
-            className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${filter === 'all' ? 'bg-dark-hover text-white' : 'text-dark-subtext'}`}
+            className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white'}`}
           >
             {t('calendar.all', 'Tudo')}
           </button>
           <button 
             onClick={() => setFilter('tasks')}
-            className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${filter === 'tasks' ? 'bg-dark-hover text-white' : 'text-dark-subtext'}`}
+            className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${filter === 'tasks' ? 'bg-white/10 text-white' : 'text-dark-subtext hover:text-white'}`}
           >
             {t('calendar.onlyTasks', 'Apenas Tarefas')}
           </button>
