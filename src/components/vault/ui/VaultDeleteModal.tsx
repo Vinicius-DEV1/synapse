@@ -34,8 +34,19 @@ export const VaultDeleteModal = React.memo(function VaultDeleteModal({
         onClose();
       }
     };
+    const handleBackPress = (e: Event) => {
+      if (!isDeleting) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [isOpen, isDeleting, onClose]);
 
   if (!isOpen) return null;
@@ -49,7 +60,7 @@ export const VaultDeleteModal = React.memo(function VaultDeleteModal({
         }}
       >
         <div
-          className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-2xl animate-scale-in"
+          className="w-full max-w-md rounded-2xl border border-white/[0.06] bg-zinc-900 p-6 shadow-2xl animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start gap-4">

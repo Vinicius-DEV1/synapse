@@ -133,7 +133,7 @@ export function VaultSidebar({
       {/* Context Menu for Groups */}
       {groupContextMenu && (
         <div
-          className="fixed z-50 bg-dark-card border border-white/10 rounded-lg shadow-xl py-1 w-40 animate-fade-in"
+          className="fixed z-50 bg-dark-card border border-white/[0.06] rounded-lg shadow-xl py-1 w-40 animate-fade-in"
           style={{ top: groupContextMenu.y, left: groupContextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >

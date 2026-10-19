@@ -54,7 +54,7 @@ export function VaultGroupModal({ isOpen, group, onClose, onSave }: VaultGroupMo
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} containerClassName="w-full max-w-md">
-      <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl animate-scale-up">
+      <div className="bg-zinc-900 border border-white/[0.06] rounded-2xl p-6 shadow-2xl animate-scale-up">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/5">
           <div className="flex items-center gap-3">
@@ -95,7 +95,7 @@ export function VaultGroupModal({ isOpen, group, onClose, onSave }: VaultGroupMo
               placeholder="Ex: Trabalho, Finanças, Pessoal..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500 transition-colors"
+              className="w-full bg-zinc-950 border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500 transition-colors"
             />
           </div>
 
