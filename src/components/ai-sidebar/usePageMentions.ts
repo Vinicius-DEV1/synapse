@@ -38,7 +38,7 @@ export function usePageMentions(
           const fullData = await window.api.getPageContent(page.id);
           content = fullData?.content || '';
         } catch (err) {
-          console.error('Erro ao buscar conteúdo da página para o chat:', err);
+          console.error('Failed to fetch page content for chat:', err);
         }
       }
       setAttachedPages(prev =>

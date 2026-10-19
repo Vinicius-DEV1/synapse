@@ -246,7 +246,7 @@ export default function AiSidebar() {
             ))}
             {loading && (
               <div className="flex items-start">
-                <div className="bg-dark-card border border-white/10 text-brand-50 rounded-xl rounded-tl-sm px-4 py-3 shadow-sm">
+                <div className="bg-dark-card border border-white/[0.08] text-brand-50 rounded-xl rounded-tl-sm px-4 py-3 shadow-sm">
                   <span className="animate-pulse text-xs">Processando...</span>
                 </div>
               </div>
@@ -340,7 +340,7 @@ export default function AiSidebar() {
 
           {/* Input Form */}
           <form onSubmit={handleSubmit} className="p-3 border-t border-white/5 bg-dark-card relative">
-            <div className="flex items-center gap-2 bg-dark-bg border border-white/10 rounded-xl px-3 py-2 focus-within:border-brand-500/50 transition-colors">
+            <div className="flex items-center gap-2 bg-dark-bg border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/50 transition-colors">
               <input
                 type="text"
                 value={prompt}

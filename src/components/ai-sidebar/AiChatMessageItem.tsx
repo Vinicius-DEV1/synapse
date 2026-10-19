@@ -35,7 +35,7 @@ export function AiChatMessageItem({ msg, idx, onInsert }: AiChatMessageItemProps
       <div className={`max-w-[90%] rounded-xl px-3 py-2 text-sm shadow-sm ${
         isUser 
           ? 'bg-brand-600 text-white rounded-tr-sm' 
-          : 'bg-dark-card border border-white/10 text-brand-50 rounded-tl-sm'
+          : 'bg-dark-card border border-white/[0.08] text-brand-50 rounded-tl-sm'
       }`}>
         {isUser ? (
           <div className="flex flex-col gap-1.5">
@@ -58,7 +58,7 @@ export function AiChatMessageItem({ msg, idx, onInsert }: AiChatMessageItemProps
               if (typeof parsed.enunciado === 'string' && Array.isArray(parsed.opcoes)) {
                 return (
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-brand-300 font-medium pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2 text-brand-300 font-medium pb-2 border-b border-white/[0.06]">
                       <Sparkles size={14} />
                       <span>✨ Questão Gerada</span>
                     </div>

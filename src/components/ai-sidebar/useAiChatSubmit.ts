@@ -51,7 +51,7 @@ export function useAiChatSubmit({
                 const fullData = await window.api.getPageContent(p.id);
                 content = fullData?.content || '';
               } catch (err) {
-                console.error('Erro ao buscar conteúdo no submit:', err);
+                console.error('Failed to fetch page content on submit:', err);
               }
             }
             return { ...p, content };
@@ -94,7 +94,7 @@ export function useAiChatSubmit({
       setAttachedPages([]);
       setShowMentionMenu(false);
     } catch (err: unknown) {
-      console.error('Erro na resposta do Gemini no AI Chat:', err);
+      console.error('Error in Gemini response in AI Chat:', err);
       const message = err instanceof Error ? err.message : 'Falha ao obter resposta da IA';
       triggerToast(message, 'error');
     } finally {
