@@ -69,7 +69,9 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.pageId && window.api?.updatePage) {
         await window.api.updatePage({ id: this.props.pageId, crdt_state: null });
       }
-    } catch { /* noop */ }
+    } catch (err) {
+      console.warn('[ErrorBoundary:ClearCrdt] Failed to reset CRDT state:', err);
+    }
     window.location.reload();
   };
 

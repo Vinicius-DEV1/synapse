@@ -113,7 +113,7 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
       >
         <div
-          className="relative w-full max-w-md bg-dark-bg border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-scale-up p-6"
+          className="relative w-full max-w-md bg-dark-bg border border-white/[0.06] rounded-3xl shadow-2xl overflow-hidden animate-scale-up p-6"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -150,7 +150,7 @@ export function ConfirmDialog({
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="px-4 py-2.5 rounded-xl text-xs font-medium text-dark-subtext hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors disabled:opacity-40"
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-dark-subtext hover:text-white bg-white/5 hover:bg-white/10 border border-white/[0.06] transition-colors disabled:opacity-40"
             >
               {cancelText}
             </button>

@@ -6,7 +6,7 @@ import { StoreProvider } from '../../store/useStore';
 
 describe('NotificationBell component', () => {
   beforeEach(() => {
-    (window as any).api = {
+    (window as unknown as { api: unknown }).api = {
       notifications: {
         getNotifications: vi.fn().mockResolvedValue([
           {
@@ -30,7 +30,7 @@ describe('NotificationBell component', () => {
       </StoreProvider>
     );
 
-    const button = screen.getByTitle('Central de Notificações');
+    const button = screen.getByTitle('Notification Center');
     expect(button).toBeInTheDocument();
 
     await waitFor(() => {
@@ -45,11 +45,11 @@ describe('NotificationBell component', () => {
       </StoreProvider>
     );
 
-    const button = screen.getByTitle('Central de Notificações');
+    const button = screen.getByTitle('Notification Center');
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText('Notificações')).toBeInTheDocument();
+      expect(screen.getByText('Notifications')).toBeInTheDocument();
     });
   });
 });

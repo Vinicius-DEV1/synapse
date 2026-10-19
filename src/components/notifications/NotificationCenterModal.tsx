@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { X, Bell, Calendar, Clock, BookOpen, Check, Trash2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { AppNotification } from '../../types/core';
+import type { CalendarEvent } from '../../types/calendar';
+import { useI18n } from '../../i18n';
 
 interface NotificationCenterModalProps {
   notifications: AppNotification[];
@@ -16,6 +19,27 @@ export default function NotificationCenterModal({
   onDelete
 }: NotificationCenterModalProps) {
   const { dispatch, state } = useStore();
+  const { t, language } = useI18n();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [onClose]);
 
   const handleOpenPage = async (pageId?: string | null) => {
     if (!pageId) return;
@@ -30,7 +54,7 @@ export default function NotificationCenterModal({
     await onMarkRead(notif.id);
     // Create new scheduled notification or re-scheduled alert
     await window.api.notifications.addNotification({
-      title: `${notif.title} (Adiado)`,
+      title: `${notif.title} (${t('notifications.snoozeTag')})`,
       message: `${notif.message}`,
       type: notif.type,
       target_page_id: notif.target_page_id,
@@ -43,8 +67,8 @@ export default function NotificationCenterModal({
   const handleCompleteEvent = async (notif: AppNotification) => {
     if (!window.api?.calendar || !notif.event_id) return;
     try {
-      const events = await window.api.calendar.getEvents();
-      const ev = events.find((e: any) => e.id === notif.event_id);
+      const events: CalendarEvent[] = await window.api.calendar.getEvents();
+      const ev = events.find((e: CalendarEvent) => e.id === notif.event_id);
       if (ev) {
         await window.api.calendar.updateEvent(notif.event_id, {
           ...ev,
@@ -73,11 +97,11 @@ export default function NotificationCenterModal({
     try {
       const d = new Date(dateStr);
       const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
-      if (diffMin < 1) return 'agora';
-      if (diffMin < 60) return `há ${diffMin}m`;
+      if (diffMin < 1) return t('notifications.now');
+      if (diffMin < 60) return t('notifications.minutesAgo', { count: diffMin });
       const diffHours = Math.floor(diffMin / 60);
-      if (diffHours < 24) return `há ${diffHours}h`;
-      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      if (diffHours < 24) return t('notifications.hoursAgo', { count: diffHours });
+      return d.toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { day: '2-digit', month: '2-digit' });
     } catch {
       return '';
     }
@@ -89,17 +113,17 @@ export default function NotificationCenterModal({
       onClick={onClose}
     >
       <div 
-        className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4"
+        className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
+        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/5">
           <div className="flex items-center gap-2">
             <Bell size={18} className="text-brand-400" />
-            <h3 className="font-semibold text-white text-base">Central de Notificações</h3>
+            <h3 className="font-semibold text-white text-base">{t('notifications.centerTitle')}</h3>
             {notifications.filter(n => !n.is_read).length > 0 && (
               <span className="px-2 py-0.5 text-xs rounded-full bg-brand-500 text-white font-medium">
-                {notifications.filter(n => !n.is_read).length} nova(s)
+                {t('notifications.newBadge', { count: notifications.filter(n => !n.is_read).length })}
               </span>
             )}
           </div>
@@ -108,9 +132,9 @@ export default function NotificationCenterModal({
               <button
                 onClick={() => onMarkRead()}
                 className="text-xs text-brand-400 hover:text-brand-300 px-2.5 py-1 rounded-lg hover:bg-white/5 transition-colors"
-                title="Marcar todas como lidas"
+                title={t('notifications.readAllTitle')}
               >
-                Ler todas
+                {t('notifications.readAll')}
               </button>
             )}
             <button
@@ -130,8 +154,8 @@ export default function NotificationCenterModal({
                 <Bell size={22} className="opacity-40" />
               </div>
               <div>
-                <p className="font-medium text-white/80">Nenhuma notificação</p>
-                <p className="text-xs opacity-60">Você está em dia com toda a sua agenda e lembretes!</p>
+                <p className="font-medium text-white/80">{t('notifications.emptyTitle')}</p>
+                <p className="text-xs opacity-60">{t('notifications.emptyDesc')}</p>
               </div>
             </div>
           ) : (
@@ -168,7 +192,7 @@ export default function NotificationCenterModal({
                         >
                           <BookOpen size={13} />
                           <span className="max-w-[120px] truncate">
-                            {linkedPage?.title || 'Abrir Página'}
+                            {linkedPage?.title || t('notifications.openPage')}
                           </span>
                         </button>
                       )}
@@ -176,20 +200,20 @@ export default function NotificationCenterModal({
                       <button
                         onClick={() => handleSnooze(notif, 15)}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-white/5 text-dark-subtext hover:text-white hover:bg-white/10 transition-colors"
-                        title="Adiar 15 minutos"
+                        title={t('notifications.snoozeTitle', { minutes: 15 })}
                       >
                         <Clock size={12} />
-                        <span>Adiar 15m</span>
+                        <span>{t('notifications.snooze', { minutes: 15 })}</span>
                       </button>
 
                       {notif.type === 'calendar_event' && notif.event_id && (
                         <button
                           onClick={() => handleCompleteEvent(notif)}
                           className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition-colors"
-                          title="Concluir Evento"
+                          title={t('notifications.completeTitle')}
                         >
                           <Check size={12} />
-                          <span>Concluir</span>
+                          <span>{t('notifications.complete')}</span>
                         </button>
                       )}
                     </div>
@@ -199,7 +223,7 @@ export default function NotificationCenterModal({
                         <button
                           onClick={() => onMarkRead(notif.id)}
                           className="p-1 text-dark-subtext hover:text-emerald-400 hover:bg-emerald-500/10 rounded-md transition-colors"
-                          title="Marcar como lida"
+                          title={t('notifications.markAsRead')}
                         >
                           <Check size={14} />
                         </button>
@@ -207,7 +231,7 @@ export default function NotificationCenterModal({
                       <button
                         onClick={() => onDelete(notif.id)}
                         className="p-1 text-dark-subtext hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
-                        title="Remover"
+                        title={t('notifications.remove')}
                       >
                         <Trash2 size={14} />
                       </button>

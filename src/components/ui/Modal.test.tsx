@@ -76,4 +76,16 @@ describe('Modal component', () => {
     fireEvent.click(screen.getByTestId('inside-button'));
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('calls onClose on caderno-back-press custom event', () => {
+    const onClose = vi.fn();
+    render(
+      <Modal isOpen={true} onClose={onClose}>
+        <div>Back Navigation Content</div>
+      </Modal>
+    );
+
+    window.dispatchEvent(new CustomEvent('caderno-back-press'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

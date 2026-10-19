@@ -54,11 +54,18 @@ export function Modal({
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', handleKeyDown);
 
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('caderno-back-press', handleBackPress);
+
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
     };
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen, handleKeyDown, onClose]);
 
   if (!isOpen) return null;
 

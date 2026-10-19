@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotificationScheduler } from './useNotificationScheduler';
 import NotificationCenterModal from './NotificationCenterModal';
+import { useI18n } from '../../i18n';
 
 export default function NotificationBell() {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const { notifications, unreadCount, markRead, deleteNotification } = useNotificationScheduler();
 
@@ -16,8 +18,8 @@ export default function NotificationBell() {
             ? 'bg-brand-500/20 text-brand-400'
             : 'text-dark-subtext hover:text-white hover:bg-white/5'
         }`}
-        title="Central de Notificações"
-        aria-label="Central de Notificações"
+        title={t('notifications.centerTitle')}
+        aria-label={t('notifications.centerTitle')}
       >
         <div className="relative flex items-center justify-center">
           <Bell size={16} />
@@ -29,8 +31,8 @@ export default function NotificationBell() {
         </div>
 
         {/* Floating tooltip on hover (pure CSS, zero layout shift) */}
-        <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/10 rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
-          Notificações
+        <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/[0.06] rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
+          {t('notifications.tooltip')}
         </span>
       </button>
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
@@ -36,8 +36,14 @@ export function triggerToast(message: string, type: ToastType = 'info', duration
 
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const removeToast = useCallback((id: string) => {
+    const timer = timeoutsRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timeoutsRef.current.delete(id);
+    }
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
@@ -46,17 +52,27 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setToasts((prev) => [...prev, { id, message, type, duration }]);
 
     if (duration > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        timeoutsRef.current.delete(id);
         removeToast(id);
       }, duration);
+      timeoutsRef.current.set(id, timer);
     }
   }, [removeToast]);
+
+  useEffect(() => {
+    const timers = timeoutsRef.current;
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
 
   // Listen for global API error and toast events
   useEffect(() => {
     const handleApiError = (event: Event) => {
       const customEvent = event as CustomEvent;
-      const errorMsg = customEvent.detail?.message || 'Erro inesperado de comunicação com a API.';
+      const errorMsg = customEvent.detail?.message || 'Unexpected API communication error.';
       showToast(errorMsg, 'error', 5000);
     };
 
