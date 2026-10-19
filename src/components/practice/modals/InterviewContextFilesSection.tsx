@@ -95,7 +95,7 @@ export const InterviewContextFilesSection = React.memo(function InterviewContext
           {attachedFiles.map((file, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 border border-white/10 text-xs text-white"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 border border-white/[0.08] text-xs text-white"
             >
               <FileText size={12} className={file.type === 'resume' ? 'text-brand-400' : 'text-sky-400'} />
               <span className="truncate max-w-[200px]">{file.name}</span>

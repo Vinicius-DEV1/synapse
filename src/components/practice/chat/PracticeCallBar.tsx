@@ -61,7 +61,7 @@ export function PracticeCallBar({
               className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all active:scale-95 ${
                 isRecording
                   ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse'
-                  : 'border-white/10 text-dark-subtext'
+                  : 'border-white/[0.08] text-dark-subtext'
               }`}
             >
               {isRecording ? <Mic size={16} /> : <MicOff size={16} />}
@@ -74,7 +74,7 @@ export function PracticeCallBar({
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
                 isRecording
                   ? 'border-brand-500 bg-brand-500/10 text-brand-400 animate-pulse'
-                  : 'border-white/10 text-dark-subtext'
+                  : 'border-white/[0.08] text-dark-subtext'
               }`}
             >
               {isRecording ? <Mic size={14} /> : <MicOff size={14} />}

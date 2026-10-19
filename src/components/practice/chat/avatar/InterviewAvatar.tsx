@@ -483,7 +483,7 @@ export function InterviewAvatar({
 
       {/* Floating Recruiter HUD */}
       <div className="relative z-10 flex flex-col items-center mt-3 text-center">
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-lg">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/[0.08] shadow-lg">
           <span
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
               isRecording
@@ -494,7 +494,7 @@ export function InterviewAvatar({
             }`}
           />
           <span className="text-xs font-semibold text-white/90">{interviewerName}</span>
-          <span className="text-[10px] text-white/50 border-l border-white/10 pl-2">Entrevistador</span>
+          <span className="text-[10px] text-white/50 border-l border-white/[0.08] pl-2">Entrevistador</span>
         </div>
 
         {jobTitle && (

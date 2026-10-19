@@ -14,7 +14,7 @@ export function ChatTranscript({ messages }: ChatTranscriptProps) {
         if (isSystem) {
           return (
             <div key={msg.id || i} className="flex justify-center my-2">
-              <div className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs text-dark-subtext font-medium tracking-wide">
+              <div className="px-4 py-1.5 bg-white/5 border border-white/[0.08] rounded-full text-xs text-dark-subtext font-medium tracking-wide">
                 {msg.text_content.replace('[SISTEMA] ', '')}
               </div>
             </div>

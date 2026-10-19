@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, Briefcase, Sparkles, Mic } from 'lucide-react';
 
 interface NewPracticeSessionModalProps {
@@ -13,11 +14,31 @@ export function NewPracticeSessionModal({
   onSelectFreeMode,
   onSelectInterviewMode,
 }: NewPracticeSessionModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-dark-card border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-lg bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <div>
@@ -42,7 +63,7 @@ export function NewPracticeSessionModal({
           {/* Option 1: Free Conversation (Current Classic Mode) */}
           <button
             onClick={onSelectFreeMode}
-            className="group relative flex items-start gap-4 p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] hover:border-brand-500/40 text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+            className="group relative flex items-start gap-4 p-5 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] hover:border-brand-500/40 text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
           >
             <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 group-hover:bg-brand-500/20 transition-colors shrink-0">
               <Mic size={24} />

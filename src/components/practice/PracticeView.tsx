@@ -128,7 +128,7 @@ export default function PracticeView() {
       {isMobile && (
         <button
           onClick={() => setShowSidebar(true)}
-          className="absolute top-4 left-4 z-20 p-2 bg-dark-card/80 backdrop-blur-sm border border-white/10 rounded-lg text-dark-subtext hover:text-white transition-colors"
+          className="absolute top-4 left-4 z-20 p-2 bg-dark-card/80 backdrop-blur-sm border border-white/[0.08] rounded-lg text-dark-subtext hover:text-white transition-colors"
         >
           <Menu size={20} />
         </button>

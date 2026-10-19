@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, Sliders, Play, Loader2 } from 'lucide-react';
 
 interface ChatSettingsModalProps {
@@ -14,6 +15,26 @@ interface ChatSettingsModalProps {
 export function ChatSettingsModal({
   isOpen, onClose, globalSystemPrompt, setGlobalSystemPrompt, saveGlobalPrompt, defaultSystemInstruction, previewVoice, previewingVoice
 }: ChatSettingsModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -43,7 +64,7 @@ export function ChatSettingsModal({
               onChange={(e) => setGlobalSystemPrompt(e.target.value)}
               onBlur={(e) => saveGlobalPrompt(e.target.value)}
               placeholder="Escreva como a IA deve agir globalmente..."
-              className="w-full h-40 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none"
+              className="w-full h-40 p-3 bg-black/20 border border-white/[0.08] rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none"
             />
             <button 
               onClick={() => {

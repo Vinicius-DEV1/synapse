@@ -28,8 +28,18 @@ export const PracticeDeleteModal = React.memo(function PracticeDeleteModal({
         onClose();
       }
     };
+    const handleBackPress = (e: Event) => {
+      if (!isDeleting) {
+        e.preventDefault();
+        onClose();
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
   }, [isOpen, isDeleting, onClose]);
 
   if (!isOpen) return null;
@@ -41,7 +51,7 @@ export const PracticeDeleteModal = React.memo(function PracticeDeleteModal({
         onClick={isDeleting ? undefined : onClose}
       >
         <div
-          className="bg-dark-card border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-scale-in"
+          className="bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start gap-3 mb-4">

@@ -57,7 +57,7 @@ export function PracticeCallControls({
 
         {/* Mode Switcher Toggle (if interview session) */}
         {interviewConfig && (
-          <div className="pointer-events-auto flex items-center gap-1 p-1 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md shadow-lg">
+          <div className="pointer-events-auto flex items-center gap-1 p-1 bg-white/5 border border-white/[0.08] rounded-xl backdrop-blur-md shadow-lg">
             <button
               onClick={() => setViewMode('avatar')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -180,7 +180,7 @@ export function PracticeCallControls({
           <p className="text-sm text-dark-subtext mb-4">Estabelecendo comunicação segura de baixa latência...</p>
         )}
 
-        <div className="flex flex-col items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-2xl shadow-2xl w-full">
+        <div className="flex flex-col items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/[0.06] backdrop-blur-2xl shadow-2xl w-full">
           {isConnected && (
             <>
               {interviewConfig ? (
@@ -197,7 +197,7 @@ export function PracticeCallControls({
                 <div className={`flex flex-col items-center gap-2 transition-opacity duration-300 ${isRecording ? 'opacity-20' : 'opacity-100'}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white/60">Mantenha pressionado</span>
-                    <kbd className="px-3 py-1 bg-black/40 border border-white/10 rounded-lg text-white font-mono text-sm shadow-inner">P</kbd>
+                    <kbd className="px-3 py-1 bg-black/40 border border-white/[0.08] rounded-lg text-white font-mono text-sm shadow-inner">P</kbd>
                     <span className="text-sm font-medium text-white/60">para falar</span>
                   </div>
                   {micLabel && <span className="text-[11px] font-semibold tracking-wider uppercase text-white/30">{micLabel}</span>}

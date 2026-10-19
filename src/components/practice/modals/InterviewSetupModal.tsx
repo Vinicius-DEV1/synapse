@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import {
   X,
   Briefcase,
@@ -33,6 +33,26 @@ export function InterviewSetupModal({
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -85,7 +105,7 @@ export function InterviewSetupModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="w-full max-w-xl bg-dark-card border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-xl bg-dark-card border border-white/[0.06] rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8 animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -129,7 +149,7 @@ export function InterviewSetupModal({
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
               placeholder="Ex: Engenheiro de Software Frontend, Tech Lead, Product Designer..."
-              className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:border-brand-500/60 transition-colors"
+              className="w-full px-4 py-3 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:border-brand-500/60 transition-colors"
             />
           </div>
 
@@ -142,7 +162,7 @@ export function InterviewSetupModal({
               <select
                 value={seniority}
                 onChange={(e) => setSeniority(e.target.value as InterviewSeniority)}
-                className="w-full px-3.5 py-3 bg-black/30 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-brand-500/60"
+                className="w-full px-3.5 py-3 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-brand-500/60"
               >
                 <option value="junior" className="bg-dark-bg text-white">Júnior (Entrada / 1-2 anos)</option>
                 <option value="pleno" className="bg-dark-bg text-white">Pleno (Autônomo / 3-5 anos)</option>
@@ -158,7 +178,7 @@ export function InterviewSetupModal({
               <select
                 value={interviewType}
                 onChange={(e) => setInterviewType(e.target.value as InterviewType)}
-                className="w-full px-3.5 py-3 bg-black/30 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-brand-500/60"
+                className="w-full px-3.5 py-3 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white focus:outline-none focus:border-brand-500/60"
               >
                 <option value="mixed" className="bg-dark-bg text-white">Mista (Técnica + Comportamental)</option>
                 <option value="technical" className="bg-dark-bg text-white">Técnica e Arquitetura</option>
@@ -179,7 +199,7 @@ export function InterviewSetupModal({
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Ex: Google, Nubank, Startup em rápida expansão..."
-              className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:border-brand-500/60 transition-colors"
+              className="w-full px-4 py-3 bg-black/30 border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:border-brand-500/60 transition-colors"
             />
           </div>
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, FileText } from 'lucide-react';
 import type { TutorSession } from '../../../types';
 
@@ -15,6 +16,28 @@ interface ChatSessionSettingsModalProps {
 export function ChatSessionSettingsModal({
   isOpen, onClose, session, customPrompt, setCustomPrompt, presets, saveCustomPrompt, saveAsNewPreset
 }: ChatSessionSettingsModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setCustomPrompt(session.custom_prompt || '');
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      setCustomPrompt(session.custom_prompt || '');
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [isOpen, session.custom_prompt, setCustomPrompt, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -45,7 +68,7 @@ export function ChatSessionSettingsModal({
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder="Ex: Você é um garçom em Paris. Fale apenas em Francês..."
-              className="w-full h-48 p-3 bg-black/20 border border-white/10 rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none mb-4"
+              className="w-full h-48 p-3 bg-black/20 border border-white/[0.08] rounded-xl text-sm text-white/90 placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-brand-500/50 resize-none mb-4"
             />
             
             {presets.length > 0 && (
@@ -53,7 +76,7 @@ export function ChatSessionSettingsModal({
                 <label className="text-xs text-dark-subtext mb-1 block">Carregar Preset Salvo</label>
                 <div className="flex gap-2">
                   <select 
-                    className="flex-1 bg-black/20 border border-white/10 rounded-lg text-sm text-white/90 p-2 focus:outline-none focus:border-brand-500/50"
+                    className="flex-1 bg-black/20 border border-white/[0.08] rounded-lg text-sm text-white/90 p-2 focus:outline-none focus:border-brand-500/50"
                     onChange={(e) => {
                       const p = presets.find(x => x.id === e.target.value);
                       if (p) setCustomPrompt(p.prompt);
