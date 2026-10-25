@@ -112,5 +112,29 @@ describe('createWebNotesApi (IndexedDB)', () => {
     expect(lockedRes.content).toBe('');
     expect(lockedRes.encrypted_content).toBe(encryptedContent);
   });
+
+  it('skips redundant database updates and throttles history records to 60s', async () => {
+    const db = await getWebDb();
+    const p = await api.createPage({ parentId: null, title: 'Throttling Page' });
+
+    // 1. First content update should record history
+    const update1 = await api.updatePage({ id: p.id, content: 'Version 1' });
+    expect(update1).toBe(1);
+
+    const history1 = (await db.getAllFromIndex('page_history', 'page_id', p.id)) as unknown[];
+    expect(history1).toHaveLength(1);
+
+    // 2. Second rapid update (within 60s) should NOT record another history snapshot
+    const update2 = await api.updatePage({ id: p.id, content: 'Version 2' });
+    expect(update2).toBe(1);
+
+    const history2 = (await db.getAllFromIndex('page_history', 'page_id', p.id)) as unknown[];
+    expect(history2).toHaveLength(1);
+
+    // 3. Update with no actual changes should return 0 (no-op)
+    const updateNoop = await api.updatePage({ id: p.id, content: 'Version 2' });
+    expect(updateNoop).toBe(0);
+  });
 });
+
 

@@ -122,7 +122,8 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     if (page?.id) {
       const data: PageContentData = { content, encrypted_content: null };
       pageContentCache.set(page.id, data);
-      setLoadedData({ pageId: page.id, data });
+      // Bail out if already loaded for this page to prevent re-rendering PageView and Editor on every autosave keystroke
+      setLoadedData((prev) => (prev?.pageId === page.id ? prev : { pageId: page.id, data }));
       onUpdateContent(page.id, content, crdtState, embeddedSaves, senderInstanceId);
     }
   }, [page?.id, onUpdateContent]);

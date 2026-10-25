@@ -28,7 +28,11 @@ export const createWebNotesApi = (
   db: IDBPDatabase<CadernoDBSchema>,
   generateId: () => string,
   getMasterKey?: () => CryptoKey | null
-) => ({
+) => {
+  // In-memory cache for last revision timestamp per page to prevent full IDB table scans on autosave
+  const lastPageHistoryTime = new Map<string, number>();
+
+  return {
   getAllPages: async (): Promise<Page[]> => {
     const all = (await db.getAll('pages')) as Page[];
     return all
@@ -101,33 +105,47 @@ export const createWebNotesApi = (
       }
     }
 
-    const updated: Page = { ...existing, ...page };
-    if (hasChanges) {
-      updated.updated_at = new Date().toISOString();
+    // No-op if content and metadata are strictly unchanged
+    if (!hasChanges) {
+      return 0;
     }
+
+    const updated: Page = { ...existing, ...page };
+    updated.updated_at = new Date().toISOString();
 
     if (page.content !== undefined && page.content !== existing.content) {
       // Record history entry only if > 60s elapsed since last revision (prevents IndexedDB bloating on autosave)
-      const existingHistory = ((await db.getAllFromIndex('page_history', 'page_id', page.id)) || []) as PageHistoryEntry[];
+      const now = Date.now();
+      const lastRecorded = lastPageHistoryTime.get(page.id);
       let shouldInsertHistory = true;
-      if (existingHistory.length > 0) {
-        let latestTime = 0;
-        for (const h of existingHistory) {
-          const t = new Date(h.created_at).getTime();
-          if (t > latestTime) latestTime = t;
-        }
-        if (Date.now() - latestTime < 60_000) {
+
+      if (lastRecorded !== undefined) {
+        if (now - lastRecorded < 60_000) {
           shouldInsertHistory = false;
+        }
+      } else {
+        const existingHistory = ((await db.getAllFromIndex('page_history', 'page_id', page.id)) || []) as PageHistoryEntry[];
+        if (existingHistory.length > 0) {
+          let latestTime = 0;
+          for (const h of existingHistory) {
+            const t = new Date(h.created_at).getTime();
+            if (t > latestTime) latestTime = t;
+          }
+          lastPageHistoryTime.set(page.id, latestTime);
+          if (now - latestTime < 60_000) {
+            shouldInsertHistory = false;
+          }
         }
       }
 
       if (shouldInsertHistory) {
-        const histId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${Date.now()}`;
+        lastPageHistoryTime.set(page.id, now);
+        const histId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `hist_${now}`;
         await db.put('page_history', {
           id: histId,
           page_id: page.id,
           content: page.content,
-          created_at: new Date().toISOString(),
+          created_at: new Date(now).toISOString(),
         });
       }
     }
@@ -213,4 +231,5 @@ export const createWebNotesApi = (
     success: false,
     error: 'Backup não suportado na versão Web',
   }),
-});
+  };
+};
