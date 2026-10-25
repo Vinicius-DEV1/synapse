@@ -1,7 +1,16 @@
 import { db } from '../firebase';
 import { encryptText } from '../crypto';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { MODULE_TABLES, getLastSyncTime, setLastSyncTime, parseDateSafe, getDeviceId, type SyncRow } from './sync-utils';
+import {
+  MODULE_TABLES,
+  getLastSyncTime,
+  setLastSyncTime,
+  getTableLastSyncTime,
+  setTableLastSyncTime,
+  parseDateSafe,
+  getDeviceId,
+  type SyncRow,
+} from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 import { getErrorMessage } from '../../utils/error';
 
@@ -140,11 +149,16 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
         const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
         if (localRows.length === 0) continue;
 
-        const rowsToPush: SyncRow[] = lastPush > 0 
+        const lastPushTable = getTableLastSyncTime('push', table);
+        let tableHighestSuccessTime = lastPushTable;
+        // 1-second leeway window to accommodate SQLite's second-level timestamp truncations
+        const pushThreshold = Math.max(0, lastPushTable - 1000);
+
+        const rowsToPush: SyncRow[] = lastPushTable > 0 
           ? localRows.filter((r: SyncRow) => {
               const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
               const isUnsyncedDeletion = !hasRepushedDeletions && Boolean(r.deleted_at);
-              return rTime > lastPush || isUnsyncedDeletion;
+              return rTime > pushThreshold || isUnsyncedDeletion;
             })
           : localRows;
 
@@ -204,6 +218,9 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
               if (item.localTime > highestSuccessTime) {
                 highestSuccessTime = item.localTime;
               }
+              if (item.localTime > tableHighestSuccessTime) {
+                tableHighestSuccessTime = item.localTime;
+              }
             }
             // Manifest: record highest timestamp for this table
             const chunkHighest = Math.max(...chunk.map(c => c.localTime));
@@ -221,6 +238,10 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
               errors.push(msg);
             }
           }
+        }
+
+        if (tableHighestSuccessTime > lastPushTable) {
+          setTableLastSyncTime('push', table, tableHighestSuccessTime);
         }
       } catch (err: unknown) {
         const errMsg = getErrorMessage(err);

@@ -18,6 +18,8 @@ import {
   MODULE_TABLES,
   getLastSyncTime,
   setLastSyncTime,
+  getTableLastSyncTime,
+  setTableLastSyncTime,
   parseDateSafe,
   type SyncRow,
 } from './sync-utils';
@@ -76,13 +78,17 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
 
     for (const table of tables) {
       try {
+        const lastPullTable = getTableLastSyncTime('pull', table);
+        let highestTableTime = lastPullTable;
+
         if (manifest) {
           const tableTimestamp = manifest[table];
           if (tableTimestamp) {
             const tableLastUpdate = parseDateSafe(tableTimestamp);
-            if (tableLastUpdate <= lastPull) {
+            // 10s leeway window prevents skipping when devices have slight clock skew
+            if (lastPullTable > 0 && tableLastUpdate <= Math.max(0, lastPullTable - 10_000)) {
               console.log(
-                `[Pull SKIP] Tabela ${table} ignorada (Sem mudanças no Manifest: ${tableLastUpdate} <= ${lastPull}).`
+                `[Pull SKIP] Tabela ${table} ignorada (Sem mudanças no Manifest: ${tableLastUpdate} <= ${lastPullTable}).`
               );
               continue;
             }
@@ -90,11 +96,12 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
         }
 
         let qBase: Query<DocumentData> = collection(db, table);
-        if (lastPull > 0) {
-          const lastPullIso = new Date(lastPull).toISOString();
+        if (lastPullTable > 0) {
+          const pullThreshold = Math.max(0, lastPullTable - 10_000);
+          const pullThresholdIso = new Date(pullThreshold).toISOString();
           qBase = query(
             collection(db, table),
-            where('updatedAt', '>', lastPullIso),
+            where('updatedAt', '>', pullThresholdIso),
             orderBy('updatedAt')
           );
         }
@@ -191,7 +198,10 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
             if (cloudTime > highestCloudTime) {
               highestCloudTime = cloudTime;
             }
-            if (lastPull > 0 && cloudTime <= lastPull) return false;
+            if (cloudTime > highestTableTime) {
+              highestTableTime = cloudTime;
+            }
+            if (lastPullTable > 0 && cloudTime <= Math.max(0, lastPullTable - 10_000)) return false;
 
             const localRow = localMap!.get(docSnap.id);
             const localTime = localRow
@@ -271,6 +281,10 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           if (querySnapshot.docs.length < CHUNK_SIZE) {
             hasMore = false;
           }
+        }
+
+        if (highestTableTime > lastPullTable) {
+          setTableLastSyncTime('pull', table, highestTableTime);
         }
       } catch (err: unknown) {
         const msg = `PULL erro tabela ${table}: ${getErrorMessage(err)}`;

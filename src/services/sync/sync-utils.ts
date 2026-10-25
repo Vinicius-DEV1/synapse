@@ -27,6 +27,7 @@ export const MODULE_TABLES: Record<string, string[]> = {
 };
 
 export const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_${type}_time`;
+export const getTableLastSyncKey = (type: 'pull' | 'push', table: string) => `caderno_last_${type}_time_${table}`;
 
 export function getLastSyncTime(type: 'pull' | 'push'): number {
   return parseInt(localStorage.getItem(getLastSyncKey(type)) || '0', 10);
@@ -34,6 +35,19 @@ export function getLastSyncTime(type: 'pull' | 'push'): number {
 
 export function setLastSyncTime(type: 'pull' | 'push', time: number) {
   localStorage.setItem(getLastSyncKey(type), time.toString());
+}
+
+export function getTableLastSyncTime(type: 'pull' | 'push', table: string): number {
+  const tableVal = localStorage.getItem(getTableLastSyncKey(type, table));
+  if (tableVal) {
+    const parsed = parseInt(tableVal, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return getLastSyncTime(type);
+}
+
+export function setTableLastSyncTime(type: 'pull' | 'push', table: string, time: number) {
+  localStorage.setItem(getTableLastSyncKey(type, table), time.toString());
 }
 
 export async function restoreLastSyncTimesFromDb(): Promise<void> {
