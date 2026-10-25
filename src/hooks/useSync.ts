@@ -104,6 +104,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           }
         } finally {
           isSyncing = false;
+          checkPendingSignal();
         }
       };
 
@@ -133,7 +134,40 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           }
         } finally {
           isSyncing = false;
+          checkPendingSignal();
         }
+      };
+
+      // Realtime pull handler with pending signal queue to prevent lost updates under mutex
+      let hasPendingSignal = false;
+      const checkPendingSignal = () => {
+        if (hasPendingSignal && !isSyncing && !isClosed) {
+          hasPendingSignal = false;
+          executeRealTimePull();
+        }
+      };
+
+      const executeRealTimePull = () => {
+        if (!navigator.onLine || isClosed) return;
+        if (isSyncing) {
+          hasPendingSignal = true;
+          return;
+        }
+        isSyncing = true;
+        startSync();
+        withTimeout(pullAllFromCloud(masterKey), 60_000)
+          .then(() => {
+            loadPages();
+            finishSync(true);
+          })
+          .catch((err: unknown) => {
+            handleSyncError(err, 'Pull em Tempo Real'); // #5: centralizado
+            finishSync(false);
+          })
+          .finally(() => {
+            isSyncing = false;
+            checkPendingSignal();
+          });
       };
 
       // 1. Initial Sync (Sincroniza ao abrir)
@@ -153,22 +187,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         if (signalDeviceId && signalDeviceId === myDeviceId) {
           return;
         }
-        if (!navigator.onLine) return;
-        if (isSyncing) return; // Mutex
-        isSyncing = true;
-        startSync();
-        withTimeout(pullAllFromCloud(masterKey), 60_000)
-          .then(() => {
-            loadPages();
-            finishSync(true);
-          })
-          .catch((err: unknown) => {
-            handleSyncError(err, 'Pull em Tempo Real'); // #5: centralizado
-            finishSync(false);
-          })
-          .finally(() => {
-            isSyncing = false;
-          });
+        executeRealTimePull();
       });
 
       // 3. Cross-Tab Sync (Same Browser)
@@ -179,12 +198,21 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       };
 
       // 4. Smart on-demand trigger (when user edits)
-      let syncDebounceTimer: ReturnType<typeof setTimeout>;
-      const handleSyncTrigger = () => {
-        clearTimeout(syncDebounceTimer);
-        syncDebounceTimer = setTimeout(() => {
+      let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+      const flushPendingDebouncedPush = () => {
+        if (syncDebounceTimer) {
+          clearTimeout(syncDebounceTimer);
+          syncDebounceTimer = null;
           doPushOnlySync();
-        }, 15000);
+        }
+      };
+
+      const handleSyncTrigger = () => {
+        if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = setTimeout(() => {
+          syncDebounceTimer = null;
+          doPushOnlySync();
+        }, 3000);
       };
 
       let cleanupSyncTrigger: (() => void) | undefined;
@@ -199,15 +227,23 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       };
       window.addEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
 
-      // 5. Focus trigger: update when user returns from another window
-      // Guarded by mutex and 30s cooldown to prevent redundant sync runs
+      // 5. Focus & lifecycle trigger: update when user returns, and flush debounced sync when leaving
       let isSyncingOnFocus = false;
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && !isSyncingOnFocus) {
           isSyncingOnFocus = true;
           doFullSync().finally(() => { isSyncingOnFocus = false; });
+        } else if (document.visibilityState === 'hidden') {
+          // Flush pending debounced push immediately before mobile browser/webview suspends execution
+          flushPendingDebouncedPush();
         }
       };
+      const handlePageHide = () => {
+        flushPendingDebouncedPush();
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('pagehide', handlePageHide);
+
       // 6. Network reconnection trigger: automatically sync offline changes when connection returns
       const handleOnline = () => {
         console.log('[Sync] Network connection restored (online). Triggering full synchronization...');
@@ -223,8 +259,9 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       return () => {
         isClosed = true;
         clearInterval(syncInterval);
-        clearTimeout(syncDebounceTimer);
+        if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
         window.removeEventListener('online', handleOnline);
+        window.removeEventListener('pagehide', handlePageHide);
         window.removeEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (cleanupSyncTrigger) cleanupSyncTrigger();
