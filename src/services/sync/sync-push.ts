@@ -117,7 +117,10 @@ async function prepareRowsForPush(
   return { prepared, skippedLarge };
 }
 
-export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
+export async function pushAllToCloud(
+  moduleKeys: Record<string, CryptoKey>,
+  targetTables?: string[]
+): Promise<void> {
   if (!window.api?.sync) return;
   if (isEmergencyStopped()) {
     console.warn('[Sync PUSH] Bloqueado por medida de segurança (Emergency Stop).');
@@ -136,14 +139,21 @@ export async function pushAllToCloud(moduleKeys: Record<string, CryptoKey>): Pro
   // Manifest: rastreia o timestamp mais alto de cada tabela que teve push bem-sucedido
   const manifestUpdate: Record<string, string> = {};
 
+  const targetSet = targetTables && targetTables.length > 0 ? new Set(targetTables) : null;
+
   for (const module of Object.keys(MODULE_TABLES)) {
     const key = moduleKeys[module] || moduleKeys['core'];
     if (!key) {
       console.warn(`[Sync PUSH] Nenhuma chave encontrada para o módulo ${module}. Pulando...`);
       continue;
     }
-    const tables = MODULE_TABLES[module] || [];
-    
+    const allTables = MODULE_TABLES[module] || [];
+    const tables = targetSet
+      ? allTables.filter((t) => targetSet.has(t))
+      : allTables;
+
+    if (tables.length === 0) continue;
+
     for (const table of tables) {
       try {
         const localRows = (await window.api.sync.getTable(table)) as SyncRow[];

@@ -18,7 +18,7 @@ export function usePageActions() {
         if (parentId) {
           dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
         }
-        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
       } catch (err: unknown) {
         console.error('Erro ao criar página:', err);
         triggerToast(err instanceof Error ? err.message : 'Erro ao criar nova página', 'error');
@@ -33,7 +33,7 @@ export function usePageActions() {
         await window.api.updatePage({ id: page.id, title });
         const updatedPage = { ...page, title };
         dispatch({ type: 'ADD_PAGE', page: updatedPage });
-        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
         return page.id;
       } catch (err: unknown) {
         console.error('Erro ao criar página vinculada:', err);
@@ -91,7 +91,7 @@ export function usePageActions() {
         // 4. Dispatch store action
         dispatch({ type: 'DELETE_PAGE', id });
         triggerToast('Página movida para a lixeira.', 'info');
-        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
       } catch (err: unknown) {
         console.error('Erro ao excluir página:', err);
         triggerToast(err instanceof Error ? err.message : 'Erro ao excluir página', 'error');
@@ -112,7 +112,7 @@ export function usePageActions() {
       try {
         await window.api.updatePage({ id, ...updates });
         dispatch({ type: 'UPDATE_PAGE', page: { id, ...updates } });
-        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+        window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
       } catch (err: unknown) {
         console.error('Erro ao atualizar página:', err);
         triggerToast(err instanceof Error ? err.message : 'Erro ao atualizar página', 'error');
@@ -144,7 +144,7 @@ export function usePageActions() {
           }
         }
         
-        window.dispatchEvent(new CustomEvent('app-sync-trigger'));
+        window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'pages' } }));
       } catch (err: unknown) {
         console.error('Erro ao salvar conteúdo da página:', err);
       }
@@ -164,7 +164,7 @@ export function usePageActions() {
         dispatch({ type: 'EXPAND_NODE', nodeId: parentId });
       }
 
-      window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
     });
   }, [dispatch]);
 

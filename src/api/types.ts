@@ -191,7 +191,7 @@ export interface ICadernoAPI {
   /** IPC logging (Tauri only). Optional on web builds. */
   log?: (msg: string) => void;
   _setMasterKey?: (key: CryptoKey | null) => void;
-  onSyncTrigger?: (callback: () => void) => () => void;
+  onSyncTrigger?: (callback: (table?: string) => void) => () => void;
   getAllPages: () => Promise<Page[]>;
   getPageContent: (id: string) => Promise<{ content: string; encrypted_content: string | null }>;
   createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;

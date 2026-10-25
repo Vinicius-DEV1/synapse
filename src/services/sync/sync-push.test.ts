@@ -186,4 +186,16 @@ describe('sync-push service', () => {
     );
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
   });
+
+  it('only queries specified targetTables when provided', async () => {
+    syncUtils.setLastSyncTime('push', 0);
+    const getTableMock = vi.fn().mockResolvedValue([]);
+    (window as any).api.sync.getTable = getTableMock;
+
+    await pushAllToCloud({ notes: cryptoKey, calendar: cryptoKey }, ['pages']);
+
+    // Should only have queried 'pages', not calendar or other notes tables
+    expect(getTableMock).toHaveBeenCalledTimes(1);
+    expect(getTableMock).toHaveBeenCalledWith('pages');
+  });
 });

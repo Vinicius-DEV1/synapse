@@ -57,6 +57,21 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       const syncChannel = new BroadcastChannel('caderno_sync');
       // #7: Unique device ID to ignore self-push signals
       const myDeviceId = getDeviceId();
+      const dirtyTables = new Set<string>();
+      let hasPendingSignal = false;
+      let hasPendingPush = false;
+
+      // Mutex queue coordinator: drains pending remote signals or local pushes once unlocked
+      const checkPendingOperations = () => {
+        if (isClosed || isSyncing) return;
+        if (hasPendingSignal) {
+          hasPendingSignal = false;
+          executeRealTimePull();
+        } else if (hasPendingPush) {
+          hasPendingPush = false;
+          doPushOnlySync();
+        }
+      };
 
       // #10: Restaurar timestamps de sync do banco local (protege contra limpeza de localStorage)
       restoreLastSyncTimesFromDb().catch(() => {});
@@ -81,6 +96,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         }
         isSyncing = true;
         lastFullSyncTime = now;
+        dirtyTables.clear();
         startSync();
         try {
           await withTimeout(pullAllFromCloud(masterKey), 120_000);
@@ -104,7 +120,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           }
         } finally {
           isSyncing = false;
-          checkPendingSignal();
+          checkPendingOperations();
         }
       };
 
@@ -113,37 +129,34 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         if (!navigator.onLine) {
           return; // Offline: do not show error, ignore silently
         }
-        // Mutex: if sync is already running, ignore
-        if (isSyncing) return;
+        // Mutex: if sync is already running, queue pending push so it is not dropped
+        if (isSyncing) {
+          hasPendingPush = true;
+          return;
+        }
         isSyncing = true;
+        const tablesToPush = dirtyTables.size > 0 ? Array.from(dirtyTables) : undefined;
+        dirtyTables.clear();
         try {
-          // Silent background push only — no pull and no unnecessary App re-renders
+          // Silent background push targeting dirty tables (or all tables if unassigned)
+          // Note: syncPdfsToCloud is intentionally excluded here to prevent heavy drive scans during keystroke autosaves
           await withTimeout(
-            pushAllToCloud(masterKey),
+            pushAllToCloud(masterKey, tablesToPush),
             120_000
           );
-          
-          // PDF sync is separated from the 120s timeout because large files might take longer
-          await syncPdfsToCloud(masterKey);
           if (!isClosed) {
             syncChannel.postMessage('LOCAL_UPDATE');
           }
         } catch (err: unknown) {
+          if (tablesToPush) {
+            for (const t of tablesToPush) dirtyTables.add(t);
+          }
           if (!isClosed) {
             handleSyncError(err, 'doPushOnlySync');
           }
         } finally {
           isSyncing = false;
-          checkPendingSignal();
-        }
-      };
-
-      // Realtime pull handler with pending signal queue to prevent lost updates under mutex
-      let hasPendingSignal = false;
-      const checkPendingSignal = () => {
-        if (hasPendingSignal && !isSyncing && !isClosed) {
-          hasPendingSignal = false;
-          executeRealTimePull();
+          checkPendingOperations();
         }
       };
 
@@ -166,7 +179,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           })
           .finally(() => {
             isSyncing = false;
-            checkPendingSignal();
+            checkPendingOperations();
           });
       };
 
@@ -207,7 +220,16 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         }
       };
 
-      const handleSyncTrigger = () => {
+      const handleSyncTrigger = (arg?: string | Event) => {
+        let table: string | undefined;
+        if (typeof arg === 'string') {
+          table = arg;
+        } else if (arg && 'detail' in arg && typeof (arg as CustomEvent).detail === 'object') {
+          table = (arg as CustomEvent<{ table?: string }>).detail?.table;
+        }
+        if (table) {
+          dirtyTables.add(table);
+        }
         if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
           syncDebounceTimer = null;
@@ -219,13 +241,23 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       if (window.api?.onSyncTrigger) {
         cleanupSyncTrigger = window.api.onSyncTrigger(handleSyncTrigger);
       } else {
-        window.addEventListener('app-sync-trigger', handleSyncTrigger);
+        window.addEventListener('app-sync-trigger', handleSyncTrigger as EventListener);
       }
 
-      const handleImmediateSyncTrigger = () => {
+      const handleImmediateSyncTrigger = (event?: Event) => {
+        if (event && 'detail' in event && typeof (event as CustomEvent).detail === 'object') {
+          const table = (event as CustomEvent<{ table?: string }>).detail?.table;
+          if (table) {
+            dirtyTables.add(table);
+          }
+        }
+        if (syncDebounceTimer) {
+          clearTimeout(syncDebounceTimer);
+          syncDebounceTimer = null;
+        }
         doPushOnlySync();
       };
-      window.addEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger);
+      window.addEventListener('app-sync-trigger-immediate', handleImmediateSyncTrigger as EventListener);
 
       // 5. Focus & lifecycle trigger: update when user returns, and flush debounced sync when leaving
       let isSyncingOnFocus = false;

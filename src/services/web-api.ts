@@ -32,8 +32,8 @@ let _masterKey: CryptoKey | null = null;
 export const createWebApiMock = async () => {
   const db = await getWebDb();
 
-  let syncCallbacks: (() => void)[] = [];
-  const triggerSync = () => syncCallbacks.forEach(cb => cb());
+  let syncCallbacks: ((table?: string) => void)[] = [];
+  const triggerSync = (table?: string) => syncCallbacks.forEach(cb => cb(table));
 
   const originalPut = db.put.bind(db);
   const originalDelete = db.delete.bind(db);
@@ -42,7 +42,7 @@ export const createWebApiMock = async () => {
     const optimizedVal = PayloadOptimizer.optimize(val);
     const res = await originalPut<Name>(storeName, optimizedVal, key);
     if (storeName !== 'config' || (val && !['sync_signal', 'auth_validator', 'module_keys'].includes(val.id))) {
-      triggerSync();
+      triggerSync(storeName as string);
     }
     return res;
   }) as typeof db.put;
@@ -50,7 +50,7 @@ export const createWebApiMock = async () => {
   db.delete = (async <Name extends StoreNames<CadernoDBSchema>>(storeName: Name, key: IDBKeyRange | StoreKey<CadernoDBSchema, Name>) => {
     const res = await originalDelete<Name>(storeName, key);
     if (storeName !== 'config' || !['sync_signal', 'auth_validator', 'module_keys'].includes(key as string)) {
-      triggerSync();
+      triggerSync(storeName as string);
     }
     return res;
   }) as typeof db.delete;
@@ -58,7 +58,7 @@ export const createWebApiMock = async () => {
   return {
     // WEB-SPECIFIC HELPER TO INJECT MASTER KEY
     _setMasterKey: (key: CryptoKey | null) => { _masterKey = key; },
-    onSyncTrigger: (callback: () => void) => {
+    onSyncTrigger: (callback: (table?: string) => void) => {
       syncCallbacks.push(callback);
       return () => {
         syncCallbacks = syncCallbacks.filter(cb => cb !== callback);

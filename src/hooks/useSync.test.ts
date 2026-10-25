@@ -185,5 +185,66 @@ describe('useSync Hook', () => {
       expect(syncService.pullAllFromCloud).toHaveBeenCalledTimes(2);
     });
   });
+
+  it('passes targeted dirty tables to pushAllToCloud and decouples PDF sync during autosave push', async () => {
+    const loadPages = vi.fn();
+    renderHook(() => useSync(true, mockMasterKeys, loadPages));
+
+    // Wait for initial sync to finish
+    await vi.waitFor(() => {
+      expect(syncService.pushAllToCloud).toHaveBeenCalledTimes(1);
+    });
+
+    vi.mocked(syncService.pushAllToCloud).mockClear();
+    vi.mocked(syncService.syncPdfsToCloud).mockClear();
+
+    // Trigger immediate push for 'pages' table
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
+    });
+
+    await vi.waitFor(() => {
+      expect(syncService.pushAllToCloud).toHaveBeenCalledWith(mockMasterKeys, ['pages']);
+      // Ensure syncPdfsToCloud was NOT invoked during fast push
+      expect(syncService.syncPdfsToCloud).not.toHaveBeenCalled();
+    });
+  });
+
+  it('queues pending push when trigger occurs while mutex is held, executing it once unlocked', async () => {
+    let resolveInitialPush: () => void = () => {};
+    const initialPushPromise = new Promise<void>((resolve) => {
+      resolveInitialPush = resolve;
+    });
+
+    // Make initial push hang
+    vi.mocked(syncService.pushAllToCloud).mockImplementationOnce(() => initialPushPromise);
+
+    const loadPages = vi.fn();
+    renderHook(() => useSync(true, mockMasterKeys, loadPages));
+
+    // Wait until initial sync has started and is hanging on pushAllToCloud
+    await vi.waitFor(() => {
+      expect(syncService.pushAllToCloud).toHaveBeenCalledTimes(1);
+    });
+
+    // Dispatch an edit trigger while sync mutex is locked
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate', { detail: { table: 'pages' } }));
+    });
+
+    // Push count should still be 1 because mutex is currently locked
+    expect(syncService.pushAllToCloud).toHaveBeenCalledTimes(1);
+
+    // Release the initial push
+    await act(async () => {
+      resolveInitialPush();
+    });
+
+    // Mutex should unlock and immediately drain the pending push
+    await vi.waitFor(() => {
+      expect(syncService.pushAllToCloud).toHaveBeenCalledTimes(2);
+      expect(syncService.pushAllToCloud).toHaveBeenLastCalledWith(mockMasterKeys, ['pages']);
+    });
+  });
 });
 
