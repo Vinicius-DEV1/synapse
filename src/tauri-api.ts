@@ -26,7 +26,7 @@ let isGlobalSyncTriggerAttached = false;
 
 function ensureGlobalSyncTriggerListener(): void {
   if (typeof window === 'undefined' || isGlobalSyncTriggerAttached) return;
-  window.addEventListener('app-sync-trigger', () => {
+  const dispatchToCallbacks = () => {
     syncCallbacks.forEach((cb) => {
       try {
         cb();
@@ -34,7 +34,9 @@ function ensureGlobalSyncTriggerListener(): void {
         console.error('[TauriApi] Error executing sync callback:', err);
       }
     });
-  });
+  };
+  window.addEventListener('app-sync-trigger', dispatchToCallbacks);
+  window.addEventListener('app-sync-trigger-immediate', dispatchToCallbacks);
   isGlobalSyncTriggerAttached = true;
 }
 

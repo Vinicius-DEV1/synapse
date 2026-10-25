@@ -78,6 +78,38 @@ describe('usePageActions hook', () => {
 
     expect((window as any).api.updatePage).not.toHaveBeenCalled();
   });
+
+  it('dispatches sync trigger events on create, update, delete, and content save', async () => {
+    const immediateListener = vi.fn();
+    const debouncedListener = vi.fn();
+    window.addEventListener('app-sync-trigger-immediate', immediateListener);
+    window.addEventListener('app-sync-trigger', debouncedListener);
+
+    const { result } = renderHook(() => usePageActions(), { wrapper });
+
+    await act(async () => {
+      await result.current.handleCreatePage(null);
+    });
+    expect(immediateListener).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.handleUpdatePage('p-1', { title: 'Renamed' });
+    });
+    expect(immediateListener).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await result.current.handleDeletePage('p-1');
+    });
+    expect(immediateListener).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      await result.current.handleUpdateContent('p-1', '<p>Hello</p>', null);
+    });
+    expect(debouncedListener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener('app-sync-trigger-immediate', immediateListener);
+    window.removeEventListener('app-sync-trigger', debouncedListener);
+  });
 });
 
 

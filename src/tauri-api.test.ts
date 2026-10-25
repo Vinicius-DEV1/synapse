@@ -43,12 +43,15 @@ describe('tauri-api bridge (Desktop Native IPC)', () => {
 
     const unsubscribe = api.onSyncTrigger(callback);
     window.dispatchEvent(new CustomEvent('app-sync-trigger'));
-
     expect(callback).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+    expect(callback).toHaveBeenCalledTimes(2);
 
     unsubscribe();
     window.dispatchEvent(new CustomEvent('app-sync-trigger'));
-    expect(callback).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new CustomEvent('app-sync-trigger-immediate'));
+    expect(callback).toHaveBeenCalledTimes(2);
   });
 
   it('handles links metadata get and save operations including error fallbacks', async () => {
