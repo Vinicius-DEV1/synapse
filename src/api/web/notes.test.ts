@@ -66,4 +66,51 @@ describe('createWebNotesApi (IndexedDB)', () => {
     expect(map.get(p1.id)).toBe(10);
     expect(map.get(p2.id)).toBe(5);
   });
+
+  it('decrypts encrypted_content on-the-fly with getMasterKey if page is not locked', async () => {
+    const { importHexKey, encryptText } = await import('../../services/crypto');
+    const db = await getWebDb();
+    const hex = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    const key = await importHexKey(hex);
+    let currentKey: CryptoKey | null = key;
+
+    const securedApi = createWebNotesApi(db, () => 'secured-page-1', () => currentKey);
+    const secretContent = 'Secret Markdown Content from Desktop Sync';
+    const encryptedContent = await encryptText(secretContent, key);
+
+    // Simulate page saved with encrypted_content
+    await db.put('pages', {
+      id: 'secured-page-1',
+      title: 'Encrypted Page',
+      icon: '🔒',
+      sort_order: 0,
+      content: '',
+      encrypted_content: encryptedContent,
+      is_locked: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const res = await securedApi.getPageContent('secured-page-1');
+    expect(res.content).toBe(secretContent);
+    expect(res.encrypted_content).toBe(encryptedContent);
+
+    // If page is locked with password (is_locked = 1), content should remain empty
+    await db.put('pages', {
+      id: 'locked-page-2',
+      title: 'Locked Page',
+      icon: '🔐',
+      sort_order: 0,
+      content: '',
+      encrypted_content: encryptedContent,
+      is_locked: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const lockedRes = await securedApi.getPageContent('locked-page-2');
+    expect(lockedRes.content).toBe('');
+    expect(lockedRes.encrypted_content).toBe(encryptedContent);
+  });
 });
+

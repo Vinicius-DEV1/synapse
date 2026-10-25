@@ -72,7 +72,7 @@ export const createWebApiMock = async () => {
     config: createWebConfigApi(db),
 
     // --- PAGES ---
-    ...createWebNotesApi(db, generateId),
+    ...createWebNotesApi(db, generateId, () => _masterKey),
 
     // --- AUTH ---
     auth: webAuthApi(db),

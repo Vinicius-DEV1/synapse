@@ -122,10 +122,11 @@ pub fn notes_create_page(
     let id = uuid::Uuid::new_v4().to_string();
     let title = page.title.unwrap_or_else(|| "Nova Página".into());
     let icon = page.icon.unwrap_or_else(|| "📄".into());
+    let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO pages (id, parent_id, title, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
-        params![id, page.parent_id, title, icon, 0.0],
+        "INSERT INTO pages (id, parent_id, title, icon, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        params![id, page.parent_id, title, icon, 0.0, &now, &now],
     )
     .map_err(|e| e.to_string())?;
 
@@ -136,8 +137,8 @@ pub fn notes_create_page(
         icon,
         sort_order: 0.0,
         crdt_state: None,
-        created_at: Some(chrono::Utc::now().to_rfc3339()),
-        updated_at: Some(chrono::Utc::now().to_rfc3339()),
+        created_at: Some(now.clone()),
+        updated_at: Some(now),
         deleted_at: None,
         is_locked: 0,
         is_pinned: 0,
@@ -313,7 +314,9 @@ pub fn notes_update_page(
 
     // Update updated_at timestamp only when actual content changes occur
     if has_updates {
-        query.push_str(", updated_at = CURRENT_TIMESTAMP");
+        let now = chrono::Utc::now().to_rfc3339();
+        query.push_str(", updated_at = ?");
+        params_vec.push(now.into());
     } else {
         // No-op if content is unchanged
         return Ok(0);
@@ -334,7 +337,8 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    conn.execute("UPDATE pages SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute("UPDATE pages SET deleted_at = ?, updated_at = ? WHERE id = ?", [&now, &now, &id])
         .map_err(|e| e.to_string())?;
 
     Ok(true)
@@ -348,21 +352,29 @@ pub fn notes_delete_pages(ids: Vec<String>, db_state: State<'_, DbState>) -> Res
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
+    let now = chrono::Utc::now().to_rfc3339();
     let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let query_pages = format!(
-        "UPDATE pages SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id IN ({})",
+        "UPDATE pages SET deleted_at = ?, updated_at = ? WHERE id IN ({})",
         placeholders
     );
-    let params: Vec<rusqlite::types::Value> = ids.iter().map(|id| id.clone().into()).collect();
-    conn.execute(&query_pages, rusqlite::params_from_iter(params.clone()))
+    let mut params_pages: Vec<rusqlite::types::Value> = vec![now.clone().into(), now.clone().into()];
+    for id in &ids {
+        params_pages.push(id.clone().into());
+    }
+    conn.execute(&query_pages, rusqlite::params_from_iter(params_pages))
         .map_err(|e| e.to_string())?;
 
     // Soft-delete linked calendar events in single atomic query
     let query_events = format!(
-        "UPDATE calendar_events SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE page_id IN ({})",
+        "UPDATE calendar_events SET deleted_at = ?, updated_at = ? WHERE page_id IN ({})",
         placeholders
     );
-    let _ = conn.execute(&query_events, rusqlite::params_from_iter(params));
+    let mut params_events: Vec<rusqlite::types::Value> = vec![now.clone().into(), now.into()];
+    for id in &ids {
+        params_events.push(id.clone().into());
+    }
+    let _ = conn.execute(&query_events, rusqlite::params_from_iter(params_events));
 
     Ok(true)
 }
@@ -409,9 +421,10 @@ pub fn notes_restore_page(id: String, db_state: State<'_, DbState>) -> Result<bo
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
+    let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE pages SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
+        "UPDATE pages SET deleted_at = NULL, updated_at = ? WHERE id = ?",
+        [&now, &id],
     )
     .map_err(|e| e.to_string())?;
 

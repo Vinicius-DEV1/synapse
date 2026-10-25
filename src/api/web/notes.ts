@@ -1,4 +1,5 @@
 import type { IDBPDatabase } from 'idb';
+import { decryptText } from '../../services/crypto';
 import type { CadernoDBSchema } from '../../services/db-web';
 import type { Page, PageMeta, PageHistoryEntry } from '../../types/notes';
 
@@ -23,7 +24,11 @@ export interface PageOrderUpdate {
   sort_order: number;
 }
 
-export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string) => ({
+export const createWebNotesApi = (
+  db: IDBPDatabase<CadernoDBSchema>,
+  generateId: () => string,
+  getMasterKey?: () => CryptoKey | null
+) => ({
   getAllPages: async (): Promise<Page[]> => {
     const all = (await db.getAll('pages')) as Page[];
     return all
@@ -39,7 +44,20 @@ export const createWebNotesApi = (db: IDBPDatabase<CadernoDBSchema>, generateId:
   getPageContent: async (id: string): Promise<{ content: string; encrypted_content: string | null }> => {
     const page = (await db.get('pages', id)) as Page | undefined;
     if (!page || page.deleted_at) return { content: '', encrypted_content: null };
-    return { content: page.content || '', encrypted_content: page.encrypted_content || null };
+
+    let content = page.content || '';
+    if (!content && page.encrypted_content && !page.is_locked) {
+      const key = getMasterKey ? getMasterKey() : null;
+      if (key) {
+        try {
+          content = await decryptText(page.encrypted_content, key);
+        } catch (e) {
+          console.error('[WebNotesApi] Failed to decrypt page content with master key:', e);
+        }
+      }
+    }
+
+    return { content, encrypted_content: page.encrypted_content || null };
   },
 
   createPage: async ({ parentId, title, icon }: { parentId: string | null; title?: string; icon?: string }): Promise<Page> => {

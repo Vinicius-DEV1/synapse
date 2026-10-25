@@ -98,7 +98,23 @@ export async function encryptText(text: string, masterKey: CryptoKey): Promise<s
  * Returns the decoded original plaintext.
  */
 export async function decryptText(encryptedBase64: string, masterKey: CryptoKey): Promise<string> {
-  const combinedBuffer = base64ToUint8Array(encryptedBase64);
+  let combinedBuffer: Uint8Array;
+  if (encryptedBase64.includes(':')) {
+    const parts = encryptedBase64.split(':');
+    if (parts.length === 3) {
+      const iv = new Uint8Array(hexToArrayBuffer(parts[0]));
+      const tag = new Uint8Array(hexToArrayBuffer(parts[1]));
+      const cipher = new Uint8Array(hexToArrayBuffer(parts[2]));
+      combinedBuffer = new Uint8Array(iv.length + cipher.length + tag.length);
+      combinedBuffer.set(iv, 0);
+      combinedBuffer.set(cipher, iv.length);
+      combinedBuffer.set(tag, iv.length + cipher.length);
+    } else {
+      combinedBuffer = base64ToUint8Array(encryptedBase64);
+    }
+  } else {
+    combinedBuffer = base64ToUint8Array(encryptedBase64);
+  }
 
   // AES-GCM requires a 12-byte IV and at least a 16-byte authentication tag
   if (combinedBuffer.length < IV_LENGTH + 16) {

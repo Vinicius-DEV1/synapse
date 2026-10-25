@@ -87,4 +87,26 @@ describe('crypto service (E2EE)', () => {
       'Invalid ciphertext payload: buffer too short for AES-GCM IV and authentication tag'
     );
   });
+
+  it('decrypts colon-separated hex format from desktop SQLite (iv:auth_tag:ciphertext)', async () => {
+    const hex = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+    const key = await importHexKey(hex);
+    const message = 'Hello from Desktop Rust SQLite';
+
+    // Encrypt standard message
+    const base64Payload = await encryptText(message, key);
+    // Convert to iv_hex:auth_tag_hex:cipher_hex format
+    const binary = Uint8Array.from(atob(base64Payload), (c) => c.charCodeAt(0));
+    const iv = binary.slice(0, 12);
+    const cipherAndTag = binary.slice(12);
+    const cipher = cipherAndTag.slice(0, -16);
+    const tag = cipherAndTag.slice(-16);
+
+    const toHex = (buf: Uint8Array) => Array.from(buf).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const hexPayload = `${toHex(iv)}:${toHex(tag)}:${toHex(cipher)}`;
+
+    const decrypted = await decryptText(hexPayload, key);
+    expect(decrypted).toBe(message);
+  });
 });
+
