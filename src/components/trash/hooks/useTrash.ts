@@ -76,7 +76,7 @@ export function useTrash() {
     try {
       if (item.item_type === 'lofi' && window.api?.sync) {
         try {
-          const rows = (await window.api.sync.getTable('lofis')) as LofiItem[] | undefined;
+          const rows = await window.api.sync.getTable<LofiItem>('lofis');
           const lofi = rows?.find((r) => r.id === item.id);
           if (lofi) {
             await hardDeleteLofiPermanently(lofi);
@@ -114,7 +114,7 @@ export function useTrash() {
     try {
       if (window.api?.sync) {
         try {
-          const rows = (await window.api.sync.getTable('lofis')) as LofiItem[] | undefined;
+          const rows = await window.api.sync.getTable<LofiItem>('lofis');
           const trashed = rows?.filter((r) => r.deleted_at);
           if (trashed) {
             for (const lofi of trashed) {

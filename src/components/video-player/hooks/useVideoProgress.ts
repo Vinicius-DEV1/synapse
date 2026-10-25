@@ -29,7 +29,7 @@ export function useVideoProgress(
       try {
         let currentRecord = video;
         if (window.api.sync.getTable) {
-          const allVideos = (await window.api.sync.getTable('videos')) as VideoItem[];
+          const allVideos = await window.api.sync.getTable<VideoItem>('videos');
           const fresh = allVideos.find(v => v.id === video.id);
           if (fresh) currentRecord = fresh;
         }

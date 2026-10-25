@@ -43,8 +43,8 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const loadVideos = useCallback(async () => {
     try {
       if (window.api?.sync) {
-        const rows = await window.api.sync.getTable('videos');
-        setVideos((rows as VideoItem[]).filter((v: VideoItem) => !v.deleted_at));
+        const rows = await window.api.sync.getTable<VideoItem>('videos');
+        setVideos(rows.filter((v: VideoItem) => !v.deleted_at));
       }
     } catch (e) {
       console.error('Failed to load videos:', e);

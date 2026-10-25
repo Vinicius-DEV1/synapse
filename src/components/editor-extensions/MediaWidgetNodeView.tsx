@@ -27,7 +27,7 @@ async function fetchVideosCached(): Promise<BaseMediaEntity[]> {
   cachedVideosPromise = (async () => {
     try {
       if (!window.api?.sync) return [];
-      const rows = await window.api.sync.getTable('videos');
+      const rows = await window.api.sync.getTable<BaseMediaEntity>('videos');
       return Array.isArray(rows) ? rows : [];
     } catch (err) {
       cachedVideosPromise = null;

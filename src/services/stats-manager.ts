@@ -43,7 +43,7 @@ export async function logActivity(
 export async function getActivityLogs(): Promise<ActivityLog[]> {
   if (!window.api?.sync) return [];
   try {
-    return await window.api.sync.getTable(ACTIVITY_LOGS_TABLE);
+    return await window.api.sync.getTable<ActivityLog>(ACTIVITY_LOGS_TABLE);
   } catch (err) {
     console.error("Failed to get activity logs:", err);
     return [];

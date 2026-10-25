@@ -151,12 +151,12 @@ export function isOAuthRevocationError(error: unknown): boolean {
 export async function getDriveCredentials(): Promise<{ token: DriveToken | null }> {
   if (window.api?.sync) {
     try {
-      const rows = await window.api.sync.getTable('config');
+      const rows = await window.api.sync.getTable<{ id?: string; data?: string; value?: string }>('config');
       const row = rows.find(
-        (r: { id?: string; data?: string; value?: string }) => r.id === 'drive_credentials'
+        (r) => r.id === 'drive_credentials'
       );
       if (row) {
-        const val = row.data || row.value;
+        const val = typeof row.data === 'string' ? row.data : typeof row.value === 'string' ? row.value : undefined;
         if (val) {
           let parsed;
           try {

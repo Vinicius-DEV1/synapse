@@ -13,7 +13,7 @@ export function useVideoVocabulary(
   const loadVideoWords = useCallback(async () => {
     if (window.api?.sync) {
       try {
-        const words = (await window.api.sync.getTable('video_words')) as VideoWord[];
+        const words = await window.api.sync.getTable<VideoWord>('video_words');
         const currentVideoWords = words.filter((w: VideoWord) => w.video_id === video.id && !w.deleted_at);
         setVideoWords(currentVideoWords);
       } catch (e) {
@@ -27,7 +27,7 @@ export function useVideoVocabulary(
     const fetchWords = async () => {
       if (window.api?.sync) {
         try {
-          const words = (await window.api.sync.getTable('video_words')) as VideoWord[];
+          const words = await window.api.sync.getTable<VideoWord>('video_words');
           const currentVideoWords = words.filter((w: VideoWord) => w.video_id === video.id && !w.deleted_at);
           if (isMounted) {
             setVideoWords(currentVideoWords);

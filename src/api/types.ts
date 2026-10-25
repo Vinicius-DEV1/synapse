@@ -126,12 +126,12 @@ export interface LibraryApi {
 }
 
 export interface SyncApi {
-  getTable: (tableName: string) => Promise<any[]>;
-  upsertRow: (tableName: string, row: any) => Promise<{ success: boolean }>;
-  deleteRow?: (tableName: string, id: string) => Promise<{ success: boolean }>;
+  getTable: <T = Record<string, unknown>>(tableName: string) => Promise<T[]>;
+  upsertRow: <T extends object = Record<string, unknown>>(tableName: string, row: T) => Promise<{ success: boolean }>;
+  deleteRow: (tableName: string, id: string) => Promise<{ success: boolean }>;
   /** Fetches table rows by ID list. Present in runtime implementations. */
-  getRowsByIds: (tableName: string, ids: string[]) => Promise<any[]>;
-  getRow?: (tableName: string, id: string) => Promise<any | null>;
+  getRowsByIds: <T = Record<string, unknown>>(tableName: string, ids: string[]) => Promise<T[]>;
+  getRow: <T = Record<string, unknown>>(tableName: string, id: string) => Promise<T | null>;
   /** Enqueues an immediate push sync operation for a module. */
   push?: (type: string) => void;
 }

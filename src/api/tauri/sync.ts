@@ -1,10 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { SyncApi } from '../types';
 
-export const tauriSyncApi = {
-  getTable: async (tableName: string) => await invoke('sync_get_table', { tableName }),
-  deleteRow: async (tableName: string, id: string) => await invoke('sync_delete_row', { tableName, id }),
-  upsertRow: async (tableName: string, row: Record<string, unknown>) => await invoke('sync_upsert_row', { tableName, row }),
-  getRow: async (tableName: string, id: string) => await invoke('sync_get_row', { tableName, id }),
+export const tauriSyncApi: SyncApi = {
+  getTable: async <T = Record<string, unknown>>(tableName: string): Promise<T[]> =>
+    await invoke<T[]>('sync_get_table', { tableName }),
+  deleteRow: async (tableName: string, id: string): Promise<{ success: boolean }> =>
+    await invoke<{ success: boolean }>('sync_delete_row', { tableName, id }),
+  upsertRow: async <T extends object = Record<string, unknown>>(tableName: string, row: T): Promise<{ success: boolean }> =>
+    await invoke<{ success: boolean }>('sync_upsert_row', { tableName, row }),
+  getRow: async <T = Record<string, unknown>>(tableName: string, id: string): Promise<T | null> =>
+    await invoke<T | null>('sync_get_row', { tableName, id }),
   // Fetches only rows with specific IDs to prevent loading entire tables into memory
-  getRowsByIds: async (tableName: string, ids: string[]) => await invoke('sync_get_rows_by_ids', { tableName, ids })
+  getRowsByIds: async <T = Record<string, unknown>>(tableName: string, ids: string[]): Promise<T[]> =>
+    await invoke<T[]>('sync_get_rows_by_ids', { tableName, ids }),
 };
