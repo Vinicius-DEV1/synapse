@@ -12,8 +12,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 /**
- * #5: Checks whether error is caused by Firebase quota limits or permission denial.
- * Deduplicado — usado por todos os handlers de erro de sync.
+ * Checks whether an error is caused by Firebase quota limits or permission denial.
+ * Deduplicated — used across all sync error handlers.
  */
 function isQuotaOrPermissionError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false;
@@ -24,12 +24,12 @@ function isQuotaOrPermissionError(err: unknown): boolean {
 }
 
 /**
- * #5: Handler centralizado de erros de sync.
+ * Centralized sync error handler.
  * Dispatches global window event on quota or permission errors.
  */
 function handleSyncError(err: unknown, context: string) {
   const e = err as { message?: string, code?: string };
-  console.warn(`[Sync] ${context} FALHOU: ${e.message || 'Erro desconhecido'}`, err);
+  console.warn(`[Sync] ${context} FAILED: ${e.message || 'Unknown error'}`, err);
   if (isQuotaOrPermissionError(err)) {
     window.dispatchEvent(new CustomEvent('caderno-sync-error', { 
       detail: { message: e.message, code: e.code } 
@@ -53,9 +53,9 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       let isClosed = false;
       let isSyncing = false; // Mutex: prevents concurrent syncs wasting Firebase quota
       let lastFullSyncTime = 0; // Cooldown: minimum interval between full syncs
-      const FULL_SYNC_COOLDOWN_MS = 30_000; // 30 segundos de cooldown entre full syncs
+      const FULL_SYNC_COOLDOWN_MS = 30_000; // 30-second cooldown between full sync runs
       const syncChannel = new BroadcastChannel('caderno_sync');
-      // #7: Unique device ID to ignore self-push signals
+      // Unique device ID to ignore self-push signals
       const myDeviceId = getDeviceId();
       const dirtyTables = new Set<string>();
       let hasPendingSignal = false;
@@ -73,25 +73,25 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         }
       };
 
-      // #10: Restaurar timestamps de sync do banco local (protege contra limpeza de localStorage)
+      // Restore sync timestamps from local database (protects against localStorage clearing)
       restoreLastSyncTimesFromDb().catch(() => {});
 
       const doFullSync = async () => {
         if (isClosed) return;
         if (!navigator.onLine) {
-          console.warn('[Sync] doFullSync abortado: sem conexão com a internet.');
+          console.warn('[Sync] doFullSync aborted: no internet connection.');
           finishSync(false);
           return;
         }
         // Mutex: if sync is already running, skip this call
         if (isSyncing) {
-          console.warn('[Sync] doFullSync ignorado: outro sync já está em andamento.');
+          console.warn('[Sync] doFullSync skipped: another sync is already in progress.');
           return;
         }
         // Cooldown: prevents excessively frequent full syncs (e.g., rapid focus + interval)
         const now = Date.now();
         if (now - lastFullSyncTime < FULL_SYNC_COOLDOWN_MS) {
-          console.warn('[Sync] doFullSync ignorado: cooldown de 30s ainda ativo.');
+          console.warn('[Sync] doFullSync skipped: 30s cooldown still active.');
           return;
         }
         isSyncing = true;
@@ -115,7 +115,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           }
         } catch (err: unknown) {
           if (!isClosed) {
-            handleSyncError(err, 'doFullSync'); // #5: centralizado
+            handleSyncError(err, 'doFullSync');
             finishSync(false);
           }
         } finally {
@@ -174,7 +174,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
             finishSync(true);
           })
           .catch((err: unknown) => {
-            handleSyncError(err, 'Pull em Tempo Real'); // #5: centralizado
+            handleSyncError(err, 'Real-time Pull');
             finishSync(false);
           })
           .finally(() => {
@@ -183,7 +183,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           });
       };
 
-      // 1. Initial Sync (Sincroniza ao abrir)
+      // 1. Initial Sync (Synchronize on application mount)
       doFullSync();
 
       // 2. Cross-Device Real-time Firebase Sync

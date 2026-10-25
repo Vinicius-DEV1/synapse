@@ -150,6 +150,7 @@ Synapse utilizes **Conflict-Free Replicated Data Types (CRDTs)** via the **Yjs**
 
 - **Conflict-Free Convergence**: Edits from concurrent devices merge mathematically without data loss or merge conflict prompts.
 - **State Vector Compaction**: Periodic document compaction prevents unbounded CRDT history growth by generating snapshot checkpoints.
+- **Full Engine Specification**: For detailed information on the zero-lock autosave pipeline, dirty-table targeting, and mutex queueing, see [**`sync-engine.md`**](./sync-engine.md).
 
 ---
 
