@@ -221,9 +221,10 @@ pub fn notes_update_page(
 
             if should_insert_history {
                 let hist_id = uuid::Uuid::new_v4().to_string();
+                let now_utc = chrono::Utc::now().to_rfc3339();
                 let _ = conn.execute(
-                    "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, '', ?)",
-                    params![hist_id, page.id, enc]
+                    "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES (?, ?, '', ?, ?)",
+                    params![hist_id, page.id, enc, now_utc]
                 );
             }
         } else {
@@ -241,9 +242,10 @@ pub fn notes_update_page(
 
             if should_insert_history {
                 let hist_id = uuid::Uuid::new_v4().to_string();
+                let now_utc = chrono::Utc::now().to_rfc3339();
                 let _ = conn.execute(
-                    "INSERT INTO page_history (id, page_id, content, encrypted_content) VALUES (?, ?, ?, NULL)",
-                    params![hist_id, page.id, c]
+                    "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES (?, ?, ?, NULL, ?)",
+                    params![hist_id, page.id, c, now_utc]
                 );
             }
         }
