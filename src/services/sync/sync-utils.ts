@@ -42,13 +42,20 @@ export async function restoreLastSyncTimesFromDb(): Promise<void> {
 
 export function parseDateSafe(dateStr: string | undefined | null | number): number {
   if (!dateStr) return 0;
-  if (typeof dateStr === 'number') return dateStr;
-  let s = dateStr;
-  if (s.length === 19 && s.charAt(10) === ' ') {
-    s = s.replace(' ', 'T') + 'Z';
-  } else if (s.length === 19 && s.charAt(10) === 'T' && !s.endsWith('Z')) {
+  if (typeof dateStr === 'number') return isNaN(dateStr) ? 0 : dateStr;
+  let s = String(dateStr).trim();
+  if (!s) return 0;
+
+  // If format is "YYYY-MM-DD HH:mm:ss..." replace space with T
+  if (s.includes(' ') && !s.includes('T')) {
+    s = s.replace(' ', 'T');
+  }
+
+  // If no timezone suffix (Z or +/-offset), explicitly treat as UTC by appending 'Z'
+  if (!s.endsWith('Z') && !/[+-]\d{2}(:?\d{2})?$/.test(s)) {
     s = s + 'Z';
   }
+
   const parsed = new Date(s).getTime();
   return isNaN(parsed) ? 0 : parsed;
 }

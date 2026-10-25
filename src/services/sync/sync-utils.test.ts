@@ -42,6 +42,18 @@ describe('sync-utils service', () => {
 
       const isoTimestamp = parseDateSafe('2026-08-19T12:00:00Z');
       expect(isoTimestamp).toBeGreaterThan(0);
+
+      // Ensures SQLite space format without timezone specifier resolves to the exact same UTC millisecond value as ISO
+      expect(timestamp).toBe(isoTimestamp);
+
+      // Handles SQLite fractional seconds without shifting to local timezone
+      const fracSqlite = parseDateSafe('2026-08-19 12:00:00.500');
+      const fracIso = parseDateSafe('2026-08-19T12:00:00.500Z');
+      expect(fracSqlite).toBe(fracIso);
+
+      // Handles ISO string without Z
+      const noZ = parseDateSafe('2026-08-19T12:00:00');
+      expect(noZ).toBe(isoTimestamp);
     });
   });
 

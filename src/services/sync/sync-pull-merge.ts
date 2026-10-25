@@ -10,7 +10,8 @@ export function normalizeTime(t: unknown): string | undefined {
     return new Date((t as { seconds: number }).seconds * 1000).toISOString();
   }
   if (typeof t === 'string' || typeof t === 'number') {
-    return new Date(t).toISOString();
+    const epoch = parseDateSafe(t);
+    return epoch > 0 ? new Date(epoch).toISOString() : undefined;
   }
   return undefined;
 }
