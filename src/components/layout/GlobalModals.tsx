@@ -25,6 +25,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ShareAccessRequestToast } from '../sharing/ShareAccessRequestToast';
 import { ShareAccessRequestModal } from '../sharing/ShareAccessRequestModal';
 import { useShareAccessRequests } from '../../hooks/useShareAccessRequests';
+import { AccountEvolutionModal } from '../auth/AccountEvolutionModal';
 
 interface GlobalConfirmData {
   isOpen: boolean;
@@ -99,6 +100,7 @@ export function GlobalModals({
   } = useShareAccessRequests();
 
   const [shareModalPageId, setShareModalPageId] = useState<string | null>(null);
+  const [isAccountEvolutionOpen, setIsAccountEvolutionOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenShare = (e: Event) => {
@@ -107,9 +109,14 @@ export function GlobalModals({
         setShareModalPageId(customEvent.detail.pageId);
       }
     };
+    const handleOpenAccountEvolution = () => {
+      setIsAccountEvolutionOpen(true);
+    };
     window.addEventListener('caderno-open-share-page', handleOpenShare as EventListener);
+    window.addEventListener('open-account-evolution', handleOpenAccountEvolution);
     return () => {
       window.removeEventListener('caderno-open-share-page', handleOpenShare as EventListener);
+      window.removeEventListener('open-account-evolution', handleOpenAccountEvolution);
     };
   }, []);
 
@@ -350,6 +357,13 @@ export function GlobalModals({
           }}
         />
       )}
+
+      {/* Account Evolution Modal (Single-User -> Multi-User Workspace) */}
+      <AccountEvolutionModal
+        isOpen={isAccountEvolutionOpen}
+        onClose={() => setIsAccountEvolutionOpen(false)}
+        masterKey={state.moduleKeys?.notes || state.moduleKeys?.core || null}
+      />
     </Suspense>
   );
 }

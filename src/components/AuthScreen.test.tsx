@@ -32,6 +32,15 @@ vi.mock('../services/drive', () => ({
   setDriveMasterKey: vi.fn(),
 }));
 
+const mockSignIn = vi.fn().mockResolvedValue({ uid: 'user_123', email: 'test@example.com' });
+const mockRegister = vi.fn().mockResolvedValue({ uid: 'user_456', email: 'new@example.com' });
+
+vi.mock('../services/auth/firebase-auth', () => ({
+  signInWithFirebase: (...args: unknown[]) => mockSignIn(...args),
+  registerWithFirebase: (...args: unknown[]) => mockRegister(...args),
+  resetFirebasePassword: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe('AuthScreen Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,6 +76,29 @@ describe('AuthScreen Component', () => {
 
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalled();
+    });
+  });
+
+  it('switches to Conta Nuvem and submits login', async () => {
+    const onSuccess = vi.fn();
+    const { getByText, getByPlaceholderText, getByRole } = render(
+      <AuthScreen status="encrypted" onSuccess={onSuccess} />
+    );
+
+    const cloudTab = getByText(/Conta Nuvem/i);
+    fireEvent.click(cloudTab);
+
+    const emailInput = getByPlaceholderText(/seu.email@exemplo.com/i);
+    const passwordInput = getByPlaceholderText(/Mínimo 6 caracteres/i);
+
+    fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'senhaForte123' } });
+
+    const loginBtn = getByRole('button', { name: /Entrar na Conta/i });
+    fireEvent.click(loginBtn);
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('alice@example.com', 'senhaForte123');
     });
   });
 });

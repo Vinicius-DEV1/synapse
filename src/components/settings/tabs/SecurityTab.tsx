@@ -4,6 +4,7 @@ import { MasterPasswordSection } from './security/MasterPasswordSection';
 import { VisitorsManagementSection } from './security/VisitorsManagementSection';
 import { AutoLockSection } from './security/AutoLockSection';
 import { BackupAndWipeSection } from './security/BackupAndWipeSection';
+import { AccountStatusSection } from './security/AccountStatusSection';
 import { useI18n } from '../../../i18n';
 
 interface SecurityTabProps {
@@ -27,6 +28,8 @@ export default function SecurityTab({
 
   return (
     <div className="space-y-5">
+      <AccountStatusSection />
+
       <AutoLockSection 
         appSettings={appSettings} 
         setAppSettings={setAppSettings} 

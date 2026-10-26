@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
+import { Lock, ArrowRight, ShieldAlert, Mail, Sparkles, CheckCircle2 } from 'lucide-react';
 import WindowControls from './layout/WindowControls';
 import { useStore } from '../store/useStore';
 import { deriveMasterKey, exportKeyToHex } from '../services/crypto';
@@ -19,6 +19,11 @@ import { AuthLockoutView } from './auth/AuthLockoutView';
 import { useAuthLockout } from './auth/useAuthLockout';
 import { buildModuleKeys } from './auth/auth-keys-builder';
 import { useI18n } from '../i18n';
+import {
+  signInWithFirebase,
+  registerWithFirebase,
+  resetFirebasePassword,
+} from '../services/auth/firebase-auth';
 
 // The AuthApi interface (src/api/types.ts) does not declare forceUpdateKeychain,
 // but both tauriAuthApi and webAuthApi implement it.
@@ -39,11 +44,63 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
   const [shake, setShake] = useState(false);
   const { dispatch } = useStore();
 
+  // Multi-user Firebase Auth state
+  const [authMode, setAuthMode] = useState<'master' | 'cloud'>('master');
+  const [cloudMode, setCloudMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [cloudPassword, setCloudPassword] = useState('');
+  const [cloudMsg, setCloudMsg] = useState('');
+
   // If status is unencrypted, we are setting up a master password and migrating.
   // If status is new, we are just creating it.
   // If status is encrypted, we are logging in.
   const isSetup = status === 'new' || status === 'unencrypted';
   const { lockoutTime, intimidatingPhrase, triggerImmediateLockout } = useAuthLockout(isSetup);
+
+  const handleCloudSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !cloudPassword.trim()) {
+      triggerError('Por favor preencha email e senha.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setCloudMsg('');
+    try {
+      if (cloudMode === 'register') {
+        await registerWithFirebase(email, cloudPassword);
+        setCloudMsg('Conta criada com sucesso! Desbloqueie sua chave com a Senha Mestre.');
+        setAuthMode('master');
+      } else {
+        await signInWithFirebase(email, cloudPassword);
+        setCloudMsg('Autenticado com sucesso! Desbloqueie sua chave com a Senha Mestre.');
+        setAuthMode('master');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha na autenticação';
+      triggerError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      triggerError('Digite seu email para recuperar a senha.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await resetFirebasePassword(email);
+      setCloudMsg('Email de recuperação enviado! Verifique sua caixa de entrada.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar email';
+      triggerError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,51 +318,180 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
               {isSetup ? t('auth.setupTitle') : t('auth.title')}
             </h1>
             
-            <p className="text-center text-dark-subtext mb-8 text-sm">
+            <p className="text-center text-dark-subtext mb-6 text-sm">
               {isSetup 
                 ? t('auth.setupSubtitle') 
                 : t('auth.subtitle')}
             </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
-              {t('settings.security.masterPassword')}
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              autoFocus
-              className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all placeholder:text-white/10"
-              placeholder={t('auth.passwordPlaceholder')}
-            />
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 p-3 rounded-lg">
-              <ShieldAlert size={16} />
-              <span>{error}</span>
+            {/* Mode Selector: Master Password (Local) vs Cloud Account (Multi-user) */}
+            <div className="flex rounded-xl bg-zinc-900/60 p-1 mb-5 border border-white/5">
+              <button
+                type="button"
+                onClick={() => { setAuthMode('master'); setError(''); setCloudMsg(''); }}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  authMode === 'master'
+                    ? 'bg-white/10 text-white shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Senha Mestre
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('cloud'); setError(''); setCloudMsg(''); }}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  authMode === 'cloud'
+                    ? 'bg-brand-500 text-white shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Sparkles size={12} />
+                <span>Conta Nuvem</span>
+              </button>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-white/10 hover:bg-white/15 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? (
-              <span className="animate-pulse">{t('common.loading')}</span>
-            ) : (
-              <>
-                {isSetup ? t('auth.setPasswordButton') : t('auth.unlockButton')}
-                <ArrowRight size={18} className="opacity-50" />
-              </>
+            {cloudMsg && (
+              <div className="mb-4 flex items-center gap-2 text-emerald-300 text-xs bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
+                <CheckCircle2 size={14} className="shrink-0" />
+                <span>{cloudMsg}</span>
+              </div>
             )}
-          </button>
-        </form>
-        </>
+
+            {authMode === 'master' ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
+                    {t('settings.security.masterPassword')}
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    autoFocus
+                    className="w-full bg-dark-bg border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all placeholder:text-white/10"
+                    placeholder={t('auth.passwordPlaceholder')}
+                  />
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 p-3 rounded-lg">
+                    <ShieldAlert size={16} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-white/10 hover:bg-white/15 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span className="animate-pulse">{t('common.loading')}</span>
+                  ) : (
+                    <>
+                      {isSetup ? t('auth.setPasswordButton') : t('auth.unlockButton')}
+                      <ArrowRight size={18} className="opacity-50" />
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleCloudSubmit} className="space-y-3.5">
+                <div className="flex rounded-lg bg-zinc-900/40 p-0.5 mb-2 border border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setCloudMode('login')}
+                    className={`flex-1 py-1 text-[11px] font-medium rounded transition-all ${
+                      cloudMode === 'login' ? 'bg-white/10 text-white' : 'text-zinc-400'
+                    }`}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCloudMode('register')}
+                    className={`flex-1 py-1 text-[11px] font-medium rounded transition-all ${
+                      cloudMode === 'register' ? 'bg-white/10 text-white' : 'text-zinc-400'
+                    }`}
+                  >
+                    Criar Conta
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3.5 top-3.5 text-zinc-500" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                      autoFocus
+                      className="w-full bg-dark-bg border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50"
+                      placeholder="seu.email@exemplo.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1 ml-1">
+                    <label className="text-[11px] font-medium text-dark-subtext uppercase tracking-wider">
+                      Senha
+                    </label>
+                    {cloudMode === 'login' && (
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-[11px] text-brand-400 hover:text-brand-300 transition-colors"
+                      >
+                        Esqueceu?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock size={14} className="absolute left-3.5 top-3.5 text-zinc-500" />
+                    <input
+                      type="password"
+                      required
+                      value={cloudPassword}
+                      onChange={(e) => setCloudPassword(e.target.value)}
+                      disabled={loading}
+                      className="w-full bg-dark-bg border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50"
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 p-3 rounded-lg">
+                    <ShieldAlert size={16} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm mt-2"
+                >
+                  {loading ? (
+                    <span className="animate-pulse">{t('common.loading')}</span>
+                  ) : (
+                    <>
+                      <span>{cloudMode === 'register' ? 'Criar Conta' : 'Entrar na Conta'}</span>
+                      <ArrowRight size={16} />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </>
         )}
       </div>
     </div>

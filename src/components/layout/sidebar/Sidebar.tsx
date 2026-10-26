@@ -8,6 +8,9 @@ import { MODULE_CONFIG_MAP } from './modules.config';
 import { isDesktopApp } from '../../../services/platform';
 import { windowService } from '../../../services/windowService';
 import { useI18n } from '../../../i18n';
+import { WorkspaceSwitcher } from '../../workspace/WorkspaceSwitcher';
+import { CreateWorkspaceModal } from '../../workspace/CreateWorkspaceModal';
+import { WorkspaceMembersModal } from '../../workspace/WorkspaceMembersModal';
 
 // UI navigates to 'settings' module as a tab,
 // extending Tab['module'] support.
@@ -22,6 +25,8 @@ interface SidebarProps {
 export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
+  const [isCreateWsOpen, setIsCreateWsOpen] = useState(false);
+  const [isMembersWsOpen, setIsMembersWsOpen] = useState(false);
   const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
     const saved = localStorage.getItem('caderno_modules_expanded');
     return saved ? JSON.parse(saved) : true;
@@ -122,6 +127,14 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           </button>
         </div>
 
+        <WorkspaceSwitcher
+          currentWorkspaceId={state.activeWorkspaceId || undefined}
+          onSelectWorkspace={(wsId) => dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId })}
+          onOpenCreateModal={() => setIsCreateWsOpen(true)}
+          onOpenMembersModal={() => setIsMembersWsOpen(true)}
+          currentRole={state.activeWorkspaceRole || 'owner'}
+        />
+
         {activeModule === 'notes' ? (
           <SidebarPageTree 
             onCreatePage={onCreatePage} 
@@ -192,6 +205,28 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           )}
         </div>
       </div>
+
+      <CreateWorkspaceModal
+        isOpen={isCreateWsOpen}
+        onClose={() => setIsCreateWsOpen(false)}
+        masterKey={state.moduleKeys['notes'] || state.moduleKeys['core'] || null}
+        onWorkspaceCreated={(wsId) => {
+          dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId });
+          setIsCreateWsOpen(false);
+        }}
+      />
+
+      {state.activeWorkspaceId && (
+        <WorkspaceMembersModal
+          isOpen={isMembersWsOpen}
+          onClose={() => setIsMembersWsOpen(false)}
+          workspaceId={state.activeWorkspaceId}
+          onWorkspaceDeleted={() => {
+            dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: null });
+            setIsMembersWsOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }
