@@ -57,10 +57,11 @@ export function appReducer(state: AppState, action: Action): AppState {
       const targetIndex = state.pages.findIndex((p) => p.id === action.page.id);
       if (targetIndex === -1) return state;
       const current = state.pages[targetIndex];
-      const updates = action.page as Record<string, unknown>;
+      const updates = action.page as unknown as Record<string, unknown>;
+      const currentRecord = current as unknown as Record<string, unknown>;
       let hasChange = false;
       for (const key of Object.keys(updates)) {
-        if (updates[key] !== (current as Record<string, unknown>)[key]) {
+        if (updates[key] !== currentRecord[key]) {
           hasChange = true;
           break;
         }
