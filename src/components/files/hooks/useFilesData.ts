@@ -100,7 +100,10 @@ export function useFilesData() {
     };
     
     window.addEventListener('navigate-folder', handleNavigateFolder);
-    const handleFileUpdate = () => {
+    const handleFileUpdate = (e?: Event) => {
+      const table = (e as CustomEvent<{ table?: string }>)?.detail?.table;
+      // Only reload on app-sync-trigger if table is unspecified or specifically matches 'files'
+      if (table && table !== 'files') return;
       loadData();
     };
     window.addEventListener('caderno-file-updated', handleFileUpdate);

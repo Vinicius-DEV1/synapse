@@ -103,7 +103,10 @@ export default function CalendarEventWidgetNodeView(props: any) {
   useEffect(() => {
     fetchEvent();
 
-    const handleSync = () => {
+    const handleSync = (e?: Event) => {
+      const table = (e as CustomEvent<{ table?: string }>)?.detail?.table;
+      // Only reload if table is unspecified or specifically matches calendar_events
+      if (table && table !== 'calendar_events') return;
       invalidateCalendarEventsCache();
       fetchEvent();
     };

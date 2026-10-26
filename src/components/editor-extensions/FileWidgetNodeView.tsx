@@ -97,7 +97,10 @@ export default function FileWidgetNodeView(props: NodeViewProps) {
   useEffect(() => {
     loadFile(false);
 
-    const handleSync = () => {
+    const handleSync = (e?: Event) => {
+      const table = (e as CustomEvent<{ table?: string }>)?.detail?.table;
+      // Only reload if table is unspecified or specifically matches 'files'
+      if (table && table !== 'files') return;
       loadFile(true);
     };
     window.addEventListener('app-sync-trigger', handleSync);

@@ -153,7 +153,10 @@ export default function MediaWidgetNodeView(props: NodeViewProps) {
 
   useEffect(() => {
     loadMedia();
-    const handleSync = () => {
+    const handleSync = (e?: Event) => {
+      const table = (e as CustomEvent<{ table?: string }>)?.detail?.table;
+      // Only reload if table is unspecified or specifically matches media tables
+      if (table && table !== 'videos' && table !== 'library_books') return;
       invalidateMediaCache();
       loadMedia();
     };
