@@ -1,13 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "pages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "updatedAt", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "members",
       "queryScope": "COLLECTION",
       "fields": [
@@ -21,13 +14,6 @@
       "fields": [
         { "fieldPath": "invitedEmail", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "collab_updates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
     {
