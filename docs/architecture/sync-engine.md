@@ -131,6 +131,18 @@ All timestamp fields (`created_at`, `updated_at`, `deleted_at`) must follow RFC3
      }
      ```
    - Cloud operators and database administrators cannot read note titles, content, transaction amounts, or vault credentials.
+3. **Multi-Tenant Workspace Scoped Synchronization**:
+   - When a user operates within a collaborative workspace (`activeWorkspaceId`), the sync engine routes mutations to scoped paths:
+     ```ts
+     // Push & Pull Scoping
+     const targetCollection = workspaceId
+       ? collection(db, 'workspaces', workspaceId, table)
+       : collection(db, table);
+     ```
+   - Real-time signaling binds dynamically to the active workspace:
+     - Root singleton signal: `config/sync_signal` (single-user legacy).
+     - Workspace signal: `workspaces/{workspaceId}/config/sync_signal` (collaborative multi-tenant).
+   - Switching workspaces in the UI unbinds the previous listener, resets local caches, and subscribes to the new workspace signal instantly with zero data cross-talk.
 
 ---
 

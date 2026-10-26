@@ -214,6 +214,13 @@ For complete byte calculation mathematics and container specifications, see [**`
 - Clean expense and income registry with categorical budgeting.
 - Interactive financial charts and spending trends powered by **Recharts**.
 
+### 12. 🏢 Notion-Style Collaborative Workspaces & Multi-User Accounts
+- **Dual-Mode Multi-User Identity**: Secure Firebase Authentication (Email/Password) alongside standalone offline single-user Master Password unlocking.
+- **Notion-Style Workspace Switcher**: Instant switching between personal and team workspaces with zero-latency caching and dynamic real-time signal rebinding.
+- **Collaborative Zero-Knowledge E2EE**: Each workspace generates a 256-bit AES-GCM key wrapped individually with each member's personal Master Key, maintaining absolute end-to-end encryption in team environments.
+- **Role-Based Access Control (RBAC)**: Fine-grained permissions (`owner`, `admin`, `editor`, `viewer`) strictly enforced via Cloud Firestore Security Rules.
+- **Safe Zero-Data-Loss Migration**: Idempotent non-destructive migrator that upgrades single-user collections to private workspaces with instant rollback capabilities.
+
 For full module details, domain models, and key assignments, explore [**`docs/modules/index.md`**](./docs/modules/index.md).
 
 ---

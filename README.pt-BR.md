@@ -111,6 +111,13 @@ Aplicativos modernos de gestão de conhecimento pessoal frequentemente forçam u
 ### 11. 💰 Gestão Financeira Pessoal
 - Controle de receitas, despesas e orçamentos com gráficos interativos (`recharts`).
 
+### 12. 🏢 Workspaces Colaborativos no Estilo Notion & Multiusuário
+- **Identidade Multiusuário com Modo Duplo**: Login e cadastro seguro com Firebase Authentication (E-mail/Senha) e fallback transparente para desbloqueio local offline com senha-mestre.
+- **Seletor de Workspaces Estilo Notion**: Alternância ágil entre workspaces pessoais e de equipe com cache de latência zero e reconexão dinâmica de sinais em tempo real.
+- **Criptografia E2EE Colaborativa Zero-Knowledge**: Cada workspace possui uma chave simétrica AES-256-GCM embalada individualmente com a chave-mestre pessoal de cada membro, mantendo o servidor cego ao conteúdo.
+- **Controle de Acesso Baseado em Funções (RBAC)**: Permissões refinadas (`owner`, `admin`, `editor`, `viewer`) estritamente aplicadas pelas Regras de Segurança do Cloud Firestore.
+- **Migração Segura com Perda Zero de Dados**: Mecanismo idempotente não-destrutivo que clona coleções legadas para workspaces privados com suporte total a rollback.
+
 ---
 
 ## 🚀 Começando

@@ -209,3 +209,59 @@ Synapse adopts elite industry performance best practices:
    - High-frequency datasets (tags, note lookups, flashcard queries) are indexed in memory using `Map` and `Set` collections, preventing $O(N)$ render-loop scans.
 4. **Off-Main-Thread Media Processing**:
    - Video streaming, audio slicing, and PDF/EPUB parsing run asynchronously or in background workers to preserve smooth 60fps UI responsiveness.
+
+---
+
+## 8. Multi-User Identity & Notion-Style Collaborative Workspaces
+
+Synapse supports both standalone single-user operation and independent multi-user collaboration with Notion-style collaborative workspaces:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      FIREBASE AUTHENTICATION LAYER                     │
+│  • Email / Password Authentication (`signIn`, `signUp`, `signOut`)     │
+│  • Dual-Mode Compatibility (Seamless Legacy Single-User Unlock)       │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│                   COLLABORATIVE E2EE KEY ARCHITECTURE                  │
+│                                                                        │
+│       Workspace E2EE Symmetric Key (256-bit AES-GCM)                   │
+│                        │                                               │
+│       ┌────────────────┴────────────────┐                              │
+│       ▼                                 ▼                              │
+│  Wrapped with User A MasterKey     Wrapped with User B MasterKey       │
+│  (`workspaces/{wsId}/members/A`)   (`workspaces/{wsId}/members/B`)     │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│                    SCOPED MULTI-TENANT SUBCOLLECTIONS                  │
+│  • `workspaces/{wsId}/pages/*`            • `workspaces/{wsId}/notes/*`│
+│  • `workspaces/{wsId}/members/*`          • `workspaces/{wsId}/collab` │
+│  • Denormalized Pointers: `users/{uid}/memberships/{wsId}` ($O(1)$)   │
+│  • Role-Based Access Control: owner | admin | editor | viewer          │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 8.1. Dual-Mode Authentication & Parity
+- **Legacy Password-Only Mode**: Users can continue unlocking their offline or single-user instance using their local master password without cloud account creation.
+- **Independent Multi-User Accounts**: Users can register or log in with email and password via Firebase Authentication. Account evolution links the local vault master key with their cloud identity.
+
+### 8.2. Collaborative E2EE Workspace Key Hierarchy
+- Every collaborative workspace generates a cryptographically random **256-bit AES-GCM Workspace Key** upon creation.
+- To eliminate plaintext key leakage, the workspace key is exported and wrapped (encrypted via AES-256-GCM) with each authorized member's personal Master Key.
+- Stored in `workspaces/{wsId}/members/{userId}.encryptedWorkspaceKey`.
+- When an authorized member joins or switches to the workspace, their client unwraps the workspace key in memory using their personal Master Key. The cloud relay remains completely blind to the workspace decryption key.
+
+### 8.3. Role-Based Access Control (RBAC) & Security Rules
+- Granular permission matrix enforced through Cloud Firestore Security Rules:
+  - **`owner`**: Full workspace control, billing/settings, deletion, ownership transfer.
+  - **`admin`**: Invite members, update roles, edit documents.
+  - **`editor`**: Create, edit, and delete workspace documents and pages.
+  - **`viewer`**: Read-only access to decrypted workspace documents.
+- Multi-tenant isolation prevents cross-tenant document queries: all operations are strictly constrained within `/workspaces/{wsId}/*`.
+
+### 8.4. Zero-Data-Loss Migration Architecture
+- The `LegacyMigrator` engine safely copies existing single-user root collections (`pages`, `transactions`, `anki_cards`, etc.) into a private workspace (`workspaces/personal_{uid}/*`).
+- Root collections are **never deleted or modified**, guaranteeing complete reversibility and zero risk of data loss.
+

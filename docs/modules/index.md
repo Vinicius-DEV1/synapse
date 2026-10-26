@@ -21,6 +21,7 @@ This document provides a comprehensive technical overview of the functional modu
 | **11** | **Personal Finance Ledger** | Expense tracking, budgeting, cash flow | `finance_key` | SQLite / IDB `finance` | Recharts SVG Engine |
 | **12** | **Habits & Routines** | Habit frequency, consistency streaks | `core_key` | SQLite / IDB `habits` | Reactive analytics |
 | **13** | **Calendar & Agenda** | Task scheduling, deadline tracking | `core_key` | SQLite / IDB `calendar` | Date-fns |
+| **14** | **Collaborative Workspaces & Multi-User Identity** | Notion-style workspaces, RBAC, member delegation | `workspaceKey` (wrapped) | Firestore `workspaces/{wsId}/*` | Firebase Auth, PBKDF2/AES-GCM |
 
 ---
 
@@ -132,6 +133,35 @@ This document provides a comprehensive technical overview of the functional modu
 - **Architectural Highlights**:
   - Income, expense, and transfer records with categories, recurrent intervals, and monthly burn rate charts.
   - Encrypted on disk using the dedicated `finance_key`.
+
+---
+
+### 2.12. Habits & Routines
+- **Source Paths**: `src/components/habits/`
+- **Core Technology**: Local reactive state, daily recurrence tracking, streak calculations.
+- **Architectural Highlights**:
+  - Consistency scoring, visual heatmaps, and streak milestone incentives with sub-millisecond local updates.
+
+---
+
+### 2.13. Calendar & Agenda
+- **Source Paths**: `src/components/calendar/`
+- **Core Technology**: `date-fns`, recurrence recurrence matrices, deadline synchronization.
+- **Architectural Highlights**:
+  - Unified view of study targets, review schedules, deadlines, and timeblocked cognitive sessions.
+
+---
+
+### 2.14. Collaborative Workspaces & Multi-User Identity
+- **Source Paths**: `src/components/workspace/`, `src/services/workspace/`, `src/services/auth/`, `src/services/migration/`
+- **Core Technology**: Firebase Authentication, PBKDF2/AES-GCM key wrapping, Firestore scoped subcollections, RBAC security rules.
+- **Architectural Highlights**:
+  - **Notion-Style Workspace Switching**: Zero-latency switching between personal and team workspaces (`WorkspaceSwitcher.tsx`) with dynamic signal rebinding.
+  - **Collaborative E2EE Key Hierarchy**: Each workspace holds a 256-bit AES-GCM key securely wrapped per-member with their personal Master Key, maintaining zero-knowledge cloud confidentiality.
+  - **Multi-Tenant Subcollection Isolation**: Cleanly partitioned under `workspaces/{wsId}/*` with denormalized user membership pointers (`users/{uid}/memberships/{wsId}`) for $O(1)$ lookup performance.
+  - **Role-Based Access Control (RBAC)**: Fine-grained permissions (`owner`, `admin`, `editor`, `viewer`) enforced at both Cloud Firestore Security Rules and UI layers.
+  - **Zero-Data-Loss Migration**: `LegacyMigrator` seamlessly clones legacy root collections into personal workspaces with non-destructive guarantees and instant rollback.
+  - **Dual-Mode Authentication**: Seamless co-existence of local Master Password unlocking and Firebase Authentication accounts.
 
 ---
 
