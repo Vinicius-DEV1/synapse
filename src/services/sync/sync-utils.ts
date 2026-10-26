@@ -79,10 +79,23 @@ export function parseDateSafe(dateStr: string | undefined | null | number): numb
  * Used by sync_signal listener to ignore echo signals from same device.
  */
 export function getDeviceId(): string {
-  let deviceId = sessionStorage.getItem('caderno_device_id');
+  let deviceId: string | null = null;
+  try {
+    deviceId = sessionStorage.getItem('caderno_device_id');
+  } catch {
+    // Restricted environment or private mode
+  }
   if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    sessionStorage.setItem('caderno_device_id', deviceId);
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      deviceId = crypto.randomUUID();
+    } else {
+      deviceId = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
+    }
+    try {
+      sessionStorage.setItem('caderno_device_id', deviceId);
+    } catch {
+      // Storage access denied
+    }
   }
   return deviceId;
 }

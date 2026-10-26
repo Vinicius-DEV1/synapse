@@ -311,28 +311,21 @@ pub fn sync_get_modified_rows(
         return sync_get_table(table_name, db_state);
     }
 
-    let since_dt = chrono::DateTime::from_timestamp_millis(since_epoch_ms)
-        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
-    let since_iso = since_dt.to_rfc3339();
-    let since_space = since_dt.format("%Y-%m-%d %H:%M:%S").to_string();
-
+    let since_epoch_secs = since_epoch_ms / 1000;
     let mut where_clauses = Vec::new();
     let mut params: Vec<rusqlite::types::Value> = Vec::new();
 
     if has_updated_at {
-        where_clauses.push("(updated_at > ? OR updated_at > ?)");
-        params.push(since_iso.clone().into());
-        params.push(since_space.clone().into());
+        where_clauses.push("CAST(strftime('%s', updated_at) AS INTEGER) > ?");
+        params.push(since_epoch_secs.into());
     }
     if has_created_at {
-        where_clauses.push("(created_at > ? OR created_at > ?)");
-        params.push(since_iso.clone().into());
-        params.push(since_space.clone().into());
+        where_clauses.push("CAST(strftime('%s', created_at) AS INTEGER) > ?");
+        params.push(since_epoch_secs.into());
     }
     if has_deleted_at {
-        where_clauses.push("(deleted_at IS NOT NULL AND (deleted_at > ? OR deleted_at > ?))");
-        params.push(since_iso.into());
-        params.push(since_space.into());
+        where_clauses.push("(deleted_at IS NOT NULL AND CAST(strftime('%s', deleted_at) AS INTEGER) > ?)");
+        params.push(since_epoch_secs.into());
     }
 
     let query = format!(
@@ -374,5 +367,59 @@ pub fn sync_get_modified_rows(
     }
     Ok(items)
 }
+
+#[cfg(test)]
+mod tests {
+    use rusqlite::Connection;
+
+    #[test]
+    fn test_sqlite_strftime_comparison() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE test_sync (id TEXT PRIMARY KEY, updated_at TEXT)",
+            [],
+        ).unwrap();
+
+        // Row 1: Space format from past (2023-11-15 12:00:00 -> ~1700049600)
+        conn.execute(
+            "INSERT INTO test_sync VALUES ('1', '2023-11-15 12:00:00')",
+            [],
+        ).unwrap();
+
+        // Row 2: Space format from future (2026-10-26 18:00:00)
+        conn.execute(
+            "INSERT INTO test_sync VALUES ('2', '2026-10-26 18:00:00')",
+            [],
+        ).unwrap();
+
+        // Row 3: ISO format from future (2026-10-26T18:30:00.000Z)
+        conn.execute(
+            "INSERT INTO test_sync VALUES ('3', '2026-10-26T18:30:00.000Z')",
+            [],
+        ).unwrap();
+
+        // Row 4: ISO format from past (2023-11-10T12:00:00.000Z -> ~1699617600)
+        conn.execute(
+            "INSERT INTO test_sync VALUES ('4', '2023-11-10T12:00:00.000Z')",
+            [],
+        ).unwrap();
+
+        let threshold_secs: i64 = 1700000000; // ~Nov 14 2023 22:13:20 UTC
+
+        let mut stmt = conn.prepare(
+            "SELECT id FROM test_sync WHERE CAST(strftime('%s', updated_at) AS INTEGER) > ? ORDER BY id"
+        ).unwrap();
+
+        let ids: Vec<String> = stmt
+            .query_map([threshold_secs], |row| row.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+
+        // Rows 1, 2, 3 are all > threshold_secs (Nov 15 2023, 2026, 2026), row 4 (Nov 10 2023) is excluded
+        assert_eq!(ids, vec!["1", "2", "3"]);
+    }
+}
+
 
 

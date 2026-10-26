@@ -1,6 +1,7 @@
 import type { IDBPDatabase, StoreNames } from 'idb';
 import type { CadernoDBSchema } from '../../services/db-web-schema';
 import type { SyncApi } from '../types';
+import { parseDateSafe } from '../../services/sync/sync-utils';
 
 type CadernoDb = IDBPDatabase<CadernoDBSchema>;
 type StoreName = StoreNames<CadernoDBSchema>;
@@ -101,9 +102,9 @@ export const webSyncApi = (
     if (!isStoreName(db, tableName)) return [];
     const all = (await db.getAll(tableName)) as Array<Record<string, unknown>>;
     return all.filter((r) => {
-      const u = r.updated_at ? new Date(r.updated_at as string).getTime() : 0;
-      const c = r.created_at ? new Date(r.created_at as string).getTime() : 0;
-      const d = r.deleted_at ? new Date(r.deleted_at as string).getTime() : 0;
+      const u = parseDateSafe(r.updated_at as string | number | undefined);
+      const c = parseDateSafe(r.created_at as string | number | undefined);
+      const d = parseDateSafe(r.deleted_at as string | number | undefined);
       return Math.max(u, c, d) > sinceEpochMs;
     }) as unknown as T[];
   },
