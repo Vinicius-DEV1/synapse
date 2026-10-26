@@ -1,7 +1,41 @@
 use crate::db::DbState;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 use tauri::State;
+
+fn get_page_history_cache() -> &'static Mutex<HashMap<String, i64>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, i64>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn should_record_page_history(conn: &rusqlite::Connection, page_id: &str) -> bool {
+    let now_epoch = chrono::Utc::now().timestamp();
+    let mut cache = get_page_history_cache().lock().unwrap();
+    let is_cooldown_active = cache
+        .get(page_id)
+        .map(|&last_time| now_epoch - last_time < 60)
+        .unwrap_or(false);
+
+    if is_cooldown_active {
+        return false;
+    }
+
+    let should_db: bool = conn
+        .query_row(
+            "SELECT (strftime('%s', 'now') - strftime('%s', MAX(created_at))) > 60 FROM page_history WHERE page_id = ?",
+            params![page_id],
+            |row| row.get::<_, Option<bool>>(0)
+        )
+        .unwrap_or(None)
+        .unwrap_or(true);
+
+    if should_db {
+        cache.insert(page_id.to_string(), now_epoch);
+    }
+    should_db
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct PageMeta {
@@ -209,17 +243,7 @@ pub fn notes_update_page(
             query.push_str(" content = '', encrypted_content = ?");
             params_vec.push(enc.clone().into());
 
-            // Record history entry only if > 60s elapsed since last revision (prevents SQLite database bloating on 2s autosave)
-            let should_insert_history: bool = conn
-                .query_row(
-                    "SELECT (strftime('%s', 'now') - strftime('%s', MAX(created_at))) > 60 FROM page_history WHERE page_id = ?",
-                    params![page.id],
-                    |row| row.get::<_, Option<bool>>(0)
-                )
-                .unwrap_or(None)
-                .unwrap_or(true);
-
-            if should_insert_history {
+            if should_record_page_history(conn, &page.id) {
                 let hist_id = uuid::Uuid::new_v4().to_string();
                 let now_utc = chrono::Utc::now().to_rfc3339();
                 let _ = conn.execute(
@@ -231,16 +255,7 @@ pub fn notes_update_page(
             query.push_str(" content = ?, encrypted_content = NULL");
             params_vec.push(c.clone().into());
 
-            let should_insert_history: bool = conn
-                .query_row(
-                    "SELECT (strftime('%s', 'now') - strftime('%s', MAX(created_at))) > 60 FROM page_history WHERE page_id = ?",
-                    params![page.id],
-                    |row| row.get::<_, Option<bool>>(0)
-                )
-                .unwrap_or(None)
-                .unwrap_or(true);
-
-            if should_insert_history {
+            if should_record_page_history(conn, &page.id) {
                 let hist_id = uuid::Uuid::new_v4().to_string();
                 let now_utc = chrono::Utc::now().to_rfc3339();
                 let _ = conn.execute(
