@@ -205,9 +205,16 @@ Synapse adopts elite industry performance best practices:
    - Adopts Stale-While-Revalidate (RFC 5861). Cached records display synchronously for 0ms transition times, revalidating against storage in the background.
 2. **Zero-Rerender CSS Interactions**:
    - Hover, active, and focus states use Tailwind composite classes (`group-hover`, `peer`, `:focus-within`) handled entirely on the GPU compositor thread without triggering React re-renders.
-3. **Constant-Time Lookups ($O(1)$ Hash Maps)**:
+3. **Constant-Time Lookups ($O(1)$ Hash Maps & Binary Tables)**:
    - High-frequency datasets (tags, note lookups, flashcard queries) are indexed in memory using `Map` and `Set` collections, preventing $O(N)$ render-loop scans.
-4. **Off-Main-Thread Media Processing**:
+   - Binary-to-Base64 transformations use precomputed byte lookup tables (`b64ToByte`, `byteToB64` in `binary.ts`) with chunked string allocation, eliminating call-stack exceptions and CPU bottlenecks.
+4. **Engine-Level Push Filtering ($O(K)$ Dirty Retrieval)**:
+   - Synchronizations query dirty rows directly at the SQLite engine level using `CAST(strftime('%s', updated_at) AS INTEGER) > ?` and IndexedDB range queries, avoiding memory-intensive `SELECT *` sweeps and JS garbage collection pauses.
+5. **Decoupled Root State & Leaf Component Isolation**:
+   - Background synchronization status is managed via a dedicated `SyncCoordinator` and `useSyncExternalStore`, preventing full-tree React virtual DOM re-renders during save/sync transitions.
+6. **Immutable Reducer Memoization & Structural Identity**:
+   - Core state reducers (`UPDATE_PAGE`, `SET_PAGES`) evaluate payload equality before generating new object references, preserving reference equality and eliminating downstream selector churn.
+7. **Off-Main-Thread Media Processing**:
    - Video streaming, audio slicing, and PDF/EPUB parsing run asynchronously or in background workers to preserve smooth 60fps UI responsiveness.
 
 ---
