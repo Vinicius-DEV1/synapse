@@ -9,12 +9,12 @@ const mockFontSize = vi.fn();
 const mockHookRegister = vi.fn();
 const mockHookDeregister = vi.fn();
 
-let mockReadingMode = 'dark';
-let mockFontFamily = 'inter';
-let mockFontSizeVal = 100;
-let mockLineHeight = 'normal';
-let mockTextAlign = 'left';
-let mockParagraphSpacing = 'normal';
+const mockReadingMode = 'dark';
+const mockFontFamily = 'inter';
+const mockFontSizeVal = 100;
+const mockLineHeight = 'normal';
+const mockTextAlign = 'left';
+const mockParagraphSpacing = 'normal';
 
 const mockDoc = document.implementation.createHTMLDocument('Chapter 1');
 

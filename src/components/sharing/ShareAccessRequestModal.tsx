@@ -24,6 +24,27 @@ export const ShareAccessRequestModal: React.FC<ShareAccessRequestModalProps> = (
   const [trustDevice, setTrustDevice] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  React.useEffect(() => {
+    if (!request) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    const handleBackPress = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-back-press', handleBackPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-back-press', handleBackPress);
+    };
+  }, [request, onClose]);
+
   if (!request) return null;
 
   const { deviceFingerprint, passwordVerified, requestedAt, ipHash } = request;
@@ -42,26 +63,6 @@ export const ShareAccessRequestModal: React.FC<ShareAccessRequestModalProps> = (
     setIsSubmitting(false);
     onClose();
   };
-
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    const handleBackPress = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('caderno-back-press', handleBackPress);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('caderno-back-press', handleBackPress);
-    };
-  }, [onClose]);
 
   return (
     <div 

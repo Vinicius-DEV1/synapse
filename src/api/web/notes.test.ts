@@ -72,7 +72,7 @@ describe('createWebNotesApi (IndexedDB)', () => {
     const db = await getWebDb();
     const hex = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
     const key = await importHexKey(hex);
-    let currentKey: CryptoKey | null = key;
+    const currentKey: CryptoKey | null = key;
 
     const securedApi = createWebNotesApi(db, () => 'secured-page-1', () => currentKey);
     const secretContent = 'Secret Markdown Content from Desktop Sync';
