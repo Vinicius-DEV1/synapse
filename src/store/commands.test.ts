@@ -45,6 +45,29 @@ describe('appReducer (store/commands)', () => {
       expect(state.pages.find(p => p.id === 'p1')?.title).toBe('Page 1 Updated');
     });
 
+    it('returns the exact same state reference if SET_PAGES receives identical pages', () => {
+      let state = createBaseState();
+      const page1: Page = { id: 'p1', title: 'Page 1', parent_id: null, sort_order: 0, updated_at: '2026-01-01' } as Page;
+      state = appReducer(state, { type: 'SET_PAGES', pages: [page1] });
+
+      const samePageCloned: Page = { ...page1 };
+      const nextState = appReducer(state, { type: 'SET_PAGES', pages: [samePageCloned] });
+
+      expect(nextState).toBe(state);
+      expect(nextState.pages).toBe(state.pages);
+    });
+
+    it('returns the exact same state reference if UPDATE_PAGE provides identical values', () => {
+      let state = createBaseState();
+      const page1: Page = { id: 'p1', title: 'Page 1', parent_id: null } as Page;
+      state = appReducer(state, { type: 'SET_PAGES', pages: [page1] });
+
+      const nextState = appReducer(state, { type: 'UPDATE_PAGE', page: { id: 'p1', title: 'Page 1' } as Page });
+
+      expect(nextState).toBe(state);
+      expect(nextState.pages).toBe(state.pages);
+    });
+
     it('recursively deletes child pages on DELETE_PAGE and clears corresponding tabs', () => {
       let state = createBaseState();
       const p1: Page = { id: 'parent', title: 'Parent', parent_id: null } as Page;

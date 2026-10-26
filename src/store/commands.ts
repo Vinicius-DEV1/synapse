@@ -22,15 +22,54 @@ export function appReducer(state: AppState, action: Action): AppState {
         ...state,
         tabs: state.tabs.map((t) => t.id === action.tabId ? { ...t, bookId: null, bookTitle: undefined } : t),
       };
-    case 'SET_PAGES':
+    case 'SET_PAGES': {
+      if (state.pages === action.pages) return state;
+      if (state.pages.length === action.pages.length) {
+        let isIdentical = true;
+        for (let i = 0; i < state.pages.length; i++) {
+          const a = state.pages[i];
+          const b = action.pages[i];
+          if (
+            a.id !== b.id ||
+            a.title !== b.title ||
+            a.parent_id !== b.parent_id ||
+            a.icon !== b.icon ||
+            a.sort_order !== b.sort_order ||
+            a.updated_at !== b.updated_at ||
+            a.is_pinned !== b.is_pinned ||
+            a.pinned_order !== b.pinned_order ||
+            a.is_locked !== b.is_locked ||
+            a.cover_image !== b.cover_image ||
+            a.description !== b.description ||
+            a.deleted_at !== b.deleted_at
+          ) {
+            isIdentical = false;
+            break;
+          }
+        }
+        if (isIdentical) return state;
+      }
       return { ...state, pages: action.pages };
+    }
     case 'ADD_PAGE':
       return { ...state, pages: [...state.pages, action.page] };
-    case 'UPDATE_PAGE':
-      return {
-        ...state,
-        pages: state.pages.map((p) => p.id === action.page.id ? { ...p, ...action.page } : p),
-      };
+    case 'UPDATE_PAGE': {
+      const targetIndex = state.pages.findIndex((p) => p.id === action.page.id);
+      if (targetIndex === -1) return state;
+      const current = state.pages[targetIndex];
+      const updates = action.page as Record<string, unknown>;
+      let hasChange = false;
+      for (const key of Object.keys(updates)) {
+        if (updates[key] !== (current as Record<string, unknown>)[key]) {
+          hasChange = true;
+          break;
+        }
+      }
+      if (!hasChange) return state;
+      const newPages = [...state.pages];
+      newPages[targetIndex] = { ...current, ...action.page };
+      return { ...state, pages: newPages };
+    }
     case 'DELETE_PAGE': {
       const toDelete = new Set<string>();
       const childrenByParent = new Map<string, string[]>();
