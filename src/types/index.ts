@@ -7,3 +7,4 @@ export * from './dictionary';
 export * from './stats';
 export * from './quiz';
 export * from './habits';
+export * from './workspace';

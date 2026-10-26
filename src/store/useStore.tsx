@@ -77,6 +77,9 @@ const initialState: AppState = {
   moduleKeys: {},
   isReadingModeFullScreen: false,
   navDirection: null,
+  activeWorkspaceId: null,
+  activeWorkspaceKey: null,
+  activeWorkspaceRole: null,
 };
 
 interface StoreContextType {

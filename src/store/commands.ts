@@ -250,6 +250,13 @@ export function appReducer(state: AppState, action: Action): AppState {
       });
       return { ...state, tabs: newTabs };
     }
+    case 'SET_ACTIVE_WORKSPACE':
+      return {
+        ...state,
+        activeWorkspaceId: action.workspaceId,
+        activeWorkspaceKey: action.workspaceKey ?? null,
+        activeWorkspaceRole: action.role ?? null,
+      };
     case 'MERGE_DB_STATE':
       return { ...state, ...action.payload };
     default:

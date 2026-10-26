@@ -63,6 +63,9 @@ export interface AppState {
   moduleKeys: Record<string, CryptoKey>;
   isReadingModeFullScreen: boolean;
   navDirection: 'forward' | 'backward' | null;
+  activeWorkspaceId: string | null;
+  activeWorkspaceKey: CryptoKey | null;
+  activeWorkspaceRole: 'owner' | 'admin' | 'editor' | 'viewer' | null;
 }
 
 export type Action =
@@ -101,6 +104,7 @@ export type Action =
   | { type: 'SET_NAV_DIRECTION'; direction: 'forward' | 'backward' | null }
   | { type: 'SET_READING_MODE_FULLSCREEN'; isFullScreen: boolean }
   | { type: 'CLEANUP_DELETED_ENTITY_TABS'; entityType: 'book' | 'video' | 'file' | 'page' | 'diagram'; id: string }
+  | { type: 'SET_ACTIVE_WORKSPACE'; workspaceId: string | null; workspaceKey?: CryptoKey | null; role?: 'owner' | 'admin' | 'editor' | 'viewer' | null }
   | { type: 'MERGE_DB_STATE'; payload: Partial<AppState> };
 
 
