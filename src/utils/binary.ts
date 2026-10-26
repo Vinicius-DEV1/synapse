@@ -3,15 +3,20 @@
  * Optimized with chunking to prevent call stack overflow on large buffers.
  */
 
-const CHUNK_SIZE = 8192;
+const CHUNK_SIZE = 0x8000; // 32768 chunk limit for call stack safety
 
 export function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
+  const len = bytes.length;
+  if (len === 0) return '';
+  if (len <= CHUNK_SIZE) {
+    return window.btoa(String.fromCharCode.apply(null, bytes as unknown as number[]));
   }
-  return window.btoa(binary);
+  const chunks: string[] = [];
+  for (let i = 0; i < len; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, len));
+    chunks.push(String.fromCharCode.apply(null, chunk as unknown as number[]));
+  }
+  return window.btoa(chunks.join(''));
 }
 
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
