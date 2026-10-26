@@ -351,6 +351,7 @@ pub fn run() {
             cmd_sync::sync_delete_row,
             cmd_sync::sync_upsert_row,
             cmd_sync::sync_get_rows_by_ids,
+            cmd_sync::sync_get_modified_rows,
             cmd_binaries::check_binaries_status,
             cmd_binaries::force_download_binaries,
             cmd_stream::video_get_stream_port,

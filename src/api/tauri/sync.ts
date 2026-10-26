@@ -13,4 +13,7 @@ export const tauriSyncApi: SyncApi = {
   // Fetches only rows with specific IDs to prevent loading entire tables into memory
   getRowsByIds: async <T = Record<string, unknown>>(tableName: string, ids: string[]): Promise<T[]> =>
     await invoke<T[]>('sync_get_rows_by_ids', { tableName, ids }),
+  // Fetches only rows modified or created since epoch ms to prevent full table scans on autosave/push
+  getModifiedRows: async <T = Record<string, unknown>>(tableName: string, sinceEpochMs: number): Promise<T[]> =>
+    await invoke<T[]>('sync_get_modified_rows', { tableName, sinceEpochMs }),
 };

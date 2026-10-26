@@ -132,6 +132,8 @@ export interface SyncApi {
   /** Fetches table rows by ID list. Present in runtime implementations. */
   getRowsByIds: <T = Record<string, unknown>>(tableName: string, ids: string[]) => Promise<T[]>;
   getRow: <T = Record<string, unknown>>(tableName: string, id: string) => Promise<T | null>;
+  /** Fetches only rows modified or created since epoch ms (prevents full-table scans during autosave/sync). */
+  getModifiedRows?: <T = Record<string, unknown>>(tableName: string, sinceEpochMs: number) => Promise<T[]>;
   /** Enqueues an immediate push sync operation for a module. */
   push?: (type: string) => void;
 }

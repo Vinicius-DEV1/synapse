@@ -163,6 +163,9 @@ pub fn init_db(db_path: PathBuf) -> Result<Connection, String> {
              deleted_at DATETIME DEFAULT NULL
          );
          CREATE INDEX IF NOT EXISTS idx_link_metadata_cache_updated ON link_metadata_cache(updated_at);
+         CREATE INDEX IF NOT EXISTS idx_pages_updated ON pages(updated_at);
+         CREATE INDEX IF NOT EXISTS idx_anki_cards_updated ON anki_cards(updated_at);
+         CREATE INDEX IF NOT EXISTS idx_calendar_events_updated ON calendar_events(updated_at);
          "
     ).map_err(|e| format!("Failed to set PRAGMAs and schemas: {}", e))?;
 

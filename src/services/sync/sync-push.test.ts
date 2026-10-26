@@ -198,4 +198,20 @@ describe('sync-push service', () => {
     expect(getTableMock).toHaveBeenCalledTimes(1);
     expect(getTableMock).toHaveBeenCalledWith('pages');
   });
+
+  it('uses getModifiedRows when available instead of full getTable', async () => {
+    localStorage.setItem('caderno_sync_fix_deletions_v1', 'true');
+    syncUtils.setTableLastSyncTime('push', 'pages', 5000);
+    const getModifiedRowsMock = vi.fn().mockResolvedValue([
+      { id: 'p1', title: 'Modified', updated_at: new Date(6000).toISOString() }
+    ]);
+    const getTableMock = vi.fn().mockResolvedValue([]);
+    (window as any).api.sync.getModifiedRows = getModifiedRowsMock;
+    (window as any).api.sync.getTable = getTableMock;
+
+    await pushAllToCloud({ notes: cryptoKey }, ['pages']);
+
+    expect(getModifiedRowsMock).toHaveBeenCalledWith('pages', 4000);
+    expect(getTableMock).not.toHaveBeenCalled();
+  });
 });

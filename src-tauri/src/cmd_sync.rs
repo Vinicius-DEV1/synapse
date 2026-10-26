@@ -284,3 +284,95 @@ pub fn sync_get_row(
     Ok(rows.pop())
 }
 
+/// Queries only rows in a table modified, created, or deleted since a specific epoch millisecond.
+/// Avoids transferring and serializing entire tables across IPC during autosaves and targeted syncs.
+#[tauri::command]
+pub fn sync_get_modified_rows(
+    table_name: String,
+    since_epoch_ms: i64,
+    db_state: State<'_, DbState>,
+) -> Result<Vec<Value>, String> {
+    validate_sync_table(&table_name)?;
+
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+    let query_meta = format!("SELECT * FROM {} LIMIT 0", table_name);
+    let stmt_meta = conn.prepare(&query_meta).map_err(|e| e.to_string())?;
+    let column_names: Vec<String> = stmt_meta.column_names().iter().map(|s| s.to_string()).collect();
+
+    let has_updated_at = column_names.iter().any(|c| c == "updated_at");
+    let has_created_at = column_names.iter().any(|c| c == "created_at");
+    let has_deleted_at = column_names.iter().any(|c| c == "deleted_at");
+
+    if !has_updated_at && !has_created_at {
+        drop(stmt_meta);
+        drop(guard);
+        return sync_get_table(table_name, db_state);
+    }
+
+    let since_dt = chrono::DateTime::from_timestamp_millis(since_epoch_ms)
+        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+    let since_iso = since_dt.to_rfc3339();
+    let since_space = since_dt.format("%Y-%m-%d %H:%M:%S").to_string();
+
+    let mut where_clauses = Vec::new();
+    let mut params: Vec<rusqlite::types::Value> = Vec::new();
+
+    if has_updated_at {
+        where_clauses.push("(updated_at > ? OR updated_at > ?)");
+        params.push(since_iso.clone().into());
+        params.push(since_space.clone().into());
+    }
+    if has_created_at {
+        where_clauses.push("(created_at > ? OR created_at > ?)");
+        params.push(since_iso.clone().into());
+        params.push(since_space.clone().into());
+    }
+    if has_deleted_at {
+        where_clauses.push("(deleted_at IS NOT NULL AND (deleted_at > ? OR deleted_at > ?))");
+        params.push(since_iso.into());
+        params.push(since_space.into());
+    }
+
+    let query = format!(
+        "SELECT * FROM {} WHERE {}",
+        table_name,
+        where_clauses.join(" OR ")
+    );
+
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    let cols: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
+
+    let iter = stmt
+        .query_map(rusqlite::params_from_iter(params.iter()), |row| {
+            let mut map = serde_json::Map::new();
+            for (i, col) in cols.iter().enumerate() {
+                let val = row.get_ref(i).unwrap();
+                let json_val = match val {
+                    rusqlite::types::ValueRef::Null => Value::Null,
+                    rusqlite::types::ValueRef::Integer(i) => Value::Number(i.into()),
+                    rusqlite::types::ValueRef::Real(f) => serde_json::Number::from_f64(f)
+                        .map(Value::Number)
+                        .unwrap_or(Value::Null),
+                    rusqlite::types::ValueRef::Text(t) => {
+                        Value::String(String::from_utf8_lossy(t).to_string())
+                    }
+                    rusqlite::types::ValueRef::Blob(_) => Value::Null,
+                };
+                map.insert(col.clone(), json_val);
+            }
+            Ok(Value::Object(map))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut items = Vec::new();
+    for i in iter {
+        if let Ok(item) = i {
+            items.push(item);
+        }
+    }
+    Ok(items)
+}
+
+

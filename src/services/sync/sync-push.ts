@@ -157,21 +157,30 @@ export async function pushAllToCloud(
 
     for (const table of tables) {
       try {
-        const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
-        if (localRows.length === 0) continue;
-
         const lastPushTable = getTableLastSyncTime('push', table);
         let tableHighestSuccessTime = lastPushTable;
         // 1-second leeway window to accommodate SQLite's second-level timestamp truncations
         const pushThreshold = Math.max(0, lastPushTable - 1000);
 
-        const rowsToPush: SyncRow[] = lastPushTable > 0 
-          ? localRows.filter((r: SyncRow) => {
-              const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
-              const isUnsyncedDeletion = !hasRepushedDeletions && Boolean(r.deleted_at);
-              return rTime > pushThreshold || isUnsyncedDeletion;
-            })
-          : localRows;
+        let rowsToPush: SyncRow[];
+        if (lastPushTable > 0 && window.api.sync.getModifiedRows && hasRepushedDeletions) {
+          const modified = (await window.api.sync.getModifiedRows(table, pushThreshold)) as SyncRow[];
+          rowsToPush = modified.filter((r: SyncRow) => {
+            const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
+            return rTime > pushThreshold;
+          });
+        } else {
+          const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
+          if (localRows.length === 0) continue;
+
+          rowsToPush = lastPushTable > 0 
+            ? localRows.filter((r: SyncRow) => {
+                const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
+                const isUnsyncedDeletion = !hasRepushedDeletions && Boolean(r.deleted_at);
+                return rTime > pushThreshold || isUnsyncedDeletion;
+              })
+            : localRows;
+        }
 
         if (rowsToPush.length === 0) {
           console.log(`[Push SKIP] Tabela ${table} ignorada (0 registros > lastPush).`);

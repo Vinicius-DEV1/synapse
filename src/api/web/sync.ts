@@ -95,5 +95,17 @@ export const webSyncApi = (
 
     return results;
   },
+
+  // Fetches only rows modified or created since epoch ms to prevent full table scans
+  getModifiedRows: async <T = Record<string, unknown>>(tableName: string, sinceEpochMs: number): Promise<T[]> => {
+    if (!isStoreName(db, tableName)) return [];
+    const all = (await db.getAll(tableName)) as Array<Record<string, unknown>>;
+    return all.filter((r) => {
+      const u = r.updated_at ? new Date(r.updated_at as string).getTime() : 0;
+      const c = r.created_at ? new Date(r.created_at as string).getTime() : 0;
+      const d = r.deleted_at ? new Date(r.deleted_at as string).getTime() : 0;
+      return Math.max(u, c, d) > sinceEpochMs;
+    }) as unknown as T[];
+  },
 });
 
