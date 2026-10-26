@@ -48,7 +48,7 @@ export function useTrash() {
         await window.api.trash.restore(item.id, item.item_type);
         setItems(prev => prev.filter(i => i.id !== item.id));
         if (item.item_type === 'page' || item.item_type === 'lofi') {
-          window.dispatchEvent(new Event('app-sync-trigger'));
+          window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: item.item_type === 'page' ? 'pages' : 'lofis' } }));
         }
         triggerToast(`"${item.title}" restaurado com sucesso!`, 'success');
       }
@@ -81,7 +81,7 @@ export function useTrash() {
           if (lofi) {
             await hardDeleteLofiPermanently(lofi);
             setItems(prev => prev.filter(i => i.id !== item.id));
-            window.dispatchEvent(new Event('app-sync-trigger'));
+            window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
             triggerToast(`"${item.title}" excluído permanentemente.`, 'info');
             return;
           }

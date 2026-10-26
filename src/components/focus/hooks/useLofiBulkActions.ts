@@ -83,7 +83,7 @@ export function useLofiBulkActions({
     setBulkDownloadStatus('');
     setSelectedIds(new Set());
     await loadLofis();
-    window.dispatchEvent(new Event('app-sync-trigger'));
+    window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
 
     if (successCount > 0) {
       triggerToast(`${successCount} faixa(s) baixada(s) para uso offline com sucesso!`, 'success');
@@ -121,7 +121,7 @@ export function useLofiBulkActions({
     }
     setSelectedIds(new Set());
     await loadLofis();
-    window.dispatchEvent(new Event('app-sync-trigger'));
+    window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
     if (count > 0) {
       triggerToast(`${count} lofi(s) movido(s) para a Lixeira.`, 'success');
     }
@@ -156,7 +156,7 @@ export function useLofiBulkActions({
     }
     setSelectedIds(new Set());
     await loadLofis();
-    window.dispatchEvent(new Event('app-sync-trigger'));
+    window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
     if (count > 0) {
       triggerToast(`${count} lofi(s) apagado(s) localmente.`, 'success');
     }

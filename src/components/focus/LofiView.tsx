@@ -107,7 +107,7 @@ export const LofiView: React.FC = () => {
       
       await updateLofiOrder(updatedItems);
       await loadLofis();
-      window.dispatchEvent(new Event('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
     }
   };
 

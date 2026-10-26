@@ -99,7 +99,7 @@ export function useLofiViewActions({
         }
       }
       await loadLofis();
-      window.dispatchEvent(new Event('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
       setIsUploading(false);
       setUploadStatusText('');
     };
@@ -129,7 +129,7 @@ export function useLofiViewActions({
         fallbackKey
       );
       await loadLofis();
-      window.dispatchEvent(new Event('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
       triggerToast(`Faixa "${lofi.title}" baixada para uso offline com sucesso!`, 'success');
     } catch (err: unknown) {
       console.error('Erro ao baixar Lofi para uso local:', err);
@@ -158,7 +158,7 @@ export function useLofiViewActions({
     try {
       await deleteLofiCompletely(lofi);
       await loadLofis();
-      window.dispatchEvent(new Event('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
       triggerToast(`"${lofi.title}" movido para a Lixeira.`, 'success');
       if (activeLofi?.id === lofi.id) {
         setActiveLofi(null);
@@ -189,7 +189,7 @@ export function useLofiViewActions({
     try {
       await deleteLofiLocal(lofi);
       await loadLofis();
-      window.dispatchEvent(new Event('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
       triggerToast(`Arquivo local de "${lofi.title}" apagado com sucesso.`, 'success');
       if (activeLofi?.id === lofi.id) {
         setActiveLofi(null);
@@ -207,7 +207,7 @@ export function useLofiViewActions({
     try {
       await renameLofi(lofi, newTitle);
       await loadLofis();
-      window.dispatchEvent(new Event('app-sync-trigger'));
+      window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'lofis' } }));
     } catch (err: unknown) {
       console.error('Erro ao renomear Lofi:', err);
     }

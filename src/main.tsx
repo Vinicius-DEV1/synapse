@@ -60,7 +60,34 @@ async function init() {
     }
     
     let syncTimeout: ReturnType<typeof setTimeout> | null = null;
-    const createApiProxy = <T extends Record<string, unknown>>(obj: T): T => {
+    const pendingDirtyTables = new Set<string>();
+
+    function inferTableFromPath(path: string, prop: string): string | undefined {
+      if (path === 'notes') return 'pages';
+      if (path === 'anki') return 'anki_cards';
+      if (path === 'calendar') return 'calendar_events';
+      if (path === 'finance') return 'transactions';
+      if (path === 'library') return 'library_books';
+      if (path === 'habits') return 'habits';
+      if (path === 'vault') return 'vault_items';
+      if (path === 'files') return 'files';
+      if (path === 'diagrams') return 'diagrams';
+      if (path === 'quiz') return 'quiz_batteries';
+      if (path === 'practice') return 'practice_sessions';
+      if (path === 'culture') return 'culture_media';
+      if (path === 'focus' || path === 'lofi') return 'lofis';
+      if (path === 'config') return 'config';
+      const lowerProp = prop.toLowerCase();
+      if (lowerProp.includes('page')) return 'pages';
+      if (lowerProp.includes('card') || lowerProp.includes('deck')) return 'anki_cards';
+      if (lowerProp.includes('event')) return 'calendar_events';
+      if (lowerProp.includes('habit')) return 'habits';
+      if (lowerProp.includes('book')) return 'library_books';
+      if (lowerProp.includes('file')) return 'files';
+      return undefined;
+    }
+
+    const createApiProxy = <T extends Record<string, unknown>>(obj: T, path: string = ''): T => {
       return new Proxy(obj, {
         get(target, prop) {
           if (typeof prop !== 'string') {
@@ -77,10 +104,33 @@ async function init() {
               try {
                 const result = await val(...args);
                 if (typeof prop === 'string' && (prop.startsWith('create') || prop.startsWith('update') || prop.startsWith('delete') || prop.startsWith('set') || prop.startsWith('upsert'))) {
-                  if (syncTimeout) clearTimeout(syncTimeout);
-                  syncTimeout = setTimeout(() => {
-                    window.dispatchEvent(new Event('app-sync-trigger'));
-                  }, 500); // 500ms debounce
+                  // Exclude local-only UI layout keys from triggering expensive network sync
+                  const isLocalOnlyConfig = path === 'config' && typeof args[0] === 'string' && [
+                    'appLayoutState',
+                    'security_lock',
+                    'lastActiveTab',
+                    'sync_manifest',
+                    'sidebar_collapsed',
+                  ].includes(args[0]);
+
+                  if (!isLocalOnlyConfig) {
+                    const inferredTable = inferTableFromPath(path, prop);
+                    if (inferredTable) {
+                      pendingDirtyTables.add(inferredTable);
+                    }
+                    if (syncTimeout) clearTimeout(syncTimeout);
+                    syncTimeout = setTimeout(() => {
+                      syncTimeout = null;
+                      if (pendingDirtyTables.size > 0) {
+                        for (const tbl of pendingDirtyTables) {
+                          window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: tbl } }));
+                        }
+                        pendingDirtyTables.clear();
+                      } else {
+                        window.dispatchEvent(new Event('app-sync-trigger'));
+                      }
+                    }, 500); // 500ms debounce
+                  }
                 }
                 return result;
               } catch (error: unknown) {
@@ -105,7 +155,7 @@ async function init() {
             };
           }
           if (typeof val === 'object' && val !== null) {
-            return createApiProxy(val as Record<string, unknown>);
+            return createApiProxy(val as Record<string, unknown>, path ? `${path}.${prop}` : prop);
           }
           return val;
         }
