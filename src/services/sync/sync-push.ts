@@ -119,7 +119,8 @@ async function prepareRowsForPush(
 
 export async function pushAllToCloud(
   moduleKeys: Record<string, CryptoKey>,
-  targetTables?: string[]
+  targetTables?: string[],
+  workspaceId?: string
 ): Promise<void> {
   if (!window.api?.sync) return;
   if (isEmergencyStopped()) {
@@ -206,7 +207,9 @@ export async function pushAllToCloud(
             if (typeof window !== 'undefined' && window.api?.log) {
               window.api.log(`[PUSH DOING] Doc ${item.id} (${item.table}). Batching to Firebase...`);
             }
-            const docRef = doc(db, table, item.id);
+            const docRef = workspaceId
+              ? doc(db, 'workspaces', workspaceId, table, item.id)
+              : doc(db, table, item.id);
             batch.set(docRef, {
               encryptedData: item.encryptedData,
               isCompressed: item.isCompressed || false,
@@ -285,7 +288,10 @@ export async function pushAllToCloud(
     if (pushedCount > 0) {
       try {
         // #7: Include deviceId in signal so listener can ignore self-device signals
-        await setDoc(doc(db, 'config', 'sync_signal'), {
+        const signalDocRef = workspaceId
+          ? doc(db, 'workspaces', workspaceId, 'config', 'sync_signal')
+          : doc(db, 'config', 'sync_signal');
+        await setDoc(signalDocRef, {
           updatedAt: serverTimestamp(),
           source: navigator.userAgent,
           deviceId: getDeviceId()
@@ -300,7 +306,10 @@ export async function pushAllToCloud(
       // merge: true preserves timestamps of tables pushed by other devices.
       if (Object.keys(manifestUpdate).length > 0) {
         try {
-          await setDoc(doc(db, 'config', 'sync_manifest'), manifestUpdate, { merge: true });
+          const manifestDocRef = workspaceId
+            ? doc(db, 'workspaces', workspaceId, 'config', 'sync_manifest')
+            : doc(db, 'config', 'sync_manifest');
+          await setDoc(manifestDocRef, manifestUpdate, { merge: true });
           logFirebaseOp('write', 1);
         } catch (e: unknown) {
           console.warn("Falha ao atualizar sync manifest", getErrorMessage(e));

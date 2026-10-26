@@ -126,7 +126,7 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages);
+  const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages, state.activeWorkspaceId || undefined);
 
   // Sync appSettings from DB once sync is successful (e.g. for incognito logins)
   useEffect(() => {

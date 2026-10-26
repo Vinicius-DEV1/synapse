@@ -36,7 +36,10 @@ import { getErrorMessage } from '../../utils/error';
 /** Parallel decryption batch size */
 const DECRYPT_BATCH_SIZE = 20;
 
-export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): Promise<void> {
+export async function pullAllFromCloud(
+  moduleKeys: Record<string, CryptoKey>,
+  workspaceId?: string
+): Promise<void> {
   if (!window.api?.sync) {
     console.error('Sync API não exposta no preload.');
     return;
@@ -55,7 +58,10 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
   let manifest: Record<string, string> | null = null;
   if (lastPull > 0) {
     try {
-      const manifestSnap = await getDoc(doc(db, 'config', 'sync_manifest'));
+      const manifestRef = workspaceId
+        ? doc(db, 'workspaces', workspaceId, 'config', 'sync_manifest')
+        : doc(db, 'config', 'sync_manifest');
+      const manifestSnap = await getDoc(manifestRef);
       logFirebaseOp('read', 1);
       if (manifestSnap.exists()) {
         manifest = manifestSnap.data() as Record<string, string>;
@@ -95,12 +101,16 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
           }
         }
 
-        let qBase: Query<DocumentData> = collection(db, table);
+        const targetCollection = workspaceId
+          ? collection(db, 'workspaces', workspaceId, table)
+          : collection(db, table);
+
+        let qBase: Query<DocumentData> = targetCollection;
         if (lastPullTable > 0) {
           const pullThreshold = Math.max(0, lastPullTable - 10_000);
           const pullThresholdIso = new Date(pullThreshold).toISOString();
           qBase = query(
-            collection(db, table),
+            targetCollection,
             where('updatedAt', '>', pullThresholdIso),
             orderBy('updatedAt')
           );
@@ -242,7 +252,10 @@ export async function pullAllFromCloud(moduleKeys: Record<string, CryptoKey>): P
                   console.log(
                     `[PULL CLEANUP] Deletando documento legado do Firebase: ${result.docSnap.id} (${table})`
                   );
-                  await deleteDoc(doc(db, table, result.docSnap.id));
+                  const docToDelete = workspaceId
+                    ? doc(db, 'workspaces', workspaceId, table, result.docSnap.id)
+                    : doc(db, table, result.docSnap.id);
+                  await deleteDoc(docToDelete);
                 } catch (delErr) {
                   console.error(
                     `Erro ao deletar documento antigo do Firebase: ${result.docSnap.id}`,

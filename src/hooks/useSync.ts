@@ -37,7 +37,12 @@ function handleSyncError(err: unknown, context: string) {
   }
 }
 
-export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, loadPages: () => void) {
+export function useSync(
+  isAuth: boolean,
+  masterKey: Record<string, CryptoKey>,
+  loadPages: () => void,
+  workspaceId?: string
+) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -99,12 +104,12 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         dirtyTables.clear();
         startSync();
         try {
-          await withTimeout(pullAllFromCloud(masterKey), 120_000);
+          await withTimeout(workspaceId ? pullAllFromCloud(masterKey, workspaceId) : pullAllFromCloud(masterKey), 120_000);
           loadPages();
           window.dispatchEvent(new CustomEvent('caderno-sync-complete'));
           await withTimeout(
             Promise.all([
-              pushAllToCloud(masterKey),
+              workspaceId ? pushAllToCloud(masterKey, undefined, workspaceId) : pushAllToCloud(masterKey),
               syncPdfsToCloud(masterKey),
             ]),
             120_000
@@ -141,7 +146,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           // Silent background push targeting dirty tables (or all tables if unassigned)
           // Note: syncPdfsToCloud is intentionally excluded here to prevent heavy drive scans during keystroke autosaves
           await withTimeout(
-            pushAllToCloud(masterKey, tablesToPush),
+            workspaceId ? pushAllToCloud(masterKey, tablesToPush, workspaceId) : pushAllToCloud(masterKey, tablesToPush),
             120_000
           );
           if (!isClosed) {
@@ -168,7 +173,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         }
         isSyncing = true;
         startSync();
-        withTimeout(pullAllFromCloud(masterKey), 60_000)
+        withTimeout(workspaceId ? pullAllFromCloud(masterKey, workspaceId) : pullAllFromCloud(masterKey), 60_000)
           .then(() => {
             loadPages();
             finishSync(true);
@@ -191,7 +196,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
       // isFirstSnapshot ignores redundant initial invocation,
       // since doFullSync() above already performs full pull.
       let isFirstSnapshot = true;
-      const unsubRealTime = listenForCloudSyncSignal((signalDeviceId?: string) => {
+      const onSignal = (signalDeviceId?: string) => {
         if (isFirstSnapshot) {
           isFirstSnapshot = false;
           return; // Ignore automatic onSnapshot trigger on mount
@@ -201,7 +206,10 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
           return;
         }
         executeRealTimePull();
-      });
+      };
+      const unsubRealTime = workspaceId
+        ? listenForCloudSyncSignal(onSignal, workspaceId)
+        : listenForCloudSyncSignal(onSignal);
 
       // 3. Cross-Tab Sync (Same Browser)
       syncChannel.onmessage = (msg) => {
@@ -303,7 +311,7 @@ export function useSync(isAuth: boolean, masterKey: Record<string, CryptoKey>, l
         syncChannel.close();
       };
     }
-  }, [isAuth, masterKey, loadPages]);
+  }, [isAuth, masterKey, loadPages, workspaceId]);
 
   return { syncStatus };
 }
