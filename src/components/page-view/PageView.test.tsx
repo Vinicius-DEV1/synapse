@@ -8,6 +8,7 @@ vi.mock('../../store/useStore', () => ({
     state: { pages: [], expandedNodes: [] },
     dispatch: vi.fn(),
   }),
+  usePages: () => [],
 }));
 
 vi.mock('../Editor', () => ({

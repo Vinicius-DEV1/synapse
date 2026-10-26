@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import { useEditor, EditorContent, type Editor as TipTapEditor } from '@tiptap/react';
 import { getSettings } from '../utils/settings';
 import { EditorBubbleMenus } from './editor/components/EditorBubbleMenus';
@@ -31,7 +31,7 @@ interface EditorProps {
   isActive?: boolean;
 }
 
-export default function Editor({
+function Editor({
   pageId,
   pageTitle,
   initialContent,
@@ -284,3 +284,12 @@ export default function Editor({
     </div>
   );
 }
+
+export default memo(Editor, (prevProps, nextProps) => {
+  return (
+    prevProps.pageId === nextProps.pageId &&
+    prevProps.isActive === nextProps.isActive &&
+    prevProps.initialCrdtState === nextProps.initialCrdtState &&
+    prevProps.pageTitle === nextProps.pageTitle
+  );
+});

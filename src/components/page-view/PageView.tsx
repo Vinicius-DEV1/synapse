@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useStore } from '../../store/useStore';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense, memo } from 'react';
+import { useStore, usePages } from '../../store/useStore';
 import type { Page } from '../../types';
 import Editor from '../Editor';
 import SubPageGrid from '../editor/components/SubPageGrid';
@@ -38,8 +38,9 @@ interface PageViewProps {
   isActive?: boolean;
 }
 
-export default function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage, isActive = true }: PageViewProps) {
-  const { state, dispatch } = useStore();
+function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage, isActive = true }: PageViewProps) {
+  const { dispatch } = useStore();
+  const pages = usePages();
   const { t } = useI18n();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [loadedData, setLoadedData] = useState<{ pageId: string; data: PageContentData } | null>(null);
@@ -60,10 +61,10 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
 
   const childPages = useMemo(() => {
     if (!activePageId) return [];
-    return state.pages
+    return pages
       .filter((p: Page) => p.parent_id === activePageId && !p.deleted_at)
       .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
-  }, [activePageId, state.pages]);
+  }, [activePageId, pages]);
 
   useEffect(() => {
     let mounted = true;
@@ -204,3 +205,5 @@ export default function PageView({ page, onUpdateContent, onCreatePage, onCreate
     </div>
   );
 }
+
+export default memo(PageView);

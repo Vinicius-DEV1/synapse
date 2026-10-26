@@ -128,11 +128,15 @@ function AppContent() {
 
   const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages, state.activeWorkspaceId || undefined);
 
-  // Sync appSettings from DB once sync is successful (e.g. for incognito logins)
+  // Sync appSettings from DB once initial sync is successful (e.g. for incognito logins)
+  const hasSyncedInitialLayoutRef = useRef(false);
   useEffect(() => {
     if (syncStatus === 'success') {
-      syncSettingsFromDb();
-      syncLayoutFromDb(dispatch);
+      if (!hasSyncedInitialLayoutRef.current) {
+        hasSyncedInitialLayoutRef.current = true;
+        syncSettingsFromDb();
+        syncLayoutFromDb(dispatch);
+      }
       window.dispatchEvent(new CustomEvent('caderno-sync-success'));
     }
   }, [syncStatus, dispatch]);

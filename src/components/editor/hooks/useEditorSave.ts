@@ -31,6 +31,11 @@ export function useEditorSave({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const hasPendingChangesRef = useRef(false);
+  const lastSavedHtmlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    lastSavedHtmlRef.current = null;
+  }, [pageId]);
 
   const flushSave = useCallback(() => {
     if (!hasPendingChangesRef.current || !ydocRef.current || !editorRef.current) return;
@@ -40,6 +45,12 @@ export function useEditorSave({
       if (editor.isDestroyed) return;
 
       const html = editor.getHTML();
+      if (lastSavedHtmlRef.current === html) {
+        hasPendingChangesRef.current = false;
+        return;
+      }
+      lastSavedHtmlRef.current = html;
+
       const crdtState = getYDocStateAsBase64(ydocRef.current);
       latestContentRef.current = { html, crdt: crdtState };
 
