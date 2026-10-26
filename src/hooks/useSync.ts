@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { pullAllFromCloud, pushAllToCloud, syncPdfsToCloud, listenForCloudSyncSignal } from '../services/sync';
 import { getDeviceId, restoreLastSyncTimesFromDb } from '../services/sync/sync-utils';
 
@@ -9,7 +9,32 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]);
 }
 
-type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
+let currentSyncStatus: SyncStatus = 'idle';
+const syncStatusListeners = new Set<(status: SyncStatus) => void>();
+
+function setGlobalSyncStatus(status: SyncStatus) {
+  currentSyncStatus = status;
+  for (const listener of syncStatusListeners) {
+    listener(status);
+  }
+}
+
+export function subscribeSyncStatus(listener: (status: SyncStatus) => void): () => void {
+  syncStatusListeners.add(listener);
+  return () => {
+    syncStatusListeners.delete(listener);
+  };
+}
+
+export function getSyncStatusSnapshot(): SyncStatus {
+  return currentSyncStatus;
+}
+
+export function useSyncStatus(): SyncStatus {
+  return useSyncExternalStore(subscribeSyncStatus, getSyncStatusSnapshot);
+}
 
 /**
  * Checks whether an error is caused by Firebase quota limits or permission denial.
@@ -46,11 +71,22 @@ export function useSync(
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const startSync = () => setSyncStatus('syncing');
+  const startSync = () => {
+    setSyncStatus('syncing');
+    setGlobalSyncStatus('syncing');
+  };
   const finishSync = (ok: boolean) => {
-    setSyncStatus(ok ? 'success' : 'error');
+    const s: SyncStatus = ok ? 'success' : 'error';
+    setSyncStatus(s);
+    setGlobalSyncStatus(s);
+    if (ok) {
+      window.dispatchEvent(new CustomEvent('caderno-sync-success'));
+    }
     if (syncDismissTimer.current) clearTimeout(syncDismissTimer.current);
-    syncDismissTimer.current = setTimeout(() => setSyncStatus('idle'), 3000);
+    syncDismissTimer.current = setTimeout(() => {
+      setSyncStatus('idle');
+      setGlobalSyncStatus('idle');
+    }, 3000);
   };
 
   useEffect(() => {
@@ -63,6 +99,7 @@ export function useSync(
       // Unique device ID to ignore self-push signals
       const myDeviceId = getDeviceId();
       const dirtyTables = new Set<string>();
+      let hasUntargetedDirty = false;
       let hasPendingSignal = false;
       let hasPendingPush = false;
 
@@ -102,6 +139,7 @@ export function useSync(
         isSyncing = true;
         lastFullSyncTime = now;
         dirtyTables.clear();
+        hasUntargetedDirty = false;
         startSync();
         try {
           await withTimeout(workspaceId ? pullAllFromCloud(masterKey, workspaceId) : pullAllFromCloud(masterKey), 120_000);
@@ -139,9 +177,13 @@ export function useSync(
           hasPendingPush = true;
           return;
         }
+        if (dirtyTables.size === 0 && !hasUntargetedDirty) {
+          return;
+        }
         isSyncing = true;
-        const tablesToPush = dirtyTables.size > 0 ? Array.from(dirtyTables) : undefined;
+        const tablesToPush = hasUntargetedDirty ? undefined : Array.from(dirtyTables);
         dirtyTables.clear();
+        hasUntargetedDirty = false;
         try {
           // Silent background push targeting dirty tables (or all tables if unassigned)
           // Note: syncPdfsToCloud is intentionally excluded here to prevent heavy drive scans during keystroke autosaves
@@ -150,11 +192,14 @@ export function useSync(
             120_000
           );
           if (!isClosed) {
-            syncChannel.postMessage('LOCAL_UPDATE');
+            const updatePayload = tablesToPush ? { type: 'LOCAL_UPDATE', tables: tablesToPush } : 'LOCAL_UPDATE';
+            syncChannel.postMessage(updatePayload);
           }
         } catch (err: unknown) {
           if (tablesToPush) {
             for (const t of tablesToPush) dirtyTables.add(t);
+          } else {
+            hasUntargetedDirty = true;
           }
           if (!isClosed) {
             handleSyncError(err, 'doPushOnlySync');
@@ -213,8 +258,14 @@ export function useSync(
 
       // 3. Cross-Tab Sync (Same Browser)
       syncChannel.onmessage = (msg) => {
-        if (msg.data === 'LOCAL_UPDATE') {
+        const data = msg.data;
+        if (data === 'LOCAL_UPDATE') {
           loadPages();
+        } else if (data && typeof data === 'object' && (data as { type?: string }).type === 'LOCAL_UPDATE') {
+          const tables = (data as { tables?: string[] }).tables;
+          if (!tables || tables.includes('pages')) {
+            loadPages();
+          }
         }
       };
 
@@ -237,6 +288,8 @@ export function useSync(
         }
         if (table) {
           dirtyTables.add(table);
+        } else {
+          hasUntargetedDirty = true;
         }
         if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
         syncDebounceTimer = setTimeout(() => {
@@ -257,7 +310,11 @@ export function useSync(
           const table = (event as CustomEvent<{ table?: string }>).detail?.table;
           if (table) {
             dirtyTables.add(table);
+          } else {
+            hasUntargetedDirty = true;
           }
+        } else {
+          hasUntargetedDirty = true;
         }
         if (syncDebounceTimer) {
           clearTimeout(syncDebounceTimer);
@@ -314,4 +371,19 @@ export function useSync(
   }, [isAuth, masterKey, loadPages, workspaceId]);
 
   return { syncStatus };
+}
+
+export function SyncCoordinator({
+  isAuth,
+  masterKey,
+  loadPages,
+  workspaceId,
+}: {
+  isAuth: boolean;
+  masterKey: Record<string, CryptoKey>;
+  loadPages: () => void;
+  workspaceId?: string;
+}) {
+  useSync(isAuth, masterKey, loadPages, workspaceId);
+  return null;
 }

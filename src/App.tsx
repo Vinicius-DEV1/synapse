@@ -11,7 +11,7 @@ import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
 import AiSidebar from './components/AiSidebar';
-import { useSync } from './hooks/useSync';
+import { SyncCoordinator } from './hooks/useSync';
 import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';
 import { useAppAuth } from './hooks/useAppAuth';
@@ -126,20 +126,19 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  const { syncStatus } = useSync(isAuth, state.moduleKeys, loadPages, state.activeWorkspaceId || undefined);
-
   // Sync appSettings from DB once initial sync is successful (e.g. for incognito logins)
   const hasSyncedInitialLayoutRef = useRef(false);
   useEffect(() => {
-    if (syncStatus === 'success') {
+    const handleSyncSuccess = () => {
       if (!hasSyncedInitialLayoutRef.current) {
         hasSyncedInitialLayoutRef.current = true;
         syncSettingsFromDb();
         syncLayoutFromDb(dispatch);
       }
-      window.dispatchEvent(new CustomEvent('caderno-sync-success'));
-    }
-  }, [syncStatus, dispatch]);
+    };
+    window.addEventListener('caderno-sync-success', handleSyncSuccess);
+    return () => window.removeEventListener('caderno-sync-success', handleSyncSuccess);
+  }, [dispatch]);
 
   // Expose moduleKeys on window for TipTap handlePaste access
   // (ProseMirror handlers cannot access React context)
@@ -306,6 +305,14 @@ function AppContent() {
       )}
 
 
+      {/* Background Sync Coordinator (isolated render boundary) */}
+      <SyncCoordinator
+        isAuth={isAuth}
+        masterKey={state.moduleKeys}
+        loadPages={loadPages}
+        workspaceId={state.activeWorkspaceId || undefined}
+      />
+
       {/* Global Modals & Overlays Host */}
       <GlobalModals
         renamePageId={renamePageId}
@@ -316,7 +323,6 @@ function AppContent() {
         setFloatingPageId={setFloatingPageId}
         isDriveAuthModalOpen={isDriveAuthModalOpen}
         setIsDriveAuthModalOpen={setIsDriveAuthModalOpen}
-        syncStatus={syncStatus}
         handleDeletePage={handleDeletePage}
         handleUpdatePage={handleUpdatePage}
         handleUpdateContent={handleUpdateContent}

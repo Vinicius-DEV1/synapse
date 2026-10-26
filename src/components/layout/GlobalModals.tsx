@@ -55,7 +55,7 @@ interface GlobalModalsProps {
   setFloatingPageId: (id: string | null) => void;
   isDriveAuthModalOpen: boolean;
   setIsDriveAuthModalOpen: (open: boolean) => void;
-  syncStatus: 'idle' | 'syncing' | 'success' | 'error';
+  syncStatus?: 'idle' | 'syncing' | 'success' | 'error';
   handleDeletePage: (id: string) => Promise<void>;
   handleUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
   handleUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => Promise<void>;
