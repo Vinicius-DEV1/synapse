@@ -24,6 +24,8 @@ export async function extractBookInitialSnippet(epubBook: unknown, maxChars = 50
           load: (loader: unknown) => Promise<void>;
           unload: () => void;
           document?: Document;
+          href?: string;
+          url?: string;
         }>;
       };
       load?: (url: string) => Promise<unknown>;
@@ -37,16 +39,20 @@ export async function extractBookInitialSnippet(epubBook: unknown, maxChars = 50
 
     for (let i = 0; i < limit; i++) {
       const item = items[i];
-      if (item) {
-        await item.load(bookWithSpine.load.bind(bookWithSpine));
-        if (item.document?.body) {
-          const text = item.document.body.innerText || item.document.body.textContent || '';
-          if (text.trim().length > 0) {
-            accumulated += `\n--- [Página/Seção Inicial ${i + 1}] ---\n` + text.trim();
+      if (item && item.href && item.url) {
+        try {
+          await item.load(bookWithSpine.load.bind(bookWithSpine));
+          if (item.document?.body) {
+            const text = item.document.body.innerText || item.document.body.textContent || '';
+            if (text.trim().length > 0) {
+              accumulated += `\n--- [Página/Seção Inicial ${i + 1}] ---\n` + text.trim();
+            }
           }
+          item.unload();
+          if (accumulated.length >= maxChars) break;
+        } catch (sectionErr) {
+          console.debug('[BookMetadataEnricher] Skipping unreadable section:', sectionErr);
         }
-        item.unload();
-        if (accumulated.length >= maxChars) break;
       }
     }
 

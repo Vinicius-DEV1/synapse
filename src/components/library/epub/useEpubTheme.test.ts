@@ -9,7 +9,7 @@ const mockFontSize = vi.fn();
 const mockHookRegister = vi.fn();
 const mockHookDeregister = vi.fn();
 
-const mockReadingMode = 'dark';
+let mockReadingMode = 'dark';
 const mockFontFamily = 'inter';
 const mockFontSizeVal = 100;
 const mockLineHeight = 'normal';

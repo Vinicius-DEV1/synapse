@@ -5,6 +5,7 @@ import { resolveCanonicalBuffer } from '../../../services/storage/canonical-reso
 import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
 import { createAssetEmbedder } from './utils/epubAssetManager';
+import { sanitizeEpubBook, patchRenditionQueue } from './utils/epubSpineSanitizer';
 import { isMobileScreen } from '../../../services/platform';
 import { detectBufferFormat } from '../../../utils/book-format';
 
@@ -116,6 +117,9 @@ export function useEpubLoader(
 
         await newEpubBook.ready;
         if (!active) return;
+
+        // Defensive guard: Sanitize spine items and guard archive/book/locations methods
+        sanitizeEpubBook(newEpubBook);
 
         // Register spine hook: embeds assets before serialization
         const bookWithSpine = newEpubBook as unknown as {
@@ -412,6 +416,9 @@ export function useEpubLoader(
     activeRenditionRef.current = newRendition;
     setRendition(newRendition);
 
+    // Defensive guard: patch Rendition task queue to catch synchronous exceptions
+    patchRenditionQueue(newRendition);
+
     // Register asset embedding hook for section documents
     if (newRendition.hooks?.content?.register) {
       newRendition.hooks.content.register(async (contents: { document?: Document; window?: Window; section?: { url?: string; href?: string } }) => {
@@ -547,6 +554,14 @@ export function useEpubLoader(
       targetPage !== '1' &&
       (targetPage.startsWith('epubcfi(') || targetPage.includes('#') || targetPage.includes('.html') || targetPage.includes('.xhtml') || targetPage.includes('/'));
 
+    let isDisplaySettled = false;
+    const displayWatchdog = setTimeout(() => {
+      if (!isDisplaySettled && active) {
+        console.warn('[EpubLoader] Display watchdog timeout: forcing loading state to complete.');
+        setLoading(false);
+      }
+    }, 12000);
+
     const displayPromise = isValidCfiOrHref
       ? newRendition.display(targetPage as string)
       : newRendition.display();
@@ -555,10 +570,17 @@ export function useEpubLoader(
       console.warn('[EpubLoader] Error displaying target CFI, falling back to beginning:', dispErr);
       return newRendition.display();
     }).then(() => {
+      isDisplaySettled = true;
+      clearTimeout(displayWatchdog);
       if (active) setLoading(false);
     }).catch((fatalErr) => {
+      isDisplaySettled = true;
+      clearTimeout(displayWatchdog);
       console.error('[EpubLoader] Fatal display error:', fatalErr);
-      if (active) setLoading(false);
+      if (active) {
+        setEpubError(fatalErr instanceof Error ? fatalErr.message : 'Falha ao exibir livro');
+        setLoading(false);
+      }
     });
 
     // Handle text selection inside reader
@@ -823,6 +845,7 @@ export function useEpubLoader(
 
     return () => {
       active = false;
+      clearTimeout(displayWatchdog);
       viewerEl?.removeEventListener('wheel', handleViewerWheel);
       window.removeEventListener('mousedown', handleGlobalMouseDown);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
