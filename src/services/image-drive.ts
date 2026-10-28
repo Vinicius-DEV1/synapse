@@ -74,7 +74,7 @@ export async function setCachedImage(
       
       // Immediate verification: read back to confirm persistence
       const verifyResult = await window.api?.imageCache?.get(id);
-      console.log(`[ImageDrive:setCachedImage] Post-save verification:`, verifyResult ? `OK (data.length=${verifyResult.data?.length})` : 'FAILED - returned null!');
+      console.debug(`[ImageDrive:setCachedImage] Post-save verification:`, verifyResult ? `OK (data.length=${verifyResult.data?.length})` : 'FAILED - returned null!');
     } catch (e) {
       console.error('[ImageDrive:setCachedImage] Error saving to local cache via Tauri:', e);
     }
@@ -99,18 +99,18 @@ export async function uploadEncryptedImage(
   file: File,
   masterKey: CryptoKey
 ): Promise<string> {
-  console.log(`[ImageDrive:uploadEncryptedImage] Starting upload. file.name="${file.name}", file.size=${file.size}, file.type="${file.type}"`);
+  console.debug(`[ImageDrive:uploadEncryptedImage] Starting upload. file.name="${file.name}", file.size=${file.size}, file.type="${file.type}"`);
   
   // 1. Read file as ArrayBuffer
   const originalBuffer = await file.arrayBuffer();
-  console.log(`[ImageDrive:uploadEncryptedImage] ArrayBuffer read: ${originalBuffer.byteLength} bytes`);
+  console.debug(`[ImageDrive:uploadEncryptedImage] ArrayBuffer read: ${originalBuffer.byteLength} bytes`);
 
   // 2. Try to get valid access token
   const token = await getValidAccessToken().catch((e) => {
     console.error(`[ImageDrive:uploadEncryptedImage] Error obtaining token:`, e);
     return null;
   });
-  console.log(`[ImageDrive:uploadEncryptedImage] Token obtained: ${token ? 'YES (length=' + token.length + ')' : 'NO (null)'}`);
+  console.debug(`[ImageDrive:uploadEncryptedImage] Token obtained: ${token ? 'YES (length=' + token.length + ')' : 'NO (null)'}`);
 
   if (!token) {
     // Dispatch event to notify user (opens auth modal)
@@ -119,24 +119,24 @@ export async function uploadEncryptedImage(
     // Offline/local fallback: save exclusively to local cache with permanent ID
     const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     await setCachedImage(localId, originalBuffer, file.type);
-    console.log(`[ImageDrive] No Drive token — auth modal dispatched and image saved locally as ${localId}`);
+    console.debug(`[ImageDrive] No Drive token — auth modal dispatched and image saved locally as ${localId}`);
     return localId;
   }
 
   // 3. Encrypt content with AES-GCM
   const encryptedBuffer = await encryptFile(originalBuffer, masterKey);
-  console.log(`[ImageDrive:uploadEncryptedImage] Encrypted: ${encryptedBuffer.byteLength} bytes`);
+  console.debug(`[ImageDrive:uploadEncryptedImage] Encrypted: ${encryptedBuffer.byteLength} bytes`);
 
   // 4. Generate unique filename for Drive
   const uniqueName = `IMG_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.enc`;
 
   // 5. Upload to PHOTOS folder on Google Drive
   const driveFileId = await uploadToDrive(token, uniqueName, encryptedBuffer, 'photos');
-  console.log(`[ImageDrive:uploadEncryptedImage] Upload completed. driveFileId="${driveFileId}"`);
+  console.debug(`[ImageDrive:uploadEncryptedImage] Upload completed. driveFileId="${driveFileId}"`);
 
   // 6. Save ORIGINAL image to local cache for fast access
   await setCachedImage(driveFileId, originalBuffer, file.type);
-  console.log(`[ImageDrive:uploadEncryptedImage] Local cache stored with driveFileId="${driveFileId}"`);
+  console.debug(`[ImageDrive:uploadEncryptedImage] Local cache stored with driveFileId="${driveFileId}"`);
 
   return driveFileId;
 }

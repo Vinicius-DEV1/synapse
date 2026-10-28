@@ -9,24 +9,24 @@ import { isDesktopApp } from './platform';
  * that are not referenced in local pages and were created over 30 days ago.
  */
 export async function runImageGarbageCollector(): Promise<void> {
-  console.log('[GC] Iniciando o Garbage Collector de Imagens...');
+  console.debug('[GC] Iniciando o Garbage Collector de Imagens...');
   try {
     const accessToken = await getValidAccessToken();
     if (!accessToken) {
-      console.log('[GC] Sem token de acesso ao Drive, abortando.');
+      console.debug('[GC] Sem token de acesso ao Drive, abortando.');
       return;
     }
 
     // 1. Collect all image file IDs referenced in pages
     const usedIds = await extractUsedDriveFileIds();
-    console.log(`[GC] Encontrados ${usedIds.size} arquivos em uso nas anotações.`);
+    console.debug(`[GC] Encontrados ${usedIds.size} arquivos em uso nas anotações.`);
 
     // 2. Listar todos os arquivos da pasta FOTOS
     const appFolderId = await getOrCreateAppFolder(accessToken);
     const photosFolderId = await getOrCreatePhotosFolder(accessToken, appFolderId);
     
     const allFiles = await listFiles(accessToken, photosFolderId);
-    console.log(`[GC] ${allFiles.length} arquivos totais na pasta FOTOS no Google Drive.`);
+    console.debug(`[GC] ${allFiles.length} arquivos totais na pasta FOTOS no Google Drive.`);
 
     // 3. Filter and delete old orphan files
     const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
@@ -39,7 +39,7 @@ export async function runImageGarbageCollector(): Promise<void> {
         const age = now - fileDate;
 
         if (age > thirtyDaysInMs) {
-          console.log(`[GC] Deletando imagem órfã: ${file.name} (ID: ${file.id}) - ${(age/86400000).toFixed(1)} dias de idade.`);
+          console.debug(`[GC] Deletando imagem órfã: ${file.name} (ID: ${file.id}) - ${(age/86400000).toFixed(1)} dias de idade.`);
           try {
             await deleteFromDrive(accessToken, file.id);
             // Also attempt to clean from SQLite/IndexedDB to save local cache
@@ -52,7 +52,7 @@ export async function runImageGarbageCollector(): Promise<void> {
       }
     }
 
-    console.log(`[GC] Concluído! ${deletedCount} imagens órfãs removidas.`);
+    console.debug(`[GC] Concluído! ${deletedCount} imagens órfãs removidas.`);
   } catch (error) {
     console.error('[GC] Erro fatal durante a execução:', error);
   }

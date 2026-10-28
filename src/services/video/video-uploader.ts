@@ -14,7 +14,7 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   const startTime = Date.now();
   const { videoFile: file, subtitleText, duration, primaryAudioTrack, extraAudioTracks = [], extraSubtitleTracks = [], webQuality, conversionPreset, onProgress, onPhaseChange, signal } = options;
   
-  console.log('[DEBUG] uploadNewVideo - Started with options:', { 
+  console.debug('[DEBUG] uploadNewVideo - Started with options:', { 
     fileName: file.name, 
     duration, 
     primaryAudioTrack,
@@ -166,11 +166,11 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
     const desktopVideoApi = window.api.video as DesktopVideoApi;
     for (const track of extraAudioTracks) {
       try {
-        console.log(`[DEBUG] uploadNewVideo - Requesting audio extraction for track: ${track}`);
+        console.debug(`[DEBUG] uploadNewVideo - Requesting audio extraction for track: ${track}`);
         const audioOutPath = desktopVideoApi.extractAudio
           ? await desktopVideoApi.extractAudio(sourcePath, track)
           : '';
-        console.log(`[DEBUG] uploadNewVideo - Audio extraction result for ${track}:`, audioOutPath);
+        console.debug(`[DEBUG] uploadNewVideo - Audio extraction result for ${track}:`, audioOutPath);
         if (audioOutPath) {
           const driveFileName = `${baseName} - Audio ${track.replace(/:/g, '')}.m4a`;
           const audioDriveId = await uploadLocalFileToDrive(token, audioOutPath, driveFileName);
@@ -227,9 +227,9 @@ export async function uploadNewVideo(options: UploadOptions & { onPhaseChange?: 
   if (sourcePath && window.api?.video && extraSubtitleTracks.length > 0) {
     for (const track of extraSubtitleTracks) {
       try {
-        console.log(`[DEBUG] uploadNewVideo - Requesting subtitle extraction for track: ${track}`);
+        console.debug(`[DEBUG] uploadNewVideo - Requesting subtitle extraction for track: ${track}`);
         const vttText = await window.api.video.extractSubtitles(sourcePath, track);
-        console.log(`[DEBUG] uploadNewVideo - Subtitle extraction result length for ${track}:`, vttText ? vttText.length : 0);
+        console.debug(`[DEBUG] uploadNewVideo - Subtitle extraction result length for ${track}:`, vttText ? vttText.length : 0);
         if (vttText) {
           const enc = new TextEncoder();
           let subBuffer = enc.encode(vttText).buffer as ArrayBuffer;
@@ -307,7 +307,7 @@ export async function generateWebVersionTask(
     throw new Error("Vídeo precisa estar baixado localmente para gerar versão web.");
   }
 
-  console.log('[DEBUG] generateWebVersionTask - Started for video:', video.title, 'with quality:', webQuality);
+  console.debug('[DEBUG] generateWebVersionTask - Started for video:', video.title, 'with quality:', webQuality);
 
   const desktopVideoApi = window.api?.video as DesktopVideoApi | undefined;
   if (!desktopVideoApi?.generateWebVersion) {
