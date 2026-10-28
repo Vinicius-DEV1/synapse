@@ -58,7 +58,7 @@ export async function exchangeCodeForToken(
   }
   params.append('code', code);
   params.append('grant_type', 'authorization_code');
-  params.append('redirect_uri', import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:5173');
+  params.append('redirect_uri', import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:35174');
   params.append('code_verifier', codeVerifier);
 
   const res = await resilientFetch('https://oauth2.googleapis.com/token', {

@@ -33,7 +33,7 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
 export function getDriveAuthUrl(codeChallenge: string): string {
   const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
   const redirectUri = encodeURIComponent(
-    import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:5173'
+    import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:35174'
   );
   return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${DRIVE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 }
