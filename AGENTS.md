@@ -118,14 +118,14 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 ## 7. Testing Standards & Execution Performance
 
 - **Targeted Test Execution First (Sub-Second Feedback)**:
-  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)**, as running all 310 files takes over 2 minutes and severely halts productivity.
+  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)**, as running all 353 files takes over 2 minutes and severely halts productivity.
   - **Always use Targeted Testing**:
     - Specific module directory: `npx vitest run src/path/to/module/` (~1-3s).
     - Or related dependency runner: `npx vitest related --run <modified_files>` (~2-3s).
 - **Type Checking over Full Test Sweeps**:
   - To verify cross-project contract integrity quickly without running heavy DOM/worker runners, use `npx tsc -b --noEmit`.
 - **Full Regression Suite (`npm test`) Reservation**:
-  - Run the global suite (`npm test`, all 310 test files) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
+  - Run the global suite (`npm test`, all 353 test files) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
 - **Meaningful and Well-Elaborated Tests**: All tests must validate actual business logic, state changes, UI interactions, error recovery, and component integrations using Vitest and React Testing Library.
 - **Avoid Useless Tests**: Do not write excessive, redundant, or shallow tests that serve no practical purpose (e.g., trivially asserting a static `div` renders without validating behavior). Tests must provide genuine confidence in application resilience.
 - **Mocking Platform Boundaries**: Mock external boundaries (Tauri IPC, IndexedDB, Firebase, FFmpeg, Tesseract) cleanly at the adapter interface level without polluting tests with brittle DOM implementation details.
