@@ -15,8 +15,8 @@ export async function generateCardsForNote(
         existingCards = indexed.filter((c) => !c.deleted_at);
       }
     }
-  } catch {
-    // Fallback if index does not exist
+  } catch (e: unknown) {
+    console.debug('[AnkiCardsGenerator] Index lookup failed, using table fallback:', e);
   }
 
   if (existingCards.length === 0) {

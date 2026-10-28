@@ -15,8 +15,8 @@ export async function getDeckSettings(
         settings = indexed[0];
       }
     }
-  } catch {
-    // Fallback if index does not exist
+  } catch (e: unknown) {
+    console.debug('[AnkiSettings] IndexedDB index lookup failed, falling back to full table scan:', e);
   }
 
   if (!settings) {
@@ -54,8 +54,8 @@ export async function updateDeckSettings(
         existing = indexed[0];
       }
     }
-  } catch {
-    // Fallback if index does not exist
+  } catch (e: unknown) {
+    console.debug('[AnkiSettings] IndexedDB index lookup failed, falling back to full table scan:', e);
   }
 
   if (!existing) {

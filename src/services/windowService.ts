@@ -3,15 +3,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { isDesktopApp } from './platform';
 
 /**
- * Platform Window Service
- * Centralizes all native desktop window interactions (drag, minimize, maximize, close)
- * with robust multiplatform fallbacks, protecting presentation components from direct IPC dependencies.
+ * Window Management Service
+ * Provides safe, multiplatform abstractions for desktop window operations (Tauri)
+ * with robust fallbacks and defensive logging.
  */
 export const windowService = {
-  isSupported(): boolean {
-    return isDesktopApp();
-  },
-
   async isMaximized(): Promise<boolean> {
     if (!isDesktopApp()) return false;
     try {
@@ -19,13 +15,14 @@ export const windowService = {
       if (typeof win?.isMaximized === 'function') {
         return await win.isMaximized();
       }
-    } catch {
-      // Graceful fallback
+    } catch (e: unknown) {
+      console.debug('[WindowService] Native window.isMaximized query failed:', e);
     }
     try {
       const maximized = await invoke<boolean>('app_window_is_maximized');
       return Boolean(maximized);
-    } catch {
+    } catch (e: unknown) {
+      console.debug('[WindowService] IPC app_window_is_maximized failed:', e);
       return false;
     }
   },
@@ -38,13 +35,13 @@ export const windowService = {
         await win.startDragging();
         return;
       }
-    } catch {
-      // Graceful fallback
+    } catch (e: unknown) {
+      console.debug('[WindowService] Native window.startDragging failed:', e);
     }
     try {
       await invoke('app_window_start_dragging');
-    } catch {
-      // Suppress in non-tauri or test environments
+    } catch (e: unknown) {
+      console.debug('[WindowService] IPC app_window_start_dragging failed:', e);
     }
   },
 
@@ -58,13 +55,14 @@ export const windowService = {
           return await win.isMaximized();
         }
       }
-    } catch {
-      // Graceful fallback
+    } catch (e: unknown) {
+      console.debug('[WindowService] Native window.toggleMaximize failed:', e);
     }
     try {
       const maximized = await invoke<boolean>('app_window_toggle_maximize');
       return Boolean(maximized);
-    } catch {
+    } catch (e: unknown) {
+      console.debug('[WindowService] IPC app_window_toggle_maximize failed:', e);
       return false;
     }
   },
@@ -77,13 +75,13 @@ export const windowService = {
         await win.minimize();
         return;
       }
-    } catch {
-      // Graceful fallback
+    } catch (e: unknown) {
+      console.debug('[WindowService] Native window.minimize failed:', e);
     }
     try {
       await invoke('app_window_minimize');
-    } catch {
-      // Suppress in non-tauri or test environments
+    } catch (e: unknown) {
+      console.debug('[WindowService] IPC app_window_minimize failed:', e);
     }
   },
 
@@ -95,13 +93,13 @@ export const windowService = {
         await win.close();
         return;
       }
-    } catch {
-      // Graceful fallback
+    } catch (e: unknown) {
+      console.debug('[WindowService] Native window.close failed:', e);
     }
     try {
       await invoke('app_window_close');
-    } catch {
-      // Suppress in non-tauri or test environments
+    } catch (e: unknown) {
+      console.debug('[WindowService] IPC app_window_close failed:', e);
     }
   },
 
@@ -119,12 +117,14 @@ export const windowService = {
               .then((unlisten) => {
                 if (typeof unlisten === 'function') unlisten();
               })
-              .catch(() => {});
+              .catch((e: unknown) => {
+                console.debug('[WindowService] Unlisten resize error:', e);
+              });
           };
         }
       }
-    } catch {
-      // Suppress in non-tauri or test environments
+    } catch (e: unknown) {
+      console.debug('[WindowService] onResized listener setup failed:', e);
     }
     return () => {};
   },
