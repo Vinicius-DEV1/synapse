@@ -18,7 +18,8 @@ export const ShareLoadingScreen: React.FC<ShareLoadingScreenProps> = ({
     <main
       aria-busy="true"
       aria-label="Carregando página compartilhada"
-      className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-400"
+      className="min-h-screen min-h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-400"
+      style={{ minHeight: '100dvh' }}
     >
       <div className="w-full max-w-2xl space-y-6">
         {/* Header Preview */}

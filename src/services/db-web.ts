@@ -235,6 +235,9 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
           db.createObjectStore('culture_recommendations_cache', { keyPath: 'id' });
         }
       },
+    }).catch((err: unknown) => {
+      dbPromise = null;
+      throw err;
     });
   }
   return dbPromise;

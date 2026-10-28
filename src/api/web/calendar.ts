@@ -1,16 +1,27 @@
-export const webCalendarApi = (db: any) => ({
-  getEvents: async () => {
-    const all = await db.getAll('calendar_events') || [];
-    return all.filter((e: any) => !e.deleted_at);
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web-schema';
+import type { CalendarEvent } from '../../types/calendar';
+
+export const webCalendarApi = (db: IDBPDatabase<CadernoDBSchema>) => ({
+  getEvents: async (): Promise<CalendarEvent[]> => {
+    const all = (await db.getAll('calendar_events')) || [];
+    return all.filter((e: CalendarEvent) => !e.deleted_at);
   },
-  getEvent: async (id: string) => {
+  getEvent: async (id: string): Promise<CalendarEvent | null> => {
     const existing = await db.get('calendar_events', id);
     if (!existing || existing.deleted_at) return null;
     return existing;
   },
-  createEvent: async (event: any) => {
+  createEvent: async (event: Partial<CalendarEvent>): Promise<CalendarEvent> => {
     const id = (event.id && event.id !== '') ? event.id : crypto.randomUUID();
-    const newEvent = {
+    const newEvent: CalendarEvent = {
+      title: '',
+      description: '',
+      start_date: new Date().toISOString(),
+      end_date: new Date().toISOString(),
+      type: 'event',
+      status: 'pending',
+      color: '#3b82f6',
       ...event,
       id,
       created_at: new Date().toISOString(),
@@ -20,14 +31,14 @@ export const webCalendarApi = (db: any) => ({
     await db.put('calendar_events', newEvent);
     return newEvent;
   },
-  updateEvent: async (id: string, event: any) => {
+  updateEvent: async (id: string, event: Partial<CalendarEvent>): Promise<{ success: boolean }> => {
     const existing = await db.get('calendar_events', id);
     if (!existing) return { success: false };
-    const updated = { ...existing, ...event, updated_at: new Date().toISOString() };
+    const updated: CalendarEvent = { ...existing, ...event, updated_at: new Date().toISOString() };
     await db.put('calendar_events', updated);
     return { success: true };
   },
-  deleteEvent: async (id: string) => {
+  deleteEvent: async (id: string): Promise<boolean> => {
     const existing = await db.get('calendar_events', id);
     if (existing) {
       existing.deleted_at = new Date().toISOString();

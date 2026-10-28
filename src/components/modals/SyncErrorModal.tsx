@@ -22,8 +22,12 @@ export default function SyncErrorModal() {
       }
     };
 
-    window.addEventListener('caderno-sync-error' as any, handleSyncError);
-    return () => window.removeEventListener('caderno-sync-error' as any, handleSyncError);
+    const listener: EventListener = (e: Event) => {
+      handleSyncError(e as CustomEvent<{ message: string; code?: string }>);
+    };
+
+    window.addEventListener('caderno-sync-error', listener);
+    return () => window.removeEventListener('caderno-sync-error', listener);
   }, []);
 
   if (!errorDetails) return null;

@@ -12,9 +12,12 @@ export function useLofiAudio() {
 
   useEffect(() => {
     if (window.api?.config) {
-      window.api.config.get('lofi_volume').then(saved => {
+      window.api.config.get<string | number>('lofi_volume').then(saved => {
         if (saved !== null && saved !== undefined) {
-          setLofiVolume(parseFloat(saved));
+          const parsed = typeof saved === 'number' ? saved : parseFloat(String(saved));
+          if (!Number.isNaN(parsed)) {
+            setLofiVolume(parsed);
+          }
         }
       }).catch(console.error);
     }

@@ -39,7 +39,7 @@ export default function DriveAuthModal({ onClose, onSuccess }: DriveAuthModalPro
     if (window.api?.drive) {
       await window.api.drive.openExternalUrl(url);
     } else {
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
     setStep(2);
   };
