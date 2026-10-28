@@ -89,15 +89,16 @@ export async function syncPdfsToCloud(moduleKeys: Record<string, CryptoKey>): Pr
             ...book,
             drive_file_id: driveFileId,
             updated_at: new Date().toISOString()
-          } as any);
+          });
           
           console.log(`[Sync] Livro sincronizado com sucesso no Google Drive: ${bookName} (ID: ${driveFileId})`);
           triggerToast(`Livro "${bookName}" sincronizado com a nuvem!`, 'success');
           window.dispatchEvent(new Event('caderno-sync-success'));
           window.dispatchEvent(new Event('caderno-sync-complete'));
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'Erro de rede';
           console.error(`[Sync] Erro ao sincronizar livro para o Drive: ${bookName}`, err);
-          triggerToast(`Falha ao sincronizar "${bookName}": ${err?.message || 'Erro de rede'}`, 'error');
+          triggerToast(`Falha ao sincronizar "${bookName}": ${errMsg}`, 'error');
         }
       }
     } finally {

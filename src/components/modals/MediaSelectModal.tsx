@@ -32,14 +32,23 @@ export default function MediaSelectModal({ isOpen, type, onClose, onSelect }: Me
     setLoading(true);
     try {
       if (type === 'video' && window.api?.sync) {
+        interface VideoRow {
+          id: string;
+          title: string;
+          thumbnail_url?: string;
+          duration?: number;
+          deleted_at?: string | null;
+        }
         const rows = await window.api.sync.getTable('videos');
-        const videos = (rows as any[]).filter((v: any) => !v.deleted_at).map(v => ({
-          id: v.id,
-          title: v.title,
-          type: 'video' as const,
-          cover: v.thumbnail_url,
-          duration: v.duration
-        }));
+        const videos = (rows as unknown as VideoRow[])
+          .filter((v) => !v.deleted_at)
+          .map((v) => ({
+            id: v.id,
+            title: v.title,
+            type: 'video' as const,
+            cover: v.thumbnail_url,
+            duration: v.duration,
+          }));
         setItems(videos);
       } else if (type === 'book' && window.api?.library) {
         const rows = await window.api.library.getBooks();

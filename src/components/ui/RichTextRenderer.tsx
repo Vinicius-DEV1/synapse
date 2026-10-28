@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-export const ImageRenderer = React.memo(({ cacheItem }: { cacheItem: any }) => {
+export interface CacheImageItem {
+  data: BlobPart;
+  mimeType?: string;
+}
+
+export const ImageRenderer = React.memo(({ cacheItem }: { cacheItem: CacheImageItem | null | undefined }) => {
   const [url, setUrl] = useState<string>('');
   
   useEffect(() => {

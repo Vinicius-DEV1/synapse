@@ -1,5 +1,6 @@
 import { getValidAccessToken, listFiles, deleteFromDrive, getOrCreatePhotosFolder, getOrCreateAppFolder } from './drive';
-import { getWebDb } from './db-web';
+import { getWebDb, type CadernoDBSchema } from './db-web';
+import type { IDBPDatabase, StoreNames } from 'idb';
 import { isDesktopApp } from './platform';
 
 /**
@@ -65,7 +66,7 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
   const usedIds = new Set<string>();
   
   // Tables and columns that may contain Drive file IDs
-  const tablesToCheck = [
+  const tablesToCheck: Array<{ name: StoreNames<CadernoDBSchema>; cols: string[] }> = [
     { name: 'pages', cols: ['content'] },
     { name: 'anki_notes', cols: ['front', 'back', 'extra_note', 'media_url'] },
     { name: 'diagrams', cols: ['content'] },
@@ -77,7 +78,7 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
   ];
 
   const regex = /<encrypted-image[^>]*data-drive-file-id="([^"]+)"/g;
-  let db: any = null;
+  let db: IDBPDatabase<CadernoDBSchema> | null = null;
   if (!isDesktopApp()) {
     db = await getWebDb();
   }
@@ -92,7 +93,7 @@ async function extractUsedDriveFileIds(): Promise<Set<string>> {
       }
     } else if (db) {
       try {
-        rows = await db.getAll(tableConfig.name);
+        rows = (await db.getAll(tableConfig.name)) as Record<string, unknown>[];
       } catch (e) {
         console.warn(`[GC] Falha ao ler tabela ${tableConfig.name} no Web`, e);
       }

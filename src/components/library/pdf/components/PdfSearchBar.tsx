@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, ChevronUp, ChevronDown, X, Loader2 } from 'lucide-react';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 interface SearchResult {
   pageNumber: number;
@@ -8,7 +9,7 @@ interface SearchResult {
 }
 
 interface PdfSearchBarProps {
-  pdfDoc: any;
+  pdfDoc: PDFDocumentProxy | null;
   bookId: string;
   totalPages: number;
   currentPage: number;
@@ -98,7 +99,7 @@ export default function PdfSearchBar({
           const page = await pdfDoc.getPage(i);
           const textContent = await page.getTextContent();
           pageText = textContent.items
-            .map((item: any) => item.str)
+            .map((item) => ('str' in item && typeof item.str === 'string' ? item.str : ''))
             .join(' ');
         } catch {
           // If PDF text extraction fails, try OCR cache
