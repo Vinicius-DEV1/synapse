@@ -188,7 +188,7 @@ export const ShareContentViewer: React.FC<ShareContentViewerProps> = ({
   }, [config.id, editor, shareKey]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500/30">
+    <div className="min-h-screen min-h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500/30" style={{ minHeight: '100dvh' }}>
       {/* Zen Minimal Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-white/[0.06] px-6 py-3.5 flex items-center justify-between">
         {/* Left: Brand + Page Title */}

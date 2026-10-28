@@ -26,7 +26,7 @@ export const ShareExpiredScreen: React.FC<ShareExpiredScreenProps> = ({
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-100">
+    <main className="min-h-screen min-h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-100" style={{ minHeight: '100dvh' }}>
       <div className="w-full max-w-md bg-zinc-900/60 border border-white/[0.08] rounded-3xl p-8 shadow-2xl backdrop-blur-xl text-center space-y-5">
         <div className="w-16 h-16 rounded-2xl bg-zinc-800/80 border border-white/5 flex items-center justify-center text-zinc-400 mx-auto">
           {reason === 'expired' ? <Clock size={30} /> : <ShieldAlert size={30} />}
