@@ -61,7 +61,7 @@ export default function MermaidViewer({ chart }: MermaidViewerProps) {
               fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
               fontSize: '13px',
             },
-            securityLevel: 'loose',
+            securityLevel: 'strict',
           });
           mermaidInitialized = true;
         }
