@@ -611,7 +611,7 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
                         if (window.api?.os?.openInBrowser) {
                           window.api.os.openInBrowser(url);
                         } else {
-                          window.open(url, '_blank');
+                          window.open(url, '_blank', 'noopener,noreferrer');
                         }
                       }}
                       className="px-3.5 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 text-white transition-colors flex items-center gap-1.5"
@@ -629,7 +629,7 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
                       if (window.api?.os?.openInBrowser) {
                         window.api.os.openInBrowser(url);
                       } else {
-                        window.open(url, '_blank');
+                        window.open(url, '_blank', 'noopener,noreferrer');
                       }
                     }}
                     className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors flex items-center gap-1.5"
