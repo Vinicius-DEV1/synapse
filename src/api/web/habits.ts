@@ -1,7 +1,9 @@
+import type { IDBPDatabase } from 'idb';
+import type { CadernoDBSchema } from '../../services/db-web-schema';
 import type { Habit, HabitLog, HabitWithLogs, IHabitsApi } from '../../types/habits';
 import { calculateHabitStreak } from '../../utils/habitUtils';
 
-export const webHabitsApi = (db: any, generateId: () => string = () => crypto.randomUUID()): IHabitsApi => ({
+export const webHabitsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () => string = () => crypto.randomUUID()): IHabitsApi => ({
   getHabits: async (): Promise<Habit[]> => {
     const all = (await db.getAll('habits')) || [];
     return all

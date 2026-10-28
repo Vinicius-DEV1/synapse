@@ -32,8 +32,8 @@ export default function AlarmWidgetNodeView({ node, updateAttributes, editor, ge
   // Auto-complete status if global alarm is no longer active or exists
   useEffect(() => {
     if (status === 'pending') {
-      const activeAlarm = alarms.find((a: any) => a.id === alarmId && a.is_active);
-      if (!activeAlarm && alarms.some((a: any) => a.id === alarmId)) {
+      const activeAlarm = alarms.find((a) => a.id === alarmId && a.is_active);
+      if (!activeAlarm && alarms.some((a) => a.id === alarmId)) {
         // Alarme disparou e ficou inativo
         updateAttributes({ status: 'triggered' });
         setShowPopover(false);

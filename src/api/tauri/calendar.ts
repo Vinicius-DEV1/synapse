@@ -9,7 +9,7 @@ export const tauriCalendarApi = {
     return await invoke('calendar_get_event', { id });
   },
   createEvent: async (e: Partial<CalendarEvent>): Promise<CalendarEvent> => {
-    const cleanE: Record<string, any> = { ...e };
+    const cleanE: Record<string, unknown> = { ...e };
     delete cleanE.type_;
     const payload = {
       ...cleanE,
@@ -23,8 +23,11 @@ export const tauriCalendarApi = {
     };
     return await invoke('calendar_add_event', { event: payload });
   },
-  updateEvent: async (idOrEvent: string | any, eventData?: any): Promise<{ success: boolean }> => {
-    let targetEvent: any;
+  updateEvent: async (
+    idOrEvent: string | (Partial<CalendarEvent> & { type_?: string }),
+    eventData?: Partial<CalendarEvent> & { type_?: string }
+  ): Promise<{ success: boolean }> => {
+    let targetEvent: Partial<CalendarEvent> & { type_?: string };
     let targetId: string | null;
     if (typeof idOrEvent === 'string') {
       targetId = idOrEvent;
@@ -35,7 +38,7 @@ export const tauriCalendarApi = {
     }
     if ('type_' in targetEvent) {
       if (!targetEvent.type) {
-        targetEvent.type = targetEvent.type_;
+        targetEvent.type = targetEvent.type_ as 'event' | 'task';
       }
       delete targetEvent.type_;
     }

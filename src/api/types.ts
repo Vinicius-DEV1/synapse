@@ -215,8 +215,8 @@ export interface ICadernoAPI {
   quiz?: IQuizApi;
 
   config?: {
-    get: (key: string) => Promise<any>;
-    set: (key: string, value: any) => Promise<{ success: boolean }>;
+    get: <T = unknown>(key: string) => Promise<T | null>;
+    set: <T = unknown>(key: string, value: T) => Promise<{ success: boolean }>;
   };
 
   imageCache?: {
