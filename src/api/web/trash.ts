@@ -67,11 +67,15 @@ export const webTrashApi = (db: IDBPDatabase<CadernoDBSchema>): TrashApi => ({
     const table = tableMap[itemType];
     if (!table) throw new Error('Tipo não suportado');
 
-    const item = (await db.get(table, id)) as Record<string, unknown> | undefined;
-    if (item) {
-      item.deleted_at = null;
-      item.updated_at = new Date().toISOString();
-      await (db as any).put(table, item);
+    const tx = db.transaction(table, 'readwrite');
+    const store = tx.objectStore(table);
+    const item = await store.get(id);
+    if (item && typeof item === 'object') {
+      const record = item as unknown as Record<string, unknown>;
+      record.deleted_at = null;
+      record.updated_at = new Date().toISOString();
+      await store.put(item);
+      await tx.done;
       return true;
     }
     return false;

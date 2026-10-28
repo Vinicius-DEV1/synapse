@@ -107,6 +107,54 @@ export async function fetchOpenLibraryBooks(
  * Fetches anime or manga metadata and high-resolution posters from AniList GraphQL API.
  * Free, public, highly reliable, and covers both Japanese and localized Western titles.
  */
+interface AniListMediaItem {
+  id?: number;
+  idMal?: number;
+  title?: {
+    userPreferred?: string;
+    romaji?: string;
+    english?: string;
+    native?: string;
+  };
+  startDate?: { year?: number };
+  episodes?: number;
+  chapters?: number;
+  volumes?: number;
+  format?: string;
+  status?: string;
+  description?: string;
+  averageScore?: number;
+  duration?: number;
+  countryOfOrigin?: string;
+  genres?: string[];
+  coverImage?: {
+    extraLarge?: string;
+    large?: string;
+  };
+  studios?: {
+    nodes?: Array<{ name?: string }>;
+  };
+}
+
+interface KitsuItem {
+  id: string;
+  attributes?: {
+    canonicalTitle?: string;
+    synopsis?: string;
+    chapterCount?: number;
+    volumeCount?: number;
+    startDate?: string;
+    averageRating?: string;
+    status?: string;
+    serialization?: string;
+    posterImage?: {
+      large?: string;
+      medium?: string;
+      original?: string;
+    };
+  };
+}
+
 export async function fetchAniListMedia(
   query: string,
   mediaType: 'MANGA' | 'ANIME'
@@ -178,7 +226,7 @@ export async function fetchAniListMedia(
     const mediaList = data?.data?.Page?.media;
     if (!Array.isArray(mediaList)) return [];
 
-    const results: CultureSearchResult[] = mediaList.map((m: any) => {
+    const results: CultureSearchResult[] = mediaList.map((m: AniListMediaItem) => {
       const cover = m.coverImage?.extraLarge || m.coverImage?.large || '';
       const rawSynopsis = m.description ? m.description.replace(/<[^>]+>/g, '').trim() : '';
       const rating = typeof m.averageScore === 'number'
@@ -253,7 +301,7 @@ export async function fetchKitsuManga(query: string): Promise<CultureSearchResul
     const data = await res.json();
     const list = Array.isArray(data.data) ? data.data : [];
 
-    const results: CultureSearchResult[] = list.map((item: any) => {
+    const results: CultureSearchResult[] = list.map((item: KitsuItem) => {
       const attrs = item.attributes || {};
       const cover = attrs.posterImage?.large || attrs.posterImage?.medium || attrs.posterImage?.original || '';
       const year = attrs.startDate ? new Date(attrs.startDate).getFullYear() : null;

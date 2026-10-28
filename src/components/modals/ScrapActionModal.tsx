@@ -77,7 +77,7 @@ export function ScrapActionModal({
   })();
 
   const modalJsx = (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in w-screen h-screen">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in w-full max-w-full h-full">
       <div 
         className="relative w-full max-w-lg bg-dark-bg border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-scale-up"
         onClick={(e) => e.stopPropagation()}

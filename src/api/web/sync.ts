@@ -86,8 +86,8 @@ export const webSyncApi = (
         if (row && typeof row === 'object') {
           results.push(row as unknown as T);
         }
-      } catch {
-        // ID not found — expected during normal sync flow
+      } catch (err: unknown) {
+        console.debug('[Sync:getRowsByIds] ID not found or fetch failure:', id, err);
       }
     });
 

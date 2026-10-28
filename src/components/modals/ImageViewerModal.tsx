@@ -16,12 +16,12 @@ export default function ImageViewerModal({ isOpen, imageSrc, onClose, onSave }: 
   const [mode, setMode] = useState<'view' | 'crop'>('view');
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [activeSrc, setActiveSrc] = useState('');
   const viewContainerRef = useRef<HTMLDivElement>(null);
 
-  const onCropComplete = useCallback((_: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const onCropComplete = useCallback((_: unknown, pixels: { x: number; y: number; width: number; height: number }) => {
+    setCroppedAreaPixels(pixels);
   }, []);
 
   const handleSave = async () => {

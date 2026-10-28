@@ -55,6 +55,7 @@ describe('culture-recommendation-hydrator', () => {
     });
 
     const itunesSpy = vi.spyOn(cultureApis, 'fetchITunesMovies').mockResolvedValue([]);
+    const cinemetaSpy = vi.spyOn(cultureApis, 'fetchCinemetaSearch').mockResolvedValue([]);
 
     const item: RawAIRecommendation = {
       title: 'Dune: Messiah',
@@ -74,6 +75,7 @@ describe('culture-recommendation-hydrator', () => {
     expect(imdbSpy).toHaveBeenCalledWith('Dune: Messiah');
 
     imdbSpy.mockRestore();
+    cinemetaSpy.mockRestore();
     itunesSpy.mockRestore();
   });
 
@@ -205,6 +207,9 @@ describe('culture-recommendation-hydrator', () => {
         genres: ['Sports'],
       },
     ]);
+    const cinemetaSpy = vi.spyOn(cultureApis, 'fetchCinemetaSearch').mockResolvedValue([]);
+    const imdbSpy = vi.spyOn(cultureApis, 'fetchImdbSeries').mockResolvedValue([]);
+    const itunesSpy = vi.spyOn(cultureApis, 'fetchITunesMovies').mockResolvedValue([]);
 
     const item: RawAIRecommendation = {
       title: 'Luzes na Cidade',
@@ -222,6 +227,9 @@ describe('culture-recommendation-hydrator', () => {
     expect(match).toBeNull(); // Correctly rejected because of sports genre and title mismatch
 
     tvMazeSpy.mockRestore();
+    cinemetaSpy.mockRestore();
+    imdbSpy.mockRestore();
+    itunesSpy.mockRestore();
   });
 
   it('filters out hallucinated or unverified works that have no match and no cover image', async () => {

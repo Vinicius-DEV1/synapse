@@ -79,8 +79,8 @@ export function normalizeKeyEntries(raw: unknown): { keys: GeminiKeyEntry[]; nee
         });
         needsSave = true;
       }
-    } catch {
-      // Ignore localStorage access restrictions
+    } catch (err: unknown) {
+      console.debug('[GeminiKeys] Unable to read fallback key from localStorage:', err);
     }
   }
 

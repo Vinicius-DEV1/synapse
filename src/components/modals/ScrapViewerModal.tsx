@@ -120,7 +120,7 @@ export function ScrapViewerModal({
   })();
 
   const modalContent = (
-    <div className="fixed inset-0 z-[99999] flex flex-col bg-dark-bg text-dark-text animate-fade-in w-screen h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[99999] flex flex-col bg-dark-bg text-dark-text animate-fade-in w-full max-w-full h-full overflow-hidden">
       {/* Barra de Ferramentas Superior */}
       <header className="h-14 px-4 bg-dark-surface/95 border-b border-white/10 flex items-center justify-between gap-4 shrink-0 shadow-lg backdrop-blur-md z-50">
         {/* Lado Esquerdo: Info da Página */}

@@ -95,12 +95,17 @@ export interface ChatActionEdit {
   new_tags?: string[];
 }
 
+export interface ChatActionDelete {
+  type: 'delete';
+  card_id: string;
+}
+
 export interface ChatActionDeleteBulk {
   type: 'delete_bulk';
   cards_to_delete: Array<{ card_id: string; reason?: string }>;
 }
 
-export type ChatAction = ChatActionCreate | ChatActionEdit | ChatActionDeleteBulk;
+export type ChatAction = ChatActionCreate | ChatActionEdit | ChatActionDelete | ChatActionDeleteBulk;
 
 export interface AIChatTokens {
   promptTokenCount: number;

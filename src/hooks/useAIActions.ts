@@ -1,22 +1,18 @@
 import { useState } from 'react';
 import { triggerToast } from '../components/ui/ToastContext';
-
+import type { ChatAction, AIChatTokens } from '../services/gemini/anki';
 
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
-  actions?: any[];
-  tokens?: {
-    promptTokenCount: number;
-    candidatesTokenCount: number;
-    totalTokenCount: number;
-  };
+  actions?: ChatAction[];
+  tokens?: AIChatTokens;
 }
 
 export function useAIActions(deckId: string) {
   const [actionStatus, setActionStatus] = useState<Record<string, boolean>>({});
 
-  const handleExecuteAction = async (action: any, actionKey: string) => {
+  const handleExecuteAction = async (action: ChatAction, actionKey: string) => {
     if (!window.api?.anki) return;
     try {
       if (action.type === 'edit') {
@@ -34,14 +30,15 @@ export function useAIActions(deckId: string) {
         await window.api.anki.deleteCardsBulk([action.card_id]);
         triggerToast('Cartão excluído com sucesso pela IA.', 'info');
       } else if (action.type === 'delete_bulk') {
-        const ids = (action.cards_to_delete || []).map((c: any) => c.card_id);
+        const ids = (action.cards_to_delete || []).map((c) => c.card_id);
         await window.api.anki.deleteCardsBulk(ids);
         triggerToast(`${ids.length} cartões excluídos com sucesso pela IA.`, 'info');
       }
       setActionStatus(prev => ({ ...prev, [actionKey]: true }));
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      triggerToast(e.message || 'Erro ao executar ação da IA.', 'error');
+      const msg = e instanceof Error ? e.message : 'Erro ao executar ação da IA.';
+      triggerToast(msg, 'error');
     }
   };
 
