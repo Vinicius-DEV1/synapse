@@ -31,7 +31,7 @@ export default function EpubTypography() {
     : 'hover:bg-black/5 text-zinc-600 hover:text-zinc-900';
 
   return (
-    <div className={`absolute top-16 right-4 p-4 rounded-2xl z-30 border w-72 sm:w-80 max-h-[calc(100vh-5rem)] overflow-y-auto select-none backdrop-blur-sm ${containerTheme}`}>
+    <div className={`absolute top-16 right-4 p-4 rounded-2xl z-30 border w-72 sm:w-80 max-h-[calc(100dvh-5rem)] overflow-y-auto select-none backdrop-blur-sm ${containerTheme}`}>
       
       {/* 1. Tamanho da Fonte */}
       <div className="mb-4">

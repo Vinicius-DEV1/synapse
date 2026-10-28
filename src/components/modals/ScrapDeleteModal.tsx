@@ -54,7 +54,7 @@ export function ScrapDeleteModal({
   };
 
   const modalJsx = (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in w-screen h-screen">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in w-full max-w-full h-full">
       <div
         className="relative w-full max-w-md bg-dark-bg border border-rose-500/20 rounded-3xl shadow-2xl overflow-hidden animate-scale-up p-6"
         onClick={(e) => e.stopPropagation()}
