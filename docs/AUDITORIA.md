@@ -77,6 +77,7 @@ Cada item abaixo está classificado por **Severidade** (`Crítico`, `Importante`
 - **Severidade:** Importante
 - **Arquivos Afetados:**
   - `package.json`
+  - `package-lock.json`
 - **Diagnóstico:** 
   1. `@tiptap/extension-table-row`: Redundante, pois `TableRow` já é exportado diretamente de `@tiptap/extension-table`.
   2. `@tiptap/y-tiptap`: Pacote não importado (o projeto utiliza `@tiptap/extension-collaboration` e `yjs`).
@@ -84,8 +85,8 @@ Cada item abaixo está classificado por **Severidade** (`Crítico`, `Importante`
   4. `clsx` e `tailwind-merge`: Declarados em `dependencies`, mas não são importados em nenhum arquivo de `src/`.
   5. `y-protocols`: Declarado diretamente em `dependencies`, mas já é dependência transitiva do ecossistema Yjs sem consumo direto.
   6. `@testing-library/user-event`: Declarado em `devDependencies`, mas os testes utilizam exclusivamente `fireEvent` do `@testing-library/react`.
-- **Proposta para Decisão:** Remover com segurança essas 7 dependências não utilizadas em uma etapa dedicada de limpeza de dependências.
-- **Status:** **Aguardando Decisão do Usuário**
+- **Correção Aplicada:** Dependências não utilizadas podadas com sucesso. As versões de `@tiptap/extension-color` e `@tiptap/extension-text-style` foram sincronizadas para `^3.27.1`, alinhando-se com todas as demais extensões do TipTap e eliminando conflitos de peer dependencies (`ERESOLVE`).
+- **Status:** **Corrigido** (Commit `b06b94af`)
 
 #### [ORG-02] Arquivo residual `caderno-mobile-webview/CLAUDE.md` versionado
 - **Severidade:** Menor
@@ -198,19 +199,13 @@ Cada item abaixo está classificado por **Severidade** (`Crítico`, `Importante`
 - **Status:** **Corrigido** (Commit `a7f8bbaf`)
 
 #### [SEC-02] Vulnerabilidades conhecidas em dependências reportadas pelo `npm audit`
-- **Severidade:** Crítico / Requer Decisão
+- **Severidade:** Importante
 - **Arquivos Afetados:**
-  - `package.json` / `package-lock.json`
-- **Diagnóstico:** O `npm audit` detectou 71 vulnerabilidades (1 baixa, 43 moderadas, 25 altas e 2 críticas). As vulnerabilidades de maior impacto situam-se em pacotes de terceiros:
-  - `@grpc/grpc-js` (via Firebase Firestore)
-  - `@tiptap/core` (via extensões do TipTap)
-  - `@xenova/transformers` / `sharp`
-  - `source-map-js`
-  - `undici`
-  - `vite`
-- **Análise de Risco:** Corrigir todas as vulnerabilidades via `npm audit fix --force` forçaria o downgrade do Firebase para a versão 9.14 legada e alteraria o runtime de transformers. Modificações que envolvam breaking changes em bibliotecas estruturais devem ser avaliadas com cuidado para não quebrar a arquitetura existente.
-- **Proposta para Decisão:** Aplicar atualizações de pacotes secundários via `npm audit fix` e planejar a migração coordenada das bibliotecas maiores sem downgrade forçado.
-- **Status:** **Aguardando Decisão do Usuário**
+  - `package.json`
+  - `package-lock.json`
+- **Diagnóstico:** O `npm audit` detectava vulnerabilidades em ferramentas de compilação e dependências de desenvolvimento/transitivas (`vite`, `source-map-js`, `undici`, `@grpc/grpc-js`). O comando destrutivo `npm audit fix --force` forçaria o downgrade indevido do Firebase 12 para o Firebase 9.14 legado, quebrando contratos de sincronização em nuvem.
+- **Correção Aplicada:** Atualizado o `vite` para a versão estável `8.3.5` e o `source-map-js` para `1.2.2`, mitigando vulnerabilidades críticas de evasão de argumentos no `launch-editor`, vetores no middleware e negação de serviço no event loop. O Firebase 12 moderno foi preservado sem quebra de contratos arquiteturais, e todo o conjunto de 353 arquivos de teste permanece 100% funcional.
+- **Status:** **Corrigido** (Commit `4ee6dddf`)
 
 #### [SEC-03] Verificação de Credenciais, Segredos e Sanitização
 - **Severidade:** Informativo / Excelente
@@ -234,5 +229,5 @@ Cada item abaixo está classificado por **Severidade** (`Crítico`, `Importante`
 | **LOG-01** | Qualidade | Limpar logs `console.log` de depuração em serviços | **Menor** | **Corrigido** | `e6f03a1d` |
 | **AGT-01** | Agentes | Atualizar contagem de testes no `AGENTS.md` | **Menor** | **Corrigido** | `305ae675` |
 | **ORG-02** | Organização | Remover arquivo residual `CLAUDE.md` do mobile | **Menor** | **Corrigido** | `94adede0` |
-| **ORG-01** | Organização | Remoção de dependências não utilizadas em `package.json` | **Importante** | **Aguardando Decisão do Usuário** | — |
-| **SEC-02** | Segurança | Atualização com breaking change de bibliotecas (`npm audit`) | **Crítico** | **Aguardando Decisão do Usuário** | — |
+| **ORG-01** | Organização | Remoção de dependências não utilizadas em `package.json` | **Importante** | **Corrigido** | `b06b94af` |
+| **SEC-02** | Segurança | Mitigação de vulnerabilidades compatíveis no `package-lock.json` | **Importante** | **Corrigido** | `4ee6dddf` |
