@@ -8,6 +8,10 @@ import { isDesktopApp } from './platform';
  * with robust fallbacks and defensive logging.
  */
 export const windowService = {
+  isSupported(): boolean {
+    return isDesktopApp();
+  },
+
   async isMaximized(): Promise<boolean> {
     if (!isDesktopApp()) return false;
     try {
