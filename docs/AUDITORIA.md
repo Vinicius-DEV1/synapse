@@ -37,9 +37,9 @@
 - **Severidade:** Menor
 - **Arquivos Afetados:**
   - `README.pt-BR.md`
-- **Diagnóstico:** O sumário do `README.pt-BR.md` contém âncoras para `#streaming-de-vídeo-criptografado-enc1`, `#executando-com-docker-self-hosting` e `#segurança--divulgação-responsável`, mas as respectivas seções e a seção do Mobile Companion foram omitidas no corpo do documento em relação à versão canônica em inglês (`README.md`).
-- **Correção Sugerida:** Sincronizar as seções do `README.pt-BR.md` com o `README.md` e corrigir os links âncora do índice.
-- **Status:** **Pendente para Execução**
+- **Diagnóstico:** O sumário do `README.pt-BR.md` continha âncoras para seções omitidas no corpo do documento em relação à versão canônica em inglês (`README.md`).
+- **Correção Aplicada:** Sincronizado integralmente o `README.pt-BR.md` com todas as seções arquiteturais, Docker, Mobile Companion e corrigidos os links do índice.
+- **Status:** **Corrigido (Ciclo 3)** (Commit `3061ce78`)
 
 ---
 
@@ -71,9 +71,9 @@
 - **Severidade:** Menor
 - **Arquivos Afetados:**
   - `.gitignore`
-- **Diagnóstico:** O `.gitignore` na raiz do repositório ignora `src-tauri/target/`, mas não cobre explicitamente `src-tauri/gen/`, confiando exclusivamente no arquivo aninhado `src-tauri/.gitignore`.
-- **Correção Sugerida:** Declarar explicitamente `src-tauri/gen/` no `.gitignore` raiz.
-- **Status:** **Pendente para Execução**
+- **Diagnóstico:** O `.gitignore` na raiz do repositório ignora `src-tauri/target/`, mas não cobria explicitamente `src-tauri/gen/`.
+- **Correção Aplicada:** Declarado explicitamente `src-tauri/gen/` no `.gitignore` raiz.
+- **Status:** **Corrigido (Ciclo 3)** (Commit `76142388`)
 
 ---
 
@@ -90,13 +90,15 @@
   - `src/api/web/notifications.ts`
   - `src/api/web/habits.ts`
   - `src/api/tauri/calendar.ts`
-  - `src/api/tauri/notes.ts`
   - `src/api/types.ts`
   - `src/components/modals/SyncErrorModal.tsx`
   - `src/components/editor-extensions/AlarmWidgetNodeView.tsx`
-- **Diagnóstico:** Em `webCalendarApi`, `webNotificationsApi` e `webHabitsApi`, os parâmetros `db: any` e argumentos de entrada utilizam `any` em vez de `IDBPDatabase<CadernoDBSchema>` e as interfaces de domínio (`CalendarEvent`, `AppNotification`, `Habit`). Em `tauriCalendarApi.updateEvent` e `tauriNotesApi`, parâmetros usam `any`. Em `SyncErrorModal.tsx`, há uso de `as any` para evento customizado. Em `AlarmWidgetNodeView.tsx`, há `(a: any)` redundante em array tipado `Alarm[]`.
-- **Correção Sugerida:** Aplicar interfaces tipadas estritas (`IDBPDatabase<CadernoDBSchema>`, `CalendarEvent`, `AppNotification`, `Page`, `EventListener`), eliminando o uso de `any` e casts inseguros.
-- **Status:** **Pendente para Execução**
+  - `src/store/focus/useLofiAudio.ts`
+  - `src/types/calendar.ts`
+  - `src/types/notifications.ts`
+- **Diagnóstico:** Parâmetros `db: any` e argumentos em `webCalendarApi`, `webNotificationsApi`, `webHabitsApi`, `tauriCalendarApi.updateEvent` e `SyncErrorModal.tsx` utilizavam `any` ou casts inseguros.
+- **Correção Aplicada:** Tipadas todas as APIs com `IDBPDatabase<CadernoDBSchema>`, `CalendarEvent`, `AppNotification`, `EventListener` e `window.api.config` com genéricos parametrizados `<T = unknown>`.
+- **Status:** **Corrigido (Ciclo 3)** (Commit `30f71ac3`)
 
 #### [ERR-01] Blocos `catch {}` vazios suprimindo erros silenciosamente
 - **Severidade:** Importante
@@ -122,9 +124,9 @@
 - **Severidade:** Importante
 - **Arquivos Afetados:**
   - `src/services/db-web.ts` (linhas 10-16)
-- **Diagnóstico:** A função `getWebDb()` armazena a promessa de abertura do banco em uma variável singleton `dbPromise`. Caso `openDB` falhe temporariamente (por quota momentânea ou concorrência transitória no upgrade do IndexedDB), `dbPromise` armazena a promessa rejeitada indefinidamente, fazendo com que todas as chamadas futuras falhem imediatamente sem nunca tentar reabrir o banco.
-- **Correção Sugerida:** Adicionar tratamento `.catch(err => { dbPromise = null; throw err; })` para limpar o singleton em caso de rejeição, permitindo nova tentativa limpa em chamadas posteriores.
-- **Status:** **Pendente para Execução**
+- **Diagnóstico:** A função `getWebDb()` armazena a promessa de abertura do banco em uma variável singleton `dbPromise`. Caso `openDB` falhasse temporariamente, `dbPromise` armazenava a promessa rejeitada indefinidamente.
+- **Correção Aplicada:** Adicionado tratamento `.catch((err) => { dbPromise = null; throw err; })` limpando o singleton para permitir novas tentativas limpas.
+- **Status:** **Corrigido (Ciclo 3)** (Commit `5381d28f`)
 
 ---
 
@@ -143,9 +145,9 @@
   - `src/share-viewer/components/ShareLoadingScreen.tsx`
   - `src/share-viewer/components/SharePasswordGate.tsx`
   - `src/share-viewer/components/ShareWaitingApproval.tsx`
-- **Diagnóstico:** O módulo `share-viewer` (acessado majoritariamente em navegadores web e dispositivos móveis) utiliza `min-h-screen` puro sem `min-h-[100dvh]` ou estilo `minHeight: '100dvh'`. Em navegadores mobile (Chrome Android, Safari iOS), a barra de navegação dinâmica redimensiona a viewport, provocando cortes visuais ou barras de rolagem artificiais.
-- **Correção Sugerida:** Adicionar `min-h-[100dvh]` e `style={{ minHeight: '100dvh' }}` garantindo paridade com as diretrizes do `AGENTS.md` (Seção 11.2).
-- **Status:** **Pendente para Execução**
+- **Diagnóstico:** Telas do `share-viewer` usavam `min-h-screen` puro sem dynamic viewport units (`100dvh`).
+- **Correção Aplicada:** Adicionado `min-h-[100dvh]` e `style={{ minHeight: '100dvh' }}` em todos os 6 componentes do share viewer.
+- **Status:** **Corrigido (Ciclo 3)** (Commit `9ad4bdaa`)
 
 ---
 
@@ -168,9 +170,9 @@
 - **Arquivos Afetados:**
   - `src/components/editor-extensions/links/LinkPreviewNodeView.tsx` (linhas 614, 632)
   - `src/components/library/modals/DriveAuthModal.tsx` (linha 42)
-- **Diagnóstico:** Em `LinkPreviewNodeView.tsx` e `DriveAuthModal.tsx`, as chamadas de fallback `window.open(url, '_blank')` foram invocadas sem o terceiro parâmetro `'noopener,noreferrer'`. Isso concede à página externa de destino acesso parcial à propriedade `window.opener`, possibilitando ataques de redirecionamento malicioso (*Reverse Tabnabbing*).
-- **Correção Sugerida:** Adicionar `'noopener,noreferrer'` em todas as chamadas `window.open` identificadas.
-- **Status:** **Pendente para Execução**
+- **Diagnóstico:** Chamadas de fallback `window.open(url, '_blank')` eram executadas sem `'noopener,noreferrer'`, expondo o aplicativo a riscos de Reverse Tabnabbing via `window.opener`.
+- **Correção Aplicada:** Incluído `'noopener,noreferrer'` em todas as chamadas de fallback `window.open`.
+- **Status:** **Corrigido (Ciclo 3)** (Commit `d004bf25`)
 
 ---
 
@@ -190,9 +192,9 @@
 | **ORG-02** | Organização | Remover arquivo residual `CLAUDE.md` do mobile | **Menor** | **Corrigido (C1)** | `94adede0` |
 | **ORG-01** | Dependências | Poda de 8 dependências mortas e alinhamento do TipTap | **Importante** | **Corrigido (C2)** | `b06b94af` |
 | **SEC-02** | Segurança | Atualização de Vite 8.3.5 e source-map-js 1.2.2 | **Importante** | **Corrigido (C2)** | `4ee6dddf` |
-| **SEC-04** | Segurança | Proteção de `window.open` com `noopener,noreferrer` | **Importante** | **Pendente (C3)** | — |
-| **ROB-02** | Robustez | Prevenção de envenenamento de singleton no `getWebDb` | **Importante** | **Pendente (C3)** | — |
-| **TYP-02** | Qualidade | Tipagem estrita de adaptadores web/tauri (`calendar`/`notif`) | **Importante** | **Pendente (C3)** | — |
-| **MOB-02** | Responsividade | Viewport height adaptativo `100dvh` no Share Viewer | **Menor** | **Pendente (C3)** | — |
-| **DOC-03** | Documentação | Correção de âncoras e alinhamento em `README.pt-BR.md` | **Menor** | **Pendente (C3)** | — |
-| **ORG-03** | Organização | Adicionar `src-tauri/gen/` ao `.gitignore` raiz | **Menor** | **Pendente (C3)** | — |
+| **SEC-04** | Segurança | Proteção de `window.open` com `noopener,noreferrer` | **Importante** | **Corrigido (C3)** | `d004bf25` |
+| **ROB-02** | Robustez | Prevenção de envenenamento de singleton no `getWebDb` | **Importante** | **Corrigido (C3)** | `5381d28f` |
+| **TYP-02** | Qualidade | Tipagem estrita de adaptadores web/tauri (`calendar`/`notif`) | **Importante** | **Corrigido (C3)** | `30f71ac3` |
+| **MOB-02** | Responsividade | Viewport height adaptativo `100dvh` no Share Viewer | **Menor** | **Corrigido (C3)** | `9ad4bdaa` |
+| **DOC-03** | Documentação | Correção de âncoras e alinhamento em `README.pt-BR.md` | **Menor** | **Corrigido (C3)** | `3061ce78` |
+| **ORG-03** | Organização | Adicionar `src-tauri/gen/` ao `.gitignore` raiz | **Menor** | **Corrigido (C3)** | `76142388` |
