@@ -2,30 +2,29 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { useStore } from '../../store/useStore';
 import { useI18n } from '../../i18n';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
-import GlobalSearchModal from '../modals/GlobalSearchModal';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
 import { SyncStatusToast } from './SyncStatusToast';
-import { UploadProgressModal } from '../library/ui/UploadProgressModal';
-import SyncErrorModal from '../modals/SyncErrorModal';
 import type { Page } from '../../types';
 
-import RenamePageModal from '../modals/RenamePageModal';
-
 // Lazy load heavy and conditional modals to keep initial bundle ultra-light
+const GlobalSearchModal = lazy(() => import('../modals/GlobalSearchModal'));
+const SyncErrorModal = lazy(() => import('../modals/SyncErrorModal'));
+const RenamePageModal = lazy(() => import('../modals/RenamePageModal'));
 const ConfirmModal = lazy(() => import('../modals/ConfirmModal'));
 const MovePageModal = lazy(() => import('../modals/MovePageModal'));
 const FloatingPageModal = lazy(() => import('../modals/FloatingPageModal'));
 const DriveAuthModal = lazy(() => import('../library/modals/DriveAuthModal'));
+const UploadProgressModal = lazy(() => import('../library/ui/UploadProgressModal').then(m => ({ default: m.UploadProgressModal })));
 const ScrapActionModal = lazy(() => import('../modals/ScrapActionModal').then(m => ({ default: m.ScrapActionModal })));
 const ScrapViewerModal = lazy(() => import('../modals/ScrapViewerModal').then(m => ({ default: m.ScrapViewerModal })));
 const ScrapDeleteModal = lazy(() => import('../modals/ScrapDeleteModal').then(m => ({ default: m.ScrapDeleteModal })));
 const ScrapInputModal = lazy(() => import('../modals/ScrapInputModal').then(m => ({ default: m.ScrapInputModal })));
 const ShareModal = lazy(() => import('../sharing/ShareModal').then(m => ({ default: m.ShareModal })));
+const ShareAccessRequestModal = lazy(() => import('../sharing/ShareAccessRequestModal').then(m => ({ default: m.ShareAccessRequestModal })));
+const AccountEvolutionModal = lazy(() => import('../auth/AccountEvolutionModal').then(m => ({ default: m.AccountEvolutionModal })));
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ShareAccessRequestToast } from '../sharing/ShareAccessRequestToast';
-import { ShareAccessRequestModal } from '../sharing/ShareAccessRequestModal';
 import { useShareAccessRequests } from '../../hooks/useShareAccessRequests';
-import { AccountEvolutionModal } from '../auth/AccountEvolutionModal';
 
 interface GlobalConfirmData {
   isOpen: boolean;

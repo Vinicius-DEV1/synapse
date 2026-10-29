@@ -24,8 +24,11 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
+            if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) {
               return 'react-vendor';
+            }
+            if (id.includes('lucide-react')) {
+              return 'lucide';
             }
             if (id.includes('@tiptap')) {
               return 'tiptap';
@@ -41,6 +44,9 @@ export default defineConfig({
             }
             if (id.includes('firebase')) {
               return 'firebase';
+            }
+            if (id.includes('@xenova/transformers') || id.includes('onnxruntime-web')) {
+              return 'transformers';
             }
           }
         }
