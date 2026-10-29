@@ -309,3 +309,58 @@ export function MyComponent() {
   );
 }
 ```
+
+---
+
+## 14. Project Directory Structure & Core CLI Commands
+
+### 14.1 Directory Structure
+```
+synapse/
+├── docs/                      # Technical documentation, guides, and review reports
+├── public/                    # Static assets, fonts, icons, and WASM binaries
+├── src/                       # Application source code (React 19 + TypeScript)
+│   ├── api/                   # Multiplatform abstraction contracts (Tauri IPC vs Web API)
+│   │   ├── contracts/         # Domain API interfaces
+│   │   ├── tauri/             # Desktop implementations using @tauri-apps/api
+│   │   └── web/               # Web/IndexedDB implementations using idb and WebCrypto
+│   ├── components/            # UI presentation layer and feature modules
+│   │   ├── anki/              # Spaced repetition flashcards (FSRS engine)
+│   │   ├── calendar/          # Calendar and task scheduling
+│   │   ├── culture/           # Culture & video study studio
+│   │   ├── editor/            # TipTap / ProseMirror core editor
+│   │   ├── editor-extensions/ # Custom TipTap nodes, blocks, widgets, formulas
+│   │   ├── files/             # Encrypted file vault and previewers
+│   │   ├── finance/           # Personal finance tracker and charts
+│   │   ├── focus/             # Pomodoro timers, alarms, and Lo-Fi studio
+│   │   ├── habits/            # Habit trackers and streak heatmaps
+│   │   ├── library/           # PDF and EPUB readers with OCR
+│   │   ├── modals/            # Shared dialogs, AI prompts, and global search
+│   │   ├── practice/          # Language immersion and AI tutor
+│   │   ├── questions/         # Interactive question solver
+│   │   ├── settings/          # Application configuration tabs
+│   │   └── vault/             # Zero-knowledge credential and password vault
+│   ├── hooks/                 # Reusable React state & lifecycle orchestration hooks
+│   ├── i18n/                  # Typed internationalization engine and locale dictionaries
+│   ├── services/              # Domain services, algorithms, crypto, sync, and storage
+│   ├── store/                 # Global state management (commands, reducer, contexts)
+│   ├── types/                 # Shared TypeScript domain models and schemas
+│   └── utils/                 # Pure utility helpers (binary, dates, colors, formatting)
+├── src-tauri/                 # Tauri v2 native desktop backend (Rust 2021)
+└── caderno-mobile-webview/    # Mobile companion shell (Expo / React Native)
+```
+
+### 14.2 Core CLI Commands
+| Command | Purpose |
+| :--- | :--- |
+| `npm run dev` | Launch Vite development server with HMR at `http://localhost:35174` |
+| `npm run build` | Full production build: typecheck (`tsc -b`) and bundle (`vite build`) |
+| `npm run build:web` | Build static SPA bundle for Web / PWA deployment into `dist-web` |
+| `npm run lint` | Run ESLint across entire codebase (`eslint .`) |
+| `npm test` | Run complete Vitest regression test suite (`vitest run`, 353 test files) |
+| `npx vitest run <path>` | Run fast targeted tests for a specific module (sub-second feedback) |
+| `npx vitest related --run <files>` | Run tests impacted by modified files |
+| `npx tsc -b --noEmit` | Strict TypeScript project type check without code emission |
+| `npm run tauri dev` | Launch Tauri v2 desktop application in development mode with live reload |
+| `npm run tauri build` | Compile optimized native desktop release bundle (`.deb`, `.AppImage`, etc.) |
+
