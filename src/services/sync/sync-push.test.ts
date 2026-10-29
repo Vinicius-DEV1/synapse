@@ -214,4 +214,27 @@ describe('sync-push service', () => {
     expect(getModifiedRowsMock).toHaveBeenCalledWith('pages', 4000);
     expect(getTableMock).not.toHaveBeenCalled();
   });
+
+  it('compresses large payloads exceeding MAX_PAYLOAD_BYTES and sets isCompressed flag', async () => {
+    localStorage.setItem('caderno_sync_fix_deletions_v1', 'true');
+    syncUtils.setTableLastSyncTime('push', 'pages', 0);
+
+    const largeContent = 'a'.repeat(950_000);
+    const mockBatch = {
+      set: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
+    };
+    (firestore.writeBatch as any).mockReturnValue(mockBatch);
+
+    (window as any).api.sync.getTable = vi.fn().mockResolvedValue([
+      { id: 'p_large', content: largeContent, updated_at: new Date(1000).toISOString() }
+    ]);
+
+    await pushAllToCloud({ notes: cryptoKey }, ['pages']);
+
+    expect(mockBatch.set).toHaveBeenCalledTimes(1);
+    const pushedData = mockBatch.set.mock.calls[0][1];
+    expect(pushedData.isCompressed).toBe(true);
+    expect(typeof pushedData.encryptedData).toBe('string');
+  });
 });

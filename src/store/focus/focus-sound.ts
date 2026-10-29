@@ -2,11 +2,11 @@
  * Web Audio procedural synthesis for Focus timers and alarms.
  */
 
-function isSoundGloballyEnabled(): boolean {
+export function isSoundGloballyEnabled(): boolean {
   try {
     return typeof localStorage !== 'undefined' && localStorage.getItem('soundEnabled') !== 'false';
   } catch {
-    return true; // Default to enabled if localStorage is blocked by sandbox or security restrictions
+    return true;
   }
 }
 

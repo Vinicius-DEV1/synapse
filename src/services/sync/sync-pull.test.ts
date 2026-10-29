@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { pullAllFromCloud, listenForCloudSyncSignal } from './sync-pull';
 import { importHexKey, encryptText } from '../crypto';
+import { uint8ArrayToBase64 } from '../../utils/binary';
 import * as syncMonitor from './sync-monitor';
 import * as syncUtils from './sync-utils';
 import * as firestore from 'firebase/firestore';
@@ -205,5 +206,51 @@ describe('sync-pull service', () => {
     expect(firestore.onSnapshot).toHaveBeenCalled();
     expect(callback).toHaveBeenCalledWith('remote-device-123');
     expect(typeof unsubscribe).toBe('function');
+  });
+
+  it('correctly decompresses and upserts remote documents flagged with isCompressed', async () => {
+    const remotePageData = {
+      title: 'Compressed Cloud Note',
+      content: '<p>Compressed body content</p>',
+    };
+    const jsonStr = JSON.stringify(remotePageData);
+    const stream = new Response(jsonStr).body!.pipeThrough(new CompressionStream('gzip'));
+    const buffer = await new Response(stream).arrayBuffer();
+    const b64 = uint8ArrayToBase64(new Uint8Array(buffer));
+    const encrypted = await encryptText(b64, cryptoKey);
+
+    const mockDocSnap = {
+      id: 'cloud-compressed-1',
+      data: () => ({
+        encryptedData: encrypted,
+        isCompressed: true,
+        updatedAt: '2026-08-25T18:00:00.000Z',
+        createdAt: '2026-08-25T10:00:00.000Z',
+      }),
+    };
+
+    (firestore.getDocs as any).mockImplementation((q: any) => {
+      const collectionPath = q.args?.[0]?.path || q.path;
+      if (collectionPath === 'pages') {
+        return Promise.resolve({
+          empty: false,
+          docs: [mockDocSnap],
+        });
+      }
+      return Promise.resolve({ empty: true, docs: [] });
+    });
+
+    (window as any).api.sync.getRow = vi.fn().mockResolvedValue(null);
+
+    await pullAllFromCloud({ notes: cryptoKey });
+
+    expect(window.api.sync.upsertRow).toHaveBeenCalledWith(
+      'pages',
+      expect.objectContaining({
+        id: 'cloud-compressed-1',
+        title: 'Compressed Cloud Note',
+        content: '<p>Compressed body content</p>',
+      })
+    );
   });
 });

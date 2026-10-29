@@ -3,7 +3,6 @@ import { X, Cloud, HardDrive, BookOpen, Clock, Info, Tag, AlertCircle, CheckCirc
 import type { LibraryBook } from '../../../types';
 import { Modal } from '../../ui/Modal';
 import { triggerToast } from '../../ui/ToastContext';
-import { autoEnrichBookMetadata } from '../../../services/library/book-metadata-enricher';
 
 export interface BookInfoModalProps {
   book: LibraryBook;
@@ -50,6 +49,7 @@ export default function BookInfoModal({ book, onClose, onUpdateBook }: BookInfoM
   const handleEnrichMetadata = async () => {
     setIsEnriching(true);
     try {
+      const { autoEnrichBookMetadata } = await import('../../../services/library/book-metadata-enricher');
       const updates = await autoEnrichBookMetadata(currentBook, { allowAI: true });
       if (updates) {
         if (isEditing) {

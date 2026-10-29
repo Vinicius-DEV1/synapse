@@ -48,6 +48,12 @@ global.IntersectionObserver = class IntersectionObserver {
   takeRecords = vi.fn().mockReturnValue([]);
 } as any;
 
+// Use standard Web Blob in jsdom so that binary streams and CompressionStream operate correctly
+if (typeof globalThis.Blob !== 'undefined') {
+  window.Blob = globalThis.Blob as any;
+  global.Blob = globalThis.Blob as any;
+}
+
 // HTMLMediaElement mock
 window.HTMLMediaElement.prototype.load = vi.fn();
 window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);

@@ -285,6 +285,7 @@ export interface ICadernoAPI {
     createAlarm: (alarm: Partial<Alarm>) => Promise<{ success: boolean; id?: number }>;
     updateAlarm: (id: number, alarm: Partial<Alarm>) => Promise<{ success: boolean }>;
     deleteAlarm: (id: number) => Promise<{ success: boolean }>;
+    setAppIcon?: (type: 'normal' | 'zzz') => Promise<void>;
   };
 
   calendar?: {
