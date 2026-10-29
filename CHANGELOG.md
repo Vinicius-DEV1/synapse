@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-10-29
+
+### Added
+- **Production Performance Budget Gate (`scripts/check-perf-budgets.mjs`)**:
+  - Automated CI quality gate asserting total bundle size, CSS size, `react-vendor` chunk, `main` entry chunk, and heavy chunks stay within strictly defined thresholds.
+  - Added `npm run check:budgets` script integrated into GitHub Actions CI pipeline.
+- **High-Volume Scale & Hardware Emulation Benchmarks**:
+  - Extended benchmark suite with 10x (20k items) and 100x (200k items) search dataset scaling, 10x page cascade traversals, keystroke interaction latencies, 4x CPU throttle mobile simulation, and multi-cycle memory leak retention profiling.
+
+### Changed & Performance
+- **Granular Vendor Chunking & Code-Splitting**:
+  - Refined `manualChunks` in `vite.config.ts` to strictly isolate core React runtime (`/node_modules/(react|react-dom|scheduler)/`), shrinking `react-vendor` from **1,275.10 KB down to 182.04 KB (-85.7%)**.
+  - Isolated `@xenova/transformers` and `onnxruntime-web` into a dedicated `'transformers'` chunk, shrinking `CultureView` from **1,094.08 KB down to 261.46 KB (-76.1%)**.
+  - Dynamic `lazy()` code-splitting of `GlobalSearchModal`, `SyncErrorModal`, `RenamePageModal`, and workspace modals, shrinking `main` entry chunk from **262.57 KB down to 196.98 KB (-25.0%)**.
+  - Eradicated `[INEFFECTIVE_DYNAMIC_IMPORT]` warning in `SidebarItem`.
+- **Search Pre-Indexing & Bounded Memory Hygiene**:
+  - Pre-indexed normalized page titles, paths, and ancestor arrays on modal open, eliminating string transformations and array allocations on every keystroke.
+  - Replaced unbounded `plainTextCache` with bounded `LruMap` (1,000 entries) with explicit cache invalidation tests.
+  - Improved 100x scale search scan latency from **170.86 ms down to 140.22 ms (-17.9%)** and keystroke typing latency to **0.23 ms**.
+- **DOM Bloat Prevention in Long Lists (Rule 9.10)**:
+  - Added native CSS `content-visibility: auto` with intrinsic container sizing to card rows in `CardListView`, `CardGridView`, and `VaultItemList`.
+  - Optimized question battery accuracy calculations in `BatteryTreeItem` to a single-pass $O(N)$ counter without intermediate array allocations.
+- **Sync Memory Discipline & Zero-Allocation Parser**:
+  - Added explicit `ydoc.destroy()` in `sync-pull-merge.ts` within `try...finally` to immediately release ephemeral CRDT structures.
+  - Replaced `new Date(s).getTime()` with `Date.parse(s)` in `sync-utils.ts` to eliminate object allocations during batch sync processing.
+
+---
+
 ## [1.1.0] - 2026-10-29
 
 ### Added

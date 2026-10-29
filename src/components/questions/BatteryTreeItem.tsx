@@ -51,14 +51,25 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
   const isExpanded = expandedBatteryIds.has(node.id);
   const isHighlighted = node.id === highlightedBatteryId;
 
-  // Stats calculation
+  // Stats calculation: single-pass without array allocations
   const totalQuestions = hasChildren ? node.totalDescendantQuestionsCount : node.questions.length;
-  const answeredCount = hasChildren
-    ? node.totalDescendantAnsweredCount
-    : node.questions.filter((q) => node.latestAttempts?.[q.id]).length;
-  const correctCount = hasChildren
-    ? node.totalDescendantCorrectCount
-    : node.questions.filter((q) => node.latestAttempts?.[q.id]?.is_correct).length;
+  let answeredCount = 0;
+  let correctCount = 0;
+
+  if (hasChildren) {
+    answeredCount = node.totalDescendantAnsweredCount;
+    correctCount = node.totalDescendantCorrectCount;
+  } else if (node.latestAttempts) {
+    const attempts = node.latestAttempts;
+    for (let i = 0; i < node.questions.length; i++) {
+      const att = attempts[node.questions[i].id];
+      if (att) {
+        answeredCount++;
+        if (att.is_correct) correctCount++;
+      }
+    }
+  }
+
   const accuracy = hasChildren
     ? node.aggregateAccuracyRate
     : answeredCount > 0
@@ -66,7 +77,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
       : 0;
 
   return (
-    <div className="w-full">
+    <div className="w-full [content-visibility:auto] [contain-intrinsic-size:120px]">
       <div
         id={`battery-card-${node.id}`}
         className={`group rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${

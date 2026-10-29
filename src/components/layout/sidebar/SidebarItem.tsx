@@ -1,10 +1,10 @@
-import { useState, memo } from 'react';
+import { useState, memo, lazy, Suspense } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ChevronRight, ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
 import { getStoreDispatch, getStoreState } from '../../../store/useStore';
 import type { Page } from '../../../types';
 import EmojiPopover from '../../EmojiPopover';
-import RenamePageModal from '../../modals/RenamePageModal';
+const RenamePageModal = lazy(() => import('../../modals/RenamePageModal'));
 import { useI18n } from '../../../i18n';
 
 export interface SidebarItemProps {
@@ -178,12 +178,14 @@ function SidebarItemComponent({
 
       {/* Rename Modal */}
       {showRenameModal && (
-        <RenamePageModal
-          isOpen={showRenameModal}
-          onClose={() => setShowRenameModal(false)}
-          currentTitle={page.title}
-          onRename={handleRenameSubmit}
-        />
+        <Suspense fallback={null}>
+          <RenamePageModal
+            isOpen={showRenameModal}
+            onClose={() => setShowRenameModal(false)}
+            currentTitle={page.title}
+            onRename={handleRenameSubmit}
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -66,7 +66,7 @@ function SortableVaultItem({ item, isSelected, onSelect, isDragDisabled }: Sorta
       style={style}
       data-testid={`vault-item-${item.id}`}
       onClick={() => onSelect(item)}
-      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer mb-1 transition-all group select-none ${
+      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer mb-1 transition-all group select-none [content-visibility:auto] [contain-intrinsic-size:64px] ${
         isSelected
           ? 'bg-brand-500/20 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
           : 'hover:bg-white/5'

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Home, PanelLeftClose, PanelLeft, Shield, ChevronUp, ChevronDown, LayoutDashboard, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import type { Tab, Page } from '../../../types';
@@ -9,8 +9,13 @@ import { isDesktopApp } from '../../../services/platform';
 import { windowService } from '../../../services/windowService';
 import { useI18n } from '../../../i18n';
 import { WorkspaceSwitcher } from '../../workspace/WorkspaceSwitcher';
-import { CreateWorkspaceModal } from '../../workspace/CreateWorkspaceModal';
-import { WorkspaceMembersModal } from '../../workspace/WorkspaceMembersModal';
+
+const CreateWorkspaceModal = lazy(() =>
+  import('../../workspace/CreateWorkspaceModal').then((m) => ({ default: m.CreateWorkspaceModal }))
+);
+const WorkspaceMembersModal = lazy(() =>
+  import('../../workspace/WorkspaceMembersModal').then((m) => ({ default: m.WorkspaceMembersModal }))
+);
 
 // UI navigates to 'settings' module as a tab,
 // extending Tab['module'] support.
@@ -206,27 +211,31 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         </div>
       </div>
 
-      <CreateWorkspaceModal
-        isOpen={isCreateWsOpen}
-        onClose={() => setIsCreateWsOpen(false)}
-        masterKey={state.moduleKeys['notes'] || state.moduleKeys['core'] || null}
-        onWorkspaceCreated={(wsId) => {
-          dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId });
-          setIsCreateWsOpen(false);
-        }}
-      />
+      <Suspense fallback={null}>
+        {isCreateWsOpen && (
+          <CreateWorkspaceModal
+            isOpen={isCreateWsOpen}
+            onClose={() => setIsCreateWsOpen(false)}
+            masterKey={state.moduleKeys['notes'] || state.moduleKeys['core'] || null}
+            onWorkspaceCreated={(wsId) => {
+              dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId });
+              setIsCreateWsOpen(false);
+            }}
+          />
+        )}
 
-      {state.activeWorkspaceId && (
-        <WorkspaceMembersModal
-          isOpen={isMembersWsOpen}
-          onClose={() => setIsMembersWsOpen(false)}
-          workspaceId={state.activeWorkspaceId}
-          onWorkspaceDeleted={() => {
-            dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: null });
-            setIsMembersWsOpen(false);
-          }}
-        />
-      )}
+        {state.activeWorkspaceId && isMembersWsOpen && (
+          <WorkspaceMembersModal
+            isOpen={isMembersWsOpen}
+            onClose={() => setIsMembersWsOpen(false)}
+            workspaceId={state.activeWorkspaceId}
+            onWorkspaceDeleted={() => {
+              dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: null });
+              setIsMembersWsOpen(false);
+            }}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

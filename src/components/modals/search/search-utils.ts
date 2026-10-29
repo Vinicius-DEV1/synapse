@@ -20,10 +20,12 @@ export function escapeRegex(str: string): string {
 }
 
 import { cleanHtmlText } from '../../../utils/content-extractor';
+import { LruMap } from '../../../utils/lru-cache';
 
 export const stripHtml = cleanHtmlText;
 
-const plainTextCache = new Map<string, string>();
+const PLAIN_TEXT_CACHE_LIMIT = 1000;
+const plainTextCache = new LruMap<string, string>(PLAIN_TEXT_CACHE_LIMIT);
 
 export function getCachedPlainText(pageId: string, content: string | undefined): string {
   if (!content) return '';
@@ -33,4 +35,14 @@ export function getCachedPlainText(pageId: string, content: string | undefined):
   const stripped = stripHtml(content);
   plainTextCache.set(key, stripped);
   return stripped;
+}
+
+/** Invalidate or clear the plain text cache to prevent memory accumulation */
+export function clearPlainTextCache(): void {
+  plainTextCache.clear();
+}
+
+/** Returns the active count of cached plain text records */
+export function getPlainTextCacheSize(): number {
+  return plainTextCache.size;
 }

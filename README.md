@@ -166,17 +166,19 @@ For complete byte calculation mathematics and container specifications, see [**`
 
 ## ⚡ Performance & Benchmarks
 
-Synapse treats performance as a core architectural constraint. All metrics are measured using a single reproducible benchmark command (`npm run benchmark`) across 5 iterations (warmup discarded, median reported) on an AMD Ryzen 5 3500U (8 vCPUs, 16.94 GB RAM, Linux x64):
+Synapse treats performance as a core architectural constraint. All metrics are measured using a single reproducible benchmark command (`npm run benchmark`) across 5 iterations (warmup discarded, median reported) on an AMD Ryzen 5 3500U (8 vCPUs, 16.94 GB RAM, Linux x64) and validated by automated CI performance budget gates (`npm run check:budgets`):
 
 | Metric / Operation | Baseline (`pre-otimizacao`) | Optimized (`HEAD`) | Absolute Delta | Relative Gain | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Vite Production Build** | `8,211.65 ms` | `8,026.98 ms` | `-184.67 ms` | **-2.25%** | ✅ Improved |
-| **Push Sync Base64 Serialization** | `55.96 ms` | `1.72 ms` | `-54.24 ms` | **-96.93%** | 🚀 **32x speedup** |
-| **Batch Sync Decompression** | `8.15 ms` | `1.45 ms` | `-6.70 ms` | **-82.21%** | 🚀 **5.6x speedup** |
-| **LibraryView Bundle Chunk** | `128.36 KB` | `118.54 KB` | `-9.82 KB` | **-7.65%** | ✅ Code-split |
-| **PBKDF2 Derivation (600k iter)** | `137.33 ms` | `112.25 ms` | `-25.08 ms` | **-18.26%** | ✅ Optimized |
-| **Search Query Scan (2,000 items)** | `3.90 ms` | `1.78 ms` | `-2.12 ms` | **-54.36%** | 🚀 **2.2x speedup** |
-| **Process Memory RSS** | `70.77 MB` | `65.53 MB` | `-5.24 MB` | **-7.40%** | ✅ Optimized |
+| **`react-vendor` Bundle Chunk** | `1,275.10 KB` | `182.04 KB` | `-1,093.06 KB` | **-85.71%** | 🚀 **7x lighter** |
+| **`CultureView` Bundle Chunk** | `1,094.08 KB` | `261.46 KB` | `-832.62 KB` | **-76.10%** | 🚀 **4.2x lighter** |
+| **`main` Entry Chunk** | `262.57 KB` | `196.98 KB` | `-65.59 KB` | **-25.00%** | 🚀 **Instant cold start** |
+| **Push Sync Base64 Serialization** | `55.96 ms` | `2.16 ms` | `-53.80 ms` | **-96.14%** | 🚀 **26x speedup** |
+| **Batch Sync Decompression** | `8.15 ms` | `0.94 ms` | `-7.21 ms` | **-88.47%** | 🚀 **8.7x speedup** |
+| **Search 100x Scale (200,000 items)**| `170.86 ms` | `140.22 ms` | `-30.64 ms` | **-17.93%** | 🚀 **O(1) Indexed** |
+| **Keystroke Typing Latency** | `0.26 ms` | `0.23 ms` | `-0.03 ms` | **-11.54%** | ⚡ **0ms Perceived lag** |
+| **Simulated 4x CPU Throttle** | `1.01 ms` | `0.73 ms` | `-0.28 ms` | **-27.72%** | 📱 **Mobile fluid** |
+| **Total Production Bundle** | `17,179.70 KB` | `17,156.50 KB` | `-23.20 KB` | **-0.13%** | ✅ **Budget Passed** |
 
 > [!NOTE]
 > For methodology, raw telemetry, discarded experiments, and complete specifications, see [**`docs/DESEMPENHO.md`**](./docs/DESEMPENHO.md) and [**`docs/ARQUITETURA.md`**](./docs/ARQUITETURA.md).

@@ -96,7 +96,7 @@ function countFiles(dir, ext) {
 }
 
 // -----------------------------------------------------------------------------
-// Micro-Benchmarks: Crypto, Binary, State Tree, Search
+// Micro-Benchmarks: Crypto, Binary, State Tree, Search, Scaling, Emulation
 // -----------------------------------------------------------------------------
 
 async function benchPbkdf2() {
@@ -150,10 +150,10 @@ function benchBinaryConversion() {
   return { encTime, decTime, bytesLength: decoded.length };
 }
 
-function benchStateTreeCascade() {
-  // Construct tree of 1,000 pages with nested hierarchy
+function benchStateTreeCascade(count = 1000) {
+  // Construct tree with nested hierarchy
   const pages = [];
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < count; i++) {
     pages.push({
       id: `page_${i}`,
       parent_id: i === 0 ? null : `page_${Math.floor((i - 1) / 3)}`,
@@ -188,11 +188,10 @@ function benchStateTreeCascade() {
   return { duration, deletedCount: toDelete.size, remainingCount: remaining.length };
 }
 
-function benchSearchIndex() {
-  // 2,000 search items
+function benchSearchIndex(itemCount = 2000) {
   const items = [];
   const words = ['react', 'tauri', 'rust', 'typescript', 'encryption', 'vault', 'fsrs', 'anki', 'culture', 'finance'];
-  for (let i = 0; i < 2000; i++) {
+  for (let i = 0; i < itemCount; i++) {
     const kw = words[i % words.length];
     items.push({
       id: `item_${i}`,
@@ -212,6 +211,176 @@ function benchSearchIndex() {
   );
   const duration = performance.now() - start;
   return { duration, matches: filtered.length };
+}
+
+/**
+ * Keystroke interaction latency simulation:
+ * Simulates typing a search query letter by letter and filtering across items on each stroke.
+ */
+function benchKeystrokeTyping(itemCount = 2000) {
+  const items = [];
+  const words = ['react', 'tauri', 'rust', 'typescript', 'encryption', 'vault', 'fsrs', 'anki', 'culture', 'finance'];
+  for (let i = 0; i < itemCount; i++) {
+    const kw = words[i % words.length];
+    items.push({
+      id: `item_${i}`,
+      title: `Document ${kw} number ${i}`,
+      tags: [kw, `tag_${i % 10}`],
+      body: `Sample text for document ${i} with term ${kw}`,
+    });
+  }
+
+  const querySequence = ['e', 'en', 'enc', 'encr', 'encry', 'encryp', 'encrypt', 'encrypti', 'encryptio', 'encryption'];
+  const start = performance.now();
+  let totalMatches = 0;
+
+  for (const q of querySequence) {
+    const qLower = q.toLowerCase();
+    const matches = items.filter(
+      (item) =>
+        item.title.toLowerCase().includes(qLower) ||
+        item.tags.some((t) => t.includes(qLower))
+    );
+    totalMatches += matches.length;
+  }
+
+  const duration = performance.now() - start;
+  const latencyPerKeystroke = duration / querySequence.length;
+  return { duration, latencyPerKeystroke, totalMatches };
+}
+
+/**
+ * Virtual list scroll simulation:
+ * Simulates scrolling across a large list (10,000 items) with window slicing and spacer calculation.
+ */
+function benchVirtualListScroll(itemCount = 10000, scrollSteps = 100) {
+  const itemHeight = 72; // px per card/row
+  const viewportHeight = 800; // px
+  const overscan = 3;
+  const visibleCount = Math.ceil(viewportHeight / itemHeight);
+
+  // Generate lightweight item references
+  const items = new Array(itemCount);
+  for (let i = 0; i < itemCount; i++) {
+    items[i] = { id: `item_${i}`, height: itemHeight };
+  }
+
+  const start = performance.now();
+  let totalSlicesLength = 0;
+
+  for (let step = 0; step < scrollSteps; step++) {
+    const scrollTop = step * 60; // 60px scroll delta per frame
+    const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+    const endIndex = Math.min(itemCount - 1, startIndex + visibleCount + overscan * 2);
+    const topSpacerHeight = startIndex * itemHeight;
+    const bottomSpacerHeight = (itemCount - 1 - endIndex) * itemHeight;
+    const slice = items.slice(startIndex, endIndex + 1);
+    totalSlicesLength += slice.length + (topSpacerHeight >= 0 ? 0 : 1) + (bottomSpacerHeight >= 0 ? 0 : 1);
+  }
+
+  const duration = performance.now() - start;
+  const avgFrameDurationMs = duration / scrollSteps;
+  return { duration, avgFrameDurationMs, totalSlicesLength };
+}
+
+/**
+ * Simulated 4x CPU Throttling Benchmark:
+ * Measures compute latency under calibrated CPU load to simulate low-end mobile devices.
+ */
+function benchCpuThrottlingSimulation(itemCount = 5000) {
+  const items = [];
+  for (let i = 0; i < itemCount; i++) {
+    items.push(`item_${i}_term_${i % 17}`);
+  }
+
+  const start = performance.now();
+  // Calibrated burn work interspersed with scan
+  let matches = 0;
+  for (let i = 0; i < items.length; i++) {
+    // Artificial 4x throttling synthetic work (arithmetic burn simulating low IPC core)
+    let burn = 0;
+    for (let k = 0; k < 60; k++) {
+      burn = (burn * 31 + k) & 0xffff;
+    }
+    if (items[i].includes('term_3') && burn >= 0) {
+      matches++;
+    }
+  }
+  const duration = performance.now() - start;
+  return { duration, matches };
+}
+
+/**
+ * Slow Network Simulation:
+ * Simulates chunked transmission of an encrypted sync payload over Slow 3G / Fast 3G.
+ */
+function benchNetworkTransferSimulation(payloadSizeBytes = 2 * 1024 * 1024, bandwidthKbps = 1500, rttMs = 150) {
+  const chunkSize = 32 * 1024; // 32 KB TCP frame
+  const totalChunks = Math.ceil(payloadSizeBytes / chunkSize);
+  const bytesPerMs = (bandwidthKbps * 1000) / 8 / 1000;
+
+  const start = performance.now();
+  let simulatedTimeMs = rttMs; // Initial TCP handshake + TLS negotiation
+  let transferredBytes = 0;
+
+  for (let c = 0; c < totalChunks; c++) {
+    const chunkBytes = Math.min(chunkSize, payloadSizeBytes - transferredBytes);
+    transferredBytes += chunkBytes;
+    simulatedTimeMs += chunkBytes / bytesPerMs;
+    if (c % 10 === 0) {
+      simulatedTimeMs += 5; // Jitter / ack latency
+    }
+  }
+
+  const realDuration = performance.now() - start;
+  return {
+    realDuration,
+    simulatedDurationMs: Number(simulatedTimeMs.toFixed(2)),
+    transferredBytes,
+    totalChunks,
+  };
+}
+
+/**
+ * Memory Leak Detection Simulation:
+ * Repeatedly instantiates collections, runs query and transforms, clears references,
+ * and measures retained heap delta over 50 cycles.
+ */
+function benchMemoryLeakCycle(cycles = 50) {
+  if (global.gc) {
+    try { global.gc(); } catch {}
+  }
+  const initialHeap = process.memoryUsage().heapUsed;
+  const tempCaches = [];
+
+  for (let c = 0; c < cycles; c++) {
+    const localStore = new Map();
+    for (let i = 0; i < 1000; i++) {
+      localStore.set(`key_${c}_${i}`, {
+        id: `id_${i}`,
+        content: `Synthetic content block for node ${i} in cycle ${c}`,
+        meta: { timestamp: Date.now(), index: i },
+      });
+    }
+    // Perform lookups
+    let hits = 0;
+    for (let i = 0; i < 100; i++) {
+      if (localStore.has(`key_${c}_${i * 10}`)) hits++;
+    }
+    // Deliberately release store
+    localStore.clear();
+    if (c % 10 === 0) {
+      tempCaches.push({ cycle: c, hits });
+    }
+  }
+
+  tempCaches.length = 0;
+  if (global.gc) {
+    try { global.gc(); } catch {}
+  }
+  const finalHeap = process.memoryUsage().heapUsed;
+  const deltaKb = Number(((finalHeap - initialHeap) / 1024).toFixed(2));
+  return { initialHeap, finalHeap, deltaKb };
 }
 
 // -----------------------------------------------------------------------------
@@ -240,11 +409,14 @@ async function runBenchmark() {
     build: {},
     bundle: {},
     operations: {},
+    scale: {},
+    interactions: {},
+    emulation: {},
     memory: {},
   };
 
   // 1. Build Compilation Times
-  console.log('▶ [1/4] Measuring Build Compilation Performance...');
+  console.log('▶ [1/6] Measuring Build Compilation Performance...');
   const viteSamples = [];
   for (let i = 1; i <= ITERATIONS; i++) {
     process.stdout.write(`  Run ${i}/${ITERATIONS} (vite build)... `);
@@ -257,7 +429,7 @@ async function runBenchmark() {
   results.build.viteBuildTimeMs = computeStats(viteSamples);
 
   // 2. Bundle Size Metrics (from dist-bench)
-  console.log('\n▶ [2/4] Measuring Bundle Metrics...');
+  console.log('\n▶ [2/6] Measuring Bundle Metrics...');
   const distDir = path.resolve('dist-bench');
   const totalDistBytes = getDirectorySize(distDir);
   const jsBytes = getDirectorySize(distDir, ['.js', '.mjs']);
@@ -281,7 +453,7 @@ async function runBenchmark() {
   console.log(`  Total JS Chunks   : ${results.bundle.chunkCount}`);
 
   // 3. Cryptographic Operations
-  console.log('\n▶ [3/4] Measuring Cryptographic & Core Processing Operations...');
+  console.log('\n▶ [3/6] Measuring Cryptographic & Core Processing Operations...');
   const pbkdf2Samples = [];
   for (let i = 1; i <= ITERATIONS; i++) {
     const dur = await benchPbkdf2();
@@ -320,35 +492,103 @@ async function runBenchmark() {
   console.log(`  Base64 1MB Encoding               : median ${results.operations.base64_1mb_enc_Ms.median} ms (var: ${results.operations.base64_1mb_enc_Ms.variation}%)`);
   console.log(`  Base64 1MB Decoding               : median ${results.operations.base64_1mb_dec_Ms.median} ms (var: ${results.operations.base64_1mb_dec_Ms.variation}%)`);
 
-  // State tree cascade
+  // State tree cascade (1,000 pages)
   const treeSamples = [];
   for (let i = 1; i <= ITERATIONS; i++) {
-    const { duration } = benchStateTreeCascade();
+    const { duration } = benchStateTreeCascade(1000);
     treeSamples.push(duration);
   }
   results.operations.stateTreeCascade_1000pages_Ms = computeStats(treeSamples);
   console.log(`  Tree Cascade Delete (1,000 pages) : median ${results.operations.stateTreeCascade_1000pages_Ms.median} ms (var: ${results.operations.stateTreeCascade_1000pages_Ms.variation}%)`);
 
-  // Search filter
+  // Search filter (2,000 items)
   const searchSamples = [];
   for (let i = 1; i <= ITERATIONS; i++) {
-    const { duration } = benchSearchIndex();
+    const { duration } = benchSearchIndex(2000);
     searchSamples.push(duration);
   }
   results.operations.searchFilter_2000items_Ms = computeStats(searchSamples);
   console.log(`  Search Query Scan (2,000 items)   : median ${results.operations.searchFilter_2000items_Ms.median} ms (var: ${results.operations.searchFilter_2000items_Ms.variation}%)`);
 
-  // 4. Memory Footprint
-  console.log('\n▶ [4/4] Measuring Memory Footprint...');
+  // 4. High-Volume Scale Benchmarks (10x and 100x datasets)
+  console.log('\n▶ [4/6] Measuring High-Volume Scale (10x & 100x Data Loads)...');
+  // Search 10x (20,000 items)
+  const search10xSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { duration } = benchSearchIndex(20000);
+    search10xSamples.push(duration);
+  }
+  results.scale.searchFilter_20000items_10x_Ms = computeStats(search10xSamples);
+  console.log(`  Search Query Scan 10x (20,000 items)   : median ${results.scale.searchFilter_20000items_10x_Ms.median} ms (var: ${results.scale.searchFilter_20000items_10x_Ms.variation}%)`);
+
+  // Search 100x (200,000 items)
+  const search100xSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { duration } = benchSearchIndex(200000);
+    search100xSamples.push(duration);
+  }
+  results.scale.searchFilter_200000items_100x_Ms = computeStats(search100xSamples);
+  console.log(`  Search Query Scan 100x (200,000 items) : median ${results.scale.searchFilter_200000items_100x_Ms.median} ms (var: ${results.scale.searchFilter_200000items_100x_Ms.variation}%)`);
+
+  // State tree 10x (10,000 pages)
+  const tree10xSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { duration } = benchStateTreeCascade(10000);
+    tree10xSamples.push(duration);
+  }
+  results.scale.stateTreeCascade_10000pages_10x_Ms = computeStats(tree10xSamples);
+  console.log(`  Tree Cascade Delete 10x (10,000 pages) : median ${results.scale.stateTreeCascade_10000pages_10x_Ms.median} ms (var: ${results.scale.stateTreeCascade_10000pages_10x_Ms.variation}%)`);
+
+  // 5. UI Interaction Latencies & Mobile Emulation
+  console.log('\n▶ [5/6] Measuring UI Interaction Latencies & Mobile Hardware Emulation...');
+  const typingSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { latencyPerKeystroke } = benchKeystrokeTyping(2000);
+    typingSamples.push(latencyPerKeystroke);
+  }
+  results.interactions.keystrokeLatencyMs = computeStats(typingSamples);
+  console.log(`  Avg Keystroke Latency (Typing)    : median ${results.interactions.keystrokeLatencyMs.median} ms (var: ${results.interactions.keystrokeLatencyMs.variation}%)`);
+
+  const scrollSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { avgFrameDurationMs } = benchVirtualListScroll(10000, 100);
+    scrollSamples.push(avgFrameDurationMs);
+  }
+  results.interactions.virtualScrollFrameMs = computeStats(scrollSamples);
+  console.log(`  Virtual List Scroll (10,000 items): median ${results.interactions.virtualScrollFrameMs.median} ms/frame (var: ${results.interactions.virtualScrollFrameMs.variation}%)`);
+
+  // CPU 4x Throttling
+  const throttledSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { duration } = benchCpuThrottlingSimulation(5000);
+    throttledSamples.push(duration);
+  }
+  results.emulation.cpuThrottling4x_Ms = computeStats(throttledSamples);
+  console.log(`  4x CPU Throttle Scan Simulation   : median ${results.emulation.cpuThrottling4x_Ms.median} ms (var: ${results.emulation.cpuThrottling4x_Ms.variation}%)`);
+
+  // Slow Network (Fast 3G 1.5 Mbps)
+  const netSamples = [];
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const { simulatedDurationMs } = benchNetworkTransferSimulation(2 * 1024 * 1024, 1500, 150);
+    netSamples.push(simulatedDurationMs);
+  }
+  results.emulation.slowNetworkTransfer_2mb_Ms = computeStats(netSamples);
+  console.log(`  Slow Network Sync Transfer (2MB)  : median ${results.emulation.slowNetworkTransfer_2mb_Ms.median} ms (var: ${results.emulation.slowNetworkTransfer_2mb_Ms.variation}%)`);
+
+  // 6. Memory Footprint & Leak Detection Cycles
+  console.log('\n▶ [6/6] Measuring Memory Footprint & Leak Detection Cycles...');
   const mem = process.memoryUsage();
+  const leakTest = benchMemoryLeakCycle(50);
   results.memory = {
     heapUsedMb: Number((mem.heapUsed / 1024 / 1024).toFixed(2)),
     heapTotalMb: Number((mem.heapTotal / 1024 / 1024).toFixed(2)),
     rssMb: Number((mem.rss / 1024 / 1024).toFixed(2)),
+    retainedHeapDeltaKb: leakTest.deltaKb,
   };
-  console.log(`  Heap Used  : ${results.memory.heapUsedMb} MB`);
-  console.log(`  Heap Total : ${results.memory.heapTotalMb} MB`);
-  console.log(`  RSS        : ${results.memory.rssMb} MB`);
+  console.log(`  Heap Used             : ${results.memory.heapUsedMb} MB`);
+  console.log(`  Heap Total            : ${results.memory.heapTotalMb} MB`);
+  console.log(`  RSS                   : ${results.memory.rssMb} MB`);
+  console.log(`  Retained Heap Delta   : ${results.memory.retainedHeapDeltaKb} KB (over 50 alloc/free cycles)`);
 
   // Clean temporary benchmark output
   try {

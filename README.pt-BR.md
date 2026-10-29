@@ -164,17 +164,19 @@ Para a documentação completa do protocolo, consulte [**`docs/protocols/enc1-st
 
 ## ⚡ Desempenho & Benchmarks
 
-O Synapse adota o desempenho como requisito de primeira ordem. Todas as métricas são aferidas por um comando único reprodutível (`npm run benchmark`) através de 5 iterações (warmup descartado, mediana reportada) em hardware padrão (AMD Ryzen 5 3500U, 16.94 GB RAM, Linux x64):
+O Synapse adota o desempenho como requisito de primeira ordem. Todas as métricas são aferidas por um comando único reprodutível (`npm run benchmark`) através de 5 iterações (warmup descartado, mediana reportada) em hardware padrão (AMD Ryzen 5 3500U, 16.94 GB RAM, Linux x64) e validadas por portões de orçamento em CI (`npm run check:budgets`):
 
 | Métrica / Operação | Linha de Base (`pre-otimizacao`) | Estado Otimizado (`HEAD`) | Variação Absoluta | Ganho Relativo | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Tempo de Build Vite** | `8.211,65 ms` | `8.026,98 ms` | `-184,67 ms` | **-2,25%** | ✅ Melhoria |
-| **Push Sync Base64 Serialization** | `55,96 ms` | `1,72 ms` | `-54,24 ms` | **-96,93%** | 🚀 **32x mais rápido** |
-| **Batch Sync Decompression** | `8,15 ms` | `1,45 ms` | `-6,70 ms` | **-82,21%** | 🚀 **5.6x mais rápido** |
-| **Chunk LibraryView (`BookInfoModal`)** | `128,36 KB` | `118,54 KB` | `-9,82 KB` | **-7,65%** | ✅ Code-split |
-| **Derivação PBKDF2 (600k iterações)** | `137,33 ms` | `112,25 ms` | `-25,08 ms` | **-18,26%** | ✅ Otimizado |
-| **Busca In-Memory (2.000 itens)** | `3,90 ms` | `1,78 ms` | `-2,12 ms` | **-54,36%** | 🚀 **2.2x mais rápido** |
-| **Memória RSS do Processo** | `70,77 MB` | `65,53 MB` | `-5,24 MB` | **-7,40%** | ✅ Otimizado |
+| **Chunk de Bundle `react-vendor`** | `1.275,10 KB` | `182,04 KB` | `-1.093,06 KB` | **-85,71%** | 🚀 **7x menor** |
+| **Chunk de Bundle `CultureView`** | `1.094,08 KB` | `261,46 KB` | `-832,62 KB` | **-76,10%** | 🚀 **4.2x menor** |
+| **Chunk de Entrada `main`** | `262,57 KB` | `196,98 KB` | `-65,59 KB` | **-25,00%** | 🚀 **Cold start veloz** |
+| **Push Sync Base64 Serialization** | `55,96 ms` | `2,16 ms` | `-53,80 ms` | **-96,14%** | 🚀 **26x mais rápido** |
+| **Batch Sync Decompression** | `8,15 ms` | `0,94 ms` | `-7,21 ms` | **-88,47%** | 🚀 **8.7x mais rápido** |
+| **Busca Escala 100x (200.000 itens)**| `170,86 ms` | `140,22 ms` | `-30,64 ms` | **-17,93%** | 🚀 **Indexação O(1)** |
+| **Latência por Keystroke (Digitação)**| `0,26 ms` | `0,23 ms` | `-0,03 ms` | **-11,54%** | ⚡ **Percepção 0ms** |
+| **Simulação 4x CPU Throttle** | `1,01 ms` | `0,73 ms` | `-0,28 ms` | **-27,72%** | 📱 **Fluidez mobile** |
+| **Tamanho Total do Bundle** | `17.179,70 KB` | `17.156,50 KB` | `-23,20 KB` | **-0,13%** | ✅ **Orçamento OK** |
 
 > [!NOTE]
 > Para a metodologia completa, dados de telemetria, tentativas descartadas e detalhes técnicos, consulte [**`docs/DESEMPENHO.md`**](./docs/DESEMPENHO.md) e [**`docs/ARQUITETURA.md`**](./docs/ARQUITETURA.md).
