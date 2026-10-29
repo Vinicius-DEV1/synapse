@@ -4,7 +4,6 @@ import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../../typ
 import { Modal } from '../../ui/Modal';
 import { CoverPickerSection } from '../ui/CoverPickerSection';
 import { triggerToast } from '../../ui/ToastContext';
-import { autoEnrichBookMetadata } from '../../../services/library/book-metadata-enricher';
 
 export interface BookEditModalProps {
   book: LibraryBook;
@@ -51,6 +50,7 @@ export default function BookEditModal({
   const handleAutoFill = async () => {
     setEnriching(true);
     try {
+      const { autoEnrichBookMetadata } = await import('../../../services/library/book-metadata-enricher');
       const updates = await autoEnrichBookMetadata({
         id: book.id,
         file_path: book.file_path,
