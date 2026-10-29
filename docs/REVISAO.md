@@ -223,3 +223,4 @@ As melhorias de baixo e médio risco e alto ganho concreto devem ser aplicadas n
    - Tradução de comentários residuais em português para o inglês estrito estipulado no `AGENTS.md`.
 6. **Validação Contínua**:
    - Execução de `npm run lint`, `npx tsc -b --noEmit` e testes direcionados a cada commit atômico.
+

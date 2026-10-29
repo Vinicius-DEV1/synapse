@@ -2,9 +2,16 @@
  * Web Audio procedural synthesis for Focus timers and alarms.
  */
 
+function isSoundGloballyEnabled(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('soundEnabled') !== 'false';
+  } catch {
+    return true; // Default to enabled if localStorage is blocked by sandbox or security restrictions
+  }
+}
+
 export function playAlarmSound(): void {
-  const isSoundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-  if (!isSoundEnabled) return;
+  if (!isSoundGloballyEnabled()) return;
   try {
     const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -43,7 +50,7 @@ export function playAlarmSound(): void {
  * Returns a cleanup/stop function.
  */
 export function startProceduralAlarm(ctx: AudioContext, type: string = 'beep'): () => void {
-  if (localStorage.getItem('soundEnabled') === 'false') {
+  if (!isSoundGloballyEnabled()) {
     return () => {};
   }
 
