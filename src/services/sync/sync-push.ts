@@ -61,7 +61,7 @@ async function prepareRowsForPush(
 
     if (jsonString.length > MAX_PAYLOAD_BYTES) {
       try {
-        const stream = new Blob([jsonString]).stream().pipeThrough(new CompressionStream('gzip'));
+        const stream = new Response(jsonString).body!.pipeThrough(new CompressionStream('gzip'));
         const buffer = await new Response(stream).arrayBuffer();
         const b64 = uint8ArrayToBase64(new Uint8Array(buffer));
         
