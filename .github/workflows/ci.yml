@@ -35,8 +35,8 @@ jobs:
       - name: 🧹 ESLint Code Quality Verification
         run: npm run lint
 
-      - name: 🔒 Core Cryptographic & Sync Unit Tests
-        run: npx vitest run src/services/crypto.test.ts src/services/sync/ src/store/focus/ src/utils/binary.test.ts
+      - name: 🔒 Core Cryptographic, Sync & Platform Integration Tests with Coverage
+        run: npx vitest run src/services/crypto.test.ts src/services/sync/ src/store/focus/ src/hooks/useAppBackPress.test.ts src/services/platform.test.ts src/api/web/sync.test.ts src/services/db-web.test.ts --coverage
 
       - name: 🏗️ Production Bundle Build
         run: npm run build

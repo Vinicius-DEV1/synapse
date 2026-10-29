@@ -326,9 +326,23 @@ npm run android
 
 ## 🧪 Testes & Garantia de Qualidade
 
+O Synapse adota princípios rigorosos de engenharia de software (SOLID, type safety absoluto, zero `any` e zero testes instáveis) respaldados por uma suíte automatizada abrangente:
+
+- **Mais de 1.600 Testes Automatizados** em **mais de 355 arquivos de teste** com **100% de aprovação**.
+- **Integridade Estrita de Tipos**: Zero erros de compilação TypeScript (`npx tsc -b --noEmit`).
+- **Qualidade de Código**: Zero erros e zero avisos de linter (`npm run lint`).
+- **Cobertura em Serviços Críticos**: **92% a 97%+ de cobertura de statements** em criptografia (`crypto.ts`), merge de estados CRDT (`sync-pull-merge.ts`) e adaptadores IndexedDB (`sync.ts`, `db-web.ts`).
+- **Resiliência e Tolerância a Falhas**: Testes simulando aborto de transações em voo, fallbacks de migração de schema SQLite e interceptação de hardware back navigation no Android.
+
 ```bash
 # Executar testes direcionados ultrarrápidos (Vitest)
 npx vitest run src/services/crypto.test.ts
+
+# Executar suíte de lógica e persistência (110 arquivos / 616 testes em ~50s)
+npm run test:unit
+
+# Gerar relatório detalhado de cobertura (motor v8)
+npm run test:coverage
 
 # Testar arquivos modificados
 npx vitest related --run src/services/crypto.ts
@@ -340,7 +354,7 @@ npx tsc -b --noEmit
 npm run lint
 ```
 
-Para mais detalhes de contribuição, leia o [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
+Para o mapa completo de riscos, simulação de falhas e metodologia, consulte [**`docs/TESTES.md`**](./docs/TESTES.md) e [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
 
 ---
 

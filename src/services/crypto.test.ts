@@ -108,5 +108,31 @@ describe('crypto service (E2EE)', () => {
     const decrypted = await decryptText(hexPayload, key);
     expect(decrypted).toBe(message);
   });
+
+  it('encrypts and decrypts large payload (256 KB) without call stack or memory failure', async () => {
+    const hex = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+    const key = await importHexKey(hex);
+    // Generate 256 KB large string payload
+    const largePayload = JSON.stringify({
+      blocks: Array.from({ length: 1000 }, (_, i) => ({
+        id: `block-${i}`,
+        type: 'paragraph',
+        text: `Paragraph line ${i} with unicode ✨ and repetitive data to stress buffer boundaries.`.repeat(3),
+      })),
+    });
+
+    const encrypted = await encryptText(largePayload, key);
+    expect(encrypted.length).toBeGreaterThan(100000);
+
+    const decrypted = await decryptText(encrypted, key);
+    expect(decrypted).toBe(largePayload);
+  });
+
+  it('rejects malformed colon format with invalid non-hex characters', async () => {
+    const hex = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+    const key = await importHexKey(hex);
+
+    await expect(decryptText('not_an_iv:not_a_tag:not_a_cipher', key)).rejects.toThrow();
+  });
 });
 
