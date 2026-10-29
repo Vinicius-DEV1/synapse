@@ -41,6 +41,9 @@ jobs:
       - name: 🏗️ Production Bundle Build
         run: npm run build
 
+      - name: 🎯 Performance Budget Gate Enforcement
+        run: npm run check:budgets
+
   benchmark:
     name: Automated Performance Benchmark
     runs-on: ubuntu-latest
