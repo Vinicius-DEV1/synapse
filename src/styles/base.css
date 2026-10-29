@@ -29,6 +29,14 @@
   background: rgba(139, 92, 246, 0.7);
 }
 
+/* Universal Smooth Hardware-Accelerated Scroll Container */
+.smooth-scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  transform: translateZ(0);
+}
+
 /* Scrollbar None Utility */
 .scrollbar-none {
   -ms-overflow-style: none;

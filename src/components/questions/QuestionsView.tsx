@@ -207,7 +207,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
   }
 
   return (
-    <div className="w-full h-full bg-dark-bg text-zinc-100 overflow-y-auto custom-scrollbar select-none relative">
+    <div className="w-full h-full bg-dark-bg text-zinc-100 overflow-y-auto smooth-scroll-container overscroll-contain custom-scrollbar select-none relative">
       <div className="max-w-5xl mx-auto flex flex-col min-h-full">
         <QuestionsHeader
           totalQuestions={stats.totalQuestions}

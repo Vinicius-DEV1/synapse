@@ -125,7 +125,7 @@ export default function AnkiView() {
   const deckTree = useMemo(() => buildDeckTree(decks), [decks]);
 
   return (
-    <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto relative" style={{ height: '100dvh' }}>
+    <div className="flex-1 flex flex-col bg-dark-bg text-dark-text p-8 overflow-y-auto smooth-scroll-container overscroll-contain relative" style={{ height: '100dvh' }}>
       <div className="max-w-5xl mx-auto w-full space-y-8">
         {!showStats && (
           <header className="flex justify-between items-center pb-8 border-b border-white/5">

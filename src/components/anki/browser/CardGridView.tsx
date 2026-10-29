@@ -26,7 +26,11 @@ export function CardGridView({
         const card = group[0];
         const isSelected = group.every(c => selectedIds.has(c.id));
         return (
-          <div key={card.note_id} className={`bg-dark-card border rounded-2xl p-5 flex flex-col hover:shadow-2xl transition-all [content-visibility:auto] [contain-intrinsic-size:220px] ${isSelected ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/5 hover:border-white/20'}`}>
+          <div
+            key={card.note_id}
+            style={{ contain: 'layout style' }}
+            className={`bg-dark-card border rounded-2xl p-5 flex flex-col shadow-xs transition-colors duration-150 ${isSelected ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/5 hover:border-white/20'}`}
+          >
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
               <div className="flex flex-wrap gap-2 items-center">

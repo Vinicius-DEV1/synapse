@@ -112,8 +112,8 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', onClose);
-    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', onClose, { passive: true });
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
     const handleBackPress = (e: Event) => {
       e.preventDefault();
       onClose();

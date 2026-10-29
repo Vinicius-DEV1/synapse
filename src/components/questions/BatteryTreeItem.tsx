@@ -80,7 +80,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
     <div className="w-full [content-visibility:auto] [contain-intrinsic-size:120px]">
       <div
         id={`battery-card-${node.id}`}
-        className={`group rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${
+        className={`group rounded-2xl p-4 sm:p-5 transition-colors duration-150 shadow-sm ${
           isHighlighted
             ? 'bg-dark-card border border-brand-500/50 ring-1 ring-brand-500/40'
             : hasChildren
@@ -210,7 +210,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {/* Edit Button */}
             <button
               onClick={() => onEditBattery(node)}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
               title={t('questions.explorer.editBattery')}
             >
               <Edit3 size={15} />
@@ -220,7 +220,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {onOpenMoveModal && (
               <button
                 onClick={() => onOpenMoveModal(node)}
-                className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-all cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
                 title={t('questions.explorer.moveBattery')}
               >
                 <FolderInput size={15} />
@@ -230,7 +230,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {/* Delete Button */}
             <button
               onClick={() => onDeleteBattery(node.id)}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-all cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
               title={t('questions.explorer.moveToTrash')}
             >
               <Trash2 size={15} />

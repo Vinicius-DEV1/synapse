@@ -173,11 +173,14 @@ To guarantee that Caderno operates with the responsiveness, fluidity, and elegan
 7. **GPU Compositor Acceleration (Transform & Opacity Only)**:
    - Never animate layout-triggering properties (`top`, `left`, `width`, `height`, `margin`, `padding`). Animate exclusively via hardware-accelerated CSS properties: `transform` (`translate3d`, `scale`, `rotate`) and `opacity`. Use `will-change` sparingly and only during active transitions.
 8. **Passive Event Listeners & RAF Throttling**:
-   - Always register scroll, mousewheel, and touch listeners with `{ passive: true }` so the browser compositor never waits on JavaScript execution. Throttle high-frequency events (cursor tracking, resize, drag) using `requestAnimationFrame`.
+   - Always register scroll, mousewheel, and touch listeners with `{ passive: true }` (or `{ capture: true, passive: true }`) so the browser compositor never waits on JavaScript execution. Throttle high-frequency events (cursor tracking, resize, drag) using `requestAnimationFrame` or rate-limiting timestamps.
 9. **Off-Main-Thread Heavy Computation (Web Workers & Schedulers)**:
    - Heavy compute tasks (AES/PBKDF2 cryptography, OCR parsing, PDF text extraction, diffing algorithms, full-text fuzzy indexing) must run in Web Workers or be chunked across microtasks using `scheduler.yield()` / `requestIdleCallback` to avoid dropping UI frames.
-10. **Virtualization & DOM Bloat Prevention**:
-    - Avoid mounting hundreds of heavy off-screen DOM nodes in lists (cards, flashcards, book grids, logs). Leverage list virtualization or native CSS `content-visibility: auto` with `contain-intrinsic-size` to allow the browser to skip layout and paint of off-screen elements.
+10. **Virtualization, DOM Bloat Prevention & Compositor Scroll Layer**:
+    - Avoid mounting hundreds of heavy off-screen DOM nodes in lists (cards, flashcards, book grids, logs).
+    - Leverage native CSS `content-visibility: auto` with `contain-intrinsic-size` for heavy composite cards (e.g., question batteries with markdown formulas, inputs, and options). For lightweight uniform list items, prefer static `contain: layout style`.
+    - Prohibit `transition-all` on scrolling items; use targeted transitions (`transition-colors`, `transition-opacity`).
+    - Standardize module scroll viewports with `.smooth-scroll-container` (`overflow-y: auto`, `overscroll-behavior-y: contain`, `transform: translateZ(0)`, `-webkit-overflow-scrolling: touch`).
 11. **Store Subscription Slicing & Selector Isolation**:
     - Prevent whole-tree re-renders by selecting only the minimal required slice of state. Wrap high-frequency leaf components in `React.memo` with custom prop comparators to isolate render boundaries.
 12. **Zero-Leak Lifecycle & Garbage Collection Discipline**:
