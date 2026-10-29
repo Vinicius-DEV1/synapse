@@ -73,22 +73,26 @@ export async function prepareRowForUpsert(
         yjsUtils = await import('../../utils/yjs-utils');
       }
       const ydoc = new Y.Doc();
-      Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(localRow.crdt_state));
-      Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(parsed.crdt_state));
-      const mergedCrdtState = yjsUtils!.getYDocStateAsBase64(ydoc);
-      rowToUpsert.crdt_state = mergedCrdtState;
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('caderno-sync-update', {
-            detail: { pageId: rowToUpsert.id, crdtState: rowToUpsert.crdt_state },
-          })
-        );
-      }
-
-      if (localTime > cloudTime) {
-        Object.assign(rowToUpsert, localRow);
+      try {
+        Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(localRow.crdt_state));
+        Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(parsed.crdt_state));
+        const mergedCrdtState = yjsUtils!.getYDocStateAsBase64(ydoc);
         rowToUpsert.crdt_state = mergedCrdtState;
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('caderno-sync-update', {
+              detail: { pageId: rowToUpsert.id, crdtState: rowToUpsert.crdt_state },
+            })
+          );
+        }
+
+        if (localTime > cloudTime) {
+          Object.assign(rowToUpsert, localRow);
+          rowToUpsert.crdt_state = mergedCrdtState;
+        }
+      } finally {
+        ydoc.destroy();
       }
     } catch (crdtErr) {
       console.error('Erro no merge CRDT Yjs:', crdtErr);

@@ -70,7 +70,7 @@ export function parseDateSafe(dateStr: string | undefined | null | number): numb
     s = s + 'Z';
   }
 
-  const parsed = new Date(s).getTime();
+  const parsed = Date.parse(s);
   return isNaN(parsed) ? 0 : parsed;
 }
 
