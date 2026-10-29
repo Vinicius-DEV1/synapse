@@ -1,0 +1,452 @@
+{
+  "quiz-player": {
+    "Desktop (1920x1080)": {
+      "avgFrameMs": {
+        "median": 17.78,
+        "min": 17.69,
+        "max": 19.17,
+        "variation": 8.32
+      },
+      "p95FrameMs": {
+        "median": 16.8,
+        "min": 16.8,
+        "max": 16.8,
+        "variation": 0
+      },
+      "droppedFrames": {
+        "median": 355,
+        "min": 322,
+        "max": 357,
+        "variation": 9.86
+      },
+      "longTasks": {
+        "median": 2,
+        "min": 2,
+        "max": 2,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 476.45,
+        "min": 442.58,
+        "max": 1044.73,
+        "variation": 126.38
+      },
+      "scriptDurationMs": {
+        "median": 74.48,
+        "min": 62.51,
+        "max": 100.01,
+        "variation": 50.35
+      },
+      "taskDurationMs": {
+        "median": 4797.12,
+        "min": 4491.15,
+        "max": 4950.16,
+        "variation": 9.57
+      }
+    },
+    "Mobile WebView (390x844)": {
+      "avgFrameMs": {
+        "median": 17.74,
+        "min": 17.7,
+        "max": 18.29,
+        "variation": 3.32
+      },
+      "p95FrameMs": {
+        "median": 16.8,
+        "min": 16.8,
+        "max": 16.8,
+        "variation": 0
+      },
+      "droppedFrames": {
+        "median": 353,
+        "min": 352,
+        "max": 358,
+        "variation": 1.7
+      },
+      "longTasks": {
+        "median": 2,
+        "min": 2,
+        "max": 2,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 457.08,
+        "min": 429.66,
+        "max": 653.59,
+        "variation": 48.99
+      },
+      "scriptDurationMs": {
+        "median": 72.53,
+        "min": 56.65,
+        "max": 73.97,
+        "variation": 23.89
+      },
+      "taskDurationMs": {
+        "median": 3623.27,
+        "min": 3328.86,
+        "max": 3828.48,
+        "variation": 13.79
+      }
+    }
+  },
+  "questions-explorer": {
+    "Desktop (1920x1080)": {
+      "avgFrameMs": {
+        "median": 16.69,
+        "min": 16.67,
+        "max": 16.7,
+        "variation": 0.18
+      },
+      "p95FrameMs": {
+        "median": 16.75,
+        "min": 16.7,
+        "max": 16.8,
+        "variation": 0.6
+      },
+      "droppedFrames": {
+        "median": 375,
+        "min": 370,
+        "max": 382,
+        "variation": 3.2
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 72.64,
+        "min": 70.57,
+        "max": 78.45,
+        "variation": 10.84
+      },
+      "taskDurationMs": {
+        "median": 4864.58,
+        "min": 4538.92,
+        "max": 4997.48,
+        "variation": 9.43
+      }
+    },
+    "Mobile WebView (390x844)": {
+      "avgFrameMs": {
+        "median": 16.72,
+        "min": 16.67,
+        "max": 16.74,
+        "variation": 0.42
+      },
+      "p95FrameMs": {
+        "median": 16.75,
+        "min": 16.7,
+        "max": 16.8,
+        "variation": 0.6
+      },
+      "droppedFrames": {
+        "median": 378,
+        "min": 373,
+        "max": 384,
+        "variation": 2.91
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 68.47,
+        "min": 53.18,
+        "max": 77.77,
+        "variation": 35.91
+      },
+      "taskDurationMs": {
+        "median": 3268.34,
+        "min": 3198.32,
+        "max": 3452.28,
+        "variation": 7.77
+      }
+    }
+  },
+  "anki-flashcards": {
+    "Desktop (1920x1080)": {
+      "avgFrameMs": {
+        "median": 18.02,
+        "min": 17.54,
+        "max": 19.03,
+        "variation": 8.27
+      },
+      "p95FrameMs": {
+        "median": 33.3,
+        "min": 33.2,
+        "max": 33.3,
+        "variation": 0.3
+      },
+      "droppedFrames": {
+        "median": 366,
+        "min": 346,
+        "max": 371,
+        "variation": 6.83
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 2,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 232.62,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 67.4,
+        "min": 58.24,
+        "max": 70.44,
+        "variation": 18.09
+      },
+      "taskDurationMs": {
+        "median": 4186.45,
+        "min": 4005.84,
+        "max": 4285.62,
+        "variation": 6.68
+      }
+    },
+    "Mobile WebView (390x844)": {
+      "avgFrameMs": {
+        "median": 17.23,
+        "min": 17.18,
+        "max": 17.28,
+        "variation": 0.58
+      },
+      "p95FrameMs": {
+        "median": 16.7,
+        "min": 16.7,
+        "max": 16.8,
+        "variation": 0.6
+      },
+      "droppedFrames": {
+        "median": 367,
+        "min": 364,
+        "max": 376,
+        "variation": 3.27
+      },
+      "longTasks": {
+        "median": 2,
+        "min": 2,
+        "max": 2,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 238.46,
+        "min": 229.46,
+        "max": 276.14,
+        "variation": 19.58
+      },
+      "scriptDurationMs": {
+        "median": 68.2,
+        "min": 63.42,
+        "max": 71.72,
+        "variation": 12.16
+      },
+      "taskDurationMs": {
+        "median": 3309.82,
+        "min": 3113.91,
+        "max": 3486.36,
+        "variation": 11.25
+      }
+    }
+  },
+  "notes-document": {
+    "Desktop (1920x1080)": {
+      "avgFrameMs": {
+        "median": 16.66,
+        "min": 16.64,
+        "max": 16.66,
+        "variation": 0.12
+      },
+      "p95FrameMs": {
+        "median": 16.7,
+        "min": 16.7,
+        "max": 16.8,
+        "variation": 0.6
+      },
+      "droppedFrames": {
+        "median": 375,
+        "min": 369,
+        "max": 379,
+        "variation": 2.67
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 63.12,
+        "min": 55.71,
+        "max": 77.81,
+        "variation": 35.01
+      },
+      "taskDurationMs": {
+        "median": 655.93,
+        "min": 620.44,
+        "max": 665.24,
+        "variation": 6.83
+      }
+    },
+    "Mobile WebView (390x844)": {
+      "avgFrameMs": {
+        "median": 16.67,
+        "min": 16.65,
+        "max": 16.69,
+        "variation": 0.24
+      },
+      "p95FrameMs": {
+        "median": 16.75,
+        "min": 16.7,
+        "max": 16.8,
+        "variation": 0.6
+      },
+      "droppedFrames": {
+        "median": 372,
+        "min": 369,
+        "max": 386,
+        "variation": 4.57
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 60.06,
+        "min": 56.35,
+        "max": 63.77,
+        "variation": 12.37
+      },
+      "taskDurationMs": {
+        "median": 1098.56,
+        "min": 1033.21,
+        "max": 1164.5,
+        "variation": 11.95
+      }
+    }
+  },
+  "vault-records": {
+    "Desktop (1920x1080)": {
+      "avgFrameMs": {
+        "median": 22.34,
+        "min": 22.02,
+        "max": 22.91,
+        "variation": 3.98
+      },
+      "p95FrameMs": {
+        "median": 33.4,
+        "min": 33.4,
+        "max": 33.4,
+        "variation": 0
+      },
+      "droppedFrames": {
+        "median": 342,
+        "min": 326,
+        "max": 346,
+        "variation": 5.85
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 49,
+        "min": 47.55,
+        "max": 50.98,
+        "variation": 7
+      },
+      "taskDurationMs": {
+        "median": 4012.63,
+        "min": 3987.1,
+        "max": 4016.16,
+        "variation": 0.72
+      }
+    },
+    "Mobile WebView (390x844)": {
+      "avgFrameMs": {
+        "median": 16.8,
+        "min": 16.68,
+        "max": 17.06,
+        "variation": 2.26
+      },
+      "p95FrameMs": {
+        "median": 16.8,
+        "min": 16.7,
+        "max": 16.8,
+        "variation": 0.6
+      },
+      "droppedFrames": {
+        "median": 380,
+        "min": 363,
+        "max": 385,
+        "variation": 5.79
+      },
+      "longTasks": {
+        "median": 0,
+        "min": 0,
+        "max": 1,
+        "variation": 0
+      },
+      "layoutStyleMs": {
+        "median": 0,
+        "min": 0,
+        "max": 82.72,
+        "variation": 0
+      },
+      "scriptDurationMs": {
+        "median": 70.91,
+        "min": 69.34,
+        "max": 76.08,
+        "variation": 9.5
+      },
+      "taskDurationMs": {
+        "median": 4629.86,
+        "min": 4473.81,
+        "max": 4740.22,
+        "variation": 5.75
+      }
+    }
+  }
+}
