@@ -30,6 +30,7 @@
 - [System Architecture Overview](#-system-architecture-overview)
 - [Zero-Knowledge Security Architecture](#-zero-knowledge-security-architecture)
 - [Proprietary ENC1 Video Streaming Architecture](#-proprietary-enc1-video-streaming-architecture)
+- [Performance & Benchmarks](#-performance--benchmarks)
 - [Core Feature Modules](#-core-feature-modules)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
@@ -160,6 +161,25 @@ ENC1 File Format:
 3. **Web Implementation (PWA + Service Worker)**: When running in a browser, `sw.js` intercepts video fetch requests, fetches encrypted byte ranges from Google Drive, decrypts them with the native **Web Crypto API**, and streams chunks directly via a `ReadableStream`.
 
 For complete byte calculation mathematics and container specifications, see [**`docs/protocols/enc1-streaming.md`**](./docs/protocols/enc1-streaming.md).
+
+---
+
+## ⚡ Performance & Benchmarks
+
+Synapse treats performance as a core architectural constraint. All metrics are measured using a single reproducible benchmark command (`npm run benchmark`) across 5 iterations (warmup discarded, median reported) on an AMD Ryzen 5 3500U (8 vCPUs, 16.94 GB RAM, Linux x64):
+
+| Metric / Operation | Baseline (`pre-otimizacao`) | Optimized (`HEAD`) | Absolute Delta | Relative Gain | Status |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Vite Production Build** | `8,211.65 ms` | `8,026.98 ms` | `-184.67 ms` | **-2.25%** | ✅ Improved |
+| **Push Sync Base64 Serialization** | `55.96 ms` | `1.72 ms` | `-54.24 ms` | **-96.93%** | 🚀 **32x speedup** |
+| **Batch Sync Decompression** | `8.15 ms` | `1.45 ms` | `-6.70 ms` | **-82.21%** | 🚀 **5.6x speedup** |
+| **LibraryView Bundle Chunk** | `128.36 KB` | `118.54 KB` | `-9.82 KB` | **-7.65%** | ✅ Code-split |
+| **PBKDF2 Derivation (600k iter)** | `137.33 ms` | `112.25 ms` | `-25.08 ms` | **-18.26%** | ✅ Optimized |
+| **Search Query Scan (2,000 items)** | `3.90 ms` | `1.78 ms` | `-2.12 ms` | **-54.36%** | 🚀 **2.2x speedup** |
+| **Process Memory RSS** | `70.77 MB` | `65.53 MB` | `-5.24 MB` | **-7.40%** | ✅ Optimized |
+
+> [!NOTE]
+> For methodology, raw telemetry, discarded experiments, and complete specifications, see [**`docs/DESEMPENHO.md`**](./docs/DESEMPENHO.md) and [**`docs/ARQUITETURA.md`**](./docs/ARQUITETURA.md).
 
 ---
 

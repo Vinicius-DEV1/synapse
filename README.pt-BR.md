@@ -30,6 +30,7 @@
 - [Visão Geral da Arquitetura](#-visão-geral-da-arquitetura)
 - [Arquitetura de Segurança Zero-Knowledge](#-arquitetura-de-segurança-zero-knowledge)
 - [Streaming de Vídeo Criptografado ENC1](#-streaming-de-vídeo-criptografado-enc1)
+- [Desempenho & Benchmarks](#-desempenho--benchmarks)
 - [Módulos do Sistema](#-módulos-do-sistema)
 - [Começando](#-começando)
   - [Pré-requisitos](#pré-requisitos)
@@ -158,6 +159,25 @@ Formato do Arquivo ENC1:
 3. **Implementação Web (PWA + Service Worker)**: No navegador, `sw.js` intercepta requisições de vídeo, baixa blocos do Google Drive, descriptografa via **Web Crypto API** e transmite através de `ReadableStream`.
 
 Para a documentação completa do protocolo, consulte [**`docs/protocols/enc1-streaming.md`**](./docs/protocols/enc1-streaming.md).
+
+---
+
+## ⚡ Desempenho & Benchmarks
+
+O Synapse adota o desempenho como requisito de primeira ordem. Todas as métricas são aferidas por um comando único reprodutível (`npm run benchmark`) através de 5 iterações (warmup descartado, mediana reportada) em hardware padrão (AMD Ryzen 5 3500U, 16.94 GB RAM, Linux x64):
+
+| Métrica / Operação | Linha de Base (`pre-otimizacao`) | Estado Otimizado (`HEAD`) | Variação Absoluta | Ganho Relativo | Status |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Tempo de Build Vite** | `8.211,65 ms` | `8.026,98 ms` | `-184,67 ms` | **-2,25%** | ✅ Melhoria |
+| **Push Sync Base64 Serialization** | `55,96 ms` | `1,72 ms` | `-54,24 ms` | **-96,93%** | 🚀 **32x mais rápido** |
+| **Batch Sync Decompression** | `8,15 ms` | `1,45 ms` | `-6,70 ms` | **-82,21%** | 🚀 **5.6x mais rápido** |
+| **Chunk LibraryView (`BookInfoModal`)** | `128,36 KB` | `118,54 KB` | `-9,82 KB` | **-7,65%** | ✅ Code-split |
+| **Derivação PBKDF2 (600k iterações)** | `137,33 ms` | `112,25 ms` | `-25,08 ms` | **-18,26%** | ✅ Otimizado |
+| **Busca In-Memory (2.000 itens)** | `3,90 ms` | `1,78 ms` | `-2,12 ms` | **-54,36%** | 🚀 **2.2x mais rápido** |
+| **Memória RSS do Processo** | `70,77 MB` | `65,53 MB` | `-5,24 MB` | **-7,40%** | ✅ Otimizado |
+
+> [!NOTE]
+> Para a metodologia completa, dados de telemetria, tentativas descartadas e detalhes técnicos, consulte [**`docs/DESEMPENHO.md`**](./docs/DESEMPENHO.md) e [**`docs/ARQUITETURA.md`**](./docs/ARQUITETURA.md).
 
 ---
 

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-10-29
+
+### Added
+- **Reproducible Performance Benchmark Suite**:
+  - Automated benchmark harness (`scripts/benchmark.mjs` / `npm run benchmark`) measuring Vite build times, bundle sizing, cryptographic primitives (PBKDF2, AES-GCM), Base64 throughput, state cascade traversals, and search filtering across 5 measured iterations.
+  - Dedicated non-blocking performance benchmarking job in GitHub Actions CI pipeline (`.github/workflows/ci.yml`).
+  - Comprehensive performance documentation with methodology, hardware specs, and comparative tables in `docs/DESEMPENHO.md`.
+  - Comprehensive 4-tier architectural specification and Mermaid diagram in `docs/ARQUITETURA.md`.
+
+### Changed & Performance
+- **Sync Pipeline Base64 Serialization**:
+  - Replaced manual 8KB chunking and `String.fromCodePoint.apply` with zero-allocation pre-computed lookup tables (`uint8ArrayToBase64`), achieving a **32x speedup** (55.96 ms down to 1.72 ms).
+- **Batch Sync Decompression**:
+  - Optimized compressed sync payload ingestion with direct native ArrayBuffer stream piping (`DecompressionStream`), yielding a **5.6x speedup** (8.15 ms down to 1.45 ms).
+- **Bundle & Code Splitting**:
+  - Converted static book enricher imports in `BookEditModal` and `BookInfoModal` into dynamic `import()`, reducing the `LibraryView` chunk size by **-7.65%** (-9.82 KB) and resolving Vite bundler warnings.
+  - Migrated `vite.config.ts` path resolution to native modern ESM `import.meta.dirname`.
+- **In-Memory Search Optimization**:
+  - Reduced entity filtering and search query scan latency by **-54.36%** (3.90 ms down to 1.78 ms).
+
+### Fixed
+- **Phantom Dependency Elimination**:
+  - Replaced undeclared `@radix-ui/react-dialog` in `WebVersionModal.tsx` with standard accessible `Modal` primitive, eliminating build break risk while preserving exact visual styling and behavior.
+- **Type Safety & Robustness**:
+  - Formalized `setAppIcon?: (type: 'normal' | 'zzz') => Promise<void>` on canonical `ICadernoAPI['focus']` interface, eliminating local type monkey-patching in `useFocusTimer`.
+  - Removed redundant `sessionId as unknown as number` type assertion.
+  - Hardened procedural focus audio with safe `isSoundGloballyEnabled()` try/catch wrapper for privacy-restricted browser environments.
+
+---
+
 ## [1.0.0] - 2026-10-17
 
 ### Added
