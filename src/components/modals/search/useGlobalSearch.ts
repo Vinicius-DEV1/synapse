@@ -8,6 +8,14 @@ import {
   getCachedPlainText,
 } from './search-utils';
 
+interface IndexedPageRecord {
+  page: Page;
+  pageTitle: string;
+  pageTitleLower: string;
+  ancestors: HierarchyNode[];
+  fullPathLower: string;
+}
+
 export function useGlobalSearch() {
   const { state, dispatch } = useStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -18,19 +26,28 @@ export function useGlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Ancestor breadcrumbs map per page - computed in a single O(N) pass using a pre-indexed Map
-  const pageAncestorsMap = useMemo(() => {
-    if (!isOpen) return new Map<string, HierarchyNode[]>();
+  // Pre-indexed page list for instant O(1) attribute access without allocations during keystrokes
+  const indexedPages: IndexedPageRecord[] = useMemo(() => {
+    if (!isOpen) return [];
     const pageMap = new Map<string, Page>();
     for (const p of state.pages) {
       pageMap.set(p.id, p);
     }
 
-    const map = new Map<string, HierarchyNode[]>();
-    for (const p of state.pages) {
-      map.set(p.id, getPageAncestorsWithMap(pageMap, p.id));
-    }
-    return map;
+    return state.pages.map((p) => {
+      const pageTitle = (p.title || 'Sem título').trim();
+      const pageTitleLower = pageTitle.toLowerCase();
+      const ancestors = getPageAncestorsWithMap(pageMap, p.id);
+      const ancestryTitlesLower = ancestors.map((a) => a.title || 'Sem título').join(' ').toLowerCase();
+      const fullPathLower = `${ancestryTitlesLower} ${pageTitleLower}`;
+      return {
+        page: p,
+        pageTitle,
+        pageTitleLower,
+        ancestors,
+        fullPathLower,
+      };
+    });
   }, [state.pages, isOpen]);
 
   // Open/close keyboard shortcut listeners
@@ -91,32 +108,32 @@ export function useGlobalSearch() {
     // 1. Initial empty state: show pinned and recent pages (Quick Switcher)
     if (!trimmed) {
       if (scope === 'pinned') {
-        return state.pages
-          .filter((p: Page) => p.is_pinned === 1)
-          .map((p: Page) => ({
-            id: p.id,
-            title: p.title || 'Sem título',
-            icon: p.icon || '📄',
-            ancestors: pageAncestorsMap.get(p.id) || [],
+        return indexedPages
+          .filter((item) => item.page.is_pinned === 1)
+          .map((item) => ({
+            id: item.page.id,
+            title: item.pageTitle,
+            icon: item.page.icon || '📄',
+            ancestors: item.ancestors,
             matchType: 'pinned',
-            is_pinned: p.is_pinned,
+            is_pinned: item.page.is_pinned,
             score: 100,
           }));
       }
 
-      const sortedByDate = [...state.pages].sort((a, b) => {
-        const dateA = a.updated_at || '';
-        const dateB = b.updated_at || '';
+      const sortedByDate = [...indexedPages].sort((a, b) => {
+        const dateA = a.page.updated_at || '';
+        const dateB = b.page.updated_at || '';
         return dateB > dateA ? 1 : dateB < dateA ? -1 : 0;
       });
 
-      const recentItems: SearchResultItem[] = sortedByDate.slice(0, 10).map((p: Page) => ({
-        id: p.id,
-        title: p.title || 'Sem título',
-        icon: p.icon || '📄',
-        ancestors: pageAncestorsMap.get(p.id) || [],
-        matchType: p.is_pinned === 1 ? 'pinned' : 'recent',
-        is_pinned: p.is_pinned,
+      const recentItems: SearchResultItem[] = sortedByDate.slice(0, 10).map((item) => ({
+        id: item.page.id,
+        title: item.pageTitle,
+        icon: item.page.icon || '📄',
+        ancestors: item.ancestors,
+        matchType: item.page.is_pinned === 1 ? 'pinned' : 'recent',
+        is_pinned: item.page.is_pinned,
         isRecent: true,
         score: 50,
       }));
@@ -128,27 +145,21 @@ export function useGlobalSearch() {
     const terms = trimmed.split(/\s+/).filter(Boolean);
     const matchedItems: SearchResultItem[] = [];
 
-    state.pages.forEach((p: Page) => {
+    indexedPages.forEach((item) => {
+      const { page: p, pageTitle, pageTitleLower, ancestors, fullPathLower } = item;
       if (scope === 'pinned' && p.is_pinned !== 1) {
         return;
       }
 
-      const pageTitle = (p.title || 'Sem título').trim();
-      const pageTitleLower = pageTitle.toLowerCase();
-      const ancestors = pageAncestorsMap.get(p.id) || [];
-      const ancestryTitles = ancestors.map(a => a.title || 'Sem título').join(' ');
-      const ancestryTitlesLower = ancestryTitles.toLowerCase();
-      const fullPathLower = `${ancestryTitlesLower} ${pageTitleLower}`;
-
       const shouldSearchContent = scope === 'all' || scope === 'content';
       const plainContent = shouldSearchContent && p.content ? getCachedPlainText(p.id, p.content) : '';
-      const plainContentLower = plainContent.toLowerCase();
+      const plainContentLower = shouldSearchContent && plainContent ? plainContent.toLowerCase() : '';
 
       const titleExact = pageTitleLower === trimmed;
       const titleStartsWith = pageTitleLower.startsWith(trimmed);
-      const titleIncludesAllTerms = terms.every(t => pageTitleLower.includes(t));
-      const pathIncludesAllTerms = terms.every(t => fullPathLower.includes(t));
-      const contentIncludesAllTerms = shouldSearchContent && terms.length > 0 && terms.every(t => plainContentLower.includes(t));
+      const titleIncludesAllTerms = terms.every((t) => pageTitleLower.includes(t));
+      const pathIncludesAllTerms = terms.every((t) => fullPathLower.includes(t));
+      const contentIncludesAllTerms = shouldSearchContent && terms.length > 0 && terms.every((t) => plainContentLower.includes(t));
 
       let matchType: 'title' | 'path' | 'content' | null = null;
       let score = 0;
@@ -209,7 +220,7 @@ export function useGlobalSearch() {
 
     matchedItems.sort((a, b) => b.score - a.score);
     return matchedItems;
-  }, [isOpen, debouncedQuery, scope, state.pages, pageAncestorsMap]);
+  }, [isOpen, debouncedQuery, scope, indexedPages]);
 
   // Keep selected index visible in scroll view
   useEffect(() => {
