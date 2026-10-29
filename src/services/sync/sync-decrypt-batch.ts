@@ -1,5 +1,5 @@
 import { decryptText } from '../crypto';
-import { base64ToUint8Array } from '../../utils/binary';
+import { base64ToArrayBuffer } from '../../utils/binary';
 
 export interface CloudData {
   encryptedData?: string;
@@ -55,8 +55,8 @@ export async function decryptCloudDoc(
 
     if (cloudData.isCompressed) {
       try {
-        const bytes = base64ToUint8Array(decryptedJsonOrB64);
-        const stream = new Response(bytes).body!.pipeThrough(new DecompressionStream('gzip'));
+        const buffer = base64ToArrayBuffer(decryptedJsonOrB64);
+        const stream = new Response(buffer).body!.pipeThrough(new DecompressionStream('gzip'));
         finalJson = await new Response(stream).text();
       } catch (decErr) {
         console.error('[Sync Decompress] Error decompressing document', decErr);
