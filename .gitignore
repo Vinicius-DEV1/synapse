@@ -6,6 +6,7 @@ node_modules/
 # Build Outputs
 dist/
 dist-web/
+dist-bench/
 dist-electron/
 dist-app/
 dist-ssr/
@@ -13,6 +14,7 @@ build/
 target/
 src-tauri/target/
 src-tauri/gen/
+benchmark-results.json
 
 # Logs
 logs/
@@ -81,7 +83,7 @@ caderno-mobile-webview/web-build/
 archive/
 audit_report_*.md
 .worktrees/
-/scripts/
+scripts/launch-conta2.sh
 
 # Agent Customizations (Skills & Rules are committed; internal metadata is not)
 .agents/.cache/
