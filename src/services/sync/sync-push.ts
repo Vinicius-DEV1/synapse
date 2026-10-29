@@ -13,6 +13,7 @@ import {
 } from './sync-utils';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 import { getErrorMessage } from '../../utils/error';
+import { uint8ArrayToBase64 } from '../../utils/binary';
 
 /** Max Firestore batch size is 500; 400 is used as safety threshold */
 const BATCH_SIZE = 400;
@@ -62,28 +63,20 @@ async function prepareRowsForPush(
       try {
         const stream = new Blob([jsonString]).stream().pipeThrough(new CompressionStream('gzip'));
         const buffer = await new Response(stream).arrayBuffer();
-        
-        const bytes = new Uint8Array(buffer);
-        const CHUNK_SIZE = 8192;
-        let binary = '';
-        for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-          const chunk = bytes.subarray(i, i + CHUNK_SIZE);
-          binary += String.fromCodePoint.apply(null, Array.from(chunk));
-        }
-        const b64 = btoa(binary);
+        const b64 = uint8ArrayToBase64(new Uint8Array(buffer));
         
         if (b64.length < MAX_PAYLOAD_BYTES) {
           payloadString = b64;
           isCompressed = true;
-          console.log(`[Sync Compress] Doc ${docId} comprimido de ${jsonString.length} para ${b64.length} bytes.`);
+          console.debug(`[Sync Compress] Doc ${docId} compressed from ${jsonString.length} to ${b64.length} bytes.`);
         } else {
-          const msg = `[PUSH SKIP] Doc ${docId} (${table}) pulado: conteúdo muito grande mesmo após compressão (${(b64.length / 1024).toFixed(0)}KB).`;
+          const msg = `[PUSH SKIP] Doc ${docId} (${table}) skipped: content exceeds max size even after compression (${(b64.length / 1024).toFixed(0)}KB).`;
           skippedLarge.push(msg);
           return null;
         }
       } catch (err) {
-        console.warn(`Erro ao comprimir doc ${docId}`, err);
-        const msg = `[PUSH SKIP] Doc ${docId} (${table}) pulado: conteúdo muito grande e falha na compressão.`;
+        console.warn(`[Sync Compress] Error compressing doc ${docId}`, err);
+        const msg = `[PUSH SKIP] Doc ${docId} (${table}) skipped: content too large and compression failed.`;
         skippedLarge.push(msg);
         return null;
       }

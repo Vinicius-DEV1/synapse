@@ -48,6 +48,13 @@ global.IntersectionObserver = class IntersectionObserver {
   takeRecords = vi.fn().mockReturnValue([]);
 } as any;
 
+// Blob.prototype.stream polyfill for jsdom environment
+if (typeof Blob !== 'undefined' && !Blob.prototype.stream) {
+  Blob.prototype.stream = function () {
+    return new Response(this).body as any;
+  };
+}
+
 // HTMLMediaElement mock
 window.HTMLMediaElement.prototype.load = vi.fn();
 window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
