@@ -9,6 +9,8 @@ export default defineConfig([
   globalIgnores([
     'dist',
     'dist-web',
+    'dist-bench',
+    'coverage/**',
     'caderno-mobile/**',
     'caderno-mobile-webview/**',
     'src-tauri/target/**',
