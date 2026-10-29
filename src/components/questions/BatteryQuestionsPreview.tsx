@@ -23,7 +23,8 @@ export const BatteryQuestionsPreview = React.memo(function BatteryQuestionsPrevi
         return (
           <div
             key={q.id}
-            className="p-3 rounded-xl bg-dark-bg/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs"
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '56px' }}
+            className="p-3 rounded-xl bg-dark-bg/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs [content-visibility:auto] [contain-intrinsic-size:56px]"
           >
             <div className="flex items-start gap-2.5 min-w-0">
               <span className="font-mono text-zinc-500 text-[11px] shrink-0 mt-0.5">

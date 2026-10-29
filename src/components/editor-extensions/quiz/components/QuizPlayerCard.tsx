@@ -78,6 +78,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
   return (
     <div
       tabIndex={0}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '240px' }}
       onKeyDown={(e) => {
         const activeEl = document.activeElement;
         const isInput =
@@ -92,7 +93,7 @@ export const QuizPlayerCard = memo(function QuizPlayerCard({
           onUpdateSingleQuestion(q.id, { showExplanation: !q.showExplanation }, true);
         }
       }}
-      className={`p-4 md:p-5 rounded-2xl border space-y-4 focus:outline-none transition-all ${
+      className={`p-4 md:p-5 rounded-2xl border space-y-4 focus:outline-none transition-colors duration-150 [content-visibility:auto] [contain-intrinsic-size:240px] ${
         q.answered
           ? isWin
             ? 'bg-emerald-500/[0.04] border-emerald-500/20'

@@ -34,7 +34,10 @@ export const QuizEditorCard = memo(function QuizEditorCard({
   const isOpen = q.type === 'open';
 
   return (
-    <div className="p-4 md:p-5 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-4 relative group/q hover:border-white/[0.12] transition-colors">
+    <div
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '280px' }}
+      className="p-4 md:p-5 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-4 relative group/q hover:border-white/[0.12] transition-colors [content-visibility:auto] [contain-intrinsic-size:280px]"
+    >
       {/* Header da Questão */}
       <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-3">
         <div className="flex items-center gap-2">

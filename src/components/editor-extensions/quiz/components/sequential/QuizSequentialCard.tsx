@@ -66,7 +66,7 @@ export const QuizSequentialCard = memo(function QuizSequentialCard({
   );
 
   return (
-    <div className="p-4 sm:p-5 md:p-6 bg-white/[0.025] border border-white/[0.08] rounded-2xl space-y-4 shadow-sm relative backdrop-blur-xs">
+    <div className="p-4 sm:p-5 md:p-6 bg-white/[0.03] border border-white/[0.08] rounded-2xl space-y-4 shadow-sm relative">
       {/* Header do Card (Tags, Feedback Verdict & Gabarito) — apenas se houver metadados */}
       {hasMeta && (
         <div className="flex items-center justify-between gap-2 flex-wrap">

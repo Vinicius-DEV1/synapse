@@ -91,7 +91,7 @@ export function QuizOptionList({
                 handleSelectOption(optIndex);
               }
             }}
-            className={`group w-full p-2.5 md:p-3 rounded-xl border text-left flex items-start gap-3 transition-all duration-300 ease-out select-none ${optClass} ${
+            className={`group w-full p-2.5 md:p-3 rounded-xl border text-left flex items-start gap-3 transition-colors duration-150 ease-out select-none ${optClass} ${
               q.answered ? 'cursor-default' : 'cursor-pointer'
             }`}
           >

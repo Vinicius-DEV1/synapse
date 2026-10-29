@@ -160,7 +160,7 @@ function buildQuizPlayerHtml(count = 200) {
       : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.1]';
 
     html += `
-    <div id="quiz-card-${i}" class="p-4 md:p-5 rounded-2xl border space-y-4 ${borderClass} shadow-xs transition-all duration-200">
+    <div id="quiz-card-${i}" style="content-visibility: auto; contain-intrinsic-size: 240px;" class="p-4 md:p-5 rounded-2xl border space-y-4 ${borderClass} shadow-xs transition-colors duration-150 [content-visibility:auto] [contain-intrinsic-size:240px]">
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <span class="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] text-white/80 text-xs font-mono">
