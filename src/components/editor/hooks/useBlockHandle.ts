@@ -193,9 +193,9 @@ export function useBlockHandle(
       if (!draggingRef.current) hide();
     };
 
-    container.addEventListener('mousemove', onMouseMove);
-    container.addEventListener('mouseleave', onMouseLeave);
-    window.addEventListener('scroll', hideUnlessDragging, true);
+    container.addEventListener('mousemove', onMouseMove, { passive: true });
+    container.addEventListener('mouseleave', onMouseLeave, { passive: true });
+    window.addEventListener('scroll', hideUnlessDragging, { capture: true, passive: true });
     editor.on('update', hideUnlessDragging);
 
     return () => {

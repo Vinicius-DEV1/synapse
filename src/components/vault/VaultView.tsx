@@ -104,7 +104,7 @@ export default function VaultView() {
           />
 
           {/* PAINEL 3: Detalhes do Item (Direita) */}
-          <div className={`flex-1 flex flex-col bg-dark-bg overflow-y-auto relative ${
+          <div className={`flex-1 flex flex-col bg-dark-bg overflow-y-auto smooth-scroll-container overscroll-contain relative ${
             !selectedItem && !isEditingItem ? 'hidden md:flex' : 'flex'
           }`}>
             {/* Mobile Back Button to list */}

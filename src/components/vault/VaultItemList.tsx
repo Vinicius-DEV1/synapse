@@ -63,10 +63,10 @@ function SortableVaultItem({ item, isSelected, onSelect, isDragDisabled }: Sorta
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, contain: 'layout style' }}
       data-testid={`vault-item-${item.id}`}
       onClick={() => onSelect(item)}
-      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer mb-1 transition-all group select-none [content-visibility:auto] [contain-intrinsic-size:64px] ${
+      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer mb-1 transition-colors duration-150 group select-none ${
         isSelected
           ? 'bg-brand-500/20 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
           : 'hover:bg-white/5'
@@ -174,7 +174,7 @@ export function VaultItemList({
             <button
               type="button"
               onClick={() => onSelectGroup?.(null)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors duration-150 ${
                 selectedGroupId === null
                   ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 shadow-sm'
                   : 'text-dark-subtext hover:text-white bg-white/5'
@@ -187,7 +187,7 @@ export function VaultItemList({
                 key={g.id}
                 type="button"
                 onClick={() => onSelectGroup?.(g.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors duration-150 ${
                   selectedGroupId === g.id
                     ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-dark-subtext hover:text-white bg-white/5'
@@ -200,7 +200,7 @@ export function VaultItemList({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 overscroll-contain">
         {isLoading ? (
           <div className="text-center py-10 text-dark-subtext text-sm">{t('vault.loading', 'Carregando...')}</div>
         ) : filteredItems.length === 0 ? (

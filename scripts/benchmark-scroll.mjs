@@ -265,7 +265,7 @@ function buildAnkiHtml(count = 300) {
   let html = '<div class="space-y-3">';
   for (let i = 0; i < count; i++) {
     html += `
-    <div class="p-4 rounded-xl bg-dark-card/60 border border-white/5 hover:border-brand-500/30 transition-all flex items-start justify-between gap-4">
+    <div style="contain: layout style;" class="p-4 rounded-xl bg-dark-card/60 border border-white/5 hover:border-brand-500/30 transition-colors duration-150 flex items-start justify-between gap-4">
       <div class="space-y-1.5 min-w-0 flex-1">
         <div class="flex items-center gap-2">
           <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-500/10 text-brand-300">FSRS Review</span>
@@ -314,7 +314,7 @@ function buildVaultHtml(count = 200) {
   let html = '<div class="space-y-2.5">';
   for (let i = 0; i < count; i++) {
     html += `
-    <div class="p-3.5 rounded-xl bg-dark-card/50 border border-white/5 hover:border-brand-500/25 flex items-center justify-between gap-3 transition-colors">
+    <div style="contain: layout style;" class="p-3.5 rounded-xl bg-dark-card/50 border border-white/5 hover:border-brand-500/25 flex items-center justify-between gap-3 transition-colors duration-150">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-300 flex items-center justify-center font-bold text-xs shrink-0">
           K${i + 1}

@@ -51,7 +51,12 @@ export function useTimeTracker({ itemId, itemTitle, module, isActive, requireInt
   useEffect(() => {
     if (!requireInteraction) return;
 
+    let lastInteraction = 0;
     const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastInteraction < 5000) return;
+      lastInteraction = now;
+
       isInteracting.current = true;
       if (interactionTimeout.current) clearTimeout(interactionTimeout.current);
       // User is considered interacting for 2 minutes after last action
@@ -60,10 +65,10 @@ export function useTimeTracker({ itemId, itemTitle, module, isActive, requireInt
       }, 120000);
     };
 
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('scroll', handleActivity);
+    window.addEventListener('mousemove', handleActivity, { passive: true });
+    window.addEventListener('keydown', handleActivity, { passive: true });
+    window.addEventListener('click', handleActivity, { passive: true });
+    window.addEventListener('scroll', handleActivity, { passive: true });
 
     // trigger once on mount
     handleActivity();
