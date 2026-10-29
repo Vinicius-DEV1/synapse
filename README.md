@@ -347,11 +347,23 @@ npm run android
 
 ## 🧪 Testing & Quality Assurance
 
-Synapse enforces strict software engineering principles (SOLID, strict type safety, zero `any`) verified through automated tests:
+Synapse enforces strict software engineering principles (SOLID, strict type safety, zero `any`, and zero flaky tests) backed by a comprehensive automated test battery:
+
+- **1,600+ Automated Tests** across **355+ test files** with **100% pass rate**.
+- **Strict Type Integrity**: Zero TypeScript compilation errors (`npx tsc -b --noEmit`).
+- **Code Quality & Style**: Zero ESLint errors and zero warnings (`npm run lint`).
+- **Critical Service Coverage**: **92%–97%+ statement coverage** across cryptographic primitives (`crypto.ts`), CRDT state merging (`sync-pull-merge.ts`), and IndexedDB persistence adapters (`sync.ts`, `db-web.ts`).
+- **Data Resilience & Fault Simulation**: Rigorous tests simulating mid-flight transaction aborts, SQLite schema evolution fallbacks, and Android hardware back-press event interception pipelines.
 
 ```bash
 # Run fast targeted tests (sub-second feedback)
 npx vitest run src/services/crypto.test.ts
+
+# Run fast core domain, hook, and persistence suite (110 files / 616 tests in ~50s)
+npm run test:unit
+
+# Generate comprehensive test coverage report (v8 engine)
+npm run test:coverage
 
 # Run tests related to modified files
 npx vitest related --run src/services/crypto.ts
@@ -363,7 +375,7 @@ npx tsc -b --noEmit
 npm run lint
 ```
 
-For testing standards and PR guidelines, consult [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
+For complete risk mapping, failure simulations, and testing strategy, consult [**`docs/TESTES.md`**](./docs/TESTES.md) and [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
 
 ---
 

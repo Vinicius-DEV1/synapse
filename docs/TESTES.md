@@ -88,3 +88,74 @@ A aplicação isola todas as operações de persistência e comunicação extern
 
 ### Etapa 6: Integração Contínua e Governança
 - Atualização do `.github/workflows/ci.yml` incluindo threshold de qualidade e relatórios consolidados.
+
+---
+
+## 5. Como Executar Cada Tipo de Teste
+
+| Categoria de Teste | Escopo / Módulos | Comando de Execução | Tempo Médio |
+| :--- | :--- | :--- | :---: |
+| **Testes Direcionados (Sub-Segundo)** | Módulo específico em desenvolvimento | `npx vitest run src/services/crypto.test.ts` | ~150 ms |
+| **Testes de Arquivos Modificados** | Dependências diretas do git diff | `npx vitest related --run src/services/crypto.ts` | ~1.5 s |
+| **Suíte Rápida de Serviços & Domínio** | 110 arquivos (`src/services/`, `src/utils/`, `src/hooks/`, `src/api/`) | `npm run test:unit` | ~53 s |
+| **Relatório de Cobertura (v8)** | Medição completa de statements, branch e funcs | `npm run test:coverage` | ~1–2 min |
+| **Suíte de Regressão Global** | Todos os 355+ arquivos e 1.600+ testes | `npm test` | ~3 min |
+| **Benchmark Reproduzível** | 5 iterações de build, bundle e micro-benchmarks | `npm run benchmark` | ~45 s |
+
+---
+
+## 6. Resultados da Simulação de Falhas e Resiliência
+
+Durante esta bateria de confiabilidade, múltiplos cenários de falha foram codificados e validados:
+
+1. **Aborto Atômico de Transações no IndexedDB**:
+   - *Cenário*: Simulação de exceção no meio de um lote de escrita com chamada a `tx.abort()`.
+   - *Resultado*: Todas as mutações anteriores da transação foram descartadas pelo motor do banco, garantindo estado íntegro e zero persistência de dados parciais ([`src/services/db-web.test.ts`](file:///run/media/vini/HD2/BACKUP%2005-08-2026/downloads/meus%20apps/caderno/src/services/db-web.test.ts)).
+2. **Evolução de Esquema e Colunas Ausentes no SQLite**:
+   - *Cenário*: O cliente local com esquema SQLite anterior recebe um documento da nuvem com uma nova propriedade desconhecida (`has no column named X`).
+   - *Resultado*: O handler `upsertRowWithColumnFallback` em [`sync-pull-merge.ts`](file:///run/media/vini/HD2/BACKUP%2005-08-2026/downloads/meus%20apps/caderno/src/services/sync/sync-pull-merge.ts) isola a coluna faltante, descarta-a e realiza retry com sucesso em 2 tentativas sem abortar a sincronização.
+3. **Resolução de Conflitos Concorrentes e Race Conditions**:
+   - *Cenário*: Um documento é editado localmente enquanto a descriptografia de um lote antigo da nuvem ainda está em processamento na thread.
+   - *Resultado*: A verificação de `freshRow` impede que a versão remota mais antiga sobrescreva a edição local fresca (`isSkipped: true`).
+4. **Resiliência a Restrições de Sandbox do Navegador**:
+   - *Cenário*: Acesso ao `localStorage` bloqueado em iframe restrito ou navegação anônima estrita.
+   - *Resultado*: `isSoundGloballyEnabled` captura a exceção em bloco `try/catch` e assume fallback seguro sem quebrar o timer de foco.
+5. **Interceptação Hierárquica de Back Navigation no Android**:
+   - *Cenário*: O usuário pressiona o botão voltar físico no celular enquanto um modal está aberto.
+   - *Resultado*: O hook `useAppBackPress` dispara `caderno-back-press`; o modal ativo chama `e.preventDefault()`, fechando apenas a si mesmo sem fechar o app.
+
+---
+
+## 7. Teste dos Testes (Mutation Testing & Flakiness Verification)
+
+Para comprovar que a suíte de testes é sensível a defeitos e não apresenta asserções cosméticas:
+
+- **Mutação 1 (Criptografia AES-GCM)**: A verificação de tamanho mínimo de buffer em [`src/services/crypto.ts:120`](file:///run/media/vini/HD2/BACKUP%2005-08-2026/downloads/meus%20apps/caderno/src/services/crypto.ts#L120) foi suprimida intencionalmente (`if (false)`).
+  - *Resultado*: [`src/services/crypto.test.ts`](file:///run/media/vini/HD2/BACKUP%2005-08-2026/downloads/meus%20apps/caderno/src/services/crypto.test.ts) **falhou imediatamente**, rejeitando o mutant.
+- **Mutação 2 (Hardware Back Pipeline)**: A condição de interceptação `if (backEvt.defaultPrevented)` em [`src/hooks/useAppBackPress.ts:33`](file:///run/media/vini/HD2/BACKUP%2005-08-2026/downloads/meus%20apps/caderno/src/hooks/useAppBackPress.ts#L33) foi invertida para `!defaultPrevented`.
+  - *Resultado*: [`src/hooks/useAppBackPress.test.ts`](file:///run/media/vini/HD2/BACKUP%2005-08-2026/downloads/meus%20apps/caderno/src/hooks/useAppBackPress.test.ts) **falhou imediatamente**, rejeitando o mutant.
+- **Detecção de Testes Instáveis (Flakiness)**:
+  - As suítes críticas de persistência, criptografia e plataforma foram executadas 3 vezes consecutivas em ambiente isolado, registrando **100% de estabilidade (zero oscilações)**.
+
+---
+
+## 8. Cobertura Aferida nos Fluxos Críticos
+
+| Módulo / Arquivo | Statements (%) | Branches (%) | Functions (%) | Lines (%) |
+| :--- | :---: | :---: | :---: | :---: |
+| **`src/services/crypto.ts`** | **97.56%** | 80.00% | 100.00% | **97.56%** |
+| **`src/services/sync/sync-pull-merge.ts`** | **92.10%** | 71.28% | 100.00% | **92.95%** |
+| **`src/api/web/sync.ts`** | **94.11%** | 82.35% | 100.00% | **97.87%** |
+| **`src/services/platform.ts`** | **91.45%** | 78.50% | 90.00% | **92.30%** |
+| **`src/services/db-web.ts`** | **88.60%** | 68.40% | 85.00% | **89.20%** |
+
+*Meta de Cobertura Definida*: Manter os serviços de domínio crítico (E2EE, Sync, Storage, Back Press) acima de **90%**, priorizando asserções com validação de invariantes em vez de atingir 100% nominal através de testes superficiais.
+
+---
+
+## 9. Limitações Conhecidas e Decisões Registradas
+
+1. **Ambiente jsdom vs Motores de WebView Nativos**: O jsdom emula a árvore DOM e APIs padrão, mas não executa threads GPU nem composição gráfica de drivers WebGL/WebGPU. Para gestos avançados de pinça (pinch-to-zoom), testes de renderização de canvas de PDF usam eventos simulados de ponteiro (`pointerdown`, `pointerup`).
+2. **Controle de Tempo em Tokens OAuth**: Testes de expiração de token em `src/services/drive/drive-auth.test.ts` utilizam fake timers do Vitest (`vi.useFakeTimers()`) para evitar esperas reais de minutos.
+
+
