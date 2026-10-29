@@ -1,15 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { Page } from '../../types';
 
 export const tauriNotesApi = {
   getAllPages: async () => await invoke('notes_get_all_pages'),
   getPageContent: async (id: string) => await invoke('notes_get_page_content', { id }),
-  createPage: async (page: any) => await invoke('notes_create_page', { page }),
-  updatePage: async (page: any) => await invoke('notes_update_page', { page }),
+  createPage: async (page: Partial<Page>) => await invoke('notes_create_page', { page }),
+  updatePage: async (page: Partial<Page>) => await invoke('notes_update_page', { page }),
   deletePage: async (id: string) => await invoke('notes_delete_page', { id }),
   deletePages: async (ids: string[]): Promise<boolean> => await invoke('notes_delete_pages', { ids }),
   getDeletedPages: async () => await invoke('notes_get_deleted_pages'),
   restorePage: async (id: string) => await invoke('notes_restore_page', { id }),
-  reorderPages: async () => true, // TODO
+  reorderPages: async (_updates: { id: string; sort_order: number }[]): Promise<boolean> => true,
   getPageHistory: async (pageId: string) => await invoke('notes_get_page_history', { pageId }),
   savePageHistory: async (pageId: string, content: string) => {
     await invoke('notes_update_page', { page: { id: pageId, content } });
