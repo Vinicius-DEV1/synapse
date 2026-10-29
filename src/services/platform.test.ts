@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { platform, isDesktopApp, isMobileWebView } from './platform';
+import { platform, isDesktopApp, isMobileWebView, isTouchScreen, isMobileScreen } from './platform';
 
 describe('platform capabilities', () => {
   beforeEach(() => {
@@ -59,5 +59,65 @@ describe('platform capabilities', () => {
     expect(platform.canReadLocalFilesystem).toBe(true);
     expect(platform.useNativeTitleBar).toBe(true);
     expect(platform.supportsNativeTabs).toBe(true);
+  });
+
+  describe('isMobileScreen responsive breakpoint', () => {
+    it('returns true on mobile viewports (< 768px)', () => {
+      vi.stubGlobal('innerWidth', 375); // iPhone SE
+      expect(isMobileScreen()).toBe(true);
+
+      vi.stubGlobal('innerWidth', 412); // Pixel / Galaxy
+      expect(isMobileScreen()).toBe(true);
+
+      vi.stubGlobal('innerWidth', 767); // Breakpoint boundary
+      expect(isMobileScreen()).toBe(true);
+    });
+
+    it('returns false on tablet and desktop viewports (>= 768px)', () => {
+      vi.stubGlobal('innerWidth', 768); // iPad Mini / Tablet breakpoint
+      expect(isMobileScreen()).toBe(false);
+
+      vi.stubGlobal('innerWidth', 1024); // iPad Pro / Small Laptop
+      expect(isMobileScreen()).toBe(false);
+
+      vi.stubGlobal('innerWidth', 1440); // Standard Desktop
+      expect(isMobileScreen()).toBe(false);
+    });
+  });
+
+  describe('isTouchScreen capability detection', () => {
+    it('detects touch support via ontouchstart', () => {
+      (window as any).ontouchstart = () => {};
+      expect(isTouchScreen()).toBe(true);
+      delete (window as any).ontouchstart;
+    });
+
+    it('detects touch support via navigator.maxTouchPoints', () => {
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: 5,
+        configurable: true,
+      });
+      expect(isTouchScreen()).toBe(true);
+
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: 0,
+        configurable: true,
+      });
+    });
+
+    it('detects touch support via matchMedia coarse pointer', () => {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      expect(isTouchScreen()).toBe(true);
+    });
   });
 });
