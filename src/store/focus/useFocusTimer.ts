@@ -4,12 +4,6 @@ import { playAlarmSound } from './focus-sound';
 
 type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi' | 'stats';
 
-// `setAppIcon` is implemented in `window.api.focus` (see src/api/web/focus.ts and src/api/tauri/focus.ts)
-// even though `ICadernoAPI['focus']` (src/api/types.ts) may not yet declare it in the main interface.
-type FocusApiWithIcon = NonNullable<NonNullable<typeof window.api>['focus']> & {
-  setAppIcon?: (type: 'normal' | 'zzz') => Promise<void>;
-};
-
 export function useFocusTimer(
   view: ViewState,
   setView: (v: ViewState) => void,
@@ -66,7 +60,7 @@ export function useFocusTimer(
   // Tray icon manager
   useEffect(() => {
     const int = setInterval(() => {
-      const focusApi = window.api?.focus as FocusApiWithIcon | undefined;
+      const focusApi = window.api?.focus;
       if (view === 'timer' && currentSession && !isPaused) {
         if (focusApi?.setAppIcon) focusApi.setAppIcon('normal');
       } else {
@@ -82,7 +76,7 @@ export function useFocusTimer(
   const handleStartTimer = useCallback((tag: string, description: string, targetTime: number, explicitId?: string) => {
     const sessionId = explicitId || Date.now().toString();
     setCurrentSession({
-      id: sessionId as unknown as number,
+      id: sessionId,
       tag,
       description,
       target_time_minutes: targetTime,
