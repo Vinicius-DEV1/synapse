@@ -18,8 +18,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        'share-viewer': resolve(__dirname, 'share-viewer.html'),
+        main: resolve(import.meta.dirname, 'index.html'),
+        'share-viewer': resolve(import.meta.dirname, 'share-viewer.html'),
       },
       output: {
         manualChunks: (id) => {
