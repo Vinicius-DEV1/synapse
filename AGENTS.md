@@ -124,6 +124,9 @@ Every module, class, hook, and function must embody the **SOLID** software engin
     - Related dependency runner: `npx vitest related --run <modified_files>` (~2-3s).
     - Fast core services & domain tests (110 files / 616 tests): `npm run test:unit` (~50s).
     - Coverage measurement: `npm run test:coverage` (v8 engine).
+- **Performance Budgets & Benchmarking Gates**:
+  - Run the production performance budget gate: `npm run check:budgets` to verify that bundle sizes, CSS metrics, and vendor chunks adhere to thresholds.
+  - Run reproducible micro-benchmarks: `npm run benchmark` to measure builds, cryptographic primitives, memory retention deltas, and data scale traversals.
 - **Type Checking over Full Test Sweeps**:
   - To verify cross-project contract integrity quickly without running heavy DOM/worker runners, use `npx tsc -b --noEmit`.
 - **Full Regression Suite (`npm test`) Reservation**:
