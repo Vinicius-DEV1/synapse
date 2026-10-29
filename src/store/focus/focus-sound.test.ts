@@ -30,4 +30,33 @@ describe('focus-sound procedural alarms', () => {
     stop();
     vi.useRealTimers();
   });
+
+  it('handles restricted or throwing localStorage gracefully', () => {
+    const originalGetItem = localStorage.getItem;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError: The operation is insecure');
+    });
+
+    expect(() => playAlarmSound()).not.toThrow();
+
+    const mockCtx = {
+      currentTime: 0,
+      destination: {},
+      createGain: () => ({
+        gain: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+        connect: vi.fn(),
+      }),
+      createOscillator: () => ({
+        type: 'sine',
+        frequency: { setValueAtTime: vi.fn() },
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn(),
+      }),
+    } as unknown as AudioContext;
+
+    expect(() => startProceduralAlarm(mockCtx, 'beep')).not.toThrow();
+
+    Storage.prototype.getItem = originalGetItem;
+  });
 });
