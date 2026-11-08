@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
-import type { Transaction } from '../../../types';
+import type { Transaction, Account } from '../../../types';
 import { LoanSummaryCards } from './LoanSummaryCards';
 import { LoanCard } from './LoanCard';
 import { useTranslation } from '../../../i18n';
 
 interface LoansTabProps {
   loans: Transaction[];
+  allTransactions?: Transaction[];
+  accounts?: Account[];
   onAddLoan: () => void;
   onPayLoan: (loan: Transaction) => void;
   onMarkAsPaid: (id: string) => void;
@@ -32,6 +34,8 @@ function isLoanOverdue(loan: Transaction): boolean {
 
 export function LoansTab({
   loans,
+  allTransactions = [],
+  accounts = [],
   onAddLoan,
   onPayLoan,
   onMarkAsPaid,
@@ -43,6 +47,18 @@ export function LoansTab({
   const [directionFilter, setDirectionFilter] = useState<'all' | 'loan_made' | 'loan_taken'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'overdue' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const paymentsByLoanId = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const tx of allTransactions) {
+      if (tx.linked_loan_id) {
+        const list = map.get(tx.linked_loan_id) || [];
+        list.push(tx);
+        map.set(tx.linked_loan_id, list);
+      }
+    }
+    return map;
+  }, [allTransactions]);
 
   const overdueCount = useMemo(() => {
     return loans.filter(isLoanOverdue).length;
@@ -211,6 +227,8 @@ export function LoansTab({
             <LoanCard
               key={loan.id}
               loan={loan}
+              payments={paymentsByLoanId.get(loan.id)}
+              accounts={accounts}
               onPay={onPayLoan}
               onMarkAsPaid={onMarkAsPaid}
               onReopen={onReopenLoan}

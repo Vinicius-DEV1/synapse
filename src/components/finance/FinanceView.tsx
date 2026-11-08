@@ -339,6 +339,8 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
             {activeSection === 'loans' && (
               <LoansTab
                 loans={loansList}
+                allTransactions={transactions}
+                accounts={accounts}
                 onAddLoan={() => {
                   setTxToEdit(null);
                   setShowTxModal(true);

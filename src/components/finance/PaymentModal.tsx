@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowUpRight, ArrowDownLeft, Building2 } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownLeft, Building2, Calendar } from 'lucide-react';
 import type { Transaction, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
@@ -11,7 +11,12 @@ interface PaymentModalProps {
   accounts?: Account[];
   onClose: () => void;
   onSave?: (id: string, updates: Partial<Transaction>) => Promise<void>;
-  onPayLoanWithAccount?: (loan: Transaction, amount: number, targetAccountId: string) => Promise<void>;
+  onPayLoanWithAccount?: (
+    loan: Transaction,
+    amount: number,
+    targetAccountId: string,
+    paymentDate?: string
+  ) => Promise<void>;
 }
 
 export default function PaymentModal({
@@ -23,6 +28,9 @@ export default function PaymentModal({
 }: PaymentModalProps) {
   const { t } = useTranslation();
   const [amount, setAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState<string>(
+    () => new Date().toISOString().split('T')[0]
+  );
   const [targetAccountId, setTargetAccountId] = useState<string>(
     transaction.account_id || (accounts.length > 0 ? accounts[0].id : 'default-wallet')
   );
@@ -67,7 +75,7 @@ export default function PaymentModal({
     setLoading(true);
     try {
       if (onPayLoanWithAccount) {
-        await onPayLoanWithAccount(transaction, parsedAmount, targetAccountId);
+        await onPayLoanWithAccount(transaction, parsedAmount, targetAccountId, paymentDate);
       } else if (onSave) {
         const newPaidAmount = Math.min(targetTotal, (transaction.paid_amount || 0) + parsedAmount);
         const updates: Partial<Transaction> = {
@@ -150,13 +158,31 @@ export default function PaymentModal({
               </div>
             )}
             
+            {/* Date of the payment */}
             <div>
-              <label className="block text-xs text-dark-subtext mb-1">
+              <label htmlFor="payment-date-input" className="block text-xs text-dark-subtext mb-1 flex items-center gap-1">
+                <Calendar size={12} className="text-brand-400" />
+                <span>Data do Pagamento</span>
+              </label>
+              <input
+                id="payment-date-input"
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                style={{ colorScheme: 'dark' }}
+                className="w-full bg-dark-bg border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="payment-amount-input" className="block text-xs text-dark-subtext mb-1">
                 {isLoanMade ? 'Valor Recebido' : 'Valor Pago'}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-subtext text-xs font-semibold">R$</span>
                 <input
+                  id="payment-amount-input"
                   type="number"
                   step="0.01"
                   min="0.01"

@@ -17,7 +17,8 @@ export function useFinanceLoans({
   const payLoanWithAccount = useCallback(async (
     loan: Transaction,
     paymentAmount: number,
-    targetAccountId: string
+    targetAccountId: string,
+    paymentDate?: string
   ) => {
     if (!window.api?.finance) return;
     try {
@@ -38,7 +39,7 @@ export function useFinanceLoans({
         linked_loan_id: loan.id,
         category: isLoanMade ? 'Recebimento de Empréstimo' : 'Pagamento de Dívida',
         description: isLoanMade ? `Recebimento: ${loan.description}` : `Pagamento: ${loan.description}`,
-        date: new Date().toISOString().split('T')[0],
+        date: paymentDate || new Date().toISOString().split('T')[0],
         is_paid: 1,
         status: 'completed',
       });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ArrowUpRight,
   ArrowDownLeft,
@@ -10,13 +10,16 @@ import {
   Clock,
   Calendar,
   Edit2,
+  ChevronDown,
 } from 'lucide-react';
-import type { Transaction } from '../../../types';
+import type { Transaction, Account } from '../../../types';
 import { formatDateSafe } from './TransactionList';
 import { formatCurrency } from '../utils/formatCurrency';
 
 interface LoanCardProps {
   loan: Transaction;
+  payments?: Transaction[];
+  accounts?: Account[];
   onPay: (loan: Transaction) => void;
   onMarkAsPaid: (id: string) => void;
   onReopen: (id: string) => void;
@@ -75,12 +78,15 @@ function getDueDateInfo(dueDateStr?: string | null, isPaid?: boolean): DueDateIn
 
 export const LoanCard = React.memo(({
   loan,
+  payments = [],
+  accounts = [],
   onPay,
   onMarkAsPaid,
   onReopen,
   onEdit,
   onDelete,
 }: LoanCardProps) => {
+  const [showPayments, setShowPayments] = useState(false);
   const isLoanMade = loan.type === 'loan_made';
   const principal = Number(loan.amount || 0);
   const total = Number(loan.expected_amount || loan.amount || 0);
@@ -198,6 +204,51 @@ export const LoanCard = React.memo(({
           />
         </div>
       </div>
+
+      {/* Payment History Accordion */}
+      {payments.length > 0 && (
+        <div className="mb-3 pt-1 border-t border-white/5">
+          <button
+            type="button"
+            onClick={() => setShowPayments(!showPayments)}
+            className="flex items-center gap-1.5 text-xs text-dark-subtext hover:text-dark-text transition-colors cursor-pointer py-1"
+          >
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${showPayments ? 'rotate-180' : ''}`}
+            />
+            <span className="font-medium">
+              {isLoanMade ? 'Recebimentos parciais' : 'Pagamentos parciais'} ({payments.length})
+            </span>
+          </button>
+
+          {showPayments && (
+            <div className="mt-1.5 flex flex-col gap-1.5 pl-2 border-l-2 border-white/10 py-1">
+              {payments.map((p) => {
+                const account = accounts.find((a) => a.id === p.account_id);
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between text-xs py-1 px-2.5 rounded-md bg-dark-bg/60 border border-white/5"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-dark-subtext">{formatDateSafe(p.date)}</span>
+                      {account && (
+                        <span className="text-[11px] text-dark-subtext/80 bg-white/5 px-1.5 py-0.5 rounded">
+                          {account.name}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`font-semibold ${isLoanMade ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {isLoanMade ? `+ ${formatCurrency(p.amount)}` : `- ${formatCurrency(p.amount)}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-1 border-t border-white/5">

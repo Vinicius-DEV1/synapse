@@ -23,7 +23,7 @@ interface FinanceModalsHostProps {
   selectedTxForPayment: Transaction | null;
   onClosePaymentModal: () => void;
   onUpdateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
-  onPayLoanWithAccount: (loan: Transaction, amount: number, targetAccountId: string) => Promise<void>;
+  onPayLoanWithAccount: (loan: Transaction, amount: number, targetAccountId: string, paymentDate?: string) => Promise<void>;
 
   showAccountModal: boolean;
   onCloseAccountModal: () => void;
