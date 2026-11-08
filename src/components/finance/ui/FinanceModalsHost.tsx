@@ -7,6 +7,7 @@ import { AccountManagerModal } from './AccountManagerModal';
 import { DeleteTransactionModal } from './DeleteTransactionModal';
 import { WishlistDetailsModal } from './WishlistDetailsModal';
 import { AcquireWishlistModal } from './AcquireWishlistModal';
+import { ConfirmPendingModal } from './ConfirmPendingModal';
 
 interface FinanceModalsHostProps {
   showTxModal: boolean;
@@ -53,6 +54,19 @@ interface FinanceModalsHostProps {
     description: string;
     deleteFromWishlist: boolean;
   }) => Promise<void>;
+
+  selectedTxToConfirmPending: Transaction | null;
+  onCloseConfirmPendingModal: () => void;
+  onConfirmPendingTransaction: (
+    txId: string,
+    updatedData: {
+      amount: number;
+      date: string;
+      accountId: string;
+      description: string;
+      category: string;
+    }
+  ) => Promise<void>;
 }
 
 export const FinanceModalsHost = React.memo(function FinanceModalsHost({
@@ -92,6 +106,9 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
   selectedWishlistToAcquire,
   onCloseAcquireWishlist,
   onConfirmAcquireWishlist,
+  selectedTxToConfirmPending,
+  onCloseConfirmPendingModal,
+  onConfirmPendingTransaction,
 }: FinanceModalsHostProps) {
   return (
     <>
@@ -167,6 +184,16 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
           accounts={accounts}
           onClose={onCloseAcquireWishlist}
           onConfirm={onConfirmAcquireWishlist}
+        />
+      )}
+
+      {selectedTxToConfirmPending && (
+        <ConfirmPendingModal
+          isOpen={Boolean(selectedTxToConfirmPending)}
+          transaction={selectedTxToConfirmPending}
+          accounts={accounts}
+          onClose={onCloseConfirmPendingModal}
+          onConfirm={onConfirmPendingTransaction}
         />
       )}
     </>

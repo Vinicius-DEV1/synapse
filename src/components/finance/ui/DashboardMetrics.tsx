@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ArrowLeftRight,
   Plus,
+  Clock,
 } from 'lucide-react';
 import type { Transaction, Account } from '../../../types';
 import { AccountCards } from './AccountCards';
@@ -222,6 +223,9 @@ export const DashboardMetrics = React.memo(({
         ) : (
           <div className="divide-y divide-white/[0.04]">
             {recentTransactions.map((tx) => {
+              const isPending =
+                (tx.is_paid === 0 || tx.status === 'pending') &&
+                (tx.type === 'income' || tx.type === 'expense' || tx.type === 'transfer');
               const isTransfer = tx.type === 'transfer';
               const isExpense = tx.type === 'expense' || tx.type === 'loan_made';
               const originAcc = accountsMap.get(tx.account_id || 'default-wallet');
@@ -231,17 +235,28 @@ export const DashboardMetrics = React.memo(({
               return (
                 <div
                   key={tx.id}
-                  className="py-2.5 flex items-center justify-between gap-3 hover:bg-white/[0.02] px-2 rounded-lg transition-colors"
+                  className={`py-2.5 flex items-center justify-between gap-3 px-2 rounded-lg transition-colors ${
+                    isPending
+                      ? 'bg-white/[0.015] border border-dashed border-white/10 hover:bg-white/[0.03]'
+                      : 'hover:bg-white/[0.02]'
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-dark-text truncate">
+                        <span className={`text-xs font-medium truncate ${isPending ? 'text-zinc-400' : 'text-dark-text'}`}>
                           {tx.description}
                         </span>
-                        <span className="text-[10px] bg-white/5 text-dark-subtext px-1.5 py-0.5 rounded border border-white/5 shrink-0">
-                          {tx.category || 'Geral'}
-                        </span>
+                        {isPending ? (
+                          <span className="text-[10px] bg-white/5 text-zinc-400 border border-white/10 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 font-medium">
+                            <Clock size={10} className="text-zinc-400" />
+                            Pendente
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-white/5 text-dark-subtext px-1.5 py-0.5 rounded border border-white/5 shrink-0">
+                            {tx.category || 'Geral'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-dark-subtext mt-0.5">
                         <span>{formatDateSafe(tx.date)}</span>
@@ -268,16 +283,23 @@ export const DashboardMetrics = React.memo(({
                   <div className="text-right shrink-0">
                     <span
                       className={`text-xs sm:text-sm font-semibold ${
-                        isTransfer
+                        isPending
+                          ? 'text-zinc-400'
+                          : isTransfer
                           ? 'text-indigo-400'
                           : isExpense
                           ? 'text-rose-400'
                           : 'text-emerald-400'
                       }`}
                     >
-                      {isTransfer ? '⇄ ' : isExpense ? '- ' : '+ '}
+                      {isPending ? '' : isTransfer ? '⇄ ' : isExpense ? '- ' : '+ '}
                       {formatCurrency(amountNum)}
                     </span>
+                    {isPending && (
+                      <div className="text-[10px] text-zinc-500 font-normal">
+                        Não debitado
+                      </div>
+                    )}
                   </div>
                 </div>
               );

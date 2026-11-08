@@ -25,6 +25,7 @@ export interface CategorySelectProps {
   label?: string;
   defaultCategories?: string[];
   selectClassName?: string;
+  disabled?: boolean;
 }
 
 export function CategorySelect({
@@ -33,6 +34,7 @@ export function CategorySelect({
   label = 'Categoria',
   defaultCategories = DEFAULT_FINANCE_CATEGORIES,
   selectClassName,
+  disabled = false,
 }: CategorySelectProps) {
   const { t } = useTranslation();
   const [customCategories, setCustomCategories] = useLocalStorage<string[]>(
@@ -119,6 +121,7 @@ export function CategorySelect({
         <div className="flex items-center gap-1.5">
           <select
             value={value}
+            disabled={disabled}
             onChange={(e) => {
               if (e.target.value === '__NEW__') {
                 setIsCreating(true);
@@ -129,7 +132,7 @@ export function CategorySelect({
             style={{ colorScheme: 'dark' }}
             className={
               selectClassName ||
-              'flex-1 bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]'
+              'flex-1 bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark] disabled:opacity-50'
             }
           >
             {allCategories.map((cat) => (
@@ -144,8 +147,9 @@ export function CategorySelect({
 
           <button
             type="button"
+            disabled={disabled}
             onClick={() => setIsCreating(true)}
-            className="p-1.5 bg-dark-bg hover:bg-white/10 border border-white/10 rounded-lg text-brand-400 hover:text-brand-300 transition-colors flex items-center justify-center flex-shrink-0"
+            className="p-1.5 bg-dark-bg hover:bg-white/10 border border-white/10 rounded-lg text-brand-400 hover:text-brand-300 transition-colors flex items-center justify-center flex-shrink-0 disabled:opacity-50"
             title={t('finance.addCategoryTitle', 'Adicionar nova categoria')}
           >
             <Plus size={14} />

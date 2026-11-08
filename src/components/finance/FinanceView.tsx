@@ -22,6 +22,7 @@ import { LoansTab } from './ui/LoansTab';
 import { WishlistTab } from './ui/WishlistTab';
 import { FinanceModalsHost } from './ui/FinanceModalsHost';
 import { FinanceHelpModal } from './FinanceHelpModal';
+import { PeriodSelector, type PeriodFilter } from './ui/PeriodSelector';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { useTranslation } from '../../i18n';
@@ -68,6 +69,10 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
   } = useFinance();
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
@@ -77,6 +82,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
   const [wishlistToEdit, setWishlistToEdit] = useState<WishlistItem | null>(null);
   const [selectedWishlistDetails, setSelectedWishlistDetails] = useState<WishlistItem | null>(null);
   const [selectedWishlistToAcquire, setSelectedWishlistToAcquire] = useState<WishlistItem | null>(null);
+  const [selectedTxToConfirmPending, setSelectedTxToConfirmPending] = useState<Transaction | null>(null);
   const [selectedTxForPayment, setSelectedTxForPayment] = useState<Transaction | null>(null);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
   const [wishlistToDeleteId, setWishlistToDeleteId] = useState<string | null>(null);
@@ -105,9 +111,27 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
     }
   }, [createTransaction, deleteWishlistItem, selectedWishlistToAcquire]);
 
-  const handleConfirmPendingTransaction = useCallback(async (tx: Transaction) => {
-    await updateTransaction(tx.id, { is_paid: 1, status: 'completed' });
+  const handleConfirmPendingTransaction = useCallback(async (
+    txId: string,
+    updatedData: {
+      amount: number;
+      date: string;
+      accountId: string;
+      description: string;
+      category: string;
+    }
+  ) => {
+    await updateTransaction(txId, {
+      amount: updatedData.amount,
+      date: updatedData.date,
+      account_id: updatedData.accountId,
+      description: updatedData.description,
+      category: updatedData.category,
+      is_paid: 1,
+      status: 'completed',
+    });
     triggerToast('Transação confirmada e debitada/creditada no saldo!', 'success');
+    setSelectedTxToConfirmPending(null);
   }, [updateTransaction]);
 
   useEffect(() => {
@@ -193,11 +217,12 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
     }
   };
 
-  // Dashboard calculations with account awareness
+  // Dashboard calculations with account awareness and period filtering
   const { totalIncome, totalExpense, balance, loansList, regularTransactions } = useFinanceMetrics({
     transactions,
     accounts,
     selectedAccountId,
+    selectedPeriod,
   });
 
   if (isLoading) {
@@ -261,70 +286,81 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
             </div>
           </div>
 
-          {/* Module Navigation Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-dark-card border border-white/[0.06] rounded-xl w-fit shadow-sm">
-            <button
-              onClick={() => setActiveSection('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                activeSection === 'dashboard'
-                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
-                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <LayoutDashboard size={14} className={activeSection === 'dashboard' ? 'text-brand-400' : 'text-dark-subtext'} />
-              <span>{t('finance.dashboard', 'Visão Geral')}</span>
-            </button>
+          {/* Navigation Bar with Tabs & Period Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Module Navigation Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-dark-card border border-white/[0.06] rounded-xl w-fit shadow-sm">
+              <button
+                onClick={() => setActiveSection('dashboard')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  activeSection === 'dashboard'
+                    ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <LayoutDashboard size={14} className={activeSection === 'dashboard' ? 'text-brand-400' : 'text-dark-subtext'} />
+                <span>{t('finance.dashboard', 'Visão Geral')}</span>
+              </button>
 
-            <button
-              onClick={() => setActiveSection('transactions')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                activeSection === 'transactions'
-                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
-                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <ArrowLeftRight size={14} className={activeSection === 'transactions' ? 'text-brand-400' : 'text-dark-subtext'} />
-              <span>{t('finance.transactions', 'Transações')}</span>
-              {regularTransactions.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-dark-text font-normal">
-                  {regularTransactions.length}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={() => setActiveSection('transactions')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  activeSection === 'transactions'
+                    ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <ArrowLeftRight size={14} className={activeSection === 'transactions' ? 'text-brand-400' : 'text-dark-subtext'} />
+                <span>{t('finance.transactions', 'Transações')}</span>
+                {regularTransactions.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-dark-text font-normal">
+                    {regularTransactions.length}
+                  </span>
+                )}
+              </button>
 
-            <button
-              onClick={() => setActiveSection('loans')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                activeSection === 'loans'
-                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
-                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <HandCoins size={14} className={activeSection === 'loans' ? 'text-brand-400' : 'text-dark-subtext'} />
-              <span>{t('finance.loans', 'Empréstimos')}</span>
-              {loansList.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-300 font-normal border border-amber-500/20">
-                  {loansList.length}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={() => setActiveSection('loans')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  activeSection === 'loans'
+                    ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <HandCoins size={14} className={activeSection === 'loans' ? 'text-brand-400' : 'text-dark-subtext'} />
+                <span>{t('finance.loans', 'Empréstimos')}</span>
+                {loansList.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-300 font-normal border border-amber-500/20">
+                    {loansList.length}
+                  </span>
+                )}
+              </button>
 
-            <button
-              onClick={() => setActiveSection('wishlist')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                activeSection === 'wishlist'
-                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
-                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <Gift size={14} className={activeSection === 'wishlist' ? 'text-brand-400' : 'text-dark-subtext'} />
-              <span>{t('finance.wishlist', 'Desejos & Metas')}</span>
-              {wishlist.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-dark-text font-normal">
-                  {wishlist.length}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={() => setActiveSection('wishlist')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  activeSection === 'wishlist'
+                    ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                    : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <Gift size={14} className={activeSection === 'wishlist' ? 'text-brand-400' : 'text-dark-subtext'} />
+                <span>{t('finance.wishlist', 'Desejos & Metas')}</span>
+                {wishlist.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-dark-text font-normal">
+                    {wishlist.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Reference Period Navigator for Dashboard and Transactions */}
+            {(activeSection === 'dashboard' || activeSection === 'transactions') && (
+              <PeriodSelector
+                selectedPeriod={selectedPeriod}
+                onChangePeriod={setSelectedPeriod}
+              />
+            )}
           </div>
 
           {/* Tab Content Section */}
@@ -354,13 +390,15 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 transactions={transactions}
                 accounts={accounts}
                 selectedAccountId={selectedAccountId}
+                selectedPeriod={selectedPeriod}
+                onClearPeriod={() => setSelectedPeriod('all')}
                 onEdit={(tx) => {
                   setTxToEdit(tx);
                   setShowTxModal(true);
                 }}
                 onDelete={handleDeleteRequested}
                 onPayLoan={setSelectedTxForPayment}
-                onConfirmPending={handleConfirmPendingTransaction}
+                onConfirmPending={(tx) => setSelectedTxToConfirmPending(tx)}
                 onNewTransaction={() => {
                   setTxToEdit(null);
                   setShowTxModal(true);
@@ -451,6 +489,9 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
         selectedWishlistToAcquire={selectedWishlistToAcquire}
         onCloseAcquireWishlist={() => setSelectedWishlistToAcquire(null)}
         onConfirmAcquireWishlist={handleConfirmAcquireWishlist}
+        selectedTxToConfirmPending={selectedTxToConfirmPending}
+        onCloseConfirmPendingModal={() => setSelectedTxToConfirmPending(null)}
+        onConfirmPendingTransaction={handleConfirmPendingTransaction}
       />
 
       <FinanceHelpModal

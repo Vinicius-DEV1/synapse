@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { formatDateSafe } from './TransactionList';
+import { Portal } from '../../ui/Portal';
 
 export interface CadernoDatePickerProps {
   value: string; // 'YYYY-MM-DD' or ''
@@ -48,12 +49,50 @@ export function CadernoDatePicker({
 }: CadernoDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; placement: 'bottom' | 'top' }>({
+    top: 0,
+    left: 0,
+    placement: 'bottom',
+  });
 
   const parsed = useMemo(() => parseYMD(value), [value]);
 
   // View state for month and year being browsed
   const [viewYear, setViewYear] = useState(() => parsed?.year || new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => parsed !== null ? parsed.month : new Date().getMonth());
+
+  // Dynamic positioning calculation avoiding clipping by parent modals or viewport boundaries
+  const updatePosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const popoverHeight = 310;
+    const popoverWidth = 264;
+    const viewportHeight = window.innerHeight || 800;
+    const viewportWidth = window.innerWidth || 1200;
+
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const placement = spaceBelow < popoverHeight && spaceAbove >= popoverHeight ? 'top' : 'bottom';
+    const top = placement === 'bottom' ? rect.bottom + 6 : Math.max(10, rect.top - popoverHeight - 6);
+    const left = Math.max(12, Math.min(rect.left, viewportWidth - popoverWidth - 12));
+
+    setCoords({ top, left, placement });
+  }, []);
+
+  // Update coords on open and on scroll/resize
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+
+    window.addEventListener('resize', updatePosition, { passive: true });
+    window.addEventListener('scroll', updatePosition, { capture: true, passive: true });
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, { capture: true });
+    };
+  }, [isOpen, updatePosition]);
 
   // Sync view state when value changes from outside
   useEffect(() => {
@@ -68,7 +107,11 @@ export function CadernoDatePicker({
     if (!isOpen) return;
 
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        popoverRef.current && !popoverRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -233,95 +276,104 @@ export function CadernoDatePicker({
         </div>
       </div>
 
-      {/* Floating Calendar Popover */}
+      {/* Floating Calendar Popover rendered in Portal to escape modal overflow-hidden */}
       {isOpen && (
-        <div
-          role="dialog"
-          aria-label="Calendário"
-          className="absolute z-50 mt-1 left-0 top-full bg-dark-card border border-white/[0.12] rounded-xl shadow-2xl p-3 w-64 animate-scale-in select-none"
-        >
-          {/* Header with Month / Year and navigation */}
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="p-1 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
-              title="Mês anterior"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <span className="text-xs font-semibold text-dark-text">
-              {MONTH_NAMES[viewMonth]} {viewYear}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="p-1 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
-              title="Próximo mês"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          {/* Weekday labels */}
-          <div className="grid grid-cols-7 gap-1 text-center mb-1">
-            {WEEKDAY_NAMES.map((wd) => (
-              <span key={wd} className="text-[10px] font-semibold text-dark-subtext/70">
-                {wd}
-              </span>
-            ))}
-          </div>
-
-          {/* Days grid */}
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {calendarDays.map(({ day, isCurrentMonth, ymd }) => {
-              const isSelected = ymd === value;
-              const isToday = ymd === todayYMD;
-
-              return (
-                <button
-                  key={ymd}
-                  type="button"
-                  onClick={() => handleSelectDay(day)}
-                  className={`h-7 w-7 mx-auto flex items-center justify-center text-xs rounded-lg transition-all cursor-pointer font-medium ${
-                    isSelected
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
-                      : isToday
-                      ? 'bg-white/10 text-brand-300 font-bold border border-brand-500/40'
-                      : isCurrentMonth
-                      ? 'text-dark-text hover:bg-white/5'
-                      : 'text-dark-subtext/40 hover:bg-white/5'
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Footer with Today and Clear */}
-          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-white/5 text-xs">
-            {!required ? (
+        <Portal>
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label="Calendário"
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              zIndex: 99999,
+            }}
+            className="bg-dark-card border border-white/[0.12] rounded-xl shadow-2xl p-3 w-64 animate-scale-in select-none"
+          >
+            {/* Header with Month / Year and navigation */}
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
               <button
                 type="button"
-                onClick={handleClear}
-                className="text-dark-subtext hover:text-rose-400 text-[11px] font-medium transition-colors cursor-pointer"
+                onClick={handlePrevMonth}
+                className="p-1 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                title="Mês anterior"
               >
-                Limpar
+                <ChevronLeft size={16} />
               </button>
-            ) : <span />}
 
-            <button
-              type="button"
-              onClick={handleToday}
-              className="text-brand-400 hover:text-brand-300 text-[11px] font-medium transition-colors cursor-pointer"
-            >
-              Hoje
-            </button>
+              <span className="text-xs font-semibold text-dark-text">
+                {MONTH_NAMES[viewMonth]} {viewYear}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-1 text-dark-subtext hover:text-dark-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                title="Próximo mês"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Weekday labels */}
+            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+              {WEEKDAY_NAMES.map((wd) => (
+                <span key={wd} className="text-[10px] font-semibold text-dark-subtext/70">
+                  {wd}
+                </span>
+              ))}
+            </div>
+
+            {/* Days grid */}
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {calendarDays.map(({ day, isCurrentMonth, ymd }) => {
+                const isSelected = ymd === value;
+                const isToday = ymd === todayYMD;
+
+                return (
+                  <button
+                    key={ymd}
+                    type="button"
+                    onClick={() => handleSelectDay(day)}
+                    className={`h-7 w-7 mx-auto flex items-center justify-center text-xs rounded-lg transition-all cursor-pointer font-medium ${
+                      isSelected
+                        ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
+                        : isToday
+                        ? 'bg-white/10 text-brand-300 font-bold border border-brand-500/40'
+                        : isCurrentMonth
+                        ? 'text-dark-text hover:bg-white/5'
+                        : 'text-dark-subtext/40 hover:bg-white/5'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Footer with Today and Clear */}
+            <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-white/5 text-xs">
+              {!required ? (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="text-dark-subtext hover:text-rose-400 text-[11px] font-medium transition-colors cursor-pointer"
+                >
+                  Limpar
+                </button>
+              ) : <span />}
+
+              <button
+                type="button"
+                onClick={handleToday}
+                className="text-brand-400 hover:text-brand-300 text-[11px] font-medium transition-colors cursor-pointer"
+              >
+                Hoje
+              </button>
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

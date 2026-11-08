@@ -1,11 +1,25 @@
 import { useMemo } from 'react';
 import type { Transaction, Account } from '../../../types';
 import { calculateAccountBalance } from '../ui/AccountCards';
+import type { PeriodFilter } from '../ui/PeriodSelector';
+
+export function matchesPeriod(dateStr?: string | null, period?: PeriodFilter): boolean {
+  if (!period || period === 'all') return true;
+  if (!dateStr) return false;
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    const [y, m] = dateStr.split('-').map(Number);
+    return y === period.year && (m - 1) === period.month;
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  return d.getFullYear() === period.year && d.getMonth() === period.month;
+}
 
 export interface UseFinanceMetricsProps {
   transactions: Transaction[];
   accounts: Account[];
   selectedAccountId: string | 'all';
+  selectedPeriod?: PeriodFilter;
 }
 
 export interface FinanceMetricsResult {
@@ -23,6 +37,7 @@ export function useFinanceMetrics({
   transactions,
   accounts,
   selectedAccountId,
+  selectedPeriod,
 }: UseFinanceMetricsProps): FinanceMetricsResult {
   return useMemo(() => {
     let incCents = 0;
@@ -44,6 +59,11 @@ export function useFinanceMetrics({
         (t.is_paid === 0 || t.status === 'pending');
 
       if (isPendingRegular) {
+        continue;
+      }
+
+      // Check period filter for realized income/expense metrics
+      if (selectedPeriod && !matchesPeriod(t.date, selectedPeriod)) {
         continue;
       }
 
@@ -87,5 +107,5 @@ export function useFinanceMetrics({
       loansList: loans,
       regularTransactions: regulars,
     };
-  }, [transactions, accounts, selectedAccountId]);
+  }, [transactions, accounts, selectedAccountId, selectedPeriod]);
 }

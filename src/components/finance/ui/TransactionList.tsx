@@ -3,6 +3,8 @@ import { Trash2, ArrowRight, Edit2, Search, Filter, X, CreditCard, Clock, CheckC
 import type { Transaction, Account } from '../../../types';
 import { useTranslation } from '../../../i18n';
 import { formatCurrency } from '../utils/formatCurrency';
+import { matchesPeriod } from '../hooks/useFinanceMetrics';
+import type { PeriodFilter } from './PeriodSelector';
 
 const getTypeLabels = (t: (key: string, fallback: string) => string): Record<string, { label: string; color: string }> => ({
   income: { label: t('finance.income', 'Entrada'), color: 'text-emerald-400' },
@@ -41,6 +43,8 @@ interface TransactionListProps {
   transactions: Transaction[];
   accounts?: Account[];
   selectedAccountId?: string | 'all';
+  selectedPeriod?: PeriodFilter;
+  onClearPeriod?: () => void;
   onEdit?: (tx: Transaction) => void;
   onDelete: (id: string) => void;
   onPayLoan: (tx: Transaction) => void;
@@ -54,6 +58,8 @@ export const TransactionList = React.memo(({
   transactions,
   accounts = [],
   selectedAccountId = 'all',
+  selectedPeriod,
+  onClearPeriod,
   onEdit,
   onDelete,
   onPayLoan,
@@ -118,11 +124,13 @@ export const TransactionList = React.memo(({
       if (isPendingRegularTx(tx)) {
         pending.push(tx);
       } else {
-        completed.push(tx);
+        if (!selectedPeriod || matchesPeriod(tx.date, selectedPeriod)) {
+          completed.push(tx);
+        }
       }
     }
     return { pendingTransactions: pending, completedTransactions: completed };
-  }, [filteredTransactions, isPendingRegularTx]);
+  }, [filteredTransactions, isPendingRegularTx, selectedPeriod]);
 
   const groupedTransactions = useMemo(() => {
     return completedTransactions.reduce((acc, tx) => {
@@ -213,6 +221,20 @@ export const TransactionList = React.memo(({
           )}
         </div>
       </div>
+
+      {/* Active Monthly Period Notice */}
+      {selectedPeriod && selectedPeriod !== 'all' && onClearPeriod && (
+        <div className="flex items-center justify-between bg-brand-500/10 border border-brand-500/20 rounded-xl px-3 py-1.5 text-xs text-brand-300">
+          <span>Filtrando transações pelo período de referência.</span>
+          <button
+            type="button"
+            onClick={onClearPeriod}
+            className="text-[11px] underline hover:text-brand-200 cursor-pointer font-medium"
+          >
+            Ver todo o histórico
+          </button>
+        </div>
+      )}
 
       {/* Transaction Groups / List */}
       {filteredTransactions.length === 0 ? (
