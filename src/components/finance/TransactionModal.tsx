@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { X, Calendar, Building2 } from 'lucide-react';
+import { X, Building2, Clock } from 'lucide-react';
 import type { Transaction, TransactionType, Account } from '../../types';
 import { Portal } from '../ui/Portal';
-import { formatDateSafe } from './ui/TransactionList';
 import { CategorySelect } from './ui/CategorySelect';
+import { CadernoDatePicker } from './ui/CadernoDatePicker';
 import { useTransactionForm } from './hooks/useTransactionForm';
 import { useTranslation } from '../../i18n';
 
@@ -67,6 +67,8 @@ export default function TransactionModal({
     loading,
     isLoan,
     isTransfer,
+    isPending,
+    setIsPending,
     modalTitle,
     handleSubmit,
   } = useTransactionForm({
@@ -188,21 +190,12 @@ export default function TransactionModal({
                   label="Categoria"
                 />
               ) : (
-                <div>
-                  <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">
-                    <span>Data</span>
-                    {date && <span className="text-[11px] text-brand-400 font-medium">{formatDateSafe(date)}</span>}
-                  </label>
-                  <input
-                    type="date"
-                    lang="pt-BR"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    style={{ colorScheme: 'dark' }}
-                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
-                    required
-                  />
-                </div>
+                <CadernoDatePicker
+                  value={date}
+                  onChange={setDate}
+                  label="Data"
+                  required
+                />
               )}
             </div>
 
@@ -243,42 +236,45 @@ export default function TransactionModal({
 
             {!isTransfer && (
               <div className={isLoan ? "grid grid-cols-2 gap-3" : "flex flex-col"}>
-                <div>
-                  <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">
-                    <span>Data</span>
-                    {date && <span className="text-[11px] text-brand-400 font-medium">{formatDateSafe(date)}</span>}
-                  </label>
-                  <input
-                    type="date"
-                    lang="pt-BR"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    style={{ colorScheme: 'dark' }}
-                    className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
-                    required
-                  />
-                </div>
+                <CadernoDatePicker
+                  value={date}
+                  onChange={setDate}
+                  label="Data"
+                  required
+                />
 
                 {isLoan && (
-                  <div>
-                    <label className="block text-xs text-dark-subtext mb-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={11} className="text-amber-400" />
-                        <span>Vencimento</span>
-                      </span>
-                      {dueDate && <span className="text-[11px] text-amber-400 font-medium">{formatDateSafe(dueDate)}</span>}
-                    </label>
-                    <input
-                      type="date"
-                      lang="pt-BR"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      style={{ colorScheme: 'dark' }}
-                      className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
-                      placeholder="Opcional"
-                    />
-                  </div>
+                  <CadernoDatePicker
+                    value={dueDate}
+                    onChange={setDueDate}
+                    label="Vencimento"
+                    placeholder="Opcional - Sem data"
+                    required={false}
+                    accentColor="amber"
+                  />
                 )}
+              </div>
+            )}
+
+            {!isLoan && !isTransfer && (
+              <div className="bg-dark-bg/60 border border-white/5 rounded-lg p-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isPending}
+                    onChange={(e) => setIsPending(e.target.checked)}
+                    className="mt-0.5 rounded border-white/20 bg-dark-bg text-brand-600 focus:ring-brand-500"
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={12} className="text-dark-subtext" />
+                      <span className="text-xs font-medium text-dark-text">Transação Futura / Agendada (Pendente)</span>
+                    </div>
+                    <p className="text-[10px] text-dark-subtext mt-0.5 leading-tight">
+                      Não desconta nem soma nenhum centavo no saldo da sua conta até você confirmar a realização. Fica fixada com destaque no topo do extrato.
+                    </p>
+                  </div>
+                </label>
               </div>
             )}
 

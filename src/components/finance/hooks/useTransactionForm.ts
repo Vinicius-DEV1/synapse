@@ -28,6 +28,9 @@ export function useTransactionForm({
   const [category, setCategory] = useState(initialData?.category || 'Geral');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(initialData?.due_date || '');
+  const [isPending, setIsPending] = useState(
+    initialData?.status === 'pending' || (initialData?.is_paid === 0 && initialData?.type !== 'loan_made' && initialData?.type !== 'loan_taken')
+  );
   const initialOriginId = initialData?.account_id || defaultAccountId || (accounts.length > 0 ? accounts[0].id : 'default-wallet');
   const initialDestId = initialData?.destination_account_id || (
     accounts.find((a) => a.id !== initialOriginId)?.id || (accounts.length > 1 ? accounts[1].id : '')
@@ -91,6 +94,13 @@ export function useTransactionForm({
 
     setLoading(true);
     try {
+      const effectiveIsPaid = isLoan
+        ? (initialData?.is_paid !== undefined ? initialData.is_paid : 0)
+        : (isPending ? 0 : 1);
+      const effectiveStatus = isLoan
+        ? (initialData?.status || 'in_progress')
+        : (isPending ? 'pending' : 'completed');
+
       await onSave({
         type,
         amount: parsedAmount,
@@ -101,9 +111,9 @@ export function useTransactionForm({
         due_date: isLoan && dueDate ? dueDate : null,
         account_id: accountId,
         destination_account_id: isTransfer ? destinationAccountId : null,
-        is_paid: initialData?.is_paid !== undefined ? initialData.is_paid : (isLoan ? 0 : 1),
+        is_paid: effectiveIsPaid,
         paid_amount: initialData?.paid_amount !== undefined ? initialData.paid_amount : 0,
-        status: initialData?.status || (isLoan ? 'in_progress' : 'completed'),
+        status: effectiveStatus,
       });
       onClose();
     } catch (err: unknown) {
@@ -137,6 +147,8 @@ export function useTransactionForm({
     loading,
     isLoan,
     isTransfer,
+    isPending,
+    setIsPending,
     modalTitle,
     handleSubmit,
   };

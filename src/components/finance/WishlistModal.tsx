@@ -3,8 +3,8 @@ import { X, ImageIcon } from 'lucide-react';
 import type { WishlistItem } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
-import { formatDateSafe } from './ui/TransactionList';
 import { CategorySelect } from './ui/CategorySelect';
+import { CadernoDatePicker } from './ui/CadernoDatePicker';
 import { useTranslation } from '../../i18n';
 
 interface WishlistModalProps {
@@ -170,20 +170,13 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-dark-subtext mb-1.5 flex items-center justify-between">
-                  <span>Data Esperada</span>
-                  {expectedDate && <span className="text-[11px] text-brand-400 font-medium">{formatDateSafe(expectedDate)}</span>}
-                </label>
-                <input
-                  type="date"
-                  lang="pt-BR"
-                  value={expectedDate}
-                  onChange={(e) => setExpectedDate(e.target.value)}
-                  style={{ colorScheme: 'dark' }}
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-sm text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
-                />
-              </div>
+              <CadernoDatePicker
+                value={expectedDate}
+                onChange={setExpectedDate}
+                label="Data Esperada"
+                placeholder="Opcional - Sem data"
+                required={false}
+              />
 
               <CategorySelect
                 value={category}

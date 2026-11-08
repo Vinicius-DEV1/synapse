@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowUpRight, ArrowDownLeft, Building2, Calendar } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownLeft, Building2 } from 'lucide-react';
 import type { Transaction, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { useTranslation } from '../../i18n';
 import { formatCurrency } from './utils/formatCurrency';
+import { CadernoDatePicker } from './ui/CadernoDatePicker';
 
 interface PaymentModalProps {
   transaction: Transaction;
@@ -159,21 +160,12 @@ export default function PaymentModal({
             )}
             
             {/* Date of the payment */}
-            <div>
-              <label htmlFor="payment-date-input" className="block text-xs text-dark-subtext mb-1 flex items-center gap-1">
-                <Calendar size={12} className="text-brand-400" />
-                <span>Data do Pagamento</span>
-              </label>
-              <input
-                id="payment-date-input"
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                style={{ colorScheme: 'dark' }}
-                className="w-full bg-dark-bg border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none [color-scheme:dark]"
-                required
-              />
-            </div>
+            <CadernoDatePicker
+              value={paymentDate}
+              onChange={setPaymentDate}
+              label="Data do Pagamento"
+              required
+            />
 
             <div>
               <label htmlFor="payment-amount-input" className="block text-xs text-dark-subtext mb-1">

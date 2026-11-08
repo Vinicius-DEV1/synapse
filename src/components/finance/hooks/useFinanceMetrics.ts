@@ -38,6 +38,15 @@ export function useFinanceMetrics({
       const amountCents = Math.round(Number(t.amount || 0) * 100);
       const accId = t.account_id || 'default-wallet';
 
+      // Pending/future regular transactions do not affect metrics until confirmed
+      const isPendingRegular =
+        (t.type === 'income' || t.type === 'expense' || t.type === 'transfer') &&
+        (t.is_paid === 0 || t.status === 'pending');
+
+      if (isPendingRegular) {
+        continue;
+      }
+
       if (t.type === 'income') {
         if (selectedAccountId === 'all' || accId === selectedAccountId) {
           incCents += amountCents;

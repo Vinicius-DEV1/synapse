@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Loader2,
@@ -23,6 +23,7 @@ import { WishlistTab } from './ui/WishlistTab';
 import { FinanceModalsHost } from './ui/FinanceModalsHost';
 import { FinanceHelpModal } from './FinanceHelpModal';
 import { Portal } from '../ui/Portal';
+import { triggerToast } from '../ui/ToastContext';
 import { useTranslation } from '../../i18n';
 
 type FinanceSection = 'dashboard' | 'transactions' | 'loans' | 'wishlist';
@@ -75,9 +76,39 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlistToEdit, setWishlistToEdit] = useState<WishlistItem | null>(null);
   const [selectedWishlistDetails, setSelectedWishlistDetails] = useState<WishlistItem | null>(null);
+  const [selectedWishlistToAcquire, setSelectedWishlistToAcquire] = useState<WishlistItem | null>(null);
   const [selectedTxForPayment, setSelectedTxForPayment] = useState<Transaction | null>(null);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
   const [wishlistToDeleteId, setWishlistToDeleteId] = useState<string | null>(null);
+
+  const handleConfirmAcquireWishlist = useCallback(async (data: {
+    amount: number;
+    accountId: string;
+    date: string;
+    category: string;
+    description: string;
+    deleteFromWishlist: boolean;
+  }) => {
+    await createTransaction({
+      type: 'expense',
+      amount: data.amount,
+      account_id: data.accountId,
+      date: data.date,
+      category: data.category,
+      description: data.description,
+      is_paid: 1,
+      status: 'completed',
+    });
+
+    if (data.deleteFromWishlist && selectedWishlistToAcquire) {
+      await deleteWishlistItem(selectedWishlistToAcquire.id);
+    }
+  }, [createTransaction, deleteWishlistItem, selectedWishlistToAcquire]);
+
+  const handleConfirmPendingTransaction = useCallback(async (tx: Transaction) => {
+    await updateTransaction(tx.id, { is_paid: 1, status: 'completed' });
+    triggerToast('Transação confirmada e debitada/creditada no saldo!', 'success');
+  }, [updateTransaction]);
 
   useEffect(() => {
     if (!wishlistToDeleteId) return;
@@ -187,7 +218,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
 
   return (
     <div className="h-full flex flex-col bg-dark-bg">
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <div className="flex-1 overflow-y-auto smooth-scroll-container overscroll-contain p-4 sm:p-6">
         <div className="w-full max-w-6xl mx-auto flex flex-col gap-5">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -329,6 +360,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 }}
                 onDelete={handleDeleteRequested}
                 onPayLoan={setSelectedTxForPayment}
+                onConfirmPending={handleConfirmPendingTransaction}
                 onNewTransaction={() => {
                   setTxToEdit(null);
                   setShowTxModal(true);
@@ -367,6 +399,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 }}
                 onSelectWishlist={setSelectedWishlistDetails}
                 onDeleteWishlist={handleDeleteWishlist}
+                onAcquireWishlist={(item) => setSelectedWishlistToAcquire(item)}
               />
             )}
           </div>
@@ -411,6 +444,13 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
           setSelectedWishlistDetails(null);
         }}
         onDeleteWishlistItem={handleDeleteWishlist}
+        onAcquireFromDetails={(item) => {
+          setSelectedWishlistDetails(null);
+          setSelectedWishlistToAcquire(item);
+        }}
+        selectedWishlistToAcquire={selectedWishlistToAcquire}
+        onCloseAcquireWishlist={() => setSelectedWishlistToAcquire(null)}
+        onConfirmAcquireWishlist={handleConfirmAcquireWishlist}
       />
 
       <FinanceHelpModal

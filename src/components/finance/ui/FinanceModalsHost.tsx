@@ -6,6 +6,7 @@ import PaymentModal from '../PaymentModal';
 import { AccountManagerModal } from './AccountManagerModal';
 import { DeleteTransactionModal } from './DeleteTransactionModal';
 import { WishlistDetailsModal } from './WishlistDetailsModal';
+import { AcquireWishlistModal } from './AcquireWishlistModal';
 
 interface FinanceModalsHostProps {
   showTxModal: boolean;
@@ -40,6 +41,18 @@ interface FinanceModalsHostProps {
   onCloseWishlistDetails: () => void;
   onEditWishlistItem: (item: WishlistItem) => void;
   onDeleteWishlistItem: (id: string, e?: React.MouseEvent) => Promise<void>;
+  onAcquireFromDetails?: (item: WishlistItem) => void;
+
+  selectedWishlistToAcquire: WishlistItem | null;
+  onCloseAcquireWishlist: () => void;
+  onConfirmAcquireWishlist: (data: {
+    amount: number;
+    accountId: string;
+    date: string;
+    category: string;
+    description: string;
+    deleteFromWishlist: boolean;
+  }) => Promise<void>;
 }
 
 export const FinanceModalsHost = React.memo(function FinanceModalsHost({
@@ -75,6 +88,10 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
   onCloseWishlistDetails,
   onEditWishlistItem,
   onDeleteWishlistItem,
+  onAcquireFromDetails,
+  selectedWishlistToAcquire,
+  onCloseAcquireWishlist,
+  onConfirmAcquireWishlist,
 }: FinanceModalsHostProps) {
   return (
     <>
@@ -141,7 +158,17 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
         onClose={onCloseWishlistDetails}
         onEdit={onEditWishlistItem}
         onDelete={onDeleteWishlistItem}
+        onAcquire={onAcquireFromDetails}
       />
+
+      {selectedWishlistToAcquire && (
+        <AcquireWishlistModal
+          item={selectedWishlistToAcquire}
+          accounts={accounts}
+          onClose={onCloseAcquireWishlist}
+          onConfirm={onConfirmAcquireWishlist}
+        />
+      )}
     </>
   );
 });

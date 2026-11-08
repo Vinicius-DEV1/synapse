@@ -167,4 +167,40 @@ describe('TransactionList Component', () => {
     fireEvent.click(editButtons[0]);
     expect(onEdit).toHaveBeenCalledWith(mockTransactions[0]);
   });
+
+  it('renders pinned future/pending transactions and handles confirmation', () => {
+    const onConfirmPending = vi.fn();
+    const pendingTx: Transaction = {
+      id: 'tx_pending_1',
+      description: 'Exame Agendado',
+      amount: 200,
+      type: 'expense',
+      category: 'Saúde',
+      date: '2026-11-10',
+      account_id: 'acc_1',
+      is_paid: 0,
+      status: 'pending',
+      created_at: '2026-11-08',
+    };
+
+    renderWithI18n(
+      <TransactionList
+        transactions={[...mockTransactions, pendingTx]}
+        accounts={mockAccounts}
+        onDelete={vi.fn()}
+        onPayLoan={vi.fn()}
+        onConfirmPending={onConfirmPending}
+      />
+    );
+
+    // Section title
+    expect(screen.getByText(/Transações Futuras \/ Pendentes/i)).toBeInTheDocument();
+    expect(screen.getByText('Exame Agendado')).toBeInTheDocument();
+    expect(screen.getByText('Pendente')).toBeInTheDocument();
+
+    // Confirm button
+    const confirmBtn = screen.getByRole('button', { name: /efetivar/i });
+    fireEvent.click(confirmBtn);
+    expect(onConfirmPending).toHaveBeenCalledWith(pendingTx);
+  });
 });

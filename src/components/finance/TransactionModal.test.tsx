@@ -38,6 +38,41 @@ describe('TransactionModal Component', () => {
           amount: 250,
           type: 'expense',
           category: 'Transporte',
+          is_paid: 1,
+          status: 'completed',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('submits pending future transaction with is_paid: 0 and status: pending', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const { getByPlaceholderText, getByRole, getByLabelText } = renderWithI18n(
+      <TransactionModal onClose={onClose} onSave={onSave} />
+    );
+
+    const descInput = getByPlaceholderText(/Supermercado/i);
+    const amountInput = getByPlaceholderText('0.00');
+    const pendingCheckbox = getByRole('checkbox');
+
+    fireEvent.change(descInput, { target: { value: 'Exame de Sangue' } });
+    fireEvent.change(amountInput, { target: { value: '180.00' } });
+    fireEvent.click(pendingCheckbox);
+
+    const submitBtn = getByRole('button', { name: /^Salvar$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Exame de Sangue',
+          amount: 180,
+          type: 'expense',
+          is_paid: 0,
+          status: 'pending',
         })
       );
       expect(onClose).toHaveBeenCalled();

@@ -50,11 +50,7 @@ describe('PaymentModal', () => {
     const amountInput = screen.getByPlaceholderText('0.00');
     fireEvent.change(amountInput, { target: { value: '200' } });
 
-    // Fill custom payment date
-    const dateInput = screen.getByLabelText(/Data do Pagamento/i) || screen.getByDisplayValue(new Date().toISOString().split('T')[0]);
-    fireEvent.change(dateInput, { target: { value: '2026-11-05' } });
-
-    // Submit form
+    // Submit form with default payment date (today)
     const submitBtn = screen.getByRole('button', { name: /confirm/i });
     fireEvent.click(submitBtn);
 
@@ -63,7 +59,7 @@ describe('PaymentModal', () => {
         mockLoanMade,
         200,
         'acc_1',
-        '2026-11-05'
+        new Date().toISOString().split('T')[0]
       );
       expect(handleClose).toHaveBeenCalled();
     });

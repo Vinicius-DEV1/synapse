@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Trash2, ArrowRight, Edit2, Search, Filter, X, CreditCard } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Trash2, ArrowRight, Edit2, Search, Filter, X, CreditCard, Clock, CheckCircle2 } from 'lucide-react';
 import type { Transaction, Account } from '../../../types';
 import { useTranslation } from '../../../i18n';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -44,6 +44,7 @@ interface TransactionListProps {
   onEdit?: (tx: Transaction) => void;
   onDelete: (id: string) => void;
   onPayLoan: (tx: Transaction) => void;
+  onConfirmPending?: (tx: Transaction) => void;
   onNewTransaction?: () => void;
 }
 
@@ -56,6 +57,7 @@ export const TransactionList = React.memo(({
   onEdit,
   onDelete,
   onPayLoan,
+  onConfirmPending,
   onNewTransaction,
 }: TransactionListProps) => {
   const { t } = useTranslation();
@@ -104,14 +106,32 @@ export const TransactionList = React.memo(({
     });
   }, [transactions, selectedAccountId, filterType, searchQuery, accountsMap]);
 
+  const isPendingRegularTx = useCallback((t: Transaction) => {
+    return (t.type === 'income' || t.type === 'expense' || t.type === 'transfer') &&
+      (t.is_paid === 0 || t.status === 'pending');
+  }, []);
+
+  const { pendingTransactions, completedTransactions } = useMemo(() => {
+    const pending: Transaction[] = [];
+    const completed: Transaction[] = [];
+    for (const tx of filteredTransactions) {
+      if (isPendingRegularTx(tx)) {
+        pending.push(tx);
+      } else {
+        completed.push(tx);
+      }
+    }
+    return { pendingTransactions: pending, completedTransactions: completed };
+  }, [filteredTransactions, isPendingRegularTx]);
+
   const groupedTransactions = useMemo(() => {
-    return filteredTransactions.reduce((acc, tx) => {
+    return completedTransactions.reduce((acc, tx) => {
       const monthYear = formatMonthYearSafe(tx.date);
       if (!acc[monthYear]) acc[monthYear] = [];
       acc[monthYear].push(tx);
       return acc;
     }, {} as Record<string, Transaction[]>);
-  }, [filteredTransactions]);
+  }, [completedTransactions]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -217,6 +237,90 @@ export const TransactionList = React.memo(({
         </div>
       ) : (
         <div className="flex flex-col gap-5">
+          {/* Pinned Future / Pending Transactions */}
+          {pendingTransactions.length > 0 && (
+            <div className="bg-dark-card/90 border border-amber-500/20 rounded-xl p-3.5 shadow-sm">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <Clock size={15} className="text-amber-400" />
+                  <h3 className="text-xs font-semibold text-dark-text uppercase tracking-wider">
+                    Transações Futuras / Pendentes ({pendingTransactions.length})
+                  </h3>
+                </div>
+                <span className="text-[11px] text-dark-subtext">
+                  Não descontam do saldo até serem confirmadas
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                {pendingTransactions.map((tx) => {
+                  const account = accountsMap.get(tx.account_id || 'default-wallet');
+                  return (
+                    <div
+                      key={tx.id}
+                      className="bg-dark-bg/60 border border-dashed border-white/10 hover:border-white/20 rounded-lg p-2.5 flex flex-wrap items-center justify-between gap-2.5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className="text-xs text-dark-subtext whitespace-nowrap font-mono">
+                          {formatDateSafe(tx.date)}
+                        </span>
+                        <span className="text-xs font-medium text-dark-text truncate" title={tx.description}>
+                          {tx.description}
+                        </span>
+                        <span className="text-[10px] text-dark-subtext bg-white/5 px-1.5 py-0.5 rounded border border-white/5 whitespace-nowrap">
+                          {tx.category || 'Geral'}
+                        </span>
+                        {account && (
+                          <span className="text-[10px] text-dark-subtext/80 bg-white/5 px-1.5 py-0.5 rounded whitespace-nowrap">
+                            {account.name}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded-full whitespace-nowrap">
+                          Pendente
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-dark-subtext whitespace-nowrap">
+                          {formatCurrency(Number(tx.amount || 0))}
+                        </span>
+
+                        {onConfirmPending && (
+                          <button
+                            onClick={() => onConfirmPending(tx)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg transition-colors cursor-pointer active:scale-95"
+                            title="Efetivar e descontar/creditar do saldo"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Efetivar</span>
+                          </button>
+                        )}
+
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(tx)}
+                            className="p-1 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded transition-colors cursor-pointer"
+                            title="Editar"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => onDelete(tx.id)}
+                          className="p-1 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {Object.entries(groupedTransactions).map(([month, monthTxs]) => (
             <div key={month} className="bg-dark-card border border-white/[0.06] rounded-xl p-4 sm:p-5 flex flex-col gap-2.5 shadow-sm">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">

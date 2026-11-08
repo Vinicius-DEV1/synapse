@@ -19,6 +19,15 @@ export function calculateAccountBalance(acc: Account, transactions: Transaction[
     const amountCents = Math.round(Number(tx.amount || 0) * 100);
     const txAccountId = tx.account_id || 'default-wallet';
 
+    // Pending/future regular transactions do not affect balance until confirmed
+    const isPendingRegular =
+      (tx.type === 'income' || tx.type === 'expense' || tx.type === 'transfer') &&
+      (tx.is_paid === 0 || tx.status === 'pending');
+
+    if (isPendingRegular) {
+      continue;
+    }
+
     if (tx.type === 'income' && txAccountId === acc.id) {
       balCents += amountCents;
     } else if (tx.type === 'expense' && txAccountId === acc.id) {

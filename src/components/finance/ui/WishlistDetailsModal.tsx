@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { X, Edit2, Trash2 } from 'lucide-react';
+import { X, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { Portal } from '../../ui/Portal';
 import { DescriptionRenderer } from '../../ui/RichTextRenderer';
 import type { WishlistItem } from '../../../types';
@@ -12,9 +12,10 @@ interface WishlistDetailsModalProps {
   onClose: () => void;
   onEdit: (item: WishlistItem) => void;
   onDelete: (id: string) => void;
+  onAcquire?: (item: WishlistItem) => void;
 }
 
-export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: WishlistDetailsModalProps) {
+export function WishlistDetailsModal({ item, onClose, onEdit, onDelete, onAcquire }: WishlistDetailsModalProps) {
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -53,7 +54,17 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
         >
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <h2 className="text-lg font-semibold text-dark-text">{t('finance.wishlistDetails', 'Detalhes do Desejo')}</h2>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {onAcquire && (
+                <button
+                  onClick={() => onAcquire(item)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg transition-colors cursor-pointer"
+                  title="Marcar como Adquirido e Registrar Gasto"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Adquirir</span>
+                </button>
+              )}
               <button
                 onClick={() => onEdit(item)}
                 className="p-1.5 text-brand-400 hover:text-brand-300 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"

@@ -100,4 +100,42 @@ describe('AccountCards Component and balance calculations', () => {
     fireEvent.click(screen.getByRole('button', { name: /Gerenciar Bancos/i }));
     expect(onOpenAccountManager).toHaveBeenCalled();
   });
+
+  it('guarantees that pending future transactions do not deduct or add any money to the balance', () => {
+    const pendingTransactions: Transaction[] = [
+      ...mockTransactions,
+      {
+        id: 't_pending_exp',
+        description: 'Exame de Amanhã',
+        amount: 800,
+        type: 'expense',
+        category: 'Saúde',
+        date: '2026-08-25',
+        account_id: 'acc_nubank',
+        is_paid: 0,
+        status: 'pending',
+        created_at: '2026-08-15',
+      },
+      {
+        id: 't_pending_inc',
+        description: 'Freela Futuro',
+        amount: 1500,
+        type: 'income',
+        category: 'Serviços',
+        date: '2026-08-30',
+        account_id: 'acc_bradesco',
+        is_paid: 0,
+        status: 'pending',
+        created_at: '2026-08-15',
+      },
+    ];
+
+    // Nubank balance must remain strictly 2600 (ignoring the 800 pending expense)
+    const nubankBal = calculateAccountBalance(mockAccounts[0], pendingTransactions);
+    expect(nubankBal).toBe(2600);
+
+    // Bradesco balance must remain strictly 1500 (ignoring the 1500 pending income)
+    const bradescoBal = calculateAccountBalance(mockAccounts[1], pendingTransactions);
+    expect(bradescoBal).toBe(1500);
+  });
 });
