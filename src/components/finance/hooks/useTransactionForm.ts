@@ -28,12 +28,13 @@ export function useTransactionForm({
   const [category, setCategory] = useState(initialData?.category || 'Geral');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(initialData?.due_date || '');
-  const [accountId, setAccountId] = useState<string>(
-    initialData?.account_id || defaultAccountId || (accounts.length > 0 ? accounts[0].id : 'default-wallet')
+  const initialOriginId = initialData?.account_id || defaultAccountId || (accounts.length > 0 ? accounts[0].id : 'default-wallet');
+  const initialDestId = initialData?.destination_account_id || (
+    accounts.find((a) => a.id !== initialOriginId)?.id || (accounts.length > 1 ? accounts[1].id : '')
   );
-  const [destinationAccountId, setDestinationAccountId] = useState<string>(
-    initialData?.destination_account_id || (accounts.length > 1 ? accounts[1].id : '')
-  );
+
+  const [accountId, setAccountId] = useState<string>(initialOriginId);
+  const [destinationAccountId, setDestinationAccountId] = useState<string>(initialDestId);
   const [loading, setLoading] = useState(false);
 
   const isLoan = type === 'loan_made' || type === 'loan_taken';

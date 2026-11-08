@@ -5,6 +5,7 @@ import { DescriptionRenderer } from '../../ui/RichTextRenderer';
 import type { WishlistItem } from '../../../types';
 import { formatDateSafe } from './TransactionList';
 import { useTranslation } from '../../../i18n';
+import { formatCurrency } from '../utils/formatCurrency';
 
 interface WishlistDetailsModalProps {
   item: WishlistItem | null;
@@ -43,11 +44,11 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
   return (
     <Portal>
       <div
-        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
         onClick={onClose}
       >
         <div
-          className="bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="bg-dark-card border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-4 border-b border-white/5">
@@ -87,7 +88,7 @@ export function WishlistDetailsModal({ item, onClose, onEdit, onDelete }: Wishli
               <div className="flex flex-col">
                 <span className="text-[10px] text-dark-subtext uppercase tracking-wider mb-1">Custo Estimado</span>
                 <span className="text-xl font-semibold text-brand-400">
-                  R$ {Number(item.price || 0).toFixed(2)}
+                  {formatCurrency(Number(item.price || 0))}
                 </span>
               </div>
               <div className="flex flex-col">

@@ -19,7 +19,9 @@ function isLoanOverdue(loan: Transaction): boolean {
   const total = Number(loan.expected_amount || loan.amount || 0);
   const isPaid = Boolean(loan.is_paid) || (total > 0 && Number(loan.paid_amount || 0) >= total - 0.001);
   if (isPaid || !loan.due_date) return false;
-  const parts = loan.due_date.split('-').map(Number);
+  const cleanDate = loan.due_date.slice(0, 10);
+  const parts = cleanDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return false;
   const [y, m, d] = parts;
   const target = new Date(y, m - 1, d);
   const today = new Date();
@@ -84,15 +86,15 @@ export function LoansTab({
       <LoanSummaryCards loans={loans} />
 
       {/* Filter and action toolbar */}
-      <div className="bg-dark-bg/60 border border-white/5 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-dark-card border border-white/[0.06] rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           {/* Direction filters */}
-          <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/5 text-xs">
+          <div className="flex bg-dark-bg/80 p-0.5 rounded-lg border border-white/5 text-xs">
             <button
               onClick={() => setDirectionFilter('all')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 directionFilter === 'all'
-                  ? 'bg-brand-500/20 text-brand-400 font-medium'
+                  ? 'bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
@@ -100,9 +102,9 @@ export function LoansTab({
             </button>
             <button
               onClick={() => setDirectionFilter('loan_made')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 directionFilter === 'loan_made'
-                  ? 'bg-amber-500/20 text-amber-400 font-medium'
+                  ? 'bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
@@ -110,9 +112,9 @@ export function LoansTab({
             </button>
             <button
               onClick={() => setDirectionFilter('loan_taken')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 directionFilter === 'loan_taken'
-                  ? 'bg-indigo-500/20 text-indigo-400 font-medium'
+                  ? 'bg-indigo-500/20 text-indigo-300 font-medium border border-indigo-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
@@ -121,12 +123,12 @@ export function LoansTab({
           </div>
 
           {/* Status filters */}
-          <div className="flex bg-black/30 p-0.5 rounded-lg border border-white/5 text-xs">
+          <div className="flex bg-dark-bg/80 p-0.5 rounded-lg border border-white/5 text-xs">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 statusFilter === 'all'
-                  ? 'bg-white/10 text-dark-text font-medium'
+                  ? 'bg-white/10 text-dark-text font-medium border border-white/10'
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
@@ -134,9 +136,9 @@ export function LoansTab({
             </button>
             <button
               onClick={() => setStatusFilter('active')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 statusFilter === 'active'
-                  ? 'bg-amber-500/20 text-amber-400 font-medium'
+                  ? 'bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
@@ -145,9 +147,9 @@ export function LoansTab({
             {overdueCount > 0 && (
               <button
                 onClick={() => setStatusFilter('overdue')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   statusFilter === 'overdue'
-                    ? 'bg-rose-500/20 text-rose-400 font-medium'
+                    ? 'bg-rose-500/20 text-rose-300 font-medium border border-rose-500/30'
                     : 'text-rose-400/80 hover:text-rose-400'
                 }`}
               >
@@ -156,9 +158,9 @@ export function LoansTab({
             )}
             <button
               onClick={() => setStatusFilter('completed')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                 statusFilter === 'completed'
-                  ? 'bg-emerald-500/20 text-emerald-400 font-medium'
+                  ? 'bg-emerald-500/20 text-emerald-300 font-medium border border-emerald-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
               }`}
             >
@@ -169,21 +171,21 @@ export function LoansTab({
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Search bar */}
-          <div className="relative flex-1 sm:w-44">
+          <div className="relative flex-1 sm:w-48">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dark-subtext" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('finance.searchPlaceholder', 'Buscar...')}
-              className="w-full bg-dark-bg border border-white/10 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none"
+              className="w-full bg-dark-bg/80 border border-white/10 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-dark-text focus:border-brand-500/50 outline-none"
             />
           </div>
 
           {/* Add button */}
           <button
             onClick={onAddLoan}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 whitespace-nowrap shadow-md shadow-brand-600/20"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all active:scale-95 whitespace-nowrap shadow-md shadow-brand-600/20 cursor-pointer"
           >
             <Plus size={14} />
             <span>{t('finance.newLoan', 'Novo Empréstimo')}</span>

@@ -1,7 +1,19 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownLeft, CheckCircle2, RotateCcw, Trash2, CreditCard, AlertTriangle, Clock, Calendar, Edit2 } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  CheckCircle2,
+  RotateCcw,
+  Trash2,
+  CreditCard,
+  AlertTriangle,
+  Clock,
+  Calendar,
+  Edit2,
+} from 'lucide-react';
 import type { Transaction } from '../../../types';
 import { formatDateSafe } from './TransactionList';
+import { formatCurrency } from '../utils/formatCurrency';
 
 interface LoanCardProps {
   loan: Transaction;
@@ -67,7 +79,7 @@ export const LoanCard = React.memo(({
   onMarkAsPaid,
   onReopen,
   onEdit,
-  onDelete
+  onDelete,
 }: LoanCardProps) => {
   const isLoanMade = loan.type === 'loan_made';
   const principal = Number(loan.amount || 0);
@@ -80,28 +92,32 @@ export const LoanCard = React.memo(({
   const dueDateInfo = getDueDateInfo(loan.due_date, isPaid);
 
   return (
-    <div className={`border rounded-xl p-4 transition-all ${
-      isPaid
-        ? 'bg-dark-bg/40 border-white/5 opacity-80 hover:opacity-100'
-        : dueDateInfo?.type === 'overdue'
-        ? 'bg-dark-bg/95 border-rose-500/30 hover:border-rose-500/50 shadow-lg shadow-rose-950/20'
-        : 'bg-dark-bg/90 border-white/10 hover:border-white/20 shadow-lg shadow-black/10'
-    }`}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className={`p-2 rounded-lg ${
-            isLoanMade
-              ? 'bg-amber-500/10 text-amber-400'
-              : 'bg-indigo-500/10 text-indigo-400'
-          }`}>
+    <div
+      className={`border rounded-xl p-4 transition-all group shadow-sm ${
+        isPaid
+          ? 'bg-dark-card/60 border-white/5 opacity-80 hover:opacity-100'
+          : dueDateInfo?.type === 'overdue'
+          ? 'bg-dark-card border-rose-500/30 hover:border-rose-500/50 shadow-rose-950/20'
+          : 'bg-dark-card border-white/[0.06] hover:border-white/15'
+      }`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div
+            className={`p-2 rounded-lg shrink-0 mt-0.5 ${
+              isLoanMade
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+            }`}
+          >
             {isLoanMade ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
           </div>
-          <div>
-            <h3 className="font-semibold text-dark-text text-sm sm:text-base">{loan.description}</h3>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-dark-subtext mt-0.5">
+          <div className="min-w-0">
+            <h3 className="font-semibold text-dark-text text-sm sm:text-base truncate">{loan.description}</h3>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-dark-subtext mt-1">
               <span>{formatDateSafe(loan.date)}</span>
               <span>•</span>
-              <span className="bg-white/5 text-dark-text px-1.5 py-0.5 rounded text-[11px]">
+              <span className="bg-white/5 text-dark-text px-1.5 py-0.5 rounded text-[11px] border border-white/5">
                 {loan.category || 'Geral'}
               </span>
               <span>•</span>
@@ -112,7 +128,7 @@ export const LoanCard = React.memo(({
                 <>
                   <span>•</span>
                   <span className="text-[11px] text-amber-300 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                    Principal: R$ {principal.toFixed(2)}
+                    Principal: {formatCurrency(principal)}
                   </span>
                 </>
               )}
@@ -121,7 +137,7 @@ export const LoanCard = React.memo(({
         </div>
 
         {/* Status Badges */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {dueDateInfo && (
             <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border ${dueDateInfo.className}`}>
               {dueDateInfo.type === 'overdue' ? (
@@ -153,18 +169,18 @@ export const LoanCard = React.memo(({
       </div>
 
       {/* Progress Bar & Amounts */}
-      <div className="bg-black/20 rounded-lg p-3 border border-white/5 mb-3">
+      <div className="bg-dark-bg/60 rounded-lg p-3 border border-white/5 mb-3">
         <div className="flex justify-between items-center text-xs mb-1.5">
           <span className="text-dark-subtext">
-            Pago: <strong className="text-dark-text font-semibold">R$ {paid.toFixed(2)}</strong> de R$ {total.toFixed(2)}
+            Pago: <strong className="text-dark-text font-semibold">{formatCurrency(paid)}</strong> de {formatCurrency(total)}
             {hasInterest && <span className="text-[10px] text-amber-400/80 ml-1 font-medium">(c/ juros)</span>}
           </span>
           <span className="font-semibold">
             {isPaid ? (
-              <span className="text-emerald-400">Totalmente Pago</span>
+              <span className="text-emerald-400">Totalmente Quitado</span>
             ) : (
               <span className={isLoanMade ? 'text-amber-400' : 'text-indigo-400'}>
-                Restante: R$ {pending.toFixed(2)}
+                Restante: {formatCurrency(pending)}
               </span>
             )}
           </span>
@@ -190,14 +206,14 @@ export const LoanCard = React.memo(({
             <>
               <button
                 onClick={() => onPay(loan)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand-500/15 text-brand-400 hover:bg-brand-500/25 border border-brand-500/30 rounded-lg transition-colors active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand-500/15 text-brand-300 hover:bg-brand-500/25 border border-brand-500/30 rounded-lg transition-colors active:scale-95 cursor-pointer"
               >
                 <CreditCard size={13} />
                 <span>Abater Valor</span>
               </button>
               <button
                 onClick={() => onMarkAsPaid(loan.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors active:scale-95 cursor-pointer"
               >
                 <CheckCircle2 size={13} />
                 <span>Quitar Total</span>
@@ -206,7 +222,7 @@ export const LoanCard = React.memo(({
           ) : (
             <button
               onClick={() => onReopen(loan.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/5 text-dark-subtext hover:text-dark-text hover:bg-white/10 rounded-lg transition-colors active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/5 text-dark-subtext hover:text-dark-text hover:bg-white/10 rounded-lg transition-colors active:scale-95 cursor-pointer"
             >
               <RotateCcw size={13} />
               <span>Reabrir Empréstimo</span>
@@ -217,14 +233,14 @@ export const LoanCard = React.memo(({
         <div className="flex items-center gap-1">
           <button
             onClick={() => onEdit(loan)}
-            className="p-1.5 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors"
+            className="p-1.5 text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10 rounded-lg transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
             title="Editar Empréstimo"
           >
             <Edit2 size={15} />
           </button>
           <button
             onClick={() => onDelete(loan.id)}
-            className="p-1.5 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+            className="p-1.5 text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
             title="Excluir"
           >
             <Trash2 size={15} />
@@ -236,4 +252,3 @@ export const LoanCard = React.memo(({
 });
 
 LoanCard.displayName = 'LoanCard';
-

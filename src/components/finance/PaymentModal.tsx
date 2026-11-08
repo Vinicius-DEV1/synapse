@@ -4,6 +4,7 @@ import type { Transaction, Account } from '../../types';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { useTranslation } from '../../i18n';
+import { formatCurrency } from './utils/formatCurrency';
 
 interface PaymentModalProps {
   transaction: Transaction;
@@ -95,8 +96,8 @@ export default function PaymentModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-dark-card border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
           <div className="flex items-center justify-between p-3.5 border-b border-white/5">
             <div className="flex items-center gap-2">
               <div className={`p-1.5 rounded-md ${isLoanMade ? 'bg-amber-500/15 text-amber-400' : 'bg-indigo-500/15 text-indigo-400'}`}>
@@ -106,7 +107,7 @@ export default function PaymentModal({
                 {isLoanMade ? 'Registrar Recebimento' : 'Registrar Pagamento'}
               </h2>
             </div>
-            <button onClick={onClose} className="p-1 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors">
+            <button onClick={onClose} className="p-1 text-dark-subtext hover:text-dark-text rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
               <X size={18} />
             </button>
           </div>
@@ -118,11 +119,11 @@ export default function PaymentModal({
                 <div>
                   <span className="text-dark-subtext">Pendente: </span>
                   <span className={`font-semibold ${isLoanMade ? 'text-amber-400' : 'text-indigo-400'}`}>
-                    R$ {pendingAmount.toFixed(2)}
+                    {formatCurrency(pendingAmount)}
                   </span>
                 </div>
                 <div className="text-dark-subtext">
-                  Total: R$ {transaction.amount.toFixed(2)}
+                  Total: {formatCurrency(Number(transaction.amount || 0))}
                 </div>
               </div>
             </div>

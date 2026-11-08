@@ -4,6 +4,7 @@ import type { Account } from '../../../types';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
 import { useTranslation } from '../../../i18n';
+import { formatCurrency } from '../utils/formatCurrency';
 
 interface AccountManagerModalProps {
   accounts: Account[];
@@ -153,8 +154,8 @@ export function AccountManagerModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-dark-card border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
           {/* Header */}
           <div className="flex items-center justify-between p-3.5 border-b border-white/5">
             <div className="flex items-center gap-2">
@@ -240,7 +241,7 @@ export function AccountManagerModal({
                         <div className="min-w-0">
                           <div className="text-xs font-medium text-dark-text truncate">{acc.name}</div>
                           <div className="text-[11px] text-dark-subtext">
-                            Saldo Inicial: R$ {Number(acc.initial_balance || 0).toFixed(2)}
+                            Saldo Inicial: {formatCurrency(Number(acc.initial_balance || 0))}
                           </div>
                         </div>
                       </div>

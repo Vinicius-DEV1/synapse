@@ -116,8 +116,8 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div className="bg-dark-card border border-white/[0.06] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-dark-card border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <h2 className="text-lg font-semibold text-dark-text">
               {initialData ? 'Editar Desejo' : 'Novo Desejo / Gasto Futuro'}

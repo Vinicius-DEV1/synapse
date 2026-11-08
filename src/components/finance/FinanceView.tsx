@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, Building2, HelpCircle, Trash2, X } from 'lucide-react';
+import {
+  Plus,
+  Loader2,
+  Building2,
+  HelpCircle,
+  Trash2,
+  X,
+  LayoutDashboard,
+  ArrowLeftRight,
+  HandCoins,
+  Gift,
+} from 'lucide-react';
 import type { Transaction, WishlistItem, Tab } from '../../types';
 import { useFinance } from './hooks/useFinance';
 import { useFinanceMetrics } from './hooks/useFinanceMetrics';
@@ -27,7 +38,13 @@ function resolveSection(pageId: string | null): FinanceSection {
 
 export default function FinanceView({ tab }: { tab?: Tab }) {
   const { t } = useTranslation();
-  const activeSection = resolveSection(tab?.pageId ?? null);
+  const [activeSection, setActiveSection] = useState<FinanceSection>(resolveSection(tab?.pageId ?? null));
+
+  useEffect(() => {
+    if (tab?.pageId && VALID_SECTIONS.has(tab.pageId as FinanceSection)) {
+      setActiveSection(tab.pageId as FinanceSection);
+    }
+  }, [tab?.pageId]);
 
   const {
     transactions,
@@ -146,7 +163,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
   };
 
   // Dashboard calculations with account awareness
-  const { totalIncome, totalExpense, balance, loansList } = useFinanceMetrics({
+  const { totalIncome, totalExpense, balance, loansList, regularTransactions } = useFinanceMetrics({
     transactions,
     accounts,
     selectedAccountId,
@@ -170,19 +187,23 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
 
   return (
     <div className="h-full flex flex-col bg-dark-bg">
-      <div className="flex-1 overflow-auto p-4 sm:p-5">
-        <div className="max-w-5xl mx-auto flex flex-col gap-4">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="w-full max-w-6xl mx-auto flex flex-col gap-5">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-dark-text tracking-tight">{t('finance.title', 'Finanças Pessoais')}</h1>
-              <p className="text-xs text-dark-subtext mt-0.5">{t('finance.subtitle', 'Controle de contas bancárias, receitas, despesas, transferências e metas')}</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-dark-text tracking-tight">
+                {t('finance.title', 'Finanças Pessoais')}
+              </h1>
+              <p className="text-xs text-dark-subtext mt-0.5">
+                {t('finance.subtitle', 'Controle de contas bancárias, receitas, despesas, transferências, empréstimos e desejos')}
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowHelpModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-card hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95 cursor-pointer shadow-sm"
                 title={t('finance.guideTitle', 'Guia do Sistema Financeiro')}
               >
                 <HelpCircle size={14} className="text-emerald-400" />
@@ -190,7 +211,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
               </button>
               <button
                 onClick={() => setShowAccountModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-bg/80 hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-card hover:bg-white/5 text-dark-text border border-white/10 transition-all active:scale-95 cursor-pointer shadow-sm"
                 title={t('finance.manageBanksTitle', 'Gerenciar Contas Bancárias')}
               >
                 <Building2 size={14} className="text-brand-400" />
@@ -209,8 +230,74 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
             </div>
           </div>
 
-          {/* Content — driven by sidebar navigation */}
-          <div className="border-t border-white/5 pt-4">
+          {/* Module Navigation Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-dark-card border border-white/[0.06] rounded-xl w-fit shadow-sm">
+            <button
+              onClick={() => setActiveSection('dashboard')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeSection === 'dashboard'
+                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <LayoutDashboard size={14} className={activeSection === 'dashboard' ? 'text-brand-400' : 'text-dark-subtext'} />
+              <span>{t('finance.dashboard', 'Visão Geral')}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveSection('transactions')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeSection === 'transactions'
+                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <ArrowLeftRight size={14} className={activeSection === 'transactions' ? 'text-brand-400' : 'text-dark-subtext'} />
+              <span>{t('finance.transactions', 'Transações')}</span>
+              {regularTransactions.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-dark-text font-normal">
+                  {regularTransactions.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveSection('loans')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeSection === 'loans'
+                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <HandCoins size={14} className={activeSection === 'loans' ? 'text-brand-400' : 'text-dark-subtext'} />
+              <span>{t('finance.loans', 'Empréstimos')}</span>
+              {loansList.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-300 font-normal border border-amber-500/20">
+                  {loansList.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveSection('wishlist')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeSection === 'wishlist'
+                  ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30 shadow-sm'
+                  : 'text-dark-subtext hover:text-dark-text hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <Gift size={14} className={activeSection === 'wishlist' ? 'text-brand-400' : 'text-dark-subtext'} />
+              <span>{t('finance.wishlist', 'Desejos & Metas')}</span>
+              {wishlist.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-dark-text font-normal">
+                  {wishlist.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Tab Content Section */}
+          <div className="pt-1">
             {activeSection === 'dashboard' && (
               <DashboardMetrics
                 totalIncome={totalIncome}
@@ -222,7 +309,12 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 selectedAccountId={selectedAccountId}
                 onSelectAccount={setSelectedAccountId}
                 onOpenAccountManager={() => setShowAccountModal(true)}
-                onNavigateToLoans={() => {}}
+                onNavigateToLoans={() => setActiveSection('loans')}
+                onNavigateToTransactions={() => setActiveSection('transactions')}
+                onNewTransaction={() => {
+                  setTxToEdit(null);
+                  setShowTxModal(true);
+                }}
               />
             )}
 
@@ -237,6 +329,10 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 }}
                 onDelete={handleDeleteRequested}
                 onPayLoan={setSelectedTxForPayment}
+                onNewTransaction={() => {
+                  setTxToEdit(null);
+                  setShowTxModal(true);
+                }}
               />
             )}
 
