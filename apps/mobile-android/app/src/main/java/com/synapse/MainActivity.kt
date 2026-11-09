@@ -23,7 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.synapse.ui.anki.AnkiStudyScreen
 import com.synapse.ui.anki.CardItem
+import com.synapse.ui.calendar.CalendarScreen
+import com.synapse.ui.culture.CultureScreen
 import com.synapse.ui.finance.FinanceScreen
+import com.synapse.ui.focus.FocusScreen
 import com.synapse.ui.habits.HabitsScreen
 import com.synapse.ui.library.LibraryScreen
 import com.synapse.ui.notes.NotesScreen
@@ -37,6 +40,9 @@ enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Bool
     ANKI("Anki", Icons.Default.Psychology, true),
     QUIZ("Quiz", Icons.Default.Quiz, true),
     HABITS("Hábitos", Icons.Default.CheckCircle, true),
+    CALENDAR("Agenda", Icons.Default.CalendarMonth, false),
+    CULTURE("Cultura", Icons.Default.Movie, false),
+    FOCUS("Foco", Icons.Default.HourglassTop, false),
     FINANCE("Finanças", Icons.Default.ShoppingCart, false),
     LIBRARY("Livros", Icons.Default.MenuBook, false),
     VAULT("Cofre", Icons.Default.Lock, false),
@@ -121,6 +127,9 @@ class MainActivity : ComponentActivity() {
                             )
                             NavItem.QUIZ -> ZenQuizScreen()
                             NavItem.HABITS -> HabitsScreen()
+                            NavItem.CALENDAR -> CalendarScreen()
+                            NavItem.CULTURE -> CultureScreen()
+                            NavItem.FOCUS -> FocusScreen()
                             NavItem.FINANCE -> FinanceScreen()
                             NavItem.LIBRARY -> LibraryScreen()
                             NavItem.VAULT -> VaultScreen()
