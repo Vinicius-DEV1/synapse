@@ -23,6 +23,7 @@ import { WishlistTab } from './ui/WishlistTab';
 import { FinanceModalsHost } from './ui/FinanceModalsHost';
 import { FinanceHelpModal } from './FinanceHelpModal';
 import { PeriodSelector, type PeriodFilter } from './ui/PeriodSelector';
+import { formatCurrency } from './utils/formatCurrency';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
 import { useTranslation } from '../../i18n';
@@ -200,7 +201,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
     setShowWishlistModal(false);
   };
 
-  const handleDeleteWishlist = (id: string, e?: React.MouseEvent) => {
+  const handleDeleteWishlist = async (id: string, e?: React.MouseEvent): Promise<void> => {
     if (e) e.stopPropagation();
     setWishlistToDeleteId(id);
   };
@@ -528,9 +529,9 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                           <span className="text-[10px] text-dark-subtext">{item.category}</span>
                         )}
                       </div>
-                      {item.estimated_cost ? (
+                      {item.price ? (
                         <span className="text-xs font-semibold text-white shrink-0">
-                          {formatCurrency(item.estimated_cost)}
+                          {formatCurrency(item.price)}
                         </span>
                       ) : null}
                     </div>
