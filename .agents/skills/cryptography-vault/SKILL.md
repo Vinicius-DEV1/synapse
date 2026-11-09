@@ -110,6 +110,23 @@ export async function encryptFile(buffer: ArrayBuffer, masterKey: CryptoKey): Pr
 export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<ArrayBuffer>;
 ```
 
+### 3.3. Native Desktop Qt 6 & Rust FFI (`bridges/bridge-qt/`, `apps/desktop-qt/src/synapse_controller.*`)
+
+- **Engine**: Rust FFI C-ABI bridge linked directly with Qt 6 C++ backend.
+- **Payload Format**: Identical to Tauri Rust backend: `<iv_hex>:<auth_tag_hex>:<ciphertext_hex>`.
+- **C-ABI Exports (`bridges/bridge-qt/src/lib.rs`)**:
+  - `synapse_crypto_derive_master_key(password, out_key_32)`: PBKDF2-HMAC-SHA256 (600,000 rounds, salt `b"caderno-keychain-salt"`).
+  - `synapse_crypto_hash_password(password)`: SHA-256 auth_hash hex.
+  - `synapse_crypto_generate_module_key()`: 32 random bytes hex.
+  - `synapse_crypto_encrypt_module_key` & `synapse_crypto_decrypt_module_key`: AES-256-GCM (16-byte nonce) for Keychain envelope wrapping.
+  - `synapse_crypto_encrypt_content` & `synapse_crypto_decrypt_content`: AES-256-GCM (12-byte nonce) for pages, history revisions, and vault items.
+  - `synapse_crypto_wipe_memory(buffer, len)`: Zeroizes key material in memory immediately after usage.
+- **Controller & Lifecycle (`SynapseDataController`)**:
+  - Transparent on-the-fly decryption for `getPage`, `getPageHistory`, and `getVaultItems`.
+  - Zero-plaintext residual guarantee: when saving in encrypted mode, `content` is wiped to `""` and ciphertext stored exclusively in `encrypted_content`.
+  - Master Password Setup, Change (atomic envelope re-wrap without touching content ciphertexts), and Removal with in-memory zeroization.
+  - Auto-lock timer and memory wipe on lock and application shutdown.
+
 ---
 
 ## 4. Entity-Level Encryption Matrix
@@ -189,6 +206,11 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 
 | File | Layer | Responsibility |
 | :--- | :---- | :------------- |
+| `bridges/bridge-qt/src/lib.rs` | Rust Native Bridge | PBKDF2 (600k rounds), AES-256-GCM, SHA-256, memory wiping C-ABI |
+| `apps/desktop-qt/src/synapse_controller.*` | C++ Desktop Controller | Two-Tier Keychain orchestration, on-the-fly encryption/decryption, auto-lock |
+| `apps/desktop-qt/qml/vault/VaultUnlockScreen.qml` | QML Presentation | Zen unlock canvas with error shake animation and Zero-Knowledge badge |
+| `apps/desktop-qt/qml/settings/MasterPasswordModal.qml` | QML Presentation | Setup, change, and remove master password dialogs with strength meter |
+| `apps/desktop-qt/qml/vault/PasswordGeneratorModal.qml` | QML Presentation | Interactive entropy-controlled secure password generator |
 | `src-tauri/src/crypto.rs` | Rust Backend | AES-256-GCM encrypt/decrypt, PBKDF2 derivation, module key generation |
 | `src-tauri/src/crypto_stream.rs` | Rust Backend | Chunked AES-GCM streaming for large files (video) |
 | `src-tauri/src/protocol_encrypted.rs` | Rust Backend | Custom `encrypted://` URI protocol, HTTP 206 partial content |

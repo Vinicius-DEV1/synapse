@@ -17,12 +17,13 @@ This document defines the mandatory architectural, code quality, design integrit
 
 ## 2. Architecture & Tech Stack
 
-Caderno is a hybrid Desktop and Web application built with:
-- **Frontend**: React 19, TypeScript, Vite, TailwindCSS, Lucide Icons, Radix UI / Floating UI.
+Caderno is a multi-target application engineered for desktop, web, and high-performance native environments:
+- **Hybrid Web & Desktop (Tauri)**: React 19, TypeScript, Vite, TailwindCSS, Lucide Icons, Radix UI / Floating UI, Tauri v2 (Rust).
+- **Native Desktop High-Performance (Qt 6 / C++ / Rust FFI)**: Qt 6 Quick/QML, C++20 (`SynapseDataController`), Rust FFI bridge (`bridges/bridge-qt/`), native MPV hardware-accelerated media rendering (`MpvPlayerItem`), and direct SQLite WAL persistence.
 - **Editor**: TipTap (ProseMirror) with rich custom extensions and real-time collaboration via **Yjs / y-prosemirror**.
-- **Desktop Backend**: Tauri v2 (Rust) with filesystem, dialogs, and shell plugins.
-- **Persistence / Offline**: IndexedDB (`idb`), Firebase/Firestore for web synchronization and cloud backup.
-- **Media & Utilities**: FFmpeg, PDF.js, EpubJS, Tesseract OCR, Tldraw, Canvas Confetti.
+- **Persistence / Offline**: Direct SQLite WAL on desktop; IndexedDB (`idb`) and Firebase/Firestore for web synchronization.
+- **Media & Utilities**: libmpv, FFmpeg, PDF.js, EpubJS, Tesseract OCR, Tldraw, Canvas Confetti.
+- **End-to-End Cryptography**: PBKDF2-HMAC-SHA256 (600,000 iterations), AES-256-GCM Two-Tier Keychain envelope architecture, field-level Vault encryption, and transparent on-the-fly decryption across both Tauri and Qt native engines.
 
 ### Layered Architecture Boundaries
 Code must adhere to a strict 4-tier layer separation:
