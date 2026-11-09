@@ -67,6 +67,8 @@ public:
     Q_INVOKABLE QVariantList getPageTree(const QString &filter = "");
     Q_INVOKABLE QVariantMap getPage(const QString &pageId);
     Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon = "📄");
+    Q_INVOKABLE QVariantList getPageHistory(const QString &pageId);
+    Q_INVOKABLE bool restorePageRevision(const QString &pageId, const QString &revisionId);
     Q_INVOKABLE QString createSubPage(const QString &parentId, const QString &title = "Nova Sub-página", const QString &icon = "📄");
     Q_INVOKABLE bool deletePage(const QString &pageId);
     Q_INVOKABLE bool togglePinPage(const QString &pageId);
@@ -159,7 +161,7 @@ public:
     Q_INVOKABLE QVariantList getVaultItems(const QString &groupId = "");
     Q_INVOKABLE bool saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes);
     Q_INVOKABLE bool deleteVaultItem(const QString &itemId);
-    Q_INVOKABLE QString generateSecurePassword(int length = 16, bool symbols = true);
+    Q_INVOKABLE QString generateSecurePassword(int length = 20, bool uppercase = true, bool lowercase = true, bool numbers = true, bool symbols = true);
     Q_INVOKABLE bool checkVaultConfigured();
     Q_INVOKABLE bool unlockVault(const QString &password);
     Q_INVOKABLE void lockVault();
@@ -222,6 +224,7 @@ private:
     QString m_vaultLockError;
     QTimer *m_autoLockTimer;
     QMap<QString, QString> m_unlockedKeys;
+    QHash<QString, qint64> m_pageHistoryCooldown;
 
     void checkKeychainState();
     QString encryptContent(const QString &keyHex, const QString &plaintext);

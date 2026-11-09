@@ -47,6 +47,7 @@ SynapseDataController::SynapseDataController(QObject *parent)
 }
 
 SynapseDataController::~SynapseDataController() {
+    lockVault();
     if (m_db) {
         synapse_db_close(m_db);
         m_db = nullptr;
@@ -310,8 +311,63 @@ bool SynapseDataController::savePage(const QString &pageId, const QString &title
         }
     }
     bool ok = executeSql(sql);
-    if (ok) refreshStats();
+    if (ok) {
+        if (!pageId.isEmpty()) {
+            qint64 now = QDateTime::currentSecsSinceEpoch();
+            if (!m_pageHistoryCooldown.contains(pageId) || (now - m_pageHistoryCooldown.value(pageId) >= 60)) {
+                m_pageHistoryCooldown[pageId] = now;
+                QString histId = generateUuid();
+                if (hasNotesKey) {
+                    QString enc = encryptContent(m_unlockedKeys.value("notes"), content);
+                    executeSql(QString("INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES ('%1', '%2', '', '%3', '%4')")
+                        .arg(histId, escapeSql(pageId), escapeSql(enc), ts));
+                } else {
+                    executeSql(QString("INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES ('%1', '%2', '%3', NULL, '%4')")
+                        .arg(histId, escapeSql(pageId), escapeSql(content), ts));
+                }
+            }
+        }
+        refreshStats();
+    }
     return ok;
+}
+
+QVariantList SynapseDataController::getPageHistory(const QString &pageId) {
+    QString sql = QString("SELECT id, page_id, content, encrypted_content, created_at FROM page_history WHERE page_id = '%1' ORDER BY created_at DESC").arg(escapeSql(pageId));
+    QJsonArray rows = executeQuery(sql);
+    QVariantList list;
+    bool hasNotesKey = (m_isVaultConfigured && m_isVaultUnlocked && m_unlockedKeys.contains("notes") && !m_unlockedKeys.value("notes").isEmpty());
+    QString notesKey = hasNotesKey ? m_unlockedKeys.value("notes") : "";
+
+    for (const QJsonValue &v : rows) {
+        QJsonObject obj = v.toObject();
+        QString enc = obj.value("encrypted_content").toString();
+        if (!enc.isEmpty() && !notesKey.isEmpty()) {
+            obj["content"] = decryptContent(notesKey, enc);
+        }
+        list.append(obj.toVariantMap());
+    }
+    return list;
+}
+
+bool SynapseDataController::restorePageRevision(const QString &pageId, const QString &revisionId) {
+    QString sql = QString("SELECT content, encrypted_content FROM page_history WHERE id = '%1' AND page_id = '%2'").arg(escapeSql(revisionId), escapeSql(pageId));
+    QJsonArray rows = executeQuery(sql);
+    if (rows.isEmpty()) return false;
+    QJsonObject obj = rows[0].toObject();
+    QString enc = obj.value("encrypted_content").toString();
+    QString content = obj.value("content").toString();
+    if (!enc.isEmpty()) {
+        if (m_isVaultConfigured && m_isVaultUnlocked && m_unlockedKeys.contains("notes")) {
+            content = decryptContent(m_unlockedKeys.value("notes"), enc);
+        } else {
+            return false;
+        }
+    }
+    QVariantMap page = getPage(pageId);
+    QString title = page.value("title").toString();
+    QString icon = page.value("icon").toString();
+    return savePage(pageId, title, content, icon);
 }
 
 QString SynapseDataController::createSubPage(const QString &parentId, const QString &title, const QString &icon) {
@@ -1298,10 +1354,14 @@ bool SynapseDataController::deleteVaultItem(const QString &itemId) {
     return ok;
 }
 
-QString SynapseDataController::generateSecurePassword(int length, bool symbols) {
-    const QString letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const QString syms = "!@#$%^&*()-_=+[]{}<>?";
-    QString pool = letters + (symbols ? syms : "");
+QString SynapseDataController::generateSecurePassword(int length, bool uppercase, bool lowercase, bool numbers, bool symbols) {
+    QString pool;
+    if (uppercase) pool += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    if (lowercase) pool += "abcdefghijklmnopqrstuvwxyz";
+    if (numbers) pool += "0123456789";
+    if (symbols) pool += "!@#$%^&*()-_=+[]{}<>?~";
+    if (pool.isEmpty()) pool = "abcdefghijklmnopqrstuvwxyz0123456789";
+
     QString result;
     result.reserve(length);
     auto *rng = QRandomGenerator::global();
