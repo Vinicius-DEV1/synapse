@@ -9,6 +9,7 @@ interface UseTransactionFormProps {
   defaultType?: TransactionType;
   accounts?: Account[];
   defaultAccountId?: string;
+  existingPersons?: string[];
 }
 
 export function useTransactionForm({
@@ -18,12 +19,14 @@ export function useTransactionForm({
   defaultType = 'expense',
   accounts = [],
   defaultAccountId,
+  existingPersons = [],
 }: UseTransactionFormProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || defaultType);
   const [amount, setAmount] = useState(initialData?.amount ? String(initialData.amount) : '');
   const [expectedAmount, setExpectedAmount] = useState(
     initialData?.expected_amount ? String(initialData.expected_amount) : ''
   );
+  const [person, setPerson] = useState(initialData?.person || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [category, setCategory] = useState(initialData?.category || 'Geral');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
@@ -86,9 +89,17 @@ export function useTransactionForm({
       }
     }
 
-    const finalDescription = description.trim() || (isTransfer ? 'Transferência entre contas' : '');
+    const trimmedPerson = person.trim();
+    // Normalize against existing registered contacts (accent & case-insensitive) to prevent duplicate registrations
+    const normalizeKey = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    const canonicalPerson = isLoan && trimmedPerson
+      ? (existingPersons.find((p) => normalizeKey(p) === normalizeKey(trimmedPerson)) || trimmedPerson)
+      : null;
+    const finalDescription = description.trim() || (isTransfer ? 'Transferência entre contas' : canonicalPerson || '');
     if (!finalDescription) {
-      triggerToast('Preencha a descrição da transação.', 'error');
+      triggerToast(isLoan ? 'Informe o nome da pessoa ou uma descrição para o empréstimo.' : 'Preencha a descrição da transação.', 'error');
       return;
     }
 
@@ -105,6 +116,7 @@ export function useTransactionForm({
         type,
         amount: parsedAmount,
         expected_amount: parsedExpectedAmount,
+        person: canonicalPerson,
         description: finalDescription,
         category: isTransfer ? 'Transferência' : (category.trim() || 'Geral'),
         date,
@@ -132,6 +144,8 @@ export function useTransactionForm({
     setAmount,
     expectedAmount,
     setExpectedAmount,
+    person,
+    setPerson,
     description,
     setDescription,
     category,

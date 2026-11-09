@@ -87,9 +87,10 @@ export function LoansTab({
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
+        const matchesPerson = (loan.person || '').toLowerCase().includes(q);
         const matchesDesc = loan.description.toLowerCase().includes(q);
         const matchesCat = (loan.category || '').toLowerCase().includes(q);
-        if (!matchesDesc && !matchesCat) return false;
+        if (!matchesPerson && !matchesDesc && !matchesCat) return false;
       }
 
       return true;

@@ -123,7 +123,21 @@ export default function PaymentModal({
           
           <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-3.5">
             <div className="bg-dark-bg/80 p-3 rounded-lg border border-white/5">
-              <div className="text-xs font-medium text-dark-text mb-1 truncate">{transaction.description}</div>
+              <div className="text-xs font-semibold text-dark-text mb-0.5 truncate flex items-center gap-1.5">
+                {transaction.person ? (
+                  <>
+                    <span>{transaction.person}</span>
+                    <span className="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1.5 py-0.2 rounded font-medium">
+                      {isLoanMade ? 'Devedor' : 'Credor'}
+                    </span>
+                  </>
+                ) : (
+                  <span>{transaction.description}</span>
+                )}
+              </div>
+              {transaction.person && transaction.description && transaction.description !== transaction.person && (
+                <div className="text-[11px] text-dark-subtext mb-1 truncate">{transaction.description}</div>
+              )}
               <div className="flex justify-between items-end text-xs">
                 <div>
                   <span className="text-dark-subtext">Pendente: </span>

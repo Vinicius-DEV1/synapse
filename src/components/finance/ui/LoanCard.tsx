@@ -11,6 +11,7 @@ import {
   Calendar,
   Edit2,
   ChevronDown,
+  User,
 } from 'lucide-react';
 import type { Transaction, Account } from '../../../types';
 import { formatDateSafe } from './TransactionList';
@@ -119,7 +120,22 @@ export const LoanCard = React.memo(({
             {isLoanMade ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-dark-text text-sm sm:text-base truncate">{loan.description}</h3>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="font-semibold text-dark-text text-sm sm:text-base truncate">
+                {loan.person || loan.description}
+              </h3>
+              {loan.person && (
+                <span className="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1.5 py-0.2 rounded font-medium flex items-center gap-1">
+                  <User size={10} />
+                  {isLoanMade ? 'Devedor' : 'Credor'}
+                </span>
+              )}
+            </div>
+            {loan.person && loan.description && loan.description !== loan.person && (
+              <p className="text-xs text-dark-subtext truncate mt-0.5">
+                {loan.description}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-dark-subtext mt-1">
               <span>{formatDateSafe(loan.date)}</span>
               <span>•</span>

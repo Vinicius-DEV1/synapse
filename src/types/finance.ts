@@ -26,6 +26,7 @@ export interface Transaction {
   account_id?: string | null;
   destination_account_id?: string | null;
   linked_loan_id?: string | null;
+  person?: string | null;
   created_at: string;
 }
 

@@ -87,7 +87,7 @@ describe('TransactionModal Component', () => {
       <TransactionModal onClose={onClose} onSave={onSave} defaultType="loan_made" />
     );
 
-    const descInput = getByPlaceholderText(/Supermercado/i);
+    const descInput = getByPlaceholderText(/Ajuda com conserto/i);
     const amountInput = getByPlaceholderText('0.00');
 
     fireEvent.change(descInput, { target: { value: 'Empréstimo sem valor inicial' } });
@@ -101,6 +101,97 @@ describe('TransactionModal Component', () => {
         expect.objectContaining({
           description: 'Empréstimo sem valor inicial',
           amount: 0,
+          type: 'loan_made',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('captures person/contact field for loans and submits correctly', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const { getByPlaceholderText, getByRole } = renderWithI18n(
+      <TransactionModal onClose={onClose} onSave={onSave} defaultType="loan_made" />
+    );
+
+    const personInput = getByPlaceholderText(/João Silva/i);
+    const descInput = getByPlaceholderText(/Ajuda com conserto/i);
+    const amountInput = getByPlaceholderText('0.00');
+
+    fireEvent.change(personInput, { target: { value: 'João Silva' } });
+    fireEvent.change(descInput, { target: { value: 'Conserto do Carro' } });
+    fireEvent.change(amountInput, { target: { value: '500.00' } });
+
+    const submitBtn = getByRole('button', { name: /^Salvar$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          person: 'João Silva',
+          description: 'Conserto do Carro',
+          amount: 500,
+          type: 'loan_made',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('displays contact suggestions and fills input upon clicking suggestion pill', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const { getByText, getByPlaceholderText } = renderWithI18n(
+      <TransactionModal
+        onClose={onClose}
+        onSave={onSave}
+        defaultType="loan_made"
+        existingPersons={['João Silva', 'Maria Clara']}
+      />
+    );
+
+    // Suggestion chip should be rendered
+    const joaoChip = getByText('João Silva');
+    expect(joaoChip).toBeInTheDocument();
+
+    // Clicking chip fills person input
+    fireEvent.click(joaoChip);
+    const personInput = getByPlaceholderText(/João Silva/i) as HTMLInputElement;
+    expect(personInput.value).toBe('João Silva');
+  });
+
+  it('normalizes person input casing to match existing contact on submit', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const { getByPlaceholderText, getByRole } = renderWithI18n(
+      <TransactionModal
+        onClose={onClose}
+        onSave={onSave}
+        defaultType="loan_made"
+        existingPersons={['João Silva']}
+      />
+    );
+
+    const personInput = getByPlaceholderText(/João Silva/i);
+    const amountInput = getByPlaceholderText('0.00');
+
+    // Type in lowercase without proper accents/casing
+    fireEvent.change(personInput, { target: { value: 'joao silva' } });
+    fireEvent.change(amountInput, { target: { value: '150.00' } });
+
+    const submitBtn = getByRole('button', { name: /^Salvar$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          person: 'João Silva', // Normalized to existing registered contact
+          description: 'João Silva',
+          amount: 150,
           type: 'loan_made',
         })
       );

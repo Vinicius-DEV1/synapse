@@ -32,13 +32,18 @@ export function useFinanceLoans({
 
       // 1. Create linked cashflow transaction in target account FIRST
       const isLoanMade = loan.type === 'loan_made';
+      const personOrDesc = loan.person
+        ? (loan.description && loan.description !== loan.person ? `${loan.person} (${loan.description})` : loan.person)
+        : loan.description;
+
       await window.api.finance.createTransaction({
         type: isLoanMade ? 'income' : 'expense',
         amount: paymentAmount,
         account_id: targetAccountId,
         linked_loan_id: loan.id,
         category: isLoanMade ? 'Recebimento de Empréstimo' : 'Pagamento de Dívida',
-        description: isLoanMade ? `Recebimento: ${loan.description}` : `Pagamento: ${loan.description}`,
+        description: isLoanMade ? `Recebimento: ${personOrDesc}` : `Pagamento: ${personOrDesc}`,
+        person: loan.person || null,
         date: paymentDate || new Date().toISOString().split('T')[0],
         is_paid: 1,
         status: 'completed',

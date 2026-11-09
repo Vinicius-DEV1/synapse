@@ -110,6 +110,35 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
   onCloseConfirmPendingModal,
   onConfirmPendingTransaction,
 }: FinanceModalsHostProps) {
+  const existingPersons = React.useMemo(() => {
+    const map = new Map<string, { count: number; canonical: string }>();
+    const normalizeKey = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    for (const t of transactions) {
+      const raw =
+        t.person?.trim() ||
+        ((t.type === 'loan_made' || t.type === 'loan_taken') && t.description?.trim()) ||
+        '';
+      if (raw) {
+        const key = normalizeKey(raw);
+        const existing = map.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          map.set(key, { count: 1, canonical: raw });
+        }
+      }
+    }
+    return Array.from(map.values())
+      .sort(
+        (a, b) =>
+          b.count - a.count ||
+          a.canonical.localeCompare(b.canonical, undefined, { sensitivity: 'base' })
+      )
+      .map((item) => item.canonical);
+  }, [transactions]);
+
   return (
     <>
       {showTxModal && (
@@ -119,6 +148,7 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
           defaultAccountId={selectedAccountId !== 'all' ? selectedAccountId : undefined}
           onClose={onCloseTxModal}
           onSave={onSaveTransaction}
+          existingPersons={existingPersons}
         />
       )}
 
