@@ -43,6 +43,13 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+0"; onActivated: rootWindow.activeTab = "vault" }
     Shortcut { sequence: "Ctrl+,"; onActivated: rootWindow.activeTab = "settings" }
     Shortcut { sequence: "Ctrl+B"; onActivated: rootWindow.sidebarExpanded = !rootWindow.sidebarExpanded }
+    Shortcut {
+        sequences: ["Ctrl+K", "Ctrl+P"]
+        onActivated: {
+            if (cmdPalette.isOpen) cmdPalette.close()
+            else cmdPalette.open()
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -135,6 +142,76 @@ ApplicationWindow {
                     color: theme.borderSubtle
                     Layout.topMargin: 4
                     Layout.bottomMargin: 4
+                }
+
+                // Quick Search Bar Button (Ctrl+K)
+                Rectangle {
+                    visible: rootWindow.sidebarExpanded
+                    Layout.fillWidth: true
+                    height: 34
+                    radius: 8
+                    color: searchBtnMouse.containsMouse ? "#ffffff12" : "#15141b"
+                    border.color: searchBtnMouse.containsMouse ? "#818cf850" : "#ffffff10"
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        spacing: 6
+
+                        Text { text: "🔍"; font.pixelSize: 11; color: "#a7a9be" }
+                        Text {
+                            text: "Buscar..."
+                            color: "#a7a9be"
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                        }
+                        Rectangle {
+                            height: 18
+                            radius: 4
+                            color: "#211f30"
+                            border.color: "#ffffff15"
+                            Layout.preferredWidth: 44
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Ctrl+K"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                                font.bold: true
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: searchBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: cmdPalette.open()
+                    }
+                }
+
+                // Collapsed search icon button
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    width: 40; height: 32; radius: 6
+                    color: searchIconMouse.containsMouse ? theme.bgHover : "transparent"
+                    visible: !rootWindow.sidebarExpanded
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "🔍"
+                        font.pixelSize: 14
+                    }
+
+                    MouseArea {
+                        id: searchIconMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: cmdPalette.open()
+                    }
                 }
 
                 // Collapsed expand toggle button
@@ -336,6 +413,32 @@ ApplicationWindow {
                 FocusLofiView { id: focusView }
                 VaultView { id: vaultView }
                 SettingsView { id: settingsView }
+            }
+        }
+    }
+
+    // Floating Spotlight Command Palette (Ctrl+K / Ctrl+P)
+    CommandPalette {
+        id: cmdPalette
+        onNavigateToTab: {
+            rootWindow.activeTab = tabKey
+        }
+        onTriggerAction: {
+            if (actionKey === "new_note") {
+                rootWindow.activeTab = "notes"
+                notesView.createNewRootNote()
+            } else if (actionKey === "new_event") {
+                rootWindow.activeTab = "calendar"
+                calendarView.isCreatingEvent = true
+            } else if (actionKey === "new_habit") {
+                rootWindow.activeTab = "habits"
+                habitsView.isCreatingHabit = true
+            } else if (actionKey === "new_transaction") {
+                rootWindow.activeTab = "finance"
+                financeView.isAddingTransaction = true
+            } else if (actionKey === "new_vault") {
+                rootWindow.activeTab = "vault"
+                vaultView.isAddingItem = true
             }
         }
     }
