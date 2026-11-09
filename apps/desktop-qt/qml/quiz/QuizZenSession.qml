@@ -251,57 +251,19 @@ Item {
     }
 
     // Discrete Fixed Bottom Dock
-    Rectangle {
+    QuizZenFooterDock {
         id: footerBar
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 64
-        color: "#161524"
 
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 24
-            anchors.rightMargin: 24
+        isConfirmed: zenSessionRoot.isConfirmed
+        showExplanation: zenSessionRoot.showExplanation
+        selectedOption: zenSessionRoot.selectedOption
+        currentIndex: zenSessionRoot.currentIndex
+        totalQuestions: zenSessionRoot.totalQuestions
 
-            Row {
-                spacing: 16
-                Text { text: "[1-4 / A-D] Selecionar"; color: "#71717a"; font.pixelSize: 12 }
-                Text { text: "[Enter] Confirmar"; color: "#71717a"; font.pixelSize: 12 }
-                Text { text: "[G] Gabarito"; color: "#71717a"; font.pixelSize: 12; visible: zenSessionRoot.isConfirmed }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            // Gabarito Toggle Button
-            Button {
-                visible: zenSessionRoot.isConfirmed
-                implicitHeight: 36
-                text: zenSessionRoot.showExplanation ? "Ocultar Gabarito" : "Ver Gabarito [G]"
-                onClicked: zenSessionRoot.gabaritoToggled()
-            }
-
-            // Main Action Button
-            Rectangle {
-                implicitHeight: 38
-                implicitWidth: 140
-                radius: 6
-                color: zenSessionRoot.selectedOption === -1 ? "#27272a" : "#6366f1"
-
-                Text {
-                    anchors.centerIn: parent
-                    text: !zenSessionRoot.isConfirmed ? "Confirmar [↵]" : (zenSessionRoot.currentIndex < zenSessionRoot.totalQuestions - 1 ? "Próxima [↵]" : "Concluir [↵]")
-                    color: zenSessionRoot.selectedOption === -1 ? "#71717a" : "#ffffff"
-                    font.pixelSize: 13
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: zenSessionRoot.actionRequested()
-                }
-            }
-        }
+        onGabaritoToggled: zenSessionRoot.gabaritoToggled()
+        onActionRequested: zenSessionRoot.actionRequested()
     }
 }
