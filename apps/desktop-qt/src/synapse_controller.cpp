@@ -17,7 +17,9 @@ SynapseDataController::SynapseDataController(QObject *parent)
       m_vaultItemCount(0),
       m_transactionCount(0),
       m_eventCount(0),
-      m_habitCount(0) {
+      m_habitCount(0),
+      m_quizBatteryCount(0),
+      m_focusSessionCount(0) {
     
     // Automatically locate user's canonical Caderno SQLite database
     QString home = QDir::homePath();
@@ -120,6 +122,8 @@ void SynapseDataController::refreshStats() {
     m_transactionCount = getCount("transactions");
     m_eventCount = getCount("calendar_events");
     m_habitCount = getCount("habits");
+    m_quizBatteryCount = getCount("quiz_batteries");
+    m_focusSessionCount = getCount("focus_sessions");
 
     qInfo() << "[SynapseDataController] Stats updated -> Pages:" << m_pageCount
             << "| Videos:" << m_videoCount
@@ -127,7 +131,9 @@ void SynapseDataController::refreshStats() {
             << "| Books:" << m_bookCount
             << "| Culture:" << m_cultureCount
             << "| Vault:" << m_vaultItemCount
-            << "| Transactions:" << m_transactionCount;
+            << "| Transactions:" << m_transactionCount
+            << "| Batteries:" << m_quizBatteryCount
+            << "| FocusSessions:" << m_focusSessionCount;
     emit countsChanged();
 }
 

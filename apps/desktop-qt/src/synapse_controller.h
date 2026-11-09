@@ -25,6 +25,8 @@ class SynapseDataController : public QObject {
     Q_PROPERTY(int transactionCount READ transactionCount NOTIFY countsChanged)
     Q_PROPERTY(int eventCount READ eventCount NOTIFY countsChanged)
     Q_PROPERTY(int habitCount READ habitCount NOTIFY countsChanged)
+    Q_PROPERTY(int quizBatteryCount READ quizBatteryCount NOTIFY countsChanged)
+    Q_PROPERTY(int focusSessionCount READ focusSessionCount NOTIFY countsChanged)
 
 public:
     explicit SynapseDataController(QObject *parent = nullptr);
@@ -41,6 +43,8 @@ public:
     int transactionCount() const { return m_transactionCount; }
     int eventCount() const { return m_eventCount; }
     int habitCount() const { return m_habitCount; }
+    int quizBatteryCount() const { return m_quizBatteryCount; }
+    int focusSessionCount() const { return m_focusSessionCount; }
 
     Q_INVOKABLE void refreshStats();
     Q_INVOKABLE bool executeSql(const QString &sql);
@@ -156,6 +160,8 @@ private:
     int m_transactionCount;
     int m_eventCount;
     int m_habitCount;
+    int m_quizBatteryCount;
+    int m_focusSessionCount;
 
     QJsonArray executeQuery(const QString &sql);
     QString escapeSql(const QString &str) const;

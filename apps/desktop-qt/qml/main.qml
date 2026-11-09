@@ -182,13 +182,13 @@ ApplicationWindow {
                         { key: "notes", name: "Caderno", icon: "📝", count: dataController.pageCount },
                         { key: "video", name: "Vídeos", icon: "🎬", count: dataController.videoCount },
                         { key: "anki", name: "Flashcards", icon: "🎴", count: dataController.deckCount },
-                        { key: "quiz", name: "Questões", icon: "🎯", count: 0 },
+                        { key: "quiz", name: "Questões", icon: "🎯", count: dataController.quizBatteryCount },
                         { key: "finance", name: "Finanças", icon: "💰", count: dataController.transactionCount },
                         { key: "habits", name: "Hábitos", icon: "⚡", count: dataController.habitCount },
                         { key: "calendar", name: "Agenda", icon: "📅", count: dataController.eventCount },
                         { key: "library", name: "Biblioteca", icon: "📚", count: dataController.bookCount },
                         { key: "culture", name: "Cultura", icon: "🎭", count: dataController.cultureCount },
-                        { key: "focus", name: "Foco", icon: "⏳", count: 0 },
+                        { key: "focus", name: "Foco", icon: "⏳", count: dataController.focusSessionCount },
                         { key: "vault", name: "Cofre", icon: "🔒", count: dataController.vaultItemCount },
                         { key: "settings", name: "Configurações", icon: "⚙️", count: 0 }
                     ]
