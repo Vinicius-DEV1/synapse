@@ -28,25 +28,29 @@ import com.synapse.ui.culture.CultureScreen
 import com.synapse.ui.finance.FinanceScreen
 import com.synapse.ui.focus.FocusScreen
 import com.synapse.ui.habits.HabitsScreen
+import com.synapse.ui.home.HomeScreen
 import com.synapse.ui.library.LibraryScreen
 import com.synapse.ui.notes.NotesScreen
 import com.synapse.ui.quiz.ZenQuizScreen
 import com.synapse.ui.theme.*
+import com.synapse.ui.trash.TrashScreen
 import com.synapse.ui.vault.VaultScreen
 import com.synapse.ui.video.VideoPlayerScreen
 
 enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Boolean = true) {
+    HOME("Início", Icons.Default.Home, true),
     NOTES("Notas", Icons.Default.Assignment, true),
     ANKI("Anki", Icons.Default.Psychology, true),
     QUIZ("Quiz", Icons.Default.Quiz, true),
-    HABITS("Hábitos", Icons.Default.CheckCircle, true),
+    HABITS("Hábitos", Icons.Default.CheckCircle, false),
     CALENDAR("Agenda", Icons.Default.CalendarMonth, false),
     CULTURE("Cultura", Icons.Default.Movie, false),
     FOCUS("Foco", Icons.Default.HourglassTop, false),
     FINANCE("Finanças", Icons.Default.ShoppingCart, false),
     LIBRARY("Livros", Icons.Default.MenuBook, false),
     VAULT("Cofre", Icons.Default.Lock, false),
-    VIDEO("Vídeo", Icons.Default.PlayCircle, false)
+    VIDEO("Vídeo", Icons.Default.PlayCircle, false),
+    TRASH("Lixeira", Icons.Default.Delete, false)
 }
 
 class MainActivity : ComponentActivity() {
@@ -57,12 +61,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SynapseTheme {
-                var currentTab by remember { mutableStateOf(NavItem.NOTES) }
+                var currentTab by remember { mutableStateOf(NavItem.HOME) }
                 var showMoreSheet by remember { mutableStateOf(false) }
 
-                // Hierarchical back press: If not on primary NOTES tab, return to NOTES first
-                BackHandler(enabled = currentTab != NavItem.NOTES) {
-                    currentTab = NavItem.NOTES
+                // Hierarchical back press: If not on primary HOME tab, return to HOME first
+                BackHandler(enabled = currentTab != NavItem.HOME) {
+                    currentTab = NavItem.HOME
                 }
 
                 Scaffold(
@@ -117,6 +121,26 @@ class MainActivity : ComponentActivity() {
                         color = DarkCanvas
                     ) {
                         when (currentTab) {
+                            NavItem.HOME -> HomeScreen(
+                                onNavigateToTab = { tabKey ->
+                                    val target = when (tabKey) {
+                                        "notes" -> NavItem.NOTES
+                                        "anki" -> NavItem.ANKI
+                                        "quiz" -> NavItem.QUIZ
+                                        "habits" -> NavItem.HABITS
+                                        "calendar" -> NavItem.CALENDAR
+                                        "finance" -> NavItem.FINANCE
+                                        "focus" -> NavItem.FOCUS
+                                        "library" -> NavItem.LIBRARY
+                                        "culture" -> NavItem.CULTURE
+                                        "vault" -> NavItem.VAULT
+                                        "video" -> NavItem.VIDEO
+                                        "trash" -> NavItem.TRASH
+                                        else -> NavItem.HOME
+                                    }
+                                    currentTab = target
+                                }
+                            )
                             NavItem.NOTES -> NotesScreen()
                             NavItem.ANKI -> AnkiStudyScreen(
                                 cards = listOf(
@@ -134,6 +158,7 @@ class MainActivity : ComponentActivity() {
                             NavItem.LIBRARY -> LibraryScreen()
                             NavItem.VAULT -> VaultScreen()
                             NavItem.VIDEO -> VideoPlayerScreen()
+                            NavItem.TRASH -> TrashScreen()
                         }
                     }
 
