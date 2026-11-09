@@ -120,40 +120,13 @@ Rectangle {
     }
 
     // Keyboard Shortcuts for Study Session
-    Shortcut {
-        sequence: "Space"
-        enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && !ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.revealAnswer()
-    }
-    Shortcut {
-        sequence: "Return"
-        enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && !ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.revealAnswer()
-    }
-    Shortcut {
-        sequence: "1"
-        enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.rateCard(1)
-    }
-    Shortcut {
-        sequence: "2"
-        enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.rateCard(2)
-    }
-    Shortcut {
-        sequence: "3"
-        enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.rateCard(3)
-    }
-    Shortcut {
-        sequence: "4"
-        enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.rateCard(4)
-    }
-    Shortcut {
-        sequence: "Esc"
-        enabled: ankiRoot.isStudying
-        onActivated: {
+    AnkiStudyShortcuts {
+        isStudying: ankiRoot.isStudying
+        isStudyFinished: ankiRoot.isStudyFinished
+        isAnswerRevealed: ankiRoot.isAnswerRevealed
+        onRevealRequested: ankiRoot.revealAnswer()
+        onRateRequested: function(rating) { ankiRoot.rateCard(rating) }
+        onExitRequested: {
             ankiRoot.isStudying = false
             ankiRoot.isStudyFinished = false
             ankiRoot.reloadDecks()
@@ -180,80 +153,15 @@ Rectangle {
                 Item { height: 16 } // Top breathing room
 
                 // Top Header with Brain icon and Action Buttons
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 16
-
-                    ColumnLayout {
-                        spacing: 4
-
-                        RowLayout {
-                            spacing: 10
-                            Text { text: "⚡"; font.pixelSize: 28; color: "#818cf8" }
-                            Text { text: "Flashcards"; color: "#fffffe"; font.pixelSize: 28; font.bold: true }
+                AnkiHeaderBar {
+                    isShowingStats: ankiRoot.isShowingStats
+                    onToggleStatsRequested: {
+                        if (!ankiRoot.isShowingStats) {
+                            ankiRoot.globalStats = dataController.getGlobalAnkiStats()
                         }
-
-                        Text {
-                            text: "FSRS Spaced Repetition System • Repetição espaçada determinística com algoritmo nativo em Rust"
-                            color: "#a7a9be"
-                            font.pixelSize: 13
-                        }
+                        ankiRoot.isShowingStats = !ankiRoot.isShowingStats
                     }
-
-                    Item { Layout.fillWidth: true }
-
-                    // "Estatísticas" Button
-                    Rectangle {
-                        width: 130; height: 40; radius: 10
-                        color: ankiRoot.isShowingStats ? "#6366f126" : "#1a1924"
-                        border.color: ankiRoot.isShowingStats ? "#818cf8" : "#ffffff15"
-                        border.width: 1
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 8
-                            Text { text: "📊"; font.pixelSize: 14 }
-                            Text {
-                                text: ankiRoot.isShowingStats ? "Baralhos" : "Estatísticas"
-                                color: ankiRoot.isShowingStats ? "#a78bfa" : "#fffffe"
-                                font.pixelSize: 13
-                                font.bold: true
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (!ankiRoot.isShowingStats) {
-                                    ankiRoot.globalStats = dataController.getGlobalAnkiStats()
-                                }
-                                ankiRoot.isShowingStats = !ankiRoot.isShowingStats
-                            }
-                        }
-                    }
-
-                    // "+ Criar Baralho" Button
-                    Rectangle {
-                        width: 144; height: 40; radius: 10
-                        color: "#6366f1"
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 8
-                            Text { text: "+"; color: "#ffffff"; font.pixelSize: 18; font.bold: true }
-                            Text { text: "Criar Baralho"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            hoverEnabled: true
-                            onEntered: parent.color = "#4f46e5"
-                            onExited: parent.color = "#6366f1"
-                            onClicked: ankiRoot.openCreateRootDeck()
-                        }
-                    }
+                    onCreateRootDeckRequested: ankiRoot.openCreateRootDeck()
                 }
 
                 // Decks List Section (When not in Stats mode)
