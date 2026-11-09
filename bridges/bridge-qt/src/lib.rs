@@ -271,6 +271,105 @@ pub unsafe extern "C" fn synapse_crypto_derive_master_key(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_crypto_hash_password(password: *const c_char) -> *mut c_char {
+    if password.is_null() {
+        return std::ptr::null_mut();
+    }
+    let pass_str = match CStr::from_ptr(password).to_str() {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let hash = synapse_core::crypto::hash_auth_password(pass_str);
+    match CString::new(hash) {
+        Ok(c_string) => c_string.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_crypto_generate_module_key() -> *mut c_char {
+    let key_hex = synapse_core::crypto::generate_module_key();
+    match CString::new(key_hex) {
+        Ok(c_string) => c_string.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_crypto_encrypt_module_key(
+    module_key: *const c_char,
+    master_key32: *const u8,
+) -> *mut c_char {
+    if module_key.is_null() || master_key32.is_null() {
+        return std::ptr::null_mut();
+    }
+    let mod_key_str = match CStr::from_ptr(module_key).to_str() {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let mut key_arr = [0u8; 32];
+    std::ptr::copy_nonoverlapping(master_key32, key_arr.as_mut_ptr(), 32);
+
+    match synapse_core::crypto::encrypt_module_key_with_key(mod_key_str, &key_arr) {
+        Ok(payload) => match CString::new(payload) {
+            Ok(c_string) => c_string.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_crypto_decrypt_module_key(
+    encrypted_payload: *const c_char,
+    master_key32: *const u8,
+) -> *mut c_char {
+    if encrypted_payload.is_null() || master_key32.is_null() {
+        return std::ptr::null_mut();
+    }
+    let payload_str = match CStr::from_ptr(encrypted_payload).to_str() {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let mut key_arr = [0u8; 32];
+    std::ptr::copy_nonoverlapping(master_key32, key_arr.as_mut_ptr(), 32);
+
+    match synapse_core::crypto::decrypt_module_key_with_key(payload_str, &key_arr) {
+        Ok(mod_key) => match CString::new(mod_key) {
+            Ok(c_string) => c_string.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_crypto_encrypt(
+    key_hex: *const c_char,
+    plaintext: *const c_char,
+) -> *mut c_char {
+    if key_hex.is_null() || plaintext.is_null() {
+        return std::ptr::null_mut();
+    }
+    let key_str = match CStr::from_ptr(key_hex).to_str() {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let text_str = match CStr::from_ptr(plaintext).to_str() {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    match synapse_core::crypto::encrypt_content(key_str, text_str) {
+        Ok(encrypted) => match CString::new(encrypted) {
+            Ok(c_string) => c_string.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_crypto_decrypt(
     key_hex: *const c_char,
     encrypted_payload: *const c_char,
@@ -297,9 +396,76 @@ pub unsafe extern "C" fn synapse_crypto_decrypt(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_crypto_wipe_memory(ptr: *mut u8, size: usize) {
+    if !ptr.is_null() && size > 0 {
+        let slice = std::slice::from_raw_parts_mut(ptr, size);
+        for b in slice.iter_mut() {
+            unsafe { std::ptr::write_volatile(b, 0u8); }
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_free_string(s: *mut c_char) {
     if !s.is_null() {
         drop(CString::from_raw(s));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_crypto_ffi_roundtrips() {
+        unsafe {
+            let pass = CString::new("MinhaSenhaMestra123!").unwrap();
+            let mut master_key = [0u8; 32];
+            assert_eq!(synapse_crypto_derive_master_key(pass.as_ptr(), master_key.as_mut_ptr()), 0);
+
+            // Auth hash
+            let auth_hash_ptr = synapse_crypto_hash_password(pass.as_ptr());
+            assert!(!auth_hash_ptr.is_null());
+            let auth_hash = CStr::from_ptr(auth_hash_ptr).to_str().unwrap().to_string();
+            synapse_free_string(auth_hash_ptr);
+            assert_eq!(auth_hash.len(), 64);
+
+            // Module key generation
+            let mod_key_ptr = synapse_crypto_generate_module_key();
+            assert!(!mod_key_ptr.is_null());
+            let mod_key = CStr::from_ptr(mod_key_ptr).to_str().unwrap().to_string();
+            synapse_free_string(mod_key_ptr);
+            assert_eq!(mod_key.len(), 64);
+
+            // Encrypt module key with master key
+            let mod_key_c = CString::new(mod_key.clone()).unwrap();
+            let enc_mod_ptr = synapse_crypto_encrypt_module_key(mod_key_c.as_ptr(), master_key.as_ptr());
+            assert!(!enc_mod_ptr.is_null());
+
+            // Decrypt module key with master key
+            let dec_mod_ptr = synapse_crypto_decrypt_module_key(enc_mod_ptr, master_key.as_ptr());
+            assert!(!dec_mod_ptr.is_null());
+            let recovered_mod_key = CStr::from_ptr(dec_mod_ptr).to_str().unwrap().to_string();
+            assert_eq!(mod_key, recovered_mod_key);
+            synapse_free_string(enc_mod_ptr);
+            synapse_free_string(dec_mod_ptr);
+
+            // Content encrypt/decrypt
+            let plain_c = CString::new("Texto ultrassecreto do cofre: 123456 @#$ áéíóú").unwrap();
+            let enc_content_ptr = synapse_crypto_encrypt(mod_key_c.as_ptr(), plain_c.as_ptr());
+            assert!(!enc_content_ptr.is_null());
+
+            let dec_content_ptr = synapse_crypto_decrypt(mod_key_c.as_ptr(), enc_content_ptr);
+            assert!(!dec_content_ptr.is_null());
+            let recovered_plain = CStr::from_ptr(dec_content_ptr).to_str().unwrap().to_string();
+            assert_eq!(recovered_plain, "Texto ultrassecreto do cofre: 123456 @#$ áéíóú");
+            synapse_free_string(enc_content_ptr);
+            synapse_free_string(dec_content_ptr);
+
+            // Wipe memory test
+            synapse_crypto_wipe_memory(master_key.as_mut_ptr(), 32);
+            assert_eq!(master_key, [0u8; 32]);
+        }
     }
 }
 

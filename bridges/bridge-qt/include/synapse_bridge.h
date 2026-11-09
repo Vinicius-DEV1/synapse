@@ -42,7 +42,13 @@ int synapse_fsrs_calculate(
 
 // Cryptography APIs
 int synapse_crypto_derive_master_key(const char* password, uint8_t* out_key32);
+char* synapse_crypto_hash_password(const char* password);
+char* synapse_crypto_generate_module_key(void);
+char* synapse_crypto_encrypt_module_key(const char* module_key, const uint8_t* master_key32);
+char* synapse_crypto_decrypt_module_key(const char* encrypted_payload, const uint8_t* master_key32);
+char* synapse_crypto_encrypt(const char* key_hex, const char* plaintext);
 char* synapse_crypto_decrypt(const char* key_hex, const char* encrypted_payload);
+void synapse_crypto_wipe_memory(void* ptr, size_t size);
 void synapse_free_string(char* s);
 
 #ifdef __cplusplus
