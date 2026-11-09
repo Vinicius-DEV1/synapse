@@ -10,6 +10,7 @@
 #include <QtCore/QJsonObject>
 #include <QtCore/QUuid>
 #include <QtCore/QDateTime>
+#include <QtCore/QDate>
 #include <QtCore/QRandomGenerator>
 #include "synapse_bridge.h"
 
@@ -153,6 +154,15 @@ public:
     Q_INVOKABLE QString exportDatabaseBackup(const QString &destinationDir = "");
     Q_INVOKABLE bool optimizeDatabase();
     Q_INVOKABLE QVariantMap getSystemDiagnostics();
+
+    // 13. Lixeira / Trash
+    Q_INVOKABLE QVariantList getTrashItems();
+    Q_INVOKABLE bool restoreTrashItem(const QString &id, const QString &itemType);
+    Q_INVOKABLE bool deleteTrashItemPermanently(const QString &id, const QString &itemType);
+    Q_INVOKABLE bool emptyTrash();
+
+    // 14. Home Dashboard
+    Q_INVOKABLE QVariantMap getHomeDashboardData();
 
 signals:
     void dbPathChanged();

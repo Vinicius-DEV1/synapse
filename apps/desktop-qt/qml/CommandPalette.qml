@@ -30,6 +30,7 @@ Rectangle {
     }
 
     property var allActions: [
+        { label: "Ir para Início & Dashboard", icon: "🏠", category: "Navegação", tab: "home" },
         { label: "Ir para Caderno & Notas", icon: "📝", category: "Navegação", tab: "notes" },
         { label: "Ir para Flashcards & Baralhos Anki", icon: "🎴", category: "Navegação", tab: "anki" },
         { label: "Ir para Banco de Questões (ZenQuiz)", icon: "🎯", category: "Navegação", tab: "quiz" },
@@ -41,6 +42,7 @@ Rectangle {
         { label: "Ir para Cultura & Mídia", icon: "🎭", category: "Navegação", tab: "culture" },
         { label: "Ir para Foco & Lo-Fi Pomodoro", icon: "⏳", category: "Navegação", tab: "focus" },
         { label: "Ir para Cofre E2EE & Credenciais", icon: "🔒", category: "Navegação", tab: "vault" },
+        { label: "Ir para Lixeira do Sistema", icon: "🗑️", category: "Navegação", tab: "trash" },
         { label: "Ir para Configurações & Diagnóstico", icon: "⚙️", category: "Navegação", tab: "settings" },
         { label: "Criar Nova Nota de Estudo", icon: "➕", category: "Ações Rápidas", action: "new_note" },
         { label: "Adicionar Novo Evento na Agenda", icon: "➕", category: "Ações Rápidas", action: "new_event" },
@@ -261,3 +263,4 @@ Rectangle {
         }
     }
 }
+

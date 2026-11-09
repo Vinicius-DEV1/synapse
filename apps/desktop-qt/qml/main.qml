@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "home"
 import "video"
 import "quiz"
 import "editor"
@@ -12,6 +13,7 @@ import "library"
 import "culture"
 import "focus"
 import "vault"
+import "trash"
 import "settings"
 
 ApplicationWindow {
@@ -26,11 +28,12 @@ ApplicationWindow {
 
     Theme { id: theme }
 
-    // Navigation State
-    property string activeTab: "notes"
+    // Navigation State (Home is initial view matching Caderno original)
+    property string activeTab: "home"
     property bool sidebarExpanded: true
 
     // Global Keyboard Shortcuts
+    Shortcut { sequence: "Ctrl+H"; onActivated: rootWindow.activeTab = "home" }
     Shortcut { sequence: "Ctrl+1"; onActivated: rootWindow.activeTab = "notes" }
     Shortcut { sequence: "Ctrl+2"; onActivated: rootWindow.activeTab = "video" }
     Shortcut { sequence: "Ctrl+3"; onActivated: rootWindow.activeTab = "anki" }
@@ -256,6 +259,7 @@ ApplicationWindow {
                     clip: true
                     spacing: 4
                     model: [
+                        { key: "home", name: "Início", icon: "🏠", count: 0 },
                         { key: "notes", name: "Caderno", icon: "📝", count: dataController.pageCount },
                         { key: "video", name: "Vídeos", icon: "🎬", count: dataController.videoCount },
                         { key: "anki", name: "Flashcards", icon: "🎴", count: dataController.deckCount },
@@ -267,6 +271,7 @@ ApplicationWindow {
                         { key: "culture", name: "Cultura", icon: "🎭", count: dataController.cultureCount },
                         { key: "focus", name: "Foco", icon: "⏳", count: dataController.focusSessionCount },
                         { key: "vault", name: "Cofre", icon: "🔒", count: dataController.vaultItemCount },
+                        { key: "trash", name: "Lixeira", icon: "🗑️", count: 0 },
                         { key: "settings", name: "Configurações", icon: "⚙️", count: 0 }
                     ]
 
@@ -386,21 +391,27 @@ ApplicationWindow {
             StackLayout {
                 anchors.fill: parent
                 currentIndex: {
-                    if (rootWindow.activeTab === "notes") return 0;
-                    if (rootWindow.activeTab === "video") return 1;
-                    if (rootWindow.activeTab === "anki") return 2;
-                    if (rootWindow.activeTab === "quiz") return 3;
-                    if (rootWindow.activeTab === "finance") return 4;
-                    if (rootWindow.activeTab === "habits") return 5;
-                    if (rootWindow.activeTab === "calendar") return 6;
-                    if (rootWindow.activeTab === "library") return 7;
-                    if (rootWindow.activeTab === "culture") return 8;
-                    if (rootWindow.activeTab === "focus") return 9;
-                    if (rootWindow.activeTab === "vault") return 10;
-                    if (rootWindow.activeTab === "settings") return 11;
+                    if (rootWindow.activeTab === "home") return 0;
+                    if (rootWindow.activeTab === "notes") return 1;
+                    if (rootWindow.activeTab === "video") return 2;
+                    if (rootWindow.activeTab === "anki") return 3;
+                    if (rootWindow.activeTab === "quiz") return 4;
+                    if (rootWindow.activeTab === "finance") return 5;
+                    if (rootWindow.activeTab === "habits") return 6;
+                    if (rootWindow.activeTab === "calendar") return 7;
+                    if (rootWindow.activeTab === "library") return 8;
+                    if (rootWindow.activeTab === "culture") return 9;
+                    if (rootWindow.activeTab === "focus") return 10;
+                    if (rootWindow.activeTab === "vault") return 11;
+                    if (rootWindow.activeTab === "trash") return 12;
+                    if (rootWindow.activeTab === "settings") return 13;
                     return 0;
                 }
 
+                HomeView {
+                    id: homeView
+                    onNavigateToTab: rootWindow.activeTab = tabKey
+                }
                 NotesEditorView { id: notesView }
                 VideoPlayerView { id: videoView }
                 AnkiView { id: ankiView }
@@ -412,6 +423,7 @@ ApplicationWindow {
                 CultureView { id: cultureView }
                 FocusLofiView { id: focusView }
                 VaultView { id: vaultView }
+                TrashView { id: trashView }
                 SettingsView { id: settingsView }
             }
         }
