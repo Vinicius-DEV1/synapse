@@ -17,6 +17,7 @@ Rectangle {
     property bool isConfirmed: false
     property bool showExplanation: false
     property int score: 0
+    property var quizStats: ({})
 
     // Modals
     property bool isCreatingBattery: false
@@ -76,13 +77,11 @@ Rectangle {
 
     function loadBatteries() {
         batteries = dataController.getQuizBatteries()
+        quizStats = dataController.getQuizStats()
     }
 
-    function startBatterySession(battery) {
-        activeBattery = battery
-        var qList = battery ? dataController.getBatteryQuestions(battery.id) : []
+    function parseQuestions(qList) {
         var parsedList = []
-
         for (var i = 0; i < qList.length; i++) {
             var q = qList[i]
             var opts = []
@@ -100,11 +99,11 @@ Rectangle {
                 explanation: q.explanation || "Sem explicação cadastrada."
             })
         }
+        return parsedList
+    }
 
-        if (parsedList.length === 0) {
-            parsedList = defaultQuestions
-        }
-
+    function startCustomSession(title, description, parsedList) {
+        activeBattery = { title: title, description: description }
         questions = parsedList
         totalQuestions = parsedList.length
         currentIndex = 0
@@ -114,6 +113,41 @@ Rectangle {
         score = 0
         isSessionActive = true
         finishDialog.visible = false
+    }
+
+    function startBatterySession(battery) {
+        activeBattery = battery
+        var qList = battery ? dataController.getBatteryQuestions(battery.id) : []
+        var parsedList = parseQuestions(qList)
+
+        if (parsedList.length === 0) {
+            parsedList = defaultQuestions
+        }
+
+        startCustomSession(battery ? battery.title : "Simulado Geral", battery ? battery.description : "Todas as questões", parsedList)
+    }
+
+    function startErrorNotebookSession() {
+        var errList = dataController.getErrorNotebookQuestions()
+        var parsed = parseQuestions(errList)
+        if (parsed.length === 0) {
+            parsed = defaultQuestions
+        }
+        startCustomSession("Caderno de Erros", "Revisão focada de questões com erro recente", parsed)
+    }
+
+    function startRandomSimulationSession() {
+        var simList = dataController.getRandomSimulationQuestions(10)
+        var parsed = parseQuestions(simList)
+        if (parsed.length === 0) {
+            parsed = defaultQuestions
+        }
+        startCustomSession("Simulado Dinâmico", "10 questões aleatórias entre todas as baterias", parsed)
+    }
+
+    function deleteBattery(batId) {
+        dataController.deleteQuizBattery(batId)
+        loadBatteries()
     }
 
     function selectOption(index) {
@@ -238,6 +272,209 @@ Rectangle {
                     }
                 }
 
+                // Top Metric Cards Grid
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 4
+                    columnSpacing: 14
+                    rowSpacing: 14
+
+                    // Total Questions
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 90
+                        radius: 12
+                        color: "#161524"
+                        border.color: "#ffffff0f"
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 4
+                            Text { text: "TOTAL DE QUESTÕES"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
+                            Text { text: (quizRoot.quizStats.total_questions || 0).toString(); color: "#fffffe"; font.pixelSize: 22; font.bold: true }
+                            Text { text: "em " + (quizRoot.quizStats.total_batteries || 0) + " baterias"; color: "#64748b"; font.pixelSize: 11 }
+                        }
+                    }
+
+                    // Answered Attempts
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 90
+                        radius: 12
+                        color: "#161524"
+                        border.color: "#ffffff0f"
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 4
+                            Text { text: "RESPONDIDAS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
+                            Text { text: (quizRoot.quizStats.total_attempts || 0).toString(); color: "#38bdf8"; font.pixelSize: 22; font.bold: true }
+                            Text { text: "tentativas registradas"; color: "#64748b"; font.pixelSize: 11 }
+                        }
+                    }
+
+                    // Accuracy Rate
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 90
+                        radius: 12
+                        color: "#161524"
+                        border.color: "#ffffff0f"
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 4
+                            Text { text: "TAXA DE ACERTO"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
+                            Text { text: (quizRoot.quizStats.accuracy_rate || 0) + "%"; color: "#34d399"; font.pixelSize: 22; font.bold: true }
+                            Text { text: (quizRoot.quizStats.correct_attempts || 0) + " respostas corretas"; color: "#64748b"; font.pixelSize: 11 }
+                        }
+                    }
+
+                    // Mistakes to review
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 90
+                        radius: 12
+                        color: "#161524"
+                        border.color: "#ffffff0f"
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 4
+                            Text { text: "ERROS A REVISAR"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
+                            Text { text: (quizRoot.quizStats.incorrect_attempts || 0).toString(); color: "#fb7185"; font.pixelSize: 22; font.bold: true }
+                            Text { text: "no caderno de erros"; color: "#64748b"; font.pixelSize: 11 }
+                        }
+                    }
+                }
+
+                // Quick Action Banners: Caderno de Erros & Simulado Dinâmico
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 14
+
+                    // Caderno de Erros Banner
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 105
+                        radius: 12
+                        color: "#f43f5e0a"
+                        border.color: "#f43f5e25"
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            spacing: 14
+
+                            Text { text: "📕"; font.pixelSize: 32 }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+                                Text { text: "Caderno de Erros"; color: "#fda4af"; font.pixelSize: 15; font.bold: true }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Revise especificamente as questões com erros recentes para consolidar o aprendizado."
+                                    color: "#94a3b8"
+                                    font.pixelSize: 12
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            Rectangle {
+                                width: 130; height: 36; radius: 8
+                                color: "#f43f5e"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Revisar (" + (quizRoot.quizStats.incorrect_attempts || 0) + ")"
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: quizRoot.startErrorNotebookSession()
+                                }
+                            }
+                        }
+                    }
+
+                    // Simulado Rápido Banner
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 105
+                        radius: 12
+                        color: "#6366f10a"
+                        border.color: "#6366f125"
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            spacing: 14
+
+                            Text { text: "⚡"; font.pixelSize: 32 }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+                                Text { text: "Simulado Dinâmico"; color: "#c7d2fe"; font.pixelSize: 15; font.bold: true }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Gera um simulado aleatório com 10 questões entre todas as suas baterias."
+                                    color: "#94a3b8"
+                                    font.pixelSize: 12
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            Rectangle {
+                                width: 130; height: 36; radius: 8
+                                color: "#6366f1"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Iniciar Simulado"
+                                    color: "#ffffff"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: quizRoot.startRandomSimulationSession()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section Title: Suas Baterias
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Text { text: "📚"; font.pixelSize: 16 }
+                    Text {
+                        text: "Baterias de Questões (" + quizRoot.batteries.length + ")"
+                        color: "#fffffe"
+                        font.pixelSize: 16
+                        font.bold: true
+                    }
+                }
+
                 // Batteries Grid
                 GridView {
                     id: batteryGrid
@@ -336,6 +573,19 @@ Rectangle {
                                             quizRoot.targetBatteryForQuestion = modelData
                                             quizRoot.isCreatingQuestion = true
                                         }
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: 32; height: 32; radius: 8
+                                    color: "#ffffff0a"
+
+                                    Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: quizRoot.deleteBattery(modelData.id)
                                     }
                                 }
                             }

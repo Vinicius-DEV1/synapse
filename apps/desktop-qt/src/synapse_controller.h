@@ -89,7 +89,11 @@ public:
     // 4. Baterias de Questões & Simulado Zen
     Q_INVOKABLE QVariantList getQuizBatteries();
     Q_INVOKABLE QVariantList getBatteryQuestions(const QString &batteryId);
+    Q_INVOKABLE QVariantMap getQuizStats();
+    Q_INVOKABLE QVariantList getErrorNotebookQuestions();
+    Q_INVOKABLE QVariantList getRandomSimulationQuestions(int limit = 10);
     Q_INVOKABLE bool createQuizBattery(const QString &title, const QString &description);
+    Q_INVOKABLE bool deleteQuizBattery(const QString &batteryId);
     Q_INVOKABLE bool createQuizQuestion(const QString &batteryId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation = "");
     Q_INVOKABLE bool recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect);
 

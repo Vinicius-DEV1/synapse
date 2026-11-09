@@ -715,13 +715,78 @@ QVariantList SynapseDataController::getBatteryQuestions(const QString &batteryId
     return executeQuery(sql).toVariantList();
 }
 
+QVariantMap SynapseDataController::getQuizStats() {
+    QVariantMap res;
+    QJsonArray batArr = executeQuery("SELECT count(*) as total FROM quiz_batteries WHERE deleted_at IS NULL");
+    int totalBatteries = batArr.isEmpty() ? 0 : batArr[0].toObject()["total"].toInt();
+
+    QJsonArray qArr = executeQuery("SELECT count(*) as total FROM quiz_questions WHERE deleted_at IS NULL");
+    int totalQuestions = qArr.isEmpty() ? 0 : qArr[0].toObject()["total"].toInt();
+
+    QJsonArray attArr = executeQuery(
+        "SELECT count(*) as total_attempts, "
+        "SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_attempts, "
+        "SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) as incorrect_attempts "
+        "FROM quiz_attempts"
+    );
+
+    int totalAttempts = 0;
+    int correctAttempts = 0;
+    int incorrectAttempts = 0;
+    int accuracyRate = 0;
+
+    if (!attArr.isEmpty()) {
+        QJsonObject o = attArr[0].toObject();
+        totalAttempts = o["total_attempts"].toInt();
+        correctAttempts = o["correct_attempts"].toInt();
+        incorrectAttempts = o["incorrect_attempts"].toInt();
+        if (totalAttempts > 0) {
+            accuracyRate = (correctAttempts * 100) / totalAttempts;
+        }
+    }
+
+    res["total_batteries"] = totalBatteries;
+    res["total_questions"] = totalQuestions;
+    res["total_attempts"] = totalAttempts;
+    res["correct_attempts"] = correctAttempts;
+    res["incorrect_attempts"] = incorrectAttempts;
+    res["accuracy_rate"] = accuracyRate;
+    return res;
+}
+
+QVariantList SynapseDataController::getErrorNotebookQuestions() {
+    QString sql = "SELECT q.id, q.battery_id, q.question, q.options, q.correct_index, q.explanation "
+                  "FROM quiz_questions q "
+                  "INNER JOIN quiz_attempts a ON q.id = a.question_id "
+                  "WHERE a.is_correct = 0 AND q.deleted_at IS NULL "
+                  "GROUP BY q.id ORDER BY a.created_at DESC LIMIT 25";
+    return executeQuery(sql).toVariantList();
+}
+
+QVariantList SynapseDataController::getRandomSimulationQuestions(int limit) {
+    QString sql = QString("SELECT id, battery_id, question, options, correct_index, explanation "
+                          "FROM quiz_questions WHERE deleted_at IS NULL ORDER BY RANDOM() LIMIT %1")
+        .arg(limit > 0 ? limit : 10);
+    return executeQuery(sql).toVariantList();
+}
+
 bool SynapseDataController::createQuizBattery(const QString &title, const QString &description) {
     QString id = generateUuid();
     QString ts = currentTimestamp();
     QString sql = QString("INSERT INTO quiz_batteries (id, title, description, layout, sort_order, created_at, updated_at) "
                           "VALUES ('%1', '%2', '%3', 'zen', 0, '%4', '%5')")
         .arg(id, escapeSql(title), escapeSql(description), ts, ts);
-    return executeSql(sql);
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
+bool SynapseDataController::deleteQuizBattery(const QString &batteryId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE quiz_batteries SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(batteryId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
 }
 
 bool SynapseDataController::createQuizQuestion(const QString &batteryId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation) {
