@@ -1,0 +1,53 @@
+#ifndef SYNAPSE_BRIDGE_H
+#define SYNAPSE_BRIDGE_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Database handle (opaque)
+typedef struct Database Database;
+
+// Video reader handle (opaque)
+typedef struct EncryptedVideoReader EncryptedVideoReader;
+
+// Database APIs
+Database* synapse_db_open(const char* path);
+void synapse_db_close(Database* db);
+char* synapse_db_query_json(Database* db, const char* sql);
+int synapse_db_execute(Database* db, const char* sql);
+
+// Video Streaming APIs (for libmpv stream callback)
+EncryptedVideoReader* synapse_video_reader_open(const char* file_path, const char* key_hex);
+int64_t synapse_video_reader_size(EncryptedVideoReader* reader);
+int64_t synapse_video_reader_seek(EncryptedVideoReader* reader, int64_t offset);
+int64_t synapse_video_reader_read(EncryptedVideoReader* reader, uint8_t* buffer, size_t size);
+void synapse_video_reader_close(EncryptedVideoReader* reader);
+
+// FSRS Spaced Repetition APIs
+int synapse_fsrs_calculate(
+    double stability,
+    double difficulty,
+    int32_t reps,
+    int32_t lapses,
+    int32_t rating,
+    int32_t elapsed_days,
+    double* out_stability,
+    double* out_difficulty,
+    int32_t* out_scheduled_days
+);
+
+// Cryptography APIs
+int synapse_crypto_derive_master_key(const char* password, uint8_t* out_key32);
+char* synapse_crypto_decrypt(const char* key_hex, const char* encrypted_payload);
+void synapse_free_string(char* s);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // SYNAPSE_BRIDGE_H
+

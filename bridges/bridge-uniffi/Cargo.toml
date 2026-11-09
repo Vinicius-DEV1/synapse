@@ -1,0 +1,18 @@
+[package]
+name = "synapse-bridge-uniffi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+name = "synapse_bridge_uniffi"
+
+[dependencies]
+synapse-core = { path = "../../core/synapse-core" }
+uniffi = "0.28"
+thiserror = "1.0"
+hex = "0.4"
+chrono = { version = "0.4.38", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3.10"
