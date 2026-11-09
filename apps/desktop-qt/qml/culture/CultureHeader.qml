@@ -1,0 +1,92 @@
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+
+RowLayout {
+    id: headerRoot
+    spacing: 16
+
+    property int filteredCount: 0
+    property int totalCount: 0
+    property string searchQuery: ""
+
+    signal searchTextChanged(string text)
+    signal requestAddItem()
+
+    ColumnLayout {
+        spacing: 4
+        Text {
+            text: "🎭 Cultura & Entretenimento"
+            color: "#fffffe"
+            font.pixelSize: 24
+            font.bold: true
+        }
+        Text {
+            text: headerRoot.filteredCount + " obra(s) listada(s) de " + headerRoot.totalCount + " catalogadas (animes, séries, filmes)"
+            color: "#a7a9be"
+            font.pixelSize: 13
+        }
+    }
+
+    Item { Layout.fillWidth: true }
+
+    // Search Bar
+    Rectangle {
+        Layout.preferredWidth: 240
+        height: 40
+        radius: 10
+        color: "#15141b"
+        border.color: cultureSearchInput.activeFocus ? "#8b5cf680" : "#ffffff12"
+        border.width: 1
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 8
+
+            Text { text: "🔍"; color: "#a7a9be"; font.pixelSize: 12 }
+
+            TextInput {
+                id: cultureSearchInput
+                Layout.fillWidth: true
+                color: "#fffffe"
+                font.pixelSize: 13
+                selectByMouse: true
+                text: headerRoot.searchQuery
+                onTextChanged: headerRoot.searchTextChanged(text)
+
+                Text {
+                    text: "Buscar por título..."
+                    color: "#64748b"
+                    font.pixelSize: 13
+                    visible: !cultureSearchInput.text && !cultureSearchInput.activeFocus
+                }
+            }
+        }
+    }
+
+    // "+ Adicionar Obra" Button
+    Rectangle {
+        width: 144
+        height: 40
+        radius: 10
+        color: "#8b5cf6"
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 6
+            Text { text: "+"; color: "#ffffff"; font.pixelSize: 16; font.bold: true }
+            Text { text: "Adicionar Obra"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+            onEntered: parent.color = "#7c3aed"
+            onExited: parent.color = "#8b5cf6"
+            onClicked: headerRoot.requestAddItem()
+        }
+    }
+}
