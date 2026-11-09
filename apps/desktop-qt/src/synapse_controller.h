@@ -119,7 +119,9 @@ public:
     // 9. Cultura & Entretenimento
     Q_INVOKABLE QVariantList getCultureItems(const QString &statusFilter = "");
     Q_INVOKABLE bool incrementCultureProgress(const QString &itemId);
+    Q_INVOKABLE bool updateCultureProgress(const QString &itemId, int progress);
     Q_INVOKABLE bool updateCultureStatus(const QString &itemId, const QString &status);
+    Q_INVOKABLE bool createCultureItem(const QString &title, const QString &type, const QString &synopsis, int totalEpisodes = 12, const QString &coverImage = "");
     Q_INVOKABLE bool deleteCultureItem(const QString &itemId);
 
     // 10. Foco Pomodoro & Lofi
