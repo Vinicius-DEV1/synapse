@@ -64,8 +64,8 @@ export default function PaymentModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      triggerToast('Insira um valor válido e maior que zero.', 'error');
+    if (isNaN(parsedAmount) || parsedAmount < 0) {
+      triggerToast('Insira um valor válido (maior ou igual a zero).', 'error');
       return;
     }
     if (parsedAmount > pendingAmount + 0.0001) {
@@ -177,7 +177,7 @@ export default function PaymentModal({
                   id="payment-amount-input"
                   type="number"
                   step="0.01"
-                  min="0.01"
+                  min="0"
                   max={pendingAmount}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}

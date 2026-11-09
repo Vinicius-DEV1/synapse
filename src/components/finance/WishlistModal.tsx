@@ -47,8 +47,8 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedPrice = parseFloat(price);
-    if (!title.trim() || isNaN(parsedPrice) || parsedPrice <= 0) {
-      triggerToast('Preencha o título e um valor estimado válido maior que zero.', 'error');
+    if (!title.trim() || isNaN(parsedPrice) || parsedPrice < 0) {
+      triggerToast('Preencha o título e um valor estimado válido (maior ou igual a zero).', 'error');
       return;
     }
     
@@ -146,6 +146,7 @@ export default function WishlistModal({ initialData, onClose, onSave }: Wishlist
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.00"

@@ -174,7 +174,7 @@ export default function TransactionModal({
                 <input
                   type="number"
                   step="0.01"
-                  min="0.01"
+                  min="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
@@ -208,7 +208,7 @@ export default function TransactionModal({
                 <input
                   type="number"
                   step="0.01"
-                  min="0.01"
+                  min="0"
                   value={expectedAmount}
                   onChange={(e) => setExpectedAmount(e.target.value)}
                   placeholder={`Ex: ${amount ? (parseFloat(amount) * 1.1).toFixed(2) : '600.00'}`}

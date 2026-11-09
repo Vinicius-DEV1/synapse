@@ -55,14 +55,14 @@ export function useTransactionForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      triggerToast('Insira um valor numérico válido e maior que zero.', 'error');
+    if (isNaN(parsedAmount) || parsedAmount < 0) {
+      triggerToast('Insira um valor numérico válido (maior ou igual a zero).', 'error');
       return;
     }
 
     const parsedExpectedAmount = isLoan && expectedAmount.trim() ? parseFloat(expectedAmount) : null;
-    if (parsedExpectedAmount !== null && (isNaN(parsedExpectedAmount) || parsedExpectedAmount <= 0)) {
-      triggerToast('O valor total com juros deve ser um número válido.', 'error');
+    if (parsedExpectedAmount !== null && (isNaN(parsedExpectedAmount) || parsedExpectedAmount < 0)) {
+      triggerToast('O valor total com juros deve ser um número válido (maior ou igual a zero).', 'error');
       return;
     }
 

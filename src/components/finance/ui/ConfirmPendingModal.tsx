@@ -85,8 +85,8 @@ export function ConfirmPendingModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount.replace(',', '.'));
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setErrorMsg('Informe um valor final válido maior que zero.');
+    if (isNaN(parsedAmount) || parsedAmount < 0) {
+      setErrorMsg('Informe um valor final válido (maior ou igual a zero).');
       return;
     }
 
@@ -196,7 +196,7 @@ export function ConfirmPendingModal({
                 <input
                   type="number"
                   step="0.01"
-                  min="0.01"
+                  min="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0,00"
@@ -273,3 +273,4 @@ export function ConfirmPendingModal({
     </Portal>
   );
 }
+

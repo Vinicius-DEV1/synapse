@@ -127,3 +127,4 @@ export const PeriodSelector = React.memo(function PeriodSelector({
     </div>
   );
 });
+

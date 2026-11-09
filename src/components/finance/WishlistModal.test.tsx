@@ -39,4 +39,32 @@ describe('WishlistModal Component', () => {
       expect(onClose).toHaveBeenCalled();
     });
   });
+
+  it('allows saving wishlist item with price 0 (zero)', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const { getByPlaceholderText, getByRole } = renderWithI18n(
+      <WishlistModal onClose={onClose} onSave={onSave} />
+    );
+
+    const titleInput = getByPlaceholderText('Ex: Novo Notebook, Viagem...');
+    const priceInput = getByPlaceholderText('0.00');
+
+    fireEvent.change(titleInput, { target: { value: 'Item sem preço definido' } });
+    fireEvent.change(priceInput, { target: { value: '0' } });
+
+    const saveBtn = getByRole('button', { name: /^Salvar$/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Item sem preço definido',
+          price: 0,
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
 });

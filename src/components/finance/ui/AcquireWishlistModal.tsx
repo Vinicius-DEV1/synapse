@@ -61,8 +61,8 @@ export function AcquireWishlistModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      triggerToast('Insira um valor válido maior que zero.', 'error');
+    if (isNaN(parsedAmount) || parsedAmount < 0) {
+      triggerToast('Insira um valor válido (maior ou igual a zero).', 'error');
       return;
     }
     if (!description.trim()) {
@@ -142,7 +142,7 @@ export function AcquireWishlistModal({
                 <input
                   type="number"
                   step="0.01"
-                  min="0.01"
+                  min="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"

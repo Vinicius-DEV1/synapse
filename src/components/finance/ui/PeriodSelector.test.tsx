@@ -39,3 +39,4 @@ describe('PeriodSelector', () => {
     expect(handleChange).toHaveBeenCalledWith('all');
   });
 });
+

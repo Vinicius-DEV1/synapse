@@ -78,4 +78,33 @@ describe('TransactionModal Component', () => {
       expect(onClose).toHaveBeenCalled();
     });
   });
+
+  it('allows submitting transaction and loan with amount 0 (zero)', async () => {
+    const onClose = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    const { getByPlaceholderText, getByRole } = renderWithI18n(
+      <TransactionModal onClose={onClose} onSave={onSave} defaultType="loan_made" />
+    );
+
+    const descInput = getByPlaceholderText(/Supermercado/i);
+    const amountInput = getByPlaceholderText('0.00');
+
+    fireEvent.change(descInput, { target: { value: 'Empréstimo sem valor inicial' } });
+    fireEvent.change(amountInput, { target: { value: '0' } });
+
+    const submitBtn = getByRole('button', { name: /^Salvar$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Empréstimo sem valor inicial',
+          amount: 0,
+          type: 'loan_made',
+        })
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
 });
