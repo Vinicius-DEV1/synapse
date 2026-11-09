@@ -10,6 +10,8 @@ Rectangle {
     property var transactions: []
     property var wishlistItems: []
     property string activeSubTab: "transactions" // "transactions", "wishlist"
+    property string transactionTypeFilter: "all" // "all", "income", "expense"
+    property string transactionSearch: ""
     property bool isAddingTransaction: false
     property bool isAddingWishlistItem: false
 
@@ -17,6 +19,29 @@ Rectangle {
         summary = dataController.getFinancialSummary()
         transactions = dataController.getTransactions()
         wishlistItems = dataController.getWishlist()
+    }
+
+    function filteredTransactions() {
+        var query = transactionSearch.trim().toLowerCase()
+        var res = []
+        for (var i = 0; i < transactions.length; i++) {
+            var tx = transactions[i]
+            var matchType = true
+            if (transactionTypeFilter === "income") matchType = (tx.type === "income")
+            else if (transactionTypeFilter === "expense") matchType = (tx.type === "expense")
+
+            var matchSearch = true
+            if (query.length > 0) {
+                var desc = (tx.description || "").toLowerCase()
+                var cat = (tx.category || "").toLowerCase()
+                matchSearch = (desc.indexOf(query) !== -1 || cat.indexOf(query) !== -1)
+            }
+
+            if (matchType && matchSearch) {
+                res.push(tx)
+            }
+        }
+        return res
     }
 
     Component.onCompleted: {
@@ -225,6 +250,77 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
+
+            // Transaction Filter Pills (when transactions tab is active)
+            RowLayout {
+                visible: financeRoot.activeSubTab === "transactions"
+                spacing: 6
+
+                Repeater {
+                    model: [
+                        { key: "all", label: "Todas" },
+                        { key: "income", label: "Receitas" },
+                        { key: "expense", label: "Despesas" }
+                    ]
+                    delegate: Rectangle {
+                        property bool isSel: financeRoot.transactionTypeFilter === modelData.key
+                        height: 28
+                        width: fltText.contentWidth + 16
+                        radius: 14
+                        color: isSel ? "#6366f1" : "#161524"
+                        border.color: isSel ? "#818cf8" : "#ffffff10"
+                        border.width: 1
+
+                        Text {
+                            id: fltText
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: isSel ? "#ffffff" : "#a7a9be"
+                            font.pixelSize: 11
+                            font.bold: isSel
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: financeRoot.transactionTypeFilter = modelData.key
+                        }
+                    }
+                }
+            }
+
+            // Transaction Search Box
+            Rectangle {
+                visible: financeRoot.activeSubTab === "transactions"
+                width: 180; height: 32; radius: 8
+                color: "#161524"
+                border.color: txSearchInput.activeFocus ? "#818cf8" : "#ffffff10"
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    spacing: 4
+                    Text { text: "🔍"; color: "#64748b"; font.pixelSize: 11 }
+                    TextInput {
+                        id: txSearchInput
+                        Layout.fillWidth: true
+                        color: "#fffffe"
+                        font.pixelSize: 12
+                        text: financeRoot.transactionSearch
+                        onTextChanged: financeRoot.transactionSearch = text
+                        selectByMouse: true
+
+                        Text {
+                            visible: !txSearchInput.text && !txSearchInput.activeFocus
+                            anchors.fill: parent
+                            verticalAlignment: Text.AlignVCenter
+                            text: "Buscar..."
+                            color: "#64748b"
+                            font.pixelSize: 11
+                        }
+                    }
+                }
+            }
         }
 
         // Main List Area
@@ -237,7 +333,7 @@ Rectangle {
             ListView {
                 id: transListView
                 clip: true
-                model: financeRoot.transactions
+                model: financeRoot.filteredTransactions()
                 spacing: 8
 
                 delegate: Rectangle {
@@ -363,6 +459,31 @@ Rectangle {
                             color: "#c4b5fd"
                             font.pixelSize: 16
                             font.bold: true
+                        }
+
+                        Rectangle {
+                            width: 82; height: 30; radius: 6
+                            color: "#10b9811a"
+                            border.color: "#10b98133"
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✓ Adquirido"
+                                color: "#34d399"
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    var today = Qt.formatDate(new Date(), "yyyy-MM-dd")
+                                    dataController.addTransaction(modelData.title, modelData.price, "expense", modelData.category || "Wishlist", today)
+                                    dataController.deleteWishlistItem(modelData.id)
+                                    financeRoot.refreshData()
+                                }
+                            }
                         }
 
                         Rectangle {
