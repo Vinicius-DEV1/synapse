@@ -1011,6 +1011,12 @@ bool SynapseDataController::recordFocusSession(const QString &tag, int targetMin
     return executeSql(sql);
 }
 
+bool SynapseDataController::deleteFocusSession(const QString &sessionId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE focus_sessions SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(sessionId));
+    return executeSql(sql);
+}
+
 // ---------------------------------------------------------------------------
 // 11. Cofre E2EE & Credenciais
 // ---------------------------------------------------------------------------

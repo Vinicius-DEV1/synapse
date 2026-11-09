@@ -128,6 +128,7 @@ public:
     Q_INVOKABLE QVariantList getLofis();
     Q_INVOKABLE QVariantList getFocusSessions();
     Q_INVOKABLE bool recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary = "");
+    Q_INVOKABLE bool deleteFocusSession(const QString &sessionId);
 
     // 11. Cofre E2EE & Credenciais
     Q_INVOKABLE QVariantList getVaultGroups();

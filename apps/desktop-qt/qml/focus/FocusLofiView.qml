@@ -9,8 +9,11 @@ Rectangle {
     property int totalSeconds: 25 * 60
     property int remainingSeconds: 25 * 60
     property bool isRunning: false
+    property string activeTag: "Estudo"
     property var lofis: []
     property var focusSessions: []
+    property var activeLofi: null
+    property bool isLofiPlaying: false
 
     function formatTime(secs) {
         var m = Math.floor(secs / 60)
@@ -47,7 +50,7 @@ Rectangle {
             } else {
                 focusRoot.isRunning = false
                 timer.stop()
-                dataController.recordFocusSession("Pomodoro", Math.floor(focusRoot.totalSeconds / 60), "completed", "Sessão concluída")
+                dataController.recordFocusSession(focusRoot.activeTag, Math.floor(focusRoot.totalSeconds / 60), "completed", "Sessão de foco concluída")
                 focusRoot.refreshData()
             }
         }
@@ -56,6 +59,30 @@ Rectangle {
     function refreshData() {
         lofis = dataController.getLofis()
         focusSessions = dataController.getFocusSessions()
+    }
+
+    function computeTodayMinutes() {
+        var total = 0
+        var todayStr = Qt.formatDate(new Date(), "yyyy-MM-dd")
+        for (var i = 0; i < focusSessions.length; i++) {
+            var s = focusSessions[i]
+            if (s.created_at && s.created_at.indexOf(todayStr) !== -1) {
+                total += (s.target_time_minutes || 0)
+            }
+        }
+        return total
+    }
+
+    function computeTodaySessions() {
+        var count = 0
+        var todayStr = Qt.formatDate(new Date(), "yyyy-MM-dd")
+        for (var i = 0; i < focusSessions.length; i++) {
+            var s = focusSessions[i]
+            if (s.created_at && s.created_at.indexOf(todayStr) !== -1) {
+                count++
+            }
+        }
+        return count
     }
 
     Component.onCompleted: {
@@ -67,24 +94,62 @@ Rectangle {
         anchors.margins: 32
         spacing: 32
 
-        // Left Area: Circular Pomodoro Timer
+        // Left Area: Circular Pomodoro Timer & Stats
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 24
+            spacing: 20
 
-            Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: "⏳ Foco Imersivo Pomodoro"
-                color: "#fffffe"
-                font.pixelSize: 24
-                font.bold: true
+            // Header
+            ColumnLayout {
+                spacing: 4
+                Text {
+                    text: "⏳ Foco Imersivo & Pomodoro"
+                    color: "#fffffe"
+                    font.pixelSize: 24
+                    font.bold: true
+                }
+                Text {
+                    text: "Técnica Pomodoro com bloqueio de distrações e registro de consistência"
+                    color: "#a7a9be"
+                    font.pixelSize: 13
+                }
+            }
+
+            // Category Tag Pills
+            RowLayout {
+                spacing: 8
+                Text { text: "Categoria:"; color: "#64748b"; font.pixelSize: 12; font.bold: true }
+
+                Repeater {
+                    model: ["Estudo", "Código", "Leitura", "Trabalho", "Revisão"]
+                    delegate: Rectangle {
+                        width: tagText.contentWidth + 16
+                        height: 28
+                        radius: 6
+                        color: focusRoot.activeTag === modelData ? "#8b5cf626" : "#1a1924"
+                        border.color: focusRoot.activeTag === modelData ? "#8b5cf680" : "#ffffff10"
+
+                        Text {
+                            id: tagText
+                            anchors.centerIn: parent
+                            text: modelData
+                            color: focusRoot.activeTag === modelData ? "#c4b5fd" : "#a7a9be"
+                            font.pixelSize: 11
+                            font.bold: focusRoot.activeTag === modelData
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: focusRoot.activeTag = modelData
+                        }
+                    }
+                }
             }
 
             // Presets (Subdued Brand Pills)
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
                 spacing: 10
 
                 Rectangle {
@@ -115,9 +180,9 @@ Rectangle {
             // Timer Display Circle
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 280
-                height: 280
-                radius: 140
+                width: 270
+                height: 270
+                radius: 135
                 color: "#1a1924" // bg-dark-card
                 border.color: focusRoot.isRunning ? "#10b981" : "#7c3aed"
                 border.width: 4
@@ -137,7 +202,7 @@ Rectangle {
 
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
-                        width: statusTimerText.contentWidth + 12
+                        width: statusTimerText.contentWidth + 14
                         height: 22
                         radius: 11
                         color: focusRoot.isRunning ? "#10b98126" : "#8b5cf626"
@@ -202,6 +267,38 @@ Rectangle {
                 }
             }
 
+            // Today's Stats Banner
+            Rectangle {
+                Layout.fillWidth: true
+                height: 52
+                radius: 12
+                color: "#161524"
+                border.color: "#ffffff0f"
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    spacing: 24
+
+                    RowLayout {
+                        spacing: 8
+                        Text { text: "🍅"; font.pixelSize: 14 }
+                        Text { text: "Sessões Hoje:"; color: "#a7a9be"; font.pixelSize: 12 }
+                        Text { text: focusRoot.computeTodaySessions().toString(); color: "#fffffe"; font.pixelSize: 13; font.bold: true }
+                    }
+
+                    RowLayout {
+                        spacing: 8
+                        Text { text: "⏱️"; font.pixelSize: 14 }
+                        Text { text: "Tempo Focado:"; color: "#a7a9be"; font.pixelSize: 12 }
+                        Text { text: focusRoot.computeTodayMinutes() + " min"; color: "#34d399"; font.pixelSize: 13; font.bold: true }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+            }
+
             Item { Layout.fillHeight: true }
         }
 
@@ -219,11 +316,22 @@ Rectangle {
                 anchors.margins: 20
                 spacing: 16
 
-                Text {
-                    text: "🎵 Trilhas de Áudio Lofi"
-                    color: "#fffffe"
-                    font.pixelSize: 16
-                    font.bold: true
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "🎵 Trilhas Ambientais Lofi"
+                        color: "#fffffe"
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        visible: focusRoot.isLofiPlaying
+                        text: "▶ Tocando"
+                        color: "#10b981"
+                        font.pixelSize: 11
+                        font.bold: true
+                    }
                 }
 
                 ListView {
@@ -235,11 +343,13 @@ Rectangle {
                     spacing: 8
 
                     delegate: Rectangle {
+                        id: lofiRowDelegate
                         width: lofiList.width
                         height: 44
                         radius: 8
-                        color: "#15141b" // bg-dark-surface
-                        border.color: "#ffffff0a"
+                        color: focusRoot.activeLofi === modelData ? "#8b5cf626" : (lofiRowMouse.containsMouse ? "#211f30" : "#15141b")
+                        border.color: focusRoot.activeLofi === modelData ? "#8b5cf680" : "#ffffff0a"
+                        border.width: 1
 
                         RowLayout {
                             anchors.fill: parent
@@ -247,14 +357,14 @@ Rectangle {
                             spacing: 12
 
                             Text {
-                                text: "🎧"
+                                text: focusRoot.activeLofi === modelData && focusRoot.isLofiPlaying ? "🔊" : "🎧"
                                 font.pixelSize: 14
                             }
 
                             Text {
                                 Layout.fillWidth: true
                                 text: modelData.title || modelData.original_name || "Trilha Lofi"
-                                color: "#fffffe"
+                                color: focusRoot.activeLofi === modelData ? "#c4b5fd" : "#fffffe"
                                 font.pixelSize: 13
                                 elide: Text.ElideRight
                             }
@@ -265,16 +375,49 @@ Rectangle {
                                 font.pixelSize: 11
                             }
                         }
+
+                        MouseArea {
+                            id: lofiRowMouse
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+                            onClicked: {
+                                if (focusRoot.activeLofi === modelData) {
+                                    focusRoot.isLofiPlaying = !focusRoot.isLofiPlaying
+                                } else {
+                                    focusRoot.activeLofi = modelData
+                                    focusRoot.isLofiPlaying = true
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        visible: focusRoot.lofis.length === 0
+                        text: "Nenhuma trilha de áudio catalogada."
+                        color: "#64748b"
+                        font.pixelSize: 12
                     }
                 }
 
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#ffffff0f" }
 
-                Text {
-                    text: "📜 Histórico de Sessões"
-                    color: "#fffffe"
-                    font.pixelSize: 16
-                    font.bold: true
+                // Session History Section
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text: "📜 Histórico de Sessões"
+                        color: "#fffffe"
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: focusRoot.focusSessions.length + " registradas"
+                        color: "#a7a9be"
+                        font.pixelSize: 12
+                    }
                 }
 
                 ListView {
@@ -287,7 +430,7 @@ Rectangle {
 
                     delegate: Rectangle {
                         width: historyList.width
-                        height: 52
+                        height: 54
                         radius: 8
                         color: "#15141b"
                         border.color: "#ffffff0a"
@@ -300,24 +443,40 @@ Rectangle {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
-                                Text {
-                                    text: (modelData.tag || "Estudo") + " • " + (modelData.target_time_minutes || 25) + " min"
-                                    color: "#fffffe"
-                                    font.pixelSize: 13
-                                    font.bold: true
+                                RowLayout {
+                                    spacing: 8
+                                    Text {
+                                        text: modelData.tag || "Estudo"
+                                        color: "#fffffe"
+                                        font.pixelSize: 13
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        text: "• " + (modelData.target_time_minutes || 25) + " min"
+                                        color: "#c4b5fd"
+                                        font.pixelSize: 12
+                                    }
                                 }
                                 Text {
-                                    text: modelData.created_at ? Qt.formatDateTime(new Date(modelData.created_at), "dd/MM/yyyy hh:mm") : ""
-                                    color: "#a7a9be"
+                                    text: modelData.created_at ? Qt.formatDateTime(new Date(modelData.created_at), "dd/MM/yyyy às hh:mm") : ""
+                                    color: "#64748b"
                                     font.pixelSize: 11
                                 }
                             }
 
-                            Text {
-                                text: "✓"
-                                color: "#10b981"
-                                font.pixelSize: 14
-                                font.bold: true
+                            // Delete Session
+                            Rectangle {
+                                width: 28; height: 28; radius: 6
+                                color: delSessMouse.containsMouse ? "#f43f5e26" : "transparent"
+                                Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+                                MouseArea {
+                                    id: delSessMouse
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        dataController.deleteFocusSession(modelData.id)
+                                        focusRoot.refreshData()
+                                    }
+                                }
                             }
                         }
                     }
