@@ -80,6 +80,7 @@ public:
     Q_INVOKABLE bool createDeck(const QString &name, const QString &description = "", const QString &color = "#6366f1", const QString &parentId = "");
     Q_INVOKABLE bool updateDeck(const QString &deckId, const QString &name, const QString &description, const QString &color);
     Q_INVOKABLE bool deleteDeck(const QString &deckId);
+    Q_INVOKABLE bool resetDeckProgress(const QString &deckId);
     Q_INVOKABLE QVariantList getDeckCards(const QString &deckId);
     Q_INVOKABLE QVariantList getDueCards(const QString &deckId);
     Q_INVOKABLE bool createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags = "");

@@ -27,6 +27,7 @@ Rectangle {
     property var browserCards: []
     property string browserSearchQuery: ""
     property bool isCreatingCard: false
+    property bool isDeckSettingsOpen: false
     property bool isShowingStats: false
     property var globalStats: ({})
 
@@ -1510,6 +1511,31 @@ Rectangle {
                         }
                     }
 
+                    // "⚙ Ajustes" Button
+                    Rectangle {
+                        width: 96; height: 36; radius: 8
+                        color: "#211f30"
+                        border.color: "#ffffff15"
+
+                        RowLayout {
+                            anchors.centerIn: parent; spacing: 6
+                            Text { text: "⚙"; color: "#a7a9be"; font.pixelSize: 12 }
+                            Text { text: "Ajustes"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (ankiRoot.browserDeck) {
+                                    deckEditNameInput.text = ankiRoot.browserDeck.name || ""
+                                    deckEditDescInput.text = ankiRoot.browserDeck.description || ""
+                                    ankiRoot.isDeckSettingsOpen = true
+                                }
+                            }
+                        }
+                    }
+
                     // Close Button
                     Rectangle {
                         width: 32; height: 32; radius: 8
@@ -1835,6 +1861,156 @@ Rectangle {
                                     cardBackField.text = ""
                                     ankiRoot.isCreatingCard = false
                                     ankiRoot.loadBrowserCards(ankiRoot.browserDeck.id)
+                                    ankiRoot.reloadDecks()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ===================================================================
+    // Modal: Deck Settings & Management
+    // ===================================================================
+    Rectangle {
+        id: deckSettingsModal
+        anchors.fill: parent
+        color: "#b3000000"
+        visible: ankiRoot.isDeckSettingsOpen
+        z: 130
+
+        MouseArea { anchors.fill: parent }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: 480
+            height: 380
+            radius: 16
+            color: "#161524"
+            border.color: "#ffffff18"
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 24
+                spacing: 14
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "⚙ Configurações do Baralho"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: "✕"; color: "#a7a9be"; font.pixelSize: 14
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: ankiRoot.isDeckSettingsOpen = false
+                        }
+                    }
+                }
+
+                TextField {
+                    id: deckEditNameInput
+                    Layout.fillWidth: true
+                    placeholderText: "Nome do baralho..."
+                    color: "#ffffff"
+                    background: Rectangle { color: "#0f0e17"; border.color: "#ffffff1a"; radius: 8 }
+                }
+
+                TextArea {
+                    id: deckEditDescInput
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 70
+                    placeholderText: "Descrição do baralho..."
+                    color: "#ffffff"
+                    wrapMode: Text.Wrap
+                    background: Rectangle { color: "#0f0e17"; border.color: "#ffffff1a"; radius: 8 }
+                }
+
+                // Reset Progress Action
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    radius: 8
+                    color: "#f59e0b1a"
+                    border.color: "#f59e0b44"
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
+                        Text { text: "🔄"; font.pixelSize: 12 }
+                        Text { text: "Zerar Progresso FSRS deste Baralho"; color: "#fcd34d"; font.pixelSize: 12; font.bold: true }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (ankiRoot.browserDeck) {
+                                dataController.resetDeckProgress(ankiRoot.browserDeck.id)
+                                ankiRoot.loadBrowserCards(ankiRoot.browserDeck.id)
+                                ankiRoot.reloadDecks()
+                                ankiRoot.isDeckSettingsOpen = false
+                            }
+                        }
+                    }
+                }
+
+                // Delete Deck Action
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    radius: 8
+                    color: "#f43f5e1a"
+                    border.color: "#f43f5e44"
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
+                        Text { text: "🗑️"; font.pixelSize: 12 }
+                        Text { text: "Excluir Baralho (Mover para Lixeira)"; color: "#fda4af"; font.pixelSize: 12; font.bold: true }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (ankiRoot.browserDeck) {
+                                dataController.deleteDeck(ankiRoot.browserDeck.id)
+                                ankiRoot.isDeckSettingsOpen = false
+                                ankiRoot.isDeckBrowserOpen = false
+                                ankiRoot.reloadDecks()
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+                    Item { Layout.fillWidth: true }
+
+                    Rectangle {
+                        width: 90; height: 36; radius: 8; color: "#211f30"
+                        Text { anchors.centerIn: parent; text: "Cancelar"; color: "#a7a9be"; font.pixelSize: 12 }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: ankiRoot.isDeckSettingsOpen = false
+                        }
+                    }
+
+                    Rectangle {
+                        width: 120; height: 36; radius: 8; color: "#6366f1"
+                        Text { anchors.centerIn: parent; text: "Salvar Alterações"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (ankiRoot.browserDeck && deckEditNameInput.text.trim().length > 0) {
+                                    dataController.updateDeck(ankiRoot.browserDeck.id, deckEditNameInput.text.trim(), deckEditDescInput.text.trim(), ankiRoot.browserDeck.color || "#6366f1")
+                                    ankiRoot.isDeckSettingsOpen = false
                                     ankiRoot.reloadDecks()
                                 }
                             }

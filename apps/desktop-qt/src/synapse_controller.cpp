@@ -545,6 +545,15 @@ bool SynapseDataController::deleteDeck(const QString &deckId) {
     return ok;
 }
 
+bool SynapseDataController::resetDeckProgress(const QString &deckId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE anki_srs_state SET reps = 0, lapses = 0, stability = 0.0, difficulty = 0.0, "
+                          "state = 'new', due_date = '%1' "
+                          "WHERE id IN (SELECT id FROM anki_cards WHERE deck_id = '%2')")
+        .arg(ts, escapeSql(deckId));
+    return executeSql(sql);
+}
+
 QVariantList SynapseDataController::getDeckCards(const QString &deckId) {
     QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
                           "c.validation_mode, c.extra_note, c.media_url, "
