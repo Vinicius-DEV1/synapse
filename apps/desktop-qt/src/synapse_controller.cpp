@@ -707,6 +707,14 @@ bool SynapseDataController::addTransaction(const QString &description, double am
     return ok;
 }
 
+bool SynapseDataController::deleteTransaction(const QString &txId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE transactions SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(txId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
 QVariantList SynapseDataController::getWishlist() {
     QString sql = "SELECT id, title, price, priority, category, link, description FROM wishlist WHERE deleted_at IS NULL ORDER BY price DESC";
     return executeQuery(sql).toVariantList();

@@ -183,18 +183,19 @@ Rectangle {
             }
         }
 
-        // Subtabs: Transações vs Wishlist
+        // Subtabs: Transações vs Wishlist + Type Filters
         RowLayout {
+            Layout.fillWidth: true
             spacing: 8
 
             Rectangle {
                 width: 150; height: 36; radius: 8
-                color: financeRoot.activeSubTab === "transactions" ? "#8b5cf61a" : "transparent"
-                border.color: financeRoot.activeSubTab === "transactions" ? "#8b5cf64d" : "transparent"
+                color: financeRoot.activeSubTab === "transactions" ? "#6366f11a" : "transparent"
+                border.color: financeRoot.activeSubTab === "transactions" ? "#6366f1" : "transparent"
                 Text {
                     anchors.centerIn: parent
                     text: "Transações (" + financeRoot.transactions.length + ")"
-                    color: financeRoot.activeSubTab === "transactions" ? "#c4b5fd" : "#a7a9be"
+                    color: financeRoot.activeSubTab === "transactions" ? "#a78bfa" : "#a7a9be"
                     font.pixelSize: 13
                     font.bold: true
                 }
@@ -207,12 +208,12 @@ Rectangle {
 
             Rectangle {
                 width: 150; height: 36; radius: 8
-                color: financeRoot.activeSubTab === "wishlist" ? "#8b5cf61a" : "transparent"
-                border.color: financeRoot.activeSubTab === "wishlist" ? "#8b5cf64d" : "transparent"
+                color: financeRoot.activeSubTab === "wishlist" ? "#6366f11a" : "transparent"
+                border.color: financeRoot.activeSubTab === "wishlist" ? "#6366f1" : "transparent"
                 Text {
                     anchors.centerIn: parent
                     text: "Wishlist (" + financeRoot.wishlistItems.length + ")"
-                    color: financeRoot.activeSubTab === "wishlist" ? "#c4b5fd" : "#a7a9be"
+                    color: financeRoot.activeSubTab === "wishlist" ? "#a78bfa" : "#a7a9be"
                     font.pixelSize: 13
                     font.bold: true
                 }
@@ -222,6 +223,8 @@ Rectangle {
                     onClicked: financeRoot.activeSubTab = "wishlist"
                 }
             }
+
+            Item { Layout.fillWidth: true }
         }
 
         // Main List Area
@@ -277,11 +280,30 @@ Rectangle {
                             font.pixelSize: 16
                             font.bold: true
                         }
+
+                        Rectangle {
+                            width: 28; height: 28; radius: 6
+                            color: delTransMouse.containsMouse ? "#f43f5e33" : "transparent"
+
+                            Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+
+                            MouseArea {
+                                id: delTransMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    dataController.deleteTransaction(modelData.id)
+                                    financeRoot.refreshData()
+                                }
+                            }
+                        }
                     }
 
                     MouseArea {
                         id: transItemMouse
                         anchors.fill: parent
+                        z: -1
                         hoverEnabled: true
                     }
                 }

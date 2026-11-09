@@ -90,6 +90,7 @@ public:
     Q_INVOKABLE QVariantList getAccounts();
     Q_INVOKABLE QVariantMap getFinancialSummary();
     Q_INVOKABLE bool addTransaction(const QString &description, double amount, const QString &type, const QString &category, const QString &date, const QString &accountId = "");
+    Q_INVOKABLE bool deleteTransaction(const QString &txId);
     Q_INVOKABLE QVariantList getWishlist();
     Q_INVOKABLE bool addWishlistItem(const QString &title, double price, const QString &priority, const QString &category, const QString &link = "");
     Q_INVOKABLE bool deleteWishlistItem(const QString &itemId);
