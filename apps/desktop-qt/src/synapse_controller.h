@@ -68,6 +68,7 @@ public:
     Q_INVOKABLE QVariantList getDecks();
     Q_INVOKABLE QVariantList getHierarchicalDecks();
     Q_INVOKABLE QVariantMap getDeckStats(const QString &deckId);
+    Q_INVOKABLE QVariantMap getGlobalAnkiStats();
     Q_INVOKABLE bool createDeck(const QString &name, const QString &description = "", const QString &color = "#6366f1", const QString &parentId = "");
     Q_INVOKABLE bool updateDeck(const QString &deckId, const QString &name, const QString &description, const QString &color);
     Q_INVOKABLE bool deleteDeck(const QString &deckId);
@@ -100,20 +101,25 @@ public:
     Q_INVOKABLE bool createHabit(const QString &title, const QString &color = "#10b981", const QString &icon = "⭐", int targetDays = 7);
     Q_INVOKABLE QVariantList getHabitLogs(const QString &dateStr);
     Q_INVOKABLE bool toggleHabitCheckin(const QString &habitId, const QString &dateStr);
+    Q_INVOKABLE bool deleteHabit(const QString &habitId);
 
     // 7. Calendário & Agenda
     Q_INVOKABLE QVariantList getCalendarEvents();
     Q_INVOKABLE bool createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type = "event", const QString &color = "#3b82f6");
     Q_INVOKABLE bool toggleEventStatus(const QString &eventId);
+    Q_INVOKABLE bool deleteCalendarEvent(const QString &eventId);
 
     // 8. Biblioteca & E-Reader
     Q_INVOKABLE QVariantList getLibraryBooks(const QString &filter = "");
     Q_INVOKABLE bool updateBookProgress(const QString &bookId, int currentPage, int totalPages);
+    Q_INVOKABLE bool createLibraryBook(const QString &title, const QString &author, int totalPages, const QString &coverColor = "#7c3aed");
+    Q_INVOKABLE bool deleteLibraryBook(const QString &bookId);
 
     // 9. Cultura & Entretenimento
     Q_INVOKABLE QVariantList getCultureItems(const QString &statusFilter = "");
     Q_INVOKABLE bool incrementCultureProgress(const QString &itemId);
     Q_INVOKABLE bool updateCultureStatus(const QString &itemId, const QString &status);
+    Q_INVOKABLE bool deleteCultureItem(const QString &itemId);
 
     // 10. Foco Pomodoro & Lofi
     Q_INVOKABLE QVariantList getLofis();

@@ -431,6 +431,58 @@ QVariantMap SynapseDataController::getDeckStats(const QString &deckId) {
     return QVariantMap();
 }
 
+QVariantMap SynapseDataController::getGlobalAnkiStats() {
+    QVariantMap res;
+    QJsonArray totalArr = executeQuery("SELECT count(*) as total FROM anki_cards WHERE deleted_at IS NULL");
+    int totalCards = totalArr.isEmpty() ? 0 : totalArr[0].toObject()["total"].toInt();
+
+    QJsonArray srsArr = executeQuery(
+        "SELECT "
+        "SUM(CASE WHEN reps = 0 OR state = 'new' THEN 1 ELSE 0 END) as novos, "
+        "SUM(CASE WHEN state IN ('learning', 'relearning') THEN 1 ELSE 0 END) as aprendendo, "
+        "SUM(CASE WHEN state = 'review' AND stability >= 21.0 THEN 1 ELSE 0 END) as maduros, "
+        "SUM(CASE WHEN state = 'review' AND stability < 21.0 THEN 1 ELSE 0 END) as jovens, "
+        "AVG(stability) as avg_stability, "
+        "AVG(difficulty) as avg_difficulty "
+        "FROM anki_srs_state WHERE deleted_at IS NULL"
+    );
+
+    QJsonArray revArr = executeQuery(
+        "SELECT count(*) as total_reviews, "
+        "SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as errei, "
+        "SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as dificil, "
+        "SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as bom, "
+        "SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as facil "
+        "FROM anki_reviews"
+    );
+
+    res["total_cards"] = totalCards;
+    if (!srsArr.isEmpty()) {
+        QJsonObject o = srsArr[0].toObject();
+        res["novos"] = o["novos"].toInt();
+        res["aprendendo"] = o["aprendendo"].toInt();
+        res["maduros"] = o["maduros"].toInt();
+        res["jovens"] = o["jovens"].toInt();
+        res["avg_stability"] = o["avg_stability"].toDouble();
+        res["avg_difficulty"] = o["avg_difficulty"].toDouble();
+    }
+    if (!revArr.isEmpty()) {
+        QJsonObject r = revArr[0].toObject();
+        int totalRev = r["total_reviews"].toInt();
+        res["total_reviews"] = totalRev;
+        res["errei"] = r["errei"].toInt();
+        res["dificil"] = r["dificil"].toInt();
+        res["bom"] = r["bom"].toInt();
+        res["facil"] = r["facil"].toInt();
+        int successRev = r["bom"].toInt() + r["facil"].toInt();
+        res["retention_rate"] = totalRev > 0 ? (double)(successRev * 100) / totalRev : 90.0;
+    } else {
+        res["total_reviews"] = 0;
+        res["retention_rate"] = 90.0;
+    }
+    return res;
+}
+
 bool SynapseDataController::createDeck(const QString &name, const QString &description, const QString &color, const QString &parentId) {
     QString id = generateUuid();
     QString ts = currentTimestamp();
@@ -782,6 +834,14 @@ bool SynapseDataController::toggleHabitCheckin(const QString &habitId, const QSt
     }
 }
 
+bool SynapseDataController::deleteHabit(const QString &habitId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE habits SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(habitId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
 // ---------------------------------------------------------------------------
 // 7. Calendário & Agenda
 // ---------------------------------------------------------------------------
@@ -817,6 +877,14 @@ bool SynapseDataController::toggleEventStatus(const QString &eventId) {
     return executeSql(sql);
 }
 
+bool SynapseDataController::deleteCalendarEvent(const QString &eventId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE calendar_events SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(eventId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
 // ---------------------------------------------------------------------------
 // 8. Biblioteca & E-Reader
 // ---------------------------------------------------------------------------
@@ -837,6 +905,26 @@ bool SynapseDataController::updateBookProgress(const QString &bookId, int curren
     QString sql = QString("UPDATE library_books SET current_page = %1, total_pages = %2, reading_status = '%3', updated_at = '%4' WHERE id = '%5'")
         .arg(currentPage).arg(totalPages).arg(status, ts, escapeSql(bookId));
     return executeSql(sql);
+}
+
+bool SynapseDataController::createLibraryBook(const QString &title, const QString &author, int totalPages, const QString &coverColor) {
+    QString id = generateUuid();
+    QString ts = currentTimestamp();
+    QString col = coverColor.trimmed().isEmpty() ? "#7c3aed" : coverColor;
+    QString sql = QString("INSERT INTO library_books (id, title, author, total_pages, current_page, reading_status, cover_color, created_at, updated_at) "
+                          "VALUES ('%1', '%2', '%3', %4, 0, 'reading', '%5', '%6', '%6')")
+                  .arg(id, escapeSql(title), escapeSql(author.trimmed().isEmpty() ? "Desconhecido" : author)).arg(totalPages).arg(escapeSql(col), ts);
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
+bool SynapseDataController::deleteLibraryBook(const QString &bookId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE library_books SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(bookId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -865,6 +953,14 @@ bool SynapseDataController::updateCultureStatus(const QString &itemId, const QSt
     QString sql = QString("UPDATE culture_items SET status = '%1', updated_at = '%2' WHERE id = '%3'")
         .arg(escapeSql(status), ts, escapeSql(itemId));
     return executeSql(sql);
+}
+
+bool SynapseDataController::deleteCultureItem(const QString &itemId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE culture_items SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(itemId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
 }
 
 // ---------------------------------------------------------------------------
