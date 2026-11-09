@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "core/synapse-core",
+    "bridges/bridge-qt",
+    "bridges/bridge-uniffi",
+    "bridges/bridge-wasm",
+    "src-tauri",
+]
+resolver = "2"
