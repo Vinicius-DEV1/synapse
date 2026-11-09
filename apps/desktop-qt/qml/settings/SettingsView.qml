@@ -165,6 +165,30 @@ Rectangle {
                     Text { text: dataController.eventCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
                 }
             }
+            // Hábitos
+            Rectangle {
+                Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+                ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
+                    Text { text: "HÁBITOS ATIVOS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
+                    Text { text: dataController.habitCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
+                }
+            }
+            // Baterias Quiz
+            Rectangle {
+                Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+                ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
+                    Text { text: "BATERIAS DE QUESTÕES"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
+                    Text { text: dataController.quizBatteryCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
+                }
+            }
+            // Sessões de Foco
+            Rectangle {
+                Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+                ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
+                    Text { text: "SESSÕES DE FOCO"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
+                    Text { text: dataController.focusSessionCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
+                }
+            }
         }
 
         // Engine Status Badges
