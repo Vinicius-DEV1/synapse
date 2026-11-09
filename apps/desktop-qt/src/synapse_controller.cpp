@@ -3,6 +3,8 @@
 #include <QtCore/QDir>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QDebug>
+#include <QtGui/QGuiApplication>
+#include <QtGui/QClipboard>
 
 SynapseDataController::SynapseDataController(QObject *parent)
     : QObject(parent),
@@ -1072,4 +1074,11 @@ QString SynapseDataController::generateSecurePassword(int length, bool symbols) 
         result.append(pool.at(idx));
     }
     return result;
+}
+
+void SynapseDataController::copyToClipboard(const QString &text) {
+    QClipboard *cb = QGuiApplication::clipboard();
+    if (cb) {
+        cb->setText(text);
+    }
 }

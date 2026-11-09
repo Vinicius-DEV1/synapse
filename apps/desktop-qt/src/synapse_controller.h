@@ -137,6 +137,9 @@ public:
     Q_INVOKABLE bool deleteVaultItem(const QString &itemId);
     Q_INVOKABLE QString generateSecurePassword(int length = 16, bool symbols = true);
 
+    // 12. Utilitários
+    Q_INVOKABLE void copyToClipboard(const QString &text);
+
 signals:
     void dbPathChanged();
     void countsChanged();
