@@ -813,6 +813,12 @@ QVariantList SynapseDataController::getHabitLogs(const QString &dateStr) {
     return executeQuery(sql).toVariantList();
 }
 
+QVariantList SynapseDataController::getHabitLogsRange(const QString &startDate, const QString &endDate) {
+    QString sql = QString("SELECT habit_id, date, completed_at FROM habit_logs WHERE date >= '%1' AND date <= '%2' AND deleted_at IS NULL")
+        .arg(escapeSql(startDate), escapeSql(endDate));
+    return executeQuery(sql).toVariantList();
+}
+
 bool SynapseDataController::toggleHabitCheckin(const QString &habitId, const QString &dateStr) {
     QString checkSql = QString("SELECT id FROM habit_logs WHERE habit_id = '%1' AND date = '%2' AND deleted_at IS NULL")
         .arg(escapeSql(habitId), escapeSql(dateStr));

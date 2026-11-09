@@ -100,6 +100,7 @@ public:
     Q_INVOKABLE QVariantList getHabits();
     Q_INVOKABLE bool createHabit(const QString &title, const QString &color = "#10b981", const QString &icon = "⭐", int targetDays = 7);
     Q_INVOKABLE QVariantList getHabitLogs(const QString &dateStr);
+    Q_INVOKABLE QVariantList getHabitLogsRange(const QString &startDate, const QString &endDate);
     Q_INVOKABLE bool toggleHabitCheckin(const QString &habitId, const QString &dateStr);
     Q_INVOKABLE bool deleteHabit(const QString &habitId);
 
