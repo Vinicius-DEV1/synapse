@@ -73,14 +73,35 @@ Rectangle {
 
             // Vault Security & Appearance Row + Engine Status Badges
             SettingsSecurityThemeSection {
-                autoLockMinutes: settingsRoot.autoLockMinutes
+                autoLockMinutes: dataController.autoLockMinutes
                 activeAccentColor: settingsRoot.activeAccentColor
 
-                onAutoLockChanged: function(mins) { settingsRoot.autoLockMinutes = mins }
+                onAutoLockChanged: function(mins) { dataController.autoLockMinutes = mins }
                 onAccentColorChanged: function(color) { settingsRoot.activeAccentColor = color }
+                onSetupMasterPasswordRequested: {
+                    masterPassModal.mode = "setup"
+                    masterPassModal.visible = true
+                }
+                onChangeMasterPasswordRequested: {
+                    masterPassModal.mode = "change"
+                    masterPassModal.visible = true
+                }
+                onRemoveMasterPasswordRequested: {
+                    masterPassModal.mode = "remove"
+                    masterPassModal.visible = true
+                }
             }
 
             Item { height: 24 } // Bottom padding
+        }
+    }
+
+    // Modal para Gerenciamento de Senha Mestra
+    MasterPasswordModal {
+        id: masterPassModal
+        onSuccess: {
+            settingsRoot.backupFeedback = "Senha mestra e segurança do cofre atualizadas com sucesso!"
+            dataController.refreshStats()
         }
     }
 }

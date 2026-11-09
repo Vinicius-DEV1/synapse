@@ -14,6 +14,7 @@ ColumnLayout {
 
     signal searchChanged(string query)
     signal generatePasswordRequested()
+    signal lockVaultRequested()
     signal newItemRequested()
     signal groupSelected(string groupId)
 
@@ -93,6 +94,29 @@ ColumnLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: headerRoot.generatePasswordRequested()
+            }
+        }
+
+        // Bloquear Cofre Button
+        Rectangle {
+            visible: dataController.isVaultConfigured && dataController.isVaultUnlocked
+            width: 104; height: 38; radius: 10
+            color: lockMouse.containsMouse ? "#ef444426" : "#ef444415"
+            border.color: "#ef444440"
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+                Text { text: "🔒"; font.pixelSize: 13 }
+                Text { text: "Bloquear"; color: "#fca5a5"; font.pixelSize: 13; font.bold: true }
+            }
+
+            MouseArea {
+                id: lockMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.lockVaultRequested()
             }
         }
 

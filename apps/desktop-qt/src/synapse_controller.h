@@ -12,6 +12,8 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QDate>
 #include <QtCore/QRandomGenerator>
+#include <QtCore/QTimer>
+#include <QtCore/QMap>
 #include "synapse_bridge.h"
 
 class SynapseDataController : public QObject {
@@ -28,6 +30,10 @@ class SynapseDataController : public QObject {
     Q_PROPERTY(int habitCount READ habitCount NOTIFY countsChanged)
     Q_PROPERTY(int quizBatteryCount READ quizBatteryCount NOTIFY countsChanged)
     Q_PROPERTY(int focusSessionCount READ focusSessionCount NOTIFY countsChanged)
+    Q_PROPERTY(bool isVaultConfigured READ isVaultConfigured NOTIFY vaultStateChanged)
+    Q_PROPERTY(bool isVaultUnlocked READ isVaultUnlocked NOTIFY vaultStateChanged)
+    Q_PROPERTY(int autoLockMinutes READ autoLockMinutes WRITE setAutoLockMinutes NOTIFY autoLockMinutesChanged)
+    Q_PROPERTY(QString vaultLockError READ vaultLockError NOTIFY vaultLockErrorChanged)
 
 public:
     explicit SynapseDataController(QObject *parent = nullptr);
@@ -46,6 +52,11 @@ public:
     int habitCount() const { return m_habitCount; }
     int quizBatteryCount() const { return m_quizBatteryCount; }
     int focusSessionCount() const { return m_focusSessionCount; }
+    bool isVaultConfigured() const { return m_isVaultConfigured; }
+    bool isVaultUnlocked() const { return m_isVaultUnlocked; }
+    int autoLockMinutes() const { return m_autoLockMinutes; }
+    void setAutoLockMinutes(int minutes);
+    QString vaultLockError() const { return m_vaultLockError; }
 
     Q_INVOKABLE void refreshStats();
     Q_INVOKABLE bool executeSql(const QString &sql);
@@ -149,6 +160,14 @@ public:
     Q_INVOKABLE bool saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes);
     Q_INVOKABLE bool deleteVaultItem(const QString &itemId);
     Q_INVOKABLE QString generateSecurePassword(int length = 16, bool symbols = true);
+    Q_INVOKABLE bool checkVaultConfigured();
+    Q_INVOKABLE bool unlockVault(const QString &password);
+    Q_INVOKABLE void lockVault();
+    Q_INVOKABLE bool setupMasterPassword(const QString &password);
+    Q_INVOKABLE bool changeMasterPassword(const QString &oldPassword, const QString &newPassword);
+    Q_INVOKABLE bool removeMasterPassword(const QString &password);
+    Q_INVOKABLE void resetAutoLockTimer();
+    Q_INVOKABLE int checkPasswordStrength(const QString &password);
 
     // 12. Utilitários & Manutenção do Sistema
     Q_INVOKABLE void copyToClipboard(const QString &text);
@@ -175,6 +194,11 @@ public:
 signals:
     void dbPathChanged();
     void countsChanged();
+    void vaultStateChanged();
+    void autoLockMinutesChanged();
+    void vaultLockErrorChanged();
+    void vaultUnlocked();
+    void vaultLocked();
 
 private:
     Database *m_db;
@@ -190,6 +214,18 @@ private:
     int m_habitCount;
     int m_quizBatteryCount;
     int m_focusSessionCount;
+
+    // Cryptography & Vault E2EE
+    bool m_isVaultConfigured;
+    bool m_isVaultUnlocked;
+    int m_autoLockMinutes;
+    QString m_vaultLockError;
+    QTimer *m_autoLockTimer;
+    QMap<QString, QString> m_unlockedKeys;
+
+    void checkKeychainState();
+    QString encryptContent(const QString &keyHex, const QString &plaintext);
+    QString decryptContent(const QString &keyHex, const QString &ciphertext);
 
     QJsonArray executeQuery(const QString &sql);
     QString escapeSql(const QString &str) const;

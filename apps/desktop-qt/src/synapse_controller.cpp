@@ -21,8 +21,16 @@ SynapseDataController::SynapseDataController(QObject *parent)
       m_eventCount(0),
       m_habitCount(0),
       m_quizBatteryCount(0),
-      m_focusSessionCount(0) {
+      m_focusSessionCount(0),
+      m_isVaultConfigured(false),
+      m_isVaultUnlocked(false),
+      m_autoLockMinutes(5),
+      m_vaultLockError(""),
+      m_autoLockTimer(new QTimer(this)) {
     
+    m_autoLockTimer->setSingleShot(true);
+    connect(m_autoLockTimer, &QTimer::timeout, this, &SynapseDataController::lockVault);
+
     // Automatically locate user's canonical Caderno SQLite database
     QString home = QDir::homePath();
     QString canonicalTauriPath = home + "/.local/share/com.caderno.app/caderno.sqlite";
@@ -63,6 +71,7 @@ bool SynapseDataController::openDatabase(const QString &path) {
 
     emit dbPathChanged();
     refreshStats();
+    checkKeychainState();
     return true;
 }
 
@@ -139,6 +148,59 @@ void SynapseDataController::refreshStats() {
     emit countsChanged();
 }
 
+void SynapseDataController::checkKeychainState() {
+    QJsonArray arr = executeQuery("SELECT count(*) as count FROM keychain");
+    int cnt = 0;
+    if (!arr.isEmpty()) {
+        cnt = arr[0].toObject().value("count").toInt();
+    }
+    bool configured = (cnt > 0);
+    if (configured != m_isVaultConfigured) {
+        m_isVaultConfigured = configured;
+        emit vaultStateChanged();
+    }
+}
+
+bool SynapseDataController::checkVaultConfigured() {
+    checkKeychainState();
+    return m_isVaultConfigured;
+}
+
+void SynapseDataController::setAutoLockMinutes(int minutes) {
+    if (m_autoLockMinutes == minutes) return;
+    m_autoLockMinutes = qBound(0, minutes, 120);
+    emit autoLockMinutesChanged();
+    if (m_isVaultUnlocked && m_autoLockMinutes > 0) {
+        m_autoLockTimer->start(m_autoLockMinutes * 60 * 1000);
+    } else {
+        m_autoLockTimer->stop();
+    }
+}
+
+void SynapseDataController::resetAutoLockTimer() {
+    if (m_isVaultUnlocked && m_autoLockMinutes > 0) {
+        m_autoLockTimer->start(m_autoLockMinutes * 60 * 1000);
+    }
+}
+
+QString SynapseDataController::encryptContent(const QString &keyHex, const QString &plaintext) {
+    if (keyHex.trimmed().isEmpty() || plaintext.isEmpty()) return plaintext;
+    char *cEnc = synapse_crypto_encrypt(keyHex.toUtf8().constData(), plaintext.toUtf8().constData());
+    if (!cEnc) return plaintext;
+    QString result = QString::fromUtf8(cEnc);
+    synapse_free_string(cEnc);
+    return result;
+}
+
+QString SynapseDataController::decryptContent(const QString &keyHex, const QString &ciphertext) {
+    if (keyHex.trimmed().isEmpty() || ciphertext.trimmed().isEmpty()) return ciphertext;
+    char *cDec = synapse_crypto_decrypt(keyHex.toUtf8().constData(), ciphertext.toUtf8().constData());
+    if (!cDec) return ciphertext;
+    QString result = QString::fromUtf8(cDec);
+    synapse_free_string(cDec);
+    return result;
+}
+
 // ---------------------------------------------------------------------------
 // 1. Pages / Editor (Hierarchical & Pinned Support)
 // ---------------------------------------------------------------------------
@@ -208,10 +270,16 @@ QVariantList SynapseDataController::getPageTree(const QString &filter) {
 }
 
 QVariantMap SynapseDataController::getPage(const QString &pageId) {
-    QString sql = QString("SELECT id, title, content, icon, parent_id, is_pinned, pinned_order, updated_at FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
+    QString sql = QString("SELECT id, title, content, encrypted_content, icon, parent_id, is_pinned, pinned_order, updated_at FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
     QJsonArray arr = executeQuery(sql);
     if (!arr.isEmpty()) {
-        return arr[0].toObject().toVariantMap();
+        QJsonObject obj = arr[0].toObject();
+        QString encContent = obj.value("encrypted_content").toString();
+        if (!encContent.isEmpty() && m_unlockedKeys.contains("notes")) {
+            QString decrypted = decryptContent(m_unlockedKeys.value("notes"), encContent);
+            obj["content"] = decrypted;
+        }
+        return obj.toVariantMap();
     }
     return QVariantMap();
 }
@@ -219,13 +287,27 @@ QVariantMap SynapseDataController::getPage(const QString &pageId) {
 bool SynapseDataController::savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon) {
     QString ts = currentTimestamp();
     QString sql;
-    if (pageId.isEmpty()) {
-        QString newId = generateUuid();
-        sql = QString("INSERT INTO pages (id, title, content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) VALUES ('%1', '%2', '%3', '%4', '%5', '%6', 0, 0, 0.0)")
-            .arg(newId, escapeSql(title), escapeSql(content), escapeSql(icon), ts, ts);
+    bool hasNotesKey = (m_isVaultConfigured && m_isVaultUnlocked && m_unlockedKeys.contains("notes") && !m_unlockedKeys.value("notes").isEmpty());
+
+    if (hasNotesKey) {
+        QString enc = encryptContent(m_unlockedKeys.value("notes"), content);
+        if (pageId.isEmpty()) {
+            QString newId = generateUuid();
+            sql = QString("INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) VALUES ('%1', '%2', '', '%3', '%4', '%5', '%6', 0, 0, 0.0)")
+                .arg(newId, escapeSql(title), escapeSql(enc), escapeSql(icon), ts, ts);
+        } else {
+            sql = QString("UPDATE pages SET title = '%1', content = '', encrypted_content = '%2', icon = '%3', updated_at = '%4' WHERE id = '%5'")
+                .arg(escapeSql(title), escapeSql(enc), escapeSql(icon), ts, escapeSql(pageId));
+        }
     } else {
-        sql = QString("UPDATE pages SET title = '%1', content = '%2', icon = '%3', updated_at = '%4' WHERE id = '%5'")
-            .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(pageId));
+        if (pageId.isEmpty()) {
+            QString newId = generateUuid();
+            sql = QString("INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) VALUES ('%1', '%2', '%3', NULL, '%4', '%5', '%6', 0, 0, 0.0)")
+                .arg(newId, escapeSql(title), escapeSql(content), escapeSql(icon), ts, ts);
+        } else {
+            sql = QString("UPDATE pages SET title = '%1', content = '%2', encrypted_content = NULL, icon = '%3', updated_at = '%4' WHERE id = '%5'")
+                .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(pageId));
+        }
     }
     bool ok = executeSql(sql);
     if (ok) refreshStats();
@@ -1138,25 +1220,70 @@ QVariantList SynapseDataController::getVaultGroups() {
 }
 
 QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
+    if (m_isVaultConfigured && !m_isVaultUnlocked) {
+        return QVariantList();
+    }
+
     QString sql = "SELECT id, group_id, label, username, email, password, url, notes, is_favorite FROM vault_items WHERE deleted_at IS NULL ";
     if (!groupId.isEmpty()) {
         sql += QString("AND group_id = '%1' ").arg(escapeSql(groupId));
     }
     sql += "ORDER BY label ASC LIMIT 100";
-    return executeQuery(sql).toVariantList();
+    QJsonArray arr = executeQuery(sql);
+    QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
+
+    QVariantList list;
+    for (const QJsonValue &val : arr) {
+        QJsonObject item = val.toObject();
+        if (!vKey.isEmpty()) {
+            auto tryDec = [&](const QString &key) {
+                QString enc = item.value(key).toString();
+                if (!enc.isEmpty()) {
+                    QString dec = decryptContent(vKey, enc);
+                    if (!dec.isEmpty()) item[key] = dec;
+                }
+            };
+            tryDec("label");
+            tryDec("username");
+            tryDec("email");
+            tryDec("password");
+            tryDec("url");
+            tryDec("notes");
+        }
+        list.append(item.toVariantMap());
+    }
+    return list;
 }
 
 bool SynapseDataController::saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes) {
     QString ts = currentTimestamp();
+    QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
+
+    QString sLabel = label;
+    QString sUser = username;
+    QString sEmail = email;
+    QString sPass = password;
+    QString sUrl = url;
+    QString sNotes = notes;
+
+    if (m_isVaultConfigured && m_isVaultUnlocked && !vKey.isEmpty()) {
+        sLabel = encryptContent(vKey, label);
+        if (!username.isEmpty()) sUser = encryptContent(vKey, username);
+        if (!email.isEmpty()) sEmail = encryptContent(vKey, email);
+        if (!password.isEmpty()) sPass = encryptContent(vKey, password);
+        if (!url.isEmpty()) sUrl = encryptContent(vKey, url);
+        if (!notes.isEmpty()) sNotes = encryptContent(vKey, notes);
+    }
+
     QString sql;
     if (id.isEmpty()) {
         QString newId = generateUuid();
         sql = QString("INSERT INTO vault_items (id, group_id, label, username, email, password, url, notes, is_favorite, created_at, updated_at) "
                       "VALUES ('%1', '%2', '%3', '%4', '%5', '%6', '%7', '%8', 0, '%9', '%10')")
-            .arg(newId, escapeSql(groupId), escapeSql(label), escapeSql(username), escapeSql(email), escapeSql(password), escapeSql(url), escapeSql(notes), ts, ts);
+            .arg(newId, escapeSql(groupId), escapeSql(sLabel), escapeSql(sUser), escapeSql(sEmail), escapeSql(sPass), escapeSql(sUrl), escapeSql(sNotes), ts, ts);
     } else {
         sql = QString("UPDATE vault_items SET group_id = '%1', label = '%2', username = '%3', email = '%4', password = '%5', url = '%6', notes = '%7', updated_at = '%8' WHERE id = '%9'")
-            .arg(escapeSql(groupId), escapeSql(label), escapeSql(username), escapeSql(email), escapeSql(password), escapeSql(url), escapeSql(notes), ts, escapeSql(id));
+            .arg(escapeSql(groupId), escapeSql(sLabel), escapeSql(sUser), escapeSql(sEmail), escapeSql(sPass), escapeSql(sUrl), escapeSql(sNotes), ts, escapeSql(id));
     }
     bool ok = executeSql(sql);
     if (ok) refreshStats();
@@ -1183,6 +1310,440 @@ QString SynapseDataController::generateSecurePassword(int length, bool symbols) 
         result.append(pool.at(idx));
     }
     return result;
+}
+
+bool SynapseDataController::unlockVault(const QString &password) {
+    if (password.trimmed().isEmpty()) {
+        m_vaultLockError = "Digite a senha mestra.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    QString sql = "SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, "
+                  "culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, "
+                  "calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1";
+    QJsonArray rows = executeQuery(sql);
+    if (rows.isEmpty()) {
+        m_vaultLockError = "Cofre não configurado neste dispositivo.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    QJsonObject kr = rows[0].toObject();
+    QString storedHash = kr.value("auth_hash").toString();
+
+    uint8_t masterKey[32];
+    if (synapse_crypto_derive_master_key(password.toUtf8().constData(), masterKey) != 0) {
+        m_vaultLockError = "Falha ao derivar chave de criptografia.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    bool isValid = false;
+    QString testEnc = kr.value("library_key_enc").toString();
+    if (testEnc.isEmpty()) testEnc = kr.value("notes_key_enc").toString();
+    if (testEnc.isEmpty()) testEnc = kr.value("vault_key_enc").toString();
+
+    if (!testEnc.isEmpty()) {
+        char *decKey = synapse_crypto_decrypt_module_key(testEnc.toUtf8().constData(), masterKey);
+        if (decKey) {
+            isValid = true;
+            synapse_free_string(decKey);
+        }
+    }
+
+    if (!isValid && !storedHash.isEmpty()) {
+        char *calcHash = synapse_crypto_hash_password(password.toUtf8().constData());
+        if (calcHash) {
+            if (QString::fromUtf8(calcHash) == storedHash) {
+                isValid = true;
+            }
+            synapse_free_string(calcHash);
+        }
+    }
+
+    if (!isValid) {
+        synapse_crypto_wipe_memory(masterKey, 32);
+        m_vaultLockError = "Senha mestra incorreta. Tente novamente.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    auto tryDecryptKey = [&](const QString &encPayload) -> QString {
+        if (encPayload.trimmed().isEmpty()) return QString();
+        char *dec = synapse_crypto_decrypt_module_key(encPayload.toUtf8().constData(), masterKey);
+        if (!dec) return QString();
+        QString s = QString::fromUtf8(dec);
+        synapse_free_string(dec);
+        return s;
+    };
+
+    m_unlockedKeys.clear();
+    m_unlockedKeys["library"] = tryDecryptKey(kr.value("library_key_enc").toString());
+    m_unlockedKeys["finance"] = tryDecryptKey(kr.value("finance_key_enc").toString());
+    m_unlockedKeys["notes"] = tryDecryptKey(kr.value("notes_key_enc").toString());
+
+    QString notesKey = m_unlockedKeys["notes"];
+    auto decryptOrFallback = [&](const QString &keyName, const QString &encVal) {
+        QString k = tryDecryptKey(encVal);
+        m_unlockedKeys[keyName] = !k.isEmpty() ? k : notesKey;
+    };
+
+    decryptOrFallback("culture", kr.value("culture_key_enc").toString());
+    decryptOrFallback("anki", kr.value("anki_key_enc").toString());
+    decryptOrFallback("focus", kr.value("focus_key_enc").toString());
+    decryptOrFallback("files", kr.value("files_key_enc").toString());
+    decryptOrFallback("vault", kr.value("vault_key_enc").toString());
+    decryptOrFallback("calendar", kr.value("calendar_key_enc").toString());
+    decryptOrFallback("practice", kr.value("practice_key_enc").toString());
+    decryptOrFallback("core", kr.value("core_key_enc").toString());
+
+    synapse_crypto_wipe_memory(masterKey, 32);
+
+    m_isVaultUnlocked = true;
+    m_vaultLockError = "";
+    emit vaultLockErrorChanged();
+    emit vaultStateChanged();
+    emit vaultUnlocked();
+
+    if (m_autoLockMinutes > 0) {
+        m_autoLockTimer->start(m_autoLockMinutes * 60 * 1000);
+    }
+
+    return true;
+}
+
+void SynapseDataController::lockVault() {
+    m_autoLockTimer->stop();
+    m_unlockedKeys.clear();
+    m_isVaultUnlocked = false;
+    m_vaultLockError = "";
+    emit vaultLockErrorChanged();
+    emit vaultStateChanged();
+    emit vaultLocked();
+}
+
+bool SynapseDataController::setupMasterPassword(const QString &password) {
+    if (password.trimmed().length() < 6) {
+        m_vaultLockError = "A senha mestra deve ter no mínimo 6 caracteres.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    uint8_t masterKey[32];
+    if (synapse_crypto_derive_master_key(password.toUtf8().constData(), masterKey) != 0) {
+        m_vaultLockError = "Erro ao derivar chave mestra.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    auto genEncKey = [&](const QString &keyHex) -> QString {
+        char *cEnc = synapse_crypto_encrypt_module_key(keyHex.toUtf8().constData(), masterKey);
+        if (!cEnc) return QString();
+        QString s = QString::fromUtf8(cEnc);
+        synapse_free_string(cEnc);
+        return s;
+    };
+
+    auto genKey = []() -> QString {
+        char *k = synapse_crypto_generate_module_key();
+        if (!k) return QString();
+        QString s = QString::fromUtf8(k);
+        synapse_free_string(k);
+        return s;
+    };
+
+    QString libraryKey = genKey();
+    QString financeKey = genKey();
+    QString notesKey = genKey();
+    QString cultureKey = genKey();
+    QString ankiKey = genKey();
+    QString focusKey = genKey();
+    QString filesKey = genKey();
+    QString vaultKey = genKey();
+    QString calendarKey = genKey();
+    QString practiceKey = genKey();
+    QString coreKey = genKey();
+
+    QString libraryEnc = genEncKey(libraryKey);
+    QString financeEnc = genEncKey(financeKey);
+    QString notesEnc = genEncKey(notesKey);
+    QString cultureEnc = genEncKey(cultureKey);
+    QString ankiEnc = genEncKey(ankiKey);
+    QString focusEnc = genEncKey(focusKey);
+    QString filesEnc = genEncKey(filesKey);
+    QString vaultEnc = genEncKey(vaultKey);
+    QString calendarEnc = genEncKey(calendarKey);
+    QString practiceEnc = genEncKey(practiceKey);
+    QString coreEnc = genEncKey(coreKey);
+
+    char *cHash = synapse_crypto_hash_password(password.toUtf8().constData());
+    QString authHash = cHash ? QString::fromUtf8(cHash) : "";
+    synapse_free_string(cHash);
+
+    QString id = generateUuid();
+    QString sql = QString("INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc) VALUES ('%1', '%2', '%3', '%4', '%5', '%6', '%7', '%8', '%9', '%10', '%11', '%12', '%13');")
+        .arg(id, escapeSql(authHash), escapeSql(libraryEnc), escapeSql(financeEnc), escapeSql(notesEnc), escapeSql(cultureEnc), escapeSql(ankiEnc), escapeSql(focusEnc), escapeSql(filesEnc), escapeSql(vaultEnc), escapeSql(calendarEnc), escapeSql(practiceEnc), escapeSql(coreEnc));
+
+    if (!executeSql(sql)) {
+        synapse_crypto_wipe_memory(masterKey, 32);
+        m_vaultLockError = "Erro ao persistir chaves no banco de dados.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    // Encrypt existing unencrypted pages
+    QJsonArray pagesToEncrypt = executeQuery("SELECT id, content FROM pages WHERE (encrypted_content IS NULL OR encrypted_content = '') AND content IS NOT NULL AND content != ''");
+    for (const QJsonValue &pv : pagesToEncrypt) {
+        QJsonObject po = pv.toObject();
+        QString pid = po.value("id").toString();
+        QString pContent = po.value("content").toString();
+        QString enc = encryptContent(notesKey, pContent);
+        executeSql(QString("UPDATE pages SET content = '', encrypted_content = '%1' WHERE id = '%2'").arg(escapeSql(enc), escapeSql(pid)));
+    }
+
+    // Encrypt existing unencrypted vault items
+    QJsonArray vaultToEncrypt = executeQuery("SELECT id, label, username, email, password, url, notes FROM vault_items WHERE deleted_at IS NULL");
+    for (const QJsonValue &vv : vaultToEncrypt) {
+        QJsonObject vo = vv.toObject();
+        QString vid = vo.value("id").toString();
+        QString encLabel = encryptContent(vaultKey, vo.value("label").toString());
+        QString encUser = vo.value("username").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("username").toString());
+        QString encEmail = vo.value("email").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("email").toString());
+        QString encPass = vo.value("password").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("password").toString());
+        QString encUrl = vo.value("url").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("url").toString());
+        QString encNotes = vo.value("notes").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("notes").toString());
+
+        executeSql(QString("UPDATE vault_items SET label = '%1', username = '%2', email = '%3', password = '%4', url = '%5', notes = '%6' WHERE id = '%7'")
+            .arg(escapeSql(encLabel), escapeSql(encUser), escapeSql(encEmail), escapeSql(encPass), escapeSql(encUrl), escapeSql(encNotes), escapeSql(vid)));
+    }
+
+    m_unlockedKeys["library"] = libraryKey;
+    m_unlockedKeys["finance"] = financeKey;
+    m_unlockedKeys["notes"] = notesKey;
+    m_unlockedKeys["culture"] = cultureKey;
+    m_unlockedKeys["anki"] = ankiKey;
+    m_unlockedKeys["focus"] = focusKey;
+    m_unlockedKeys["files"] = filesKey;
+    m_unlockedKeys["vault"] = vaultKey;
+    m_unlockedKeys["calendar"] = calendarKey;
+    m_unlockedKeys["practice"] = practiceKey;
+    m_unlockedKeys["core"] = coreKey;
+
+    synapse_crypto_wipe_memory(masterKey, 32);
+
+    m_isVaultConfigured = true;
+    m_isVaultUnlocked = true;
+    m_vaultLockError = "";
+    emit vaultLockErrorChanged();
+    emit vaultStateChanged();
+    emit vaultUnlocked();
+
+    if (m_autoLockMinutes > 0) {
+        m_autoLockTimer->start(m_autoLockMinutes * 60 * 1000);
+    }
+
+    return true;
+}
+
+bool SynapseDataController::changeMasterPassword(const QString &oldPassword, const QString &newPassword) {
+    if (newPassword.trimmed().length() < 6) {
+        m_vaultLockError = "A nova senha mestra deve ter no mínimo 6 caracteres.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    uint8_t oldKey[32];
+    if (synapse_crypto_derive_master_key(oldPassword.toUtf8().constData(), oldKey) != 0) {
+        m_vaultLockError = "Senha mestra atual incorreta.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    QString sql = "SELECT id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, "
+                  "culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, "
+                  "calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1";
+    QJsonArray rows = executeQuery(sql);
+    if (rows.isEmpty()) {
+        synapse_crypto_wipe_memory(oldKey, 32);
+        m_vaultLockError = "Cofre não configurado.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    QJsonObject kr = rows[0].toObject();
+    QString id = kr.value("id").toString();
+
+    QString testEnc = kr.value("library_key_enc").toString();
+    if (testEnc.isEmpty()) testEnc = kr.value("notes_key_enc").toString();
+    if (testEnc.isEmpty()) testEnc = kr.value("vault_key_enc").toString();
+
+    bool isValid = false;
+    if (!testEnc.isEmpty()) {
+        char *decKey = synapse_crypto_decrypt_module_key(testEnc.toUtf8().constData(), oldKey);
+        if (decKey) {
+            isValid = true;
+            synapse_free_string(decKey);
+        }
+    }
+    if (!isValid) {
+        synapse_crypto_wipe_memory(oldKey, 32);
+        m_vaultLockError = "Senha mestra atual incorreta.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    uint8_t newKey[32];
+    if (synapse_crypto_derive_master_key(newPassword.toUtf8().constData(), newKey) != 0) {
+        synapse_crypto_wipe_memory(oldKey, 32);
+        m_vaultLockError = "Erro ao derivar nova chave mestra.";
+        emit vaultLockErrorChanged();
+        return false;
+    }
+
+    auto rewrap = [&](const QString &encPayload, const QString &fallbackRaw) -> QString {
+        QString rawKey;
+        if (!encPayload.trimmed().isEmpty()) {
+            char *dec = synapse_crypto_decrypt_module_key(encPayload.toUtf8().constData(), oldKey);
+            if (dec) {
+                rawKey = QString::fromUtf8(dec);
+                synapse_free_string(dec);
+            }
+        }
+        if (rawKey.isEmpty()) rawKey = fallbackRaw;
+        if (rawKey.isEmpty()) return QString();
+
+        char *newEnc = synapse_crypto_encrypt_module_key(rawKey.toUtf8().constData(), newKey);
+        if (!newEnc) return QString();
+        QString s = QString::fromUtf8(newEnc);
+        synapse_free_string(newEnc);
+        return s;
+    };
+
+    QString notesRaw;
+    QString notesEnc = kr.value("notes_key_enc").toString();
+    if (!notesEnc.isEmpty()) {
+        char *dec = synapse_crypto_decrypt_module_key(notesEnc.toUtf8().constData(), oldKey);
+        if (dec) {
+            notesRaw = QString::fromUtf8(dec);
+            synapse_free_string(dec);
+        }
+    }
+
+    QString libraryEncNew = rewrap(kr.value("library_key_enc").toString(), notesRaw);
+    QString financeEncNew = rewrap(kr.value("finance_key_enc").toString(), notesRaw);
+    QString notesEncNew = rewrap(notesEnc, notesRaw);
+    QString cultureEncNew = rewrap(kr.value("culture_key_enc").toString(), notesRaw);
+    QString ankiEncNew = rewrap(kr.value("anki_key_enc").toString(), notesRaw);
+    QString focusEncNew = rewrap(kr.value("focus_key_enc").toString(), notesRaw);
+    QString filesEncNew = rewrap(kr.value("files_key_enc").toString(), notesRaw);
+    QString vaultEncNew = rewrap(kr.value("vault_key_enc").toString(), notesRaw);
+    QString calendarEncNew = rewrap(kr.value("calendar_key_enc").toString(), notesRaw);
+    QString practiceEncNew = rewrap(kr.value("practice_key_enc").toString(), notesRaw);
+    QString coreEncNew = rewrap(kr.value("core_key_enc").toString(), notesRaw);
+
+    char *cHash = synapse_crypto_hash_password(newPassword.toUtf8().constData());
+    QString newAuthHash = cHash ? QString::fromUtf8(cHash) : "";
+    synapse_free_string(cHash);
+
+    QString updateSql = QString("UPDATE keychain SET auth_hash = '%1', library_key_enc = '%2', finance_key_enc = '%3', "
+                                "notes_key_enc = '%4', culture_key_enc = '%5', anki_key_enc = '%6', focus_key_enc = '%7', "
+                                "files_key_enc = '%8', vault_key_enc = '%9', calendar_key_enc = '%10', practice_key_enc = '%11', "
+                                "core_key_enc = '%12' WHERE id = '%13'")
+        .arg(escapeSql(newAuthHash), escapeSql(libraryEncNew), escapeSql(financeEncNew), escapeSql(notesEncNew),
+             escapeSql(cultureEncNew), escapeSql(ankiEncNew), escapeSql(focusEncNew), escapeSql(filesEncNew),
+             escapeSql(vaultEncNew), escapeSql(calendarEncNew), escapeSql(practiceEncNew), escapeSql(coreEncNew),
+             escapeSql(id));
+
+    bool ok = executeSql(updateSql);
+
+    synapse_crypto_wipe_memory(oldKey, 32);
+    synapse_crypto_wipe_memory(newKey, 32);
+
+    if (ok) {
+        m_vaultLockError = "";
+        emit vaultLockErrorChanged();
+        emit vaultStateChanged();
+    } else {
+        m_vaultLockError = "Erro ao atualizar senha no banco de dados.";
+        emit vaultLockErrorChanged();
+    }
+
+    return ok;
+}
+
+bool SynapseDataController::removeMasterPassword(const QString &password) {
+    if (!m_isVaultUnlocked) {
+        if (!unlockVault(password)) {
+            return false;
+        }
+    }
+
+    QString notesKey = m_unlockedKeys.value("notes");
+    QString vaultKey = m_unlockedKeys.value("vault", notesKey);
+
+    if (!notesKey.isEmpty()) {
+        QJsonArray pagesToDecrypt = executeQuery("SELECT id, encrypted_content FROM pages WHERE encrypted_content IS NOT NULL AND encrypted_content != ''");
+        for (const QJsonValue &pv : pagesToDecrypt) {
+            QJsonObject po = pv.toObject();
+            QString pid = po.value("id").toString();
+            QString enc = po.value("encrypted_content").toString();
+            QString dec = decryptContent(notesKey, enc);
+            executeSql(QString("UPDATE pages SET content = '%1', encrypted_content = NULL WHERE id = '%2'").arg(escapeSql(dec), escapeSql(pid)));
+        }
+    }
+
+    if (!vaultKey.isEmpty()) {
+        QJsonArray vaultToDecrypt = executeQuery("SELECT id, label, username, email, password, url, notes FROM vault_items WHERE deleted_at IS NULL");
+        for (const QJsonValue &vv : vaultToDecrypt) {
+            QJsonObject vo = vv.toObject();
+            QString vid = vo.value("id").toString();
+            QString decLabel = decryptContent(vaultKey, vo.value("label").toString());
+            QString decUser = decryptContent(vaultKey, vo.value("username").toString());
+            QString decEmail = decryptContent(vaultKey, vo.value("email").toString());
+            QString decPass = decryptContent(vaultKey, vo.value("password").toString());
+            QString decUrl = decryptContent(vaultKey, vo.value("url").toString());
+            QString decNotes = decryptContent(vaultKey, vo.value("notes").toString());
+
+            executeSql(QString("UPDATE vault_items SET label = '%1', username = '%2', email = '%3', password = '%4', url = '%5', notes = '%6' WHERE id = '%7'")
+                .arg(escapeSql(decLabel), escapeSql(decUser), escapeSql(decEmail), escapeSql(decPass), escapeSql(decUrl), escapeSql(decNotes), escapeSql(vid)));
+        }
+    }
+
+    executeSql("DELETE FROM keychain;");
+
+    m_unlockedKeys.clear();
+    m_isVaultConfigured = false;
+    m_isVaultUnlocked = false;
+    m_autoLockTimer->stop();
+    m_vaultLockError = "";
+
+    emit vaultLockErrorChanged();
+    emit vaultStateChanged();
+    return true;
+}
+
+int SynapseDataController::checkPasswordStrength(const QString &password) {
+    int len = password.length();
+    bool hasUpper = false, hasLower = false, hasNum = false, hasSym = false;
+    for (const QChar &ch : password) {
+        if (ch.isUpper()) hasUpper = true;
+        else if (ch.isLower()) hasLower = true;
+        else if (ch.isDigit()) hasNum = true;
+        else hasSym = true;
+    }
+    int score = 0;
+    if (len > 8) score++;
+    if (len >= 12) score++;
+    if (hasUpper && hasLower) score++;
+    if (hasNum && hasSym) score++;
+    if (len >= 16 && (hasUpper || hasLower) && (hasNum || hasSym)) score = qMax(score, 4);
+    if (score > 4) score = 4;
+    QString lower = password.toLower();
+    if (lower == "password" || lower == "123456" || lower == "12345678" || lower == "admin") {
+        score = 0;
+    }
+    return score;
 }
 
 void SynapseDataController::copyToClipboard(const QString &text) {

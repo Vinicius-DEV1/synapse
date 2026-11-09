@@ -57,10 +57,29 @@ Rectangle {
         refreshVault()
     }
 
+    Connections {
+        target: dataController
+        function onVaultStateChanged() {
+            vaultRoot.refreshVault()
+        }
+        function onVaultUnlocked() {
+            vaultRoot.refreshVault()
+        }
+    }
+
+    // Zen Unlock Screen when configured and locked
+    VaultUnlockScreen {
+        anchors.fill: parent
+        visible: dataController.isVaultConfigured && !dataController.isVaultUnlocked
+        z: 10
+        onUnlocked: vaultRoot.refreshVault()
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 32
         spacing: 24
+        visible: !dataController.isVaultConfigured || dataController.isVaultUnlocked
 
         // Header and Search/Actions/Group Pills
         VaultHeaderSection {
@@ -78,6 +97,7 @@ Rectangle {
                 vaultRoot.generatedPassword = dataController.generateSecurePassword(18, true)
                 vaultRoot.isPasswordDialogOpen = true
             }
+            onLockVaultRequested: dataController.lockVault()
             onNewItemRequested: vaultRoot.isAddingItem = true
             onGroupSelected: function(groupId) {
                 vaultRoot.selectedGroupId = groupId
