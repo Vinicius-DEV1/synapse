@@ -200,21 +200,9 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
     setShowWishlistModal(false);
   };
 
-  const handleDeleteWishlist = async (id: string, e?: React.MouseEvent) => {
+  const handleDeleteWishlist = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const msg = t('finance.deleteWishlistDesc', 'Tem certeza que deseja apagar este desejo?');
-    if (window.api?.app?.showConfirm) {
-      const confirmed = (await window.api.app.showConfirm({
-        title: t('finance.deleteWishlistTitle', 'Excluir Item dos Desejos'),
-        message: msg,
-        kind: 'warning',
-      })) === 1;
-      if (!confirmed) return;
-      await deleteWishlistItem(id);
-      if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
-    } else {
-      setWishlistToDeleteId(id);
-    }
+    setWishlistToDeleteId(id);
   };
 
   // Dashboard calculations with account awareness and period filtering
@@ -518,21 +506,42 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                 <button
                   type="button"
                   onClick={() => setWishlistToDeleteId(null)}
-                  className="p-1 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                  className="p-1 text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
-              <div className="py-4">
+              <div className="py-4 space-y-3">
                 <p className="text-xs text-dark-subtext leading-relaxed">
-                  {t('finance.deleteWishlistDesc', 'Tem certeza que deseja apagar este desejo?')}
+                  {t('finance.deleteWishlistDesc', 'Tem certeza que deseja apagar este desejo? Essa ação não pode ser desfeita.')}
                 </p>
+                {(() => {
+                  const item = wishlist.find((w) => w.id === wishlistToDeleteId);
+                  if (!item) return null;
+                  return (
+                    <div className="bg-dark-bg/80 border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-xs font-medium text-white truncate block">
+                          {item.title}
+                        </span>
+                        {item.category && (
+                          <span className="text-[10px] text-dark-subtext">{item.category}</span>
+                        )}
+                      </div>
+                      {item.estimated_cost ? (
+                        <span className="text-xs font-semibold text-white shrink-0">
+                          {formatCurrency(item.estimated_cost)}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
                 <button
                   type="button"
                   onClick={() => setWishlistToDeleteId(null)}
-                  className="px-3.5 py-1.5 text-xs text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors font-medium"
+                  className="px-3.5 py-1.5 text-xs text-dark-subtext hover:text-white rounded-lg hover:bg-white/5 transition-colors font-medium cursor-pointer"
                 >
                   {t('common.cancel', 'Cancelar')}
                 </button>
@@ -544,7 +553,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
                     await deleteWishlistItem(id);
                     if (selectedWishlistDetails?.id === id) setSelectedWishlistDetails(null);
                   }}
-                  className="px-3.5 py-1.5 text-xs bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors font-medium flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 text-xs bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors font-medium flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-950/40 active:scale-95"
                 >
                   <Trash2 size={13} />
                   {t('common.delete', 'Excluir')}

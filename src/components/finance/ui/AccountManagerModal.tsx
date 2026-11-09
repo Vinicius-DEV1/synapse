@@ -130,26 +130,12 @@ export function AccountManagerModal({
     }
   };
 
-  const handleDelete = async (acc: Account) => {
+  const handleDelete = (acc: Account) => {
     if (accounts.length <= 1) {
       triggerToast(t('finance.mustKeepOneAccount', 'Você precisa manter ao menos uma conta cadastrada.'), 'error');
       return;
     }
-    const msg = t('finance.archiveAccountDesc', 'Deseja arquivar a conta "{{name}}"? Ela deixará de aparecer em novas transações, mas seu histórico permanecerá salvo.', { name: acc.name });
-    if (window.api?.app?.showConfirm) {
-      const confirmed = (await window.api.app.showConfirm({
-        title: t('finance.archiveAccountTitle', 'Arquivar Conta'),
-        message: msg,
-        kind: 'warning',
-      })) === 1;
-      if (!confirmed) {
-        return;
-      }
-      await onDeleteAccount(acc.id);
-      if (editingId === acc.id) resetForm();
-    } else {
-      setAccountToArchive(acc);
-    }
+    setAccountToArchive(acc);
   };
 
   return (

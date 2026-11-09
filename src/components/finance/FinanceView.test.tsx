@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import FinanceView from './FinanceView';
 import type { Tab } from '../../types';
 import { I18nProvider } from '../../i18n';
@@ -96,6 +96,48 @@ describe('FinanceView component', () => {
     await waitFor(() => {
       expect(screen.getByText('Finanças Pessoais')).toBeInTheDocument();
       expect(screen.getByText('Nova Transação')).toBeInTheDocument();
+    });
+  });
+
+  it('opens custom in-app confirmation modal when deleting wishlist item', async () => {
+    const mockDelete = vi.fn().mockResolvedValue(true);
+    (window as unknown as { api: { finance: { getWishlist: unknown; deleteWishlist: unknown } } }).api.finance.getWishlist = vi.fn().mockResolvedValue([
+      {
+        id: 'wish-1',
+        title: 'Monitor 4K',
+        price: 1500,
+        priority: 'high',
+        category: 'Trabalho',
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    (window as unknown as { api: { finance: { deleteWishlist: unknown } } }).api.finance.deleteWishlist = mockDelete;
+
+    renderWithI18n(<FinanceView tab={makeTab('wishlist')} />);
+
+    // Expand category
+    await waitFor(() => {
+      expect(screen.getByText('Trabalho')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Trabalho'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Monitor 4K')).toBeInTheDocument();
+    });
+
+    const deleteBtn = screen.getByTitle('Excluir Desejo');
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Excluir Item dos Desejos')).toBeInTheDocument();
+      expect(screen.getByText(/Tem certeza que deseja apagar este desejo\?/i)).toBeInTheDocument();
+    });
+
+    const confirmBtn = screen.getByRole('button', { name: /^Excluir$/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith('wish-1');
     });
   });
 });
