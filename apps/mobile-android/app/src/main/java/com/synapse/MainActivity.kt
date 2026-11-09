@@ -25,6 +25,7 @@ import com.synapse.ui.anki.AnkiStudyScreen
 import com.synapse.ui.anki.CardItem
 import com.synapse.ui.calendar.CalendarScreen
 import com.synapse.ui.culture.CultureScreen
+import com.synapse.ui.diagrams.DiagramsScreen
 import com.synapse.ui.finance.FinanceScreen
 import com.synapse.ui.focus.FocusScreen
 import com.synapse.ui.habits.HabitsScreen
@@ -42,6 +43,7 @@ enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Bool
     NOTES("Notas", Icons.Default.Assignment, true),
     ANKI("Anki", Icons.Default.Psychology, true),
     QUIZ("Quiz", Icons.Default.Quiz, true),
+    DIAGRAMS("Diagramas", Icons.Default.Brush, false),
     HABITS("Hábitos", Icons.Default.CheckCircle, false),
     CALENDAR("Agenda", Icons.Default.CalendarMonth, false),
     CULTURE("Cultura", Icons.Default.Movie, false),
@@ -125,6 +127,7 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToTab = { tabKey ->
                                     val target = when (tabKey) {
                                         "notes" -> NavItem.NOTES
+                                        "diagrams" -> NavItem.DIAGRAMS
                                         "anki" -> NavItem.ANKI
                                         "quiz" -> NavItem.QUIZ
                                         "habits" -> NavItem.HABITS
@@ -142,6 +145,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             NavItem.NOTES -> NotesScreen()
+                            NavItem.DIAGRAMS -> DiagramsScreen()
                             NavItem.ANKI -> AnkiStudyScreen(
                                 cards = listOf(
                                     CardItem("1", "O que é FSRS v5?", "Free Spaced Repetition Scheduler v5, algoritmo moderno baseado em Estabilidade e Dificuldade."),

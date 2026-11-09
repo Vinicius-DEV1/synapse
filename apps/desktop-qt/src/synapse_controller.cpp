@@ -1344,3 +1344,42 @@ QVariantMap SynapseDataController::getHomeDashboardData() {
 
     return res;
 }
+
+QVariantList SynapseDataController::getDiagrams() {
+    QString sql = "SELECT id, title, icon, updated_at, created_at FROM diagrams "
+                  "WHERE deleted_at IS NULL ORDER BY updated_at DESC";
+    return executeQuery(sql).toVariantList();
+}
+
+QVariantMap SynapseDataController::getDiagram(const QString &diagramId) {
+    QString sql = QString("SELECT id, title, icon, content, updated_at FROM diagrams "
+                          "WHERE id = '%1' AND deleted_at IS NULL").arg(escapeSql(diagramId));
+    QJsonArray arr = executeQuery(sql);
+    if (arr.isEmpty()) return QVariantMap();
+    return arr[0].toObject().toVariantMap();
+}
+
+bool SynapseDataController::saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE diagrams SET title = '%1', content = '%2', icon = '%3', updated_at = '%4' "
+                          "WHERE id = '%5'")
+        .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(diagramId));
+    return executeSql(sql);
+}
+
+QString SynapseDataController::createDiagram(const QString &title, const QString &icon) {
+    QString id = generateUuid();
+    QString ts = currentTimestamp();
+    QString sql = QString("INSERT INTO diagrams (id, title, content, icon, created_at, updated_at) "
+                          "VALUES ('%1', '%2', '[]', '%3', '%4', '%5')")
+        .arg(id, escapeSql(title), escapeSql(icon), ts, ts);
+    bool ok = executeSql(sql);
+    if (ok) return id;
+    return "";
+}
+
+bool SynapseDataController::deleteDiagram(const QString &diagramId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE diagrams SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(diagramId));
+    return executeSql(sql);
+}

@@ -165,6 +165,13 @@ public:
     // 14. Home Dashboard
     Q_INVOKABLE QVariantMap getHomeDashboardData();
 
+    // 15. Diagramas & Whiteboard
+    Q_INVOKABLE QVariantList getDiagrams();
+    Q_INVOKABLE QVariantMap getDiagram(const QString &diagramId);
+    Q_INVOKABLE bool saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon = "🎨");
+    Q_INVOKABLE QString createDiagram(const QString &title, const QString &icon = "🎨");
+    Q_INVOKABLE bool deleteDiagram(const QString &diagramId);
+
 signals:
     void dbPathChanged();
     void countsChanged();

@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "home"
+import "diagrams"
 import "video"
 import "quiz"
 import "editor"
@@ -261,6 +262,7 @@ ApplicationWindow {
                     model: [
                         { key: "home", name: "Início", icon: "🏠", count: 0 },
                         { key: "notes", name: "Caderno", icon: "📝", count: dataController.pageCount },
+                        { key: "diagrams", name: "Diagramas", icon: "🎨", count: 0 },
                         { key: "video", name: "Vídeos", icon: "🎬", count: dataController.videoCount },
                         { key: "anki", name: "Flashcards", icon: "🎴", count: dataController.deckCount },
                         { key: "quiz", name: "Questões", icon: "🎯", count: dataController.quizBatteryCount },
@@ -393,18 +395,19 @@ ApplicationWindow {
                 currentIndex: {
                     if (rootWindow.activeTab === "home") return 0;
                     if (rootWindow.activeTab === "notes") return 1;
-                    if (rootWindow.activeTab === "video") return 2;
-                    if (rootWindow.activeTab === "anki") return 3;
-                    if (rootWindow.activeTab === "quiz") return 4;
-                    if (rootWindow.activeTab === "finance") return 5;
-                    if (rootWindow.activeTab === "habits") return 6;
-                    if (rootWindow.activeTab === "calendar") return 7;
-                    if (rootWindow.activeTab === "library") return 8;
-                    if (rootWindow.activeTab === "culture") return 9;
-                    if (rootWindow.activeTab === "focus") return 10;
-                    if (rootWindow.activeTab === "vault") return 11;
-                    if (rootWindow.activeTab === "trash") return 12;
-                    if (rootWindow.activeTab === "settings") return 13;
+                    if (rootWindow.activeTab === "diagrams") return 2;
+                    if (rootWindow.activeTab === "video") return 3;
+                    if (rootWindow.activeTab === "anki") return 4;
+                    if (rootWindow.activeTab === "quiz") return 5;
+                    if (rootWindow.activeTab === "finance") return 6;
+                    if (rootWindow.activeTab === "habits") return 7;
+                    if (rootWindow.activeTab === "calendar") return 8;
+                    if (rootWindow.activeTab === "library") return 9;
+                    if (rootWindow.activeTab === "culture") return 10;
+                    if (rootWindow.activeTab === "focus") return 11;
+                    if (rootWindow.activeTab === "vault") return 12;
+                    if (rootWindow.activeTab === "trash") return 13;
+                    if (rootWindow.activeTab === "settings") return 14;
                     return 0;
                 }
 
@@ -413,6 +416,7 @@ ApplicationWindow {
                     onNavigateToTab: rootWindow.activeTab = tabKey
                 }
                 NotesEditorView { id: notesView }
+                DiagramsView { id: diagramsView }
                 VideoPlayerView { id: videoView }
                 AnkiView { id: ankiView }
                 ZenQuizView { id: quizView }

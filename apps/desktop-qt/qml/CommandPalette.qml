@@ -32,6 +32,7 @@ Rectangle {
     property var allActions: [
         { label: "Ir para Início & Dashboard", icon: "🏠", category: "Navegação", tab: "home" },
         { label: "Ir para Caderno & Notas", icon: "📝", category: "Navegação", tab: "notes" },
+        { label: "Ir para Diagramas & Whiteboard", icon: "🎨", category: "Navegação", tab: "diagrams" },
         { label: "Ir para Flashcards & Baralhos Anki", icon: "🎴", category: "Navegação", tab: "anki" },
         { label: "Ir para Banco de Questões (ZenQuiz)", icon: "🎯", category: "Navegação", tab: "quiz" },
         { label: "Ir para Vídeos & Media Center", icon: "🎬", category: "Navegação", tab: "video" },
