@@ -386,9 +386,9 @@ Rectangle {
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 12
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🎬"; font.pixelSize: 40; opacity: 0.5 }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Nenhum vídeo nesta pasta"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Importe vídeos locais para assistir com decodificação mpv acelerada."; color: "#a7a9be"; font.pixelSize: 13 }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "🎬"; font.pixelSize: 40; opacity: 0.5 }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "Nenhum vídeo nesta pasta"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "Importe vídeos locais para assistir com decodificação mpv acelerada."; color: "#a7a9be"; font.pixelSize: 13 }
                     }
                 }
 

@@ -512,9 +512,9 @@ Rectangle {
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 12
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🎴"; font.pixelSize: 40; opacity: 0.5 }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Nenhum baralho encontrado"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Crie um baralho para começar a estudar."; color: "#a7a9be"; font.pixelSize: 13 }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "🎴"; font.pixelSize: 40; opacity: 0.5 }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "Nenhum baralho encontrado"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "Crie um baralho para começar a estudar."; color: "#a7a9be"; font.pixelSize: 13 }
                     }
                 }
 
@@ -759,16 +759,16 @@ Rectangle {
                     anchors.centerIn: parent
                     spacing: 16
 
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🎉"; font.pixelSize: 48 }
+                    Text { Layout.alignment: Qt.AlignHCenter; text: "🎉"; font.pixelSize: 48 }
                     Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                         text: "Parabéns! Sessão de Estudos Concluída"
                         color: "#fffffe"
                         font.pixelSize: 20
                         font.bold: true
                     }
                     Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                         text: ankiRoot.cardsReviewedThisSession > 0
                             ? "Você revisou " + ankiRoot.cardsReviewedThisSession + " cartão(ões) hoje de acordo com o algoritmo FSRS v5."
                             : "Todos os cartões deste baralho estão em dia! Nenhum cartão pendente agora."
@@ -779,7 +779,7 @@ Rectangle {
                     Item { height: 12 }
 
                     Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        Layout.alignment: Qt.AlignHCenter
                         width: 180
                         height: 42
                         radius: 10

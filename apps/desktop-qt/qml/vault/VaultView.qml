@@ -109,19 +109,20 @@ Rectangle {
             visible: vaultRoot.groups.length > 0
 
             Rectangle {
+                id: allGroupRect
                 property bool isSelected: vaultRoot.selectedGroupId === ""
                 height: 32
                 width: allGroupText.contentWidth + 24
                 radius: 16
-                color: isSelected ? "#6366f1" : "#1a1924"
-                border.color: isSelected ? "#818cf8" : "#ffffff0f"
+                color: allGroupRect.isSelected ? "#6366f1" : "#1a1924"
+                border.color: allGroupRect.isSelected ? "#818cf8" : "#ffffff0f"
                 Text {
                     id: allGroupText
                     anchors.centerIn: parent
                     text: "Todos (" + vaultRoot.items.length + ")"
-                    color: isSelected ? "#ffffff" : "#a7a9be"
+                    color: allGroupRect.isSelected ? "#ffffff" : "#a7a9be"
                     font.pixelSize: 12
-                    font.bold: isSelected
+                    font.bold: allGroupRect.isSelected
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -136,19 +137,20 @@ Rectangle {
             Repeater {
                 model: vaultRoot.groups
                 delegate: Rectangle {
+                    id: grpDelegate
                     property bool isSelected: vaultRoot.selectedGroupId === modelData.id
                     height: 32
                     width: grpText.contentWidth + 24
                     radius: 16
-                    color: isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#ffffff12" : "#1a1924")
-                    border.color: isSelected ? "#818cf8" : "#ffffff0f"
+                    color: grpDelegate.isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#ffffff12" : "#1a1924")
+                    border.color: grpDelegate.isSelected ? "#818cf8" : "#ffffff0f"
                     Text {
                         id: grpText
                         anchors.centerIn: parent
                         text: "📁 " + modelData.name
-                        color: isSelected ? "#ffffff" : "#a7a9be"
+                        color: grpDelegate.isSelected ? "#ffffff" : "#a7a9be"
                         font.pixelSize: 12
-                        font.bold: isSelected
+                        font.bold: grpDelegate.isSelected
                     }
                     MouseArea {
                         id: grpMouse

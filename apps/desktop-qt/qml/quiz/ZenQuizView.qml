@@ -362,23 +362,23 @@ Rectangle {
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 12
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "💡"; font.pixelSize: 36 }
+                        Text { Layout.alignment: Qt.AlignHCenter; text: "💡"; font.pixelSize: 36 }
                         Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            Layout.alignment: Qt.AlignHCenter
                             text: "Nenhuma bateria personalizada criada ainda"
                             color: "#fffffe"
                             font.pixelSize: 16
                             font.bold: true
                         }
                         Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            Layout.alignment: Qt.AlignHCenter
                             text: "Você pode criar uma bateria agora ou experimentar o Simulado Geral com questões exemplo de Criptografia e FSRS."
                             color: "#a7a9be"
                             font.pixelSize: 13
                         }
                         Item { height: 4 }
                         Rectangle {
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            Layout.alignment: Qt.AlignHCenter
                             width: 180; height: 38; radius: 8
                             color: "#6366f1"
                             RowLayout {
