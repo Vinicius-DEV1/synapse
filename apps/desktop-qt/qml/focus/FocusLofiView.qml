@@ -18,6 +18,8 @@ Rectangle {
     property bool isSessionCompletedModalOpen: false
     property int customMinutes: 30
 
+    signal requestPlayLofi(var lofi)
+
     function formatTime(secs) {
         var m = Math.floor(secs / 60)
         var s = secs % 60
@@ -396,9 +398,13 @@ Rectangle {
                             onClicked: {
                                 if (focusRoot.activeLofi === modelData) {
                                     focusRoot.isLofiPlaying = !focusRoot.isLofiPlaying
+                                    if (typeof globalLofiPlayer !== "undefined") {
+                                        globalLofiPlayer.togglePlay()
+                                    }
                                 } else {
                                     focusRoot.activeLofi = modelData
                                     focusRoot.isLofiPlaying = true
+                                    focusRoot.requestPlayLofi(modelData)
                                 }
                             }
                         }

@@ -46,6 +46,7 @@ public:
     Q_INVOKABLE void togglePlay();
     Q_INVOKABLE void seekRelative(double seconds);
     Q_INVOKABLE void setLoopAB(double a, double b);
+    Q_INVOKABLE void command(const QVariantList &args);
 
 signals:
     void sourceChanged();

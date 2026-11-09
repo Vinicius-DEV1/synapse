@@ -425,12 +425,22 @@ ApplicationWindow {
                 CalendarView { id: calendarView }
                 LibraryView { id: libraryView }
                 CultureView { id: cultureView }
-                FocusLofiView { id: focusView }
+                FocusLofiView {
+                    id: focusView
+                    onRequestPlayLofi: function(track) {
+                        globalLofiPlayer.playTrack(track)
+                    }
+                }
                 VaultView { id: vaultView }
                 TrashView { id: trashView }
                 SettingsView { id: settingsView }
             }
         }
+    }
+
+    // Persistent Ambient Sound & Lo-Fi Player Widget
+    GlobalLofiPlayer {
+        id: globalLofiPlayer
     }
 
     // Floating Spotlight Command Palette (Ctrl+K / Ctrl+P)

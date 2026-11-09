@@ -278,3 +278,18 @@ void MpvPlayerItem::setLoopAB(double a, double b) {
     mpv_set_property_string(m_mpv, "ab-loop-b", bStr.constData());
 }
 
+void MpvPlayerItem::command(const QVariantList &args) {
+    if (args.isEmpty() || !m_mpv) return;
+    QVector<QByteArray> utf8Args;
+    utf8Args.reserve(args.size());
+    QVector<const char *> cmdList;
+    cmdList.reserve(args.size() + 1);
+    for (const QVariant &arg : args) {
+        utf8Args.append(arg.toString().toUtf8());
+        cmdList.append(utf8Args.last().constData());
+    }
+    cmdList.append(nullptr);
+    mpv_command_async(m_mpv, 0, cmdList.data());
+}
+
+
