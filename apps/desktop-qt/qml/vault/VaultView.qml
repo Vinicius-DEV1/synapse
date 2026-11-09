@@ -102,6 +102,68 @@ Rectangle {
             }
         }
 
+        // Groups Filter Pills
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            visible: vaultRoot.groups.length > 0
+
+            Rectangle {
+                property bool isSelected: vaultRoot.selectedGroupId === ""
+                height: 32
+                width: allGroupText.contentWidth + 24
+                radius: 16
+                color: isSelected ? "#6366f1" : "#1a1924"
+                border.color: isSelected ? "#818cf8" : "#ffffff0f"
+                Text {
+                    id: allGroupText
+                    anchors.centerIn: parent
+                    text: "Todos (" + vaultRoot.items.length + ")"
+                    color: isSelected ? "#ffffff" : "#a7a9be"
+                    font.pixelSize: 12
+                    font.bold: isSelected
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        vaultRoot.selectedGroupId = ""
+                        vaultRoot.refreshVault()
+                    }
+                }
+            }
+
+            Repeater {
+                model: vaultRoot.groups
+                delegate: Rectangle {
+                    property bool isSelected: vaultRoot.selectedGroupId === modelData.id
+                    height: 32
+                    width: grpText.contentWidth + 24
+                    radius: 16
+                    color: isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#ffffff12" : "#1a1924")
+                    border.color: isSelected ? "#818cf8" : "#ffffff0f"
+                    Text {
+                        id: grpText
+                        anchors.centerIn: parent
+                        text: "📁 " + modelData.name
+                        color: isSelected ? "#ffffff" : "#a7a9be"
+                        font.pixelSize: 12
+                        font.bold: isSelected
+                    }
+                    MouseArea {
+                        id: grpMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            vaultRoot.selectedGroupId = modelData.id
+                            vaultRoot.refreshVault()
+                        }
+                    }
+                }
+            }
+        }
+
         // Credentials List
         ListView {
             id: vaultListView
