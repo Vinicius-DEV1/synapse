@@ -45,21 +45,37 @@ public:
     Q_INVOKABLE void refreshStats();
     Q_INVOKABLE bool executeSql(const QString &sql);
 
-    // 1. Pages / Editor
+    // 1. Pages / Editor (Hierarchical & Pinned Support)
     Q_INVOKABLE QVariantList getPages(const QString &filter = "");
+    Q_INVOKABLE QVariantList getPinnedPages();
+    Q_INVOKABLE QVariantList getPageTree(const QString &filter = "");
     Q_INVOKABLE QVariantMap getPage(const QString &pageId);
     Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon = "📄");
+    Q_INVOKABLE QString createSubPage(const QString &parentId, const QString &title = "Nova Sub-página", const QString &icon = "📄");
     Q_INVOKABLE bool deletePage(const QString &pageId);
+    Q_INVOKABLE bool togglePinPage(const QString &pageId);
+    Q_INVOKABLE bool movePage(const QString &pageId, const QString &newParentId);
+    Q_INVOKABLE bool renamePage(const QString &pageId, const QString &newTitle);
+    Q_INVOKABLE bool updatePageIcon(const QString &pageId, const QString &newIcon);
 
     // 2. Videos / Media Center
-    Q_INVOKABLE QVariantList getVideos();
+    Q_INVOKABLE QVariantList getVideos(const QString &collectionFilter = "");
+    Q_INVOKABLE QVariantList getVideoCollections();
     Q_INVOKABLE bool updateVideoProgress(const QString &videoId, double progress);
+    Q_INVOKABLE bool deleteVideo(const QString &videoId);
 
-    // 3. Anki & Flashcards (FSRS v5)
+    // 3. Anki & Flashcards (Hierarchical Tree & FSRS v5)
     Q_INVOKABLE QVariantList getDecks();
-    Q_INVOKABLE bool createDeck(const QString &name, const QString &description = "", const QString &color = "#6366f1");
+    Q_INVOKABLE QVariantList getHierarchicalDecks();
+    Q_INVOKABLE QVariantMap getDeckStats(const QString &deckId);
+    Q_INVOKABLE bool createDeck(const QString &name, const QString &description = "", const QString &color = "#6366f1", const QString &parentId = "");
+    Q_INVOKABLE bool updateDeck(const QString &deckId, const QString &name, const QString &description, const QString &color);
+    Q_INVOKABLE bool deleteDeck(const QString &deckId);
     Q_INVOKABLE QVariantList getDeckCards(const QString &deckId);
+    Q_INVOKABLE QVariantList getDueCards(const QString &deckId);
     Q_INVOKABLE bool createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags = "");
+    Q_INVOKABLE bool updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags = "");
+    Q_INVOKABLE bool deleteCard(const QString &cardId);
     Q_INVOKABLE bool recordCardReview(const QString &cardId, int rating);
 
     // 4. Baterias de Questões & Simulado Zen

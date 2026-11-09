@@ -130,11 +130,11 @@ void SynapseDataController::refreshStats() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Pages / Editor
+// 1. Pages / Editor (Hierarchical & Pinned Support)
 // ---------------------------------------------------------------------------
 
 QVariantList SynapseDataController::getPages(const QString &filter) {
-    QString sql = "SELECT id, title, icon, updated_at, sort_order FROM pages WHERE deleted_at IS NULL ";
+    QString sql = "SELECT id, title, icon, parent_id, updated_at, sort_order, is_pinned, pinned_order FROM pages WHERE deleted_at IS NULL ";
     if (!filter.trimmed().isEmpty()) {
         sql += QString("AND title LIKE '%%1%' ").arg(escapeSql(filter));
     }
@@ -142,8 +142,63 @@ QVariantList SynapseDataController::getPages(const QString &filter) {
     return executeQuery(sql).toVariantList();
 }
 
+QVariantList SynapseDataController::getPinnedPages() {
+    QString sql = "SELECT id, parent_id, title, icon, is_pinned, pinned_order, updated_at FROM pages "
+                  "WHERE deleted_at IS NULL AND is_pinned = 1 ORDER BY pinned_order ASC, updated_at DESC";
+    return executeQuery(sql).toVariantList();
+}
+
+QVariantList SynapseDataController::getPageTree(const QString &filter) {
+    QString sql = "SELECT id, parent_id, title, icon, is_pinned, pinned_order, updated_at FROM pages WHERE deleted_at IS NULL ";
+    if (!filter.trimmed().isEmpty()) {
+        sql += QString("AND title LIKE '%%1%' ").arg(escapeSql(filter));
+    }
+    sql += "ORDER BY updated_at DESC";
+    QJsonArray rows = executeQuery(sql);
+
+    QMap<QString, QList<QJsonObject>> parentToChildren;
+    QList<QJsonObject> rootItems;
+    QSet<QString> allIds;
+
+    for (int i = 0; i < rows.size(); ++i) {
+        QJsonObject obj = rows[i].toObject();
+        allIds.insert(obj["id"].toString());
+    }
+
+    for (int i = 0; i < rows.size(); ++i) {
+        QJsonObject obj = rows[i].toObject();
+        QString pid = obj["parent_id"].toString();
+        if (pid.isEmpty() || pid == "null" || !allIds.contains(pid)) {
+            rootItems.append(obj);
+        } else {
+            parentToChildren[pid].append(obj);
+        }
+    }
+
+    QVariantList result;
+    std::function<void(const QJsonObject&, int)> addNode = [&](const QJsonObject &node, int depth) {
+        QJsonObject enriched = node;
+        QString nid = node["id"].toString();
+        QList<QJsonObject> children = parentToChildren.value(nid);
+        enriched["depth"] = depth;
+        enriched["has_children"] = !children.isEmpty();
+        enriched["children_count"] = children.size();
+        result.append(enriched.toVariantMap());
+
+        for (const QJsonObject &child : children) {
+            addNode(child, depth + 1);
+        }
+    };
+
+    for (const QJsonObject &root : rootItems) {
+        addNode(root, 0);
+    }
+
+    return result;
+}
+
 QVariantMap SynapseDataController::getPage(const QString &pageId) {
-    QString sql = QString("SELECT id, title, content, icon, updated_at FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
+    QString sql = QString("SELECT id, title, content, icon, parent_id, is_pinned, pinned_order, updated_at FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
     QJsonArray arr = executeQuery(sql);
     if (!arr.isEmpty()) {
         return arr[0].toObject().toVariantMap();
@@ -156,7 +211,7 @@ bool SynapseDataController::savePage(const QString &pageId, const QString &title
     QString sql;
     if (pageId.isEmpty()) {
         QString newId = generateUuid();
-        sql = QString("INSERT INTO pages (id, title, content, icon, created_at, updated_at, sort_order) VALUES ('%1', '%2', '%3', '%4', '%5', '%6', 0)")
+        sql = QString("INSERT INTO pages (id, title, content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) VALUES ('%1', '%2', '%3', '%4', '%5', '%6', 0, 0, 0.0)")
             .arg(newId, escapeSql(title), escapeSql(content), escapeSql(icon), ts, ts);
     } else {
         sql = QString("UPDATE pages SET title = '%1', content = '%2', icon = '%3', updated_at = '%4' WHERE id = '%5'")
@@ -167,6 +222,18 @@ bool SynapseDataController::savePage(const QString &pageId, const QString &title
     return ok;
 }
 
+QString SynapseDataController::createSubPage(const QString &parentId, const QString &title, const QString &icon) {
+    QString id = generateUuid();
+    QString ts = currentTimestamp();
+    QString pidVal = parentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(parentId));
+    QString sql = QString("INSERT INTO pages (id, parent_id, title, content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) "
+                          "VALUES ('%1', %2, '%3', '', '%4', '%5', '%6', 0, 0, 0.0);")
+        .arg(id, pidVal, escapeSql(title), escapeSql(icon), ts, ts);
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok ? id : "";
+}
+
 bool SynapseDataController::deletePage(const QString &pageId) {
     QString ts = currentTimestamp();
     QString sql = QString("UPDATE pages SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(pageId));
@@ -175,12 +242,57 @@ bool SynapseDataController::deletePage(const QString &pageId) {
     return ok;
 }
 
+bool SynapseDataController::togglePinPage(const QString &pageId) {
+    QString fetchSql = QString("SELECT is_pinned FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
+    QJsonArray arr = executeQuery(fetchSql);
+    if (arr.isEmpty()) return false;
+    int isPinned = arr[0].toObject()["is_pinned"].toInt();
+    int newPinned = (isPinned == 1) ? 0 : 1;
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE pages SET is_pinned = %1, updated_at = '%2' WHERE id = '%3'")
+        .arg(newPinned).arg(ts, escapeSql(pageId));
+    return executeSql(sql);
+}
+
+bool SynapseDataController::movePage(const QString &pageId, const QString &newParentId) {
+    if (pageId == newParentId) return false;
+    QString pidVal = newParentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(newParentId));
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE pages SET parent_id = %1, updated_at = '%2' WHERE id = '%3'")
+        .arg(pidVal, ts, escapeSql(pageId));
+    return executeSql(sql);
+}
+
+bool SynapseDataController::renamePage(const QString &pageId, const QString &newTitle) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE pages SET title = '%1', updated_at = '%2' WHERE id = '%3'")
+        .arg(escapeSql(newTitle), ts, escapeSql(pageId));
+    return executeSql(sql);
+}
+
+bool SynapseDataController::updatePageIcon(const QString &pageId, const QString &newIcon) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE pages SET icon = '%1', updated_at = '%2' WHERE id = '%3'")
+        .arg(escapeSql(newIcon), ts, escapeSql(pageId));
+    return executeSql(sql);
+}
+
 // ---------------------------------------------------------------------------
 // 2. Videos / Media Center
 // ---------------------------------------------------------------------------
 
-QVariantList SynapseDataController::getVideos() {
-    QString sql = "SELECT id, title, duration, file_path, progress, is_local FROM videos WHERE deleted_at IS NULL ORDER BY updated_at DESC";
+QVariantList SynapseDataController::getVideos(const QString &collectionFilter) {
+    QString sql = "SELECT id, title, duration, file_path, progress, is_local, collection_name "
+                  "FROM videos WHERE deleted_at IS NULL ";
+    if (!collectionFilter.trimmed().isEmpty() && collectionFilter != "Todos") {
+        sql += QString("AND collection_name = '%1' ").arg(escapeSql(collectionFilter));
+    }
+    sql += "ORDER BY updated_at DESC";
+    return executeQuery(sql).toVariantList();
+}
+
+QVariantList SynapseDataController::getVideoCollections() {
+    QString sql = "SELECT DISTINCT collection_name FROM videos WHERE deleted_at IS NULL AND collection_name IS NOT NULL AND collection_name != '' ORDER BY collection_name ASC";
     return executeQuery(sql).toVariantList();
 }
 
@@ -191,35 +303,226 @@ bool SynapseDataController::updateVideoProgress(const QString &videoId, double p
     return executeSql(sql);
 }
 
+bool SynapseDataController::deleteVideo(const QString &videoId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE videos SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(videoId));
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
 // ---------------------------------------------------------------------------
-// 3. Anki & Flashcards (FSRS v5)
+// 3. Anki & Flashcards (Hierarchical Tree & FSRS v5)
 // ---------------------------------------------------------------------------
 
 QVariantList SynapseDataController::getDecks() {
-    QString sql = "SELECT d.id, d.name, d.description, d.color, "
+    QString sql = "SELECT d.id, d.name, d.description, d.color, d.parent_id, "
                   "(SELECT count(*) FROM anki_cards c WHERE c.deck_id = d.id AND c.deleted_at IS NULL) as card_count "
                   "FROM anki_decks d WHERE d.deleted_at IS NULL ORDER BY d.name ASC";
     return executeQuery(sql).toVariantList();
 }
 
-bool SynapseDataController::createDeck(const QString &name, const QString &description, const QString &color) {
+QVariantList SynapseDataController::getHierarchicalDecks() {
+    QString sql = "SELECT id, name, description, color, parent_id FROM anki_decks WHERE deleted_at IS NULL ORDER BY name ASC";
+    QJsonArray rows = executeQuery(sql);
+
+    // Compute stats for all decks
+    QString statsSql = "SELECT c.deck_id, "
+                       "count(*) as total_cards, "
+                       "SUM(CASE WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 1 ELSE 0 END) as novos, "
+                       "SUM(CASE WHEN s.state IN ('learning', 'relearning') THEN 1 ELSE 0 END) as aprender, "
+                       "SUM(CASE WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 1 ELSE 0 END) as revisar "
+                       "FROM anki_cards c "
+                       "LEFT JOIN anki_srs_state s ON c.id = s.id "
+                       "WHERE c.deleted_at IS NULL "
+                       "GROUP BY c.deck_id";
+    QJsonArray statsRows = executeQuery(statsSql);
+    QMap<QString, QJsonObject> statsMap;
+    for (int i = 0; i < statsRows.size(); ++i) {
+        QJsonObject o = statsRows[i].toObject();
+        statsMap[o["deck_id"].toString()] = o;
+    }
+
+    QMap<QString, QList<QJsonObject>> parentToChildren;
+    QList<QJsonObject> rootItems;
+    QSet<QString> allIds;
+
+    for (int i = 0; i < rows.size(); ++i) {
+        QJsonObject obj = rows[i].toObject();
+        allIds.insert(obj["id"].toString());
+    }
+
+    for (int i = 0; i < rows.size(); ++i) {
+        QJsonObject obj = rows[i].toObject();
+        QString pid = obj["parent_id"].toString();
+        if (pid.isEmpty() || pid == "null" || !allIds.contains(pid)) {
+            rootItems.append(obj);
+        } else {
+            parentToChildren[pid].append(obj);
+        }
+    }
+
+    QVariantList result;
+    std::function<void(const QJsonObject&, int)> addDeck = [&](const QJsonObject &deck, int depth) {
+        QJsonObject enriched = deck;
+        QString did = deck["id"].toString();
+        QList<QJsonObject> children = parentToChildren.value(did);
+        enriched["depth"] = depth;
+        enriched["has_children"] = !children.isEmpty();
+        enriched["children_count"] = children.size();
+
+        QJsonObject st = statsMap.value(did);
+        enriched["card_count"] = st["total_cards"].toInt();
+        enriched["novos"] = st["novos"].toInt();
+        enriched["aprender"] = st["aprender"].toInt();
+        enriched["revisar"] = st["revisar"].toInt();
+
+        result.append(enriched.toVariantMap());
+
+        for (const QJsonObject &child : children) {
+            addDeck(child, depth + 1);
+        }
+    };
+
+    for (const QJsonObject &root : rootItems) {
+        addDeck(root, 0);
+    }
+
+    return result;
+}
+
+QVariantMap SynapseDataController::getDeckStats(const QString &deckId) {
+    QString allDecksSql = "SELECT id, parent_id FROM anki_decks WHERE deleted_at IS NULL";
+    QJsonArray deckRows = executeQuery(allDecksSql);
+    QMap<QString, QStringList> childrenMap;
+    for (int i = 0; i < deckRows.size(); ++i) {
+        QJsonObject o = deckRows[i].toObject();
+        QString pid = o["parent_id"].toString();
+        if (!pid.isEmpty()) childrenMap[pid].append(o["id"].toString());
+    }
+
+    QStringList targetDeckIds;
+    std::function<void(const QString&)> collectDecks = [&](const QString &did) {
+        targetDeckIds.append(did);
+        for (const QString &cid : childrenMap.value(did)) {
+            collectDecks(cid);
+        }
+    };
+    collectDecks(deckId);
+
+    QString idList;
+    for (int i = 0; i < targetDeckIds.size(); ++i) {
+        if (i > 0) idList += ",";
+        idList += QString("'%1'").arg(escapeSql(targetDeckIds[i]));
+    }
+
+    QString sql = QString(
+        "SELECT count(*) as total, "
+        "SUM(CASE WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 1 ELSE 0 END) as novos, "
+        "SUM(CASE WHEN s.state IN ('learning', 'relearning') THEN 1 ELSE 0 END) as aprender, "
+        "SUM(CASE WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 1 ELSE 0 END) as revisar "
+        "FROM anki_cards c "
+        "LEFT JOIN anki_srs_state s ON c.id = s.id "
+        "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL"
+    ).arg(idList.isEmpty() ? "''" : idList);
+
+    QJsonArray arr = executeQuery(sql);
+    if (!arr.isEmpty()) return arr[0].toObject().toVariantMap();
+    return QVariantMap();
+}
+
+bool SynapseDataController::createDeck(const QString &name, const QString &description, const QString &color, const QString &parentId) {
     QString id = generateUuid();
     QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO anki_decks (id, name, description, color, created_at, updated_at) VALUES ('%1', '%2', '%3', '%4', '%5', '%6')")
-        .arg(id, escapeSql(name), escapeSql(description), escapeSql(color), ts, ts);
+    QString pidVal = parentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(parentId));
+    QString sql = QString("INSERT INTO anki_decks (id, name, description, color, parent_id, created_at, updated_at) "
+                          "VALUES ('%1', '%2', '%3', '%4', %5, '%6', '%7')")
+        .arg(id, escapeSql(name), escapeSql(description), escapeSql(color), pidVal, ts, ts);
+    bool ok = executeSql(sql);
+    if (ok) refreshStats();
+    return ok;
+}
+
+bool SynapseDataController::updateDeck(const QString &deckId, const QString &name, const QString &description, const QString &color) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE anki_decks SET name = '%1', description = '%2', color = '%3', updated_at = '%4' WHERE id = '%5'")
+        .arg(escapeSql(name), escapeSql(description), escapeSql(color), ts, escapeSql(deckId));
+    return executeSql(sql);
+}
+
+bool SynapseDataController::deleteDeck(const QString &deckId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE anki_decks SET deleted_at = '%1' WHERE id = '%2' OR parent_id = '%2'")
+        .arg(ts, escapeSql(deckId));
     bool ok = executeSql(sql);
     if (ok) refreshStats();
     return ok;
 }
 
 QVariantList SynapseDataController::getDeckCards(const QString &deckId) {
-    QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, "
+    QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
                           "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-                          "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, s.due_date "
+                          "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
+                          "COALESCE(s.state, 'new') as state, s.due_date "
                           "FROM anki_cards c LEFT JOIN anki_srs_state s ON c.id = s.id "
                           "WHERE c.deck_id = '%1' AND c.deleted_at IS NULL ORDER BY c.created_at ASC")
         .arg(escapeSql(deckId));
     return executeQuery(sql).toVariantList();
+}
+
+QVariantList SynapseDataController::getDueCards(const QString &deckId) {
+    QString allDecksSql = "SELECT id, parent_id FROM anki_decks WHERE deleted_at IS NULL";
+    QJsonArray deckRows = executeQuery(allDecksSql);
+    QMap<QString, QStringList> childrenMap;
+    for (int i = 0; i < deckRows.size(); ++i) {
+        QJsonObject o = deckRows[i].toObject();
+        QString pid = o["parent_id"].toString();
+        if (!pid.isEmpty()) childrenMap[pid].append(o["id"].toString());
+    }
+
+    QStringList targetDeckIds;
+    std::function<void(const QString&)> collectDecks = [&](const QString &did) {
+        targetDeckIds.append(did);
+        for (const QString &cid : childrenMap.value(did)) {
+            collectDecks(cid);
+        }
+    };
+    collectDecks(deckId);
+
+    QString idList;
+    for (int i = 0; i < targetDeckIds.size(); ++i) {
+        if (i > 0) idList += ",";
+        idList += QString("'%1'").arg(escapeSql(targetDeckIds[i]));
+    }
+
+    QString sql = QString(
+        "SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
+        "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
+        "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
+        "COALESCE(s.state, 'new') as state, s.due_date "
+        "FROM anki_cards c "
+        "LEFT JOIN anki_srs_state s ON c.id = s.id "
+        "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL "
+        "ORDER BY CASE "
+        "  WHEN s.state IN ('learning', 'relearning') THEN 1 "
+        "  WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 2 "
+        "  WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 3 "
+        "  ELSE 4 END ASC, c.created_at ASC"
+    ).arg(idList.isEmpty() ? "''" : idList);
+
+    QVariantList list = executeQuery(sql).toVariantList();
+    // If no due cards in current schedule, provide all cards in the deck for practice study
+    if (list.isEmpty()) {
+        QString fallbackSql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
+                                      "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
+                                      "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
+                                      "COALESCE(s.state, 'new') as state, s.due_date "
+                                      "FROM anki_cards c LEFT JOIN anki_srs_state s ON c.id = s.id "
+                                      "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL ORDER BY c.created_at ASC")
+            .arg(idList.isEmpty() ? "''" : idList);
+        list = executeQuery(fallbackSql).toVariantList();
+    }
+    return list;
 }
 
 bool SynapseDataController::createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags) {
@@ -234,6 +537,23 @@ bool SynapseDataController::createCard(const QString &deckId, const QString &fro
         .arg(id, ts, ts, ts);
 
     bool ok = executeSql(cardSql + srsSql);
+    if (ok) refreshStats();
+    return ok;
+}
+
+bool SynapseDataController::updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE anki_cards SET front = '%1', back = '%2', tags = '%3', updated_at = '%4' WHERE id = '%5'")
+        .arg(escapeSql(front), escapeSql(back), escapeSql(tags), ts, escapeSql(cardId));
+    return executeSql(sql);
+}
+
+bool SynapseDataController::deleteCard(const QString &cardId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE anki_cards SET deleted_at = '%1' WHERE id = '%2'; "
+                          "UPDATE anki_srs_state SET deleted_at = '%1' WHERE id = '%2';")
+        .arg(ts, escapeSql(cardId));
+    bool ok = executeSql(sql);
     if (ok) refreshStats();
     return ok;
 }
