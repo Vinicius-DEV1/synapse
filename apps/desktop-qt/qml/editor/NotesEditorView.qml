@@ -16,6 +16,8 @@ Rectangle {
     property var collapsedNodeMap: ({})
     property string searchQuery: ""
     property bool isDirty: false
+    property bool isPreviewMode: false
+    property bool isEmojiPickerOpen: false
 
     Component.onCompleted: {
         loadPages()
@@ -152,6 +154,12 @@ Rectangle {
     Shortcut {
         sequences: ["Ctrl+S", "Cmd+S"]
         onActivated: notesRoot.saveActiveNote()
+    }
+
+    // Keyboard shortcut Ctrl+E / ⌘E (Toggle Edit / Preview mode)
+    Shortcut {
+        sequences: ["Ctrl+E", "Cmd+E"]
+        onActivated: notesRoot.isPreviewMode = !notesRoot.isPreviewMode
     }
 
     RowLayout {
@@ -495,21 +503,78 @@ Rectangle {
 
                 Item { height: 12 } // Top spacing
 
-                // Top Actions Row: Page Icon + Status + Save button + Delete button
+                // Top Actions Row: Page Icon + Status + Mode Toggle + Save button + Delete button
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 12
 
                     // Emoji Icon Button
                     Rectangle {
+                        id: emojiBtn
                         width: 44; height: 44; radius: 10
-                        color: "#1a1924"
-                        border.color: "#ffffff12"
+                        color: notesRoot.isEmojiPickerOpen ? "#6366f126" : (emojiMouse.containsMouse ? "#211f30" : "#1a1924")
+                        border.color: notesRoot.isEmojiPickerOpen ? "#818cf8" : "#ffffff12"
+                        border.width: 1
 
                         Text {
                             anchors.centerIn: parent
                             text: notesRoot.activeIcon
                             font.pixelSize: 24
+                        }
+
+                        MouseArea {
+                            id: emojiMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: notesRoot.isEmojiPickerOpen = !notesRoot.isEmojiPickerOpen
+                        }
+                    }
+
+                    // Mode Toggle (Editar / Leitura Zen)
+                    Rectangle {
+                        width: 154; height: 36; radius: 8
+                        color: "#161524"
+                        border.color: "#ffffff12"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            spacing: 2
+
+                            Rectangle {
+                                Layout.fillWidth: true; Layout.fillHeight: true
+                                radius: 6
+                                color: !notesRoot.isPreviewMode ? "#6366f1" : "transparent"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "✏️ Editar"
+                                    color: !notesRoot.isPreviewMode ? "#ffffff" : "#a7a9be"
+                                    font.pixelSize: 11
+                                    font.bold: !notesRoot.isPreviewMode
+                                }
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: notesRoot.isPreviewMode = false
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true; Layout.fillHeight: true
+                                radius: 6
+                                color: notesRoot.isPreviewMode ? "#6366f1" : "transparent"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "👁️ Leitura"
+                                    color: notesRoot.isPreviewMode ? "#ffffff" : "#a7a9be"
+                                    font.pixelSize: 11
+                                    font.bold: notesRoot.isPreviewMode
+                                }
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: notesRoot.isPreviewMode = true
+                                }
+                            }
                         }
                     }
 
@@ -565,6 +630,46 @@ Rectangle {
                     }
                 }
 
+                // Emoji Picker Grid Popover
+                Rectangle {
+                    visible: notesRoot.isEmojiPickerOpen
+                    Layout.fillWidth: true
+                    height: 84
+                    radius: 12
+                    color: "#161524"
+                    border.color: "#818cf84d"
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 8
+
+                        Repeater {
+                            model: ["📄", "💡", "🚀", "📚", "💻", "🎨", "⚡", "🎯", "🔒", "⭐", "🧠", "🔥", "📊", "💰", "🎵", "📝"]
+                            delegate: Rectangle {
+                                Layout.fillWidth: true
+                                height: 36
+                                radius: 8
+                                color: emMouse.containsMouse ? "#ffffff18" : "#1a1924"
+                                border.color: "#ffffff0a"
+                                Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 18 }
+                                MouseArea {
+                                    id: emMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        notesRoot.activeIcon = modelData
+                                        notesRoot.isEmojiPickerOpen = false
+                                        notesRoot.saveActiveNote()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Borderless Document Title Input
                 TextField {
                     id: noteTitleInput
@@ -614,8 +719,9 @@ Rectangle {
                     }
                 }
 
-                // Formatting Toolbar
+                // Formatting Toolbar (Visible in Edit mode only)
                 Rectangle {
+                    visible: !notesRoot.isPreviewMode
                     Layout.fillWidth: true
                     height: 38
                     radius: 8
@@ -700,8 +806,9 @@ Rectangle {
                     }
                 }
 
-                // Editor Surface
+                // 1. Editor Surface (Active in Edit mode)
                 Rectangle {
+                    visible: !notesRoot.isPreviewMode
                     Layout.fillWidth: true
                     implicitHeight: Math.max(480, noteEditorArea.implicitHeight + 40)
                     radius: 12
@@ -726,6 +833,30 @@ Rectangle {
                                 autoSaveTimer.restart()
                             }
                         }
+                    }
+                }
+
+                // 2. Zen Markdown Reading Canvas (Active in Preview mode)
+                Rectangle {
+                    visible: notesRoot.isPreviewMode
+                    Layout.fillWidth: true
+                    implicitHeight: Math.max(480, markdownDisplayArea.implicitHeight + 60)
+                    radius: 12
+                    color: "#161524" // elevated surface
+                    border.color: "#ffffff0f"
+                    border.width: 1
+
+                    Text {
+                        id: markdownDisplayArea
+                        anchors.fill: parent
+                        anchors.margins: 28
+                        text: (noteEditorArea.text || notesRoot.activeContent || "*Esta nota ainda não possui conteúdo.*")
+                        textFormat: Text.MarkdownText
+                        color: "#fffffe"
+                        font.pixelSize: 15
+                        font.family: "Inter, -apple-system, sans-serif"
+                        wrapMode: Text.Wrap
+                        lineHeight: 1.45
                     }
                 }
 
