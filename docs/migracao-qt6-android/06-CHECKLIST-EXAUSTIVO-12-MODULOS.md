@@ -108,13 +108,37 @@
 ## 12. Módulo 12: Configurações, Backup & CommandPalette
 - [x] **Rust Core**: Metadados de versão e status do SQLite WAL.
 - [x] **C-ABI / Controller**: `dbPath`, contadores de todas as entidades, `refreshStats()`, `exportDatabaseBackup()`, `optimizeDatabase()`, `getSystemDiagnostics()`.
-- [x] **Desktop QML**: `main.qml` com `StackLayout` dos 12 módulos, navegação rápida via barra lateral colapsável (`Ctrl+B`), `CommandPalette` global com `Ctrl+K` para busca e ações instantâneas, e `SettingsView.qml` completo com backup `.sqlite`, otimização WAL, telemetria de tamanho e controle de bloqueio do cofre.
-- [x] **Mobile Android**: `MainActivity.kt` com bottom navigation bar, navegação hierárquica e bottom sheet para todos os 11 módulos mobile.
+- [x] **Desktop QML**: `main.qml` com `StackLayout` dos 15 módulos, navegação rápida via barra lateral colapsável (`Ctrl+B`), `CommandPalette` global com `Ctrl+K` para busca e ações instantâneas, e `SettingsView.qml` completo com backup `.sqlite`, otimização WAL, telemetria de tamanho e controle de bloqueio do cofre.
+- [x] **Mobile Android**: `MainActivity.kt` com bottom navigation bar, navegação hierárquica e bottom sheet para todos os 14 módulos mobile secundários.
 
 ---
 
-## 13. Matriz de Homologação Final (Pre-Release Gate)
-- [x] Todos os 12 módulos carregando dados reais do banco sem warnings no console.
+## 13. Módulo 13: Painel Executivo Início (Dashboard)
+- [x] **Rust Core**: Agregação de dados entre múltiplos domínios (calendário, notas, finanças, hábitos).
+- [x] **C-ABI / Controller**: `getHomeDashboardData()` retornando `todayEvents`, `tomorrowEvents`, `pinnedPages`, `recentPages`, `financeSummary`, e `habitsToday`.
+- [x] **Desktop QML**: `HomeView.qml` com saudação adaptativa, data por extenso com badge "Hoje", 4 cards de ação rápida de alta ergonomia, agenda com indicador de horário em tempo real, snapshot financeiro e páginas fixadas e recentes.
+- [x] **Mobile Android**: `HomeScreen.kt` com layout fluído para telas sensíveis ao toque, grid de ações rápidas, resumo de agenda e notas fixadas.
+
+---
+
+## 14. Módulo 14: Lixeira do Sistema (Trash & Recovery)
+- [x] **Rust Core**: Soft-delete pattern (`deleted_at IS NOT NULL`) padronizado em 8 tabelas centrais.
+- [x] **C-ABI / Controller**: `getTrashItems()`, `restoreTrashItem(type, id)`, `deleteTrashItemPermanently(type, id)`, `emptyTrash()`.
+- [x] **Desktop QML**: `TrashView.qml` com indexação multi-entidade (`pages`, `decks`, `cards`, `videos`, `books`, `culture`, `habits`, `vault`), pills de identificação visual, data de remoção, restauração em 1 clique e modal de expurgo definitivo seguro.
+- [x] **Mobile Android**: `TrashScreen.kt` com lista filtrada, restauração instantânea e confirmação de exclusão definitiva.
+
+---
+
+## 15. Módulo 15: Diagramas & Whiteboard Infinito
+- [x] **Rust Core**: Tabela canônica `diagrams` (`id`, `title`, `content`, `icon`, `created_at`, `updated_at`, `deleted_at`).
+- [x] **C-ABI / Controller**: `getDiagrams()`, `getDiagram(id)`, `saveDiagram(id, title, content, icon)`, `createDiagram(title, icon)`, `deleteDiagram(id)`.
+- [x] **Desktop QML**: `DiagramsView.qml` com galeria de diagramas, canvas infinito com zoom/pan, ferramentas interativas (caneta suave, retângulo, círculo, sticky notes coloridos), paleta de cores e persistência automática.
+- [x] **Mobile Android**: `DiagramsScreen.kt` com suporte a gestos de toque direto (pointerInput drag), desenho suave com curvas quadráticas Bézier, seletor de espessura e cores.
+
+---
+
+## 16. Matriz de Homologação Final (Pre-Release Gate)
+- [x] Todos os 15 módulos carregando dados reais do banco sem warnings no console.
 - [x] Zero erros de compilação C++ e Rust (9 testes verdes em `synapse-core`, 0 warnings no Cmake).
 - [x] Memória de trabalho abaixo de 60 MB no Desktop em execução contínua (zero overhead de Chromium).
 - [x] Preservação estrita das pastas `src/` e `src-tauri/` sem deleção ou regressão.

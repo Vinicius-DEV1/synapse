@@ -68,22 +68,25 @@ O projeto **Synapse** (antigo Caderno) nasceu como um monólito híbrido desktop
 
 ---
 
-## 3. Matriz de Status dos 12 Módulos do Sistema
+## 3. Matriz de Status dos 15 Módulos do Sistema
 
 | # | Módulo | Core Rust | C-ABI / Controller C++ | Desktop Qt 6 (QML) | Android Compose | Status Atual |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| 1 | **Editor de Páginas & Documentos** | ✅ Concluído | ✅ Concluído | ✅ Concluído (162 pág reais, depth*16px, Fixados, toolbar MD, zen mode) | ✅ Concluído (`NotesScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 2 | **Media Center & Vídeo Criptografado** | ✅ Concluído | ✅ Concluído (`libmpv`) | ✅ Concluído (galeria, coleções, player GPU, speed 0.75-2.0x, drawer de momentos) | ✅ Concluído (Media3 + `VideoPlayerScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 3 | **Anki & Flashcards (FSRS v5)** | ✅ Concluído | ✅ Concluído (FSRS + CRUD) | ✅ Concluído (árvore depth*24px, 3 círculos, DeckBrowser, dashboard FSRS, cloze parsing, flip anim) | ✅ Concluído (`AnkiStudyScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 4 | **Baterias de Questões & Simulado Zen** | ✅ Concluído | ✅ Concluído (attempts + CRUD) | ✅ Concluído (4 KPIs, Caderno de Erros, Simulado Dinâmico, modo zen 1-4/A-D, gabarito [G]) | ✅ Concluído (`ZenQuizScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 5 | **Finanças Pessoais & Wishlist** | ✅ Concluído | ✅ Concluído (summary + CRUD) | ✅ Concluído (3 cards, filtros Tipo/Busca, Wishlist com conversão '✓ Adquirido') | ✅ Concluído (`FinanceScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 6 | **Hábitos & Consistência Diária** | ✅ Concluído | ✅ Concluído (range logs + CRUD)| ✅ Concluído (matriz 7 dias de ofensiva, checkins interativos, criação) | ✅ Concluído (`HabitsScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 7 | **Calendário & Agenda** | ✅ Concluído | ✅ Concluído (events + toggle) | ✅ Concluído (Grade mensal 7 colunas, navegação Hoje/Mês, lista, filtros, criação) | ✅ Concluído (`CalendarScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 8 | **Biblioteca & E-Reader** | ✅ Concluído | ✅ Concluído (books + progress)| ✅ Concluído (4 KPIs, filtros de status Lendo/Concluídos/Fila, steppers, criação) | ✅ Concluído (`LibraryScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 9 | **Cultura & Entretenimento** | ✅ Concluído | ✅ Concluído (items + steppers) | ✅ Concluído (filtros mídia/status, modal sinopse/detalhes, steppers -5/-1/+1/+5) | ✅ Concluído (`CultureScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 10 | **Foco Pomodoro & Lofi** | ✅ Concluído | ✅ Concluído (sessions + lofis)| ✅ Concluído (timer circular, modal custom presets, modal celebração com confetes) | ✅ Concluído (`FocusScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 11 | **Cofre E2EE & Credenciais** | ✅ Concluído | ✅ Concluído (vault CRUD + gen) | ✅ Concluído (filtros grupos, busca em tempo real, cópia segura para clipboard) | ✅ Concluído (`VaultScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
-| 12 | **Configurações, Backup & CommandPalette**| ✅ Concluído | ✅ Concluído (backup + WAL)  | ✅ Concluído (Ctrl+K CommandPalette, backup .sqlite, otimização WAL, diagnósticos) | ✅ Concluído (`MainActivity.kt` + BottomSheet) | 🟢 100% Funcional (Desktop + Android) |
+| 1 | **Painel Executivo Início (Dashboard)** | ✅ Concluído | ✅ Concluído (`getHomeDashboardData`) | ✅ Concluído (saudação, agenda Hoje/Amanhã, 4 ações rápidas, KPIs financeiros, notas fixadas/recentes) | ✅ Concluído (`HomeScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 2 | **Editor de Páginas & Documentos** | ✅ Concluído | ✅ Concluído | ✅ Concluído (162 pág reais, depth*16px, Fixados, toolbar MD, zen mode) | ✅ Concluído (`NotesScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 3 | **Diagramas & Infinite Whiteboard** | ✅ Concluído | ✅ Concluído (`diagrams` CRUD) | ✅ Concluído (canvas infinito, galeria de quadros, ferramentas caneta/retângulo/círculo/post-it, auto-save) | ✅ Concluído (`DiagramsScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 4 | **Media Center & Vídeo Criptografado** | ✅ Concluído | ✅ Concluído (`libmpv`) | ✅ Concluído (galeria, coleções, player GPU, speed 0.75-2.0x, drawer de momentos) | ✅ Concluído (Media3 + `VideoPlayerScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 5 | **Anki & Flashcards (FSRS v5)** | ✅ Concluído | ✅ Concluído (FSRS + CRUD) | ✅ Concluído (árvore depth*24px, 3 círculos, DeckBrowser, dashboard FSRS, cloze parsing, flip anim, DeckSettingsModal) | ✅ Concluído (`AnkiStudyScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 6 | **Baterias de Questões & Simulado Zen** | ✅ Concluído | ✅ Concluído (attempts + CRUD) | ✅ Concluído (4 KPIs, Caderno de Erros, Simulado Dinâmico, modo zen 1-4/A-D, gabarito [G]) | ✅ Concluído (`ZenQuizScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 7 | **Finanças Pessoais & Wishlist** | ✅ Concluído | ✅ Concluído (summary + CRUD) | ✅ Concluído (3 cards, filtros Tipo/Busca, Wishlist com conversão '✓ Adquirido') | ✅ Concluído (`FinanceScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 8 | **Hábitos & Consistência Diária** | ✅ Concluído | ✅ Concluído (range logs + CRUD)| ✅ Concluído (matriz 7 dias de ofensiva, checkins interativos, criação) | ✅ Concluído (`HabitsScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 9 | **Calendário & Agenda** | ✅ Concluído | ✅ Concluído (events + toggle) | ✅ Concluído (Grade mensal 7 colunas, navegação Hoje/Mês, lista, filtros, criação) | ✅ Concluído (`CalendarScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 10 | **Biblioteca & E-Reader** | ✅ Concluído | ✅ Concluído (books + progress)| ✅ Concluído (4 KPIs, filtros de status Lendo/Concluídos/Fila, steppers, criação) | ✅ Concluído (`LibraryScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 11 | **Cultura & Entretenimento** | ✅ Concluído | ✅ Concluído (items + steppers) | ✅ Concluído (filtros mídia/status, modal sinopse/detalhes, steppers -5/-1/+1/+5) | ✅ Concluído (`CultureScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 12 | **Foco Pomodoro & Lofi** | ✅ Concluído | ✅ Concluído (sessions + lofis)| ✅ Concluído (timer circular, modal custom presets, modal celebração com confetes) | ✅ Concluído (`FocusScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 13 | **Cofre E2EE & Credenciais** | ✅ Concluído | ✅ Concluído (vault CRUD + gen) | ✅ Concluído (filtros grupos, busca em tempo real, cópia segura para clipboard) | ✅ Concluído (`VaultScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 14 | **Lixeira Geral do Sistema (Trash)** | ✅ Concluído | ✅ Concluído (`getTrashItems`, etc.)| ✅ Concluído (indexação multi-tabela, pills de tipo, restauração em 1 clique, expurgo definitivo) | ✅ Concluído (`TrashScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 15 | **Configurações, Backup & CommandPalette**| ✅ Concluído | ✅ Concluído (backup + WAL)  | ✅ Concluído (Ctrl+K CommandPalette, backup .sqlite, otimização WAL, diagnósticos) | ✅ Concluído (`MainActivity.kt` + BottomSheet) | 🟢 100% Funcional (Desktop + Android) |
 
 ---
 
