@@ -15,6 +15,8 @@ Rectangle {
     property bool isStudying: false
     property bool isStudyFinished: false
     property int cardsReviewedThisSession: 0
+    property string userTypedAnswer: ""
+    property bool exactMatch: false
 
     // Modals
     property bool isCreatingDeck: false
@@ -73,6 +75,49 @@ Rectangle {
         return true
     }
 
+    function isClozeCard(card) {
+        if (!card) return false
+        if (card.card_type === "cloze") return true
+        return (typeof card.front === "string") && card.front.indexOf("{{c") !== -1
+    }
+
+    function getTargetClozeAnswer(card) {
+        if (!card || !card.front) return ""
+        var match = card.front.match(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/)
+        return match ? match[1] : ""
+    }
+
+    function formatClozeText(text, revealed, typed) {
+        if (!text) return ""
+        var clean = text.replace(/<br\s*[\/]?>/gi, "<br/>").replace(/<\/?p[^>]*>/gi, "")
+        if (!revealed) {
+            return clean.replace(/\{\{c\d+::(.*?)(?:::([^}]+))?\}\}/g, function(match, ans, hint) {
+                var hintLabel = hint ? hint : "..."
+                return "<span style='color: #818cf8; font-weight: bold; background-color: rgba(99,102,241,0.2); padding: 2px 8px; border-radius: 6px; border: 1px dashed #818cf8;'>[" + hintLabel + "]</span>"
+            })
+        } else {
+            return clean.replace(/\{\{c\d+::(.*?)(?:::([^}]+))?\}\}/g, function(match, ans) {
+                var color = "#34d399" // emerald
+                if (typed && typed.length > 0) {
+                    var matchOk = (typed.trim().toLowerCase() === ans.trim().toLowerCase())
+                    color = matchOk ? "#34d399" : "#fb7185" // emerald or rose
+                }
+                return "<span style='color: " + color + "; font-weight: bold; background-color: rgba(99,102,241,0.15); padding: 2px 8px; border-radius: 6px; border-bottom: 2px solid " + color + ";'>" + ans + "</span>"
+            })
+        }
+    }
+
+    function revealAnswer() {
+        if (deckCards.length > 0 && currentCardIndex < deckCards.length) {
+            var card = deckCards[currentCardIndex]
+            if (isClozeCard(card) || card.card_type === "typing") {
+                var target = getTargetClozeAnswer(card)
+                exactMatch = (userTypedAnswer.trim().toLowerCase() === target.trim().toLowerCase())
+            }
+        }
+        isAnswerRevealed = true
+    }
+
     function startStudy(deck) {
         selectedDeck = deck
         var due = dataController.getDueCards(deck.id)
@@ -83,6 +128,8 @@ Rectangle {
         deckCards = due
         currentCardIndex = 0
         cardsReviewedThisSession = 0
+        userTypedAnswer = ""
+        exactMatch = false
         isAnswerRevealed = false
         isStudyFinished = false
         isStudying = true
@@ -96,6 +143,8 @@ Rectangle {
 
         if (currentCardIndex + 1 < deckCards.length) {
             currentCardIndex++
+            userTypedAnswer = ""
+            exactMatch = false
             isAnswerRevealed = false
         } else {
             isStudyFinished = true
@@ -130,12 +179,12 @@ Rectangle {
     Shortcut {
         sequence: "Space"
         enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && !ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.isAnswerRevealed = true
+        onActivated: ankiRoot.revealAnswer()
     }
     Shortcut {
         sequence: "Return"
         enabled: ankiRoot.isStudying && !ankiRoot.isStudyFinished && !ankiRoot.isAnswerRevealed
-        onActivated: ankiRoot.isAnswerRevealed = true
+        onActivated: ankiRoot.revealAnswer()
     }
     Shortcut {
         sequence: "1"
@@ -1010,37 +1059,170 @@ Rectangle {
 
                     // Flashcard Surface
                     Rectangle {
+                        id: cardSurface
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: 400
                         radius: 16
                         color: "#1a1924"
-                        border.color: "#ffffff12"
+                        border.color: ankiRoot.isAnswerRevealed ? "#818cf844" : "#ffffff12"
                         border.width: 1
+
+                        transform: Rotation {
+                            id: cardFlip
+                            origin.x: cardSurface.width / 2
+                            origin.y: cardSurface.height / 2
+                            axis { x: 0; y: 1; z: 0 }
+                            angle: ankiRoot.isAnswerRevealed ? 360 : 0
+                            Behavior on angle {
+                                NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+                            }
+                        }
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.margins: 36
+                            anchors.margins: 32
                             spacing: 16
 
-                            // Front Label
-                            Text {
-                                text: "FRENTE"
-                                color: "#8b5cf6"
-                                font.pixelSize: 11
-                                font.bold: true
-                                font.letterSpacing: 1.5
+                            // Card Top Meta Bar: Front Label & Type Tag
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Text {
+                                    text: "FRENTE"
+                                    color: "#8b5cf6"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    font.letterSpacing: 1.5
+                                }
+
+                                Rectangle {
+                                    property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                        ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                    property bool isCloze: ankiRoot.isClozeCard(currentCard)
+                                    visible: isCloze || (currentCard && currentCard.card_type === "typing")
+                                    height: 20
+                                    width: typeLabel.contentWidth + 12
+                                    radius: 10
+                                    color: "#6366f125"
+                                    border.color: "#818cf855"
+                                    border.width: 1
+
+                                    Text {
+                                        id: typeLabel
+                                        anchors.centerIn: parent
+                                        text: parent.isCloze ? "Cloze Deletion" : "Digitação"
+                                        color: "#a78bfa"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Text {
+                                    property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                        ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                    text: (currentCard && currentCard.reps !== undefined) ? ("Repetição #" + currentCard.reps) : ""
+                                    color: "#64748b"
+                                    font.pixelSize: 11
+                                }
                             }
 
-                            // Question Text
+                            // Question / Cloze Text
                             Text {
                                 Layout.fillWidth: true
-                                text: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
-                                    ? ankiRoot.deckCards[ankiRoot.currentCardIndex].front
-                                    : ""
+                                property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                    ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                property bool isCloze: ankiRoot.isClozeCard(currentCard)
+                                textFormat: isCloze ? Text.RichText : Text.PlainText
+                                text: {
+                                    if (!currentCard) return ""
+                                    if (isCloze) {
+                                        return ankiRoot.formatClozeText(currentCard.front, ankiRoot.isAnswerRevealed, ankiRoot.userTypedAnswer)
+                                    }
+                                    return currentCard.front
+                                }
                                 color: "#fffffe"
-                                font.pixelSize: 22
+                                font.pixelSize: 21
                                 font.bold: true
                                 wrapMode: Text.Wrap
+                            }
+
+                            // Typing Input Field (for cloze or typing cards before reveal)
+                            Rectangle {
+                                property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                    ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                visible: !ankiRoot.isAnswerRevealed && (ankiRoot.isClozeCard(currentCard) || (currentCard && currentCard.card_type === "typing"))
+                                Layout.fillWidth: true
+                                height: 46
+                                radius: 10
+                                color: "#0f0e17"
+                                border.color: typingInput.activeFocus ? "#818cf8" : "#ffffff15"
+                                border.width: 1
+
+                                TextInput {
+                                    id: typingInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 14
+                                    anchors.rightMargin: 14
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    color: "#fffffe"
+                                    font.pixelSize: 15
+                                    text: ankiRoot.userTypedAnswer
+                                    onTextChanged: ankiRoot.userTypedAnswer = text
+                                    onAccepted: ankiRoot.revealAnswer()
+
+                                    Text {
+                                        visible: !typingInput.text && !typingInput.activeFocus
+                                        anchors.fill: parent
+                                        verticalAlignment: Text.AlignVCenter
+                                        text: "Digite a palavra que falta e pressione Enter..."
+                                        color: "#64748b"
+                                        font.pixelSize: 13
+                                    }
+                                }
+                            }
+
+                            // Match Feedback Badge (if user typed an answer)
+                            Rectangle {
+                                property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                    ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                visible: ankiRoot.isAnswerRevealed && (ankiRoot.userTypedAnswer.length > 0) && (ankiRoot.isClozeCard(currentCard) || (currentCard && currentCard.card_type === "typing"))
+                                Layout.fillWidth: true
+                                height: 38
+                                radius: 8
+                                color: ankiRoot.exactMatch ? "#10b98115" : "#f43f5e15"
+                                border.color: ankiRoot.exactMatch ? "#10b98144" : "#f43f5e44"
+                                border.width: 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 12
+                                    spacing: 8
+                                    Text {
+                                        text: ankiRoot.exactMatch ? "✓ Exato:" : "✕ Sua Resposta:"
+                                        color: ankiRoot.exactMatch ? "#34d399" : "#fb7185"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        text: "\"" + ankiRoot.userTypedAnswer + "\""
+                                        color: "#fffffe"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    Text {
+                                        visible: !ankiRoot.exactMatch
+                                        property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                            ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                        text: "Esperado: \"" + ankiRoot.getTargetClozeAnswer(currentCard) + "\""
+                                        color: "#34d399"
+                                        font.pixelSize: 12
+                                    }
+                                }
                             }
 
                             Item { Layout.fillHeight: true }
@@ -1048,7 +1230,7 @@ Rectangle {
                             // Back Section (revealed)
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 12
+                                spacing: 10
                                 visible: ankiRoot.isAnswerRevealed
 
                                 Rectangle {
@@ -1057,12 +1239,16 @@ Rectangle {
                                     color: "#ffffff0f"
                                 }
 
-                                Text {
-                                    text: "VERSO"
-                                    color: "#10b981"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    font.letterSpacing: 1.5
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Text {
+                                        text: "VERSO"
+                                        color: "#10b981"
+                                        font.pixelSize: 11
+                                        font.bold: true
+                                        font.letterSpacing: 1.5
+                                    }
                                 }
 
                                 Text {
@@ -1071,8 +1257,45 @@ Rectangle {
                                         ? ankiRoot.deckCards[ankiRoot.currentCardIndex].back
                                         : ""
                                     color: "#a7a9be"
-                                    font.pixelSize: 17
+                                    font.pixelSize: 16
                                     wrapMode: Text.Wrap
+                                }
+
+                                // Extra Note if present
+                                Rectangle {
+                                    property var currentCard: (ankiRoot.deckCards.length > 0 && ankiRoot.currentCardIndex < ankiRoot.deckCards.length)
+                                        ? ankiRoot.deckCards[ankiRoot.currentCardIndex] : null
+                                    property string noteText: (currentCard && currentCard.extra_note) ? currentCard.extra_note : ""
+                                    visible: noteText.length > 0
+                                    Layout.fillWidth: true
+                                    height: noteCol.height + 16
+                                    radius: 8
+                                    color: "#ffffff06"
+                                    border.color: "#ffffff0a"
+                                    border.width: 1
+
+                                    ColumnLayout {
+                                        id: noteCol
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.margins: 8
+                                        spacing: 4
+
+                                        Text {
+                                            text: "💡 Anotação:"
+                                            color: "#fbbf24"
+                                            font.pixelSize: 11
+                                            font.bold: true
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: parent.parent.noteText
+                                            color: "#94a3b8"
+                                            font.pixelSize: 13
+                                            wrapMode: Text.Wrap
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1101,7 +1324,7 @@ Rectangle {
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: ankiRoot.isAnswerRevealed = true
+                                onClicked: ankiRoot.revealAnswer()
                             }
                         }
 

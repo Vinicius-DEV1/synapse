@@ -521,6 +521,7 @@ bool SynapseDataController::deleteDeck(const QString &deckId) {
 
 QVariantList SynapseDataController::getDeckCards(const QString &deckId) {
     QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
+                          "c.validation_mode, c.extra_note, c.media_url, "
                           "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
                           "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
                           "COALESCE(s.state, 'new') as state, s.due_date "
@@ -557,6 +558,7 @@ QVariantList SynapseDataController::getDueCards(const QString &deckId) {
 
     QString sql = QString(
         "SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
+        "c.validation_mode, c.extra_note, c.media_url, "
         "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
         "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
         "COALESCE(s.state, 'new') as state, s.due_date "
@@ -574,6 +576,7 @@ QVariantList SynapseDataController::getDueCards(const QString &deckId) {
     // If no due cards in current schedule, provide all cards in the deck for practice study
     if (list.isEmpty()) {
         QString fallbackSql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
+                                      "c.validation_mode, c.extra_note, c.media_url, "
                                       "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
                                       "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
                                       "COALESCE(s.state, 'new') as state, s.due_date "
