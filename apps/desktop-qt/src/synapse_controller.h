@@ -67,6 +67,9 @@ public:
     Q_INVOKABLE QVariantList getVideoCollections();
     Q_INVOKABLE bool updateVideoProgress(const QString &videoId, double progress);
     Q_INVOKABLE bool deleteVideo(const QString &videoId);
+    Q_INVOKABLE QVariantList getVideoWords(const QString &videoId);
+    Q_INVOKABLE bool addVideoWord(const QString &videoId, const QString &word, const QString &context, double timestamp);
+    Q_INVOKABLE bool deleteVideoWord(const QString &wordId);
 
     // 3. Anki & Flashcards (Hierarchical Tree & FSRS v5)
     Q_INVOKABLE QVariantList getDecks();

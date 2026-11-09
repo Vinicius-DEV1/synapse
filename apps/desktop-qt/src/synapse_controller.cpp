@@ -319,6 +319,30 @@ bool SynapseDataController::deleteVideo(const QString &videoId) {
     return ok;
 }
 
+QVariantList SynapseDataController::getVideoWords(const QString &videoId) {
+    QString sql = QString("SELECT id, video_id, word, context, timestamp "
+                          "FROM video_words WHERE video_id = '%1' AND deleted_at IS NULL "
+                          "ORDER BY timestamp ASC").arg(escapeSql(videoId));
+    return executeQuery(sql).toVariantList();
+}
+
+bool SynapseDataController::addVideoWord(const QString &videoId, const QString &word, const QString &context, double timestamp) {
+    QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    QString ts = currentTimestamp();
+    QString sql = QString("INSERT INTO video_words (id, video_id, word, context, timestamp, created_at, updated_at) "
+                          "VALUES ('%1', '%2', '%3', '%4', %5, '%6', '%6')")
+        .arg(id, escapeSql(videoId), escapeSql(word), escapeSql(context))
+        .arg(timestamp).arg(ts);
+    return executeSql(sql);
+}
+
+bool SynapseDataController::deleteVideoWord(const QString &wordId) {
+    QString ts = currentTimestamp();
+    QString sql = QString("UPDATE video_words SET deleted_at = '%1' WHERE id = '%2'")
+        .arg(ts, escapeSql(wordId));
+    return executeSql(sql);
+}
+
 // ---------------------------------------------------------------------------
 // 3. Anki & Flashcards (Hierarchical Tree & FSRS v5)
 // ---------------------------------------------------------------------------
