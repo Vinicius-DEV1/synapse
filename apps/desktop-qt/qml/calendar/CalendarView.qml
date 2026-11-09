@@ -6,11 +6,42 @@ Rectangle {
     id: calendarRoot
     color: "#0f0e17" // bg-dark-bg
 
-    property var events: []
+    property var allEvents: []
+    property var filteredEvents: []
+    property string activeStatusFilter: "all" // "all", "pending", "completed"
+    property string searchFilter: ""
     property bool isCreatingEvent: false
+    property string selectedColor: "#3b82f6"
 
     function refreshEvents() {
-        events = dataController.getCalendarEvents()
+        allEvents = dataController.getCalendarEvents()
+        applyFilters()
+    }
+
+    function applyFilters() {
+        var query = searchFilter.trim().toLowerCase()
+        var result = []
+        for (var i = 0; i < allEvents.length; i++) {
+            var ev = allEvents[i]
+            var matchStatus = true
+            if (activeStatusFilter === "pending") {
+                matchStatus = (ev.status !== "completed")
+            } else if (activeStatusFilter === "completed") {
+                matchStatus = (ev.status === "completed")
+            }
+
+            var matchSearch = true
+            if (query.length > 0) {
+                var title = (ev.title || "").toLowerCase()
+                var desc = (ev.description || "").toLowerCase()
+                matchSearch = (title.indexOf(query) !== -1 || desc.indexOf(query) !== -1)
+            }
+
+            if (matchStatus && matchSearch) {
+                result.push(ev)
+            }
+        }
+        filteredEvents = result
     }
 
     Component.onCompleted: {
@@ -22,7 +53,7 @@ Rectangle {
         anchors.margins: 32
         spacing: 24
 
-        // Header
+        // Top Header and Controls
         RowLayout {
             Layout.fillWidth: true
             spacing: 16
@@ -36,7 +67,7 @@ Rectangle {
                     font.bold: true
                 }
                 Text {
-                    text: calendarRoot.events.length + " compromisso(s) e eventos sincronizados com o banco local"
+                    text: calendarRoot.filteredEvents.length + " compromisso(s) listado(s) de " + calendarRoot.allEvents.length + " no total"
                     color: "#a7a9be"
                     font.pixelSize: 13
                 }
@@ -44,9 +75,131 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
+            // Search Bar
             Rectangle {
-                width: 140; height: 38; radius: 10
-                color: "#7c3aed" // brand-600
+                Layout.preferredWidth: 240
+                height: 40
+                radius: 10
+                color: "#15141b"
+                border.color: eventSearchInput.activeFocus ? "#3b82f680" : "#ffffff12"
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 8
+
+                    Text { text: "🔍"; color: "#a7a9be"; font.pixelSize: 12 }
+
+                    TextInput {
+                        id: eventSearchInput
+                        Layout.fillWidth: true
+                        color: "#fffffe"
+                        font.pixelSize: 13
+                        selectByMouse: true
+                        onTextChanged: {
+                            calendarRoot.searchFilter = text
+                            calendarRoot.applyFilters()
+                        }
+
+                        Text {
+                            text: "Buscar compromisso..."
+                            color: "#64748b"
+                            font.pixelSize: 13
+                            visible: !eventSearchInput.text && !eventSearchInput.activeFocus
+                        }
+                    }
+                }
+            }
+
+            // Status Filter Tabs
+            Rectangle {
+                height: 40
+                radius: 10
+                color: "#15141b"
+                border.color: "#ffffff12"
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    spacing: 4
+
+                    // Tab: Todos
+                    Rectangle {
+                        width: 70
+                        height: 32
+                        radius: 7
+                        color: calendarRoot.activeStatusFilter === "all" ? "#262438" : "transparent"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Todos"
+                            color: calendarRoot.activeStatusFilter === "all" ? "#fffffe" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: calendarRoot.activeStatusFilter === "all"
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                calendarRoot.activeStatusFilter = "all"
+                                calendarRoot.applyFilters()
+                            }
+                        }
+                    }
+
+                    // Tab: Pendentes
+                    Rectangle {
+                        width: 80
+                        height: 32
+                        radius: 7
+                        color: calendarRoot.activeStatusFilter === "pending" ? "#262438" : "transparent"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Pendentes"
+                            color: calendarRoot.activeStatusFilter === "pending" ? "#38bdf8" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: calendarRoot.activeStatusFilter === "pending"
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                calendarRoot.activeStatusFilter = "pending"
+                                calendarRoot.applyFilters()
+                            }
+                        }
+                    }
+
+                    // Tab: Concluídos
+                    Rectangle {
+                        width: 86
+                        height: 32
+                        radius: 7
+                        color: calendarRoot.activeStatusFilter === "completed" ? "#262438" : "transparent"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Concluídos"
+                            color: calendarRoot.activeStatusFilter === "completed" ? "#34d399" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: calendarRoot.activeStatusFilter === "completed"
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                calendarRoot.activeStatusFilter = "completed"
+                                calendarRoot.applyFilters()
+                            }
+                        }
+                    }
+                }
+            }
+
+            // "+ Novo Evento" Button
+            Rectangle {
+                width: 136
+                height: 40
+                radius: 10
+                color: "#3b82f6" // blue-600
 
                 RowLayout {
                     anchors.centerIn: parent
@@ -58,7 +211,15 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: calendarRoot.isCreatingEvent = true
+                    hoverEnabled: true
+                    onEntered: parent.color = "#2563eb"
+                    onExited: parent.color = "#3b82f6"
+                    onClicked: {
+                        eventTitleInput.text = ""
+                        eventDescInput.text = ""
+                        calendarRoot.selectedColor = "#3b82f6"
+                        calendarRoot.isCreatingEvent = true
+                    }
                 }
             }
         }
@@ -69,22 +230,27 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: calendarRoot.events
+            model: calendarRoot.filteredEvents
             spacing: 10
 
             delegate: Rectangle {
+                id: eventRowDelegate
                 width: eventListView.width
                 height: 72
                 radius: 12
-                color: "#1a1924" // bg-dark-card
-                border.color: eventCardMouse.containsMouse ? "#8b5cf64d" : (modelData.status === "completed" ? "#10b98133" : "#ffffff0f")
+                color: rowMouse.containsMouse ? "#211f30" : "#1a1924" // bg-dark-card
+                border.color: rowMouse.containsMouse ? "#3b82f666" : (modelData.status === "completed" ? "#10b98126" : "#ffffff0f")
                 border.width: 1
+
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
 
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 16
 
+                    // Left Colored Indicator Stripe
                     Rectangle {
                         width: 4
                         height: 40
@@ -92,9 +258,10 @@ Rectangle {
                         color: modelData.color || "#3b82f6"
                     }
 
+                    // Event Details
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 3
+                        spacing: 4
 
                         Text {
                             text: modelData.title
@@ -105,28 +272,52 @@ Rectangle {
                             elide: Text.ElideRight
                         }
 
-                        Text {
-                            text: (modelData.start_date ? Qt.formatDateTime(new Date(modelData.start_date), "dd/MM/yyyy às hh:mm") : "") + (modelData.description ? " • " + modelData.description : "")
-                            color: "#a7a9be"
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
+                        RowLayout {
+                            spacing: 8
+                            Text {
+                                text: modelData.start_date ? Qt.formatDateTime(new Date(modelData.start_date), "dd/MM/yyyy às hh:mm") : "Sem data definida"
+                                color: "#a7a9be"
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                visible: (modelData.description || "").trim().length > 0
+                                text: "•"
+                                color: "#64748b"
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                visible: (modelData.description || "").trim().length > 0
+                                text: modelData.description || ""
+                                color: "#a7a9be"
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: 400
+                            }
                         }
                     }
 
                     // Status Toggle Pill
                     Rectangle {
-                        width: 120
+                        width: 110
                         height: 32
                         radius: 8
-                        color: modelData.status === "completed" ? "#10b9811a" : "#8b5cf61a"
-                        border.color: modelData.status === "completed" ? "#10b98133" : "#8b5cf633"
+                        color: modelData.status === "completed" ? "#10b9811a" : "#3b82f61a"
+                        border.color: modelData.status === "completed" ? "#10b98133" : "#3b82f633"
 
-                        Text {
+                        RowLayout {
                             anchors.centerIn: parent
-                            text: modelData.status === "completed" ? "Concluído ✓" : "Pendente"
-                            color: modelData.status === "completed" ? "#34d399" : "#c4b5fd"
-                            font.pixelSize: 12
-                            font.bold: true
+                            spacing: 6
+                            Text {
+                                text: modelData.status === "completed" ? "✓" : "○"
+                                color: modelData.status === "completed" ? "#34d399" : "#60a5fa"
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                text: modelData.status === "completed" ? "Concluído" : "Pendente"
+                                color: modelData.status === "completed" ? "#34d399" : "#60a5fa"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
                         }
 
                         MouseArea {
@@ -138,10 +329,36 @@ Rectangle {
                             }
                         }
                     }
+
+                    // Delete Event Button
+                    Rectangle {
+                        width: 32
+                        height: 32
+                        radius: 8
+                        color: delMouse.containsMouse ? "#f43f5e26" : "transparent"
+                        border.color: delMouse.containsMouse ? "#f43f5e55" : "transparent"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "🗑️"
+                            font.pixelSize: 12
+                        }
+
+                        MouseArea {
+                            id: delMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                dataController.deleteCalendarEvent(modelData.id)
+                                calendarRoot.refreshEvents()
+                            }
+                        }
+                    }
                 }
 
                 MouseArea {
-                    id: eventCardMouse
+                    id: rowMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     z: -1
@@ -150,79 +367,184 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                visible: calendarRoot.events.length === 0
-                text: "Nenhum evento registrado na agenda."
+                visible: calendarRoot.filteredEvents.length === 0
+                text: "Nenhum evento registrado nesta visualização."
                 color: "#64748b"
                 font.pixelSize: 15
             }
         }
     }
 
+    // ===================================================================
     // Modal: Novo Evento
+    // ===================================================================
     Rectangle {
         anchors.fill: parent
-        color: "#b3000000"
+        color: "#00000088"
         visible: calendarRoot.isCreatingEvent
+        z: 95
 
-        MouseArea { anchors.fill: parent }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: calendarRoot.isCreatingEvent = false
+        }
 
         Rectangle {
             anchors.centerIn: parent
-            width: 440
-            height: 340
+            width: 460
+            height: 420
             radius: 16
-            color: "#1a1924"
-            border.color: "#ffffff1a"
+            color: "#161524"
+            border.color: "#ffffff14"
+            border.width: 1
+
+            MouseArea {
+                anchors.fill: parent
+            }
 
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 28
                 spacing: 16
 
-                Text {
-                    text: "Novo Evento na Agenda"
-                    color: "#fffffe"
-                    font.pixelSize: 18
-                    font.bold: true
-                }
-
-                TextField {
-                    id: eventTitleInput
+                RowLayout {
                     Layout.fillWidth: true
-                    placeholderText: "Título do compromisso (ex: Aula ao vivo)..."
+                    Text { text: "📅 Novo Compromisso na Agenda"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: "✕"
+                        color: "#a7a9be"
+                        font.pixelSize: 16
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: calendarRoot.isCreatingEvent = false
+                        }
+                    }
                 }
 
-                TextField {
-                    id: eventDescInput
+                // Title Input
+                ColumnLayout {
                     Layout.fillWidth: true
-                    placeholderText: "Descrição (opcional)..."
+                    spacing: 6
+                    Text { text: "Título do Compromisso"; color: "#a7a9be"; font.pixelSize: 12 }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: 8
+                        color: "#15141b"
+                        border.color: eventTitleInput.activeFocus ? "#3b82f6" : "#ffffff15"
+                        TextInput {
+                            id: eventTitleInput
+                            anchors.fill: parent
+                            anchors.leftMargin: 12; anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: "#fffffe"
+                            font.pixelSize: 13
+                            selectByMouse: true
+                        }
+                    }
                 }
 
-                TextField {
-                    id: eventDateInput
+                // Description Input
+                ColumnLayout {
                     Layout.fillWidth: true
-                    placeholderText: "Data de início..."
-                    text: Qt.formatDateTime(new Date(), "yyyy-MM-ddThh:mm:ss")
+                    spacing: 6
+                    Text { text: "Descrição (opcional)"; color: "#a7a9be"; font.pixelSize: 12 }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: 8
+                        color: "#15141b"
+                        border.color: eventDescInput.activeFocus ? "#3b82f6" : "#ffffff15"
+                        TextInput {
+                            id: eventDescInput
+                            anchors.fill: parent
+                            anchors.leftMargin: 12; anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: "#fffffe"
+                            font.pixelSize: 13
+                            selectByMouse: true
+                        }
+                    }
                 }
 
+                // Date / Time Input
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Text { text: "Data e Hora"; color: "#a7a9be"; font.pixelSize: 12 }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: 8
+                        color: "#15141b"
+                        border.color: eventDateInput.activeFocus ? "#3b82f6" : "#ffffff15"
+                        TextInput {
+                            id: eventDateInput
+                            anchors.fill: parent
+                            anchors.leftMargin: 12; anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: "#fffffe"
+                            font.pixelSize: 13
+                            selectByMouse: true
+                            text: Qt.formatDateTime(new Date(), "yyyy-MM-ddThh:mm:ss")
+                        }
+                    }
+                }
+
+                // Color Tag Picker
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Text { text: "Etiqueta de Cor"; color: "#a7a9be"; font.pixelSize: 12 }
+                    RowLayout {
+                        spacing: 10
+                        Repeater {
+                            model: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4"]
+                            delegate: Rectangle {
+                                width: 28; height: 28; radius: 14
+                                color: modelData
+                                border.color: calendarRoot.selectedColor === modelData ? "#ffffff" : "transparent"
+                                border.width: 2
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: calendarRoot.selectedColor = modelData
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                // Actions Footer
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 12
-                    Button {
-                        text: "Cancelar"
-                        Layout.fillWidth: true
-                        onClicked: calendarRoot.isCreatingEvent = false
+                    Item { Layout.fillWidth: true }
+                    Rectangle {
+                        width: 90; height: 38; radius: 8; color: "#211f30"
+                        Text { anchors.centerIn: parent; text: "Cancelar"; color: "#a7a9be"; font.pixelSize: 12 }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: calendarRoot.isCreatingEvent = false
+                        }
                     }
-                    Button {
-                        text: "Salvar"
-                        Layout.fillWidth: true
-                        onClicked: {
-                            if (eventTitleInput.text.trim().length > 0) {
-                                dataController.createCalendarEvent(eventTitleInput.text, eventDescInput.text, eventDateInput.text, eventDateInput.text, "event", "#3b82f6")
-                                eventTitleInput.text = ""
-                                eventDescInput.text = ""
-                                calendarRoot.isCreatingEvent = false
-                                calendarRoot.refreshEvents()
+                    Rectangle {
+                        width: 120; height: 38; radius: 8; color: "#3b82f6"
+                        Text { anchors.centerIn: parent; text: "Salvar Evento"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (eventTitleInput.text.trim().length > 0) {
+                                    dataController.createCalendarEvent(eventTitleInput.text, eventDescInput.text, eventDateInput.text, eventDateInput.text, "event", calendarRoot.selectedColor)
+                                    calendarRoot.isCreatingEvent = false
+                                    calendarRoot.refreshEvents()
+                                }
                             }
                         }
                     }
