@@ -148,8 +148,11 @@ public:
     Q_INVOKABLE bool deleteVaultItem(const QString &itemId);
     Q_INVOKABLE QString generateSecurePassword(int length = 16, bool symbols = true);
 
-    // 12. Utilitários
+    // 12. Utilitários & Manutenção do Sistema
     Q_INVOKABLE void copyToClipboard(const QString &text);
+    Q_INVOKABLE QString exportDatabaseBackup(const QString &destinationDir = "");
+    Q_INVOKABLE bool optimizeDatabase();
+    Q_INVOKABLE QVariantMap getSystemDiagnostics();
 
 signals:
     void dbPathChanged();
