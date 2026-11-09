@@ -72,18 +72,18 @@ O projeto **Synapse** (antigo Caderno) nasceu como um monólito híbrido desktop
 
 | # | Módulo | Core Rust | C-ABI / Controller C++ | Desktop Qt 6 (QML) | Android Compose | Status Atual |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| 1 | **Editor de Páginas & Documentos** | ✅ Concluído | ✅ Concluído | ✅ Concluído (162 pág reais, depth*16px, Fixados, toolbar MD) | 🟡 Em integração | 🟢 100% Funcional no Desktop |
-| 2 | **Media Center & Vídeo Criptografado** | ✅ Concluído | ✅ Concluído (`libmpv`) | ✅ Concluído (galeria, coleções, player GPU, speed 0.75-2.0x) | ✅ Concluído (Media3) | 🟢 100% Funcional no Desktop |
-| 3 | **Anki & Flashcards (FSRS v5)** | ✅ Concluído | ✅ Concluído (FSRS + CRUD) | ✅ Concluído (árvore depth*24px, 3 círculos, DeckBrowser, dashboard FSRS) | ✅ Concluído (Compose) | 🟢 100% Funcional no Desktop |
-| 4 | **Baterias de Questões & Simulado Zen** | ✅ Concluído | ✅ Concluído (attempts + CRUD) | ✅ Concluído (explorador, criação, modo zen 1-4/A-D, gabarito [G]) | ✅ Concluído (Compose) | 🟢 100% Funcional no Desktop |
-| 5 | **Finanças Pessoais & Wishlist** | ✅ Concluído | ✅ Concluído (summary + CRUD) | ✅ Concluído (3 cards, transações, wishlist, exclusão reativa) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 6 | **Hábitos & Consistência Diária** | ✅ Concluído | ✅ Concluído (range logs + CRUD)| ✅ Concluído (matriz 7 dias de ofensiva, checkins interativos, criação) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 7 | **Calendário & Agenda** | ✅ Concluído | ✅ Concluído (events + toggle) | ✅ Concluído (filtros Todos/Pendentes/Concluídos, busca, criação) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 8 | **Biblioteca & E-Reader** | ✅ Concluído | ✅ Concluído (books + progress)| ✅ Concluído (steppers -5/-1/+1/+5/+10, modal leitura, criação) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 9 | **Cultura & Entretenimento** | ✅ Concluído | ✅ Concluído (items + steppers) | ✅ Concluído (filtros mídia/status, busca, steppers -1/+1 Ep, criação) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 10 | **Foco Pomodoro & Lofi** | ✅ Concluído | ✅ Concluído (sessions + lofis)| ✅ Concluído (timer circular, pills de categoria, banner diário, lofis) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 11 | **Cofre E2EE & Credenciais** | ✅ Concluído | ✅ Concluído (vault CRUD + gen) | ✅ Concluído (filtros de grupos, busca em tempo real, cópia para clipboard) | ⚪ Planejado | 🟢 100% Funcional no Desktop |
-| 12 | **Configurações & Navegação Global**| ✅ Concluído | ✅ Concluído (counts + paths)  | ✅ Concluído (sidebar com badges de todos os módulos, grid 11 métricas) | 🟡 Bottom Nav | 🟢 100% Funcional no Desktop |
+| 1 | **Editor de Páginas & Documentos** | ✅ Concluído | ✅ Concluído | ✅ Concluído (162 pág reais, depth*16px, Fixados, toolbar MD, zen mode) | ✅ Concluído (`NotesScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 2 | **Media Center & Vídeo Criptografado** | ✅ Concluído | ✅ Concluído (`libmpv`) | ✅ Concluído (galeria, coleções, player GPU, speed 0.75-2.0x, drawer de momentos) | ✅ Concluído (Media3 + `VideoPlayerScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 3 | **Anki & Flashcards (FSRS v5)** | ✅ Concluído | ✅ Concluído (FSRS + CRUD) | ✅ Concluído (árvore depth*24px, 3 círculos, DeckBrowser, dashboard FSRS, cloze parsing, flip anim) | ✅ Concluído (`AnkiStudyScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 4 | **Baterias de Questões & Simulado Zen** | ✅ Concluído | ✅ Concluído (attempts + CRUD) | ✅ Concluído (explorador, criação, modo zen 1-4/A-D, gabarito [G]) | ✅ Concluído (`ZenQuizScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 5 | **Finanças Pessoais & Wishlist** | ✅ Concluído | ✅ Concluído (summary + CRUD) | ✅ Concluído (3 cards, transações, wishlist, exclusão reativa) | ✅ Concluído (`FinanceScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 6 | **Hábitos & Consistência Diária** | ✅ Concluído | ✅ Concluído (range logs + CRUD)| ✅ Concluído (matriz 7 dias de ofensiva, checkins interativos, criação) | ✅ Concluído (`HabitsScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 7 | **Calendário & Agenda** | ✅ Concluído | ✅ Concluído (events + toggle) | ✅ Concluído (filtros Todos/Pendentes/Concluídos, busca, criação) | 🟡 Planejado | 🟢 100% Funcional no Desktop |
+| 8 | **Biblioteca & E-Reader** | ✅ Concluído | ✅ Concluído (books + progress)| ✅ Concluído (steppers -5/-1/+1/+5/+10, modal leitura, criação) | ✅ Concluído (`LibraryScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 9 | **Cultura & Entretenimento** | ✅ Concluído | ✅ Concluído (items + steppers) | ✅ Concluído (filtros mídia/status, busca, steppers -1/+1 Ep, criação) | 🟡 Planejado | 🟢 100% Funcional no Desktop |
+| 10 | **Foco Pomodoro & Lofi** | ✅ Concluído | ✅ Concluído (sessions + lofis)| ✅ Concluído (timer circular, pills de categoria, banner diário, lofis) | 🟡 Planejado | 🟢 100% Funcional no Desktop |
+| 11 | **Cofre E2EE & Credenciais** | ✅ Concluído | ✅ Concluído (vault CRUD + gen) | ✅ Concluído (filtros de grupos, busca em tempo real, cópia para clipboard) | ✅ Concluído (`VaultScreen.kt`) | 🟢 100% Funcional (Desktop + Android) |
+| 12 | **Configurações & Navegação Global**| ✅ Concluído | ✅ Concluído (counts + paths)  | ✅ Concluído (sidebar com badges de todos os módulos, grid 11 métricas) | ✅ Concluído (`MainActivity.kt` + BottomSheet) | 🟢 100% Funcional (Desktop + Android) |
 
 ---
 
