@@ -4,67 +4,70 @@ import QtQuick.Layouts 1.15
 ColumnLayout {
     id: greetingRoot
     Layout.fillWidth: true
-    spacing: 24
+    spacing: 20
 
-    property string greeting: "Bom dia"
+    property string greeting: "Boa noite"
     property string formattedDate: ""
-    property int deckCount: 0
-    property int habitCount: 0
 
     signal actionClicked(string tabKey)
 
-    // Greeting Header
-    RowLayout {
+    // Greeting Header matching Caderno Original
+    ColumnLayout {
         Layout.fillWidth: true
-        ColumnLayout {
-            spacing: 4
-            Text {
-                text: greetingRoot.greeting + ", Vinícius!"
-                color: "#fffffe"
-                font.pixelSize: 28
-                font.bold: true
-            }
-            Text {
-                text: "Hoje é " + greetingRoot.formattedDate
-                color: "#a7a9be"
-                font.pixelSize: 14
-            }
+        spacing: 4
+
+        Text {
+            text: greetingRoot.greeting + "!"
+            color: "#ffffff"
+            font.pixelSize: 30
+            font.bold: true
+            font.family: theme.fontFamily
         }
-        Item { Layout.fillWidth: true }
-        Rectangle {
-            width: 40; height: 40; radius: 10; color: "#1a1924"; border.color: "#ffffff12"
-            Text { anchors.centerIn: parent; text: "⚡"; font.pixelSize: 18 }
+
+        Text {
+            text: "Hoje é " + greetingRoot.formattedDate
+            color: theme.textSubtext
+            font.pixelSize: 14
+            font.family: theme.fontFamily
         }
     }
 
-    // Quick Actions Bar (4 Cards)
+    // 4 Quick Actions Bar matching Original Caderno (HomeQuickActions.tsx)
     RowLayout {
         Layout.fillWidth: true
-        spacing: 12
+        spacing: 14
 
-        // Action 1: Nova Nota
+        // 1. Nova Página
         Rectangle {
             Layout.fillWidth: true
-            height: 84
-            radius: 12
-            color: a1Mouse.containsMouse ? "#201e30" : "#1a1924"
-            border.color: a1Mouse.containsMouse ? "#8b5cf680" : "#ffffff0f"
+            height: 56
+            radius: 14
+            color: a1Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
+            border.color: a1Mouse.containsMouse ? "#8b5cf64d" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 12
+
                 Rectangle {
-                    width: 44; height: 44; radius: 10; color: "#8b5cf626"
-                    Text { anchors.centerIn: parent; text: "📝"; font.pixelSize: 20 }
+                    width: 36; height: 36; radius: 18
+                    color: "#8b5cf626"
+                    Text { anchors.centerIn: parent; text: "+"; color: "#a78bfa"; font.pixelSize: 18; font.bold: true }
                 }
-                ColumnLayout {
-                    spacing: 2
-                    Text { text: "Nova Nota"; color: "#fffffe"; font.pixelSize: 14; font.bold: true }
-                    Text { text: "Abrir editor em branco"; color: "#a7a9be"; font.pixelSize: 11 }
+
+                Text {
+                    text: "Nova Página"
+                    color: "#ffffff"
+                    font.pixelSize: 13
+                    font.bold: true
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
                 }
             }
+
             MouseArea {
                 id: a1Mouse
                 anchors.fill: parent
@@ -74,31 +77,79 @@ ColumnLayout {
             }
         }
 
-        // Action 2: Flashcards
+        // 2. Calendário
         Rectangle {
             Layout.fillWidth: true
-            height: 84
-            radius: 12
-            color: a2Mouse.containsMouse ? "#201e30" : "#1a1924"
-            border.color: a2Mouse.containsMouse ? "#6366f180" : "#ffffff0f"
+            height: 56
+            radius: 14
+            color: a2Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
+            border.color: a2Mouse.containsMouse ? "#f59e0b4d" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 12
+
                 Rectangle {
-                    width: 44; height: 44; radius: 10; color: "#6366f126"
-                    Text { anchors.centerIn: parent; text: "🎴"; font.pixelSize: 20 }
+                    width: 36; height: 36; radius: 18
+                    color: "#f59e0b26"
+                    Text { anchors.centerIn: parent; text: "📅"; font.pixelSize: 15 }
                 }
-                ColumnLayout {
-                    spacing: 2
-                    Text { text: "Revisão Anki"; color: "#fffffe"; font.pixelSize: 14; font.bold: true }
-                    Text { text: greetingRoot.deckCount + " baralhos disponíveis"; color: "#a7a9be"; font.pixelSize: 11 }
+
+                Text {
+                    text: "Calendário"
+                    color: "#ffffff"
+                    font.pixelSize: 13
+                    font.bold: true
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
                 }
             }
+
             MouseArea {
                 id: a2Mouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: greetingRoot.actionClicked("calendar")
+            }
+        }
+
+        // 3. Flashcards
+        Rectangle {
+            Layout.fillWidth: true
+            height: 56
+            radius: 14
+            color: a3Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
+            border.color: a3Mouse.containsMouse ? "#3b82f64d" : theme.borderSubtle
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                spacing: 12
+
+                Rectangle {
+                    width: 36; height: 36; radius: 18
+                    color: "#3b82f626"
+                    Text { anchors.centerIn: parent; text: "🎴"; font.pixelSize: 15 }
+                }
+
+                Text {
+                    text: "Flashcards"
+                    color: "#ffffff"
+                    font.pixelSize: 13
+                    font.bold: true
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+
+            MouseArea {
+                id: a3Mouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
@@ -106,69 +157,44 @@ ColumnLayout {
             }
         }
 
-        // Action 3: Pomodoro Foco
+        // 4. Arquivos (ou Biblioteca)
         Rectangle {
             Layout.fillWidth: true
-            height: 84
-            radius: 12
-            color: a3Mouse.containsMouse ? "#201e30" : "#1a1924"
-            border.color: a3Mouse.containsMouse ? "#10b98180" : "#ffffff0f"
+            height: 56
+            radius: 14
+            color: a4Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
+            border.color: a4Mouse.containsMouse ? "#10b9814d" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 12
-                Rectangle {
-                    width: 44; height: 44; radius: 10; color: "#10b98126"
-                    Text { anchors.centerIn: parent; text: "⏳"; font.pixelSize: 20 }
-                }
-                ColumnLayout {
-                    spacing: 2
-                    Text { text: "Iniciar Foco"; color: "#fffffe"; font.pixelSize: 14; font.bold: true }
-                    Text { text: "Ciclo de 25 min com Lo-Fi"; color: "#a7a9be"; font.pixelSize: 11 }
-                }
-            }
-            MouseArea {
-                id: a3Mouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: greetingRoot.actionClicked("focus")
-            }
-        }
 
-        // Action 4: Hábitos Diários
-        Rectangle {
-            Layout.fillWidth: true
-            height: 84
-            radius: 12
-            color: a4Mouse.containsMouse ? "#201e30" : "#1a1924"
-            border.color: a4Mouse.containsMouse ? "#f59e0b80" : "#ffffff0f"
-            border.width: 1
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 12
                 Rectangle {
-                    width: 44; height: 44; radius: 10; color: "#f59e0b26"
-                    Text { anchors.centerIn: parent; text: "⚡"; font.pixelSize: 20 }
+                    width: 36; height: 36; radius: 18
+                    color: "#10b98126"
+                    Text { anchors.centerIn: parent; text: "📁"; font.pixelSize: 15 }
                 }
-                ColumnLayout {
-                    spacing: 2
-                    Text { text: "Hábitos do Dia"; color: "#fffffe"; font.pixelSize: 14; font.bold: true }
-                    Text { text: greetingRoot.habitCount + " hábitos na rotina"; color: "#a7a9be"; font.pixelSize: 11 }
+
+                Text {
+                    text: "Arquivos"
+                    color: "#ffffff"
+                    font.pixelSize: 13
+                    font.bold: true
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
                 }
             }
+
             MouseArea {
                 id: a4Mouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: greetingRoot.actionClicked("habits")
+                onClicked: greetingRoot.actionClicked("library")
             }
         }
     }
 }
-

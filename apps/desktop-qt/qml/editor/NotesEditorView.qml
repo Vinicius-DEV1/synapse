@@ -152,6 +152,7 @@ Rectangle {
         // Right Note Reading & Editing Canvas
         NotesEditorCanvas {
             id: editorCanvas
+            visible: notesRoot.selectedPageId !== ""
             selectedPageId: notesRoot.selectedPageId
             activeTitle: notesRoot.activeTitle
             activeContent: notesRoot.activeContent
@@ -177,6 +178,64 @@ Rectangle {
             onIconModified: function(ico) {
                 notesRoot.activeIcon = ico
                 notesRoot.saveActiveNote()
+            }
+        }
+
+        // Empty State (Matching Image 2 Original Caderno)
+        Rectangle {
+            visible: notesRoot.selectedPageId === ""
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: theme.bgDarkBg
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 14
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    width: 64; height: 64; radius: 32
+                    color: "#8b5cf61a"
+                    border.color: "#8b5cf633"
+                    Text { anchors.centerIn: parent; text: "📄"; font.pixelSize: 26 }
+                }
+
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "Seu caderno está vazio"
+                    color: "#ffffff"
+                    font.pixelSize: 20
+                    font.bold: true
+                    font.family: theme.fontFamily
+                }
+
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "Crie uma nova página para começar a fazer suas anotações e organizar suas ideias."
+                    color: theme.textSubtext
+                    font.pixelSize: 13
+                    font.family: theme.fontFamily
+                }
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 10
+                    width: 154; height: 42; radius: 10
+                    color: theme.brand600
+                    Text {
+                        anchors.centerIn: parent
+                        text: "+ Nova Página"
+                        color: "#ffffff"
+                        font.pixelSize: 13
+                        font.bold: true
+                        font.family: theme.fontFamily
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: notesRoot.createNewRootNote()
+                    }
+                }
             }
         }
     }

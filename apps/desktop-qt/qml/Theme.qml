@@ -3,18 +3,20 @@ import QtQuick 2.15
 QtObject {
     id: theme
 
-    // Canvas & Surfaces (Caderno Design System)
-    readonly property color bgDarkBg: "#0f0e17"       // Main deep midnight canvas
-    readonly property color bgDarkCard: "#1a1924"     // Elevated cards, panels, modals
-    readonly property color bgDarkSurface: "#15141b"  // Tertiary surfaces, inputs
-    readonly property color bgHover: "#ffffff0d"      // Subtle hover highlight
+    // Canvas & Surfaces (Caderno Signature Violet/Midnight Design System)
+    readonly property color bgDarkBg: "#0d0b14"       // Main deep dark purple canvas
+    readonly property color bgDarkCard: "#161325"     // Card & panel surfaces
+    readonly property color bgDarkSurface: "#1d1830"  // Elevated pills, item tiles, inputs
+    readonly property color bgHover: "#ffffff0a"      // Subtle hover highlight
+    readonly property color activePillBg: "#231c38"   // Active capsule in navigation & tabs
+    readonly property color activePillBorder: "#8b5cf633" // Delicate purple accent border
 
     // Text Scale
-    readonly property color textDark: "#fffffe"       // Primary high-contrast text
-    readonly property color textSubtext: "#a7a9be"    // Secondary muted text
-    readonly property color textMuted: "#64748b"      // Micro labels, placeholders
+    readonly property color textDark: "#ffffff"       // Primary high-contrast text
+    readonly property color textSubtext: "#9ca3af"    // Secondary muted text (zinc-400)
+    readonly property color textMuted: "#6b7280"      // Micro labels, placeholders (zinc-500)
 
-    // Brand Palette (Signature Periwinkle / Violet)
+    // Brand Palette (Signature Violet / Purple)
     readonly property color brand50: "#f5f3ff"
     readonly property color brand200: "#ddd6fe"
     readonly property color brand300: "#c4b5fd"
@@ -37,13 +39,12 @@ QtObject {
     readonly property color warningBorder: "#f59e0b33"
 
     // Borders & Dividers
-    readonly property color borderSubtle: "#ffffff0f" // border-white/5 whisper-thin
-    readonly property color borderCard: "#ffffff12"   // border-white/[0.07]
+    readonly property color borderSubtle: "#ffffff0a" // Whisper-thin border
+    readonly property color borderCard: "#26203b"     // Subtle purple-card border
     readonly property color borderBrand: "#8b5cf64d"  // hover:border-brand-500/30
     readonly property color borderFocus: "#8b5cf680"
 
     // Typography
-    readonly property string fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    readonly property string fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif"
     readonly property string fontMono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 }
-

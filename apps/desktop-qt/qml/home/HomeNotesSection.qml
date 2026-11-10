@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 ColumnLayout {
     id: notesRoot
     Layout.fillWidth: true
-    Layout.preferredWidth: 440
+    Layout.preferredWidth: 420
     spacing: 20
 
     property var pinnedPages: []
@@ -12,98 +12,94 @@ ColumnLayout {
 
     signal noteSelected(string pageId)
 
-    // Pinned Pages Card
+    // 1. Recent Pages Card (Matching Image 1 & HomePagesSection.tsx)
     Rectangle {
         Layout.fillWidth: true
-        radius: 14
-        color: "#1a1924"
-        border.color: "#ffffff0f"
+        implicitHeight: recentCol.implicitHeight + 44
+        radius: 16
+        color: theme.bgDarkCard
+        border.color: theme.borderCard
         border.width: 1
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
+            id: recentCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 22
+            spacing: 14
 
-            Text { text: "📌 Notas Fixadas"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+            // Header: Purple Clock Icon + Recentes
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
 
-            Repeater {
-                model: notesRoot.pinnedPages.slice(0, 6)
-                delegate: Rectangle {
-                    Layout.fillWidth: true
-                    height: 38
-                    radius: 8
-                    color: pinMouse.containsMouse ? "#201e30" : "#15141b"
-                    border.color: pinMouse.containsMouse ? "#8b5cf644" : "transparent"
+                Rectangle {
+                    width: 34; height: 34; radius: 8
+                    color: "#8b5cf620"
+                    Text { anchors.centerIn: parent; text: "🕒"; font.pixelSize: 15 }
+                }
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-                        Text { text: modelData.icon || "📄"; font.pixelSize: 13 }
-                        Text {
-                            text: modelData.title || "Sem título"
-                            color: "#fffffe"
-                            font.pixelSize: 12
-                            font.bold: true
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                    }
-                    MouseArea {
-                        id: pinMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: notesRoot.noteSelected(modelData.id)
-                    }
+                Text {
+                    text: "Recentes"
+                    color: "#ffffff"
+                    font.pixelSize: 16
+                    font.bold: true
+                    font.family: theme.fontFamily
                 }
             }
-        }
-    }
 
-    // Recently Modified Pages Card
-    Rectangle {
-        Layout.fillWidth: true
-        radius: 14
-        color: "#1a1924"
-        border.color: "#ffffff0f"
-        border.width: 1
+            // Empty State
+            Text {
+                visible: notesRoot.recentPages.length === 0
+                text: "Nenhuma página recente encontrada."
+                color: theme.textMuted
+                font.pixelSize: 12
+                font.family: theme.fontFamily
+                Layout.topMargin: 8
+            }
 
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
-
-            Text { text: "🕒 Notas Recentes"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
-
+            // List of Recent Pages (Pills matching Image 1)
             Repeater {
-                model: notesRoot.recentPages
+                model: notesRoot.recentPages.slice(0, 6)
+
                 delegate: Rectangle {
                     Layout.fillWidth: true
-                    height: 38
-                    radius: 8
-                    color: recMouse.containsMouse ? "#201e30" : "#15141b"
-                    border.color: recMouse.containsMouse ? "#8b5cf644" : "transparent"
+                    height: 42
+                    radius: 10
+                    color: recMouse.containsMouse ? "#ffffff0c" : "#ffffff05"
+                    border.color: recMouse.containsMouse ? "#8b5cf633" : "transparent"
+                    border.width: 1
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
                         spacing: 10
-                        Text { text: modelData.icon || "📄"; font.pixelSize: 13 }
+
                         Text {
-                            text: modelData.title || "Sem título"
-                            color: "#a7a9be"
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
+                            text: modelData.icon || "📄"
+                            font.pixelSize: 14
                         }
+
                         Text {
-                            text: modelData.updated_at ? modelData.updated_at.substring(0, 10) : ""
-                            color: "#64748b"
-                            font.pixelSize: 10
+                            Layout.fillWidth: true
+                            text: modelData.title || "Sem título"
+                            color: recMouse.containsMouse ? theme.brand300 : "#fffffe"
+                            font.pixelSize: 13
+                            font.weight: Font.Medium
+                            font.family: theme.fontFamily
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            text: "→"
+                            color: theme.textMuted
+                            font.pixelSize: 12
+                            visible: recMouse.containsMouse
                         }
                     }
+
                     MouseArea {
                         id: recMouse
                         anchors.fill: parent
@@ -115,5 +111,82 @@ ColumnLayout {
             }
         }
     }
-}
 
+    // 2. Pinned Pages Card (Visible when user has pinned pages)
+    Rectangle {
+        visible: notesRoot.pinnedPages.length > 0
+        Layout.fillWidth: true
+        implicitHeight: pinCol.implicitHeight + 44
+        radius: 16
+        color: theme.bgDarkCard
+        border.color: theme.borderCard
+        border.width: 1
+
+        ColumnLayout {
+            id: pinCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 22
+            spacing: 14
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Rectangle {
+                    width: 34; height: 34; radius: 8
+                    color: "#8b5cf620"
+                    Text { anchors.centerIn: parent; text: "📌"; font.pixelSize: 15 }
+                }
+
+                Text {
+                    text: "Notas Fixadas"
+                    color: "#ffffff"
+                    font.pixelSize: 16
+                    font.bold: true
+                    font.family: theme.fontFamily
+                }
+            }
+
+            Repeater {
+                model: notesRoot.pinnedPages.slice(0, 5)
+
+                delegate: Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    radius: 10
+                    color: pinMouse.containsMouse ? "#ffffff0c" : "#ffffff05"
+                    border.color: pinMouse.containsMouse ? "#8b5cf633" : "transparent"
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        spacing: 10
+
+                        Text { text: modelData.icon || "📄"; font.pixelSize: 13 }
+                        Text {
+                            text: modelData.title || "Sem título"
+                            color: pinMouse.containsMouse ? theme.brand300 : "#fffffe"
+                            font.pixelSize: 13
+                            font.weight: Font.Medium
+                            font.family: theme.fontFamily
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: pinMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: notesRoot.noteSelected(modelData.id)
+                    }
+                }
+            }
+        }
+    }
+}

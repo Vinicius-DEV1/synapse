@@ -4,170 +4,225 @@ import QtQuick.Layouts 1.15
 ColumnLayout {
     id: agendaRoot
     Layout.fillWidth: true
-    Layout.preferredWidth: 640
+    Layout.preferredWidth: 620
     spacing: 20
 
     property var todayEvents: []
     property var tomorrowEvents: []
-    property var financialSummary: ({})
 
     signal viewCalendarRequested()
-    signal viewFinanceRequested()
 
-    // Agenda Section
+    // 1. Today's Events Card (Matching Image 1 & HomeAgendaSection.tsx)
     Rectangle {
         Layout.fillWidth: true
-        radius: 14
-        color: "#1a1924"
-        border.color: "#ffffff0f"
+        implicitHeight: todayCol.implicitHeight + 44
+        radius: 16
+        color: theme.bgDarkCard
+        border.color: theme.borderCard
         border.width: 1
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 14
+            id: todayCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 22
+            spacing: 16
 
+            // Header Row: Amber Calendar Icon + Eventos de Hoje + [0 eventos] Pill
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "📅 Agenda de Hoje & Próximos Compromissos"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
-                Item { Layout.fillWidth: true }
+                spacing: 10
+
+                Rectangle {
+                    width: 34; height: 34; radius: 8
+                    color: "#f59e0b20"
+                    Text { anchors.centerIn: parent; text: "📅"; font.pixelSize: 15 }
+                }
+
                 Text {
-                    text: "Ver Calendário →"
-                    color: "#38bdf8"
-                    font.pixelSize: 12
+                    text: "Eventos de Hoje"
+                    color: "#ffffff"
+                    font.pixelSize: 16
                     font.bold: true
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: agendaRoot.viewCalendarRequested()
+                    font.family: theme.fontFamily
+                }
+
+                Item { Layout.fillWidth: true }
+
+                // Count Pill Badge (e.g. 0 eventos)
+                Rectangle {
+                    height: 24
+                    width: Math.max(76, eventCountText.contentWidth + 16)
+                    radius: 12
+                    color: "#f59e0b1a"
+                    border.color: "#f59e0b33"
+                    border.width: 1
+
+                    Text {
+                        id: eventCountText
+                        anchors.centerIn: parent
+                        text: agendaRoot.todayEvents.length + (agendaRoot.todayEvents.length === 1 ? " evento" : " eventos")
+                        color: "#fbbf24"
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.family: theme.fontFamily
                     }
                 }
             }
 
-            // Events List
-            Repeater {
-                model: agendaRoot.todayEvents.length > 0 ? agendaRoot.todayEvents : (agendaRoot.tomorrowEvents.length > 0 ? agendaRoot.tomorrowEvents : [])
-                delegate: Rectangle {
-                    Layout.fillWidth: true
-                    height: 52
-                    radius: 8
-                    color: "#15141b"
-                    border.color: "#ffffff0a"
+            // Empty State (Matching Image 1: Watermark & "Sua agenda está livre para hoje!")
+            Rectangle {
+                visible: agendaRoot.todayEvents.length === 0
+                Layout.fillWidth: true
+                implicitHeight: 120
+                radius: 12
+                color: "#ffffff03"
+                border.color: "#ffffff0a"
+                border.width: 1
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 12
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
 
-                        Rectangle {
-                            width: 4; height: 28; radius: 2
-                            color: modelData.color || "#3b82f6"
-                        }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "📅"
+                        font.pixelSize: 28
+                        opacity: 0.25
+                    }
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            Text {
-                                text: modelData.title
-                                color: "#fffffe"
-                                font.pixelSize: 13
-                                font.bold: true
-                                elide: Text.ElideRight
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "Sua agenda está livre para hoje!"
+                        color: theme.textMuted
+                        font.pixelSize: 13
+                        font.family: theme.fontFamily
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: agendaRoot.viewCalendarRequested()
+                }
+            }
+
+            // Events List when events exist
+            ColumnLayout {
+                visible: agendaRoot.todayEvents.length > 0
+                Layout.fillWidth: true
+                spacing: 8
+
+                Repeater {
+                    model: agendaRoot.todayEvents
+
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        height: 52
+                        radius: 10
+                        color: "#ffffff04"
+                        border.color: "#ffffff0a"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 12
+
+                            Rectangle {
+                                width: 3; height: 26; radius: 1.5
+                                color: modelData.color || "#3b82f6"
                             }
-                            Text {
-                                text: modelData.start_date ? Qt.formatDateTime(new Date(modelData.start_date), "hh:mm") + (modelData.description ? " • " + modelData.description : "") : "Hoje"
-                                color: "#a7a9be"
-                                font.pixelSize: 11
-                                elide: Text.ElideRight
-                            }
-                        }
 
-                        Rectangle {
-                            width: 72; height: 22; radius: 6
-                            color: modelData.status === "completed" ? "#10b98126" : "#3b82f626"
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData.status === "completed" ? "Concluído" : "Pendente"
-                                color: modelData.status === "completed" ? "#34d399" : "#60a5fa"
-                                font.pixelSize: 10
-                                font.bold: true
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Text {
+                                    text: modelData.title
+                                    color: "#ffffff"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    font.family: theme.fontFamily
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    text: modelData.start_date ? Qt.formatDateTime(new Date(modelData.start_date), "hh:mm") : "Hoje"
+                                    color: theme.textSubtext
+                                    font.pixelSize: 11
+                                    font.family: theme.fontFamily
+                                }
+                            }
+
+                            Rectangle {
+                                width: 72; height: 22; radius: 6
+                                color: modelData.status === "completed" ? "#10b98126" : "#3b82f626"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData.status === "completed" ? "Concluído" : "Pendente"
+                                    color: modelData.status === "completed" ? "#34d399" : "#60a5fa"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
                             }
                         }
                     }
                 }
-            }
-
-            Text {
-                visible: agendaRoot.todayEvents.length === 0 && agendaRoot.tomorrowEvents.length === 0
-                text: "Nenhum compromisso agendado para hoje. Aproveite para focar nos estudos!"
-                color: "#64748b"
-                font.pixelSize: 13
             }
         }
     }
 
-    // Financial Snapshot Section
+    // 2. Tomorrow's Events Card (Visible if tomorrow events exist)
     Rectangle {
+        visible: agendaRoot.tomorrowEvents.length > 0
         Layout.fillWidth: true
-        radius: 14
-        color: "#1a1924"
-        border.color: "#ffffff0f"
+        implicitHeight: tomorrowCol.implicitHeight + 40
+        radius: 16
+        color: theme.bgDarkCard
+        border.color: theme.borderCard
         border.width: 1
 
         ColumnLayout {
-            anchors.fill: parent
+            id: tomorrowCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             anchors.margins: 20
-            spacing: 14
+            spacing: 12
 
-            RowLayout {
-                Layout.fillWidth: true
-                Text { text: "💰 Visão Financeira Rápida"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
-                Item { Layout.fillWidth: true }
-                Text {
-                    text: "Ver Finanças →"
-                    color: "#10b981"
-                    font.pixelSize: 12
-                    font.bold: true
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: agendaRoot.viewFinanceRequested()
-                    }
-                }
+            Text {
+                text: "Amanhã"
+                color: theme.textSubtext
+                font.pixelSize: 14
+                font.bold: true
+                font.family: theme.fontFamily
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
+            Repeater {
+                model: agendaRoot.tomorrowEvents
+                delegate: Rectangle {
+                    Layout.fillWidth: true
+                    height: 44
+                    radius: 8
+                    color: "#ffffff04"
+                    border.color: "#ffffff08"
 
-                // Receitas
-                Rectangle {
-                    Layout.fillWidth: true; height: 64; radius: 8; color: "#15141b"
-                    ColumnLayout { anchors.fill: parent; anchors.margins: 10; spacing: 2
-                        Text { text: "RECEITAS"; color: "#a7a9be"; font.pixelSize: 9; font.bold: true }
-                        Text { text: "R$ " + Number(agendaRoot.financialSummary.income || 0).toFixed(2); color: "#34d399"; font.pixelSize: 15; font.bold: true }
-                    }
-                }
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
 
-                // Despesas
-                Rectangle {
-                    Layout.fillWidth: true; height: 64; radius: 8; color: "#15141b"
-                    ColumnLayout { anchors.fill: parent; anchors.margins: 10; spacing: 2
-                        Text { text: "DESPESAS"; color: "#a7a9be"; font.pixelSize: 9; font.bold: true }
-                        Text { text: "R$ " + Number(agendaRoot.financialSummary.expense || 0).toFixed(2); color: "#f43f5e"; font.pixelSize: 15; font.bold: true }
-                    }
-                }
-
-                // Saldo Líquido
-                Rectangle {
-                    Layout.fillWidth: true; height: 64; radius: 8; color: "#15141b"
-                    ColumnLayout { anchors.fill: parent; anchors.margins: 10; spacing: 2
-                        Text { text: "SALDO LÍQUIDO"; color: "#a7a9be"; font.pixelSize: 9; font.bold: true }
-                        Text { text: "R$ " + Number(agendaRoot.financialSummary.balance || 0).toFixed(2); color: "#fffffe"; font.pixelSize: 15; font.bold: true }
+                        Text { text: "⏰"; font.pixelSize: 12 }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.title
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            font.family: theme.fontFamily
+                            elide: Text.ElideRight
+                        }
                     }
                 }
             }
         }
     }
 }
-

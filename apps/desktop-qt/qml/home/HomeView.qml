@@ -4,15 +4,13 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: homeRoot
-    color: "#0f0e17" // bg-dark-bg
+    color: theme.bgDarkBg
 
     property var dashboardData: ({})
     property var todayEvents: []
     property var tomorrowEvents: []
     property var pinnedPages: []
     property var recentPages: []
-    property var financialSummary: ({})
-    property var habits: []
 
     signal navigateToTab(string tabKey)
     signal openPageId(string pageId)
@@ -23,8 +21,6 @@ Rectangle {
         tomorrowEvents = dashboardData.tomorrow_events || []
         pinnedPages = dashboardData.pinned_pages || []
         recentPages = dashboardData.recent_pages || []
-        financialSummary = dashboardData.financial_summary || ({})
-        habits = dashboardData.habits || []
     }
 
     function getGreeting() {
@@ -36,9 +32,9 @@ Rectangle {
 
     function formatCurrentDate() {
         var d = new Date()
-        var days = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"]
-        var months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-        return days[d.getDay()] + ", " + d.getDate() + " de " + months[d.getMonth()] + " de " + d.getFullYear()
+        var days = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"]
+        var months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+        return days[d.getDay()] + ", " + d.getDate() + " de " + months[d.getMonth()]
     }
 
     Component.onCompleted: {
@@ -51,45 +47,38 @@ Rectangle {
         contentWidth: availableWidth
 
         ColumnLayout {
-            width: Math.min(parent.width - 64, 1140)
+            width: Math.min(parent.width - 64, 1100)
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 24
 
             Item { height: 16 } // Top padding
 
-            // Greeting and 4 Quick Action cards
+            // Greeting and 4 Quick Action cards (Matching Image 1)
             HomeGreetingHeader {
                 greeting: homeRoot.getGreeting()
                 formattedDate: homeRoot.formatCurrentDate()
-                deckCount: dataController.deckCount
-                habitCount: homeRoot.habits.length
-
                 onActionClicked: function(tabKey) {
                     homeRoot.navigateToTab(tabKey)
                 }
             }
 
-            // Two-column Main Dashboard Layout
+            // Two-column Main Dashboard Layout (Matching Image 1)
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 20
+                spacing: 24
                 Layout.alignment: Qt.AlignTop
 
-                // Left Column (Agenda & Financials)
+                // Left Column (Agenda de Hoje)
                 HomeAgendaSection {
                     todayEvents: homeRoot.todayEvents
                     tomorrowEvents: homeRoot.tomorrowEvents
-                    financialSummary: homeRoot.financialSummary
-
                     onViewCalendarRequested: homeRoot.navigateToTab("calendar")
-                    onViewFinanceRequested: homeRoot.navigateToTab("finance")
                 }
 
-                // Right Column (Pinned & Recent Pages)
+                // Right Column (Recentes & Pinned Pages)
                 HomeNotesSection {
                     pinnedPages: homeRoot.pinnedPages
                     recentPages: homeRoot.recentPages
-
                     onNoteSelected: function(pageId) {
                         homeRoot.openPageId(pageId)
                         homeRoot.navigateToTab("notes")
@@ -97,7 +86,7 @@ Rectangle {
                 }
             }
 
-            Item { height: 24 } // Bottom padding
+            Item { height: 32 } // Bottom breathing room
         }
     }
 }
