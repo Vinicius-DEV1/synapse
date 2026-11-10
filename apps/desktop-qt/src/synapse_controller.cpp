@@ -7,6 +7,11 @@
 #include <QtCore/QDebug>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkRequest>
+#include <QtNetwork/QNetworkReply>
+#include <QtCore/QCryptographicHash>
+#include <QtCore/QEventLoop>
 
 SynapseDataController::SynapseDataController(QObject *parent)
     : QObject(parent),
@@ -1562,6 +1567,16 @@ bool SynapseDataController::setupMasterPassword(const QString &password) {
         executeSql(QString("UPDATE pages SET content = '', encrypted_content = '%1' WHERE id = '%2'").arg(escapeSql(enc), escapeSql(pid)));
     }
 
+    // Encrypt existing unencrypted diagrams
+    QJsonArray diagramsToEncrypt = executeQuery("SELECT id, content FROM diagrams WHERE (encrypted_content IS NULL OR encrypted_content = '') AND content IS NOT NULL AND content != ''");
+    for (const QJsonValue &dv : diagramsToEncrypt) {
+        QJsonObject dObj = dv.toObject();
+        QString did = dObj.value("id").toString();
+        QString dContent = dObj.value("content").toString();
+        QString enc = encryptContent(notesKey, dContent);
+        executeSql(QString("UPDATE diagrams SET content = '', encrypted_content = '%1' WHERE id = '%2'").arg(escapeSql(enc), escapeSql(did)));
+    }
+
     // Encrypt existing unencrypted vault items
     QJsonArray vaultToEncrypt = executeQuery("SELECT id, label, username, email, password, url, notes FROM vault_items WHERE deleted_at IS NULL");
     for (const QJsonValue &vv : vaultToEncrypt) {
@@ -1751,6 +1766,15 @@ bool SynapseDataController::removeMasterPassword(const QString &password) {
             QString dec = decryptContent(notesKey, enc);
             executeSql(QString("UPDATE pages SET content = '%1', encrypted_content = NULL WHERE id = '%2'").arg(escapeSql(dec), escapeSql(pid)));
         }
+
+        QJsonArray diagramsToDecrypt = executeQuery("SELECT id, encrypted_content FROM diagrams WHERE encrypted_content IS NOT NULL AND encrypted_content != ''");
+        for (const QJsonValue &dv : diagramsToDecrypt) {
+            QJsonObject do_ = dv.toObject();
+            QString did = do_.value("id").toString();
+            QString enc = do_.value("encrypted_content").toString();
+            QString dec = decryptContent(notesKey, enc);
+            executeSql(QString("UPDATE diagrams SET content = '%1', encrypted_content = NULL WHERE id = '%2'").arg(escapeSql(dec), escapeSql(did)));
+        }
     }
 
     if (!vaultKey.isEmpty()) {
@@ -1804,6 +1828,71 @@ int SynapseDataController::checkPasswordStrength(const QString &password) {
         score = 0;
     }
     return score;
+}
+
+QVariantMap SynapseDataController::checkPasswordBreach(const QString &password) {
+    QVariantMap res;
+    res["breached"] = false;
+    res["count"] = 0;
+    if (password.isEmpty()) return res;
+
+    QByteArray sha1 = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha1).toHex().toUpper();
+    if (sha1.length() < 5) {
+        res["error"] = "Falha ao gerar hash SHA-1";
+        return res;
+    }
+
+    QString prefix = QString::fromLatin1(sha1.left(5));
+    QString suffix = QString::fromLatin1(sha1.mid(5));
+
+    QNetworkAccessManager mgr;
+    QNetworkRequest req(QUrl("https://api.pwnedpasswords.com/range/" + prefix));
+    req.setHeader(QNetworkRequest::UserAgentHeader, "Synapse-Desktop/1.0");
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
+
+    QEventLoop loop;
+    QTimer timer;
+    timer.setSingleShot(true);
+    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    QNetworkReply *reply = mgr.get(req);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    timer.start(5000); // 5s timeout
+    loop.exec();
+
+    if (timer.isActive()) {
+        timer.stop();
+    } else {
+        reply->abort();
+        reply->deleteLater();
+        res["error"] = "Tempo limite excedido ao consultar base de senhas.";
+        return res;
+    }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        res["error"] = reply->errorString();
+        reply->deleteLater();
+        return res;
+    }
+
+    QByteArray body = reply->readAll();
+    reply->deleteLater();
+
+    QString text = QString::fromUtf8(body);
+    const QStringList lines = text.split(QLatin1String("\r\n"), Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        int idx = line.indexOf(':');
+        if (idx != -1) {
+            QString hashSuff = line.left(idx).trimmed();
+            if (hashSuff.compare(suffix, Qt::CaseInsensitive) == 0) {
+                qint64 count = line.mid(idx + 1).trimmed().toLongLong();
+                res["breached"] = (count > 0);
+                res["count"] = count;
+                break;
+            }
+        }
+    }
+    return res;
 }
 
 void SynapseDataController::copyToClipboard(const QString &text) {
@@ -1973,18 +2062,38 @@ QVariantList SynapseDataController::getDiagrams() {
 }
 
 QVariantMap SynapseDataController::getDiagram(const QString &diagramId) {
-    QString sql = QString("SELECT id, title, icon, content, updated_at FROM diagrams "
+    QString sql = QString("SELECT id, title, icon, content, encrypted_content, updated_at FROM diagrams "
                           "WHERE id = '%1' AND deleted_at IS NULL").arg(escapeSql(diagramId));
     QJsonArray arr = executeQuery(sql);
     if (arr.isEmpty()) return QVariantMap();
-    return arr[0].toObject().toVariantMap();
+    QJsonObject obj = arr[0].toObject();
+    QString enc = obj.value("encrypted_content").toString();
+    if (!enc.isEmpty()) {
+        if (m_unlockedKeys.contains("notes")) {
+            obj["content"] = decryptContent(m_unlockedKeys["notes"], enc);
+        } else if (m_isVaultConfigured) {
+            obj["content"] = "🔒 [Diagrama Criptografado - Desbloqueie o Cofre]";
+        }
+    }
+    return obj.toVariantMap();
 }
 
 bool SynapseDataController::saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon) {
     QString ts = currentTimestamp();
-    QString sql = QString("UPDATE diagrams SET title = '%1', content = '%2', icon = '%3', updated_at = '%4' "
-                          "WHERE id = '%5'")
-        .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(diagramId));
+    QString enc;
+    if (m_isVaultConfigured && m_unlockedKeys.contains("notes")) {
+        enc = encryptContent(m_unlockedKeys["notes"], content);
+    }
+    QString sql;
+    if (!enc.isEmpty()) {
+        sql = QString("UPDATE diagrams SET title = '%1', content = '', encrypted_content = '%2', icon = '%3', updated_at = '%4' "
+                      "WHERE id = '%5'")
+            .arg(escapeSql(title), escapeSql(enc), escapeSql(icon), ts, escapeSql(diagramId));
+    } else {
+        sql = QString("UPDATE diagrams SET title = '%1', content = '%2', encrypted_content = NULL, icon = '%3', updated_at = '%4' "
+                      "WHERE id = '%5'")
+            .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(diagramId));
+    }
     return executeSql(sql);
 }
 

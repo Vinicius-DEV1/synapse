@@ -170,6 +170,7 @@ public:
     Q_INVOKABLE bool removeMasterPassword(const QString &password);
     Q_INVOKABLE void resetAutoLockTimer();
     Q_INVOKABLE int checkPasswordStrength(const QString &password);
+    Q_INVOKABLE QVariantMap checkPasswordBreach(const QString &password);
 
     // 12. Utilitários & Manutenção do Sistema
     Q_INVOKABLE void copyToClipboard(const QString &text);

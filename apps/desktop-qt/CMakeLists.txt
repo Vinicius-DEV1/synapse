@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Quick Qml OpenGL)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Quick Qml OpenGL Network)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MPV REQUIRED mpv)
@@ -40,6 +40,7 @@ target_link_libraries(synapse-desktop PRIVATE
     Qt6::Quick
     Qt6::Qml
     Qt6::OpenGL
+    Qt6::Network
     ${MPV_LIBRARIES}
     ${SYNAPSE_BRIDGE_LIB}
     pthread

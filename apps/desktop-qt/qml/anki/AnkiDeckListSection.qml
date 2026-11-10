@@ -31,18 +31,13 @@ ColumnLayout {
         border.width: 1
 
         RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            spacing: 16
+            anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 16
 
             Text {
                 Layout.fillWidth: true
                 text: "BARALHO"
                 color: "#64748b"
-                font.pixelSize: 11
-                font.bold: true
-                font.letterSpacing: 1.2
+                font.pixelSize: 11; font.bold: true; font.letterSpacing: 1.2
             }
 
             Text {
