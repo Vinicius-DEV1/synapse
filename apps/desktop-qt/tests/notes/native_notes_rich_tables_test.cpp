@@ -105,6 +105,63 @@ private slots:
         QVERIFY(!NotesRichTableCellFormatting::setBackground(document, position, QStringLiteral("#ffffff")));
     }
 
+    void cellBackgroundScopesApplyAndClearWithUndo() {
+        const QString source = QStringLiteral(
+            "<table><tbody><tr><th><p>Header A</p></th><th><p>Header B</p></th></tr>"
+            "<tr><td><p>Row A</p></td><td><p>Row B</p></td></tr>"
+            "<tr><td><p>Other A</p></td><td><p>Other B</p></td></tr></tbody></table>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichDocument::prepareHeadingStyles(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        auto *table = qobject_cast<QTextTable *>(document.rootFrame()->childFrames().value(0));
+        QVERIFY(table);
+        const int activePosition = table->cellAt(1, 1).firstCursorPosition().position();
+        const QColor red(239, 68, 68, 51);
+        const QColor blue(59, 130, 246, 51);
+        const QColor green(34, 197, 94, 51);
+
+        QVERIFY(NotesRichTableCellFormatting::setBackground(document, activePosition,
+            QStringLiteral("rgba(239, 68, 68, 0.2)"), QStringLiteral("row")));
+        QVERIFY(NotesRichTableCellFormatting::isSupportedBackground(table->cellAt(1, 0).format().background()));
+        QCOMPARE(table->cellAt(1, 0).format().background().color(), red);
+        QCOMPARE(table->cellAt(1, 1).format().background().color(), red);
+        QVERIFY(!NotesRichTableCellFormatting::isSupportedBackground(table->cellAt(2, 0).format().background()));
+        QCOMPARE(NotesRichDocument::serialize(document).count("data-bg-color="), 2);
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        QVERIFY(NotesRichTableCellFormatting::setBackground(document, activePosition,
+            QStringLiteral("rgba(59, 130, 246, 0.2)"), QStringLiteral("column")));
+        QCOMPARE(table->cellAt(0, 1).format().background().color(), blue);
+        QCOMPARE(table->cellAt(1, 1).format().background().color(), blue);
+        QCOMPARE(table->cellAt(2, 1).format().background().color(), blue);
+        QVERIFY(!NotesRichTableCellFormatting::isSupportedBackground(table->cellAt(1, 0).format().background()));
+        QCOMPARE(NotesRichDocument::serialize(document).count("data-bg-color="), 3);
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        QVERIFY(NotesRichTableCellFormatting::setBackground(document, activePosition,
+            QStringLiteral("rgba(34, 197, 94, 0.2)"), QStringLiteral("table")));
+        for (int row = 0; row < table->rows(); ++row) {
+            for (int column = 0; column < table->columns(); ++column)
+                QCOMPARE(table->cellAt(row, column).format().background().color(), green);
+        }
+        QCOMPARE(NotesRichDocument::serialize(document).count("data-bg-color="), 6);
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        QVERIFY(NotesRichTableCellFormatting::setBackground(document, activePosition,
+            QStringLiteral("rgba(239, 68, 68, 0.2)"), QStringLiteral("row")));
+        QVERIFY(NotesRichTableCellFormatting::setBackground(document, activePosition, QString(),
+                                                            QStringLiteral("row")));
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document).count("data-bg-color="), 2);
+        QVERIFY(!NotesRichTableCellFormatting::setBackground(document, activePosition, QString(),
+                                                             QStringLiteral("selection")));
+    }
+
     void customCellBackgroundSurvivesStructuralEditsAndUndo() {
         const QString color = QStringLiteral("rgba(34, 197, 94, 0.2)");
         const QString source = QStringLiteral(

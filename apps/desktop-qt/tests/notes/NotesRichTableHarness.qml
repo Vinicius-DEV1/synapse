@@ -33,7 +33,9 @@ Item {
         target: formattingToolbar
         function onRichTableRequested() { richEditor.tableActions.insertTable() }
         function onRichTableActionRequested(action) { richEditor.tableActions.editTable(action) }
-        function onRichCellBackgroundRequested(color) { richEditor.tableActions.setCellBackground(color) }
+        function onRichCellBackgroundRequested(color, scope) {
+            richEditor.tableActions.setCellBackground(color, scope)
+        }
         function onRichDividerRequested() { richEditor.tableActions.insertDivider() }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }

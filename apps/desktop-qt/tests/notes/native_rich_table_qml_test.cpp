@@ -323,7 +323,7 @@ private slots:
         QAccessible::setActive(false);
     }
 
-    void tableCellBackgroundPaletteAppliesAndClearsTheCurrentCell() {
+    void tableCellBackgroundPaletteAppliesCellRowColumnAndTableScopes() {
         QQmlEngine engine;
         NotesTextOperations operations;
         engine.rootContext()->setContextProperty("notesTextOperations", &operations);
@@ -342,7 +342,8 @@ private slots:
         QVERIFY(palette);
         richEditor->setProperty("active", false);
         richEditor->setProperty("sourceHtml",
-            "<table><tbody><tr><th><p>Header</p></th></tr><tr><td><p>Body</p></td></tr></tbody></table>");
+            "<table><tbody><tr><th><p>Header A</p></th><th><p>Header B</p></th></tr>"
+            "<tr><td><p>Body A</p></td><td><p>Body B</p></td></tr></tbody></table>");
         richEditor->setProperty("hasPendingChanges", false);
         richEditor->setProperty("active", true);
         QVariant loaded;
@@ -361,21 +362,77 @@ private slots:
         QCoreApplication::processEvents();
         QVERIFY(palette->property("visible").toBool());
 
+        QVariant scopeSelected;
+        QVERIFY(QMetaObject::invokeMethod(palette, "selectBackgroundScope", Q_RETURN_ARG(QVariant, scopeSelected),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("cell")))));
+        QVERIFY(scopeSelected.toBool());
+        QCOMPARE(palette->property("backgroundScope").toString(), QStringLiteral("cell"));
         QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected",
-            Q_ARG(QString, QStringLiteral("rgba(239, 68, 68, 0.2)"))));
+            Q_ARG(QString, QStringLiteral("rgba(234, 179, 8, 0.2)")), Q_ARG(QString, QStringLiteral("cell"))));
         QVariant committed;
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
         QVERIFY(committed.toBool());
         QString html = richEditor->property("sourceHtml").toString();
-        QVERIFY(html.contains("<td data-bg-color=\"rgba(239, 68, 68, 0.200)\""));
+        QCOMPARE(html.count("data-bg-color="), 1);
         QVERIFY(NotesRichDocument::supportsSource(html));
 
-        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected", Q_ARG(QString, QString())));
+        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected", Q_ARG(QString, QString()),
+                                          Q_ARG(QString, QStringLiteral("cell"))));
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
         QVERIFY(committed.toBool());
         html = richEditor->property("sourceHtml").toString();
         QVERIFY(!html.contains("data-bg-color"));
-        QVERIFY(html.contains("<th><p>Header</p></th>"));
+        QVERIFY(NotesRichDocument::supportsSource(html));
+
+        QVERIFY(QMetaObject::invokeMethod(palette, "selectBackgroundScope", Q_RETURN_ARG(QVariant, scopeSelected),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("row")))));
+        QVERIFY(scopeSelected.toBool());
+        QCOMPARE(palette->property("backgroundScope").toString(), QStringLiteral("row"));
+        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected",
+            Q_ARG(QString, QStringLiteral("rgba(239, 68, 68, 0.2)")), Q_ARG(QString, QStringLiteral("row"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        html = richEditor->property("sourceHtml").toString();
+        QCOMPARE(html.count("data-bg-color="), 2);
+        QVERIFY(NotesRichDocument::supportsSource(html));
+
+        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected", Q_ARG(QString, QString()),
+                                          Q_ARG(QString, QStringLiteral("row"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        html = richEditor->property("sourceHtml").toString();
+        QVERIFY(!html.contains("data-bg-color"));
+        QVERIFY(NotesRichDocument::supportsSource(html));
+
+        QVERIFY(QMetaObject::invokeMethod(palette, "selectBackgroundScope", Q_RETURN_ARG(QVariant, scopeSelected),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("column")))));
+        QVERIFY(scopeSelected.toBool());
+        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected",
+            Q_ARG(QString, QStringLiteral("rgba(59, 130, 246, 0.2)")), Q_ARG(QString, QStringLiteral("column"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        html = richEditor->property("sourceHtml").toString();
+        QCOMPARE(html.count("data-bg-color="), 2);
+        QVERIFY(html.contains("<th data-bg-color=\"rgba(59, 130, 246, 0.200)\""));
+        QVERIFY(NotesRichDocument::supportsSource(html));
+
+        QVERIFY(QMetaObject::invokeMethod(palette, "selectBackgroundScope", Q_RETURN_ARG(QVariant, scopeSelected),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("table")))));
+        QVERIFY(scopeSelected.toBool());
+        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected",
+            Q_ARG(QString, QStringLiteral("rgba(34, 197, 94, 0.2)")), Q_ARG(QString, QStringLiteral("table"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        html = richEditor->property("sourceHtml").toString();
+        QCOMPARE(html.count("data-bg-color="), 4);
+        QVERIFY(NotesRichDocument::supportsSource(html));
+
+        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected", Q_ARG(QString, QString()),
+                                          Q_ARG(QString, QStringLiteral("table"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        html = richEditor->property("sourceHtml").toString();
+        QVERIFY(!html.contains("data-bg-color"));
         QVERIFY(NotesRichDocument::supportsSource(html));
     }
 

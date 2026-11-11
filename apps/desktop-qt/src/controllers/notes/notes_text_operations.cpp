@@ -113,9 +113,9 @@ bool NotesTextOperations::applyRichTableAction(QQuickTextDocument *document, int
 }
 
 bool NotesTextOperations::setRichTableCellBackground(QQuickTextDocument *document, int position,
-                                                      const QString &color) const {
+                                                      const QString &color, const QString &scope) const {
     return document && document->textDocument() &&
-        NotesRichTableCellFormatting::setBackground(*document->textDocument(), position, color);
+        NotesRichTableCellFormatting::setBackground(*document->textDocument(), position, color, scope);
 }
 
 bool NotesTextOperations::setRichColor(QQuickTextDocument *document, int start, int end,

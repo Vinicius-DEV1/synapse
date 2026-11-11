@@ -19,7 +19,7 @@ Rectangle {
     signal richBlockRequested(string blockType)
     signal richTableRequested()
     signal richTableActionRequested(string action)
-    signal richCellBackgroundRequested(string color)
+    signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
     signal richMarkRequested(string mark)
     property bool richMode: false
@@ -203,7 +203,7 @@ Rectangle {
             active: toolbarRoot.richMode && toolbarRoot.tableCellActive
             Layout.preferredWidth: 30
             Layout.preferredHeight: 30
-            onColorSelected: function(color) { toolbarRoot.richCellBackgroundRequested(color) }
+            onColorSelected: function(color, scope) { toolbarRoot.richCellBackgroundRequested(color, scope) }
         }
 
         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }

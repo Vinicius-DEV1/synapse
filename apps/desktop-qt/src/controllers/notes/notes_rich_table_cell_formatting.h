@@ -12,5 +12,6 @@ bool isSupportedBackground(const QColor &color);
 bool isSupportedBackground(const QBrush &brush);
 bool supportsCellAttributes(const QString &tagName, const QXmlStreamAttributes &attributes);
 QString editorMarkup(const QString &source);
-bool setBackground(QTextDocument &document, int position, const QString &color);
+bool setBackground(QTextDocument &document, int position, const QString &color,
+                   const QString &scope = QStringLiteral("cell"));
 }

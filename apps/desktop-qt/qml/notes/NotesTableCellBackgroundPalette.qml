@@ -9,19 +9,46 @@ Item {
     objectName: "notesTableCellBackgroundPalette"
     visible: active
     property bool active: false
+    property string backgroundScope: "cell"
 
-    signal colorSelected(string color)
+    signal colorSelected(string color, string scope)
+
+    readonly property var scopes: [
+        { label: qsTr("Cell"), value: "cell" },
+        { label: qsTr("Row"), value: "row" },
+        { label: qsTr("Column"), value: "column" },
+        { label: qsTr("Table"), value: "table" }
+    ]
 
     readonly property var colors: [
-        { label: qsTr("Clear cell background"), value: "" },
-        { label: qsTr("Red cell background"), value: "rgba(239, 68, 68, 0.2)" },
-        { label: qsTr("Orange cell background"), value: "rgba(249, 115, 22, 0.2)" },
-        { label: qsTr("Yellow cell background"), value: "rgba(234, 179, 8, 0.2)" },
-        { label: qsTr("Green cell background"), value: "rgba(34, 197, 94, 0.2)" },
-        { label: qsTr("Blue cell background"), value: "rgba(59, 130, 246, 0.2)" },
-        { label: qsTr("Purple cell background"), value: "rgba(139, 92, 246, 0.2)" },
-        { label: qsTr("Pink cell background"), value: "rgba(236, 72, 153, 0.2)" }
+        { label: qsTr("Clear"), value: "" },
+        { label: qsTr("Red"), value: "rgba(239, 68, 68, 0.2)" },
+        { label: qsTr("Orange"), value: "rgba(249, 115, 22, 0.2)" },
+        { label: qsTr("Yellow"), value: "rgba(234, 179, 8, 0.2)" },
+        { label: qsTr("Green"), value: "rgba(34, 197, 94, 0.2)" },
+        { label: qsTr("Blue"), value: "rgba(59, 130, 246, 0.2)" },
+        { label: qsTr("Purple"), value: "rgba(139, 92, 246, 0.2)" },
+        { label: qsTr("Pink"), value: "rgba(236, 72, 153, 0.2)" }
     ]
+
+    function scopeDescription(scope) {
+        if (scope === "row") return qsTr("current row")
+        if (scope === "column") return qsTr("current column")
+        if (scope === "table") return qsTr("entire table")
+        return qsTr("active cell")
+    }
+
+    function colorDescription(colorLabel) {
+        if (colorLabel === qsTr("Clear"))
+            return qsTr("Clear background on %1").arg(scopeDescription(backgroundScope))
+        return qsTr("Apply %1 background to %2").arg(colorLabel.toLowerCase()).arg(scopeDescription(backgroundScope))
+    }
+
+    function selectBackgroundScope(scope) {
+        if (scope !== "cell" && scope !== "row" && scope !== "column" && scope !== "table") return false
+        backgroundScope = scope
+        return true
+    }
 
     ToolButton {
         id: paletteButton
@@ -53,6 +80,42 @@ Item {
             rowSpacing: 6
             columnSpacing: 6
 
+            Text {
+                Layout.columnSpan: 4
+                text: qsTr("Apply to")
+                color: "#a7a9be"
+                font.pixelSize: 10
+                font.weight: Font.Medium
+            }
+
+            Repeater {
+                model: paletteRoot.scopes
+                delegate: ToolButton {
+                    id: scopeButton
+                    required property var modelData
+                    objectName: "notesTableBackgroundScope_" + modelData.value
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 24
+                    text: modelData.label
+                    checkable: true
+                    checked: paletteRoot.backgroundScope === modelData.value
+                    Accessible.name: qsTr("Apply background to %1").arg(modelData.label.toLowerCase())
+                    onClicked: paletteRoot.selectBackgroundScope(modelData.value)
+                    background: Rectangle {
+                        radius: 5
+                        color: scopeButton.checked ? "#268b5cf6" : (scopeButton.hovered ? "#12ffffff" : "transparent")
+                        border.color: scopeButton.checked ? "#408b5cf6" : "#12ffffff"
+                    }
+                    contentItem: Text {
+                        text: scopeButton.text
+                        color: scopeButton.checked ? "#ddd6fe" : "#c4c4d4"
+                        font.pixelSize: 10
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+
             Repeater {
                 model: paletteRoot.colors
                 delegate: ToolButton {
@@ -60,11 +123,11 @@ Item {
                     required property var modelData
                     Layout.preferredWidth: 30
                     Layout.preferredHeight: 30
-                    Accessible.name: modelData.label
+                    Accessible.name: paletteRoot.colorDescription(modelData.label)
                     ToolTip.visible: hovered
-                    ToolTip.text: modelData.label
+                    ToolTip.text: paletteRoot.colorDescription(modelData.label)
                     onClicked: {
-                        paletteRoot.colorSelected(modelData.value)
+                        paletteRoot.colorSelected(modelData.value, paletteRoot.backgroundScope)
                         colorPopup.close()
                     }
                     background: Rectangle {

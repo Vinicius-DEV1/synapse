@@ -35,7 +35,7 @@ public:
                                              const QString &action) const;
     Q_INVOKABLE bool applyRichTableAction(QQuickTextDocument *document, int position, const QString &action) const;
     Q_INVOKABLE bool setRichTableCellBackground(QQuickTextDocument *document, int position,
-                                                const QString &color) const;
+                                                const QString &color, const QString &scope) const;
     Q_INVOKABLE bool setRichColor(QQuickTextDocument *document, int start, int end,
                                   const QString &color, bool background) const;
     Q_INVOKABLE bool setRichLink(QQuickTextDocument *document, int start, int end, const QString &url) const;

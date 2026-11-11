@@ -35,9 +35,9 @@ QtObject {
         return finishEdit()
     }
 
-    function setCellBackground(color) {
+    function setCellBackground(color, scope) {
         if (!active || invalid || !isInsideTable || !textOperations.setRichTableCellBackground(
-                textEditor.textDocument, textEditor.cursorPosition, color)) return false
+                textEditor.textDocument, textEditor.cursorPosition, color, scope || "cell")) return false
         return finishEdit()
     }
 

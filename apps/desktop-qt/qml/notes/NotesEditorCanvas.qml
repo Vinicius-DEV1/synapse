@@ -281,7 +281,9 @@ ScrollView {
                 onRichBlockRequested: function(blockType) { richTextEditor.toggleBlock(blockType) }
                 onRichTableRequested: richTextEditor.tableActions.insertTable()
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
-                onRichCellBackgroundRequested: function(color) { richTextEditor.tableActions.setCellBackground(color) }
+                onRichCellBackgroundRequested: function(color, scope) {
+                    richTextEditor.tableActions.setCellBackground(color, scope)
+                }
                 onRichDividerRequested: richTextEditor.tableActions.insertDivider()
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {

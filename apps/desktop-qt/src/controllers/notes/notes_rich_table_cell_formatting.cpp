@@ -9,6 +9,7 @@
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextTable>
+#include <QtGui/QTextTableCell>
 
 namespace NotesRichTableCellFormatting {
 namespace {
@@ -100,8 +101,10 @@ QString editorMarkup(const QString &source) {
     return result;
 }
 
-bool setBackground(QTextDocument &document, int position, const QString &colorValue) {
+bool setBackground(QTextDocument &document, int position, const QString &colorValue, const QString &scope) {
     if (position < 0 || position > document.characterCount() - 1) return false;
+    if (scope != QStringLiteral("cell") && scope != QStringLiteral("row") &&
+        scope != QStringLiteral("column") && scope != QStringLiteral("table")) return false;
     const QColor color = colorValue.isEmpty() || colorValue == QStringLiteral("transparent")
         ? QColor() : NotesRichMarkup::parseCssColor(colorValue);
     if (color.isValid() && !isSupportedBackground(color)) return false;
@@ -113,11 +116,29 @@ bool setBackground(QTextDocument &document, int position, const QString &colorVa
     QTextTableCell cell = table->cellAt(cursor);
     if (!cell.isValid()) return false;
 
+    QVector<QTextTableCell> cells;
+    if (scope == QStringLiteral("cell")) {
+        cells.append(cell);
+    } else if (scope == QStringLiteral("row")) {
+        for (int column = 0; column < table->columns(); ++column)
+            cells.append(table->cellAt(cell.row(), column));
+    } else if (scope == QStringLiteral("column")) {
+        for (int row = 0; row < table->rows(); ++row)
+            cells.append(table->cellAt(row, cell.column()));
+    } else {
+        for (int row = 0; row < table->rows(); ++row) {
+            for (int column = 0; column < table->columns(); ++column)
+                cells.append(table->cellAt(row, column));
+        }
+    }
+
     cursor.beginEditBlock();
-    QTextCharFormat format = cell.format();
-    if (color.isValid()) format.setBackground(color);
-    else format.clearProperty(QTextFormat::BackgroundBrush);
-    cell.setFormat(format);
+    for (QTextTableCell selectedCell : cells) {
+        QTextCharFormat format = selectedCell.format();
+        if (color.isValid()) format.setBackground(color);
+        else format.clearProperty(QTextFormat::BackgroundBrush);
+        selectedCell.setFormat(format);
+    }
     NotesRichTableStyles::apply(*table);
     cursor.endEditBlock();
     return true;
