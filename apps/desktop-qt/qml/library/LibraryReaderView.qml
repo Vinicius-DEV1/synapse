@@ -129,6 +129,15 @@ Rectangle {
             reader.closeReader()
         }
     }
+    LibraryReaderNavigationShortcuts {
+        enabledForReading: reader.isOpen && reader.format === "epub" && !dataController.fileOperationRunning &&
+                           !annotationSidebar.annotationEditorActive && !annotationSidebar.confirmationOpen &&
+                           !annotationSidebar.textInputActive && !searchHost.searchOpen && !epubContent.activeFocus
+        canGoBack: reader.currentPage > 1
+        canGoForward: reader.currentPage < reader.totalPages
+        onPreviousRequested: reader.navigateToPage(reader.currentPage - 1)
+        onNextRequested: reader.navigateToPage(reader.currentPage + 1)
+    }
     Shortcut {
         sequence: "Ctrl+Left"
         enabled: reader.isOpen && reader.currentPage > 1 && !dataController.fileOperationRunning &&
@@ -201,6 +210,7 @@ Rectangle {
 
                     TextEdit {
                         id: epubContent
+                        objectName: "epubReaderText"
                         width: parent.width
                         text: reader.chapters.length >= reader.currentPage ? reader.chapters[reader.currentPage - 1].html : ""
                         textFormat: TextEdit.RichText

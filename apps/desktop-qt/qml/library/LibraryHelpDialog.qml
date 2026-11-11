@@ -78,6 +78,8 @@ Dialog {
             summary: "Use the desktop shortcuts to reach the library and dismiss this guide.",
             tips: [
                 "Ctrl+8 switches to the Library module.",
+                "In EPUB, use Left and Right to move between chapters when a text field or text selection is not focused. Ctrl+Left and Ctrl+Right also navigate in the reader.",
+                "Ctrl+F opens reader search; Escape closes the reader when no dialog is open.",
                 "Escape closes this guide.",
                 "Use Tab and Enter to move through buttons and confirm actions."
             ]
