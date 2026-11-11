@@ -14,6 +14,7 @@ Rectangle {
     property string transactionSearch: ""
     property bool isAddingTransaction: false
     property bool isAddingWishlistItem: false
+    property var editingTransaction: null
 
     function refreshData() {
         summary = dataController.getFinancialSummary()
@@ -82,6 +83,10 @@ Rectangle {
             // 1. Transactions List
             TransactionsTable {
                 transactions: financeRoot.filteredTransactions()
+                onEditRequested: function(transaction) {
+                    financeRoot.editingTransaction = transaction
+                    financeRoot.isAddingTransaction = true
+                }
                 onDeleteRequested: function(txId) {
                     dataController.deleteTransaction(txId)
                     financeRoot.refreshData()
@@ -107,12 +112,24 @@ Rectangle {
 
     // Modal: Adicionar Transação
     CreateTransactionModal {
+        id: transactionModal
         visible: financeRoot.isAddingTransaction
-        onClosed: financeRoot.isAddingTransaction = false
+        initialTransaction: financeRoot.editingTransaction
+        onClosed: {
+            financeRoot.isAddingTransaction = false
+            financeRoot.editingTransaction = null
+        }
         onTransactionSubmitted: function(desc, amount, type, cat) {
             var today = Qt.formatDate(new Date(), "yyyy-MM-dd")
-            dataController.addTransaction(desc, amount, type, cat, today)
+            var saved = financeRoot.editingTransaction
+                ? dataController.updateTransaction(financeRoot.editingTransaction.id, desc, amount, type, cat)
+                : dataController.addTransaction(desc, amount, type, cat, today)
+            if (!saved) {
+                transactionModal.errorMessage = qsTr("The transaction could not be saved. Check the fields and try again.")
+                return
+            }
             financeRoot.isAddingTransaction = false
+            financeRoot.editingTransaction = null
             financeRoot.refreshData()
         }
     }

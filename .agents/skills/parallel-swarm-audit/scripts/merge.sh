@@ -48,12 +48,12 @@ echo "[swarm-merge] Successfully integrated ${MERGED_COUNT} active audit branch(
 
 # Cross-Contract Type Validation
 echo "[swarm-merge] Running TypeScript contract verification (tsc -b --noEmit)..."
-npx tsc -b --noEmit
+npm run typecheck
 echo "✔ TypeScript contract validation passed with 0 errors!"
 
 # Targeted Test Sweeps
 echo "[swarm-merge] Running targeted test sweeps across audited modules..."
-npx vitest run src/services/sharing/ src/components/sharing/
+npm run test -- src/services/sharing/ src/components/sharing/
 echo "✔ Core test suites passed!"
 
 # Teardown Worktrees if present

@@ -1,184 +1,45 @@
-# 🧩 Synapse System Modules & Domain Architecture Reference
+# Synapse Module Catalog
 
-This document provides a comprehensive technical overview of the functional modules composing **Synapse**. Each module operates with clear architectural boundaries, dedicated domain models, and decoupled cryptographic keys while leveraging shared core infrastructure.
+This catalog identifies product modules and their React and native source locations. It is not a completion checklist. Native Qt gaps are maintained in the [parity matrix](../native-desktop-parity.md); local encryption coverage is maintained in the [native encryption audit](../security/native-encryption-audit.md).
 
----
+## Canonical Module IDs
 
-## 1. Module Capability & Security Matrix
+| Module ID | Responsibility | React Web/Tauri presentation | Qt presentation |
+| --- | --- | --- | --- |
+| `notes` | Notes, editor, page history | `apps/web-react/src/components/notes/` and editor/page-view areas | `apps/desktop-qt/qml/notes/` |
+| `library` | Book catalog and reader | `apps/web-react/src/components/library/` | `apps/desktop-qt/qml/library/` |
+| `video` | Video library and playback | `apps/web-react/src/components/video/` | `apps/desktop-qt/qml/video/` |
+| `questions` | Question sets and study sessions | `apps/web-react/src/components/questions/` | `apps/desktop-qt/qml/questions/` |
+| `practice` | AI and oral practice | `apps/web-react/src/components/practice/` | No native Qt route is currently identified |
+| `anki` | Flashcards and spaced repetition | `apps/web-react/src/components/anki/` | `apps/desktop-qt/qml/anki/` |
+| `diagrams` | Diagrams and whiteboards | `apps/web-react/src/components/diagrams/` | `apps/desktop-qt/qml/diagrams/` |
+| `files` | File browser and document tools | `apps/web-react/src/components/files/` | `apps/desktop-qt/qml/files/` |
+| `calendar` | Calendar and events | `apps/web-react/src/components/calendar/` | `apps/desktop-qt/qml/calendar/` |
+| `culture` | Media and culture tracking | `apps/web-react/src/components/culture/` | `apps/desktop-qt/qml/culture/` |
+| `finance` | Transactions and financial planning | `apps/web-react/src/components/finance/` | `apps/desktop-qt/qml/finance/` |
+| `focus` | Focus timer and history | `apps/web-react/src/components/focus/` | `apps/desktop-qt/qml/focus/` |
+| `habits` | Habit tracking | `apps/web-react/src/components/habits/` | `apps/desktop-qt/qml/habits/` |
+| `home` | Dashboard and navigation | `apps/web-react/src/components/home/` | `apps/desktop-qt/qml/home/` |
+| `settings` | Application preferences and security | `apps/web-react/src/components/settings/` | `apps/desktop-qt/qml/settings/` |
+| `trash` | Deleted-item recovery | `apps/web-react/src/components/trash/` | `apps/desktop-qt/qml/trash/` |
+| `vault` | Credential management | `apps/web-react/src/components/vault/` | `apps/desktop-qt/qml/vault/` |
+| `notifications` | Notification center and reminders | `apps/web-react/src/components/notifications/` | `apps/desktop-qt/qml/notifications/` |
 
-| # | Module | Primary Responsibility | Encryption Key | Persistence Layer | External Engines |
-| :- | :----- | :--------------------- | :------------- | :---------------- | :--------------- |
-| **1** | **Synapse Notes** | Rich text writing, blocks, collaborative CRDT | `notes_key` | SQLite / IDB `pages` | TipTap v3, ProseMirror, Yjs |
-| **2** | **Password Vault** | Credentials, passwords, card data | `vault_key` | SQLite / IDB `vault_items` | Web Crypto API, HIBP API |
-| **3** | **Digital Library** | E-books, PDF research, highlights, OCR | `files_key` | SQLite / IDB `books` | EpubJS, PDF.js, Tesseract.js |
-| **4** | **Culture & Media** | Cinema tracker, encrypted video player | `culture_key` | SQLite / Filesystem | FFmpeg, yt-dlp, Axum |
-| **5** | **Anki & Flashcards** | Spaced repetition study decks | `anki_key` | SQLite / IDB `anki_cards` | FSRS Algorithm (`ts-fsrs` v5), Gemini AI |
-| **6** | **Question Batteries & Focus Exam Solver** | Distraction-free test simulator | `anki_key` | SQLite / IDB `questions` | Keyboard-first engine |
-| **7** | **Language Immersion Practice** | Conversational voice/chat study | `core_key` | SQLite / IDB `practice` | Gemini 2.0 Flash, Web Audio |
-| **8** | **Focus & Ambient Studio** | Ambient soundscapes, Pomodoro | `core_key` | SQLite / IDB `habits` | Web Audio API, Canvas |
-| **9** | **Infinite Whiteboard & Diagrams** | Spatial mind-mapping, visual sketches | `diagram_key` | SQLite / IDB `diagrams` | Tldraw v5 |
-| **10** | **Encrypted Cloud Files** | Zero-Knowledge cloud drive backups | `masterKey` | Google Drive (`.enc`) | Google Drive API, PKCE OAuth |
-| **11** | **Personal Finance Ledger** | Expense tracking, budgeting, cash flow | `finance_key` | SQLite / IDB `finance` | Recharts SVG Engine |
-| **12** | **Habits & Routines** | Habit frequency, consistency streaks | `core_key` | SQLite / IDB `habits` | Reactive analytics |
-| **13** | **Calendar & Agenda** | Task scheduling, deadline tracking | `core_key` | SQLite / IDB `calendar` | Date-fns |
-| **14** | **Collaborative Workspaces & Multi-User Identity** | Notion-style workspaces, RBAC, member delegation | `workspaceKey` (wrapped) | Firestore `workspaces/{wsId}/*` | Firebase Auth, PBKDF2/AES-GCM |
+The Kotlin/Compose client groups screens under `apps/mobile-android/app/src/main/java/com/synapse/features/<module>/ui/`. The Expo shell at `apps/mobile-webview/` hosts React and must not become a second product-module implementation.
 
----
+## Architecture and Persistence
 
-## 2. In-Depth Module Specifications
+- React keeps presentation, orchestration, services, and platform APIs in its existing layer roots under `apps/web-react/src/`.
+- Qt keeps QML in `apps/desktop-qt/qml/<module>/` and feature controllers in `apps/desktop-qt/src/controllers/<module>/`.
+- Android-specific presentation and lifecycle logic stays in the Android app. Platform-neutral Rust capabilities belong in `core/synapse-core/` when the relevant contracts are implemented.
+- Database tables, crypto keys, and storage adapters are product-specific concerns. A module name or keychain entry alone does not prove that the module's data is encrypted.
+- The canonical module naming and path rules are documented in [the cross-application module structure guide](../architecture/module-structure.md).
 
-### 2.1. Synapse Notes (Rich-Text Writing & Second Brain Engine)
-- **Source Paths**: `src/components/Editor.tsx`, `src/components/editor/`, `src/components/editor-extensions/`
-- **Core Technology**: TipTap v3 (ProseMirror toolkit), `y-prosemirror`, Yjs CRDTs.
-- **Architectural Highlights**:
-  - **Custom ProseMirror Nodes**: Dynamic task lists, syntax-highlighted code blocks (`lowlight`), interactive tables, callouts, and mathematical formulas.
-  - **Collaborative CRDT Document Model**: Multi-device synchronization without merge conflicts, powered by Yjs state vectors.
-  - **Visual Revision History**: Snapshot diffing via `htmldiff-js`, allowing users to inspect word-level additions and deletions across historical versions.
-  - **Hierarchical Organizing**: Nested tree structure with drag-and-drop reorganization (`@dnd-kit`).
-- **Deep-Dive Specification**: See [**`docs/modules/notes.md`**](./notes.md) for ProseMirror schemas, custom node definitions, and Yjs synchronization details.
+## Module References
 
----
-
-### 2.2. Password & Credential Vault
-- **Source Paths**: `src/components/vault/`, `src-tauri/src/cmd_vault/`
-- **Core Technology**: Field-level AES-256-GCM encryption, Web Crypto API, k-Anonymity API.
-- **Architectural Highlights**:
-  - **Field-Level Isolation**: Sensitive fields (`password`, `notes`, `totp_secret`) are encrypted individually before database insertion.
-  - **HIBP Compromise Detection**: Queries the *Have I Been Pwned* API using **k-Anonymity** (only the first 5 characters of the SHA-1 password hash are transmitted), preserving 100% credential privacy.
-  - **Password Generator**: Cryptographically random generator (`crypto.getRandomValues`) with customizable character sets and Shannon entropy scoring.
-- **Deep-Dive Specification**: See [**`docs/modules/vault.md`**](./vault.md) for field-level encryption wire formats and k-Anonymity breach checking mechanics.
-
----
-
-### 2.3. Digital Library & Document Reader
-- **Source Paths**: `src/components/library/`, `src/components/files/`
-- **Core Technology**: EpubJS, PDF.js, Tesseract.js, Web Workers.
-- **Architectural Highlights**:
-  - **Multi-Format Support**: High-performance rendering of EPUB publications and PDF documents.
-  - **Reading State Preservation**: Accurate Canonical Fragment Identifier (CFI) tracking for EPUBs and page indices for PDFs.
-  - **On-Device OCR**: Client-side text extraction from scanned textbook captures without external API calls.
-  - **Contextual Annotations**: Text selection anchors, multi-color highlighting, and inline note creation.
-
----
-
-### 2.4. Culture Tracker & Encrypted Cinema
-- **Source Paths**: `src/components/video-player/`, `src/components/culture/`, `src-tauri/src/cmd_stream.rs`, `src-tauri/src/crypto_stream.rs`
-- **Core Technology**: Proprietary ENC1 format, Axum loopback streaming, Service Worker, FFmpeg.
-- **Architectural Highlights**:
-  - **Chunked Video Streaming**: Encrypted 4K media playback with sub-second seek times using HTTP 206 byte-range chunk decryption (see [`docs/protocols/enc1-streaming.md`](../protocols/enc1-streaming.md)).
-  - **Dual-Platform Engine**: Axum internal HTTP server on Tauri Desktop; Service Worker (`sw.js`) pipeline on Web PWA.
-  - **Subtitle Engine**: Real-time parser for `.vtt` and `.srt` subtitles with styling controls and audio track synchronization.
-
----
-
-### 2.5. Spaced Repetition (Anki Engine)
-- **Source Paths**: `src/components/anki/`, `src/services/fsrs.ts`
-- **Core Technology**: Free Spaced Repetition Scheduler (`ts-fsrs` v5) algorithm, Gemini AI.
-- **Architectural Highlights**:
-  - **Modern Cognitive Scheduling**: Implements FSRS (DSR model), outperforming traditional SM-2 by optimizing memory stability ($S$) and retrievability ($R$).
-  - **AI Deck Synthesis**: Integrates Google Gemini to automatically transform notes and web clippings into structured flashcard decks.
-  - **Review Analytics**: Visual heatmap, retention curves, and daily forecast metrics.
-- **Deep-Dive Specification**: See [**`docs/modules/anki-fsrs.md`**](./anki-fsrs.md) for the mathematical DSR formulation, rating curves, and AI synthesis prompts.
-
----
-
-### 2.6. Interactive Question Batteries & Focus Exam Solver
-- **Source Paths**: `src/components/questions/`, `src/services/quiz/`
-- **Core Technology**: Zen full-viewport distraction-free canvas, keyboard-first navigation engine.
-- **Architectural Highlights**:
-  - **Keyboard Fluidity**: Complete exam solving without cursor hunting (`A`, `B`, `C`, `D`, `Enter`, `Esc`).
-  - **Cognitive Isolation**: Suppresses extraneous navigation bars and tags during active problem-solving sessions.
-
----
-
-### 2.7. AI Conversational Language Practice
-- **Source Paths**: `src/components/practice/`, `src/services/gemini/`
-- **Core Technology**: Google Gemini 2.0/2.5 Flash, Gemini Multimodal Live (WebSocket), Web Audio API.
-- **Architectural Highlights**:
-  - **Hybrid Voice & Text Chat**: Real-time voice calls and written chat with keyboard fluidity.
-  - **Pedagogical Language Coach**: Double-layer response providing conversational engagement in target language plus structured feedback cards.
-  - **Long-Term Memory Extraction**: Background extraction of personal context and language progress across sessions.
-
----
-
-### 2.8. Focus & Ambient Productivity Studio
-- **Source Paths**: `src/components/focus/`, `src/services/lofi-manager.ts`
-- **Core Technology**: Web Audio API, HTML5 Canvas, System Notification API.
-- **Architectural Highlights**:
-  - **Lo-Fi Soundscapes**: Multi-track ambient sound generator (rain, cafe, vinyl, synth waves) with independent volume equalization.
-  - **Pomodoro Cycles**: Customizable work/rest interval timer synchronized with desktop notifications.
-
----
-
-### 2.9. Infinite Whiteboard & Diagrams
-- **Source Paths**: `src/components/diagrams/`
-- **Core Technology**: Tldraw v5 infinite canvas.
-- **Architectural Highlights**:
-  - Spatial thinking, mind mapping, architectural sketches, and freehand drawing integrated with note references.
-
----
-
-### 2.10. Encrypted Files & Cloud Storage
-- **Source Paths**: `src/services/drive/`, `src/components/files/`
-- **Core Technology**: Google Drive REST API, OAuth 2.0 PKCE, Chunked AES-GCM.
-- **Architectural Highlights**:
-  - **Zero-Knowledge Cloud Backup**: Encrypted locally before transmission (`.enc` files).
-  - **Resumable Chunked Transfers**: Fault-tolerant multi-megabyte uploads and downloads.
-
----
-
-### 2.11. Personal Finance Ledger
-- **Source Paths**: `src/components/finance/`
-- **Core Technology**: Double-entry ledger schema, reactive category aggregation, Recharts SVG.
-- **Architectural Highlights**:
-  - Income, expense, and transfer records with categories, recurrent intervals, and monthly burn rate charts.
-  - Encrypted on disk using the dedicated `finance_key`.
-
----
-
-### 2.12. Habits & Routines
-- **Source Paths**: `src/components/habits/`
-- **Core Technology**: Local reactive state, daily recurrence tracking, streak calculations.
-- **Architectural Highlights**:
-  - Consistency scoring, visual heatmaps, and streak milestone incentives with sub-millisecond local updates.
-
----
-
-### 2.13. Calendar & Agenda
-- **Source Paths**: `src/components/calendar/`
-- **Core Technology**: `date-fns`, recurrence recurrence matrices, deadline synchronization.
-- **Architectural Highlights**:
-  - Unified view of study targets, review schedules, deadlines, and timeblocked cognitive sessions.
-
----
-
-### 2.14. Collaborative Workspaces & Multi-User Identity
-- **Source Paths**: `src/components/workspace/`, `src/services/workspace/`, `src/services/auth/`, `src/services/migration/`
-- **Core Technology**: Firebase Authentication, PBKDF2/AES-GCM key wrapping, Firestore scoped subcollections, RBAC security rules.
-- **Architectural Highlights**:
-  - **Notion-Style Workspace Switching**: Zero-latency switching between personal and team workspaces (`WorkspaceSwitcher.tsx`) with dynamic signal rebinding.
-  - **Collaborative E2EE Key Hierarchy**: Each workspace holds a 256-bit AES-GCM key securely wrapped per-member with their personal Master Key, maintaining zero-knowledge cloud confidentiality.
-  - **Multi-Tenant Subcollection Isolation**: Cleanly partitioned under `workspaces/{wsId}/*` with denormalized user membership pointers (`users/{uid}/memberships/{wsId}`) for $O(1)$ lookup performance.
-  - **Role-Based Access Control (RBAC)**: Fine-grained permissions (`owner`, `admin`, `editor`, `viewer`) enforced at both Cloud Firestore Security Rules and UI layers.
-  - **Zero-Data-Loss Migration**: `LegacyMigrator` seamlessly clones legacy root collections into personal workspaces with non-destructive guarantees and instant rollback.
-  - **Dual-Mode Authentication**: Seamless co-existence of local Master Password unlocking and Firebase Authentication accounts.
-
----
-
-## 3. Cross-Module Communication & Event Bus
-
-Modules remain loosely coupled by communicating through centralized store selectors and strongly typed custom events:
-
-```
-┌────────────────────────────────────────────────────────┐
-│               CENTRAL EVENT & ACTION BUS               │
-└──────────────────────────────────┬─────────────────────┘
-                                   │
-         ┌─────────────────────────┼─────────────────────────┐
-         ▼                         ▼                         ▼
-   [ Note Action ]          [ Flashcard Due ]        [ Media Playback ]
-  - Create Flashcard       - Trigger Review         - Update Watch Progress
-  - Link to Library        - Update FSRS State      - Sync Subtitle Marker
-```
-
-High-level modules consume domain utilities through abstract interfaces, ensuring that refactoring or upgrading an internal module implementation never triggers cascading failures across neighboring features.
+- [Notes](./notes.md)
+- [Vault](./vault.md)
+- [Anki and FSRS](./anki-fsrs.md)
+- [ENC1 media protocol](../protocols/enc1-streaming.md)
+- [Native desktop parity](../native-desktop-parity.md)
+- [Native encryption coverage](../security/native-encryption-audit.md)

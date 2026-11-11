@@ -23,7 +23,7 @@ Rectangle {
     Rectangle {
         width: 420; height: 320; radius: 20
         color: "#161524"
-        border.color: "#10b98155"
+        border.color: "#5510b981"
         border.width: 1
         anchors.centerIn: parent
 
@@ -62,8 +62,8 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height: 40; radius: 10
-                    color: "#10b98126"
-                    border.color: "#10b98166"
+                    color: "#2610b981"
+                    border.color: "#6610b981"
                     Text { anchors.centerIn: parent; text: "Pausa Curta (5m)"; color: "#34d399"; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor

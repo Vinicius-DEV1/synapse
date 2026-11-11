@@ -26,8 +26,13 @@ int main(int argc, char *argv[]) {
     app.setApplicationName("Synapse Desktop");
     app.setApplicationVersion("2.0.0");
 
-    // Initialize Synapse Data Controller (auto-locates user database)
-    SynapseDataController dataController;
+    // Allow isolated native UI checks to use a temporary database without touching user data.
+    const QString configuredDatabasePath = qEnvironmentVariable("SYNAPSE_DATABASE_PATH").trimmed();
+    SynapseDataController dataController(nullptr, configuredDatabasePath.isEmpty());
+    if (!configuredDatabasePath.isEmpty() && !dataController.openDatabase(configuredDatabasePath)) {
+        qCritical() << "[Synapse Desktop] Could not open the configured database.";
+        return -1;
+    }
 
     // Register native C++ QML types
     qmlRegisterType<MpvPlayerItem>("Synapse.Media", 1, 0, "MpvVideoPlayer");
@@ -58,7 +63,7 @@ int main(int argc, char *argv[]) {
     if (!QFile::exists(qmlPath)) {
         qmlPath = QCoreApplication::applicationDirPath() + "/qml/main.qml";
     }
-    qInfo() << "[Synapse Desktop] Loading QML from:" << qmlPath;
+    qInfo() << "[Synapse Desktop] Loading the native interface.";
     engine.load(QUrl::fromLocalFile(qmlPath));
 
     return app.exec();

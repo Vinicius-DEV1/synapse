@@ -10,6 +10,24 @@ Rectangle {
     signal unlocked()
 
     property bool isShaking: false
+    property int lockoutRemainingSeconds: dataController.vaultUnlockRemainingSeconds
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: unlockScreenRoot.visible && unlockScreenRoot.lockoutRemainingSeconds > 0
+        onTriggered: {
+            dataController.refreshVaultLockout()
+            unlockScreenRoot.lockoutRemainingSeconds = dataController.vaultUnlockRemainingSeconds
+        }
+    }
+
+    Connections {
+        target: dataController
+        function onVaultLockoutChanged() {
+            unlockScreenRoot.lockoutRemainingSeconds = dataController.vaultUnlockRemainingSeconds
+        }
+    }
 
     SequentialAnimation {
         id: shakeAnim
@@ -29,17 +47,19 @@ Rectangle {
     }
 
     function doUnlock() {
+        if (lockoutRemainingSeconds > 0) return
         var pass = passwordField.text
         if (pass.trim().length === 0) return
 
+        passwordField.text = ""
+        showPasswordBtn.checked = false
         var success = dataController.unlockVault(pass)
+        pass = ""
         if (success) {
-            passwordField.text = ""
             unlockScreenRoot.unlocked()
         } else {
             unlockScreenRoot.isShaking = true
             shakeAnim.restart()
-            passwordField.selectAll()
             passwordField.forceActiveFocus()
         }
     }
@@ -55,7 +75,7 @@ Rectangle {
             anchors.fill: parent
             radius: 16
             color: "#1a1924"
-            border.color: "#ffffff12"
+            border.color: "#12ffffff"
             border.width: 1
 
             ColumnLayout {
@@ -70,8 +90,8 @@ Rectangle {
                     width: 64
                     height: 64
                     radius: 32
-                    color: "#8b5cf61a"
-                    border.color: "#8b5cf640"
+                    color: "#1a8b5cf6"
+                    border.color: "#408b5cf6"
                     border.width: 1
 
                     Text {
@@ -88,7 +108,7 @@ Rectangle {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "Cofre de Senhas Protegido"
+                        text: "Synapse is locked"
                         color: "#fffffe"
                         font.pixelSize: 22
                         font.bold: true
@@ -98,7 +118,7 @@ Rectangle {
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        text: "Digite sua senha mestra para descriptografar suas credenciais e notas confidenciais."
+                        text: "Enter your master password to open your workspace."
                         color: "#a7a9be"
                         font.pixelSize: 13
                         lineHeight: 1.3
@@ -110,9 +130,9 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 38
                     radius: 8
-                    visible: dataController.vaultLockError.length > 0
-                    color: "#ef444418"
-                    border.color: "#ef444440"
+                    visible: dataController.vaultLockError.length > 0 || unlockScreenRoot.lockoutRemainingSeconds > 0
+                    color: "#18ef4444"
+                    border.color: "#40ef4444"
                     border.width: 1
 
                     RowLayout {
@@ -124,7 +144,9 @@ Rectangle {
                         Text { text: "⚠️"; font.pixelSize: 14 }
                         Text {
                             Layout.fillWidth: true
-                            text: dataController.vaultLockError
+                            text: unlockScreenRoot.lockoutRemainingSeconds > 0
+                                  ? qsTr("Too many failed attempts. Try again in %1 seconds.").arg(unlockScreenRoot.lockoutRemainingSeconds)
+                                  : dataController.vaultLockError
                             color: "#fca5a5"
                             font.pixelSize: 12
                             elide: Text.ElideRight
@@ -138,7 +160,7 @@ Rectangle {
                     height: 48
                     radius: 10
                     color: "#201e30"
-                    border.color: passwordField.activeFocus ? "#8b5cf6" : "#ffffff18"
+                    border.color: passwordField.activeFocus ? "#8b5cf6" : "#18ffffff"
                     border.width: passwordField.activeFocus ? 2 : 1
 
                     RowLayout {
@@ -151,13 +173,14 @@ Rectangle {
                             id: passwordField
                             Layout.fillWidth: true
                             placeholderText: "Digite sua senha mestra..."
-                            placeholderTextColor: "#ffffff40"
+                            placeholderTextColor: "#40ffffff"
                             color: "#fffffe"
                             font.pixelSize: 14
                             echoMode: showPasswordBtn.checked ? TextInput.Normal : TextInput.Password
                             background: null
                             selectByMouse: true
                             focus: true
+                            enabled: unlockScreenRoot.lockoutRemainingSeconds === 0
 
                             Keys.onReturnPressed: unlockScreenRoot.doUnlock()
                         }
@@ -185,11 +208,14 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 46
                     radius: 10
-                    color: unlockMouse.containsMouse ? "#7c3aed" : "#8b5cf6"
+                    color: unlockScreenRoot.lockoutRemainingSeconds > 0
+                           ? "#403b50" : unlockMouse.containsMouse ? "#7c3aed" : "#8b5cf6"
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Desbloquear Cofre"
+                        text: unlockScreenRoot.lockoutRemainingSeconds > 0
+                              ? qsTr("Wait %1 seconds").arg(unlockScreenRoot.lockoutRemainingSeconds)
+                              : qsTr("Unlock Synapse")
                         color: "#fffffe"
                         font.pixelSize: 14
                         font.bold: true
@@ -200,6 +226,7 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
+                        enabled: unlockScreenRoot.lockoutRemainingSeconds === 0
                         onClicked: unlockScreenRoot.doUnlock()
                     }
                 }
@@ -211,7 +238,7 @@ Rectangle {
 
                     Text { text: "🛡️"; font.pixelSize: 12 }
                     Text {
-                        text: "PBKDF2 600.000 iterações • AES-256-GCM • Conhecimento Zero"
+                        text: "PBKDF2-HMAC-SHA256 • AES-256-GCM"
                         color: "#71717a"
                         font.pixelSize: 11
                     }

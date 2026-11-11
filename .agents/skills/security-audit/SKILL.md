@@ -9,6 +9,11 @@ description: >-
 
 # Skill: Comprehensive Multiplatform Security Audit & Mitigation Protocol
 
+> This skill defines audit procedures and target controls; it is not a claim
+> that every client currently meets them. For verified Qt vault coverage and
+> remaining plaintext risks, use the
+> [native encryption audit](../../../docs/security/native-encryption-audit.md).
+
 Activate this skill whenever auditing security, analyzing vulnerabilities, reviewing penetration defense, assessing data protection, or validating cryptography across the **Caderno** multiplatform ecosystem.
 
 > [!IMPORTANT]
@@ -172,7 +177,7 @@ Format findings into an actionable report:
 ### [SEC-01] [Vulnerability Title]
 - **Severity**: Critical | High | Medium | Low
 - **OWASP / CWE**: e.g., CWE-78: OS Command Injection / OWASP A03:2021
-- **Location**: `src-tauri/src/video.rs:L142-L150`
+- **Location**: Inspect the current video command modules under `apps/web-react/src-tauri/src/cmd_video/` and the stream bridge before recording line-level findings; the backend is split across several files.
 - **Mechanics & Risk**: Explanation of how the flaw can be exploited.
 - **Defensive Remediation**: Concrete code patch eliminating the vulnerability.
 - **Parity Guarantee**: Verification that application functionality and UX remain intact.

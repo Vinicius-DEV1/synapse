@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: modalRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     z: 95
     visible: false
 
@@ -40,7 +40,7 @@ Rectangle {
         height: 440
         radius: 16
         color: "#161524"
-        border.color: "#ffffff14"
+        border.color: "#14ffffff"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -70,7 +70,7 @@ Rectangle {
                 Text { text: "Nome do Hábito"; color: "#a7a9be"; font.pixelSize: 12 }
                 Rectangle {
                     Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"
-                    border.color: newHabitTitle.activeFocus ? "#10b981" : "#ffffff15"
+                    border.color: newHabitTitle.activeFocus ? "#10b981" : "#15ffffff"
                     TextInput {
                         id: newHabitTitle
                         anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
@@ -89,8 +89,8 @@ Rectangle {
                         model: ["⭐", "📚", "💧", "🏃", "🧘", "💻", "🎨", "🎵"]
                         delegate: Rectangle {
                             width: 36; height: 36; radius: 8
-                            color: modalRoot.selectedIcon === modelData ? "#10b98133" : "#211f30"
-                            border.color: modalRoot.selectedIcon === modelData ? "#10b981" : "#ffffff10"
+                            color: modalRoot.selectedIcon === modelData ? "#3310b981" : "#211f30"
+                            border.color: modalRoot.selectedIcon === modelData ? "#10b981" : "#10ffffff"
                             border.width: 1
                             Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 18 }
                             MouseArea {

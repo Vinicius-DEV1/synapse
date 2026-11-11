@@ -1,13 +1,13 @@
 ---
 name: cryptography-vault
 description: >-
-  Canonical reference for Caderno's End-to-End Encryption (E2EE) architecture:
-  Two-Tier Keychain, PBKDF2/AES-GCM key derivation, encrypted video streaming,
-  Master Password lifecycle, and Zero-Knowledge cloud storage. Activate when
+  Canonical reference for Synapse's cryptographic design and current client flows:
+  Two-Tier Keychain, PBKDF2/AES-GCM key derivation, ENC1 media streaming,
+  and Master Password lifecycle. Activate when
   implementing, auditing, or modifying any cryptographic operation or vault flow.
 ---
 
-# Cryptography, Vault & Zero-Knowledge Security Architecture
+# Cryptography, Vault, and Encrypted Media
 
 > Activate when implementing, auditing, refactoring, or querying any cryptographic
 > operations, Vault management, Keychain storage, E2EE sync, or encrypted media
@@ -15,19 +15,29 @@ description: >-
 
 ---
 
-## 1. Security Posture & Design Philosophy
+## Implementation Status Is Audited Separately
 
-Caderno implements a **Zero-Knowledge, Multiplatform Cryptographic Architecture**:
+This skill defines the required security posture and wire formats; it is not evidence that every application module currently meets them. Before claiming complete E2EE, read [`docs/security/native-encryption-audit.md`](../../../docs/security/native-encryption-audit.md) and verify its open gates against the code. Keep the specification and the implementation status separate, and update the audit when coverage changes.
 
-1. **Client-Side Encryption Only** — Plaintext data and user passwords never leave
-   the local device unencrypted. Neither cloud sync (Firebase/Firestore) nor cloud
-   storage (Google Drive) ever receives plaintext files or Master Keys.
-2. **Opt-In Local Vault Protection** — By default (no Master Password set), local
-   SQLite stores data in plaintext for high-speed offline desktop access. When the
-   user configures a Master Password, Caderno transitions into an **encrypted state
-   at rest**, zeroing out plaintext columns and storing AES-256-GCM ciphertexts.
-3. **Defense in Depth** — Isolation between modules using independent, dedicated
-   256-bit AES module keys wrapped inside a central encrypted Keychain.
+---
+
+## 1. Security Posture and Implementation Boundaries
+
+This skill specifies required cryptographic behavior; it is not proof that every
+application, database field, or sync path implements it. The current verified
+coverage and open gaps are recorded in [`docs/security/native-encryption-audit.md`](../../../docs/security/native-encryption-audit.md).
+
+1. **Encrypt at the boundary** — Encrypt sensitive content before it enters a
+   remote sync or storage path. Verify each concrete path before making a claim
+   about all cloud data or all modules.
+2. **Opt-in local vault** — Without a Master Password, local storage is generally
+   plaintext. With a configured Qt vault, selected notes, vault fields, and
+   supported media are protected. Several business tables, metadata, and assets
+   outside managed folders remain outside the current migration.
+3. **Defense in depth** — Use separate module keys where the keychain defines
+   them, AES-GCM envelopes, strict failure handling, bounded media paths, and
+   lock-time cleanup. Diagrams currently use the notes key; there is no dedicated
+   diagram key column in the current keychain schema.
 
 ---
 
@@ -46,12 +56,14 @@ Key System**:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    SQLite `keychain` Table                       │
 ├─────────────────┬─────────────────┬──────────────┬──────────────┤
-│ notes_key_enc   │ vault_key_enc   │ files_key_enc│ anki_key_enc │
+│ library_key_enc │ finance_key_enc │ notes_key_enc│ culture_key_enc│
 ├─────────────────┼─────────────────┼──────────────┼──────────────┤
-│ finance_key_enc │ diagram_key_enc │ core_key_enc │ culture_key  │
+│ anki_key_enc    │ focus_key_enc    │ files_key_enc│ vault_key_enc │
+├─────────────────┼─────────────────┼──────────────┼──────────────┤
+│ calendar_key_enc│ practice_key_enc │ core_key_enc │              │
 └─────────────────┴─────────────────┴──────────────┴──────────────┘
           │
-          ▼ Decrypted into in-memory `DbState.keys`
+          ▼ Decrypted into the client-specific in-memory key store
    [ Module AES-256 Keys ] (notes, vault, files, etc.)
           │
           ▼ AES-256-GCM (Encrypts/Decrypts entity content)
@@ -64,11 +76,12 @@ Key System**:
 | :----------------- | :--------------------------------- |
 | **Algorithm**      | PBKDF2 with HMAC-SHA256            |
 | **Iterations**     | 600,000 rounds (NIST SP 800-132)   |
-| **Desktop Salt**   | `b"caderno-keychain-salt"` (Rust)  |
-| **Web / Cloud Salt** | `"caderno-e2ee-salt-v1"` (TS)    |
+| **Local Desktop Salt** | Fixed compatibility salt in the Rust bridge |
+| **Web / Cloud Salt** | Versioned separately by the relevant web crypto flow |
 
-Distinct salt domains isolate local SQLite Keychain storage from remote cloud sync
-payloads, preventing cross-domain dictionary replay.
+The fixed local salt is a known limitation, not a per-vault random salt. A
+versioned salt migration remains open; do not describe this as unique-salt
+hardening. Check the native encryption audit for current compatibility behavior.
 
 ### 2.2. Module Key Generation & Storage
 
@@ -83,7 +96,7 @@ payloads, preventing cross-domain dictionary replay.
 
 ## 3. Dual-Platform Cryptographic Implementations
 
-### 3.1. Desktop Backend — Rust (`src-tauri/src/crypto.rs`)
+### 3.1. Desktop Backend — Rust (`apps/web-react/src-tauri/src/crypto.rs`)
 
 - **Dependencies**: `aes-gcm 0.10`, `pbkdf2 0.12`, `sha2 0.10`, `rand 0.8`.
 - **Payload Format**: `format!("{}:{}:{}", iv_hex, auth_tag_hex, encrypted_hex)`.
@@ -96,7 +109,7 @@ pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String>
 pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String, String>;
 ```
 
-### 3.2. Web Frontend — TypeScript (`src/services/crypto.ts`)
+### 3.2. Web Frontend — TypeScript (`apps/web-react/src/services/crypto.ts`)
 
 - **Engine**: Native Web Crypto API (`window.crypto.subtle`).
 - **Payload Format**: Combined binary buffer `[12-byte IV | Ciphertext + Tag]`,
@@ -116,7 +129,7 @@ export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: Crypt
 - **Payload Format**: Identical to Tauri Rust backend: `<iv_hex>:<auth_tag_hex>:<ciphertext_hex>`.
 - **C-ABI Exports (`bridges/bridge-qt/src/lib.rs`)**:
   - `synapse_crypto_derive_master_key(password, out_key_32)`: PBKDF2-HMAC-SHA256 (600,000 rounds, salt `b"caderno-keychain-salt"`).
-  - `synapse_crypto_hash_password(password)`: SHA-256 auth_hash hex.
+  - `synapse_crypto_hash_password_v2(password)`: versioned auth verifier derived from the PBKDF2 master key. `synapse_crypto_hash_password` remains a legacy SHA-256 verifier reader/writer only for migration compatibility.
   - `synapse_crypto_generate_module_key()`: 32 random bytes hex.
   - `synapse_crypto_encrypt_module_key` & `synapse_crypto_decrypt_module_key`: AES-256-GCM (16-byte nonce) for Keychain envelope wrapping.
   - `synapse_crypto_encrypt_content` & `synapse_crypto_decrypt_content`: AES-256-GCM (12-byte nonce) for pages, history revisions, and vault items.
@@ -190,7 +203,7 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 2. **Derive New Master Key**: `PBKDF2(new_password, salt, 600000)` → `new_master_key`.
 3. **Decrypt All Module Keys**: Using `old_master_key`, recover every `*_key_enc`.
 4. **Re-Encrypt All Module Keys**: Using `new_master_key`, re-encrypt each with fresh IVs.
-5. **Update Auth Hash**: Replace stored hash with `hash_auth_password(new_password)`.
+5. **Update Auth Verifier**: Replace the stored verifier with the versioned verifier derived from the new PBKDF2 master key.
 6. **Zero Old Key Material**: Clear `old_master_key` and intermediates from memory immediately.
 
 > [!CAUTION]
@@ -208,16 +221,18 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 | :--- | :---- | :------------- |
 | `bridges/bridge-qt/src/lib.rs` | Rust Native Bridge | PBKDF2 (600k rounds), AES-256-GCM, SHA-256, memory wiping C-ABI |
 | `apps/desktop-qt/src/synapse_controller.*` | C++ Desktop Controller | Two-Tier Keychain orchestration, on-the-fly encryption/decryption, auto-lock |
-| `apps/desktop-qt/qml/vault/VaultUnlockScreen.qml` | QML Presentation | Zen unlock canvas with error shake animation and Zero-Knowledge badge |
+| `apps/desktop-qt/src/controllers/vault/vault_setup_controller.cpp` | Qt Desktop Vault | Transactional migration of supported plaintext fields during first-time setup |
+| `apps/desktop-qt/src/controllers/vault/vault_setup_assets_controller.cpp` | Qt Desktop Vault | ENC1 staging, managed asset migration, persistent recovery journal, fail-closed unlock recovery |
+| `apps/desktop-qt/qml/vault/VaultUnlockScreen.qml` | QML Presentation | Native vault unlock screen |
 | `apps/desktop-qt/qml/settings/MasterPasswordModal.qml` | QML Presentation | Setup, change, and remove master password dialogs with strength meter |
 | `apps/desktop-qt/qml/vault/PasswordGeneratorModal.qml` | QML Presentation | Interactive entropy-controlled secure password generator |
-| `src-tauri/src/crypto.rs` | Rust Backend | AES-256-GCM encrypt/decrypt, PBKDF2 derivation, module key generation |
-| `src-tauri/src/crypto_stream.rs` | Rust Backend | Chunked AES-GCM streaming for large files (video) |
-| `src-tauri/src/protocol_encrypted.rs` | Rust Backend | Custom `encrypted://` URI protocol, HTTP 206 partial content |
-| `src-tauri/src/cmd_vault.rs` | Rust Backend | Vault CRUD with field-level encryption/decryption |
-| `src-tauri/src/cmd_notes.rs` | Rust Backend | Note content encryption/decryption on read/write |
-| `src/services/crypto.ts` | Web Frontend | Web Crypto API wrappers |
-| `src/services/storage/` | Web Frontend | IndexedDB/Firestore encrypted sync adapters |
+| `apps/web-react/src-tauri/src/crypto.rs` | Rust Backend | AES-256-GCM encrypt/decrypt, PBKDF2 derivation, module key generation |
+| `apps/web-react/src-tauri/src/crypto_stream.rs` | Rust Backend | Chunked AES-GCM streaming for large files (video) |
+| `apps/web-react/src-tauri/src/protocol_encrypted.rs` | Rust Backend | Custom `encrypted://` URI protocol, HTTP 206 partial content |
+| `apps/web-react/src-tauri/src/cmd_vault/` | Rust Backend | Tauri vault command modules for vault CRUD and field-level flows |
+| `apps/web-react/src-tauri/src/cmd_notes.rs` | Rust Backend | Note content encryption/decryption on read/write |
+| `apps/web-react/src/services/crypto.ts` | Web Frontend | Web Crypto API wrappers |
+| `apps/web-react/src/services/storage/` | Web Frontend | IndexedDB/Firestore encrypted sync adapters |
 
 ---
 
@@ -225,7 +240,7 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 
 When adding or modifying encryption code:
 
-1. **Unit Tests**: `npx vitest run src/services/crypto.test.ts` / `cargo test crypto`
+1. **Unit Tests**: `npm run test -- src/services/crypto.test.ts` / `cargo test crypto`
 2. **Cross-Roundtrip Integrity**: `decrypt(encrypt(text)) === text` for empty strings,
    multi-byte UTF-8, emojis, and large 10MB+ buffers.
 3. **Ciphertext Randomness**: Encrypting identical plaintext twice must produce

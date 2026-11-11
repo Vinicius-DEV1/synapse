@@ -27,7 +27,7 @@ ColumnLayout {
             height: 195
             radius: 12
             color: "#1a1924"
-            border.color: "#ffffff0f"
+            border.color: "#0fffffff"
             border.width: 1
 
             ColumnLayout {
@@ -50,11 +50,11 @@ ColumnLayout {
                         width: statusText.contentWidth + 16
                         radius: 11
                         color: dataController.isVaultConfigured
-                            ? (dataController.isVaultUnlocked ? "#10b98126" : "#f59e0b26")
-                            : "#ffffff12"
+                            ? (dataController.isVaultUnlocked ? "#2610b981" : "#26f59e0b")
+                            : "#12ffffff"
                         border.color: dataController.isVaultConfigured
-                            ? (dataController.isVaultUnlocked ? "#10b98150" : "#f59e0b50")
-                            : "#ffffff20"
+                            ? (dataController.isVaultUnlocked ? "#5010b981" : "#50f59e0b")
+                            : "#20ffffff"
                         Text {
                             id: statusText
                             anchors.centerIn: parent
@@ -85,7 +85,7 @@ ColumnLayout {
                             width: modelData === 0 ? 52 : 44
                             height: 26; radius: 6
                             color: dataController.autoLockMinutes === modelData ? "#8b5cf6" : "#15141b"
-                            border.color: "#ffffff12"
+                            border.color: "#12ffffff"
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData === 0 ? "Nunca" : (modelData + "m")
@@ -111,8 +111,8 @@ ColumnLayout {
                     Rectangle {
                         visible: dataController.isVaultUnlocked
                         width: 110; height: 30; radius: 6
-                        color: lockNowMouse.containsMouse ? "#ef444433" : "#ef444420"
-                        border.color: "#ef444440"
+                        color: lockNowMouse.containsMouse ? "#33ef4444" : "#20ef4444"
+                        border.color: "#40ef4444"
                         Text { anchors.centerIn: parent; text: "🔒 Bloquear"; color: "#fca5a5"; font.pixelSize: 11; font.bold: true }
                         MouseArea {
                             id: lockNowMouse
@@ -125,8 +125,8 @@ ColumnLayout {
 
                     Rectangle {
                         width: 120; height: 30; radius: 6
-                        color: changePassMouse.containsMouse ? "#8b5cf640" : "#8b5cf626"
-                        border.color: "#8b5cf650"
+                        color: changePassMouse.containsMouse ? "#408b5cf6" : "#268b5cf6"
+                        border.color: "#508b5cf6"
                         Text { anchors.centerIn: parent; text: "🔑 Alterar Senha"; color: "#c4b5fd"; font.pixelSize: 11; font.bold: true }
                         MouseArea {
                             id: changePassMouse
@@ -140,7 +140,7 @@ ColumnLayout {
                     Rectangle {
                         width: 120; height: 30; radius: 6
                         color: removePassMouse.containsMouse ? "#3f3f46" : "#27272a"
-                        border.color: "#ffffff18"
+                        border.color: "#18ffffff"
                         Text { anchors.centerIn: parent; text: "Remover Proteção"; color: "#d4d4d8"; font.pixelSize: 11 }
                         MouseArea {
                             id: removePassMouse
@@ -180,7 +180,7 @@ ColumnLayout {
             height: 195
             radius: 12
             color: "#1a1924"
-            border.color: "#ffffff0f"
+            border.color: "#0fffffff"
             border.width: 1
 
             ColumnLayout {
@@ -236,7 +236,7 @@ ColumnLayout {
         spacing: 12
 
         Rectangle {
-            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#10b98133"; border.width: 1
+            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#3310b981"; border.width: 1
             RowLayout { anchors.centerIn: parent; spacing: 8
                 Text { text: "●"; color: "#10b981"; font.pixelSize: 12 }
                 Text { text: "SQLite WAL: Pool Ativo"; color: "#fffffe"; font.bold: true; font.pixelSize: 13 }
@@ -244,7 +244,7 @@ ColumnLayout {
         }
 
         Rectangle {
-            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#10b98133"; border.width: 1
+            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#3310b981"; border.width: 1
             RowLayout { anchors.centerIn: parent; spacing: 8
                 Text { text: "●"; color: "#10b981"; font.pixelSize: 12 }
                 Text { text: "libmpv: GPU hwdec=auto-safe"; color: "#fffffe"; font.bold: true; font.pixelSize: 13 }
@@ -252,7 +252,7 @@ ColumnLayout {
         }
 
         Rectangle {
-            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#10b98133"; border.width: 1
+            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#3310b981"; border.width: 1
             RowLayout { anchors.centerIn: parent; spacing: 8
                 Text { text: "●"; color: "#10b981"; font.pixelSize: 12 }
                 Text { text: "FSRS v5: Algoritmo Puro Rust"; color: "#fffffe"; font.bold: true; font.pixelSize: 13 }
@@ -260,7 +260,7 @@ ColumnLayout {
         }
 
         Rectangle {
-            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#10b98133"; border.width: 1
+            Layout.fillWidth: true; height: 50; radius: 10; color: "#1a1924"; border.color: "#3310b981"; border.width: 1
             RowLayout { anchors.centerIn: parent; spacing: 8
                 Text { text: "●"; color: "#10b981"; font.pixelSize: 12 }
                 Text { text: "E2EE: AES-256-GCM Two-Tier"; color: "#fffffe"; font.bold: true; font.pixelSize: 13 }

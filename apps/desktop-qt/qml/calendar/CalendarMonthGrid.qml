@@ -13,6 +13,7 @@ ColumnLayout {
     signal nextMonthRequested()
     signal todayRequested()
     signal cellClicked(string dateStr)
+    signal eventClicked(var eventData)
 
     // Month Nav Bar
     RowLayout {
@@ -21,7 +22,7 @@ ColumnLayout {
 
         Rectangle {
             width: 32; height: 32; radius: 8
-            color: "#161524"; border.color: "#ffffff15"
+            color: "#161524"; border.color: "#15ffffff"
             Text { anchors.centerIn: parent; text: "‹"; color: "#fffffe"; font.pixelSize: 18 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: monthGridRoot.prevMonthRequested() }
         }
@@ -35,14 +36,14 @@ ColumnLayout {
 
         Rectangle {
             width: 32; height: 32; radius: 8
-            color: "#161524"; border.color: "#ffffff15"
+            color: "#161524"; border.color: "#15ffffff"
             Text { anchors.centerIn: parent; text: "›"; color: "#fffffe"; font.pixelSize: 18 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: monthGridRoot.nextMonthRequested() }
         }
 
         Rectangle {
             width: 60; height: 32; radius: 8
-            color: "#161524"; border.color: "#ffffff15"
+            color: "#161524"; border.color: "#15ffffff"
             Text { anchors.centerIn: parent; text: "Hoje"; color: "#38bdf8"; font.pixelSize: 12; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: monthGridRoot.todayRequested() }
         }
@@ -87,7 +88,7 @@ ColumnLayout {
             x: 2; y: 2
             radius: 8
             color: modelData.isToday ? "#1e293b" : (cellMouse.containsMouse ? "#201e30" : "#141320")
-            border.color: modelData.isToday ? "#38bdf888" : "#ffffff0a"
+            border.color: modelData.isToday ? "#8838bdf8" : "#0affffff"
             border.width: 1
 
             ColumnLayout {
@@ -117,7 +118,7 @@ ColumnLayout {
                     spacing: 2
                     Repeater {
                         model: modelData.events ? modelData.events.slice(0, 2) : []
-                        Rectangle {
+                        delegate: Rectangle {
                             Layout.fillWidth: true
                             height: 18
                             radius: 4
@@ -139,6 +140,11 @@ ColumnLayout {
                                     Layout.fillWidth: true
                                 }
                             }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: monthGridRoot.eventClicked(modelData)
+                            }
                         }
                     }
                     Text {
@@ -156,6 +162,7 @@ ColumnLayout {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                z: -1
                 onClicked: monthGridRoot.cellClicked(modelData.dateStr)
             }
         }

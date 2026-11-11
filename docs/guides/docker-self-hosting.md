@@ -10,7 +10,7 @@ The containerized deployment packages Synapse Web into an ultra-lightweight, har
 - **Build Stage**: Compiles the web application using Node 22 Alpine (`npm run build:web`).
 - **Runtime Stage**: Serves the compiled SPA via Nginx Alpine with built-in security headers (`X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`), Gzip compression, and static asset caching.
 - **Image Size**: ~25 MB total footprint.
-- **Data Sovereignty**: The web container serves static encrypted assets. Persistent data is stored directly in your browser's IndexedDB and synchronizes securely with your personal cloud relays.
+- **Data and Sync**: The container serves the React web build. User data is stored by the browser adapters, including IndexedDB; cloud sync is optional and follows the entity-specific encryption behavior of the active adapters. This deployment description does not certify that all browser data or metadata is encrypted at rest or in the cloud.
 
 ---
 
@@ -32,7 +32,7 @@ The containerized deployment packages Synapse Web into an ultra-lightweight, har
 2. **Configure Environment Variables (Build-Time)**:
    Since Vite embeds `VITE_*` environment variables during the build stage, create your `.env` before compiling the container:
    ```bash
-   cp .env.example .env
+   cp apps/web-react/.env.example apps/web-react/.env
    # Edit .env to add your Firebase or Google Cloud keys (optional)
    ```
 

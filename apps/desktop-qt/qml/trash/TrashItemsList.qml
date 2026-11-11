@@ -36,7 +36,7 @@ Item {
             height: 64
             radius: 10
             color: itemMouse.containsMouse ? "#201e30" : "#1a1924"
-            border.color: itemMouse.containsMouse ? "#8b5cf644" : "#ffffff0f"
+            border.color: itemMouse.containsMouse ? "#448b5cf6" : "#0fffffff"
             border.width: 1
 
             Behavior on color { ColorAnimation { duration: 120 } }
@@ -92,8 +92,8 @@ Item {
                     width: 90
                     height: 32
                     radius: 7
-                    color: rstMouse.containsMouse ? "#10b98133" : "#10b9811a"
-                    border.color: "#10b98155"
+                    color: rstMouse.containsMouse ? "#3310b981" : "#1a10b981"
+                    border.color: "#5510b981"
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -116,8 +116,8 @@ Item {
                     width: 32
                     height: 32
                     radius: 7
-                    color: delMouse.containsMouse ? "#f43f5e33" : "transparent"
-                    border.color: delMouse.containsMouse ? "#f43f5e66" : "transparent"
+                    color: delMouse.containsMouse ? "#33f43f5e" : "transparent"
+                    border.color: delMouse.containsMouse ? "#66f43f5e" : "transparent"
 
                     Text {
                         anchors.centerIn: parent

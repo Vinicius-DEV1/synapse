@@ -1,274 +1,73 @@
-# 🏛️ Synapse System Architecture Specification
+# Synapse System Architecture
 
-This document defines the core architecture, multiplatform runtime boundaries, cryptographic security models, and data synchronization patterns powering **Synapse**.
+**Status:** Current architectural overview. Feature and security completion are tracked separately in the [native desktop parity matrix](../native-desktop-parity.md) and [native encryption audit](../security/native-encryption-audit.md).
 
----
+Synapse is a multi-app knowledge and study platform. The React client is the functional and visual reference for native parity work. The repository also contains a Tauri shell, a native Qt desktop client, a native Kotlin/Compose Android client, and an Expo WebView shell. Their modules are not all at equal parity.
 
-## 1. Architectural Overview & Design Philosophy
+## 1. Application Targets
 
-Synapse is an **Offline-First, Zero-Knowledge Personal Knowledge & Cognitive Operating System**. It is engineered to provide the raw performance, data sovereignty, and security of native desktop software, combined with the ubiquitous accessibility of modern web applications.
+| Target | Source | Runtime and ownership |
+| --- | --- | --- |
+| React Web and Tauri | `apps/web-react/` | React 19, TypeScript, Vite, browser adapters, and the Tauri v2 Rust backend |
+| Native Qt Desktop | `apps/desktop-qt/` | Qt Quick/QML, C++17 controllers, SQLite access through the Qt Rust bridge, and libmpv media rendering |
+| Native Android | `apps/mobile-android/` | Kotlin, Jetpack Compose, Android-specific UI and services, with shared Rust capabilities exposed through UniFFI |
+| Android WebView Shell | `apps/mobile-webview/` | Expo/React Native host that loads the React web app and provides Android shell capabilities |
 
-```
-                                   SYNAPSE CORE PILLARS
-  ┌─────────────────────────┬─────────────────────────┬─────────────────────────┐
-  │   Zero-Knowledge E2EE   │      Offline-First      │   Multiplatform Parity  │
-  │ Client-side encryption  │ Local SQLite/IndexedDB; │ 100% feature & visual   │
-  │ before touching disk    │ zero-latency reads with │ parity between Desktop  │
-  │ or remote networks.     │ CRDT synchronization.   │ (Tauri) and Web (PWA).  │
-  └─────────────────────────┴─────────────────────────┴─────────────────────────┘
-```
+The root npm workspace delegates to `apps/web-react/`. The Expo shell and native Android app use their own build systems. Shared Rust code and its bindings live in `core/synapse-core/` and `bridges/`. See [repository layout](./repository-layout.md) and [module structure](./module-structure.md) for ownership details.
 
----
+## 2. Shared-Code Boundaries
 
-## 2. Multiplatform Hybrid Runtime
-
-Synapse executes across two primary runtimes from a unified codebase:
-
-```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                           CROSS-PLATFORM FRONTEND (REACT 19)                  │
-│               TypeScript 6.0  •  Vite 8  •  TailwindCSS  •  TipTap v3         │
-└──────────────────────────────────────┬────────────────────────────────────────┘
-                                       │
-                      Environment Detection (`__TAURI__`)
-                     ┌─────────────────┴─────────────────┐
-                     ▼                                   ▼
-       ┌───────────────────────────┐       ┌───────────────────────────┐
-       │   DESKTOP (TAURI V2 / RUST)│       │      WEB PWA (BROWSER)    │
-       ├───────────────────────────┤       ├───────────────────────────┤
-       │ • Native SQLite (WAL mode)│       │ • IndexedDB (`idb` v8)    │
-       │ • Tauri IPC Commands      │       │ • Web Crypto API (Subtle) │
-       │ • Local Loopback Axum Svr │       │ • Service Worker (`sw.js`)│
-       │ • Native FFmpeg / yt-dlp  │       │ • Firebase Firestore Sync │
-       │ • `encrypted://` Protocol │       │ • Google Drive REST API   │
-       └───────────────────────────┘       └───────────────────────────┘
+```mermaid
+flowchart TB
+  React[React Web] --> WebAdapters[IndexedDB and web adapters]
+  React --> Tauri[Tauri Rust backend]
+  Tauri --> Core[synapse-core]
+  Qt[Qt Quick/QML] --> QtBridge[bridge-qt C ABI]
+  QtBridge --> Core
+  Android[Kotlin/Compose] --> UniFFI[bridge-uniffi]
+  UniFFI --> Core
+  WebView[Expo WebView shell] --> React
+  Wasm[bridge-wasm] --> Core
 ```
 
-1. **Desktop Native (Tauri v2 + Rust)**:
-   - Utilizes Rust for high-speed I/O, heavy cryptography, database operations, media processing, and local streaming.
-   - Consumes only ~30–50 MB RAM at idle, compared to Electron's 250MB+ baseline.
-   - Embedded relational database via `rusqlite` with Write-Ahead Logging (WAL) enabled.
-2. **Web Progressive Web App (Browser / PWA)**:
-   - Full client-side execution using IndexedDB (`idb`) and the native W3C Web Crypto API (`window.crypto.subtle`).
-   - Background media streaming and chunk decryption orchestrated via Service Workers (`sw.js`).
-   - Zero-Knowledge cloud sync and encrypted backup using Google Drive and Firebase signaling.
+The shared Rust crate currently contains database migrations and connection code, cryptographic primitives and ENC1 streaming, FSRS helpers, and video-reading support. Product modules still have platform-specific orchestration and persistence code. Do not assume every business rule or module CRUD path has been moved into Rust.
 
----
+### React and Tauri
 
-## 3. Four-Tier Layered Architecture
+React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend owns native commands and uses its database and platform adapters. Shared Rust utilities are called through `core/synapse-core/` where integrated.
 
-To strictly adhere to **SOLID** software engineering principles, the codebase enforces clear boundaries across four architectural tiers:
+### Qt Desktop
 
-```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│ 1. PRESENTATION LAYER (`src/components/`)                                      │
-│ Pure UI rendering, Tailwind styling, accessible keyboard handlers, Radix UI.  │
-│ Zero direct platform IPC calls or unmanaged business logic.                  │
-└──────────────────────────────────────┬────────────────────────────────────────┘
-                                       │
-┌──────────────────────────────────────▼────────────────────────────────────────┐
-│ 2. ORCHESTRATION LAYER (`src/hooks/`, `src/store/`)                           │
-│ State management (Context API + Reducers), lifecycle bindings, memoization.   │
-│ Coordinates UI events with underlying business domain services.               │
-└──────────────────────────────────────┬────────────────────────────────────────┘
-                                       │
-┌──────────────────────────────────────▼────────────────────────────────────────┐
-│ 3. DOMAIN & BUSINESS LAYER (`src/services/`, `src/utils/`)                    │
-│ Pure business logic: FSRS spaced repetition algorithms, text diffing, OCR     │
-│ parsing, cryptographic key lifecycle, and validation logic. React-agnostic.  │
-└──────────────────────────────────────┬────────────────────────────────────────┘
-                                       │
-┌──────────────────────────────────────▼────────────────────────────────────────┐
-│ 4. INFRASTRUCTURE & PLATFORM LAYER (`src/api/`, `src/services/`)               │
-│ Abstract drivers: Tauri IPC invoke wrappers, IndexedDB storage adapters,     │
-│ Firestore network synchronization, and platform contract implementations.     │
-└───────────────────────────────────────────────────────────────────────────────┘
-```
+QML owns native presentation. Feature controllers under `apps/desktop-qt/src/controllers/<module>/` coordinate SQLite access, crypto operations, and platform behavior. The Rust C ABI is exposed by `bridges/bridge-qt/`. Some controller responsibilities remain in C++; do not describe the entire Qt application as Rust-core-driven.
 
----
+### Android
 
-## 4. Cryptographic Security & Keychain Architecture
+The Compose application owns Android presentation and lifecycle behavior. The UniFFI bridge exposes shared Rust capabilities. Native Android feature coverage must be checked against its own implementation and build/test evidence; the Qt parity matrix does not certify Android parity.
 
-Synapse employs a **Two-Tier Key Hierarchy** to decouple user password changes from data re-encryption:
+### WebView Shell
 
-```
-[ User Master Password ]
-          │
-          ▼ PBKDF2-HMAC-SHA256 (600,000 rounds + CSPRNG Salt)
-   [ Ephemeral Master Key (256-bit AES) ]
-          │
-          ▼ AES-256-GCM (Unwraps keychain envelope table)
-┌─────────────────────────────────────────────────────────────────┐
-│                    SQLite / IDB `keychain` Table                │
-├─────────────────┬─────────────────┬──────────────┬──────────────┤
-│ notes_key_enc   │ vault_key_enc   │ files_key_enc│ anki_key_enc │
-├─────────────────┼─────────────────┼──────────────┼──────────────┤
-│ finance_key_enc │ diagram_key_enc │ core_key_enc │ culture_key  │
-└─────────────────┴─────────────────┴──────────────┴──────────────┘
-          │
-          ▼ Decrypted into in-memory protected state
-   [ Dedicated Module AES-256 Keys ]
-          │
-          ▼ AES-256-GCM (Ciphertext payloads with 12B IV + 16B Auth Tag)
-   [ Encrypted Notes, Drive `.enc` Files, Chunked ENC1 Video Streams ]
-```
+The Expo app is a host shell, not a duplicate product implementation. Keep safe-area, back-button, link policy, and native capability integration there. Product module UI remains in React or the fully native Android app.
 
-### 4.1. Key Derivation & Salt Isolation
-- **Algorithm**: PBKDF2 with HMAC-SHA256, adhering to **NIST SP 800-132**.
-- **Iteration Count**: 600,000 iterations to withstand high-throughput GPU brute-force attacks.
-- **Salt Domains**:
-  - Desktop SQLite Keychain: `b"caderno-keychain-salt"` (Rust domain).
-  - Cloud / Remote Sync Payloads: `"caderno-e2ee-salt-v1"` (Web Crypto domain).
-  - Domain separation prevents cross-system dictionary replay attacks.
+## 3. Data and Synchronization
 
-### 4.2. In-Memory Key Zeroization
-- Plaintext Master Keys and Module Keys are never stored in persistent databases or local storage.
-- Upon session locking or application exit, all in-memory keys (`DbState.keys` in Rust and memory references in TypeScript) are overwritten and wiped.
+- React Web uses browser storage and configured cloud adapters.
+- Tauri and Qt use SQLite through their respective native persistence paths.
+- Android has a separate native app and persistence boundary; shared schema or behavior must be verified before claiming cross-client interchangeability.
+- React note collaboration uses Yjs in the flows that implement it. This does not establish Yjs collaboration parity in Qt or Compose.
+- Sync, sharing, workspace, and cloud behavior remain client-specific unless a shared contract is documented and tested.
 
----
+## 4. Cryptographic Coverage
 
-## 5. Real-Time Collaborative State & Concurrency (CRDT)
+The repository implements PBKDF2-HMAC-SHA256 derivation, AES-GCM key envelopes, selected field protection, and encrypted media flows. These mechanisms do **not** mean every SQLite entity, metadata field, external asset, or in-memory copy is encrypted or scrubbed.
 
-Synapse utilizes **Conflict-Free Replicated Data Types (CRDTs)** via the **Yjs** ecosystem for note editing and multi-device synchronization:
+The Qt setup migrates supported note, revision, diagram, and vault content plus referenced media in managed folders. Sensitive business records in several modules remain plaintext at rest; files outside managed folders are not migrated; and some metadata remains visible. See the [native encryption audit](../security/native-encryption-audit.md) before publishing E2EE or zero-residual claims.
 
-```
-┌─────────────────────────┐                     ┌─────────────────────────┐
-│  Client A (Tauri Linux) │                     │   Client B (Web PWA)    │
-│  TipTap / ProseMirror   │                     │   TipTap / ProseMirror  │
-└────────────┬────────────┘                     └────────────┬────────────┘
-             │                                               │
-      `y-prosemirror`                                 `y-prosemirror`
-             │                                               │
-      ┌──────▼──────┐                                 ┌──────▼──────┐
-      │   Y.Doc A   │                                 │   Y.Doc B   │
-      └──────┬──────┘                                 └──────┬──────┘
-             │                                               │
-             └──────────────► Firebase Signaling ◄───────────┘
-                               (Encrypted CRDT
-                                State Vectors)
-```
+## 5. Feature Parity and Performance
 
-- **Conflict-Free Convergence**: Edits from concurrent devices merge mathematically without data loss or merge conflict prompts.
-- **State Vector Compaction**: Periodic document compaction prevents unbounded CRDT history growth by generating snapshot checkpoints.
-- **Full Engine Specification**: For detailed information on the zero-lock autosave pipeline, dirty-table targeting, and mutex queueing, see [**`sync-engine.md`**](./sync-engine.md).
+A screen existing in Qt or Compose does not prove functional parity. The [native desktop parity matrix](../native-desktop-parity.md) records the Qt gaps and acceptance gates. Compare the original React flow for controls, keyboard behavior, loading and error states, data migration, and visual geometry.
 
----
+Performance is also platform-specific. Historical web bundle or browser benchmarks are not evidence of native Qt or Android speed. Re-run measured workloads on the target app before making performance claims.
 
-## 6. Storage Strategy & Multiplatform Platform Adapters
+## 6. Build and Verification
 
-Persistence adheres strictly to the **Liskov Substitution Principle (LSP)** through the unified contract interface exposed on `window.api` (defined in `src/api/types.ts`):
-
-```typescript
-// Defined in src/api/types.ts
-export interface WindowApi {
-  notes: NotesApi;
-  vault: VaultApi;
-  anki: AnkiApi;
-  library: LibraryApi;
-  culture: CultureApi;
-  finance: FinanceApi;
-  files: FilesApi;
-  calendar: CalendarApi;
-  habits: IHabitsApi;
-  quiz: IQuizApi;
-  focus: FocusApi;
-  diagrams: DiagramsApi;
-  auth: AuthApi;
-  // ...module-specific interfaces
-}
-```
-
-```
-                        ┌──────────────────┐
-                        │    window.api    │
-                        │(src/api/types.ts)│
-                        └────────┬─────────┘
-                                 │
-                 ┌───────────────┴───────────────┐
-                 ▼                               ▼
-     ┌───────────────────────┐       ┌───────────────────────┐
-     │       tauriApi        │       │        webApi         │
-     │  (src/tauri-api.ts)   │       │(src/services/web-api) │
-     │  Desktop (Rust IPC)   │       │   Web (IndexedDB)     │
-     └───────────────────────┘       └───────────────────────┘
-```
-
-The concrete implementation is instantiated transparently at runtime by environment detection (`window.__TAURI__`), guaranteeing 100% functional parity between Desktop and Web environments.
-
----
-
-## 7. Performance Engineering & Quality Guarantees
-
-Synapse adopts elite industry performance best practices:
-
-1. **Zero-Latency Perceived UX (SWR Pattern)**:
-   - Adopts Stale-While-Revalidate (RFC 5861). Cached records display synchronously for 0ms transition times, revalidating against storage in the background.
-2. **Zero-Rerender CSS Interactions**:
-   - Hover, active, and focus states use Tailwind composite classes (`group-hover`, `peer`, `:focus-within`) handled entirely on the GPU compositor thread without triggering React re-renders.
-3. **Constant-Time Lookups ($O(1)$ Hash Maps & Binary Tables)**:
-   - High-frequency datasets (tags, note lookups, flashcard queries) are indexed in memory using `Map` and `Set` collections, preventing $O(N)$ render-loop scans.
-   - Binary-to-Base64 transformations use precomputed byte lookup tables (`b64ToByte`, `byteToB64` in `binary.ts`) with chunked string allocation, eliminating call-stack exceptions and CPU bottlenecks.
-4. **Engine-Level Push Filtering ($O(K)$ Dirty Retrieval)**:
-   - Synchronizations query dirty rows directly at the SQLite engine level using `CAST(strftime('%s', updated_at) AS INTEGER) > ?` and IndexedDB range queries, avoiding memory-intensive `SELECT *` sweeps and JS garbage collection pauses.
-5. **Decoupled Root State & Leaf Component Isolation**:
-   - Background synchronization status is managed via a dedicated `SyncCoordinator` and `useSyncExternalStore`, preventing full-tree React virtual DOM re-renders during save/sync transitions.
-6. **Immutable Reducer Memoization & Structural Identity**:
-   - Core state reducers (`UPDATE_PAGE`, `SET_PAGES`) evaluate payload equality before generating new object references, preserving reference equality and eliminating downstream selector churn.
-7. **Off-Main-Thread Media Processing**:
-   - Video streaming, audio slicing, and PDF/EPUB parsing run asynchronously or in background workers to preserve smooth 60fps UI responsiveness.
-
----
-
-## 8. Multi-User Identity & Notion-Style Collaborative Workspaces
-
-Synapse supports both standalone single-user operation and independent multi-user collaboration with Notion-style collaborative workspaces:
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      FIREBASE AUTHENTICATION LAYER                     │
-│  • Email / Password Authentication (`signIn`, `signUp`, `signOut`)     │
-│  • Dual-Mode Compatibility (Seamless Legacy Single-User Unlock)       │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │
-┌──────────────────────────────────▼─────────────────────────────────────┐
-│                   COLLABORATIVE E2EE KEY ARCHITECTURE                  │
-│                                                                        │
-│       Workspace E2EE Symmetric Key (256-bit AES-GCM)                   │
-│                        │                                               │
-│       ┌────────────────┴────────────────┐                              │
-│       ▼                                 ▼                              │
-│  Wrapped with User A MasterKey     Wrapped with User B MasterKey       │
-│  (`workspaces/{wsId}/members/A`)   (`workspaces/{wsId}/members/B`)     │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │
-┌──────────────────────────────────▼─────────────────────────────────────┐
-│                    SCOPED MULTI-TENANT SUBCOLLECTIONS                  │
-│  • `workspaces/{wsId}/pages/*`            • `workspaces/{wsId}/notes/*`│
-│  • `workspaces/{wsId}/members/*`          • `workspaces/{wsId}/collab` │
-│  • Denormalized Pointers: `users/{uid}/memberships/{wsId}` ($O(1)$)   │
-│  • Role-Based Access Control: owner | admin | editor | viewer          │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-### 8.1. Dual-Mode Authentication & Parity
-- **Legacy Password-Only Mode**: Users can continue unlocking their offline or single-user instance using their local master password without cloud account creation.
-- **Independent Multi-User Accounts**: Users can register or log in with email and password via Firebase Authentication. Account evolution links the local vault master key with their cloud identity.
-
-### 8.2. Collaborative E2EE Workspace Key Hierarchy
-- Every collaborative workspace generates a cryptographically random **256-bit AES-GCM Workspace Key** upon creation.
-- To eliminate plaintext key leakage, the workspace key is exported and wrapped (encrypted via AES-256-GCM) with each authorized member's personal Master Key.
-- Stored in `workspaces/{wsId}/members/{userId}.encryptedWorkspaceKey`.
-- When an authorized member joins or switches to the workspace, their client unwraps the workspace key in memory using their personal Master Key. The cloud relay remains completely blind to the workspace decryption key.
-
-### 8.3. Role-Based Access Control (RBAC) & Security Rules
-- Granular permission matrix enforced through Cloud Firestore Security Rules:
-  - **`owner`**: Full workspace control, billing/settings, deletion, ownership transfer.
-  - **`admin`**: Invite members, update roles, edit documents.
-  - **`editor`**: Create, edit, and delete workspace documents and pages.
-  - **`viewer`**: Read-only access to decrypted workspace documents.
-- Multi-tenant isolation prevents cross-tenant document queries: all operations are strictly constrained within `/workspaces/{wsId}/*`.
-
-### 8.4. Zero-Data-Loss Migration Architecture
-- The `LegacyMigrator` engine safely copies existing single-user root collections (`pages`, `transactions`, `anki_cards`, etc.) into a private workspace (`workspaces/personal_{uid}/*`).
-- Root collections are **never deleted or modified**, guaranteeing complete reversibility and zero risk of data loss.
-
+Use the [setup and build guide](../guides/setup-and-build.md) for current prerequisites and commands. Use the app-level `AGENTS.md` files for local ownership rules. Current documentation sources and historical reports are indexed in [documentation status](../documentation-status.md).

@@ -1,12 +1,14 @@
-# 🔄 Synapse Synchronization & Zero-Lock Autosave Engine
+# React Sync and Autosave Architecture Notes
+
+> **Scope:** This document preserves React/Web sync and autosave design notes, including historical performance claims. It does not certify Qt or Android sync parity, zero-lock behavior, repository-wide E2EE, or that every implementation detail still matches the current code. Verify paths and contracts before changing the sync system.
 
 ## 1. Architectural Overview
 
-Synapse is built upon an **Offline-First, Zero-Lock, Multiplatform Synchronization Architecture** that ensures total data integrity and instant responsiveness across:
+The React/Web client is designed around offline-first persistence and asynchronous synchronization. Actual behavior and encryption coverage depend on the specific adapter and entity:
 - **Desktop (Tauri v2 / Rust)**: Local SQLite storage with WAL (Write-Ahead Logging) and RFC3339 UTC timestamps.
 - **Web (PWA / Browser)**: Local IndexedDB (`idb`) with transactional persistence and Web Crypto Subtle API.
 - **Mobile (Android Companion / WebView)**: Adaptive dynamic viewports, safe-area management, and lifecycle flush listeners.
-- **Cloud Signaling Relay (Firebase Firestore)**: Blind, encrypted relay facilitating cross-device synchronization signals without ever accessing plaintext user records.
+- **Cloud Signaling (Firebase Firestore)**: Configured sync and signal flows use Firebase; encryption and plaintext exposure depend on the entity and adapter being used.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -33,7 +35,7 @@ Synapse is built upon an **Offline-First, Zero-Lock, Multiplatform Synchronizati
 ┌────────────────────────────────────────▼────────────────────────────────────────┐
 │                        CLOUD PUSH & REAL-TIME RELAY                             │
 │  • pushAllToCloud: selective push for dirty tables only                         │
-│  • Client-Side E2EE Encryption with Module Master Keys                          │
+│  • Client-Side Encryption for Supported Entity Flows                           │
 │  • Firestore Batch Write + Device ID Signal Broadcast                           │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -71,7 +73,7 @@ window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'pag
 - `pushAllToCloud(masterKey, tablesToPush)` iterates **only** over modules associated with the dirty tables, reducing Firestore check operations from 35 queries down to 1.
 
 ### 2.4. Decoupled Media Synchronization
-Large document files (PDFs, EPUBs, video media) are synchronized with Google Drive E2EE storage. Running `syncPdfsToCloud` inside the 3-second text autosave debounce caused severe network locking.
+Large document files (PDFs, EPUBs, and video media) use separate Google Drive encryption/sync flows where implemented. Running `syncPdfsToCloud` inside the 3-second text autosave debounce caused severe network locking in the implementation described by this snapshot.
 - **Resolution**: `syncPdfsToCloud` is decoupled from `doPushOnlySync` and runs exclusively during `doFullSync` (startup, window refocus, manual sync, and network reconnection). Fast text edits complete in under 100ms.
 
 ### 2.5. Native Engine-Level Push Filtering (`cmd_sync.rs` & `sync-push.ts`)

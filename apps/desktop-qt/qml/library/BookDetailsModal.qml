@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: detailsRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     visible: isOpen && book !== null
     z: 90
 
@@ -17,6 +17,7 @@ Rectangle {
     signal closed()
     signal progressSaved(string bookId, int currentPage, int totalPages)
     signal bookDeleted(string bookId)
+    signal bookOpenRequested(var book)
 
     onIsOpenChanged: {
         if (isOpen && book) {
@@ -31,13 +32,51 @@ Rectangle {
         onClicked: detailsRoot.closed()
     }
 
+    Dialog {
+        id: deleteBookDialog
+        title: "Remover livro da biblioteca"
+        modal: true
+        anchors.centerIn: parent
+        width: 420
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: "#161524"; border.color: "#22ffffff"; radius: 14 }
+        contentItem: Text {
+            text: detailsRoot.book
+                ? "Remover ‘" + detailsRoot.book.title + "’ do acervo? O arquivo local será mantido."
+                : "Remover este livro do acervo?"
+            color: "#d4d4dc"
+            wrapMode: Text.Wrap
+            padding: 20
+        }
+        footer: RowLayout {
+            spacing: 10
+            Item { Layout.fillWidth: true }
+            Button {
+                text: "Cancelar"
+                onClicked: deleteBookDialog.reject()
+                background: Rectangle { color: "#211f30"; radius: 8; border.color: "#20ffffff" }
+                contentItem: Text { text: parent.text; color: "#c4c5d4"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            Button {
+                text: "Remover"
+                onClicked: deleteBookDialog.accept()
+                background: Rectangle { color: "#9f2941"; radius: 8 }
+                contentItem: Text { text: parent.text; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+        }
+        onAccepted: {
+            if (detailsRoot.book) detailsRoot.bookDeleted(detailsRoot.book.id)
+            detailsRoot.closed()
+        }
+    }
+
     Rectangle {
         anchors.centerIn: parent
         width: 480
         height: 440
         radius: 16
         color: "#161524"
-        border.color: "#ffffff14"
+        border.color: "#14ffffff"
         border.width: 1
 
         MouseArea {
@@ -122,6 +161,33 @@ Rectangle {
             }
 
             // Page Adjustment Steppers
+            Rectangle {
+                visible: detailsRoot.book && detailsRoot.book.file_path
+                Layout.fillWidth: true
+                height: 38
+                radius: 8
+                color: "#252139"
+                border.color: "#3d8b5cf6"
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 7
+                    Text { text: "▸"; color: "#c4b5fd"; font.pixelSize: 14; font.bold: true }
+                    Text {
+                        text: detailsRoot.book && detailsRoot.book.current_page > 0 ? "Continuar leitura" : "Abrir no leitor nativo"
+                        color: "#ddd6fe"
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (detailsRoot.book) detailsRoot.bookOpenRequested(detailsRoot.book)
+                    }
+                }
+            }
+
             BookProgressStepper {
                 currentPage: detailsRoot.currentPage
                 totalPages: detailsRoot.totalPages
@@ -142,8 +208,8 @@ Rectangle {
                     width: 110
                     height: 40
                     radius: 8
-                    color: "#f43f5e18"
-                    border.color: "#f43f5e40"
+                    color: "#18f43f5e"
+                    border.color: "#40f43f5e"
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -156,10 +222,7 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (detailsRoot.book) {
-                                detailsRoot.bookDeleted(detailsRoot.book.id)
-                                detailsRoot.closed()
-                            }
+                            deleteBookDialog.open()
                         }
                     }
                 }
@@ -172,7 +235,7 @@ Rectangle {
                     height: 40
                     radius: 8
                     color: "#211f30"
-                    border.color: "#ffffff12"
+                    border.color: "#12ffffff"
                     Text { anchors.centerIn: parent; text: "Cancelar"; color: "#a7a9be"; font.pixelSize: 12 }
                     MouseArea {
                         anchors.fill: parent

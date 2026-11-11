@@ -21,22 +21,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.synapse.ui.anki.AnkiStudyScreen
-import com.synapse.ui.anki.CardItem
-import com.synapse.ui.calendar.CalendarScreen
-import com.synapse.ui.culture.CultureScreen
-import com.synapse.ui.diagrams.DiagramsScreen
-import com.synapse.ui.finance.FinanceScreen
-import com.synapse.ui.focus.FocusScreen
-import com.synapse.ui.habits.HabitsScreen
-import com.synapse.ui.home.HomeScreen
-import com.synapse.ui.library.LibraryScreen
-import com.synapse.ui.notes.NotesScreen
-import com.synapse.ui.quiz.ZenQuizScreen
+import com.synapse.features.anki.ui.AnkiStudyScreen
+import com.synapse.features.anki.ui.CardItem
+import com.synapse.features.calendar.ui.CalendarScreen
+import com.synapse.features.culture.ui.CultureScreen
+import com.synapse.features.diagrams.ui.DiagramsScreen
+import com.synapse.features.finance.ui.FinanceScreen
+import com.synapse.features.focus.ui.FocusScreen
+import com.synapse.features.habits.ui.HabitsScreen
+import com.synapse.features.home.ui.HomeScreen
+import com.synapse.features.library.ui.LibraryScreen
+import com.synapse.features.notes.ui.NotesScreen
+import com.synapse.features.questions.ui.ZenQuizScreen
 import com.synapse.ui.theme.*
-import com.synapse.ui.trash.TrashScreen
-import com.synapse.ui.vault.VaultScreen
-import com.synapse.ui.video.VideoPlayerScreen
+import com.synapse.features.trash.ui.TrashScreen
+import com.synapse.features.vault.ui.VaultScreen
+import com.synapse.features.video.ui.VideoPlayerScreen
 
 enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Boolean = true) {
     HOME("Início", Icons.Default.Home, true),

@@ -2,7 +2,7 @@
 
 Welcome to the **Synapse Engineering Skills** repository. These playbooks document the architectural patterns, security standards, design system tokens, and automated quality protocols governing the Synapse codebase.
 
-Whether you are an engineering recruiter, tech lead, or contributor, this directory outlines the rigor and modern Big Tech engineering practices baked into Synapse's hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeScript / Vite) architecture.
+These playbooks apply across the four app targets: React Web/Tauri (`apps/web-react/`), native Qt Desktop (`apps/desktop-qt/`), native Kotlin/Compose Android (`apps/mobile-android/`), and Expo/WebView Android (`apps/mobile-webview/`). Shared Rust logic lives in `core/synapse-core/` and `bridges/`.
 
 ---
 
@@ -11,7 +11,7 @@ Whether you are an engineering recruiter, tech lead, or contributor, this direct
 | Skill | Category | Primary Focus & Deliverables | Core Standards |
 | :---- | :------- | :--------------------------- | :------------- |
 | [**`code-quality-refactoring`**](./code-quality-refactoring/SKILL.md) | Architecture | Modularization of monolithic components, SRP decomposition, custom hook extraction, algorithmic indexing ($O(1)$ lookups), and zero-regression refactoring. | SOLID Principles, RFC 5861 (SWR), Clean Architecture |
-| [**`cryptography-vault`**](./cryptography-vault/SKILL.md) | Security & Cryptography | Canonical reference for Two-Tier Keychain hierarchy, PBKDF2 (600,000 rounds) key derivation, AES-256-GCM encryption, chunked video streaming, and Zero-Knowledge cloud sync. | NIST SP 800-132, Web Crypto API, AES-GCM 256 |
+| [**`cryptography-vault`**](./cryptography-vault/SKILL.md) | Security & Cryptography | Cryptographic design requirements for the Two-Tier Keychain, PBKDF2 key derivation, AES-256-GCM, and ENC1 media. Consult the separate implementation audit for actual coverage. | NIST SP 800-132, Web Crypto API, AES-GCM 256 |
 | [**`design-system`**](./design-system/SKILL.md) | Design & UI Engineering | Comprehensive visual design tokens, `brand-*` violet palette, whisper-thin borders, atomic component variants, Lucide icon standards, and GPU-accelerated micro-animations. | Design Tokens, Tailwind CSS, GPU Compositing |
 | [**`immersive-minimalist-ux`**](./immersive-minimalist-ux/SKILL.md) | UX & Ergonomics | Zen canvas architecture (`zinc-950` full-viewport overlay), keyboard-first navigation engine (`useImmersiveKeyboard`), semantic feedback colors, and reading column ergonomics. | Ergonomic Typography, Distraction-Free UX |
 | [**`module-bug-audit`**](./module-bug-audit/SKILL.md) | Quality Assurance | Rigorous 4-phase audit protocol for race conditions, memory leaks, unmounted state updates, Rust `.unwrap()` panic paths, and SQL parameterization. | Static Analysis, Diagnostic Tracing |
@@ -27,10 +27,12 @@ Whether you are an engineering recruiter, tech lead, or contributor, this direct
 ### 1. Strict Functional & Visual Parity
 Refactoring, bug fixes, and internal optimizations must maintain **100% functional and visual parity**. Performance enhancements and structural cleanups preserve all user interactions, keyboard shortcuts, animations, and edge-case handling.
 
-### 2. Multiplatform Hybrid Architecture
-- **Desktop (Tauri v2 + Rust)**: High-performance local SQLite storage, native filesystem access with strict canonicalization, and chunked AES-GCM video streaming protocol (`encrypted://`).
-- **Web (React 19 + TypeScript + Vite)**: Progressive offline-first persistence via IndexedDB (`idb`), Web Crypto API, and optional real-time cloud synchronization via Firebase/Firestore.
-- **Contract Adapters**: Platform implementations adhere strictly to the Liskov Substitution Principle (LSP) and Interface Segregation Principle (ISP), isolating platform-specific IPC behind clean storage abstractions.
+### 2. Multi-App Architecture
+- **React Web + Tauri (`apps/web-react/`)**: The original React app runs in browsers and in the Tauri v2 shell; the Tauri backend provides Rust IPC and SQLite.
+- **Native Qt Desktop (`apps/desktop-qt/`)**: Qt Quick/QML and C++ use the Rust C-ABI bridge and native media rendering.
+- **Native Android (`apps/mobile-android/`)**: Kotlin/Compose connects to shared Rust capabilities through UniFFI.
+- **Expo/WebView Shell (`apps/mobile-webview/`)**: A separate React Native package hosts the React web app and integrates Android system APIs.
+- **Shared Code**: Platform-neutral domain logic belongs in `core/synapse-core/`; `bridges/` adapts it to Qt, Android, and WebAssembly.
 
 ### 3. Big Tech Performance Engineering
 - **0ms Perceived Latency**: Optimistic UI transitions and Stale-While-Revalidate (RFC 5861) caching.
@@ -38,11 +40,15 @@ Refactoring, bug fixes, and internal optimizations must maintain **100% function
 - **Layout Thrashing Prevention**: Batching DOM geometry reads before writes and guarding `requestAnimationFrame` loops.
 - **Algorithmic Efficiency**: Pre-indexing collections into hash maps (`Map`, `Set`) to guarantee $O(1)$ constant-time lookup performance regardless of vault scale.
 
-### 4. Zero-Knowledge Cryptographic Vault
-User data is secured client-side before touching disk or cloud:
-- **Master Key**: Derived via PBKDF2-HMAC-SHA256 (600,000 iterations).
-- **Two-Tier Keychain**: Dedicated module keys (notes, diagrams, vault passwords) are sealed inside an encrypted envelope in SQLite/IndexedDB.
-- **Zero Residual Plaintext**: Plaintext columns are scrubbed upon setting a Master Password; keys are wiped from memory on lock.
+### 4. Vault and Cryptographic Requirements
+The cryptography skill defines target behavior; it is not proof that every client or entity implements it:
+- **Master Key**: Current local derivation uses PBKDF2-HMAC-SHA256 (600,000 iterations) with a compatibility-bound salt.
+- **Two-Tier Keychain**: Dedicated module keys are sealed in encrypted envelopes where the client implements that flow.
+- **Coverage and Residuals**: Protection is partial across local database fields and metadata. Some buffers are wiped, but zero residual plaintext has not been proven. Read the [native encryption audit](../../docs/security/native-encryption-audit.md) before making security claims.
+
+## Current Implementation Status
+
+The [documentation status index](../../docs/documentation-status.md) identifies authoritative project documents. The [native desktop parity matrix](../../docs/native-desktop-parity.md) and [native encryption audit](../../docs/security/native-encryption-audit.md) remain the sources of truth for their respective scopes. Skill instructions describe required practice, not completion status.
 
 ---
 
@@ -50,10 +56,10 @@ User data is secured client-side before touching disk or cloud:
 
 ```bash
 # Type contract verification across entire codebase
-npx tsc -b --noEmit
+npm run typecheck
 
 # Run targeted fast tests (sub-second feedback)
-npx vitest run src/services/crypto.test.ts
+npm run test -- src/services/crypto.test.ts
 
 # Launch automated Git Worktrees for parallel multi-agent audit
 npm run swarm:setup

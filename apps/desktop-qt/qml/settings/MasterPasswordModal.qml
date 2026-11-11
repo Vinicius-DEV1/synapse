@@ -11,6 +11,7 @@ Rectangle {
 
     property string mode: "setup" // "setup", "change", "remove"
     property string localError: ""
+    property bool isMandatory: false
 
     signal closed()
     signal success()
@@ -40,7 +41,7 @@ Rectangle {
             }
             var ok = dataController.setupMasterPassword(p1)
             if (ok) {
-                closeModal()
+                closeModal(true)
                 masterPassModalRoot.success()
             } else {
                 localError = dataController.vaultLockError || "Erro ao configurar senha mestra."
@@ -84,7 +85,8 @@ Rectangle {
         }
     }
 
-    function closeModal() {
+    function closeModal(forceClose) {
+        if (isMandatory && forceClose !== true) return
         curPassInput.text = ""
         newPassInput.text = ""
         confirmPassInput.text = ""
@@ -104,7 +106,7 @@ Rectangle {
         anchors.centerIn: parent
         radius: 16
         color: "#1a1924"
-        border.color: "#ffffff12"
+        border.color: "#12ffffff"
         border.width: 1
 
         MouseArea { anchors.fill: parent } // Prevent backdrop close
@@ -129,6 +131,7 @@ Rectangle {
                 Item { Layout.fillWidth: true }
                 Button {
                     text: "✕"
+                    visible: !masterPassModalRoot.isMandatory
                     flat: true
                     background: null
                     contentItem: Text { text: "✕"; color: "#a7a9be"; font.pixelSize: 16; horizontalAlignment: Text.AlignHCenter }
@@ -156,8 +159,8 @@ Rectangle {
                 height: 36
                 radius: 8
                 visible: masterPassModalRoot.localError.length > 0
-                color: "#ef44441a"
-                border.color: "#ef444440"
+                color: "#1aef4444"
+                border.color: "#40ef4444"
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 12
@@ -180,10 +183,10 @@ Rectangle {
                 visible: mode === "change" || mode === "remove"
                 Text { text: "Senha Mestra Atual"; color: "#c4b5fd"; font.pixelSize: 12; font.bold: true }
                 Rectangle {
-                    Layout.fillWidth: true; height: 40; radius: 8; color: "#201e30"; border.color: "#ffffff18"
+                    Layout.fillWidth: true; height: 40; radius: 8; color: "#201e30"; border.color: "#18ffffff"
                     TextField {
                         id: curPassInput; anchors.fill: parent; anchors.margins: 8; echoMode: TextInput.Password
-                        color: "#fffffe"; font.pixelSize: 13; placeholderText: "Digite a senha atual..."; placeholderTextColor: "#ffffff35"; background: null
+                        color: "#fffffe"; font.pixelSize: 13; placeholderText: "Digite a senha atual..."; placeholderTextColor: "#35ffffff"; background: null
                     }
                 }
             }
@@ -194,10 +197,10 @@ Rectangle {
                 visible: mode === "setup" || mode === "change"
                 Text { text: mode === "change" ? "Nova Senha Mestra" : "Senha Mestra"; color: "#c4b5fd"; font.pixelSize: 12; font.bold: true }
                 Rectangle {
-                    Layout.fillWidth: true; height: 40; radius: 8; color: "#201e30"; border.color: "#ffffff18"
+                    Layout.fillWidth: true; height: 40; radius: 8; color: "#201e30"; border.color: "#18ffffff"
                     TextField {
                         id: newPassInput; anchors.fill: parent; anchors.margins: 8; echoMode: TextInput.Password
-                        color: "#fffffe"; font.pixelSize: 13; placeholderText: "Mínimo 6 caracteres..."; placeholderTextColor: "#ffffff35"; background: null
+                        color: "#fffffe"; font.pixelSize: 13; placeholderText: "Mínimo 6 caracteres..."; placeholderTextColor: "#35ffffff"; background: null
                     }
                 }
 
@@ -209,7 +212,7 @@ Rectangle {
                         model: 5
                         Rectangle {
                             Layout.fillWidth: true; height: 4; radius: 2
-                            color: modelData <= parent.score ? masterPassModalRoot.getStrengthColor(parent.score) : "#ffffff15"
+                            color: modelData <= parent.score ? masterPassModalRoot.getStrengthColor(parent.score) : "#15ffffff"
                         }
                     }
                     Text {
@@ -226,10 +229,10 @@ Rectangle {
                 visible: mode === "setup" || mode === "change"
                 Text { text: "Confirmar Senha Mestra"; color: "#c4b5fd"; font.pixelSize: 12; font.bold: true }
                 Rectangle {
-                    Layout.fillWidth: true; height: 40; radius: 8; color: "#201e30"; border.color: "#ffffff18"
+                    Layout.fillWidth: true; height: 40; radius: 8; color: "#201e30"; border.color: "#18ffffff"
                     TextField {
                         id: confirmPassInput; anchors.fill: parent; anchors.margins: 8; echoMode: TextInput.Password
-                        color: "#fffffe"; font.pixelSize: 13; placeholderText: "Repita a senha mestra..."; placeholderTextColor: "#ffffff35"; background: null
+                        color: "#fffffe"; font.pixelSize: 13; placeholderText: "Repita a senha mestra..."; placeholderTextColor: "#35ffffff"; background: null
                         Keys.onReturnPressed: masterPassModalRoot.submit()
                     }
                 }
@@ -243,13 +246,14 @@ Rectangle {
 
                 Button {
                     text: "Cancelar"
+                    visible: !masterPassModalRoot.isMandatory
                     Layout.fillWidth: true
                     height: 42
                     flat: true
                     background: Rectangle {
                         radius: 8
                         color: "#201e30"
-                        border.color: "#ffffff12"
+                        border.color: "#12ffffff"
                     }
                     contentItem: Text {
                         text: "Cancelar"

@@ -56,7 +56,7 @@ Rectangle {
             // Exit Button [Esc]
             Rectangle {
                 width: 64; height: 32; radius: 8
-                color: "#ffffff10"
+                color: "#10ffffff"
 
                 RowLayout {
                     anchors.centerIn: parent

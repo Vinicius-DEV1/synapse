@@ -36,7 +36,7 @@ RowLayout {
         height: 40
         radius: 10
         color: "#15141b"
-        border.color: cultureSearchInput.activeFocus ? "#8b5cf680" : "#ffffff12"
+        border.color: cultureSearchInput.activeFocus ? "#808b5cf6" : "#12ffffff"
         border.width: 1
 
         RowLayout {

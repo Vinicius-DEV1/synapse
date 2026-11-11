@@ -72,8 +72,8 @@ ColumnLayout {
         Layout.fillWidth: true
         height: 44
         radius: 10
-        color: "#10b9811f"
-        border.color: "#10b98144"
+        color: "#1f10b981"
+        border.color: "#4410b981"
         border.width: 1
 
         RowLayout {
@@ -107,7 +107,7 @@ ColumnLayout {
         Layout.fillWidth: true
         radius: 12
         color: "#1a1924"
-        border.color: "#ffffff0f"
+        border.color: "#0fffffff"
         border.width: 1
 
         ColumnLayout {

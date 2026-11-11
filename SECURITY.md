@@ -1,65 +1,42 @@
-# 🛡️ Security Policy & Vulnerability Disclosure
+# Security Policy and Vulnerability Disclosure
 
-**Synapse** is engineered from the ground up around **Zero-Knowledge principles**, end-to-end encryption (E2EE), and local-first data durability. We take data confidentiality, cryptographic integrity, and security vulnerabilities with the highest priority.
+Synapse uses cryptographic protections in selected vault, media, and sync flows. Coverage is not repository-wide: some local business records, metadata, and unmanaged assets are not encrypted at rest. See the [native encryption audit](./docs/security/native-encryption-audit.md) for verified behavior and current gaps. Do not assume a feature is secure solely because a module key exists.
 
----
+## Supported Versions
 
-## 🔒 Supported Versions
+This repository does not currently publish a maintained release-support matrix. Check the [changelog](./CHANGELOG.md) and the latest release information before reporting a version-specific issue.
 
-We actively provide security patches, dependency updates, and cryptographic hardening for the following releases:
+## Reporting a Vulnerability
 
-| Version | Supported | Security Maintenance Status |
-| :------ | :-------- | :-------------------------- |
-| **`1.0.x`** | ✅ Yes | Actively maintained with critical vulnerability patches. |
-| `< 1.0.0` | ❌ No | Deprecated development prototypes. |
+Please do not disclose a suspected vulnerability in public GitHub Issues, public discussions, or social media before the maintainers have reviewed it.
 
----
+1. Use the repository's private [GitHub Security Advisory](https://github.com/Vinicius-DEV1/synapse/security/advisories/new) workflow when available.
+2. If private advisories are unavailable, contact the project maintainer through the repository's GitHub profile and request a private reporting channel.
 
-## 🔐 Zero-Knowledge Cryptographic Guarantees
+Include:
 
-Synapse guarantees that:
-1. **Zero Plaintext Transmission**: All personal notes, passwords, files, and flashcards are encrypted client-side using **AES-256-GCM** with a unique 96-bit (12-byte) initialization vector (IV) per record before touching persistent disks or remote cloud relays.
-2. **Ephemeral Master Keys**: Master cryptographic keys are derived via **PBKDF2-HMAC-SHA256 (600,000 iterations)** with cryptographically secure random salts. Master keys reside strictly in volatile RAM and are wiped upon lock.
-3. **Blind Relays**: Cloud sync backbones (Firebase Firestore / Google Drive) act solely as blind relays; they never receive decryption keys or view plaintext content.
+- A concise description of the vulnerability and its likely impact.
+- Reproduction steps or a minimal proof of concept.
+- The affected app target and version/commit, operating system, and relevant runtime.
+- Any proposed mitigation, if available.
+- Whether the issue requires an unlocked device, a configured Master Password, or network access.
 
----
+Avoid attaching real user databases, passwords, tokens, or private media. Use sanitized test data.
 
-## 🚨 Reporting a Vulnerability
+## Response Expectations
 
-If you believe you have discovered a security vulnerability or cryptographic flaw in Synapse, we urge you to practice **Responsible Disclosure**. Please do **not** disclose the issue publicly through GitHub Issues, public discussions, or social media until it has been reviewed and patched.
+The project does not promise fixed acknowledgement or remediation deadlines. The maintainer will confirm receipt, assess severity and reproducibility, and coordinate any public disclosure after a fix or mitigation is available.
 
-### Submission Process
+## Out of Scope
 
-1. **GitHub Security Advisory (Recommended)**:
-   Navigate to the repository's **[Security Tab](https://github.com/Vinicius-DEV1/synapse/security)** on GitHub and select **"Report a vulnerability"** to open a private advisory.
-2. **Direct Security Contact**:
-   Alternatively, contact the author directly via GitHub: [@Vinicius-DEV1](https://github.com/Vinicius-DEV1).
+The following are generally out of scope unless they expose a separate vulnerability in Synapse:
 
-### What to Include in Your Report
+- Attacks requiring physical access to an already unlocked device or pre-existing host administrator/root compromise.
+- Vulnerabilities in third-party browser extensions that modify the user's browser.
+- Availability incidents in third-party providers without a security flaw in Synapse's integration.
 
-To help us investigate and remediate the issue promptly, please include:
-- A clear description of the vulnerability and its potential impact.
-- Detailed step-by-step reproduction instructions or a minimal Proof of Concept (PoC).
-- The execution environment (Desktop Linux/macOS/Windows, Web Browser, or Mobile Companion).
-- Any proposed mitigations or code patches, if available.
+## Security References
 
-### Response & Remediation Timelines
-
-- **Initial Acknowledgement**: Within **48 hours** of report receipt.
-- **Triage & Assessment**: Within **5 business days**, confirming reproduction and severity classification.
-- **Fix & Disclosure**: Coordinated release and public advisory once a patch is verified and deployed.
-
----
-
-## ⚠️ Out of Scope
-
-The following scenarios are considered out of scope for security reports:
-- Attacks requiring physical access to an unlocked device or pre-existing root/administrator compromise of the host OS.
-- Attacks relying on modified or malicious third-party browser extensions installed in the user's browser.
-- Issues related to third-party services (e.g. Firebase or Google Cloud outages) without a vulnerability in Synapse's implementation.
-
----
-
-## 🎖️ Recognition
-
-We sincerely appreciate the security researchers and contributors who invest their time and expertise in keeping Synapse safe for everyone. Responsible security researchers will be credited in release notes and security advisories (with their permission).
+- [Native encryption coverage and open risks](./docs/security/native-encryption-audit.md)
+- [Current documentation sources](./docs/documentation-status.md)
+- [Contribution guide](./CONTRIBUTING.md)

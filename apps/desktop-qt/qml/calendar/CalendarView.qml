@@ -13,6 +13,7 @@ Rectangle {
     property string viewMode: "grid" // "grid", "list"
     property var currentMonthDate: new Date()
     property bool isCreatingEvent: false
+    property var editingEvent: null
     property string initialCreateDate: ""
     property var monthCells: []
 
@@ -146,11 +147,20 @@ Rectangle {
     }
 
     function openCreateModal(dateStr) {
+        editingEvent = null
         initialCreateDate = dateStr ? (dateStr + "T09:00:00") : Qt.formatDateTime(new Date(), "yyyy-MM-ddThh:mm:ss")
         createModal.resetFields()
         if (dateStr) {
             createModal.initialDateStr = initialCreateDate
+        } else {
+            createModal.initialDateStr = ""
         }
+        isCreatingEvent = true
+    }
+
+    function openEditModal(eventData) {
+        if (!eventData || !eventData.id) return
+        editingEvent = eventData
         isCreatingEvent = true
     }
 
@@ -199,11 +209,14 @@ Rectangle {
                 onNextMonthRequested: calendarRoot.nextMonth()
                 onTodayRequested: calendarRoot.goToToday()
                 onCellClicked: function(dateStr) { calendarRoot.openCreateModal(dateStr) }
+                onEventClicked: function(eventData) { calendarRoot.openEditModal(eventData) }
             }
 
             // View 2: Events ListView
             CalendarAgendaList {
                 events: calendarRoot.filteredEvents
+
+                onEditRequested: function(eventData) { calendarRoot.openEditModal(eventData) }
 
                 onToggleStatusRequested: function(eventId) {
                     dataController.toggleEventStatus(eventId)
@@ -221,11 +234,22 @@ Rectangle {
     CreateEventModal {
         id: createModal
         visible: calendarRoot.isCreatingEvent
+        initialEvent: calendarRoot.editingEvent
 
-        onClosed: calendarRoot.isCreatingEvent = false
-        onEventSubmitted: function(title, desc, dateTime, color) {
-            dataController.createCalendarEvent(title, desc, dateTime, dateTime, "event", color)
+        onClosed: {
             calendarRoot.isCreatingEvent = false
+            calendarRoot.editingEvent = null
+        }
+        onEventSubmitted: function(title, desc, dateTime, color) {
+            var saved = calendarRoot.editingEvent
+                ? dataController.updateCalendarEvent(calendarRoot.editingEvent.id, title, desc, dateTime, dateTime, color)
+                : dataController.createCalendarEvent(title, desc, dateTime, dateTime, "event", color)
+            if (!saved) {
+                createModal.errorMessage = qsTr("The event could not be saved. Check the title and date.")
+                return
+            }
+            calendarRoot.isCreatingEvent = false
+            calendarRoot.editingEvent = null
             calendarRoot.refreshEvents()
         }
     }

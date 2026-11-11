@@ -124,7 +124,7 @@ Format all findings using the template below.
 ```markdown
 # Full Module Review: [Module Name]
 
-**Path**: `src/components/<module>/`
+**Path**: `apps/web-react/src/components/<module>/`
 **Files Reviewed**: [N] files, [M] total lines
 **Test Coverage**: [existing test files]
 **Review Date**: [YYYY-MM-DD]
@@ -152,7 +152,7 @@ Format all findings using the template below.
 ### [FIND-01] [Descriptive Title]
 - **Dimension**: 🐛 | 🏗️ | 🔒 | ⚡ | 🛡️ | 🎨
 - **Severity**: Critical | High | Medium | Low
-- **Location**: `src/path/to/file.ts#L12-L34`
+- **Location**: `apps/web-react/src/path/to/file.ts#L12-L34`
 - **Description**: What the issue is and why it matters.
 - **Risk Scenario**: When and how this causes user-visible impact.
 - **Proposed Fix**: Concrete remediation preserving 100% parity.
@@ -170,8 +170,8 @@ Format all findings using the template below.
 ---
 
 ## Verification Plan
-- [ ] Targeted tests: `npx vitest run <paths>`
-- [ ] Type check: `npx tsc -b --noEmit`
+- [ ] Targeted tests: `npm run test -- <paths>`
+- [ ] Type check: `npm run typecheck`
 - [ ] Visual regression: Tailwind class preservation review
 ```
 
@@ -183,13 +183,13 @@ When reviewing the **entire application** module-by-module:
 
 ### Execution Order (dependency-first)
 
-1. **Infrastructure**: `src/api/`, `src/services/storage/`, `src/services/crypto.ts`
-2. **Domain Services**: `src/services/`, `src/utils/`
-3. **State Management**: `src/store/`, shared hooks in `src/hooks/`
+1. **Infrastructure**: `apps/web-react/src/api/`, `apps/web-react/src/services/storage/`, `apps/web-react/src/services/crypto.ts`
+2. **Domain Services**: `apps/web-react/src/services/`, `apps/web-react/src/utils/`
+3. **State Management**: `apps/web-react/src/store/`, shared hooks in `apps/web-react/src/hooks/`
 4. **Feature Modules** (alphabetical or by priority):
-   - `src/components/anki/`, `src/components/editor/`, `src/components/files/`,
-     `src/components/questions/`, `src/components/vault/`, `src/components/settings/`
-5. **Shell & Layout**: `src/components/layout/`, `App.tsx`, routing
+   - `apps/web-react/src/components/anki/`, `apps/web-react/src/components/editor/`, `apps/web-react/src/components/files/`,
+    `apps/web-react/src/components/questions/`, `apps/web-react/src/components/vault/`, `apps/web-react/src/components/settings/`
+5. **Shell & Layout**: `apps/web-react/src/components/layout/`, `App.tsx`, routing
 
 ### Progress Tracking
 

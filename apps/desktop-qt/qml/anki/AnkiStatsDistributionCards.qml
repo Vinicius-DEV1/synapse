@@ -14,7 +14,7 @@ RowLayout {
         Layout.preferredHeight: 220
         radius: 14
         color: "#1a1924"
-        border.color: "#ffffff0d"
+        border.color: "#0dffffff"
         border.width: 1
 
         ColumnLayout {
@@ -47,7 +47,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Novos"; color: "#38bdf8"; font.pixelSize: 12; Layout.preferredWidth: 90 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.novos || 0) / Math.max(1, distRoot.globalStats.total_cards || 1))
                             height: parent.height; radius: 4; color: "#38bdf8"
@@ -61,7 +61,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Aprendendo"; color: "#f59e0b"; font.pixelSize: 12; Layout.preferredWidth: 90 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.aprendendo || 0) / Math.max(1, distRoot.globalStats.total_cards || 1))
                             height: parent.height; radius: 4; color: "#f59e0b"
@@ -75,7 +75,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Jovens (<21d)"; color: "#34d399"; font.pixelSize: 12; Layout.preferredWidth: 90 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.jovens || 0) / Math.max(1, distRoot.globalStats.total_cards || 1))
                             height: parent.height; radius: 4; color: "#34d399"
@@ -89,7 +89,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Maduros (≥21d)"; color: "#818cf8"; font.pixelSize: 12; Layout.preferredWidth: 90 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.maduros || 0) / Math.max(1, distRoot.globalStats.total_cards || 1))
                             height: parent.height; radius: 4; color: "#818cf8"
@@ -107,7 +107,7 @@ RowLayout {
         Layout.preferredHeight: 220
         radius: 14
         color: "#1a1924"
-        border.color: "#ffffff0d"
+        border.color: "#0dffffff"
         border.width: 1
 
         ColumnLayout {
@@ -140,7 +140,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Errei (1)"; color: "#f43f5e"; font.pixelSize: 12; Layout.preferredWidth: 80 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.errei || 0) / Math.max(1, distRoot.globalStats.total_reviews || 1))
                             height: parent.height; radius: 4; color: "#f43f5e"
@@ -154,7 +154,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Difícil (2)"; color: "#fb923c"; font.pixelSize: 12; Layout.preferredWidth: 80 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.dificil || 0) / Math.max(1, distRoot.globalStats.total_reviews || 1))
                             height: parent.height; radius: 4; color: "#fb923c"
@@ -168,7 +168,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Bom (3)"; color: "#38bdf8"; font.pixelSize: 12; Layout.preferredWidth: 80 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.bom || 0) / Math.max(1, distRoot.globalStats.total_reviews || 1))
                             height: parent.height; radius: 4; color: "#38bdf8"
@@ -182,7 +182,7 @@ RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: "Fácil (4)"; color: "#10b981"; font.pixelSize: 12; Layout.preferredWidth: 80 }
                     Rectangle {
-                        Layout.fillWidth: true; height: 8; radius: 4; color: "#ffffff10"
+                        Layout.fillWidth: true; height: 8; radius: 4; color: "#10ffffff"
                         Rectangle {
                             width: parent.width * Math.min(1.0, (distRoot.globalStats.facil || 0) / Math.max(1, distRoot.globalStats.total_reviews || 1))
                             height: parent.height; radius: 4; color: "#10b981"

@@ -17,7 +17,7 @@ ListView {
         height: 64
         radius: 10
         color: "#1a1924"
-        border.color: wishItemMouse.containsMouse ? "#8b5cf64d" : "#ffffff0f"
+        border.color: wishItemMouse.containsMouse ? "#4d8b5cf6" : "#0fffffff"
         border.width: 1
 
         RowLayout {
@@ -55,8 +55,8 @@ ListView {
 
             Rectangle {
                 width: 82; height: 30; radius: 6
-                color: "#10b9811a"
-                border.color: "#10b98133"
+                color: "#1a10b981"
+                border.color: "#3310b981"
 
                 Text {
                     anchors.centerIn: parent
@@ -75,8 +75,8 @@ ListView {
 
             Rectangle {
                 width: 76; height: 30; radius: 6
-                color: "#f43f5e1a"
-                border.color: "#f43f5e33"
+                color: "#1af43f5e"
+                border.color: "#33f43f5e"
 
                 Text {
                     anchors.centerIn: parent

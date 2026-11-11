@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: modalRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     z: 99
 
     signal diagramCreated(string title)
@@ -17,7 +17,7 @@ Rectangle {
         anchors.centerIn: parent
         width: 440; height: 210; radius: 16
         color: "#161524"
-        border.color: "#ffffff18"
+        border.color: "#18ffffff"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -34,7 +34,7 @@ Rectangle {
                 Layout.fillWidth: true
                 placeholderText: "Título do diagrama..."
                 color: "#ffffff"
-                background: Rectangle { color: "#0f0e17"; border.color: "#ffffff18"; radius: 8 }
+                background: Rectangle { color: "#0f0e17"; border.color: "#18ffffff"; radius: 8 }
             }
 
             Item { Layout.fillHeight: true }

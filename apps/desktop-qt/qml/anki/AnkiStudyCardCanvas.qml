@@ -7,7 +7,7 @@ Rectangle {
     Layout.preferredHeight: 400
     radius: 16
     color: "#1a1924"
-    border.color: isAnswerRevealed ? "#818cf844" : "#ffffff12"
+    border.color: isAnswerRevealed ? "#44818cf8" : "#12ffffff"
     border.width: 1
 
     property var currentCard: null
@@ -37,7 +37,7 @@ Rectangle {
             } else if (typed && typed.length > 0) {
                 return "<span style='color: #818cf8; text-decoration: underline;'>[" + typed + "]</span>";
             } else {
-                return "<span style='color: #a78bfa; background-color: #6366f125; padding: 2px 6px; border-radius: 4px;'>[ ... ]</span>";
+                return "<span style='color: #a78bfa; background-color: #256366f1; padding: 2px 6px; border-radius: 4px;'>[ ... ]</span>";
             }
         });
     }
@@ -77,8 +77,8 @@ Rectangle {
                 height: 20
                 width: typeLabel.contentWidth + 12
                 radius: 10
-                color: "#6366f125"
-                border.color: "#818cf855"
+                color: "#256366f1"
+                border.color: "#55818cf8"
                 border.width: 1
 
                 Text {
@@ -125,7 +125,7 @@ Rectangle {
             height: 46
             radius: 10
             color: "#0f0e17"
-            border.color: typingInput.activeFocus ? "#818cf8" : "#ffffff15"
+            border.color: typingInput.activeFocus ? "#818cf8" : "#15ffffff"
             border.width: 1
 
             TextInput {
@@ -157,8 +157,8 @@ Rectangle {
             Layout.fillWidth: true
             height: 38
             radius: 8
-            color: cardSurface.exactMatch ? "#10b98115" : "#f43f5e15"
-            border.color: cardSurface.exactMatch ? "#10b98144" : "#f43f5e44"
+            color: cardSurface.exactMatch ? "#1510b981" : "#15f43f5e"
+            border.color: cardSurface.exactMatch ? "#4410b981" : "#44f43f5e"
             border.width: 1
 
             RowLayout {
@@ -199,7 +199,7 @@ Rectangle {
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
-                color: "#ffffff0f"
+                color: "#0fffffff"
             }
 
             RowLayout {
@@ -229,8 +229,8 @@ Rectangle {
                 Layout.fillWidth: true
                 height: noteCol.height + 16
                 radius: 8
-                color: "#ffffff06"
-                border.color: "#ffffff0a"
+                color: "#06ffffff"
+                border.color: "#0affffff"
                 border.width: 1
 
                 ColumnLayout {

@@ -9,7 +9,7 @@ Rectangle {
     anchors.right: parent.right
     width: 340
     color: "#161524"
-    border.color: "#ffffff10"
+    border.color: "#10ffffff"
     border.width: 1
     z: 50
 
@@ -55,7 +55,7 @@ Rectangle {
 
             Rectangle {
                 width: 28; height: 28; radius: 6
-                color: "#ffffff10"
+                color: "#10ffffff"
                 Text { anchors.centerIn: parent; text: "✕"; color: "#a7a9be"; font.pixelSize: 12 }
                 MouseArea {
                     anchors.fill: parent
@@ -86,7 +86,7 @@ Rectangle {
                 height: bmCol.height + 16
                 radius: 8
                 color: "#1a1924"
-                border.color: "#ffffff0a"
+                border.color: "#0affffff"
                 border.width: 1
 
                 ColumnLayout {
@@ -106,8 +106,8 @@ Rectangle {
                             height: 22
                             width: tsText.contentWidth + 12
                             radius: 4
-                            color: "#6366f125"
-                            border.color: "#818cf855"
+                            color: "#256366f1"
+                            border.color: "#55818cf8"
 
                             Text {
                                 id: tsText

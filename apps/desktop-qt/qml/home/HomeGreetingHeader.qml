@@ -42,8 +42,8 @@ ColumnLayout {
             Layout.fillWidth: true
             height: 56
             radius: 14
-            color: a1Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
-            border.color: a1Mouse.containsMouse ? "#8b5cf64d" : theme.borderSubtle
+            color: a1Mouse.containsMouse ? "#08ffffff" : "#05ffffff"
+            border.color: a1Mouse.containsMouse ? "#4d8b5cf6" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
@@ -54,7 +54,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 36; height: 36; radius: 18
-                    color: "#8b5cf626"
+                    color: "#268b5cf6"
                     Text { anchors.centerIn: parent; text: "+"; color: "#a78bfa"; font.pixelSize: 18; font.bold: true }
                 }
 
@@ -82,8 +82,8 @@ ColumnLayout {
             Layout.fillWidth: true
             height: 56
             radius: 14
-            color: a2Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
-            border.color: a2Mouse.containsMouse ? "#f59e0b4d" : theme.borderSubtle
+            color: a2Mouse.containsMouse ? "#08ffffff" : "#05ffffff"
+            border.color: a2Mouse.containsMouse ? "#4df59e0b" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
@@ -94,7 +94,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 36; height: 36; radius: 18
-                    color: "#f59e0b26"
+                    color: "#26f59e0b"
                     Text { anchors.centerIn: parent; text: "📅"; font.pixelSize: 15 }
                 }
 
@@ -122,8 +122,8 @@ ColumnLayout {
             Layout.fillWidth: true
             height: 56
             radius: 14
-            color: a3Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
-            border.color: a3Mouse.containsMouse ? "#3b82f64d" : theme.borderSubtle
+            color: a3Mouse.containsMouse ? "#08ffffff" : "#05ffffff"
+            border.color: a3Mouse.containsMouse ? "#4d3b82f6" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
@@ -134,7 +134,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 36; height: 36; radius: 18
-                    color: "#3b82f626"
+                    color: "#263b82f6"
                     Text { anchors.centerIn: parent; text: "🎴"; font.pixelSize: 15 }
                 }
 
@@ -162,8 +162,8 @@ ColumnLayout {
             Layout.fillWidth: true
             height: 56
             radius: 14
-            color: a4Mouse.containsMouse ? "#ffffff08" : "#ffffff05"
-            border.color: a4Mouse.containsMouse ? "#10b9814d" : theme.borderSubtle
+            color: a4Mouse.containsMouse ? "#08ffffff" : "#05ffffff"
+            border.color: a4Mouse.containsMouse ? "#4d10b981" : theme.borderSubtle
             border.width: 1
 
             RowLayout {
@@ -174,7 +174,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 36; height: 36; radius: 18
-                    color: "#10b98126"
+                    color: "#2610b981"
                     Text { anchors.centerIn: parent; text: "📁"; font.pixelSize: 15 }
                 }
 

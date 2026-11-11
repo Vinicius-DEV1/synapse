@@ -3,17 +3,24 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QDir>
 #include <QtCore/QStandardPaths>
-#include <QtCore/QSysInfo>
 #include <QtCore/QDebug>
-#include <QtGui/QGuiApplication>
-#include <QtGui/QClipboard>
-#include <QtNetwork/QNetworkAccessManager>
-#include <QtNetwork/QNetworkRequest>
-#include <QtNetwork/QNetworkReply>
-#include <QtCore/QCryptographicHash>
-#include <QtCore/QEventLoop>
+#include <QtCore/QTemporaryFile>
 
-SynapseDataController::SynapseDataController(QObject *parent)
+namespace {
+
+struct ByteArrayWiper {
+    QByteArray &value;
+    ~ByteArrayWiper() {
+        if (!value.isEmpty()) {
+            synapse_crypto_wipe_memory(reinterpret_cast<uint8_t *>(value.data()),
+                                       static_cast<size_t>(value.size()));
+        }
+    }
+};
+
+}
+
+SynapseDataController::SynapseDataController(QObject *parent, bool initializeDefaultDatabase)
     : QObject(parent),
       m_db(nullptr),
       m_pageCount(0),
@@ -27,6 +34,12 @@ SynapseDataController::SynapseDataController(QObject *parent)
       m_habitCount(0),
       m_quizBatteryCount(0),
       m_focusSessionCount(0),
+      m_unreadNotificationCount(0),
+      m_fileOperationRunning(false),
+      m_fileOperationWatcher(nullptr),
+      m_activeFileOperation(nullptr),
+      m_pendingPreviewFile(nullptr),
+      m_cancelPreviewRequested(false),
       m_isVaultConfigured(false),
       m_isVaultUnlocked(false),
       m_autoLockMinutes(5),
@@ -35,6 +48,8 @@ SynapseDataController::SynapseDataController(QObject *parent)
     
     m_autoLockTimer->setSingleShot(true);
     connect(m_autoLockTimer, &QTimer::timeout, this, &SynapseDataController::lockVault);
+
+    if (!initializeDefaultDatabase) return;
 
     // Automatically locate user's canonical Caderno SQLite database
     QString home = QDir::homePath();
@@ -53,6 +68,18 @@ SynapseDataController::SynapseDataController(QObject *parent)
 
 SynapseDataController::~SynapseDataController() {
     lockVault();
+    if (m_fileOperationWatcher) m_fileOperationWatcher->waitForFinished();
+    if (m_librarySearchWatcher) m_librarySearchWatcher->waitForFinished();
+    if (m_pendingPreviewFile) {
+        delete m_pendingPreviewFile;
+        m_pendingPreviewFile = nullptr;
+    }
+    for (QTemporaryFile *previewFile : m_filePreviewFiles) delete previewFile;
+    m_filePreviewFiles.clear();
+    if (m_activeFileOperation) {
+        synapse_file_operation_close(m_activeFileOperation);
+        m_activeFileOperation = nullptr;
+    }
     if (m_db) {
         synapse_db_close(m_db);
         m_db = nullptr;
@@ -61,13 +88,37 @@ SynapseDataController::~SynapseDataController() {
 
 bool SynapseDataController::openDatabase(const QString &path) {
     if (m_db) {
+        if (m_fileOperationRunning) {
+            qWarning() << "[SynapseDataController] Cannot switch databases while a file operation is running.";
+            return false;
+        }
+        if (m_librarySearchRunning) {
+            if (m_librarySearchCancellation) m_librarySearchCancellation->store(true, std::memory_order_relaxed);
+            qWarning() << "[SynapseDataController] Cannot switch databases while a book search is running.";
+            return false;
+        }
+        if (!finishActiveLibraryReadingSession()) {
+            qWarning() << "[SynapseDataController] Cannot switch databases while a reading session is active.";
+            return false;
+        }
+        cancelLibraryMetadataRequests();
+        m_autoLockTimer->stop();
+        clearUnlockedKeys();
+        m_isVaultUnlocked = false;
+        m_isVaultConfigured = false;
+        clearStats();
+        m_pageHistoryCooldown.clear();
+        for (QTemporaryFile *previewFile : m_filePreviewFiles) delete previewFile;
+        m_filePreviewFiles.clear();
+        emit filePreviewsInvalidated();
+        emit vaultStateChanged();
         synapse_db_close(m_db);
         m_db = nullptr;
     }
 
     QDir().mkpath(QFileInfo(path).absolutePath());
     m_dbPath = path;
-    qInfo() << "[SynapseDataController] Connecting to database:" << m_dbPath;
+    qInfo() << "[SynapseDataController] Opening local database.";
 
     m_db = synapse_db_open(m_dbPath.toUtf8().constData());
     if (!m_db) {
@@ -76,7 +127,7 @@ bool SynapseDataController::openDatabase(const QString &path) {
     }
 
     emit dbPathChanged();
-    refreshStats();
+    clearStats();
     checkKeychainState();
     return true;
 }
@@ -112,14 +163,17 @@ bool SynapseDataController::executeSql(const QString &sql) {
     if (!m_db) return false;
     int res = synapse_db_execute(m_db, sql.toUtf8().constData());
     if (res != 0) {
-        qWarning() << "[SynapseDataController] Execute failed for SQL:" << sql;
+        qWarning() << "[SynapseDataController] Database write failed.";
         return false;
     }
     return true;
 }
 
 void SynapseDataController::refreshStats() {
-    if (!m_db) return;
+    if (!m_db || !m_isVaultUnlocked) {
+        clearStats();
+        return;
+    }
 
     auto getCount = [this](const QString &table) -> int {
         QString sql = QString("SELECT count(*) as count FROM %1 WHERE deleted_at IS NULL").arg(table);
@@ -141,6 +195,8 @@ void SynapseDataController::refreshStats() {
     m_habitCount = getCount("habits");
     m_quizBatteryCount = getCount("quiz_batteries");
     m_focusSessionCount = getCount("focus_sessions");
+    QJsonArray unread = executeQuery("SELECT count(*) as count FROM notifications WHERE deleted_at IS NULL AND is_read = 0");
+    m_unreadNotificationCount = unread.isEmpty() ? 0 : unread[0].toObject().value("count").toInt();
 
     qInfo() << "[SynapseDataController] Stats updated -> Pages:" << m_pageCount
             << "| Videos:" << m_videoCount
@@ -154,6 +210,22 @@ void SynapseDataController::refreshStats() {
     emit countsChanged();
 }
 
+void SynapseDataController::clearStats() {
+    m_pageCount = 0;
+    m_videoCount = 0;
+    m_deckCount = 0;
+    m_bookCount = 0;
+    m_cultureCount = 0;
+    m_vaultItemCount = 0;
+    m_transactionCount = 0;
+    m_eventCount = 0;
+    m_habitCount = 0;
+    m_quizBatteryCount = 0;
+    m_focusSessionCount = 0;
+    m_unreadNotificationCount = 0;
+    emit countsChanged();
+}
+
 void SynapseDataController::checkKeychainState() {
     QJsonArray arr = executeQuery("SELECT count(*) as count FROM keychain");
     int cnt = 0;
@@ -163,8 +235,22 @@ void SynapseDataController::checkKeychainState() {
     bool configured = (cnt > 0);
     if (configured != m_isVaultConfigured) {
         m_isVaultConfigured = configured;
+        if (!configured) {
+            m_autoLockTimer->stop();
+            clearUnlockedKeys();
+            m_isVaultUnlocked = false;
+            clearStats();
+            emit vaultLocked();
+        }
         emit vaultStateChanged();
     }
+}
+
+void SynapseDataController::clearUnlockedKeys() {
+    for (auto it = m_unlockedKeys.begin(); it != m_unlockedKeys.end(); ++it) {
+        it.value().fill(QChar(0));
+    }
+    m_unlockedKeys.clear();
 }
 
 bool SynapseDataController::checkVaultConfigured() {
@@ -190,1869 +276,31 @@ void SynapseDataController::resetAutoLockTimer() {
 }
 
 QString SynapseDataController::encryptContent(const QString &keyHex, const QString &plaintext) {
-    if (keyHex.trimmed().isEmpty() || plaintext.isEmpty()) return plaintext;
-    char *cEnc = synapse_crypto_encrypt(keyHex.toUtf8().constData(), plaintext.toUtf8().constData());
-    if (!cEnc) return plaintext;
+    if (plaintext.isEmpty()) return QStringLiteral("");
+    if (keyHex.trimmed().isEmpty()) return QString();
+    QByteArray keyBytes = keyHex.toUtf8();
+    QByteArray plaintextBytes = plaintext.toUtf8();
+    ByteArrayWiper keyWiper{keyBytes};
+    ByteArrayWiper plaintextWiper{plaintextBytes};
+    char *cEnc = synapse_crypto_encrypt(keyBytes.constData(), plaintextBytes.constData());
+    if (!cEnc) return QString();
     QString result = QString::fromUtf8(cEnc);
     synapse_free_string(cEnc);
     return result;
 }
 
 QString SynapseDataController::decryptContent(const QString &keyHex, const QString &ciphertext) {
-    if (keyHex.trimmed().isEmpty() || ciphertext.trimmed().isEmpty()) return ciphertext;
-    char *cDec = synapse_crypto_decrypt(keyHex.toUtf8().constData(), ciphertext.toUtf8().constData());
-    if (!cDec) return ciphertext;
+    if (ciphertext.isEmpty()) return QStringLiteral("");
+    if (keyHex.trimmed().isEmpty()) return QString();
+    QByteArray keyBytes = keyHex.toUtf8();
+    QByteArray ciphertextBytes = ciphertext.toUtf8();
+    ByteArrayWiper keyWiper{keyBytes};
+    ByteArrayWiper ciphertextWiper{ciphertextBytes};
+    char *cDec = synapse_crypto_decrypt(keyBytes.constData(), ciphertextBytes.constData());
+    if (!cDec) return QString();
     QString result = QString::fromUtf8(cDec);
-    synapse_free_string(cDec);
+    synapse_free_secret_string(cDec);
     return result;
-}
-
-// ---------------------------------------------------------------------------
-// 1. Pages / Editor (Hierarchical & Pinned Support)
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getPages(const QString &filter) {
-    QString sql = "SELECT id, title, icon, parent_id, updated_at, sort_order, is_pinned, pinned_order FROM pages WHERE deleted_at IS NULL ";
-    if (!filter.trimmed().isEmpty()) {
-        sql += QString("AND title LIKE '%%1%' ").arg(escapeSql(filter));
-    }
-    sql += "ORDER BY updated_at DESC LIMIT 150";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getPinnedPages() {
-    QString sql = "SELECT id, parent_id, title, icon, is_pinned, pinned_order, updated_at FROM pages "
-                  "WHERE deleted_at IS NULL AND is_pinned = 1 ORDER BY pinned_order ASC, updated_at DESC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getPageTree(const QString &filter) {
-    QString sql = "SELECT id, parent_id, title, icon, is_pinned, pinned_order, updated_at FROM pages WHERE deleted_at IS NULL ";
-    if (!filter.trimmed().isEmpty()) {
-        sql += QString("AND title LIKE '%%1%' ").arg(escapeSql(filter));
-    }
-    sql += "ORDER BY updated_at DESC";
-    QJsonArray rows = executeQuery(sql);
-
-    QMap<QString, QList<QJsonObject>> parentToChildren;
-    QList<QJsonObject> rootItems;
-    QSet<QString> allIds;
-
-    for (int i = 0; i < rows.size(); ++i) {
-        QJsonObject obj = rows[i].toObject();
-        allIds.insert(obj["id"].toString());
-    }
-
-    for (int i = 0; i < rows.size(); ++i) {
-        QJsonObject obj = rows[i].toObject();
-        QString pid = obj["parent_id"].toString();
-        if (pid.isEmpty() || pid == "null" || !allIds.contains(pid)) {
-            rootItems.append(obj);
-        } else {
-            parentToChildren[pid].append(obj);
-        }
-    }
-
-    QVariantList result;
-    std::function<void(const QJsonObject&, int)> addNode = [&](const QJsonObject &node, int depth) {
-        QJsonObject enriched = node;
-        QString nid = node["id"].toString();
-        QList<QJsonObject> children = parentToChildren.value(nid);
-        enriched["depth"] = depth;
-        enriched["has_children"] = !children.isEmpty();
-        enriched["children_count"] = children.size();
-        result.append(enriched.toVariantMap());
-
-        for (const QJsonObject &child : children) {
-            addNode(child, depth + 1);
-        }
-    };
-
-    for (const QJsonObject &root : rootItems) {
-        addNode(root, 0);
-    }
-
-    return result;
-}
-
-QVariantMap SynapseDataController::getPage(const QString &pageId) {
-    QString sql = QString("SELECT id, title, content, encrypted_content, icon, parent_id, is_pinned, pinned_order, updated_at FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
-    QJsonArray arr = executeQuery(sql);
-    if (!arr.isEmpty()) {
-        QJsonObject obj = arr[0].toObject();
-        QString encContent = obj.value("encrypted_content").toString();
-        if (!encContent.isEmpty() && m_unlockedKeys.contains("notes")) {
-            QString decrypted = decryptContent(m_unlockedKeys.value("notes"), encContent);
-            obj["content"] = decrypted;
-        }
-        return obj.toVariantMap();
-    }
-    return QVariantMap();
-}
-
-bool SynapseDataController::savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon) {
-    QString ts = currentTimestamp();
-    QString sql;
-    bool hasNotesKey = (m_isVaultConfigured && m_isVaultUnlocked && m_unlockedKeys.contains("notes") && !m_unlockedKeys.value("notes").isEmpty());
-
-    if (hasNotesKey) {
-        QString enc = encryptContent(m_unlockedKeys.value("notes"), content);
-        if (pageId.isEmpty()) {
-            QString newId = generateUuid();
-            sql = QString("INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) VALUES ('%1', '%2', '', '%3', '%4', '%5', '%6', 0, 0, 0.0)")
-                .arg(newId, escapeSql(title), escapeSql(enc), escapeSql(icon), ts, ts);
-        } else {
-            sql = QString("UPDATE pages SET title = '%1', content = '', encrypted_content = '%2', icon = '%3', updated_at = '%4' WHERE id = '%5'")
-                .arg(escapeSql(title), escapeSql(enc), escapeSql(icon), ts, escapeSql(pageId));
-        }
-    } else {
-        if (pageId.isEmpty()) {
-            QString newId = generateUuid();
-            sql = QString("INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) VALUES ('%1', '%2', '%3', NULL, '%4', '%5', '%6', 0, 0, 0.0)")
-                .arg(newId, escapeSql(title), escapeSql(content), escapeSql(icon), ts, ts);
-        } else {
-            sql = QString("UPDATE pages SET title = '%1', content = '%2', encrypted_content = NULL, icon = '%3', updated_at = '%4' WHERE id = '%5'")
-                .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(pageId));
-        }
-    }
-    bool ok = executeSql(sql);
-    if (ok) {
-        if (!pageId.isEmpty()) {
-            qint64 now = QDateTime::currentSecsSinceEpoch();
-            if (!m_pageHistoryCooldown.contains(pageId) || (now - m_pageHistoryCooldown.value(pageId) >= 60)) {
-                m_pageHistoryCooldown[pageId] = now;
-                QString histId = generateUuid();
-                if (hasNotesKey) {
-                    QString enc = encryptContent(m_unlockedKeys.value("notes"), content);
-                    executeSql(QString("INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES ('%1', '%2', '', '%3', '%4')")
-                        .arg(histId, escapeSql(pageId), escapeSql(enc), ts));
-                } else {
-                    executeSql(QString("INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES ('%1', '%2', '%3', NULL, '%4')")
-                        .arg(histId, escapeSql(pageId), escapeSql(content), ts));
-                }
-            }
-        }
-        refreshStats();
-    }
-    return ok;
-}
-
-QVariantList SynapseDataController::getPageHistory(const QString &pageId) {
-    QString sql = QString("SELECT id, page_id, content, encrypted_content, created_at FROM page_history WHERE page_id = '%1' ORDER BY created_at DESC").arg(escapeSql(pageId));
-    QJsonArray rows = executeQuery(sql);
-    QVariantList list;
-    bool hasNotesKey = (m_isVaultConfigured && m_isVaultUnlocked && m_unlockedKeys.contains("notes") && !m_unlockedKeys.value("notes").isEmpty());
-    QString notesKey = hasNotesKey ? m_unlockedKeys.value("notes") : "";
-
-    for (const QJsonValue &v : rows) {
-        QJsonObject obj = v.toObject();
-        QString enc = obj.value("encrypted_content").toString();
-        if (!enc.isEmpty() && !notesKey.isEmpty()) {
-            obj["content"] = decryptContent(notesKey, enc);
-        }
-        list.append(obj.toVariantMap());
-    }
-    return list;
-}
-
-bool SynapseDataController::restorePageRevision(const QString &pageId, const QString &revisionId) {
-    QString sql = QString("SELECT content, encrypted_content FROM page_history WHERE id = '%1' AND page_id = '%2'").arg(escapeSql(revisionId), escapeSql(pageId));
-    QJsonArray rows = executeQuery(sql);
-    if (rows.isEmpty()) return false;
-    QJsonObject obj = rows[0].toObject();
-    QString enc = obj.value("encrypted_content").toString();
-    QString content = obj.value("content").toString();
-    if (!enc.isEmpty()) {
-        if (m_isVaultConfigured && m_isVaultUnlocked && m_unlockedKeys.contains("notes")) {
-            content = decryptContent(m_unlockedKeys.value("notes"), enc);
-        } else {
-            return false;
-        }
-    }
-    QVariantMap page = getPage(pageId);
-    QString title = page.value("title").toString();
-    QString icon = page.value("icon").toString();
-    return savePage(pageId, title, content, icon);
-}
-
-QString SynapseDataController::createSubPage(const QString &parentId, const QString &title, const QString &icon) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString pidVal = parentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(parentId));
-    QString sql = QString("INSERT INTO pages (id, parent_id, title, content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) "
-                          "VALUES ('%1', %2, '%3', '', '%4', '%5', '%6', 0, 0, 0.0);")
-        .arg(id, pidVal, escapeSql(title), escapeSql(icon), ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok ? id : "";
-}
-
-bool SynapseDataController::deletePage(const QString &pageId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE pages SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(pageId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::togglePinPage(const QString &pageId) {
-    QString fetchSql = QString("SELECT is_pinned FROM pages WHERE id = '%1'").arg(escapeSql(pageId));
-    QJsonArray arr = executeQuery(fetchSql);
-    if (arr.isEmpty()) return false;
-    int isPinned = arr[0].toObject()["is_pinned"].toInt();
-    int newPinned = (isPinned == 1) ? 0 : 1;
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE pages SET is_pinned = %1, updated_at = '%2' WHERE id = '%3'")
-        .arg(newPinned).arg(ts, escapeSql(pageId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::movePage(const QString &pageId, const QString &newParentId) {
-    if (pageId == newParentId) return false;
-    QString pidVal = newParentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(newParentId));
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE pages SET parent_id = %1, updated_at = '%2' WHERE id = '%3'")
-        .arg(pidVal, ts, escapeSql(pageId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::renamePage(const QString &pageId, const QString &newTitle) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE pages SET title = '%1', updated_at = '%2' WHERE id = '%3'")
-        .arg(escapeSql(newTitle), ts, escapeSql(pageId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::updatePageIcon(const QString &pageId, const QString &newIcon) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE pages SET icon = '%1', updated_at = '%2' WHERE id = '%3'")
-        .arg(escapeSql(newIcon), ts, escapeSql(pageId));
-    return executeSql(sql);
-}
-
-// ---------------------------------------------------------------------------
-// 2. Videos / Media Center
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getVideos(const QString &collectionFilter) {
-    QString sql = "SELECT id, title, duration, file_path, progress, is_local, collection_name "
-                  "FROM videos WHERE deleted_at IS NULL ";
-    if (!collectionFilter.trimmed().isEmpty() && collectionFilter != "Todos") {
-        sql += QString("AND collection_name = '%1' ").arg(escapeSql(collectionFilter));
-    }
-    sql += "ORDER BY updated_at DESC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getVideoCollections() {
-    QString sql = "SELECT DISTINCT collection_name FROM videos WHERE deleted_at IS NULL AND collection_name IS NOT NULL AND collection_name != '' ORDER BY collection_name ASC";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::updateVideoProgress(const QString &videoId, double progress) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE videos SET progress = %1, updated_at = '%2' WHERE id = '%3'")
-        .arg(progress).arg(ts, escapeSql(videoId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteVideo(const QString &videoId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE videos SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(videoId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-QVariantList SynapseDataController::getVideoWords(const QString &videoId) {
-    QString sql = QString("SELECT id, video_id, word, context, timestamp "
-                          "FROM video_words WHERE video_id = '%1' AND deleted_at IS NULL "
-                          "ORDER BY timestamp ASC").arg(escapeSql(videoId));
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::addVideoWord(const QString &videoId, const QString &word, const QString &context, double timestamp) {
-    QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO video_words (id, video_id, word, context, timestamp, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', '%4', %5, '%6', '%6')")
-        .arg(id, escapeSql(videoId), escapeSql(word), escapeSql(context))
-        .arg(timestamp).arg(ts);
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteVideoWord(const QString &wordId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE video_words SET deleted_at = '%1' WHERE id = '%2'")
-        .arg(ts, escapeSql(wordId));
-    return executeSql(sql);
-}
-
-// ---------------------------------------------------------------------------
-// 3. Anki & Flashcards (Hierarchical Tree & FSRS v5)
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getDecks() {
-    QString sql = "SELECT d.id, d.name, d.description, d.color, d.parent_id, "
-                  "(SELECT count(*) FROM anki_cards c WHERE c.deck_id = d.id AND c.deleted_at IS NULL) as card_count "
-                  "FROM anki_decks d WHERE d.deleted_at IS NULL ORDER BY d.name ASC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getHierarchicalDecks() {
-    QString sql = "SELECT id, name, description, color, parent_id FROM anki_decks WHERE deleted_at IS NULL ORDER BY name ASC";
-    QJsonArray rows = executeQuery(sql);
-
-    // Compute stats for all decks
-    QString statsSql = "SELECT c.deck_id, "
-                       "count(*) as total_cards, "
-                       "SUM(CASE WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 1 ELSE 0 END) as novos, "
-                       "SUM(CASE WHEN s.state IN ('learning', 'relearning') THEN 1 ELSE 0 END) as aprender, "
-                       "SUM(CASE WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 1 ELSE 0 END) as revisar "
-                       "FROM anki_cards c "
-                       "LEFT JOIN anki_srs_state s ON c.id = s.id "
-                       "WHERE c.deleted_at IS NULL "
-                       "GROUP BY c.deck_id";
-    QJsonArray statsRows = executeQuery(statsSql);
-    QMap<QString, QJsonObject> statsMap;
-    for (int i = 0; i < statsRows.size(); ++i) {
-        QJsonObject o = statsRows[i].toObject();
-        statsMap[o["deck_id"].toString()] = o;
-    }
-
-    QMap<QString, QList<QJsonObject>> parentToChildren;
-    QList<QJsonObject> rootItems;
-    QSet<QString> allIds;
-
-    for (int i = 0; i < rows.size(); ++i) {
-        QJsonObject obj = rows[i].toObject();
-        allIds.insert(obj["id"].toString());
-    }
-
-    for (int i = 0; i < rows.size(); ++i) {
-        QJsonObject obj = rows[i].toObject();
-        QString pid = obj["parent_id"].toString();
-        if (pid.isEmpty() || pid == "null" || !allIds.contains(pid)) {
-            rootItems.append(obj);
-        } else {
-            parentToChildren[pid].append(obj);
-        }
-    }
-
-    QVariantList result;
-    std::function<void(const QJsonObject&, int)> addDeck = [&](const QJsonObject &deck, int depth) {
-        QJsonObject enriched = deck;
-        QString did = deck["id"].toString();
-        QList<QJsonObject> children = parentToChildren.value(did);
-        enriched["depth"] = depth;
-        enriched["has_children"] = !children.isEmpty();
-        enriched["children_count"] = children.size();
-
-        QJsonObject st = statsMap.value(did);
-        enriched["card_count"] = st["total_cards"].toInt();
-        enriched["novos"] = st["novos"].toInt();
-        enriched["aprender"] = st["aprender"].toInt();
-        enriched["revisar"] = st["revisar"].toInt();
-
-        result.append(enriched.toVariantMap());
-
-        for (const QJsonObject &child : children) {
-            addDeck(child, depth + 1);
-        }
-    };
-
-    for (const QJsonObject &root : rootItems) {
-        addDeck(root, 0);
-    }
-
-    return result;
-}
-
-QVariantMap SynapseDataController::getDeckStats(const QString &deckId) {
-    QString allDecksSql = "SELECT id, parent_id FROM anki_decks WHERE deleted_at IS NULL";
-    QJsonArray deckRows = executeQuery(allDecksSql);
-    QMap<QString, QStringList> childrenMap;
-    for (int i = 0; i < deckRows.size(); ++i) {
-        QJsonObject o = deckRows[i].toObject();
-        QString pid = o["parent_id"].toString();
-        if (!pid.isEmpty()) childrenMap[pid].append(o["id"].toString());
-    }
-
-    QStringList targetDeckIds;
-    std::function<void(const QString&)> collectDecks = [&](const QString &did) {
-        targetDeckIds.append(did);
-        for (const QString &cid : childrenMap.value(did)) {
-            collectDecks(cid);
-        }
-    };
-    collectDecks(deckId);
-
-    QString idList;
-    for (int i = 0; i < targetDeckIds.size(); ++i) {
-        if (i > 0) idList += ",";
-        idList += QString("'%1'").arg(escapeSql(targetDeckIds[i]));
-    }
-
-    QString sql = QString(
-        "SELECT count(*) as total, "
-        "SUM(CASE WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 1 ELSE 0 END) as novos, "
-        "SUM(CASE WHEN s.state IN ('learning', 'relearning') THEN 1 ELSE 0 END) as aprender, "
-        "SUM(CASE WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 1 ELSE 0 END) as revisar "
-        "FROM anki_cards c "
-        "LEFT JOIN anki_srs_state s ON c.id = s.id "
-        "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL"
-    ).arg(idList.isEmpty() ? "''" : idList);
-
-    QJsonArray arr = executeQuery(sql);
-    if (!arr.isEmpty()) return arr[0].toObject().toVariantMap();
-    return QVariantMap();
-}
-
-QVariantMap SynapseDataController::getGlobalAnkiStats() {
-    QVariantMap res;
-    QJsonArray totalArr = executeQuery("SELECT count(*) as total FROM anki_cards WHERE deleted_at IS NULL");
-    int totalCards = totalArr.isEmpty() ? 0 : totalArr[0].toObject()["total"].toInt();
-
-    QJsonArray srsArr = executeQuery(
-        "SELECT "
-        "SUM(CASE WHEN reps = 0 OR state = 'new' THEN 1 ELSE 0 END) as novos, "
-        "SUM(CASE WHEN state IN ('learning', 'relearning') THEN 1 ELSE 0 END) as aprendendo, "
-        "SUM(CASE WHEN state = 'review' AND stability >= 21.0 THEN 1 ELSE 0 END) as maduros, "
-        "SUM(CASE WHEN state = 'review' AND stability < 21.0 THEN 1 ELSE 0 END) as jovens, "
-        "AVG(stability) as avg_stability, "
-        "AVG(difficulty) as avg_difficulty "
-        "FROM anki_srs_state WHERE deleted_at IS NULL"
-    );
-
-    QJsonArray revArr = executeQuery(
-        "SELECT count(*) as total_reviews, "
-        "SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as errei, "
-        "SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as dificil, "
-        "SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as bom, "
-        "SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as facil "
-        "FROM anki_reviews"
-    );
-
-    res["total_cards"] = totalCards;
-    if (!srsArr.isEmpty()) {
-        QJsonObject o = srsArr[0].toObject();
-        res["novos"] = o["novos"].toInt();
-        res["aprendendo"] = o["aprendendo"].toInt();
-        res["maduros"] = o["maduros"].toInt();
-        res["jovens"] = o["jovens"].toInt();
-        res["avg_stability"] = o["avg_stability"].toDouble();
-        res["avg_difficulty"] = o["avg_difficulty"].toDouble();
-    }
-    if (!revArr.isEmpty()) {
-        QJsonObject r = revArr[0].toObject();
-        int totalRev = r["total_reviews"].toInt();
-        res["total_reviews"] = totalRev;
-        res["errei"] = r["errei"].toInt();
-        res["dificil"] = r["dificil"].toInt();
-        res["bom"] = r["bom"].toInt();
-        res["facil"] = r["facil"].toInt();
-        int successRev = r["bom"].toInt() + r["facil"].toInt();
-        res["retention_rate"] = totalRev > 0 ? (double)(successRev * 100) / totalRev : 90.0;
-    } else {
-        res["total_reviews"] = 0;
-        res["retention_rate"] = 90.0;
-    }
-    return res;
-}
-
-bool SynapseDataController::createDeck(const QString &name, const QString &description, const QString &color, const QString &parentId) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString pidVal = parentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(parentId));
-    QString sql = QString("INSERT INTO anki_decks (id, name, description, color, parent_id, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', '%4', %5, '%6', '%7')")
-        .arg(id, escapeSql(name), escapeSql(description), escapeSql(color), pidVal, ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::updateDeck(const QString &deckId, const QString &name, const QString &description, const QString &color) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_decks SET name = '%1', description = '%2', color = '%3', updated_at = '%4' WHERE id = '%5'")
-        .arg(escapeSql(name), escapeSql(description), escapeSql(color), ts, escapeSql(deckId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteDeck(const QString &deckId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_decks SET deleted_at = '%1' WHERE id = '%2' OR parent_id = '%2'")
-        .arg(ts, escapeSql(deckId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::resetDeckProgress(const QString &deckId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_srs_state SET reps = 0, lapses = 0, stability = 0.0, difficulty = 0.0, "
-                          "state = 'new', due_date = '%1' "
-                          "WHERE id IN (SELECT id FROM anki_cards WHERE deck_id = '%2')")
-        .arg(ts, escapeSql(deckId));
-    return executeSql(sql);
-}
-
-QVariantList SynapseDataController::getDeckCards(const QString &deckId) {
-    QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
-                          "c.validation_mode, c.extra_note, c.media_url, "
-                          "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-                          "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
-                          "COALESCE(s.state, 'new') as state, s.due_date "
-                          "FROM anki_cards c LEFT JOIN anki_srs_state s ON c.id = s.id "
-                          "WHERE c.deck_id = '%1' AND c.deleted_at IS NULL ORDER BY c.created_at ASC")
-        .arg(escapeSql(deckId));
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getDueCards(const QString &deckId) {
-    QString allDecksSql = "SELECT id, parent_id FROM anki_decks WHERE deleted_at IS NULL";
-    QJsonArray deckRows = executeQuery(allDecksSql);
-    QMap<QString, QStringList> childrenMap;
-    for (int i = 0; i < deckRows.size(); ++i) {
-        QJsonObject o = deckRows[i].toObject();
-        QString pid = o["parent_id"].toString();
-        if (!pid.isEmpty()) childrenMap[pid].append(o["id"].toString());
-    }
-
-    QStringList targetDeckIds;
-    std::function<void(const QString&)> collectDecks = [&](const QString &did) {
-        targetDeckIds.append(did);
-        for (const QString &cid : childrenMap.value(did)) {
-            collectDecks(cid);
-        }
-    };
-    collectDecks(deckId);
-
-    QString idList;
-    for (int i = 0; i < targetDeckIds.size(); ++i) {
-        if (i > 0) idList += ",";
-        idList += QString("'%1'").arg(escapeSql(targetDeckIds[i]));
-    }
-
-    QString sql = QString(
-        "SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
-        "c.validation_mode, c.extra_note, c.media_url, "
-        "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-        "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
-        "COALESCE(s.state, 'new') as state, s.due_date "
-        "FROM anki_cards c "
-        "LEFT JOIN anki_srs_state s ON c.id = s.id "
-        "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL "
-        "ORDER BY CASE "
-        "  WHEN s.state IN ('learning', 'relearning') THEN 1 "
-        "  WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 2 "
-        "  WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 3 "
-        "  ELSE 4 END ASC, c.created_at ASC"
-    ).arg(idList.isEmpty() ? "''" : idList);
-
-    QVariantList list = executeQuery(sql).toVariantList();
-    // If no due cards in current schedule, provide all cards in the deck for practice study
-    if (list.isEmpty()) {
-        QString fallbackSql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
-                                      "c.validation_mode, c.extra_note, c.media_url, "
-                                      "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-                                      "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
-                                      "COALESCE(s.state, 'new') as state, s.due_date "
-                                      "FROM anki_cards c LEFT JOIN anki_srs_state s ON c.id = s.id "
-                                      "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL ORDER BY c.created_at ASC")
-            .arg(idList.isEmpty() ? "''" : idList);
-        list = executeQuery(fallbackSql).toVariantList();
-    }
-    return list;
-}
-
-bool SynapseDataController::createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString cardSql = QString("INSERT INTO anki_cards (id, deck_id, front, back, tags, card_type, validation_mode, created_at, updated_at) "
-                              "VALUES ('%1', '%2', '%3', '%4', '%5', 'basic', 'default', '%6', '%7');")
-        .arg(id, escapeSql(deckId), escapeSql(front), escapeSql(back), escapeSql(tags), ts, ts);
-    
-    QString srsSql = QString("INSERT INTO anki_srs_state (id, due_date, stability, difficulty, elapsed_days, reps, lapses, state, scheduled_days, created_at, updated_at) "
-                             "VALUES ('%1', '%2', 0.0, 0.0, 0, 0, 0, 'new', 0, '%3', '%4');")
-        .arg(id, ts, ts, ts);
-
-    bool ok = executeSql(cardSql + srsSql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_cards SET front = '%1', back = '%2', tags = '%3', updated_at = '%4' WHERE id = '%5'")
-        .arg(escapeSql(front), escapeSql(back), escapeSql(tags), ts, escapeSql(cardId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteCard(const QString &cardId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_cards SET deleted_at = '%1' WHERE id = '%2'; "
-                          "UPDATE anki_srs_state SET deleted_at = '%1' WHERE id = '%2';")
-        .arg(ts, escapeSql(cardId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::recordCardReview(const QString &cardId, int rating) {
-    // 1. Fetch current SRS state
-    QString fetchSql = QString("SELECT stability, difficulty, reps, lapses, elapsed_days FROM anki_srs_state WHERE id = '%1'").arg(escapeSql(cardId));
-    QJsonArray arr = executeQuery(fetchSql);
-
-    double curStability = 0.0;
-    double curDifficulty = 0.0;
-    int curReps = 0;
-    int curLapses = 0;
-    int elapsedDays = 0;
-
-    if (!arr.isEmpty()) {
-        QJsonObject obj = arr[0].toObject();
-        curStability = obj.value("stability").toDouble();
-        curDifficulty = obj.value("difficulty").toDouble();
-        curReps = obj.value("reps").toInt();
-        curLapses = obj.value("lapses").toInt();
-        elapsedDays = obj.value("elapsed_days").toInt();
-    }
-
-    double outStability = 0.0;
-    double outDifficulty = 0.0;
-    int outScheduledDays = 0;
-
-    int res = synapse_fsrs_calculate(
-        curStability, curDifficulty, curReps, curLapses, rating, elapsedDays,
-        &outStability, &outDifficulty, &outScheduledDays
-    );
-
-    if (res != 0) return false;
-
-    QString ts = currentTimestamp();
-    QDateTime dueDate = QDateTime::currentDateTimeUtc().addDays(outScheduledDays > 0 ? outScheduledDays : 1);
-    QString dueDateStr = dueDate.toString(Qt::ISODateWithMs);
-
-    int newReps = (rating == 1) ? 0 : (curReps + 1);
-    int newLapses = (rating == 1) ? (curLapses + 1) : curLapses;
-    QString state = (curReps == 0) ? "learning" : "review";
-
-    QString updateSrsSql = QString("UPDATE anki_srs_state SET stability = %1, difficulty = %2, reps = %3, lapses = %4, "
-                                   "scheduled_days = %5, state = '%6', due_date = '%7', last_review = '%8', updated_at = '%9' WHERE id = '%10';")
-        .arg(outStability).arg(outDifficulty).arg(newReps).arg(newLapses).arg(outScheduledDays)
-        .arg(state, dueDateStr, ts, ts, escapeSql(cardId));
-
-    QString reviewId = generateUuid();
-    QString insertReviewSql = QString("INSERT INTO anki_reviews (id, card_id, rating, duration, review_time, created_at) "
-                                      "VALUES ('%1', '%2', %3, 5000, '%4', '%5');")
-        .arg(reviewId, escapeSql(cardId)).arg(rating).arg(ts, ts);
-
-    return executeSql(updateSrsSql + insertReviewSql);
-}
-
-// ---------------------------------------------------------------------------
-// 4. Baterias de Questões & Simulado Zen
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getQuizBatteries() {
-    QString sql = "SELECT b.id, b.title, b.description, "
-                  "(SELECT count(*) FROM quiz_questions q WHERE q.battery_id = b.id AND q.deleted_at IS NULL) as question_count "
-                  "FROM quiz_batteries b WHERE b.deleted_at IS NULL ORDER BY b.created_at DESC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getBatteryQuestions(const QString &batteryId) {
-    QString sql = QString("SELECT id, battery_id, question, options, correct_index, explanation, sort_order "
-                          "FROM quiz_questions WHERE battery_id = '%1' AND deleted_at IS NULL ORDER BY sort_order ASC, created_at ASC")
-        .arg(escapeSql(batteryId));
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantMap SynapseDataController::getQuizStats() {
-    QVariantMap res;
-    QJsonArray batArr = executeQuery("SELECT count(*) as total FROM quiz_batteries WHERE deleted_at IS NULL");
-    int totalBatteries = batArr.isEmpty() ? 0 : batArr[0].toObject()["total"].toInt();
-
-    QJsonArray qArr = executeQuery("SELECT count(*) as total FROM quiz_questions WHERE deleted_at IS NULL");
-    int totalQuestions = qArr.isEmpty() ? 0 : qArr[0].toObject()["total"].toInt();
-
-    QJsonArray attArr = executeQuery(
-        "SELECT count(*) as total_attempts, "
-        "SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_attempts, "
-        "SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) as incorrect_attempts "
-        "FROM quiz_attempts"
-    );
-
-    int totalAttempts = 0;
-    int correctAttempts = 0;
-    int incorrectAttempts = 0;
-    int accuracyRate = 0;
-
-    if (!attArr.isEmpty()) {
-        QJsonObject o = attArr[0].toObject();
-        totalAttempts = o["total_attempts"].toInt();
-        correctAttempts = o["correct_attempts"].toInt();
-        incorrectAttempts = o["incorrect_attempts"].toInt();
-        if (totalAttempts > 0) {
-            accuracyRate = (correctAttempts * 100) / totalAttempts;
-        }
-    }
-
-    res["total_batteries"] = totalBatteries;
-    res["total_questions"] = totalQuestions;
-    res["total_attempts"] = totalAttempts;
-    res["correct_attempts"] = correctAttempts;
-    res["incorrect_attempts"] = incorrectAttempts;
-    res["accuracy_rate"] = accuracyRate;
-    return res;
-}
-
-QVariantList SynapseDataController::getErrorNotebookQuestions() {
-    QString sql = "SELECT q.id, q.battery_id, q.question, q.options, q.correct_index, q.explanation "
-                  "FROM quiz_questions q "
-                  "INNER JOIN quiz_attempts a ON q.id = a.question_id "
-                  "WHERE a.is_correct = 0 AND q.deleted_at IS NULL "
-                  "GROUP BY q.id ORDER BY a.created_at DESC LIMIT 25";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getRandomSimulationQuestions(int limit) {
-    QString sql = QString("SELECT id, battery_id, question, options, correct_index, explanation "
-                          "FROM quiz_questions WHERE deleted_at IS NULL ORDER BY RANDOM() LIMIT %1")
-        .arg(limit > 0 ? limit : 10);
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::createQuizBattery(const QString &title, const QString &description) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO quiz_batteries (id, title, description, layout, sort_order, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', 'zen', 0, '%4', '%5')")
-        .arg(id, escapeSql(title), escapeSql(description), ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::deleteQuizBattery(const QString &batteryId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE quiz_batteries SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(batteryId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::createQuizQuestion(const QString &batteryId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO quiz_questions (id, battery_id, type, question, options, correct_index, explanation, sort_order, created_at, updated_at) "
-                          "VALUES ('%1', '%2', 'multiple_choice', '%3', '%4', %5, '%6', 0, '%7', '%8')")
-        .arg(id, escapeSql(batteryId), escapeSql(question), escapeSql(optionsJson)).arg(correctIndex).arg(escapeSql(explanation), ts, ts);
-    return executeSql(sql);
-}
-
-bool SynapseDataController::recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO quiz_attempts (id, question_id, battery_id, type, selected_index, is_correct, created_at) "
-                          "VALUES ('%1', '%2', '%3', 'multiple_choice', %4, %5, '%6')")
-        .arg(id, escapeSql(questionId), escapeSql(batteryId)).arg(selectedIndex).arg(isCorrect ? 1 : 0).arg(ts);
-    return executeSql(sql);
-}
-
-// ---------------------------------------------------------------------------
-// 5. Finanças & Wishlist
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getTransactions(const QString &typeFilter) {
-    QString sql = "SELECT id, description, amount, type, category, date, status, account_id FROM transactions WHERE deleted_at IS NULL ";
-    if (!typeFilter.isEmpty()) {
-        sql += QString("AND type = '%1' ").arg(escapeSql(typeFilter));
-    }
-    sql += "ORDER BY date DESC LIMIT 100";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getAccounts() {
-    QString sql = "SELECT id, name, color, icon, initial_balance FROM finance_accounts WHERE deleted_at IS NULL ORDER BY name ASC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantMap SynapseDataController::getFinancialSummary() {
-    QVariantMap res;
-    double income = 0.0;
-    double expense = 0.0;
-
-    QJsonArray arr = executeQuery("SELECT type, SUM(amount) as total FROM transactions WHERE deleted_at IS NULL GROUP BY type");
-    for (const auto &val : arr) {
-        QJsonObject obj = val.toObject();
-        QString type = obj.value("type").toString();
-        double total = obj.value("total").toDouble();
-        if (type == "income") {
-            income += total;
-        } else if (type == "expense") {
-            expense += total;
-        }
-    }
-
-    res["income"] = income;
-    res["expense"] = expense;
-    res["balance"] = income - expense;
-    return res;
-}
-
-bool SynapseDataController::addTransaction(const QString &description, double amount, const QString &type, const QString &category, const QString &date, const QString &accountId) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO transactions (id, description, amount, type, category, date, status, account_id, created_at, updated_at) "
-                          "VALUES ('%1', '%2', %3, '%4', '%5', '%6', 'completed', '%7', '%8', '%9')")
-        .arg(id, escapeSql(description)).arg(amount).arg(escapeSql(type), escapeSql(category), escapeSql(date), escapeSql(accountId), ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::deleteTransaction(const QString &txId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE transactions SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(txId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-QVariantList SynapseDataController::getWishlist() {
-    QString sql = "SELECT id, title, price, priority, category, link, description FROM wishlist WHERE deleted_at IS NULL ORDER BY price DESC";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::addWishlistItem(const QString &title, double price, const QString &priority, const QString &category, const QString &link) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO wishlist (id, title, price, priority, category, link, created_at, updated_at) "
-                          "VALUES ('%1', '%2', %3, '%4', '%5', '%6', '%7', '%8')")
-        .arg(id, escapeSql(title)).arg(price).arg(escapeSql(priority), escapeSql(category), escapeSql(link), ts, ts);
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteWishlistItem(const QString &itemId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE wishlist SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(itemId));
-    return executeSql(sql);
-}
-
-// ---------------------------------------------------------------------------
-// 6. Hábitos & Rotina Diária
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getHabits() {
-    QString sql = "SELECT id, title, color, icon, target_days_per_week FROM habits WHERE deleted_at IS NULL ORDER BY created_at ASC";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::createHabit(const QString &title, const QString &color, const QString &icon, int targetDays) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO habits (id, title, color, icon, target_days_per_week, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', '%4', %5, '%6', '%7')")
-        .arg(id, escapeSql(title), escapeSql(color), escapeSql(icon)).arg(targetDays).arg(ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-QVariantList SynapseDataController::getHabitLogs(const QString &dateStr) {
-    QString sql = QString("SELECT habit_id, completed_at FROM habit_logs WHERE date = '%1' AND deleted_at IS NULL")
-        .arg(escapeSql(dateStr));
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getHabitLogsRange(const QString &startDate, const QString &endDate) {
-    QString sql = QString("SELECT habit_id, date, completed_at FROM habit_logs WHERE date >= '%1' AND date <= '%2' AND deleted_at IS NULL")
-        .arg(escapeSql(startDate), escapeSql(endDate));
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::toggleHabitCheckin(const QString &habitId, const QString &dateStr) {
-    QString checkSql = QString("SELECT id FROM habit_logs WHERE habit_id = '%1' AND date = '%2' AND deleted_at IS NULL")
-        .arg(escapeSql(habitId), escapeSql(dateStr));
-    QJsonArray arr = executeQuery(checkSql);
-    QString ts = currentTimestamp();
-
-    if (!arr.isEmpty()) {
-        // Toggle OFF (soft delete)
-        QString logId = arr[0].toObject().value("id").toString();
-        QString delSql = QString("UPDATE habit_logs SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(logId));
-        return executeSql(delSql);
-    } else {
-        // Toggle ON (insert)
-        QString newId = generateUuid();
-        QString insSql = QString("INSERT INTO habit_logs (id, habit_id, date, completed_at, created_at, updated_at) "
-                                 "VALUES ('%1', '%2', '%3', '%4', '%5', '%6')")
-            .arg(newId, escapeSql(habitId), escapeSql(dateStr), ts, ts, ts);
-        return executeSql(insSql);
-    }
-}
-
-bool SynapseDataController::deleteHabit(const QString &habitId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE habits SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(habitId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-// ---------------------------------------------------------------------------
-// 7. Calendário & Agenda
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getCalendarEvents() {
-    QString sql = "SELECT id, title, description, start_date, end_date, type, status, color "
-                  "FROM calendar_events WHERE deleted_at IS NULL ORDER BY start_date ASC LIMIT 100";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type, const QString &color) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO calendar_events (id, title, description, start_date, end_date, type, status, color, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', '%4', '%5', '%6', 'pending', '%7', '%8', '%9')")
-        .arg(id, escapeSql(title), escapeSql(description), escapeSql(startDate), escapeSql(endDate), escapeSql(type), escapeSql(color), ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::toggleEventStatus(const QString &eventId) {
-    QString checkSql = QString("SELECT status FROM calendar_events WHERE id = '%1'").arg(escapeSql(eventId));
-    QJsonArray arr = executeQuery(checkSql);
-    if (arr.isEmpty()) return false;
-
-    QString curStatus = arr[0].toObject().value("status").toString();
-    QString newStatus = (curStatus == "completed") ? "pending" : "completed";
-    QString ts = currentTimestamp();
-
-    QString sql = QString("UPDATE calendar_events SET status = '%1', updated_at = '%2' WHERE id = '%3'")
-        .arg(newStatus, ts, escapeSql(eventId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteCalendarEvent(const QString &eventId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE calendar_events SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(eventId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-// ---------------------------------------------------------------------------
-// 8. Biblioteca & E-Reader
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getLibraryBooks(const QString &filter) {
-    QString sql = "SELECT id, title, author, file_path, cover_color, cover_image, total_pages, current_page, reading_status "
-                  "FROM library_books WHERE deleted_at IS NULL ";
-    if (!filter.trimmed().isEmpty()) {
-        sql += QString("AND (title LIKE '%%1%' OR author LIKE '%%1%') ").arg(escapeSql(filter));
-    }
-    sql += "ORDER BY updated_at DESC LIMIT 100";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::updateBookProgress(const QString &bookId, int currentPage, int totalPages) {
-    QString ts = currentTimestamp();
-    QString status = (currentPage >= totalPages && totalPages > 0) ? "completed" : "reading";
-    QString sql = QString("UPDATE library_books SET current_page = %1, total_pages = %2, reading_status = '%3', updated_at = '%4' WHERE id = '%5'")
-        .arg(currentPage).arg(totalPages).arg(status, ts, escapeSql(bookId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::createLibraryBook(const QString &title, const QString &author, int totalPages, const QString &coverColor) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString col = coverColor.trimmed().isEmpty() ? "#7c3aed" : coverColor;
-    QString sql = QString("INSERT INTO library_books (id, title, author, total_pages, current_page, reading_status, cover_color, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', %4, 0, 'reading', '%5', '%6', '%6')")
-                  .arg(id, escapeSql(title), escapeSql(author.trimmed().isEmpty() ? "Desconhecido" : author)).arg(totalPages).arg(escapeSql(col), ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::deleteLibraryBook(const QString &bookId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE library_books SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(bookId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-// ---------------------------------------------------------------------------
-// 9. Cultura & Entretenimento
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getCultureItems(const QString &statusFilter) {
-    QString sql = "SELECT id, title, type, synopsis, cover_image, status, progress, total_episodes "
-                  "FROM culture_items WHERE deleted_at IS NULL ";
-    if (!statusFilter.isEmpty()) {
-        sql += QString("AND status = '%1' ").arg(escapeSql(statusFilter));
-    }
-    sql += "ORDER BY updated_at DESC LIMIT 100";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::incrementCultureProgress(const QString &itemId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE culture_items SET progress = progress + 1, updated_at = '%1' WHERE id = '%2'")
-        .arg(ts, escapeSql(itemId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::updateCultureProgress(const QString &itemId, int progress) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE culture_items SET progress = %1, updated_at = '%2' WHERE id = '%3'")
-        .arg(progress).arg(ts, escapeSql(itemId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::updateCultureStatus(const QString &itemId, const QString &status) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE culture_items SET status = '%1', updated_at = '%2' WHERE id = '%3'")
-        .arg(escapeSql(status), ts, escapeSql(itemId));
-    return executeSql(sql);
-}
-
-bool SynapseDataController::createCultureItem(const QString &title, const QString &type, const QString &synopsis, int totalEpisodes, const QString &coverImage) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO culture_items (id, title, type, synopsis, total_episodes, progress, status, cover_image, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', '%4', %5, 0, 'backlog', '%6', '%7', '%7')")
-                  .arg(id, escapeSql(title), escapeSql(type), escapeSql(synopsis)).arg(totalEpisodes).arg(escapeSql(coverImage), ts);
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::deleteCultureItem(const QString &itemId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE culture_items SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(itemId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-// ---------------------------------------------------------------------------
-// 10. Foco Pomodoro & Lofi
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getLofis() {
-    QString sql = "SELECT id, title, original_name, duration, file_path, is_local FROM lofis WHERE deleted_at IS NULL ORDER BY title ASC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getFocusSessions() {
-    QString sql = "SELECT id, tag, description, target_time_minutes, status, summary, created_at "
-                  "FROM focus_sessions WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 50";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary) {
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO focus_sessions (id, tag, description, target_time_minutes, status, summary, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '', %3, '%4', '%5', '%6', '%7')")
-        .arg(id, escapeSql(tag)).arg(targetMinutes).arg(escapeSql(status), escapeSql(summary), ts, ts);
-    return executeSql(sql);
-}
-
-bool SynapseDataController::deleteFocusSession(const QString &sessionId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE focus_sessions SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(sessionId));
-    return executeSql(sql);
-}
-
-// ---------------------------------------------------------------------------
-// 11. Cofre E2EE & Credenciais
-// ---------------------------------------------------------------------------
-
-QVariantList SynapseDataController::getVaultGroups() {
-    QString sql = "SELECT id, name, icon, color, position FROM vault_groups WHERE deleted_at IS NULL ORDER BY position ASC, name ASC";
-    return executeQuery(sql).toVariantList();
-}
-
-QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
-    if (m_isVaultConfigured && !m_isVaultUnlocked) {
-        return QVariantList();
-    }
-
-    QString sql = "SELECT id, group_id, label, username, email, password, url, notes, is_favorite FROM vault_items WHERE deleted_at IS NULL ";
-    if (!groupId.isEmpty()) {
-        sql += QString("AND group_id = '%1' ").arg(escapeSql(groupId));
-    }
-    sql += "ORDER BY label ASC LIMIT 100";
-    QJsonArray arr = executeQuery(sql);
-    QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
-
-    QVariantList list;
-    for (const QJsonValue &val : arr) {
-        QJsonObject item = val.toObject();
-        if (!vKey.isEmpty()) {
-            auto tryDec = [&](const QString &key) {
-                QString enc = item.value(key).toString();
-                if (!enc.isEmpty()) {
-                    QString dec = decryptContent(vKey, enc);
-                    if (!dec.isEmpty()) item[key] = dec;
-                }
-            };
-            tryDec("label");
-            tryDec("username");
-            tryDec("email");
-            tryDec("password");
-            tryDec("url");
-            tryDec("notes");
-        }
-        list.append(item.toVariantMap());
-    }
-    return list;
-}
-
-bool SynapseDataController::saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes) {
-    QString ts = currentTimestamp();
-    QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
-
-    QString sLabel = label;
-    QString sUser = username;
-    QString sEmail = email;
-    QString sPass = password;
-    QString sUrl = url;
-    QString sNotes = notes;
-
-    if (m_isVaultConfigured && m_isVaultUnlocked && !vKey.isEmpty()) {
-        sLabel = encryptContent(vKey, label);
-        if (!username.isEmpty()) sUser = encryptContent(vKey, username);
-        if (!email.isEmpty()) sEmail = encryptContent(vKey, email);
-        if (!password.isEmpty()) sPass = encryptContent(vKey, password);
-        if (!url.isEmpty()) sUrl = encryptContent(vKey, url);
-        if (!notes.isEmpty()) sNotes = encryptContent(vKey, notes);
-    }
-
-    QString sql;
-    if (id.isEmpty()) {
-        QString newId = generateUuid();
-        sql = QString("INSERT INTO vault_items (id, group_id, label, username, email, password, url, notes, is_favorite, created_at, updated_at) "
-                      "VALUES ('%1', '%2', '%3', '%4', '%5', '%6', '%7', '%8', 0, '%9', '%10')")
-            .arg(newId, escapeSql(groupId), escapeSql(sLabel), escapeSql(sUser), escapeSql(sEmail), escapeSql(sPass), escapeSql(sUrl), escapeSql(sNotes), ts, ts);
-    } else {
-        sql = QString("UPDATE vault_items SET group_id = '%1', label = '%2', username = '%3', email = '%4', password = '%5', url = '%6', notes = '%7', updated_at = '%8' WHERE id = '%9'")
-            .arg(escapeSql(groupId), escapeSql(sLabel), escapeSql(sUser), escapeSql(sEmail), escapeSql(sPass), escapeSql(sUrl), escapeSql(sNotes), ts, escapeSql(id));
-    }
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::deleteVaultItem(const QString &itemId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE vault_items SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(itemId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-QString SynapseDataController::generateSecurePassword(int length, bool uppercase, bool lowercase, bool numbers, bool symbols) {
-    QString pool;
-    if (uppercase) pool += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    if (lowercase) pool += "abcdefghijklmnopqrstuvwxyz";
-    if (numbers) pool += "0123456789";
-    if (symbols) pool += "!@#$%^&*()-_=+[]{}<>?~";
-    if (pool.isEmpty()) pool = "abcdefghijklmnopqrstuvwxyz0123456789";
-
-    QString result;
-    result.reserve(length);
-    auto *rng = QRandomGenerator::global();
-    for (int i = 0; i < length; ++i) {
-        int idx = rng->bounded(pool.length());
-        result.append(pool.at(idx));
-    }
-    return result;
-}
-
-bool SynapseDataController::unlockVault(const QString &password) {
-    if (password.trimmed().isEmpty()) {
-        m_vaultLockError = "Digite a senha mestra.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    QString sql = "SELECT auth_hash, library_key_enc, finance_key_enc, notes_key_enc, "
-                  "culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, "
-                  "calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1";
-    QJsonArray rows = executeQuery(sql);
-    if (rows.isEmpty()) {
-        m_vaultLockError = "Cofre não configurado neste dispositivo.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    QJsonObject kr = rows[0].toObject();
-    QString storedHash = kr.value("auth_hash").toString();
-
-    uint8_t masterKey[32];
-    if (synapse_crypto_derive_master_key(password.toUtf8().constData(), masterKey) != 0) {
-        m_vaultLockError = "Falha ao derivar chave de criptografia.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    bool isValid = false;
-    QString testEnc = kr.value("library_key_enc").toString();
-    if (testEnc.isEmpty()) testEnc = kr.value("notes_key_enc").toString();
-    if (testEnc.isEmpty()) testEnc = kr.value("vault_key_enc").toString();
-
-    if (!testEnc.isEmpty()) {
-        char *decKey = synapse_crypto_decrypt_module_key(testEnc.toUtf8().constData(), masterKey);
-        if (decKey) {
-            isValid = true;
-            synapse_free_string(decKey);
-        }
-    }
-
-    if (!isValid && !storedHash.isEmpty()) {
-        char *calcHash = synapse_crypto_hash_password(password.toUtf8().constData());
-        if (calcHash) {
-            if (QString::fromUtf8(calcHash) == storedHash) {
-                isValid = true;
-            }
-            synapse_free_string(calcHash);
-        }
-    }
-
-    if (!isValid) {
-        synapse_crypto_wipe_memory(masterKey, 32);
-        m_vaultLockError = "Senha mestra incorreta. Tente novamente.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    auto tryDecryptKey = [&](const QString &encPayload) -> QString {
-        if (encPayload.trimmed().isEmpty()) return QString();
-        char *dec = synapse_crypto_decrypt_module_key(encPayload.toUtf8().constData(), masterKey);
-        if (!dec) return QString();
-        QString s = QString::fromUtf8(dec);
-        synapse_free_string(dec);
-        return s;
-    };
-
-    m_unlockedKeys.clear();
-    m_unlockedKeys["library"] = tryDecryptKey(kr.value("library_key_enc").toString());
-    m_unlockedKeys["finance"] = tryDecryptKey(kr.value("finance_key_enc").toString());
-    m_unlockedKeys["notes"] = tryDecryptKey(kr.value("notes_key_enc").toString());
-
-    QString notesKey = m_unlockedKeys["notes"];
-    auto decryptOrFallback = [&](const QString &keyName, const QString &encVal) {
-        QString k = tryDecryptKey(encVal);
-        m_unlockedKeys[keyName] = !k.isEmpty() ? k : notesKey;
-    };
-
-    decryptOrFallback("culture", kr.value("culture_key_enc").toString());
-    decryptOrFallback("anki", kr.value("anki_key_enc").toString());
-    decryptOrFallback("focus", kr.value("focus_key_enc").toString());
-    decryptOrFallback("files", kr.value("files_key_enc").toString());
-    decryptOrFallback("vault", kr.value("vault_key_enc").toString());
-    decryptOrFallback("calendar", kr.value("calendar_key_enc").toString());
-    decryptOrFallback("practice", kr.value("practice_key_enc").toString());
-    decryptOrFallback("core", kr.value("core_key_enc").toString());
-
-    synapse_crypto_wipe_memory(masterKey, 32);
-
-    m_isVaultUnlocked = true;
-    m_vaultLockError = "";
-    emit vaultLockErrorChanged();
-    emit vaultStateChanged();
-    emit vaultUnlocked();
-
-    if (m_autoLockMinutes > 0) {
-        m_autoLockTimer->start(m_autoLockMinutes * 60 * 1000);
-    }
-
-    return true;
-}
-
-void SynapseDataController::lockVault() {
-    m_autoLockTimer->stop();
-    m_unlockedKeys.clear();
-    m_isVaultUnlocked = false;
-    m_vaultLockError = "";
-    emit vaultLockErrorChanged();
-    emit vaultStateChanged();
-    emit vaultLocked();
-}
-
-bool SynapseDataController::setupMasterPassword(const QString &password) {
-    if (password.trimmed().length() < 6) {
-        m_vaultLockError = "A senha mestra deve ter no mínimo 6 caracteres.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    uint8_t masterKey[32];
-    if (synapse_crypto_derive_master_key(password.toUtf8().constData(), masterKey) != 0) {
-        m_vaultLockError = "Erro ao derivar chave mestra.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    auto genEncKey = [&](const QString &keyHex) -> QString {
-        char *cEnc = synapse_crypto_encrypt_module_key(keyHex.toUtf8().constData(), masterKey);
-        if (!cEnc) return QString();
-        QString s = QString::fromUtf8(cEnc);
-        synapse_free_string(cEnc);
-        return s;
-    };
-
-    auto genKey = []() -> QString {
-        char *k = synapse_crypto_generate_module_key();
-        if (!k) return QString();
-        QString s = QString::fromUtf8(k);
-        synapse_free_string(k);
-        return s;
-    };
-
-    QString libraryKey = genKey();
-    QString financeKey = genKey();
-    QString notesKey = genKey();
-    QString cultureKey = genKey();
-    QString ankiKey = genKey();
-    QString focusKey = genKey();
-    QString filesKey = genKey();
-    QString vaultKey = genKey();
-    QString calendarKey = genKey();
-    QString practiceKey = genKey();
-    QString coreKey = genKey();
-
-    QString libraryEnc = genEncKey(libraryKey);
-    QString financeEnc = genEncKey(financeKey);
-    QString notesEnc = genEncKey(notesKey);
-    QString cultureEnc = genEncKey(cultureKey);
-    QString ankiEnc = genEncKey(ankiKey);
-    QString focusEnc = genEncKey(focusKey);
-    QString filesEnc = genEncKey(filesKey);
-    QString vaultEnc = genEncKey(vaultKey);
-    QString calendarEnc = genEncKey(calendarKey);
-    QString practiceEnc = genEncKey(practiceKey);
-    QString coreEnc = genEncKey(coreKey);
-
-    char *cHash = synapse_crypto_hash_password(password.toUtf8().constData());
-    QString authHash = cHash ? QString::fromUtf8(cHash) : "";
-    synapse_free_string(cHash);
-
-    QString id = generateUuid();
-    QString sql = QString("INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc) VALUES ('%1', '%2', '%3', '%4', '%5', '%6', '%7', '%8', '%9', '%10', '%11', '%12', '%13');")
-        .arg(id, escapeSql(authHash), escapeSql(libraryEnc), escapeSql(financeEnc), escapeSql(notesEnc), escapeSql(cultureEnc), escapeSql(ankiEnc), escapeSql(focusEnc), escapeSql(filesEnc), escapeSql(vaultEnc), escapeSql(calendarEnc), escapeSql(practiceEnc), escapeSql(coreEnc));
-
-    if (!executeSql(sql)) {
-        synapse_crypto_wipe_memory(masterKey, 32);
-        m_vaultLockError = "Erro ao persistir chaves no banco de dados.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    // Encrypt existing unencrypted pages
-    QJsonArray pagesToEncrypt = executeQuery("SELECT id, content FROM pages WHERE (encrypted_content IS NULL OR encrypted_content = '') AND content IS NOT NULL AND content != ''");
-    for (const QJsonValue &pv : pagesToEncrypt) {
-        QJsonObject po = pv.toObject();
-        QString pid = po.value("id").toString();
-        QString pContent = po.value("content").toString();
-        QString enc = encryptContent(notesKey, pContent);
-        executeSql(QString("UPDATE pages SET content = '', encrypted_content = '%1' WHERE id = '%2'").arg(escapeSql(enc), escapeSql(pid)));
-    }
-
-    // Encrypt existing unencrypted diagrams
-    QJsonArray diagramsToEncrypt = executeQuery("SELECT id, content FROM diagrams WHERE (encrypted_content IS NULL OR encrypted_content = '') AND content IS NOT NULL AND content != ''");
-    for (const QJsonValue &dv : diagramsToEncrypt) {
-        QJsonObject dObj = dv.toObject();
-        QString did = dObj.value("id").toString();
-        QString dContent = dObj.value("content").toString();
-        QString enc = encryptContent(notesKey, dContent);
-        executeSql(QString("UPDATE diagrams SET content = '', encrypted_content = '%1' WHERE id = '%2'").arg(escapeSql(enc), escapeSql(did)));
-    }
-
-    // Encrypt existing unencrypted vault items
-    QJsonArray vaultToEncrypt = executeQuery("SELECT id, label, username, email, password, url, notes FROM vault_items WHERE deleted_at IS NULL");
-    for (const QJsonValue &vv : vaultToEncrypt) {
-        QJsonObject vo = vv.toObject();
-        QString vid = vo.value("id").toString();
-        QString encLabel = encryptContent(vaultKey, vo.value("label").toString());
-        QString encUser = vo.value("username").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("username").toString());
-        QString encEmail = vo.value("email").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("email").toString());
-        QString encPass = vo.value("password").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("password").toString());
-        QString encUrl = vo.value("url").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("url").toString());
-        QString encNotes = vo.value("notes").toString().isEmpty() ? "" : encryptContent(vaultKey, vo.value("notes").toString());
-
-        executeSql(QString("UPDATE vault_items SET label = '%1', username = '%2', email = '%3', password = '%4', url = '%5', notes = '%6' WHERE id = '%7'")
-            .arg(escapeSql(encLabel), escapeSql(encUser), escapeSql(encEmail), escapeSql(encPass), escapeSql(encUrl), escapeSql(encNotes), escapeSql(vid)));
-    }
-
-    m_unlockedKeys["library"] = libraryKey;
-    m_unlockedKeys["finance"] = financeKey;
-    m_unlockedKeys["notes"] = notesKey;
-    m_unlockedKeys["culture"] = cultureKey;
-    m_unlockedKeys["anki"] = ankiKey;
-    m_unlockedKeys["focus"] = focusKey;
-    m_unlockedKeys["files"] = filesKey;
-    m_unlockedKeys["vault"] = vaultKey;
-    m_unlockedKeys["calendar"] = calendarKey;
-    m_unlockedKeys["practice"] = practiceKey;
-    m_unlockedKeys["core"] = coreKey;
-
-    synapse_crypto_wipe_memory(masterKey, 32);
-
-    m_isVaultConfigured = true;
-    m_isVaultUnlocked = true;
-    m_vaultLockError = "";
-    emit vaultLockErrorChanged();
-    emit vaultStateChanged();
-    emit vaultUnlocked();
-
-    if (m_autoLockMinutes > 0) {
-        m_autoLockTimer->start(m_autoLockMinutes * 60 * 1000);
-    }
-
-    return true;
-}
-
-bool SynapseDataController::changeMasterPassword(const QString &oldPassword, const QString &newPassword) {
-    if (newPassword.trimmed().length() < 6) {
-        m_vaultLockError = "A nova senha mestra deve ter no mínimo 6 caracteres.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    uint8_t oldKey[32];
-    if (synapse_crypto_derive_master_key(oldPassword.toUtf8().constData(), oldKey) != 0) {
-        m_vaultLockError = "Senha mestra atual incorreta.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    QString sql = "SELECT id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, "
-                  "culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, "
-                  "calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1";
-    QJsonArray rows = executeQuery(sql);
-    if (rows.isEmpty()) {
-        synapse_crypto_wipe_memory(oldKey, 32);
-        m_vaultLockError = "Cofre não configurado.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    QJsonObject kr = rows[0].toObject();
-    QString id = kr.value("id").toString();
-
-    QString testEnc = kr.value("library_key_enc").toString();
-    if (testEnc.isEmpty()) testEnc = kr.value("notes_key_enc").toString();
-    if (testEnc.isEmpty()) testEnc = kr.value("vault_key_enc").toString();
-
-    bool isValid = false;
-    if (!testEnc.isEmpty()) {
-        char *decKey = synapse_crypto_decrypt_module_key(testEnc.toUtf8().constData(), oldKey);
-        if (decKey) {
-            isValid = true;
-            synapse_free_string(decKey);
-        }
-    }
-    if (!isValid) {
-        synapse_crypto_wipe_memory(oldKey, 32);
-        m_vaultLockError = "Senha mestra atual incorreta.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    uint8_t newKey[32];
-    if (synapse_crypto_derive_master_key(newPassword.toUtf8().constData(), newKey) != 0) {
-        synapse_crypto_wipe_memory(oldKey, 32);
-        m_vaultLockError = "Erro ao derivar nova chave mestra.";
-        emit vaultLockErrorChanged();
-        return false;
-    }
-
-    auto rewrap = [&](const QString &encPayload, const QString &fallbackRaw) -> QString {
-        QString rawKey;
-        if (!encPayload.trimmed().isEmpty()) {
-            char *dec = synapse_crypto_decrypt_module_key(encPayload.toUtf8().constData(), oldKey);
-            if (dec) {
-                rawKey = QString::fromUtf8(dec);
-                synapse_free_string(dec);
-            }
-        }
-        if (rawKey.isEmpty()) rawKey = fallbackRaw;
-        if (rawKey.isEmpty()) return QString();
-
-        char *newEnc = synapse_crypto_encrypt_module_key(rawKey.toUtf8().constData(), newKey);
-        if (!newEnc) return QString();
-        QString s = QString::fromUtf8(newEnc);
-        synapse_free_string(newEnc);
-        return s;
-    };
-
-    QString notesRaw;
-    QString notesEnc = kr.value("notes_key_enc").toString();
-    if (!notesEnc.isEmpty()) {
-        char *dec = synapse_crypto_decrypt_module_key(notesEnc.toUtf8().constData(), oldKey);
-        if (dec) {
-            notesRaw = QString::fromUtf8(dec);
-            synapse_free_string(dec);
-        }
-    }
-
-    QString libraryEncNew = rewrap(kr.value("library_key_enc").toString(), notesRaw);
-    QString financeEncNew = rewrap(kr.value("finance_key_enc").toString(), notesRaw);
-    QString notesEncNew = rewrap(notesEnc, notesRaw);
-    QString cultureEncNew = rewrap(kr.value("culture_key_enc").toString(), notesRaw);
-    QString ankiEncNew = rewrap(kr.value("anki_key_enc").toString(), notesRaw);
-    QString focusEncNew = rewrap(kr.value("focus_key_enc").toString(), notesRaw);
-    QString filesEncNew = rewrap(kr.value("files_key_enc").toString(), notesRaw);
-    QString vaultEncNew = rewrap(kr.value("vault_key_enc").toString(), notesRaw);
-    QString calendarEncNew = rewrap(kr.value("calendar_key_enc").toString(), notesRaw);
-    QString practiceEncNew = rewrap(kr.value("practice_key_enc").toString(), notesRaw);
-    QString coreEncNew = rewrap(kr.value("core_key_enc").toString(), notesRaw);
-
-    char *cHash = synapse_crypto_hash_password(newPassword.toUtf8().constData());
-    QString newAuthHash = cHash ? QString::fromUtf8(cHash) : "";
-    synapse_free_string(cHash);
-
-    QString updateSql = QString("UPDATE keychain SET auth_hash = '%1', library_key_enc = '%2', finance_key_enc = '%3', "
-                                "notes_key_enc = '%4', culture_key_enc = '%5', anki_key_enc = '%6', focus_key_enc = '%7', "
-                                "files_key_enc = '%8', vault_key_enc = '%9', calendar_key_enc = '%10', practice_key_enc = '%11', "
-                                "core_key_enc = '%12' WHERE id = '%13'")
-        .arg(escapeSql(newAuthHash), escapeSql(libraryEncNew), escapeSql(financeEncNew), escapeSql(notesEncNew),
-             escapeSql(cultureEncNew), escapeSql(ankiEncNew), escapeSql(focusEncNew), escapeSql(filesEncNew),
-             escapeSql(vaultEncNew), escapeSql(calendarEncNew), escapeSql(practiceEncNew), escapeSql(coreEncNew),
-             escapeSql(id));
-
-    bool ok = executeSql(updateSql);
-
-    synapse_crypto_wipe_memory(oldKey, 32);
-    synapse_crypto_wipe_memory(newKey, 32);
-
-    if (ok) {
-        m_vaultLockError = "";
-        emit vaultLockErrorChanged();
-        emit vaultStateChanged();
-    } else {
-        m_vaultLockError = "Erro ao atualizar senha no banco de dados.";
-        emit vaultLockErrorChanged();
-    }
-
-    return ok;
-}
-
-bool SynapseDataController::removeMasterPassword(const QString &password) {
-    if (!m_isVaultUnlocked) {
-        if (!unlockVault(password)) {
-            return false;
-        }
-    }
-
-    QString notesKey = m_unlockedKeys.value("notes");
-    QString vaultKey = m_unlockedKeys.value("vault", notesKey);
-
-    if (!notesKey.isEmpty()) {
-        QJsonArray pagesToDecrypt = executeQuery("SELECT id, encrypted_content FROM pages WHERE encrypted_content IS NOT NULL AND encrypted_content != ''");
-        for (const QJsonValue &pv : pagesToDecrypt) {
-            QJsonObject po = pv.toObject();
-            QString pid = po.value("id").toString();
-            QString enc = po.value("encrypted_content").toString();
-            QString dec = decryptContent(notesKey, enc);
-            executeSql(QString("UPDATE pages SET content = '%1', encrypted_content = NULL WHERE id = '%2'").arg(escapeSql(dec), escapeSql(pid)));
-        }
-
-        QJsonArray diagramsToDecrypt = executeQuery("SELECT id, encrypted_content FROM diagrams WHERE encrypted_content IS NOT NULL AND encrypted_content != ''");
-        for (const QJsonValue &dv : diagramsToDecrypt) {
-            QJsonObject do_ = dv.toObject();
-            QString did = do_.value("id").toString();
-            QString enc = do_.value("encrypted_content").toString();
-            QString dec = decryptContent(notesKey, enc);
-            executeSql(QString("UPDATE diagrams SET content = '%1', encrypted_content = NULL WHERE id = '%2'").arg(escapeSql(dec), escapeSql(did)));
-        }
-    }
-
-    if (!vaultKey.isEmpty()) {
-        QJsonArray vaultToDecrypt = executeQuery("SELECT id, label, username, email, password, url, notes FROM vault_items WHERE deleted_at IS NULL");
-        for (const QJsonValue &vv : vaultToDecrypt) {
-            QJsonObject vo = vv.toObject();
-            QString vid = vo.value("id").toString();
-            QString decLabel = decryptContent(vaultKey, vo.value("label").toString());
-            QString decUser = decryptContent(vaultKey, vo.value("username").toString());
-            QString decEmail = decryptContent(vaultKey, vo.value("email").toString());
-            QString decPass = decryptContent(vaultKey, vo.value("password").toString());
-            QString decUrl = decryptContent(vaultKey, vo.value("url").toString());
-            QString decNotes = decryptContent(vaultKey, vo.value("notes").toString());
-
-            executeSql(QString("UPDATE vault_items SET label = '%1', username = '%2', email = '%3', password = '%4', url = '%5', notes = '%6' WHERE id = '%7'")
-                .arg(escapeSql(decLabel), escapeSql(decUser), escapeSql(decEmail), escapeSql(decPass), escapeSql(decUrl), escapeSql(decNotes), escapeSql(vid)));
-        }
-    }
-
-    executeSql("DELETE FROM keychain;");
-
-    m_unlockedKeys.clear();
-    m_isVaultConfigured = false;
-    m_isVaultUnlocked = false;
-    m_autoLockTimer->stop();
-    m_vaultLockError = "";
-
-    emit vaultLockErrorChanged();
-    emit vaultStateChanged();
-    return true;
-}
-
-int SynapseDataController::checkPasswordStrength(const QString &password) {
-    int len = password.length();
-    bool hasUpper = false, hasLower = false, hasNum = false, hasSym = false;
-    for (const QChar &ch : password) {
-        if (ch.isUpper()) hasUpper = true;
-        else if (ch.isLower()) hasLower = true;
-        else if (ch.isDigit()) hasNum = true;
-        else hasSym = true;
-    }
-    int score = 0;
-    if (len > 8) score++;
-    if (len >= 12) score++;
-    if (hasUpper && hasLower) score++;
-    if (hasNum && hasSym) score++;
-    if (len >= 16 && (hasUpper || hasLower) && (hasNum || hasSym)) score = qMax(score, 4);
-    if (score > 4) score = 4;
-    QString lower = password.toLower();
-    if (lower == "password" || lower == "123456" || lower == "12345678" || lower == "admin") {
-        score = 0;
-    }
-    return score;
-}
-
-QVariantMap SynapseDataController::checkPasswordBreach(const QString &password) {
-    QVariantMap res;
-    res["breached"] = false;
-    res["count"] = 0;
-    if (password.isEmpty()) return res;
-
-    QByteArray sha1 = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha1).toHex().toUpper();
-    if (sha1.length() < 5) {
-        res["error"] = "Falha ao gerar hash SHA-1";
-        return res;
-    }
-
-    QString prefix = QString::fromLatin1(sha1.left(5));
-    QString suffix = QString::fromLatin1(sha1.mid(5));
-
-    QNetworkAccessManager mgr;
-    QNetworkRequest req(QUrl("https://api.pwnedpasswords.com/range/" + prefix));
-    req.setHeader(QNetworkRequest::UserAgentHeader, "Synapse-Desktop/1.0");
-    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
-
-    QEventLoop loop;
-    QTimer timer;
-    timer.setSingleShot(true);
-    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-
-    QNetworkReply *reply = mgr.get(req);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    timer.start(5000); // 5s timeout
-    loop.exec();
-
-    if (timer.isActive()) {
-        timer.stop();
-    } else {
-        reply->abort();
-        reply->deleteLater();
-        res["error"] = "Tempo limite excedido ao consultar base de senhas.";
-        return res;
-    }
-
-    if (reply->error() != QNetworkReply::NoError) {
-        res["error"] = reply->errorString();
-        reply->deleteLater();
-        return res;
-    }
-
-    QByteArray body = reply->readAll();
-    reply->deleteLater();
-
-    QString text = QString::fromUtf8(body);
-    const QStringList lines = text.split(QLatin1String("\r\n"), Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        int idx = line.indexOf(':');
-        if (idx != -1) {
-            QString hashSuff = line.left(idx).trimmed();
-            if (hashSuff.compare(suffix, Qt::CaseInsensitive) == 0) {
-                qint64 count = line.mid(idx + 1).trimmed().toLongLong();
-                res["breached"] = (count > 0);
-                res["count"] = count;
-                break;
-            }
-        }
-    }
-    return res;
-}
-
-void SynapseDataController::copyToClipboard(const QString &text) {
-    QClipboard *cb = QGuiApplication::clipboard();
-    if (cb) {
-        cb->setText(text);
-    }
-}
-
-QString SynapseDataController::exportDatabaseBackup(const QString &destinationDir) {
-    if (m_dbPath.isEmpty() || !QFile::exists(m_dbPath)) {
-        return "";
-    }
-    QString targetDir = destinationDir.isEmpty() 
-        ? QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
-        : destinationDir;
-    QDir().mkpath(targetDir);
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-    QString targetFile = targetDir + "/synapse_backup_" + timestamp + ".sqlite";
-
-    // Flush WAL before backing up
-    executeSql("PRAGMA wal_checkpoint(PASSIVE)");
-    bool ok = QFile::copy(m_dbPath, targetFile);
-    if (ok) {
-        qDebug() << "[SynapseDataController] Backup successfully created at:" << targetFile;
-        return targetFile;
-    }
-    return "";
-}
-
-bool SynapseDataController::optimizeDatabase() {
-    executeSql("PRAGMA optimize");
-    executeSql("PRAGMA wal_checkpoint(TRUNCATE)");
-    refreshStats();
-    qDebug() << "[SynapseDataController] Database successfully optimized and WAL truncated.";
-    return true;
-}
-
-QVariantMap SynapseDataController::getSystemDiagnostics() {
-    QVariantMap res;
-    QFileInfo dbInfo(m_dbPath);
-    res["db_size_bytes"] = dbInfo.size();
-    res["db_path"] = m_dbPath;
-    
-    QFileInfo walInfo(m_dbPath + "-wal");
-    res["wal_size_bytes"] = walInfo.exists() ? walInfo.size() : 0;
-    
-    res["qt_version"] = QString(qVersion());
-    res["os_name"] = QSysInfo::prettyProductName();
-    res["cpu_arch"] = QSysInfo::currentCpuArchitecture();
-    
-    QJsonArray tArr = executeQuery("SELECT count(*) as count FROM sqlite_master WHERE type='table'");
-    int tableCount = (!tArr.isEmpty()) ? tArr[0].toObject().value("count").toInt() : 0;
-    res["table_count"] = tableCount;
-
-    return res;
-}
-
-QVariantList SynapseDataController::getTrashItems() {
-    QString sql = "SELECT id, title, deleted_at, 'page' as item_type FROM pages WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, name as title, deleted_at, 'anki_deck' as item_type FROM anki_decks WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, front as title, deleted_at, 'anki_card' as item_type FROM anki_cards WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, title as title, deleted_at, 'book' as item_type FROM library_books WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, label as title, deleted_at, 'vault' as item_type FROM vault_items WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, description as title, deleted_at, 'finance' as item_type FROM transactions WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, title as title, deleted_at, 'wishlist' as item_type FROM wishlist WHERE deleted_at IS NOT NULL "
-                  "UNION ALL "
-                  "SELECT id, title as title, deleted_at, 'calendar' as item_type FROM calendar_events WHERE deleted_at IS NOT NULL "
-                  "ORDER BY deleted_at DESC LIMIT 100";
-    return executeQuery(sql).toVariantList();
-}
-
-bool SynapseDataController::restoreTrashItem(const QString &id, const QString &itemType) {
-    QString table;
-    if (itemType == "page") table = "pages";
-    else if (itemType == "anki_deck") table = "anki_decks";
-    else if (itemType == "anki_card") table = "anki_cards";
-    else if (itemType == "book") table = "library_books";
-    else if (itemType == "vault") table = "vault_items";
-    else if (itemType == "finance") table = "transactions";
-    else if (itemType == "wishlist") table = "wishlist";
-    else if (itemType == "calendar") table = "calendar_events";
-    else return false;
-
-    QString sql = QString("UPDATE %1 SET deleted_at = NULL, updated_at = '%2' WHERE id = '%3'")
-        .arg(table, currentTimestamp(), escapeSql(id));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::deleteTrashItemPermanently(const QString &id, const QString &itemType) {
-    QString table;
-    if (itemType == "page") table = "pages";
-    else if (itemType == "anki_deck") table = "anki_decks";
-    else if (itemType == "anki_card") table = "anki_cards";
-    else if (itemType == "book") table = "library_books";
-    else if (itemType == "vault") table = "vault_items";
-    else if (itemType == "finance") table = "transactions";
-    else if (itemType == "wishlist") table = "wishlist";
-    else if (itemType == "calendar") table = "calendar_events";
-    else return false;
-
-    QString sql = QString("DELETE FROM %1 WHERE id = '%2'").arg(table, escapeSql(id));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
-}
-
-bool SynapseDataController::emptyTrash() {
-    QStringList tables = {
-        "pages", "anki_decks", "anki_cards", "library_books",
-        "vault_items", "vault_groups", "transactions", "wishlist",
-        "calendar_events", "culture_items", "focus_sessions"
-    };
-    for (const QString &tbl : tables) {
-        executeSql(QString("DELETE FROM %1 WHERE deleted_at IS NOT NULL").arg(tbl));
-    }
-    refreshStats();
-    return true;
-}
-
-QVariantMap SynapseDataController::getHomeDashboardData() {
-    QVariantMap res;
-    QString today = QDate::currentDate().toString("yyyy-MM-dd");
-    QString tomorrow = QDate::currentDate().addDays(1).toString("yyyy-MM-dd");
-
-    // Today's events
-    QString todaySql = QString("SELECT id, title, description, start_date, color, status "
-                               "FROM calendar_events WHERE deleted_at IS NULL AND (start_date LIKE '%%1%' OR start_date IS NULL) "
-                               "ORDER BY start_date ASC LIMIT 10").arg(today);
-    res["today_events"] = executeQuery(todaySql).toVariantList();
-
-    // Tomorrow's events
-    QString tomorrowSql = QString("SELECT id, title, description, start_date, color, status "
-                                  "FROM calendar_events WHERE deleted_at IS NULL AND start_date LIKE '%%1%' "
-                                  "ORDER BY start_date ASC LIMIT 10").arg(tomorrow);
-    res["tomorrow_events"] = executeQuery(tomorrowSql).toVariantList();
-
-    // Recent pages (last 5 edited)
-    QString pagesSql = "SELECT id, title, icon, updated_at FROM pages "
-                       "WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 5";
-    res["recent_pages"] = executeQuery(pagesSql).toVariantList();
-
-    // Pinned pages
-    res["pinned_pages"] = getPinnedPages();
-
-    // Financial summary
-    res["financial_summary"] = getFinancialSummary();
-
-    // Active habits
-    res["habits"] = getHabits();
-
-    return res;
 }
 
 QVariantList SynapseDataController::getDiagrams() {
@@ -2062,49 +310,73 @@ QVariantList SynapseDataController::getDiagrams() {
 }
 
 QVariantMap SynapseDataController::getDiagram(const QString &diagramId) {
-    QString sql = QString("SELECT id, title, icon, content, encrypted_content, updated_at FROM diagrams "
-                          "WHERE id = '%1' AND deleted_at IS NULL").arg(escapeSql(diagramId));
-    QJsonArray arr = executeQuery(sql);
+    const QJsonArray arr = executeQueryPrepared(
+        "SELECT id, title, icon, content, encrypted_content, updated_at FROM diagrams "
+        "WHERE id = ?1 AND deleted_at IS NULL", {diagramId});
     if (arr.isEmpty()) return QVariantMap();
     QJsonObject obj = arr[0].toObject();
     QString enc = obj.value("encrypted_content").toString();
     if (!enc.isEmpty()) {
-        if (m_unlockedKeys.contains("notes")) {
-            obj["content"] = decryptContent(m_unlockedKeys["notes"], enc);
-        } else if (m_isVaultConfigured) {
+        const QString notesKey = m_unlockedKeys.value("notes");
+        if (m_isVaultConfigured && !m_isVaultUnlocked) {
             obj["content"] = "🔒 [Diagrama Criptografado - Desbloqueie o Cofre]";
+        } else if (notesKey.isEmpty()) {
+            obj["content"] = QString();
+            obj["decryption_error"] = true;
+        } else {
+            const QString decrypted = decryptContent(notesKey, enc);
+            if (decrypted.isNull()) {
+                obj["content"] = QString();
+                obj["decryption_error"] = true;
+            } else {
+                obj["content"] = decrypted;
+            }
         }
     }
     return obj.toVariantMap();
 }
 
 bool SynapseDataController::saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon) {
+    if (m_isVaultConfigured && !m_isVaultUnlocked) return false;
     QString ts = currentTimestamp();
     QString enc;
-    if (m_isVaultConfigured && m_unlockedKeys.contains("notes")) {
-        enc = encryptContent(m_unlockedKeys["notes"], content);
+    if (m_isVaultConfigured) {
+        const QString notesKey = m_unlockedKeys.value("notes");
+        if (notesKey.isEmpty()) return false;
+        enc = encryptContent(notesKey, content);
+        if (enc.isNull()) return false;
     }
-    QString sql;
-    if (!enc.isEmpty()) {
-        sql = QString("UPDATE diagrams SET title = '%1', content = '', encrypted_content = '%2', icon = '%3', updated_at = '%4' "
-                      "WHERE id = '%5'")
-            .arg(escapeSql(title), escapeSql(enc), escapeSql(icon), ts, escapeSql(diagramId));
-    } else {
-        sql = QString("UPDATE diagrams SET title = '%1', content = '%2', encrypted_content = NULL, icon = '%3', updated_at = '%4' "
-                      "WHERE id = '%5'")
-            .arg(escapeSql(title), escapeSql(content), escapeSql(icon), ts, escapeSql(diagramId));
+    if (m_isVaultConfigured) {
+        return executeSqlPrepared(
+            "UPDATE diagrams SET title = ?1, content = '', encrypted_content = ?2, icon = ?3, updated_at = ?4 "
+            "WHERE id = ?5", {title, enc, icon, ts, diagramId}) == 1;
     }
-    return executeSql(sql);
+    return executeSqlPrepared(
+        "UPDATE diagrams SET title = ?1, content = ?2, encrypted_content = NULL, icon = ?3, updated_at = ?4 "
+        "WHERE id = ?5", {title, content, icon, ts, diagramId}) == 1;
 }
 
 QString SynapseDataController::createDiagram(const QString &title, const QString &icon) {
+    if (m_isVaultConfigured && !m_isVaultUnlocked) return QString();
     QString id = generateUuid();
     QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO diagrams (id, title, content, icon, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '[]', '%3', '%4', '%5')")
-        .arg(id, escapeSql(title), escapeSql(icon), ts, ts);
-    bool ok = executeSql(sql);
-    if (ok) return id;
+    QString content = QStringLiteral("[]");
+    QString encrypted;
+    if (m_isVaultConfigured) {
+        const QString notesKey = m_unlockedKeys.value("notes");
+        if (notesKey.isEmpty()) return QString();
+        encrypted = encryptContent(notesKey, content);
+        if (encrypted.isNull()) return QString();
+        content.clear();
+    }
+    const int inserted = m_isVaultConfigured
+        ? executeSqlPrepared(
+              "INSERT INTO diagrams (id, title, content, encrypted_content, icon, created_at, updated_at) "
+              "VALUES (?1, ?2, '', ?3, ?4, ?5, ?5)", {id, title, encrypted, icon, ts})
+        : executeSqlPrepared(
+              "INSERT INTO diagrams (id, title, content, encrypted_content, icon, created_at, updated_at) "
+              "VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?5)", {id, title, content, icon, ts});
+    if (inserted == 1) return id;
     return "";
 }
 

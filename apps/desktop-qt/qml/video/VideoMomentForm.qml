@@ -7,7 +7,7 @@ Rectangle {
     height: isExpanded ? 140 : 40
     radius: 10
     color: "#1a1924"
-    border.color: "#ffffff12"
+    border.color: "#12ffffff"
     border.width: 1
     clip: true
 
@@ -74,7 +74,7 @@ Rectangle {
             height: 32
             radius: 6
             color: "#0f0e17"
-            border.color: "#ffffff18"
+            border.color: "#18ffffff"
 
             TextInput {
                 id: bmWordInput
@@ -104,7 +104,7 @@ Rectangle {
             height: 32
             radius: 6
             color: "#0f0e17"
-            border.color: "#ffffff18"
+            border.color: "#18ffffff"
 
             TextInput {
                 id: bmNoteInput
@@ -150,7 +150,7 @@ Rectangle {
                 width: 60
                 height: 28
                 radius: 6
-                color: "#ffffff10"
+                color: "#10ffffff"
                 Text { anchors.centerIn: parent; text: "Cancelar"; color: "#a7a9be"; font.pixelSize: 11 }
                 MouseArea {
                     anchors.fill: parent

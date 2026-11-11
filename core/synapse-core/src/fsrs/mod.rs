@@ -56,8 +56,8 @@ impl Default for Card {
 }
 
 pub const DEFAULT_WEIGHTS: [f64; 17] = [
-    0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575,
-    0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898,
+    0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925,
+    1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898,
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,7 +127,9 @@ impl FsrsEngine {
 
     /// Calculates next review interval from stability
     pub fn next_interval(&self, stability: f64) -> i32 {
-        let interval = (stability / (19.0 / 81.0) * (self.params.request_retention.powf(-2.0) - 1.0)).round() as i32;
+        let interval = (stability / (19.0 / 81.0)
+            * (self.params.request_retention.powf(-2.0) - 1.0))
+            .round() as i32;
         interval.clamp(1, self.params.maximum_interval)
     }
 
@@ -265,4 +267,3 @@ mod tests {
         assert_eq!(card2.reps, 2);
     }
 }
-

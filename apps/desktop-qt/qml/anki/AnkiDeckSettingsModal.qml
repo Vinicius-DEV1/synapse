@@ -32,7 +32,7 @@ Rectangle {
         height: 380
         radius: 16
         color: "#161524"
-        border.color: "#ffffff18"
+        border.color: "#18ffffff"
         border.width: 1
 
         ColumnLayout {
@@ -59,7 +59,7 @@ Rectangle {
                 Layout.fillWidth: true
                 placeholderText: "Nome do baralho..."
                 color: "#ffffff"
-                background: Rectangle { color: "#0f0e17"; border.color: "#ffffff1a"; radius: 8 }
+                background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 }
             }
 
             TextArea {
@@ -69,7 +69,7 @@ Rectangle {
                 placeholderText: "Descrição do baralho..."
                 color: "#ffffff"
                 wrapMode: Text.Wrap
-                background: Rectangle { color: "#0f0e17"; border.color: "#ffffff1a"; radius: 8 }
+                background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 }
             }
 
             // Reset Progress Action
@@ -77,8 +77,8 @@ Rectangle {
                 Layout.fillWidth: true
                 height: 40
                 radius: 8
-                color: "#f59e0b1a"
-                border.color: "#f59e0b44"
+                color: "#1af59e0b"
+                border.color: "#44f59e0b"
 
                 RowLayout {
                     anchors.centerIn: parent
@@ -104,8 +104,8 @@ Rectangle {
                 Layout.fillWidth: true
                 height: 40
                 radius: 8
-                color: "#f43f5e1a"
-                border.color: "#f43f5e44"
+                color: "#1af43f5e"
+                border.color: "#44f43f5e"
 
                 RowLayout {
                     anchors.centerIn: parent

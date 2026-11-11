@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: createModalRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     visible: isOpen
     z: 95
 
@@ -37,7 +37,7 @@ Rectangle {
         height: 480
         radius: 16
         color: "#161524"
-        border.color: "#ffffff14"
+        border.color: "#14ffffff"
         border.width: 1
 
         MouseArea {
@@ -75,7 +75,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: newCultureTitle.activeFocus ? "#8b5cf6" : "#ffffff15"
+                    border.color: newCultureTitle.activeFocus ? "#8b5cf6" : "#15ffffff"
                     TextInput {
                         id: newCultureTitle
                         anchors.fill: parent
@@ -131,7 +131,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: newCultureEpisodes.activeFocus ? "#8b5cf6" : "#ffffff15"
+                    border.color: newCultureEpisodes.activeFocus ? "#8b5cf6" : "#15ffffff"
                     TextInput {
                         id: newCultureEpisodes
                         anchors.fill: parent
@@ -155,7 +155,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: newCultureCover.activeFocus ? "#8b5cf6" : "#ffffff15"
+                    border.color: newCultureCover.activeFocus ? "#8b5cf6" : "#15ffffff"
                     TextInput {
                         id: newCultureCover
                         anchors.fill: parent
@@ -178,7 +178,7 @@ Rectangle {
                     height: 52
                     radius: 8
                     color: "#15141b"
-                    border.color: newCultureSynopsis.activeFocus ? "#8b5cf6" : "#ffffff15"
+                    border.color: newCultureSynopsis.activeFocus ? "#8b5cf6" : "#15ffffff"
                     TextInput {
                         id: newCultureSynopsis
                         anchors.fill: parent

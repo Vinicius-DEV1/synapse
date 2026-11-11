@@ -22,7 +22,7 @@ description: >-
 
 ## 1. Color Architecture
 
-All tokens are defined in `tailwind.config.mjs` and must never be replaced with
+All tokens are defined in `apps/web-react/tailwind.config.mjs` and must never be replaced with
 arbitrary grays or external palettes.
 
 ### 1.1. Canvas & Surfaces
@@ -258,7 +258,7 @@ hover:border-brand-500/50
 
 ## 6. Animation System
 
-### 6.1. Keyframes (from `tailwind.config.mjs`)
+### 6.1. Keyframes (from `apps/web-react/tailwind.config.mjs`)
 
 | Animation          | Keyframes                    | Duration | Usage |
 | :----------------- | :--------------------------- | :------- | :---- |

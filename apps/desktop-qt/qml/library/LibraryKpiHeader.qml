@@ -8,9 +8,12 @@ ColumnLayout {
 
     property var books: []
     property string filterText: ""
+    property bool importRunning: false
 
     signal searchTextChanged(string text)
     signal requestAddBook()
+    signal requestImportBook()
+    signal requestReadingStats()
 
     function computeTotalPagesRead() {
         var total = 0
@@ -64,13 +67,34 @@ ColumnLayout {
 
         Item { Layout.fillWidth: true }
 
+        Button {
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
+            Accessible.name: "Estatísticas de leitura"
+            ToolTip.visible: hovered
+            ToolTip.text: "Estatísticas de leitura"
+            onClicked: kpiRoot.requestReadingStats()
+            background: Rectangle {
+                radius: 10
+                color: parent.hovered ? "#252432" : "#15141b"
+                border.color: "#18ffffff"
+            }
+            contentItem: Text {
+                text: "▥"
+                color: "#a7a9be"
+                font.pixelSize: 20
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+
         // Search Bar
         Rectangle {
             Layout.preferredWidth: 260
             height: 40
             radius: 10
             color: "#15141b"
-            border.color: bookSearchField.activeFocus ? "#8b5cf680" : "#ffffff12"
+            border.color: bookSearchField.activeFocus ? "#808b5cf6" : "#12ffffff"
             border.width: 1
 
             RowLayout {
@@ -97,6 +121,33 @@ ColumnLayout {
                         visible: !bookSearchField.text && !bookSearchField.activeFocus
                     }
                 }
+            }
+        }
+
+        Rectangle {
+            width: 160
+            height: 40
+            radius: 10
+            color: kpiRoot.importRunning ? "#343344" : "#272536"
+            opacity: kpiRoot.importRunning ? 0.7 : 1.0
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+                Text { text: kpiRoot.importRunning ? "◌" : "⇧"; color: "#ffffff"; font.pixelSize: 15; font.bold: true }
+                Text {
+                    text: kpiRoot.importRunning ? "Importando…" : "Importar PDF/EPUB"
+                    color: "#ffffff"
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: !kpiRoot.importRunning
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: kpiRoot.requestImportBook()
             }
         }
 
@@ -138,7 +189,7 @@ ColumnLayout {
             height: 80
             radius: 12
             color: "#161524"
-            border.color: "#ffffff0f"
+            border.color: "#0fffffff"
             border.width: 1
 
             ColumnLayout {
@@ -157,7 +208,7 @@ ColumnLayout {
             height: 80
             radius: 12
             color: "#161524"
-            border.color: "#ffffff0f"
+            border.color: "#0fffffff"
             border.width: 1
 
             ColumnLayout {
@@ -176,7 +227,7 @@ ColumnLayout {
             height: 80
             radius: 12
             color: "#161524"
-            border.color: "#ffffff0f"
+            border.color: "#0fffffff"
             border.width: 1
 
             ColumnLayout {
@@ -195,7 +246,7 @@ ColumnLayout {
             height: 80
             radius: 12
             color: "#161524"
-            border.color: "#ffffff0f"
+            border.color: "#0fffffff"
             border.width: 1
 
             ColumnLayout {

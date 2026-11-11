@@ -118,7 +118,7 @@ Perform a thorough, multi-stage inspection to:
 ### [BUG-01] [Descriptive Title]
 - **Severity**: Critical | High | Medium | Low
 - **Category**: SOLID | Memory Leak | Race Condition | Type Vulnerability | Platform | Panic | SQL
-- **Location**: `src/path/to/file.ts#L12-L34`
+- **Location**: `apps/web-react/src/path/to/file.ts#L12-L34`
 - **Root Cause**: Concise explanation.
 - **Risk Scenario**: How and when the failure triggers.
 - **Estimated Fix Effort**: Trivial (< 15min) | Moderate (15min–1h) | Complex (1h+)
@@ -143,7 +143,7 @@ Perform a thorough, multi-stage inspection to:
 | `console.time()` / `timeEnd()` | Operation duration measurement | Wrap suspected slow operations |
 | Tauri DevTools (Rust logs) | Backend errors, IPC failures | `RUST_LOG=debug cargo tauri dev` |
 | Network tab | Firebase/Firestore sync issues | Monitor WebSocket frames and REST calls |
-| `npx vitest run --reporter=verbose` | Detailed test failure output | Full traces for failing tests |
+| `npm run test -- --reporter=verbose` | Detailed test failure output | Full traces for failing tests |
 
 ---
 

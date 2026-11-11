@@ -19,7 +19,7 @@ Rectangle {
     Rectangle {
         width: 380; height: 260; radius: 16
         color: "#1a1924"
-        border.color: "#8b5cf655"
+        border.color: "#558b5cf6"
         border.width: 1
         anchors.centerIn: parent
 
@@ -35,7 +35,7 @@ Rectangle {
                 Text { text: "⏱️ Duração do Foco"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
                 Item { Layout.fillWidth: true }
                 Rectangle {
-                    width: 28; height: 28; radius: 6; color: "#ffffff10"
+                    width: 28; height: 28; radius: 6; color: "#10ffffff"
                     Text { anchors.centerIn: parent; text: "✕"; color: "#a7a9be"; font.pixelSize: 13 }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: modalRoot.closed() }
                 }
@@ -57,7 +57,7 @@ Rectangle {
                     delegate: Rectangle {
                         Layout.fillWidth: true
                         height: 32; radius: 8
-                        color: customMinInput.text === modelData.toString() ? "#8b5cf6" : "#ffffff10"
+                        color: customMinInput.text === modelData.toString() ? "#8b5cf6" : "#10ffffff"
                         Text { anchors.centerIn: parent; text: modelData + "m"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -71,7 +71,7 @@ Rectangle {
                 Layout.fillWidth: true
                 height: 40; radius: 8
                 color: "#0f0e17"
-                border.color: customMinInput.activeFocus ? "#8b5cf6" : "#ffffff18"
+                border.color: customMinInput.activeFocus ? "#8b5cf6" : "#18ffffff"
                 border.width: 1
 
                 TextInput {

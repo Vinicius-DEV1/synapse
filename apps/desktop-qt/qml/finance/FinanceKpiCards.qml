@@ -14,7 +14,7 @@ RowLayout {
         height: 90
         radius: 12
         color: "#1a1924"
-        border.color: "#10b98133"
+        border.color: "#3310b981"
         border.width: 1
 
         ColumnLayout {
@@ -43,7 +43,7 @@ RowLayout {
         height: 90
         radius: 12
         color: "#1a1924"
-        border.color: "#f43f5e33"
+        border.color: "#33f43f5e"
         border.width: 1
 
         ColumnLayout {
@@ -72,7 +72,7 @@ RowLayout {
         height: 90
         radius: 12
         color: "#1a1924"
-        border.color: "#8b5cf64d"
+        border.color: "#4d8b5cf6"
         border.width: 1
 
         ColumnLayout {

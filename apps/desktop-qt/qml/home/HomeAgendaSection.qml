@@ -36,7 +36,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 34; height: 34; radius: 8
-                    color: "#f59e0b20"
+                    color: "#20f59e0b"
                     Text { anchors.centerIn: parent; text: "📅"; font.pixelSize: 15 }
                 }
 
@@ -55,8 +55,8 @@ ColumnLayout {
                     height: 24
                     width: Math.max(76, eventCountText.contentWidth + 16)
                     radius: 12
-                    color: "#f59e0b1a"
-                    border.color: "#f59e0b33"
+                    color: "#1af59e0b"
+                    border.color: "#33f59e0b"
                     border.width: 1
 
                     Text {
@@ -77,8 +77,8 @@ ColumnLayout {
                 Layout.fillWidth: true
                 implicitHeight: 120
                 radius: 12
-                color: "#ffffff03"
-                border.color: "#ffffff0a"
+                color: "#03ffffff"
+                border.color: "#0affffff"
                 border.width: 1
 
                 ColumnLayout {
@@ -121,8 +121,8 @@ ColumnLayout {
                         Layout.fillWidth: true
                         height: 52
                         radius: 10
-                        color: "#ffffff04"
-                        border.color: "#ffffff0a"
+                        color: "#04ffffff"
+                        border.color: "#0affffff"
 
                         RowLayout {
                             anchors.fill: parent
@@ -155,7 +155,7 @@ ColumnLayout {
 
                             Rectangle {
                                 width: 72; height: 22; radius: 6
-                                color: modelData.status === "completed" ? "#10b98126" : "#3b82f626"
+                                color: modelData.status === "completed" ? "#2610b981" : "#263b82f6"
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData.status === "completed" ? "Concluído" : "Pendente"
@@ -203,8 +203,8 @@ ColumnLayout {
                     Layout.fillWidth: true
                     height: 44
                     radius: 8
-                    color: "#ffffff04"
-                    border.color: "#ffffff08"
+                    color: "#04ffffff"
+                    border.color: "#08ffffff"
 
                     RowLayout {
                         anchors.fill: parent

@@ -27,7 +27,7 @@ ColumnLayout {
         height: 36
         radius: 8
         color: "#15141b"
-        border.color: "#ffffff0a"
+        border.color: "#0affffff"
         border.width: 1
 
         RowLayout {
@@ -88,7 +88,7 @@ ColumnLayout {
                     anchors.leftMargin: deckDelegate.depth * 24
                     radius: 12
                     color: rowMouse.containsMouse ? "#211f30" : "#1a1924"
-                    border.color: rowMouse.containsMouse ? "#6366f166" : "#ffffff0d"
+                    border.color: rowMouse.containsMouse ? "#666366f1" : "#0dffffff"
                     border.width: 1
 
                     Behavior on color { ColorAnimation { duration: 150 } }
@@ -135,7 +135,7 @@ ColumnLayout {
                             Text {
                                 Layout.fillWidth: true
                                 text: modelData.name || "Sem título"
-                                color: rowMouse.containsMouse ? "#ffffff" : "#fffffeee"
+                                color: rowMouse.containsMouse ? "#ffffff" : "#eefffffe"
                                 font.pixelSize: 15
                                 font.bold: true
                                 elide: Text.ElideRight
@@ -156,7 +156,7 @@ ColumnLayout {
                             height: 32
                             radius: 8
                             color: "#0f0e17"
-                            border.color: "#ffffff0f"
+                            border.color: "#0fffffff"
                             border.width: 1
 
                             RowLayout {
@@ -197,7 +197,7 @@ ColumnLayout {
                                 width: 32
                                 height: 32
                                 radius: 8
-                                color: subMouse.containsMouse ? "#ffffff18" : "#ffffff0a"
+                                color: subMouse.containsMouse ? "#18ffffff" : "#0affffff"
 
                                 Text {
                                     anchors.centerIn: parent
@@ -221,7 +221,7 @@ ColumnLayout {
                                 width: 32
                                 height: 32
                                 radius: 8
-                                color: gearMouse.containsMouse ? "#ffffff18" : "#ffffff0a"
+                                color: gearMouse.containsMouse ? "#18ffffff" : "#0affffff"
 
                                 Text {
                                     anchors.centerIn: parent
@@ -282,7 +282,7 @@ ColumnLayout {
         height: 240
         radius: 16
         color: "#161524"
-        border.color: "#ffffff0a"
+        border.color: "#0affffff"
 
         ColumnLayout {
             anchors.centerIn: parent

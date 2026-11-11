@@ -4230,6 +4230,7 @@ dependencies = [
  "rusqlite",
  "serde_json",
  "synapse-core",
+ "zeroize",
 ]
 
 [[package]]
@@ -4274,6 +4275,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

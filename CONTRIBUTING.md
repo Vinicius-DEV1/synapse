@@ -1,6 +1,6 @@
 # 🤝 Contributing to Synapse
 
-Thank you for your interest in contributing to **Synapse**! Synapse is an open-access personal knowledge operating system engineered with **Zero-Knowledge end-to-end encryption**, **local-first durability**, and **sub-millisecond UI fluidity**.
+Thank you for your interest in contributing to **Synapse**! Synapse is a local-first personal knowledge and study platform with several web and native app targets. Vault and encrypted-media protections cover selected flows; do not claim that all user data is encrypted at rest. See the [native encryption audit](./docs/security/native-encryption-audit.md) and [documentation status index](./docs/documentation-status.md).
 
 By participating in this project, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
@@ -28,8 +28,8 @@ By participating in this project, you agree to abide by our [Code of Conduct](./
    - Never alter the UI design, dark canvas theme (`#0f0e17` / `zinc-950`), micro-animations, or keyboard shortcuts without explicit design approval.
 2. **SOLID Architecture**:
    - Presentation components render UI; custom hooks coordinate state; domain services handle business logic; and infrastructure adapters handle storage and IPC.
-3. **Zero-Knowledge by Default**:
-   - Never transmit plaintext user content or persist unencrypted sensitive credentials to disk or network relays.
+3. **Security Coverage and Honest Claims**:
+   - Follow the cryptography skill and the current encryption audit when changing protected data flows. Do not add plaintext transmission or persistence to a flow that promises encryption, and do not imply that existing unprotected fields are covered.
 
 ---
 
@@ -54,13 +54,13 @@ cd synapse
 npm install
 
 # 3. Configure environment variables (optional for local offline use)
-cp .env.example .env
+cp apps/web-react/.env.example apps/web-react/.env
 
 # 4. Launch Web development server (runs on port 35174)
 npm run dev
 
 # 5. Or launch Desktop development with Tauri v2 + Rust
-npm run tauri dev
+npm run tauri -- dev
 ```
 
 ---
@@ -71,23 +71,23 @@ To maintain elite engineering standards and productive development velocity, con
 
 ### Sub-Second Targeted Testing (Vitest)
 > [!IMPORTANT]
-> **Do not run the full test suite (`npm test`) on every small change.** The complete suite includes over 300 test files and takes substantial time.
+> **Do not run the full test suite (`npm test`) on every small change.** The complete suite may take substantial time; check the current package scripts and run focused tests first.
 > **Always use Targeted Testing**:
 ```bash
 # Test a specific module or test file (~1-2 seconds)
-npx vitest run src/services/crypto.test.ts
+npm run test -- src/services/crypto.test.ts
 
 # Test a specific directory
-npx vitest run src/api/
+npm run test -- src/api/
 
 # Run tests related to modified/uncommitted files
-npx vitest related --run src/services/crypto.ts
+npm run test:related -- src/services/crypto.ts
 ```
 
 ### Strict Type Contract Verification (TypeScript)
 Always verify type safety across all frontend and IPC boundaries without running heavy DOM harnesses:
 ```bash
-npx tsc -b --noEmit
+npm run typecheck
 ```
 
 ### Static Analysis & Linting
@@ -139,7 +139,7 @@ npm run lint
 1. Create a descriptive PR title following the conventional commit format.
 2. Fill out the PR description explaining **what** was changed and **why**.
 3. Confirm that:
-   - `npx tsc -b --noEmit` passes with **0 errors**.
-   - Targeted unit tests pass: `npx vitest related --run <modified_files>`.
+   - `npm run typecheck` passes with **0 errors**.
+   - Targeted unit tests pass: `npm run test:related -- <modified_files>`.
    - `npm run lint` passes without style violations.
    - 100% functional and visual parity is preserved.

@@ -17,7 +17,7 @@ RowLayout {
         height: 38
         radius: 10
         color: "#15141b"
-        border.color: "#ffffff12"
+        border.color: "#12ffffff"
         border.width: 1
 
         RowLayout {
@@ -65,7 +65,7 @@ RowLayout {
         height: 38
         radius: 10
         color: "#15141b"
-        border.color: searchInput.activeFocus ? "#8b5cf680" : "#ffffff12"
+        border.color: searchInput.activeFocus ? "#808b5cf6" : "#12ffffff"
         border.width: 1
 
         RowLayout {

@@ -10,118 +10,52 @@ Item {
     property double currentPos: 0
     property double videoDuration: 0
     property double currentSpeed: 1.0
+    property double currentVolume: 100
+    property bool muted: mediaPlayer && typeof mediaPlayer.muted === "boolean" ? mediaPlayer.muted : false
     property bool isPlaying: false
     property int bookmarksCount: 0
     property bool isVocabDrawerOpen: false
+    property bool shortcutsBlocked: false
+    property var mediaPlayer: null
+    property var controller: null
 
     signal exitRequested()
-    signal speedChanged(double spd)
+    signal speedChanged(double speed)
     signal vocabDrawerToggled()
     signal playPauseToggled()
     signal seekRelativeRequested(int seconds)
     signal seekAbsoluteRequested(double seconds)
+    signal volumeChanged(double volume)
 
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) return "00:00"
-        var mins = Math.floor(seconds / 60)
-        var secs = Math.floor(seconds % 60)
-        var hrs = Math.floor(mins / 60)
-        mins = mins % 60
-        if (hrs > 0) {
-            return hrs + ":" + (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs
+        var minutes = Math.floor(seconds / 60)
+        var remainder = Math.floor(seconds % 60)
+        var hours = Math.floor(minutes / 60)
+        minutes %= 60
+        if (hours > 0) {
+            return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" +
+                   (remainder < 10 ? "0" : "") + remainder
         }
-        return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs
+        return (minutes < 10 ? "0" : "") + minutes + ":" +
+               (remainder < 10 ? "0" : "") + remainder
     }
 
-    // Top Navigation Bar
-    Rectangle {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 60
-        color: "#cc0f0e17"
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 16
-            spacing: 16
-
-            Rectangle {
-                width: 36; height: 36; radius: 8
-                color: "#ffffff15"
-
-                Text { anchors.centerIn: parent; text: "←"; color: "#ffffff"; font.pixelSize: 18; font.bold: true }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: controlsRoot.exitRequested()
-                }
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: controlsRoot.activeVideo ? controlsRoot.activeVideo.title : ""
-                color: "#fffffe"
-                font.pixelSize: 16
-                font.bold: true
-                elide: Text.ElideRight
-            }
-
-            // Speed buttons
-            RowLayout {
-                spacing: 4
-                Repeater {
-                    model: [0.75, 1.0, 1.25, 1.5, 2.0]
-                    delegate: Rectangle {
-                        width: 36; height: 26; radius: 6
-                        color: controlsRoot.currentSpeed === modelData ? "#6366f1" : "#ffffff10"
-                        Text {
-                            anchors.centerIn: parent
-                            text: modelData + "x"
-                            color: "#ffffff"
-                            font.pixelSize: 10
-                            font.bold: true
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: controlsRoot.speedChanged(modelData)
-                        }
-                    }
-                }
-            }
-
-            // Bookmarks / Vocabulary drawer toggle
-            Rectangle {
-                height: 30
-                width: vocabBtnText.contentWidth + 24
-                radius: 8
-                color: controlsRoot.isVocabDrawerOpen ? "#6366f1" : "#ffffff15"
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    Text { text: "🔖"; font.pixelSize: 12 }
-                    Text {
-                        id: vocabBtnText
-                        text: "Momentos (" + controlsRoot.bookmarksCount + ")"
-                        color: "#ffffff"
-                        font.pixelSize: 12
-                        font.bold: true
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: controlsRoot.vocabDrawerToggled()
-                }
-            }
-        }
+    VideoPlayerToolbar {
+        activeVideo: controlsRoot.activeVideo
+        currentSpeed: controlsRoot.currentSpeed
+        bookmarksCount: controlsRoot.bookmarksCount
+        isVocabDrawerOpen: controlsRoot.isVocabDrawerOpen
+        shortcutsBlocked: controlsRoot.shortcutsBlocked
+        mediaPlayer: controlsRoot.mediaPlayer
+        controller: controlsRoot.controller
+        onExitRequested: controlsRoot.exitRequested()
+        onSpeedRequested: function(speed) { controlsRoot.speedChanged(speed) }
+        onVocabDrawerRequested: controlsRoot.vocabDrawerToggled()
+        onPlayPauseRequested: controlsRoot.playPauseToggled()
+        onSeekRelativeRequested: function(seconds) { controlsRoot.seekRelativeRequested(seconds) }
     }
 
-    // Bottom Controls Bar
     Rectangle {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
@@ -134,36 +68,30 @@ Item {
             anchors.margins: 12
             spacing: 8
 
-            // Seek Slider
             Slider {
                 id: positionSlider
                 Layout.fillWidth: true
                 from: 0
                 to: controlsRoot.videoDuration > 0 ? controlsRoot.videoDuration : 100
                 value: controlsRoot.currentPos
-
-                onMoved: {
-                    controlsRoot.seekAbsoluteRequested(value)
-                }
+                onMoved: controlsRoot.seekAbsoluteRequested(value)
             }
 
-            // Controls Row
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 16
 
-                // Play/Pause button
                 Rectangle {
-                    width: 36; height: 36; radius: 18
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 18
                     color: "#6366f1"
-
                     Text {
                         anchors.centerIn: parent
                         text: controlsRoot.isPlaying ? "❚❚" : "▶"
                         color: "#ffffff"
                         font.pixelSize: 14
                     }
-
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -171,7 +99,6 @@ Item {
                     }
                 }
 
-                // Seek -5s
                 Text {
                     text: "⏪ 5s"
                     color: "#a7a9be"
@@ -183,7 +110,6 @@ Item {
                     }
                 }
 
-                // Seek +5s
                 Text {
                     text: "5s ⏩"
                     color: "#a7a9be"
@@ -195,18 +121,49 @@ Item {
                     }
                 }
 
-                // Time display
                 Text {
-                    text: controlsRoot.formatTime(controlsRoot.currentPos) + " / " + controlsRoot.formatTime(controlsRoot.videoDuration)
+                    text: controlsRoot.formatTime(controlsRoot.currentPos) + " / " +
+                          controlsRoot.formatTime(controlsRoot.videoDuration)
                     color: "#fffffe"
                     font.pixelSize: 12
                 }
 
+                RowLayout {
+                    spacing: 6
+                    ToolButton {
+                        id: muteButton
+                        text: controlsRoot.muted || controlsRoot.currentVolume <= 0 ? "◖" : "◖♪"
+                        Accessible.name: controlsRoot.muted ? "Unmute video" : "Mute video"
+                        onClicked: {
+                            if (controlsRoot.mediaPlayer) controlsRoot.mediaPlayer.toggleMute()
+                        }
+                        contentItem: Text {
+                            text: muteButton.text
+                            color: "#a7a9be"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle { color: "transparent" }
+                    }
+                    Slider {
+                        Layout.preferredWidth: 112
+                        from: 0
+                        to: 100
+                        value: controlsRoot.muted ? 0 : controlsRoot.currentVolume
+                        Accessible.name: "Playback volume"
+                        onMoved: {
+                            controlsRoot.volumeChanged(value)
+                            if (controlsRoot.muted && value > 0 && controlsRoot.mediaPlayer) {
+                                controlsRoot.mediaPlayer.toggleMute()
+                            }
+                        }
+                    }
+                }
+
                 Item { Layout.fillWidth: true }
 
-                // Keyboard shortcuts tip
                 Text {
-                    text: "[Espaço] Pausar • [←/→] ±5s • [B] Momentos • [Esc] Sair"
+                    text: "[J/L] ±5s • [A/S] Tracks • [I/O/P] Loop • [Shift+>/<] Speed"
                     color: "#64748b"
                     font.pixelSize: 11
                 }

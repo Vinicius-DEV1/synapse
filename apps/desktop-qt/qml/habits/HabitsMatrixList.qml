@@ -26,7 +26,7 @@ Item {
             height: 84
             radius: 12
             color: cardMouse.containsMouse ? "#211f30" : "#1a1924"
-            border.color: cardMouse.containsMouse ? "#10b98166" : "#ffffff0f"
+            border.color: cardMouse.containsMouse ? "#6610b981" : "#0fffffff"
             border.width: 1
 
             Behavior on color { ColorAnimation { duration: 150 } }
@@ -40,8 +40,8 @@ Item {
                 // Habit Icon Badge
                 Rectangle {
                     width: 48; height: 48; radius: 12
-                    color: modelData.color ? modelData.color + "26" : "#10b98126"
-                    border.color: modelData.color ? modelData.color + "4d" : "#10b9814d"
+                    color: modelData.color ? modelData.color + "26" : "#2610b981"
+                    border.color: modelData.color ? modelData.color + "4d" : "#4d10b981"
                     border.width: 1
 
                     Text {
@@ -96,7 +96,7 @@ Item {
                             Rectangle {
                                 width: 32; height: 32; radius: 16
                                 color: dayColDelegate.isDone ? (modelData.color || "#10b981") : (modelData.isToday ? "#211f30" : "#15141b")
-                                border.color: dayColDelegate.isDone ? (modelData.color || "#10b981") : (modelData.isToday ? "#ffffff25" : "#ffffff10")
+                                border.color: dayColDelegate.isDone ? (modelData.color || "#10b981") : (modelData.isToday ? "#25ffffff" : "#10ffffff")
                                 border.width: modelData.isToday ? 1.5 : 1
 
                                 Text {
@@ -122,8 +122,8 @@ Item {
                 // Delete Habit Button
                 Rectangle {
                     width: 34; height: 34; radius: 8
-                    color: delHabitMouse.containsMouse ? "#f43f5e26" : "transparent"
-                    border.color: delHabitMouse.containsMouse ? "#f43f5e55" : "transparent"
+                    color: delHabitMouse.containsMouse ? "#26f43f5e" : "transparent"
+                    border.color: delHabitMouse.containsMouse ? "#55f43f5e" : "transparent"
 
                     Text {
                         anchors.centerIn: parent

@@ -5,14 +5,31 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: modalRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     z: 95
 
     property string selectedColor: "#3b82f6"
     property string initialDateStr: ""
+    property var initialEvent: null
+    property string errorMessage: ""
 
     signal eventSubmitted(string title, string desc, string dateTime, string color)
     signal closed()
+
+    function loadInitialEvent() {
+        errorMessage = ""
+        if (initialEvent) {
+            eventTitleInput.text = initialEvent.title || ""
+            eventDescInput.text = initialEvent.description || ""
+            eventDateInput.text = initialEvent.start_date || initialEvent.start_time || ""
+            selectedColor = initialEvent.color || "#3b82f6"
+            return
+        }
+        resetFields()
+        if (initialDateStr) eventDateInput.text = initialDateStr
+    }
+
+    onVisibleChanged: if (visible) loadInitialEvent()
 
     onInitialDateStrChanged: {
         if (initialDateStr && initialDateStr.length > 0) {
@@ -38,7 +55,7 @@ Rectangle {
         height: 420
         radius: 16
         color: "#161524"
-        border.color: "#ffffff14"
+        border.color: "#14ffffff"
         border.width: 1
 
         MouseArea {
@@ -52,7 +69,7 @@ Rectangle {
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "📅 Novo Compromisso na Agenda"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                Text { text: modalRoot.initialEvent ? qsTr("Edit calendar event") : qsTr("New calendar event"); color: "#fffffe"; font.pixelSize: 16; font.bold: true }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: "✕"
@@ -66,6 +83,15 @@ Rectangle {
                 }
             }
 
+            Label {
+                Layout.fillWidth: true
+                visible: modalRoot.errorMessage.length > 0
+                text: modalRoot.errorMessage
+                color: "#fda4af"
+                font.pixelSize: 11
+                wrapMode: Text.Wrap
+            }
+
             // Title Input
             ColumnLayout {
                 Layout.fillWidth: true
@@ -76,7 +102,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: eventTitleInput.activeFocus ? "#3b82f6" : "#ffffff15"
+                    border.color: eventTitleInput.activeFocus ? "#3b82f6" : "#15ffffff"
                     TextInput {
                         id: eventTitleInput
                         anchors.fill: parent
@@ -99,7 +125,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: eventDescInput.activeFocus ? "#3b82f6" : "#ffffff15"
+                    border.color: eventDescInput.activeFocus ? "#3b82f6" : "#15ffffff"
                     TextInput {
                         id: eventDescInput
                         anchors.fill: parent
@@ -122,7 +148,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: eventDateInput.activeFocus ? "#3b82f6" : "#ffffff15"
+                    border.color: eventDateInput.activeFocus ? "#3b82f6" : "#15ffffff"
                     TextInput {
                         id: eventDateInput
                         anchors.fill: parent
@@ -178,14 +204,17 @@ Rectangle {
                 }
                 Rectangle {
                     width: 120; height: 38; radius: 8; color: "#3b82f6"
-                    Text { anchors.centerIn: parent; text: "Salvar Evento"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+                    Text { anchors.centerIn: parent; text: modalRoot.initialEvent ? qsTr("Save changes") : qsTr("Save event"); color: "#ffffff"; font.pixelSize: 13; font.bold: true }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (eventTitleInput.text.trim().length > 0) {
-                                modalRoot.eventSubmitted(eventTitleInput.text, eventDescInput.text, eventDateInput.text, modalRoot.selectedColor)
+                            if (eventTitleInput.text.trim().length === 0 || eventDateInput.text.trim().length === 0) {
+                                modalRoot.errorMessage = qsTr("Enter a title and date.")
+                                return
                             }
+                            modalRoot.errorMessage = ""
+                            modalRoot.eventSubmitted(eventTitleInput.text, eventDescInput.text, eventDateInput.text, modalRoot.selectedColor)
                         }
                     }
                 }

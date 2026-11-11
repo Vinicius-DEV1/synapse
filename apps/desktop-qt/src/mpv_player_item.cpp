@@ -1,9 +1,11 @@
 #include "mpv_player_item.h"
+#include "video/encrypted_video_stream.h"
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <QtGui/QOpenGLContext>
 #include <QtCore/QDebug>
+#include <QtCore/QUuid>
+#include <QtCore/QMutexLocker>
 #include <clocale>
-#include <mpv/stream_cb.h>
 
 static mpv_handle* create_mpv_instance() {
     setlocale(LC_NUMERIC, "C");
@@ -72,69 +74,6 @@ private:
     const MpvPlayerItem *m_item;
 };
 
-// ---------------------------------------------------------------------------
-// mpv_stream_cb C-Callbacks connecting to Synapse Core
-// ---------------------------------------------------------------------------
-
-struct StreamCbContext {
-    EncryptedVideoReader *reader;
-};
-
-static int64_t cb_size(void *user_data) {
-    auto *ctx = static_cast<StreamCbContext *>(user_data);
-    return synapse_video_reader_size(ctx->reader);
-}
-
-static int64_t cb_read(void *user_data, char *buf, size_t nbytes) {
-    auto *ctx = static_cast<StreamCbContext *>(user_data);
-    return synapse_video_reader_read(ctx->reader, reinterpret_cast<uint8_t *>(buf), nbytes);
-}
-
-static int64_t cb_seek(void *user_data, int64_t offset) {
-    auto *ctx = static_cast<StreamCbContext *>(user_data);
-    return synapse_video_reader_seek(ctx->reader, offset);
-}
-
-static void cb_close(void *user_data) {
-    auto *ctx = static_cast<StreamCbContext *>(user_data);
-    synapse_video_reader_close(ctx->reader);
-    delete ctx;
-}
-
-static int cb_open(void *user_data, char *uri, mpv_stream_cb_info *info) {
-    Q_UNUSED(user_data);
-    QString sUri = QString::fromUtf8(uri);
-    // Format: synapse-enc://path_to_file?key=hex_key
-    if (!sUri.startsWith("synapse-enc://")) return -1;
-
-    QString clean = sUri.mid(14);
-    QStringList parts = clean.split("?key=");
-    if (parts.size() != 2) return -1;
-
-    QString filePath = parts[0];
-    QString keyHex = parts[1];
-
-    EncryptedVideoReader *reader = synapse_video_reader_open(
-        filePath.toUtf8().constData(),
-        keyHex.toUtf8().constData()
-    );
-
-    if (!reader) {
-        qWarning() << "[StreamCb] Failed to open encrypted video reader for:" << filePath;
-        return -1;
-    }
-
-    auto *ctx = new StreamCbContext{reader};
-    info->cookie = ctx;
-    info->size_fn = cb_size;
-    info->read_fn = cb_read;
-    info->seek_fn = cb_seek;
-    info->close_fn = cb_close;
-
-    return 0;
-}
-
-// ---------------------------------------------------------------------------
 // MpvPlayerItem Implementation
 // ---------------------------------------------------------------------------
 
@@ -142,11 +81,12 @@ MpvPlayerItem::MpvPlayerItem(QQuickItem *parent)
     : QQuickFramebufferObject(parent),
       m_mpv(create_mpv_instance()),
       m_mpvGl(nullptr),
-      m_activeReader(nullptr),
       m_position(0),
       m_duration(0),
       m_paused(false),
-      m_volume(100) {
+      m_muted(false),
+      m_volume(100),
+      m_audioTrackSelectionId(-1) {
 
     if (!m_mpv) {
         qFatal("[MpvPlayerItem] Cannot create mpv instance");
@@ -157,11 +97,28 @@ MpvPlayerItem::MpvPlayerItem(QQuickItem *parent)
     mpv_set_option_string(m_mpv, "vo", "libmpv");
     mpv_set_option_string(m_mpv, "keep-open", "yes");
 
-    // Register custom synapse-enc protocol callback
-    mpv_stream_cb_add_ro(m_mpv, "synapse-enc", this, cb_open);
+    if (!registerEncryptedVideoStream(m_mpv, this)) {
+        qFatal("[MpvPlayerItem] Cannot register encrypted video stream protocol");
+    }
 
     if (mpv_initialize(m_mpv) < 0) {
         qFatal("[MpvPlayerItem] Cannot initialize mpv");
+    }
+
+    if (mpv_observe_property(m_mpv, TrackListObserverId, "track-list", MPV_FORMAT_NODE) < 0) {
+        qWarning() << "[MpvPlayerItem] Cannot observe media tracks.";
+    }
+    if (mpv_observe_property(m_mpv, MuteObserverId, "mute", MPV_FORMAT_FLAG) < 0) {
+        qWarning() << "[MpvPlayerItem] Cannot observe mute state.";
+    }
+    if (mpv_observe_property(m_mpv, PositionObserverId, "time-pos", MPV_FORMAT_DOUBLE) < 0) {
+        qWarning() << "[MpvPlayerItem] Cannot observe playback position.";
+    }
+    if (mpv_observe_property(m_mpv, DurationObserverId, "duration", MPV_FORMAT_DOUBLE) < 0) {
+        qWarning() << "[MpvPlayerItem] Cannot observe media duration.";
+    }
+    if (mpv_observe_property(m_mpv, PauseObserverId, "pause", MPV_FORMAT_FLAG) < 0) {
+        qWarning() << "[MpvPlayerItem] Cannot observe pause state.";
     }
 
     mpv_set_wakeup_callback(m_mpv, onMpvWakeup, this);
@@ -175,50 +132,40 @@ MpvPlayerItem::~MpvPlayerItem() {
     if (m_mpv) {
         mpv_terminate_destroy(m_mpv);
     }
+    QMutexLocker locker(&m_streamSourcesMutex);
+    for (auto it = m_encryptedSources.begin(); it != m_encryptedSources.end(); ++it) {
+        it.value().second.fill(QChar(0));
+    }
+    m_encryptedSources.clear();
+    m_keyHex.fill(QChar(0));
 }
 
 QQuickFramebufferObject::Renderer *MpvPlayerItem::createRenderer() const {
     return new MpvRenderer(this);
 }
 
-void MpvPlayerItem::onMpvWakeup(void *ctx) {
-    auto *self = static_cast<MpvPlayerItem *>(ctx);
-    QMetaObject::invokeMethod(self, "onMpvEvents", Qt::QueuedConnection);
-}
-
-void MpvPlayerItem::onMpvEvents() {
-    while (m_mpv) {
-        mpv_event *event = mpv_wait_event(m_mpv, 0);
-        if (event->event_id == MPV_EVENT_NONE) break;
-
-        if (event->event_id == MPV_EVENT_PROPERTY_CHANGE) {
-            auto *prop = static_cast<mpv_event_property *>(event->data);
-            if (strcmp(prop->name, "time-pos") == 0 && prop->format == MPV_FORMAT_DOUBLE) {
-                m_position = *static_cast<double *>(prop->data);
-                emit positionChanged();
-            } else if (strcmp(prop->name, "duration") == 0 && prop->format == MPV_FORMAT_DOUBLE) {
-                m_duration = *static_cast<double *>(prop->data);
-                emit durationChanged();
-            } else if (strcmp(prop->name, "pause") == 0 && prop->format == MPV_FORMAT_FLAG) {
-                m_paused = *static_cast<int *>(prop->data) != 0;
-                emit pausedChanged();
-            }
-        } else if (event->event_id == MPV_EVENT_END_FILE) {
-            emit endOfFile();
-        }
-    }
-}
-
 void MpvPlayerItem::setSource(const QString &source) {
     if (m_source == source) return;
+    clearEncryptedSource(m_activeEncryptedToken);
+    m_activeEncryptedToken.clear();
     m_source = source;
+    clearTrackLists();
+    m_position = 0.0;
+    m_duration = 0.0;
     emit sourceChanged();
+    emit positionChanged();
+    emit durationChanged();
 
     if (m_source.isEmpty()) return;
 
     QString playUri;
-    if (m_source.endsWith(".enc", Qt::CaseInsensitive)) {
-        playUri = QString("synapse-enc://%1?key=%2").arg(m_source, m_keyHex);
+    if (!m_keyHex.isEmpty()) {
+        m_activeEncryptedToken = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        {
+            QMutexLocker locker(&m_streamSourcesMutex);
+            m_encryptedSources.insert(m_activeEncryptedToken, qMakePair(m_source, m_keyHex));
+        }
+        playUri = QString("synapse-enc://%1").arg(m_activeEncryptedToken);
     } else {
         playUri = m_source;
     }
@@ -226,12 +173,40 @@ void MpvPlayerItem::setSource(const QString &source) {
     QByteArray uriBytes = playUri.toUtf8();
     const char *cmd[] = {"loadfile", uriBytes.constData(), nullptr};
     mpv_command_async(m_mpv, 0, cmd);
+    uriBytes.fill('\0');
+    playUri.fill(QChar(0));
 }
 
 void MpvPlayerItem::setKeyHex(const QString &keyHex) {
     if (m_keyHex == keyHex) return;
+    m_keyHex.fill(QChar(0));
     m_keyHex = keyHex;
     emit keyHexChanged();
+}
+
+EncryptedVideoReader *MpvPlayerItem::openEncryptedSource(const QString &token) {
+    QPair<QString, QString> source;
+    {
+        QMutexLocker locker(&m_streamSourcesMutex);
+        const auto it = m_encryptedSources.constFind(token);
+        if (it == m_encryptedSources.cend()) return nullptr;
+        source = it.value();
+    }
+    const QByteArray pathBytes = source.first.toUtf8();
+    QByteArray keyBytes = source.second.toUtf8();
+    source.second.fill(QChar(0));
+    EncryptedVideoReader *reader = synapse_video_reader_open(pathBytes.constData(), keyBytes.constData());
+    keyBytes.fill('\0');
+    return reader;
+}
+
+void MpvPlayerItem::clearEncryptedSource(const QString &token) {
+    if (token.isEmpty()) return;
+    QMutexLocker locker(&m_streamSourcesMutex);
+    auto it = m_encryptedSources.find(token);
+    if (it == m_encryptedSources.end()) return;
+    it.value().second.fill(QChar(0));
+    m_encryptedSources.erase(it);
 }
 
 void MpvPlayerItem::setPosition(double pos) {
@@ -242,9 +217,15 @@ void MpvPlayerItem::setPosition(double pos) {
 }
 
 void MpvPlayerItem::setPaused(bool paused) {
-    if (m_paused == paused) return;
+    if (!m_mpv || m_paused == paused) return;
     int flag = paused ? 1 : 0;
-    mpv_set_property_async(m_mpv, 0, "pause", MPV_FORMAT_FLAG, &flag);
+    const int result = mpv_set_property_async(m_mpv, 0, "pause", MPV_FORMAT_FLAG, &flag);
+    if (result < 0) {
+        qWarning() << "[MpvPlayerItem] Pause state could not be changed:" << mpv_error_string(result);
+        return;
+    }
+    m_paused = paused;
+    emit pausedChanged();
 }
 
 void MpvPlayerItem::setVolume(double volume) {
@@ -271,13 +252,6 @@ void MpvPlayerItem::seekRelative(double seconds) {
     mpv_command_async(m_mpv, 0, cmd);
 }
 
-void MpvPlayerItem::setLoopAB(double a, double b) {
-    QByteArray aStr = QByteArray::number(a);
-    QByteArray bStr = QByteArray::number(b);
-    mpv_set_property_string(m_mpv, "ab-loop-a", aStr.constData());
-    mpv_set_property_string(m_mpv, "ab-loop-b", bStr.constData());
-}
-
 void MpvPlayerItem::command(const QVariantList &args) {
     if (args.isEmpty() || !m_mpv) return;
     QVector<QByteArray> utf8Args;
@@ -291,5 +265,4 @@ void MpvPlayerItem::command(const QVariantList &args) {
     cmdList.append(nullptr);
     mpv_command_async(m_mpv, 0, cmdList.data());
 }
-
 

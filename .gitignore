@@ -12,8 +12,8 @@ dist-app/
 dist-ssr/
 build/
 target/
-src-tauri/target/
-src-tauri/gen/
+apps/web-react/src-tauri/target/
+apps/web-react/src-tauri/gen/
 benchmark-results.json
 
 # Logs
@@ -41,8 +41,8 @@ service-account*.json
 *.keystore
 
 # Tauri Binaries & Temporary Media
-src-tauri/data/bin/*.exe
-src-tauri/data/bin/*.bin
+apps/web-react/src-tauri/data/bin/*.exe
+apps/web-react/src-tauri/data/bin/*.bin
 *.epub
 *.mp4
 *.mkv
@@ -76,8 +76,8 @@ Desktop.ini
 *.tsbuildinfo
 
 # Mobile WebView Shell & Expo
-caderno-mobile-webview/.expo/
-caderno-mobile-webview/web-build/
+apps/mobile-webview/.expo/
+apps/mobile-webview/web-build/
 
 # Audit Reports & Agent Swarm Worktrees (Internal - Never Commit)
 archive/

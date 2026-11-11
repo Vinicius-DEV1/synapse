@@ -73,7 +73,7 @@ ColumnLayout {
             height: 164
             radius: 12
             color: cardMouse.containsMouse ? "#201e30" : "#1a1924"
-            border.color: cardMouse.containsMouse ? "#8b5cf680" : "#ffffff0f"
+            border.color: cardMouse.containsMouse ? "#808b5cf6" : "#0fffffff"
             border.width: 1
 
             ColumnLayout {
@@ -84,13 +84,13 @@ ColumnLayout {
                 RowLayout {
                     Layout.fillWidth: true
                     Rectangle {
-                        width: 36; height: 36; radius: 8; color: "#8b5cf620"
+                        width: 36; height: 36; radius: 8; color: "#208b5cf6"
                         Text { anchors.centerIn: parent; text: modelData.icon || "🎨"; font.pixelSize: 18 }
                     }
                     Item { Layout.fillWidth: true }
                     // Delete Button
                     Rectangle {
-                        width: 28; height: 28; radius: 6; color: delMouse.containsMouse ? "#f43f5e26" : "transparent"
+                        width: 28; height: 28; radius: 6; color: delMouse.containsMouse ? "#26f43f5e" : "transparent"
                         Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
                         MouseArea {
                             id: delMouse

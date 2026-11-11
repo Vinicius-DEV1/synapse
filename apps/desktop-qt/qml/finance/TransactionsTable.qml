@@ -8,6 +8,7 @@ ListView {
 
     property var transactions: []
     signal deleteRequested(string transactionId)
+    signal editRequested(var transaction)
 
     model: transactions
 
@@ -16,7 +17,7 @@ ListView {
         height: 60
         radius: 10
         color: "#1a1924"
-        border.color: transItemMouse.containsMouse ? "#8b5cf64d" : "#ffffff0f"
+        border.color: transItemMouse.containsMouse ? "#4d8b5cf6" : "#0fffffff"
         border.width: 1
 
         RowLayout {
@@ -52,18 +53,32 @@ ListView {
                 font.bold: true
             }
 
-            Rectangle {
-                width: 28; height: 28; radius: 6
-                color: delTransMouse.containsMouse ? "#f43f5e33" : "transparent"
-
-                Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
-
-                MouseArea {
-                    id: delTransMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: transListView.deleteRequested(modelData.id)
+            Row {
+                spacing: 4
+                Rectangle {
+                    width: visible ? 28 : 0; height: 28; radius: 6
+                    visible: modelData.type === "income" || modelData.type === "expense"
+                    color: editTransMouse.containsMouse ? "#1a8b5cf6" : "transparent"
+                    Text { anchors.centerIn: parent; text: "✎"; color: "#a7a9be"; font.pixelSize: 14 }
+                    MouseArea {
+                        id: editTransMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: transListView.editRequested(modelData)
+                    }
+                }
+                Rectangle {
+                    width: 28; height: 28; radius: 6
+                    color: delTransMouse.containsMouse ? "#33f43f5e" : "transparent"
+                    Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+                    MouseArea {
+                        id: delTransMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: transListView.deleteRequested(modelData.id)
+                    }
                 }
             }
         }

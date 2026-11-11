@@ -2,29 +2,23 @@
 # Synapse Web - Production Multi-Stage Build
 # ==========================================
 
-# Stage 1: Build static web bundle
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Cache dependencies
-COPY package*.json ./
-RUN npm ci
+# Install the React app workspace using the single root lockfile.
+COPY package.json package-lock.json ./
+COPY apps/web-react/package.json apps/web-react/package.json
+RUN npm ci --legacy-peer-deps
 
-# Copy source code and build
+# Build the static web distribution.
 COPY . .
 RUN npm run build:web
 
-# Stage 2: Serve with lightweight, secure Nginx Alpine
 FROM nginx:alpine
 
-# Clean default web root
 RUN rm -rf /usr/share/nginx/html/*
-
-# Copy compiled SPA assets
-COPY --from=builder /app/dist-web /usr/share/nginx/html
-
-# Copy optimized Nginx configuration
+COPY --from=builder /app/apps/web-react/dist-web /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

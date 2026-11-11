@@ -18,7 +18,7 @@ Rectangle {
         height: 340
         radius: 16
         color: "#1a1924"
-        border.color: "#ffffff1a"
+        border.color: "#1affffff"
 
         MouseArea { anchors.fill: parent }
 

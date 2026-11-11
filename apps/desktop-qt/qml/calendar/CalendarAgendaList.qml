@@ -13,6 +13,7 @@ ListView {
 
     signal toggleStatusRequested(string eventId)
     signal deleteRequested(string eventId)
+    signal editRequested(var eventData)
 
     model: events
 
@@ -22,7 +23,7 @@ ListView {
         height: 72
         radius: 12
         color: rowMouse.containsMouse ? "#211f30" : "#1a1924" // bg-dark-card
-        border.color: rowMouse.containsMouse ? "#3b82f666" : (modelData.status === "completed" ? "#10b98126" : "#ffffff0f")
+        border.color: rowMouse.containsMouse ? "#663b82f6" : (modelData.status === "completed" ? "#2610b981" : "#0fffffff")
         border.width: 1
 
         Behavior on color { ColorAnimation { duration: 150 } }
@@ -84,8 +85,8 @@ ListView {
                 width: 110
                 height: 32
                 radius: 8
-                color: modelData.status === "completed" ? "#10b9811a" : "#3b82f61a"
-                border.color: modelData.status === "completed" ? "#10b98133" : "#3b82f633"
+                color: modelData.status === "completed" ? "#1a10b981" : "#1a3b82f6"
+                border.color: modelData.status === "completed" ? "#3310b981" : "#333b82f6"
 
                 RowLayout {
                     anchors.centerIn: parent
@@ -110,26 +111,32 @@ ListView {
                 }
             }
 
-            // Delete Event Button
-            Rectangle {
-                width: 32
-                height: 32
-                radius: 8
-                color: delMouse.containsMouse ? "#f43f5e26" : "transparent"
-                border.color: delMouse.containsMouse ? "#f43f5e55" : "transparent"
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "🗑️"
-                    font.pixelSize: 12
+            Row {
+                spacing: 4
+                Rectangle {
+                    width: 32; height: 32; radius: 8
+                    color: editMouse.containsMouse ? "#1a3b82f6" : "transparent"
+                    Text { anchors.centerIn: parent; text: "✎"; color: "#a7a9be"; font.pixelSize: 14 }
+                    MouseArea {
+                        id: editMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: eventListView.editRequested(modelData)
+                    }
                 }
-
-                MouseArea {
-                    id: delMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: eventListView.deleteRequested(modelData.id)
+                Rectangle {
+                    width: 32; height: 32; radius: 8
+                    color: delMouse.containsMouse ? "#26f43f5e" : "transparent"
+                    border.color: delMouse.containsMouse ? "#55f43f5e" : "transparent"
+                    Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 12 }
+                    MouseArea {
+                        id: delMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: eventListView.deleteRequested(modelData.id)
+                    }
                 }
             }
         }

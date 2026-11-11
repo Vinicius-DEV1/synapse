@@ -28,7 +28,7 @@ Rectangle {
         anchors.centerIn: parent
         radius: 16
         color: "#1a1924"
-        border.color: "#8b5cf655"
+        border.color: "#558b5cf6"
         border.width: 1
 
         MouseArea {
@@ -56,7 +56,7 @@ Rectangle {
 
                 Rectangle {
                     width: 28; height: 28; radius: 6
-                    color: "#ffffff10"
+                    color: "#10ffffff"
                     Text { anchors.centerIn: parent; text: "✕"; color: "#a7a9be"; font.pixelSize: 13 }
                     MouseArea {
                         anchors.fill: parent
@@ -78,7 +78,7 @@ Rectangle {
                     Layout.fillHeight: true
                     radius: 10
                     color: "#15141b"
-                    border.color: "#ffffff0f"
+                    border.color: "#0fffffff"
                     clip: true
 
                     Image {
@@ -127,7 +127,7 @@ Rectangle {
                                 height: 24
                                 width: statusText.contentWidth + 14
                                 radius: 12
-                                color: isCurStatus ? "#8b5cf6" : "#ffffff10"
+                                color: isCurStatus ? "#8b5cf6" : "#10ffffff"
                                 border.color: isCurStatus ? "#a78bfa" : "transparent"
 
                                 Text {
@@ -196,7 +196,7 @@ Rectangle {
 
                         // +1
                         Rectangle {
-                            width: 26; height: 26; radius: 6; color: "#8b5cf626"; border.color: "#8b5cf666"
+                            width: 26; height: 26; radius: 6; color: "#268b5cf6"; border.color: "#668b5cf6"
                             Text { anchors.centerIn: parent; text: "+1"; color: "#c4b5fd"; font.pixelSize: 10; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -211,7 +211,7 @@ Rectangle {
 
                         // +5
                         Rectangle {
-                            width: 30; height: 26; radius: 6; color: "#8b5cf626"; border.color: "#8b5cf666"
+                            width: 30; height: 26; radius: 6; color: "#268b5cf6"; border.color: "#668b5cf6"
                             Text { anchors.centerIn: parent; text: "+5"; color: "#c4b5fd"; font.pixelSize: 10; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -230,8 +230,8 @@ Rectangle {
                         Layout.fillWidth: true
                         height: 32
                         radius: 6
-                        color: "#10b98120"
-                        border.color: "#10b98155"
+                        color: "#2010b981"
+                        border.color: "#5510b981"
                         Text {
                             anchors.centerIn: parent
                             text: "Marcar Obra como Concluída ✓"

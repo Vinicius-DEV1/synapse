@@ -42,7 +42,7 @@ RowLayout {
         // 1: Errei (Again)
         Rectangle {
             Layout.fillWidth: true; height: 56; radius: 12
-            color: "#1a1924"; border.color: "#f43f5e55"; border.width: 1
+            color: "#1a1924"; border.color: "#55f43f5e"; border.width: 1
             ColumnLayout { anchors.centerIn: parent; spacing: 2
                 Text { Layout.alignment: Qt.AlignHCenter; text: "Errei [1]"; color: "#fb7185"; font.pixelSize: 13; font.bold: true }
                 Text { Layout.alignment: Qt.AlignHCenter; text: "< 10 min"; color: "#64748b"; font.pixelSize: 10 }
@@ -53,7 +53,7 @@ RowLayout {
         // 2: Difícil (Hard)
         Rectangle {
             Layout.fillWidth: true; height: 56; radius: 12
-            color: "#1a1924"; border.color: "#f59e0b55"; border.width: 1
+            color: "#1a1924"; border.color: "#55f59e0b"; border.width: 1
             ColumnLayout { anchors.centerIn: parent; spacing: 2
                 Text { Layout.alignment: Qt.AlignHCenter; text: "Difícil [2]"; color: "#fbbf24"; font.pixelSize: 13; font.bold: true }
                 Text { Layout.alignment: Qt.AlignHCenter; text: "1.2 dias"; color: "#64748b"; font.pixelSize: 10 }
@@ -64,7 +64,7 @@ RowLayout {
         // 3: Bom (Good)
         Rectangle {
             Layout.fillWidth: true; height: 56; radius: 12
-            color: "#1a1924"; border.color: "#10b98155"; border.width: 1
+            color: "#1a1924"; border.color: "#5510b981"; border.width: 1
             ColumnLayout { anchors.centerIn: parent; spacing: 2
                 Text { Layout.alignment: Qt.AlignHCenter; text: "Bom [3]"; color: "#34d399"; font.pixelSize: 13; font.bold: true }
                 Text { Layout.alignment: Qt.AlignHCenter; text: "3.5 dias"; color: "#64748b"; font.pixelSize: 10 }
@@ -75,7 +75,7 @@ RowLayout {
         // 4: Fácil (Easy)
         Rectangle {
             Layout.fillWidth: true; height: 56; radius: 12
-            color: "#1a1924"; border.color: "#38bdf855"; border.width: 1
+            color: "#1a1924"; border.color: "#5538bdf8"; border.width: 1
             ColumnLayout { anchors.centerIn: parent; spacing: 2
                 Text { Layout.alignment: Qt.AlignHCenter; text: "Fácil [4]"; color: "#38bdf8"; font.pixelSize: 13; font.bold: true }
                 Text { Layout.alignment: Qt.AlignHCenter; text: "7.0 dias"; color: "#64748b"; font.pixelSize: 10 }

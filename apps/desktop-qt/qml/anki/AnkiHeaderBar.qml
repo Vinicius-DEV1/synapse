@@ -32,8 +32,8 @@ RowLayout {
     // "Estatísticas" Button
     Rectangle {
         width: 130; height: 40; radius: 10
-        color: headerRoot.isShowingStats ? "#6366f126" : "#1a1924"
-        border.color: headerRoot.isShowingStats ? "#818cf8" : "#ffffff15"
+        color: headerRoot.isShowingStats ? "#266366f1" : "#1a1924"
+        border.color: headerRoot.isShowingStats ? "#818cf8" : "#15ffffff"
         border.width: 1
 
         RowLayout {

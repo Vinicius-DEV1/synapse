@@ -4,6 +4,6 @@ members = [
     "bridges/bridge-qt",
     "bridges/bridge-uniffi",
     "bridges/bridge-wasm",
-    "src-tauri",
+    "apps/web-react/src-tauri",
 ]
 resolver = "2"

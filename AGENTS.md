@@ -19,18 +19,18 @@ This document defines the mandatory architectural, code quality, design integrit
 
 Caderno is a multi-target application engineered for desktop, web, and high-performance native environments:
 - **Hybrid Web & Desktop (Tauri)**: React 19, TypeScript, Vite, TailwindCSS, Lucide Icons, Radix UI / Floating UI, Tauri v2 (Rust).
-- **Native Desktop High-Performance (Qt 6 / C++ / Rust FFI)**: Qt 6 Quick/QML, C++20 (`SynapseDataController`), Rust FFI bridge (`bridges/bridge-qt/`), native MPV hardware-accelerated media rendering (`MpvPlayerItem`), and direct SQLite WAL persistence.
+- **Native Desktop High-Performance (Qt 6 / C++ / Rust FFI)**: Qt 6 Quick/QML, C++17 (`SynapseDataController`), Rust FFI bridge (`bridges/bridge-qt/`), native MPV hardware-accelerated media rendering (`MpvPlayerItem`), and direct SQLite WAL persistence.
 - **Editor**: TipTap (ProseMirror) with rich custom extensions and real-time collaboration via **Yjs / y-prosemirror**.
 - **Persistence / Offline**: Direct SQLite WAL on desktop; IndexedDB (`idb`) and Firebase/Firestore for web synchronization.
 - **Media & Utilities**: libmpv, FFmpeg, PDF.js, EpubJS, Tesseract OCR, Tldraw, Canvas Confetti.
-- **End-to-End Cryptography**: PBKDF2-HMAC-SHA256 (600,000 iterations), AES-256-GCM Two-Tier Keychain envelope architecture, field-level Vault encryption, and transparent on-the-fly decryption across both Tauri and Qt native engines.
+- **End-to-End Cryptography**: PBKDF2-HMAC-SHA256 (600,000 iterations), AES-256-GCM Two-Tier Keychain envelopes, selected field protection, and encrypted media flows. Coverage differs by client and data entity; consult [`docs/security/native-encryption-audit.md`](./docs/security/native-encryption-audit.md) before claiming full local at-rest encryption.
 
 ### Layered Architecture Boundaries
 Code must adhere to a strict 4-tier layer separation:
-1. **Presentation Layer (`src/components/`)**: Pure UI rendering, event dispatching, and styling. Avoid embedding raw business calculations, storage I/O, or direct IPC calls directly inside UI views.
-2. **Orchestration Layer (`src/hooks/`, `src/store/`)**: State management, lifecycle binding, memoization, and coordination between UI and services.
-3. **Domain & Business Layer (`src/services/`, `src/utils/`)**: Pure domain logic, algorithms (e.g., FSRS spacing, text diffing, OCR extraction, audio/video transformation), decoupled from React UI.
-4. **Infrastructure & Platform Layer (`src/api/`, `src/services/storage/`)**: Multiplatform abstraction (Tauri IPC vs Web Browser / IndexedDB / Firestore), network clients, and persistent drivers.
+1. **Presentation Layer (`apps/web-react/src/components/`)**: Pure UI rendering, event dispatching, and styling. Avoid embedding raw business calculations, storage I/O, or direct IPC calls directly inside UI views.
+2. **Orchestration Layer (`apps/web-react/src/hooks/`, `apps/web-react/src/store/`)**: State management, lifecycle binding, memoization, and coordination between UI and services.
+3. **Domain & Business Layer (`apps/web-react/src/services/`, `apps/web-react/src/utils/`)**: Pure domain logic, algorithms (e.g., FSRS spacing, text diffing, OCR extraction, audio/video transformation), decoupled from React UI.
+4. **Infrastructure & Platform Layer (`apps/web-react/src/api/`, `apps/web-react/src/services/storage/`)**: Multiplatform abstraction (Tauri IPC vs Web Browser / IndexedDB / Firestore), network clients, and persistent drivers.
 
 ---
 
@@ -41,14 +41,14 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 ### 3.1. Single Responsibility Principle (SRP)
 - **No Monolithic Files ("God" Components)**: A file must have a single reason to change. Separate large files (>300 lines) into focused sub-components, container hooks, and domain services.
 - **Split UI and Logic**: Presentation components render UI; custom hooks (`use...`) orchestrate state and side effects; services handle data persistence and platform operations.
-- **Micro-Components**: Break complex modals, sidebars, and editor panels into atomic, cohesive sub-components located in dedicated subdirectories (e.g., `src/components/<feature>/modals/`, `src/components/<feature>/ui/`).
+- **Micro-Components**: Break complex modals, sidebars, and editor panels into atomic, cohesive sub-components located in dedicated subdirectories (e.g., `apps/web-react/src/components/<feature>/modals/`, `apps/web-react/src/components/<feature>/ui/`).
 
 ### 3.2. Open / Closed Principle (OCP)
 - **Extensible via Abstraction**: Design components and services to be open for extension but closed for modification.
 - **Registry & Strategy Patterns**: Prefer registries and strategy maps (e.g., `ViewFactory`, editor node extensions, custom formatters) over massive, hard-coded `switch/case` statements that require modifying core files when adding new variants.
 
 ### 3.3. Liskov Substitution Principle (LSP)
-- **Interchangeable Platform Adapters**: All platform implementations (e.g., `tauriApi` in `src/tauri-api.ts` and `webApi` in `src/services/web-api.ts`) must strictly adhere to the same contract interface (`window.api` typed in `src/api/types.ts`).
+- **Interchangeable Platform Adapters**: All platform implementations (e.g., `tauriApi` in `apps/web-react/src/tauri-api.ts` and `webApi` in `apps/web-react/src/services/web-api.ts`) must strictly adhere to the same contract interface (`window.api` typed in `apps/web-react/src/api/types.ts`).
 - Subtypes and adapter implementations must not throw unexpected exceptions, violate method signatures, or alter the expected contract behavior when substituted in different environments (Web vs Tauri).
 
 ### 3.4. Interface Segregation Principle (ISP)
@@ -75,7 +75,7 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 ### 4.2. Anti-Monolith & Structural Organization
 - **Maximum File Length**: Keep files concise and focused (target < 300 lines). If a file grows excessively, extract sub-components, custom hooks, or utility helpers.
 - **Colocation & Grouping**: Group related components, sub-views, dedicated hooks, types, and test files within coherent subdirectories rather than scattering loose files across parent directories.
-- **Single Source of Truth**: Keep shared types centralized in `src/types/` or co-located in cohesive module-specific `types.ts` files with clear barrel exports.
+- **Single Source of Truth**: Keep shared types centralized in `apps/web-react/src/types/` or co-located in cohesive module-specific `types.ts` files with clear barrel exports.
 
 ### 4.3. Anti-Patterns Catalog (Strictly Prohibited)
 1. **Silent Error Swallowing**: Empty `catch {}` blocks are strictly forbidden. All errors must be logged with contextual metadata and provide fallback UX or user feedback.
@@ -101,7 +101,7 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 ## 5. Safe Multiplatform Handling (Tauri vs Web)
 
 - **Native Availability Check**: Always verify the availability of native Tauri APIs before calling them and provide clean, resilient fallbacks for Web/IndexedDB environments.
-- **Isolated IPC Layers**: Never make direct `invoke()` or `@tauri-apps/plugin-*` calls inside UI presentation components. Route all platform communication through `src/api/` or `src/services/` adapters.
+- **Isolated IPC Layers**: Never make direct `invoke()` or `@tauri-apps/plugin-*` calls inside UI presentation components. Route all platform communication through `apps/web-react/src/api/` or `apps/web-react/src/services/` adapters.
 - **Cross-Platform Path Resolution**: Handle path separators, URI encoding, and special characters safely across Linux, macOS, and Windows.
 
 ---
@@ -112,26 +112,33 @@ Every module, class, hook, and function must embody the **SOLID** software engin
   - Comments must be concise, objective, and explain the **rationale** (*why*), concurrency nuances, or complex integration edge cases (e.g., TipTap/Yjs/Tauri), avoiding obvious statements.
 - **Obsolete Comment Cleanup**: Stale comments, outdated notes, dead commented-out code, or remarks that no longer reflect actual behavior must **always be cleaned up and removed** during file maintenance.
 - **Technical Documentation**: All project documentation (`docs/`, architecture markdowns, manuals, guides, and specifications) must be written **strictly in English**.
+- **Localized README**: `README.pt-BR.md` is the intentional Portuguese localization; other active technical documentation remains English.
 - **Agent-Friendly Readability**: Explanations and documentation must be structured, direct, and easy for AI agents and developers to digest quickly.
+
+### 6.1. Documentation Ownership and Status
+- Use [`docs/documentation-status.md`](./docs/documentation-status.md) to identify current sources of truth and historical snapshots.
+- Keep [`docs/native-desktop-parity.md`](./docs/native-desktop-parity.md) and [`docs/security/native-encryption-audit.md`](./docs/security/native-encryption-audit.md) synchronized with native feature and encryption changes.
+- Plans, old test totals, benchmark snapshots, and checked boxes are not implementation evidence. Revalidate every completion claim against the current code and a reproducible command.
+- Use relative repository links in Markdown. Do not include personal machine paths, local database locations, or `file://` links.
 
 ---
 
 ## 7. Testing Standards & Execution Performance
 
 - **Targeted Test Execution First (Sub-Second Feedback)**:
-  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)**, as running all 353+ files takes ~3 minutes and halts productivity.
+  - During development, audits, and iterative changes, **DO NOT run the full global test suite (`npm test`)** unless requested or required for a release gate. Test counts and duration change; inspect the active package scripts instead of relying on fixed totals.
   - **Always use Targeted Testing**:
-    - Specific module directory: `npx vitest run src/path/to/module/` (~1-3s).
-    - Related dependency runner: `npx vitest related --run <modified_files>` (~2-3s).
-    - Fast core services & domain tests (110 files / 616 tests): `npm run test:unit` (~50s).
+    - Specific module directory: `npm run test -- src/path/to/module/` (~1-3s).
+    - Related dependency runner: `npm run test:related -- <modified_files>` (~2-3s).
+    - Focused core services and domain tests: `npm run test:unit`.
     - Coverage measurement: `npm run test:coverage` (v8 engine).
 - **Performance Budgets & Benchmarking Gates**:
   - Run the production performance budget gate: `npm run check:budgets` to verify that bundle sizes, CSS metrics, and vendor chunks adhere to thresholds.
   - Run reproducible micro-benchmarks: `npm run benchmark` to measure builds, cryptographic primitives, memory retention deltas, and data scale traversals.
 - **Type Checking over Full Test Sweeps**:
-  - To verify cross-project contract integrity quickly without running heavy DOM/worker runners, use `npx tsc -b --noEmit`.
+  - To verify cross-project contract integrity quickly without running heavy DOM/worker runners, use `npm run typecheck`.
 - **Full Regression Suite (`npm test`) Reservation**:
-  - Run the global suite (`npm test`, all 353+ test files) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
+  - Run the global suite (`npm test`) **only when explicitly requested by the user** or before concluding a massive multi-module release milestone.
 - **Meaningful and Well-Elaborated Tests**: All tests must validate actual business logic, state changes, UI interactions, error recovery, and component integrations using Vitest and React Testing Library.
 - **Avoid Useless Tests**: Do not write excessive, redundant, or shallow tests that serve no practical purpose (e.g., trivially asserting a static `div` renders without validating behavior). Tests must provide genuine confidence in application resilience.
 - **Mocking Platform Boundaries**: Mock external boundaries (Tauri IPC, IndexedDB, Firebase, FFmpeg, Tesseract) cleanly at the adapter interface level without polluting tests with brittle DOM implementation details.
@@ -146,8 +153,8 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 2. **Dual-Pass Analysis Loop**:
    - For bug audits and mitigation plans, always perform a thorough primary scan followed by a cross-review pass before concluding.
 3. **Non-Regression Verification (Targeted & Fast)**:
-   - Run targeted tests for the changed module (`npx vitest run <target_path>` or `npx vitest related --run <files>`) for sub-3-second verification.
-   - Run `npx tsc -b --noEmit` if type contracts across multiple layers were modified.
+   - Run targeted tests for the changed module (`npm run test -- <target_path>` or `npm run test:related -- <files>`) for sub-3-second verification.
+   - Run `npm run typecheck` if type contracts across multiple layers were modified.
    - Do NOT run full `npm test` during iterative turns unless explicitly requested by the user.
 4. **Atomic & Well-Commented Commits**:
    - **Atomic Scope**: Whenever committing modifications, split changes into self-contained, atomic commits representing a single logical change (e.g., isolating a bug fix, refactoring a single helper, or updating a type interface). Avoid giant, monolithic multi-purpose commits.
@@ -233,7 +240,7 @@ To ensure study, reading, and review experiences achieve absolute focus without 
 
 ## 11. Mobile WebView & Responsive Adaptation Standards
 
-To guarantee that Caderno delivers a first-class native Android experience inside the `caderno-mobile-webview` shell while maintaining 100% functional and visual parity across desktop (Tauri) and browser web environments, code must strictly adhere to these standards:
+To guarantee that Caderno delivers a first-class native Android experience inside the `apps/mobile-webview` shell while maintaining 100% functional and visual parity across desktop (Tauri) and browser web environments, code must strictly adhere to these standards:
 
 ### 11.1. Native Shell & Token Consistency
 - **Unified Canvas Palette**: Native status bars, navigation bars, splash screens, and adaptive backgrounds must strictly align with Caderno's primary canvas token `#0f0e17` (`bg-dark-bg`), eliminating visual cut seams.
@@ -281,7 +288,7 @@ To ensure Caderno operates as a world-class application catering to global stand
 
 ### 13.1. English-First Default UI Standard
 - **English as Canonical Base**: All user-facing screens, options, titles, tooltips, dialogs, button labels, placeholders, toasts, and status indicators must default to **English (`en`)**.
-- **Source of Truth Dictionaries**: The primary translation dictionary is `src/i18n/locales/en.json`. All newly introduced user-facing text must be defined first in `en.json` and mirrored in `src/i18n/locales/pt.json` (and future locale dictionaries).
+- **Source of Truth Dictionaries**: The primary translation dictionary is `apps/web-react/src/i18n/locales/en.json`. All newly introduced user-facing text must be defined first in `en.json` and mirrored in `apps/web-react/src/i18n/locales/pt.json` (and future locale dictionaries).
 
 ### 13.2. Modular & Typed JSON Dictionaries (Zero Hardcoded Strings)
 - **No Raw Hardcoded UI Strings**: Never embed raw user-facing Portuguese or English text strings directly inside JSX/TSX elements. All visual strings must be accessed through the typed translation hook `const { t } = useI18n()`.
@@ -296,8 +303,8 @@ To ensure Caderno operates as a world-class application catering to global stand
 - **Document Element Synchronization**: Active language is dynamically synced to `<html lang="en">` or `<html lang="pt-BR">` to support assistive technology, browser spellcheck, and `:lang()` CSS selectors.
 
 ### 13.4. 100% Dictionary Key Parity & Regression Testing
-- **Automated Parity Enforcement**: Every translation key present in `src/i18n/locales/en.json` MUST exist in `src/i18n/locales/pt.json` and vice versa.
-- **Vitest Parity Assertion**: The test suite in `src/i18n/i18n.test.tsx` recursively asserts 100% key parity on every test run. Missing keys on either side fail the build immediately.
+- **Automated Parity Enforcement**: Every translation key present in `apps/web-react/src/i18n/locales/en.json` MUST exist in `apps/web-react/src/i18n/locales/pt.json` and vice versa.
+- **Vitest Parity Assertion**: The test suite in `apps/web-react/src/i18n/i18n.test.tsx` recursively asserts 100% key parity on every test run. Missing keys on either side fail the build immediately.
 - **Graceful Fallback**: If a key is ever dynamically requested in `pt-BR` that is absent, the engine falls back to `en.json` first before returning the raw key path.
 
 ### 13.5. Standard Code Recipe
@@ -312,7 +319,7 @@ export function MyComponent() {
       <h3>{t('settings.language.title')}</h3>
       <p>{t('settings.subtitle', { category: 'editor' })}</p>
       <button onClick={() => setLanguage(language === 'en' ? 'pt-BR' : 'en')}>
-        {language === 'en' ? 'Mudar para Português' : 'Switch to English'}
+        {t('settings.language.switchLanguage')}
       </button>
     </div>
   );
@@ -321,55 +328,52 @@ export function MyComponent() {
 
 ---
 
-## 14. Project Directory Structure & Core CLI Commands
+## 14. Repository Layout & Core Commands
 
-### 14.1 Directory Structure
-```
+### 14.1 Product and Shared-Code Map
+
+The repository contains four application targets and a shared Rust core. Keep product-specific code inside its owning app; place shared Rust domain logic in `core/synapse-core/` and platform bindings in `bridges/`.
+
+```text
 synapse/
-├── docs/                      # Technical documentation, guides, and review reports
-├── public/                    # Static assets, fonts, icons, and WASM binaries
-├── src/                       # Application source code (React 19 + TypeScript)
-│   ├── api/                   # Multiplatform abstraction contracts (Tauri IPC vs Web API)
-│   │   ├── contracts/         # Domain API interfaces
-│   │   ├── tauri/             # Desktop implementations using @tauri-apps/api
-│   │   └── web/               # Web/IndexedDB implementations using idb and WebCrypto
-│   ├── components/            # UI presentation layer and feature modules
-│   │   ├── anki/              # Spaced repetition flashcards (FSRS engine)
-│   │   ├── calendar/          # Calendar and task scheduling
-│   │   ├── culture/           # Culture & video study studio
-│   │   ├── editor/            # TipTap / ProseMirror core editor
-│   │   ├── editor-extensions/ # Custom TipTap nodes, blocks, widgets, formulas
-│   │   ├── files/             # Encrypted file vault and previewers
-│   │   ├── finance/           # Personal finance tracker and charts
-│   │   ├── focus/             # Pomodoro timers, alarms, and Lo-Fi studio
-│   │   ├── habits/            # Habit trackers and streak heatmaps
-│   │   ├── library/           # PDF and EPUB readers with OCR
-│   │   ├── modals/            # Shared dialogs, AI prompts, and global search
-│   │   ├── practice/          # Language immersion and AI tutor
-│   │   ├── questions/         # Interactive question solver
-│   │   ├── settings/          # Application configuration tabs
-│   │   └── vault/             # Zero-knowledge credential and password vault
-│   ├── hooks/                 # Reusable React state & lifecycle orchestration hooks
-│   ├── i18n/                  # Typed internationalization engine and locale dictionaries
-│   ├── services/              # Domain services, algorithms, crypto, sync, and storage
-│   ├── store/                 # Global state management (commands, reducer, contexts)
-│   ├── types/                 # Shared TypeScript domain models and schemas
-│   └── utils/                 # Pure utility helpers (binary, dates, colors, formatting)
-├── src-tauri/                 # Tauri v2 native desktop backend (Rust 2021)
-└── caderno-mobile-webview/    # Mobile companion shell (Expo / React Native)
+├── apps/
+│   ├── web-react/          # React 19 web app and its Tauri v2 desktop wrapper
+│   │   ├── src/            # React UI, services, state, and web platform adapters
+│   │   ├── public/         # Web assets and service worker
+│   │   └── src-tauri/      # Tauri Rust backend for the hybrid app
+│   ├── desktop-qt/         # Native Qt 6 / QML / C++ desktop app
+│   ├── mobile-android/     # Native Android app (Kotlin / Compose)
+│   └── mobile-webview/     # Expo Android shell hosting the React web app
+├── bridges/                # Qt C ABI, UniFFI, and WebAssembly adapters
+├── core/synapse-core/      # Shared Rust domain and persistence logic
+├── docs/                   # Architecture, guides, module docs, and parity tracking
+├── tools/scripts/          # Cross-product native build helpers
+├── .agents/skills/         # Repository-specific engineering playbooks
+├── Cargo.toml              # Root Rust workspace
+└── package.json            # Root npm workspace command surface
 ```
 
-### 14.2 Core CLI Commands
+The authoritative ownership, dependency boundaries, build commands, and migration notes live in [the repository layout guide](./docs/architecture/repository-layout.md).
+
+Use consistent module IDs across clients while retaining framework-specific layers. React groups UI at `apps/web-react/src/components/<module>` and keeps orchestration, domain logic, and platform adapters in their established layer roots. Qt pairs `apps/desktop-qt/qml/<module>` with `apps/desktop-qt/src/controllers/<module>`. Native Android screens live in `features/<module>/ui`; the Expo WebView shell does not duplicate product modules. See [the cross-application module structure guide](./docs/architecture/module-structure.md).
+
+### 14.2 Core Commands
+
+Run npm commands from the repository root unless a command explicitly uses `--prefix` or changes into an app directory. The root npm scripts delegate to the React workspace; `apps/mobile-webview/` remains a separate Expo install with its own lockfile.
+
 | Command | Purpose |
 | :--- | :--- |
-| `npm run dev` | Launch Vite development server with HMR at `http://localhost:35174` |
-| `npm run build` | Full production build: typecheck (`tsc -b`) and bundle (`vite build`) |
-| `npm run build:web` | Build static SPA bundle for Web / PWA deployment into `dist-web` |
-| `npm run lint` | Run ESLint across entire codebase (`eslint .`) |
-| `npm test` | Run complete Vitest regression test suite (`vitest run`, 353 test files) |
-| `npx vitest run <path>` | Run fast targeted tests for a specific module (sub-second feedback) |
-| `npx vitest related --run <files>` | Run tests impacted by modified files |
-| `npx tsc -b --noEmit` | Strict TypeScript project type check without code emission |
-| `npm run tauri dev` | Launch Tauri v2 desktop application in development mode with live reload |
-| `npm run tauri build` | Compile optimized native desktop release bundle (`.deb`, `.AppImage`, etc.) |
+| `npm install` | Install dependencies for the root npm workspace (`apps/web-react`) |
+| `npm run dev` | Launch the React/Vite app at `http://localhost:35174` |
+| `npm run build` | Type-check and build the React/Tauri frontend |
+| `npm run build:web` | Build the static web bundle into `apps/web-react/dist-web/` |
+| `npm run typecheck` | Type-check the React workspace without emitting files |
+| `npm run test -- src/services/crypto.test.ts` | Run a focused React workspace test |
+| `npm run test:related -- src/services/crypto.ts` | Run tests related to changed React workspace files |
+| `npm run lint` | Lint the React workspace |
+| `npm run tauri -- dev` | Launch the React + Tauri desktop app |
+| `npm run tauri -- build` | Package the React + Tauri desktop app |
+| `npm --prefix apps/mobile-webview run start` | Start the Expo WebView shell |
+| `cmake -S apps/desktop-qt -B apps/desktop-qt/build` | Configure the native Qt desktop app |
+| `cargo test --workspace` | Run Rust workspace tests |
 

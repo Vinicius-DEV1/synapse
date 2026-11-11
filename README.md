@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Personal Knowledge Management, Cognitive Study Station & Zero-Knowledge Vault**
+**Personal Knowledge Management, Cognitive Study Station & Local Vault**
 
 [![Platform](https://img.shields.io/badge/Platform-Desktop%20%7C%20Web%20%7C%20Mobile-blue?style=for-the-badge)](https://github.com/Vinicius-DEV1/synapse)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131?style=for-the-badge&logo=tauri&logoColor=black)](https://tauri.app/)
@@ -14,7 +14,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
 <p align="center">
-  A high-performance second brain and cognitive acceleration platform engineered with <strong>Zero-Knowledge end-to-end encryption</strong>, <strong>local-first data durability</strong>, and <strong>seamless multi-platform ubiquity</strong> across Linux, Windows, macOS, Web, and Mobile.
+  A local-first knowledge and study platform with React Web/Tauri, native Qt desktop, native Android, and an Expo WebView shell. Vault and encrypted-media protections exist, but at-rest encryption does not cover every data field; see the current security audit.
 </p>
 
 [🇧🇷 Leia a documentação em Português](./README.pt-BR.md) • [📚 Technical Documentation Hub](./docs/README.md) • [🤝 Contributing Guide](./CONTRIBUTING.md)
@@ -28,7 +28,7 @@
 - [Vision & Core Philosophy](#-vision--core-philosophy)
 - [Multi-Platform Support Matrix](#-multi-platform-support-matrix)
 - [System Architecture Overview](#-system-architecture-overview)
-- [Zero-Knowledge Security Architecture](#-zero-knowledge-security-architecture)
+- [Local Vault and Encryption Status](#-local-vault-and-encryption-status)
 - [Proprietary ENC1 Video Streaming Architecture](#-proprietary-enc1-video-streaming-architecture)
 - [Performance & Benchmarks](#-performance--benchmarks)
 - [Core Feature Modules](#-core-feature-modules)
@@ -48,12 +48,12 @@
 
 ## 💡 Vision & Core Philosophy
 
-Modern personal knowledge management applications frequently force a compromise between **convenience** and **privacy**, or between **speed** and **rich features**. Synapse eliminates this trade-off based on five non-negotiable architectural pillars:
+Modern personal knowledge management applications frequently force a compromise between **convenience** and **privacy**, or between **speed** and **rich features**. Synapse is built around these goals; implementation coverage varies by app and module:
 
-1. **Absolute Privacy & Zero-Knowledge by Default**: Your data belongs solely to you. All user content (notes, passwords, finance records, flashcards, uploaded media) is encrypted client-side using industry-standard **AES-256-GCM** before ever leaving your device. Cloud relays (Firebase / Google Drive) act strictly as blind storage relays—they never possess the decryption keys or view plaintext data.
+1. **Privacy and User-Controlled Vault**: Master Password and AES-256-GCM flows protect selected fields and managed media. Coverage is not repository-wide: some business data, metadata, and unmanaged assets remain plaintext at rest. The [native encryption audit](./docs/security/native-encryption-audit.md) lists verified coverage and open risks.
 2. **Local-First & Offline Resilience**: The application reads and writes immediately to zero-latency local databases (**SQLite** on Desktop, **IndexedDB** on Web). You can work continuously without internet connectivity, and changes reconcile deterministically when reconnected.
-3. **Microsecond Perceived Latency (Zero-Lag UI)**: Engineered following Stale-While-Revalidate (SWR) caching and GPU-accelerated CSS interactions, preventing unnecessary React re-renders and maintaining 60 FPS transitions across all workflows.
-4. **Native Efficiency Over Web Bloat**: By leveraging **Tauri v2 and Rust** instead of heavyweight Electron wrappers, Synapse consumes a fraction of memory (~30–50 MB RAM vs 300+ MB) with binary sizes ~10x smaller.
+3. **Responsive Interaction Design**: The web client uses caching and CSS compositing patterns where appropriate. Frame rates and input latency vary by device and app; no universal 60 FPS guarantee is claimed.
+4. **Multiple Runtime Options**: React Web/Tauri remains the reference client; Qt and Kotlin/Compose are separate native clients, and the Expo shell hosts the web app. Native performance parity is measured separately and is not inferred from architecture alone.
 5. **Cognitive Acceleration**: Integrated with the cutting-edge **FSRS** (Free Spaced Repetition Scheduler) algorithm and contextual **Google Gemini AI**, turning passive note-taking into an active learning powerhouse.
 
 ---
@@ -64,87 +64,81 @@ Synapse is architected with a unified codebase capable of running across desktop
 
 | Platform | Target Runtime | Persistence Engine | Native Capabilities | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Linux** (Desktop) | Tauri v2 / WebKitGTK / Rust | Native SQLite (`rusqlite`) | Direct filesystem, local HTTP streaming (`axum`), native FFmpeg / yt-dlp | **Production** |
-| **Windows** (Desktop) | Tauri v2 / WebView2 / Rust | Native SQLite (`rusqlite`) | Direct filesystem, local HTTP streaming (`axum`), Windows shell integration | **Production** |
-| **macOS** (Desktop) | Tauri v2 / WebKit / Rust | Native SQLite (`rusqlite`) | Direct filesystem, local HTTP streaming (`axum`), Apple Silicon native binary | **Production** |
-| **Web / PWA** (Browser) | Modern Browsers (Chromium, Firefox, Safari) | IndexedDB (`idb`) | Service Worker (`sw.js`) on-the-fly streaming decryption, Web Crypto API | **Production** |
-| **Docker / Self-Hosted** | Linux Containers (Alpine + Nginx) | IndexedDB + Cloud Sync | Completely self-contained static web hosting with custom security headers | **Production** |
-| **Mobile Companion** | React Native 0.81 / Expo SDK 54 | IndexedDB + Offline Cache | Native haptics (`expo-haptics`), hardware back-button routing, Safe Area insets | **Active Beta** |
+| **React Web** | React 19, Vite, browser | IndexedDB and configured sync adapters | Browser APIs and service worker | Active client; see build guide |
+| **Tauri Desktop** | React frontend, Tauri v2, Rust | SQLite via Tauri backend | Native shell, filesystem, and Rust IPC | Active client; parity is tracked separately |
+| **Native Qt Desktop** | Qt Quick/QML, C++17, Rust C-ABI | SQLite via shared Rust bridge | Native Qt UI and libmpv media integration | In development; see [parity matrix](./docs/native-desktop-parity.md) |
+| **Native Android** | Kotlin, Jetpack Compose, UniFFI | Android app persistence and shared Rust capabilities | Native Android UI and Media3 integrations | In development; verify module status before relying on parity |
+| **Android WebView Shell** | Expo, React Native, WebView | Hosts the React app | Safe areas, hardware back, haptics, native links | Wrapper app; not the native Compose client |
+| **Docker / Self-Hosted** | Linux containers, Nginx | Serves the web build | Static hosting and configured cloud services | Deployment target; it does not imply full E2EE coverage |
 
 ---
 
 ## 🏛️ System Architecture Overview
 
-Synapse is built upon a strict **4-tier layered architecture** (Presentation, Orchestration, Domain, and Platform Infrastructure) ensuring complete decoupling and multi-platform interchangeability:
+Synapse contains four app targets with platform-specific presentation and storage adapters. Shared Rust capabilities are exposed through platform bridges where implemented:
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        SYNAPSE ARCHITECTURE                            │
-├────────────────────────────────────────────────────────────────────────┤
-│  PRESENTATION LAYER                                                    │
-│  React 19  •  TypeScript 6.0  •  TailwindCSS  •  Radix UI  •  Lucide   │
-├────────────────────────────────────────────────────────────────────────┤
-│  RICH TEXT & COLLABORATION ENGINE                                      │
-│  TipTap v3  •  ProseMirror  •  Yjs CRDTs  •  Lowlight  •  Mermaid.js    │
-├────────────────────────────────────────────────────────────────────────┤
-│  MULTI-PLATFORM ADAPTATION LAYER                                       │
-│  window.api Contract  •  Platform Detector  •  Web / Desktop Bridge    │
-├──────────────────────────────────┬─────────────────────────────────────┤
-│  DESKTOP RUNTIME (Tauri v2)      │  WEB & PWA RUNTIME                  │
-│  Rust 2021  •  Tokio  •  Axum    │  Vite 8  •  Service Worker (sw.js)  │
-│  Rusqlite (SQLite)  •  PBKDF2    │  IndexedDB (idb)  •  WebCrypto API  │
-│  AES-256-GCM  •  FFmpeg/yt-dlp   │  WebAssembly (FFmpeg / Tesseract)   │
-├──────────────────────────────────┴─────────────────────────────────────┤
-│  ZERO-KNOWLEDGE STORAGE & CLOUD BACKBONE                               │
-│  Firebase Firestore (E2EE)  •  Google Drive API (Resumable OAuth2 PKCE)│
-├────────────────────────────────────────────────────────────────────────┤
-│  DEVOPS & CONTAINERIZATION                                             │
-│  Docker  •  Docker Compose  •  Nginx Alpine Multi-Stage Build          │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Apps[Application targets]
+    Web[React Web]
+    Tauri[React and Tauri]
+    Qt[Qt Quick and QML]
+    Android[Kotlin and Compose]
+    Shell[Expo WebView shell]
+  end
+  Web --> WebAdapters[IndexedDB and web adapters]
+  Tauri --> TauriBackend[Tauri Rust backend]
+  Qt --> QtBridge[bridge-qt C ABI]
+  Android --> AndroidBridge[bridge-uniffi]
+  Shell --> Web
+  TauriBackend --> Core[synapse-core]
+  QtBridge --> Core
+  AndroidBridge --> Core
+  Web --> WasmBridge[bridge-wasm where enabled]
 ```
 
 For the comprehensive architectural blueprint and runtime boundary specifications, consult [**`docs/architecture/overview.md`**](./docs/architecture/overview.md).
 
 ---
 
-## 🔐 Zero-Knowledge Security Architecture
+## 🔐 Local Vault and Encryption Status
 
-Synapse was built from the ground up around **Zero-Knowledge** cryptographic principles:
+The vault uses PBKDF2-HMAC-SHA256 to derive a master key and AES-256-GCM module-key envelopes. This protects selected content and supported media flows; it does not currently encrypt every SQLite field or prove that all plaintext residuals are removed.
 
 ```
 User Master Password
         │
         ▼ (PBKDF2-HMAC-SHA256 • 600,000 Iterations + Salt)
-Ephemeral Master Key (Stored ONLY in volatile RAM / Zeroized on lock)
+Master Key (runtime memory; selected buffers are wiped on lock)
         │
         ├──▶ Decrypts Keychain ──▶ Module Keys (Notes, Vault, Finance, Files)
         │
         └──▶ AES-256-GCM (12-byte CSPRNG IV + 128-bit Auth Tag)
                  │
-                 ├──▶ Local Storage (SQLite / IndexedDB) [Encrypted at Rest]
-                 └──▶ Cloud Sync (Firebase / Google Drive) [Encrypted in Transit & Cloud]
+                 ├──▶ Selected local fields and managed assets [Protected]
+                 └──▶ Other local records and metadata [Coverage varies]
 ```
 
 ### Cryptographic Standards
 
-| Mechanism | Standard | Security Guarantee |
+| Mechanism | Standard | Current status |
 | :--- | :--- | :--- |
-| **Key Derivation** | **PBKDF2-HMAC-SHA256** | 600,000 iterations with a cryptographically secure random salt, providing brute-force resistance exceeding OWASP recommendations. |
-| **Symmetric Cipher** | **AES-256-GCM** | Authenticated encryption with associated data (AEAD) using unique 96-bit (12-byte) IVs generated by a CSPRNG for every encryption cycle. |
+| **Key Derivation** | **PBKDF2-HMAC-SHA256** | 600,000 iterations. Existing local vaults use a fixed compatibility salt; a versioned salt migration remains open. |
+| **Symmetric Cipher** | **AES-256-GCM** | Authenticated encryption uses fresh 96-bit (12-byte) nonces for protected content operations. |
 | **Data Integrity** | **128-bit Auth Tag** | Instant rejection and detection of any tampering or ciphertext corruption (*wire format*: `iv:auth_tag:ciphertext`). |
-| **Two-Tier Keychain** | **Master + Module Keys** | Individual encryption keys per module (Notes, Passwords, Media, Finance) sealed by the Master Key in the keychain. |
-| **Memory Hygiene** | **`auth_lock` / Zeroize** | All master cryptographic keys reside solely in volatile RAM (Rust memory or window memory) and are safely zeroed out upon session timeout or manual lock. |
-| **XSS Defense** | **DOMPurify & Strict CSP** | Strict sanitization of all dynamic inputs and rigorous Content Security Policy in both Tauri desktop and Web builds. |
+| **Two-Tier Keychain** | **Master + Module Keys** | Current module-key envelopes are sealed by the Master Key; legacy key fallback behavior remains for older records. |
+| **Memory Hygiene** | **Rust zeroization and lock cleanup** | Selected bridge buffers and key maps are wiped on lock. Complete zeroization of Qt strings, QML state, query buffers, WAL pages, and temporary files has not been proven. |
+| **XSS Defense** | **DOMPurify & Content Security Policy** | Sanitization and CSP controls are client-specific; verify each route and embedded-content flow before claiming complete coverage. |
 
-For security policies and vulnerability reporting procedures, refer to [**`SECURITY.md`**](./SECURITY.md).
+For verified native coverage and remaining gaps, read the [native encryption audit](./docs/security/native-encryption-audit.md). For vulnerability reporting, refer to [**`SECURITY.md`**](./SECURITY.md).
 
 ---
 
 ## 🎥 Proprietary ENC1 Video Streaming Architecture
 
-Streaming multi-gigabyte encrypted study videos inside HTML5 `<video>` tags presents a massive challenge: standard decryption requires loading the entire file into RAM, which causes browser crashes on large files.
+Streaming large encrypted study videos requires bounded buffering and authenticated chunk reads.
 
-Synapse solves this via the custom **ENC1 Container Format**:
+The repository uses the custom **ENC1 Container Format** for supported media flows:
 
 ```
 ENC1 File Format:
@@ -156,9 +150,9 @@ ENC1 File Format:
 └──────────────┴─────────────────────────┴─────────────────────────┴──────────────────────┘
 ```
 
-1. **Random-Access Seeking**: Because each ~1 MB chunk has an independent IV and authentication tag, the video player can seek (`Range: bytes=X-Y`) to any timestamp instantly without decrypting the entire file.
-2. **Desktop Implementation (Tauri + Rust)**: An internal asynchronous **Axum HTTP server** listens on a local loopback port, decrypts requested byte ranges on the fly, and streams `Bytes` with zero RAM accumulation.
-3. **Web Implementation (PWA + Service Worker)**: When running in a browser, `sw.js` intercepts video fetch requests, fetches encrypted byte ranges from Google Drive, decrypts them with the native **Web Crypto API**, and streams chunks directly via a `ReadableStream`.
+1. **Chunked Reads**: The 16-byte header stores the magic, original size, and supported 1 MiB chunk size. Each chunk carries its own nonce and authentication tag. The header itself is not authenticated.
+2. **Native Readers**: Tauri and Qt have Rust-backed encrypted-media readers for their supported playback flows; buffering and behavior are platform-specific.
+3. **Web Reader**: The React web client has its own encrypted media adapters. Verify its current path before assuming every browser or cloud provider uses the same range pipeline.
 
 For complete byte calculation mathematics and container specifications, see [**`docs/protocols/enc1-streaming.md`**](./docs/protocols/enc1-streaming.md).
 
@@ -166,22 +160,7 @@ For complete byte calculation mathematics and container specifications, see [**`
 
 ## ⚡ Performance & Benchmarks
 
-Synapse treats performance as a core architectural constraint. All metrics are measured using a single reproducible benchmark command (`npm run benchmark`) across 5 iterations (warmup discarded, median reported) on an AMD Ryzen 5 3500U (8 vCPUs, 16.94 GB RAM, Linux x64) and validated by automated CI performance budget gates (`npm run check:budgets`):
-
-| Metric / Operation | Baseline (`pre-otimizacao`) | Optimized (`HEAD`) | Absolute Delta | Relative Gain | Status |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **`react-vendor` Bundle Chunk** | `1,275.10 KB` | `182.04 KB` | `-1,093.06 KB` | **-85.71%** | 🚀 **7x lighter** |
-| **`CultureView` Bundle Chunk** | `1,094.08 KB` | `261.46 KB` | `-832.62 KB` | **-76.10%** | 🚀 **4.2x lighter** |
-| **`main` Entry Chunk** | `262.57 KB` | `196.98 KB` | `-65.59 KB` | **-25.00%** | 🚀 **Instant cold start** |
-| **Push Sync Base64 Serialization** | `55.96 ms` | `2.16 ms` | `-53.80 ms` | **-96.14%** | 🚀 **26x speedup** |
-| **Batch Sync Decompression** | `8.15 ms` | `0.94 ms` | `-7.21 ms` | **-88.47%** | 🚀 **8.7x speedup** |
-| **Search 100x Scale (200,000 items)**| `170.86 ms` | `140.22 ms` | `-30.64 ms` | **-17.93%** | 🚀 **O(1) Indexed** |
-| **Keystroke Typing Latency** | `0.26 ms` | `0.23 ms` | `-0.03 ms` | **-11.54%** | ⚡ **0ms Perceived lag** |
-| **Simulated 4x CPU Throttle** | `1.01 ms` | `0.73 ms` | `-0.28 ms` | **-27.72%** | 📱 **Mobile fluid** |
-| **Total Production Bundle** | `17,179.70 KB` | `17,156.50 KB` | `-23.20 KB` | **-0.13%** | ✅ **Budget Passed** |
-
-> [!NOTE]
-> For methodology, raw telemetry, discarded experiments, and complete specifications, see [**`docs/DESEMPENHO.md`**](./docs/DESEMPENHO.md) and [**`docs/ARQUITETURA.md`**](./docs/ARQUITETURA.md).
+No current measurements are published here. The configured web benchmark and bundle-budget commands are `npm run benchmark` and `npm run check:budgets`; they do not measure the Qt or Android applications. Record the exact app target, commit, device, and benchmark command before making a performance claim. See [the performance measurement guide](./docs/DESEMPENHO.md).
 
 ---
 
@@ -193,8 +172,8 @@ Synapse treats performance as a core architectural constraint. All metrics are m
 - Conflict-free real-time collaboration and multi-device synchronization powered by **Yjs CRDTs**.
 - Visual version history with granular revision diffing (`htmldiff-js`).
 
-### 2. 🔐 Vault (Zero-Knowledge Credentials & Passwords)
-- Military-grade password and credential vault secured with zero-knowledge AES-256-GCM.
+### 2. 🔐 Vault (Credentials & Passwords)
+- Password and credential vault using AES-256-GCM in its covered flows; consult the [encryption audit](./docs/security/native-encryption-audit.md) for scope and limitations.
 - High-entropy password and passphrase generator with Shannon entropy evaluation.
 - Breached credential verification via Have I Been Pwned (HIBP) k-Anonymity API integration.
 
@@ -236,12 +215,8 @@ Synapse treats performance as a core architectural constraint. All metrics are m
 - Clean expense and income registry with categorical budgeting.
 - Interactive financial charts and spending trends powered by **Recharts**.
 
-### 12. 🏢 Notion-Style Collaborative Workspaces & Multi-User Accounts
-- **Dual-Mode Multi-User Identity**: Secure Firebase Authentication (Email/Password) alongside standalone offline single-user Master Password unlocking.
-- **Notion-Style Workspace Switcher**: Instant switching between personal and team workspaces with zero-latency caching and dynamic real-time signal rebinding.
-- **Collaborative Zero-Knowledge E2EE**: Each workspace generates a 256-bit AES-GCM key wrapped individually with each member's personal Master Key, maintaining absolute end-to-end encryption in team environments.
-- **Role-Based Access Control (RBAC)**: Fine-grained permissions (`owner`, `admin`, `editor`, `viewer`) strictly enforced via Cloud Firestore Security Rules.
-- **Safe Zero-Data-Loss Migration**: Idempotent non-destructive migrator that upgrades single-user collections to private workspaces with instant rollback capabilities.
+### 12. 🏢 Multi-User Workspaces (Planned and Under Audit)
+Workspace scoping, Firebase Authentication, RBAC, and migration are tracked as a proposal and security audit. Do not treat them as shipped capabilities or released collaborative E2EE. See the [multi-user workspace analysis](./docs/architecture/multiuser-workspace-analysis.md) and [action plan](./docs/architecture/multiuser-workspace-action-plan.md).
 
 For full module details, domain models, and key assignments, explore [**`docs/modules/index.md`**](./docs/modules/index.md).
 
@@ -258,6 +233,8 @@ For full module details, domain models, and key assignments, explore [**`docs/mo
 
 ---
 
+Synapse ships four app targets: the React web app with its Tauri shell (`apps/web-react/`), a fully native Qt desktop app (`apps/desktop-qt/`), a native Kotlin/Compose Android app (`apps/mobile-android/`), and an Expo WebView shell (`apps/mobile-webview/`). See [the repository layout guide](./docs/architecture/repository-layout.md) for ownership and build commands. The current Qt parity gaps are listed in the [native desktop parity matrix](./docs/native-desktop-parity.md).
+
 ### Installation & Quick Start
 
 1. **Clone the repository**:
@@ -273,9 +250,9 @@ For full module details, domain models, and key assignments, explore [**`docs/mo
 
 3. **Configure environment variables (Optional)**:
    ```bash
-   cp .env.example .env
+   cp apps/web-react/.env.example apps/web-react/.env
    ```
-   *Note: Synapse functions 100% offline without any API keys or configuration.*
+   *Cloud, AI, and online metadata integrations require configuration and connectivity. Local workflows may remain available offline, depending on the app and feature.*
 
 ---
 
@@ -291,7 +268,7 @@ To produce an optimized production web build:
 ```bash
 npm run build:web
 ```
-The output will be placed in the `dist-web` directory.
+The output will be placed in the `apps/web-react/dist-web` directory.
 
 ---
 
@@ -301,13 +278,13 @@ Make sure you have installed the Rust toolchain and platform build dependencies 
 
 ```bash
 # Run in desktop development mode with live reload
-npm run tauri dev
+npm run tauri -- dev
 
 # Compile an optimized native desktop binary
-npm run tauri build
+npm run tauri -- build
 ```
 
-Installers are generated in `src-tauri/target/release/bundle/` (`.deb`, `.AppImage`, `.msi`, `.exe`, `.dmg`).
+Installers are generated in `target/release/bundle/` (`.deb`, `.AppImage`, `.msi`, `.exe`, `.dmg`).
 
 ---
 
@@ -332,10 +309,10 @@ Once running, access Synapse Web at `http://localhost:8080`. For advanced config
 
 ### Running the Mobile Companion
 
-Synapse includes an Expo-powered mobile companion shell in `caderno-mobile-webview`:
+Synapse includes an Expo-powered mobile companion shell in `apps/mobile-webview`:
 
 ```bash
-cd caderno-mobile-webview
+cd apps/mobile-webview
 npm install
 
 # Start Expo development server
@@ -347,31 +324,41 @@ npm run android
 
 ---
 
+### Running the Native Apps
+
+Build the Qt desktop app with CMake:
+
+```bash
+cmake -S apps/desktop-qt -B apps/desktop-qt/build -DCMAKE_BUILD_TYPE=Release
+cmake --build apps/desktop-qt/build --config Release
+```
+
+Build the Kotlin/Compose Android app with Gradle:
+
+```bash
+cd apps/mobile-android
+./gradlew assembleDebug
+```
+
 ## 🧪 Testing & Quality Assurance
 
-Synapse enforces strict software engineering principles (SOLID, strict type safety, zero `any`, and zero flaky tests) backed by a comprehensive automated test battery:
-
-- **1,600+ Automated Tests** across **355+ test files** with **100% pass rate**.
-- **Strict Type Integrity**: Zero TypeScript compilation errors (`npx tsc -b --noEmit`).
-- **Code Quality & Style**: Zero ESLint errors and zero warnings (`npm run lint`).
-- **Critical Service Coverage**: **92%–97%+ statement coverage** across cryptographic primitives (`crypto.ts`), CRDT state merging (`sync-pull-merge.ts`), and IndexedDB persistence adapters (`sync.ts`, `db-web.ts`).
-- **Data Resilience & Fault Simulation**: Rigorous tests simulating mid-flight transaction aborts, SQLite schema evolution fallbacks, and Android hardware back-press event interception pipelines.
+Use the commands below for current checks. Test counts and results vary by checkout; this README does not claim a fixed repository-wide pass total or coverage percentage.
 
 ```bash
 # Run fast targeted tests (sub-second feedback)
-npx vitest run src/services/crypto.test.ts
+npm run test -- src/services/crypto.test.ts
 
-# Run fast core domain, hook, and persistence suite (110 files / 616 tests in ~50s)
+# Run the configured web domain, hook, and persistence suite
 npm run test:unit
 
 # Generate comprehensive test coverage report (v8 engine)
 npm run test:coverage
 
 # Run tests related to modified files
-npx vitest related --run src/services/crypto.ts
+npm run test:related -- src/services/crypto.ts
 
 # Verify strict TypeScript type integrity without emitting code
-npx tsc -b --noEmit
+npm run typecheck
 
 # Lint code style and best practices
 npm run lint

@@ -46,7 +46,7 @@ ColumnLayout {
             height: 38
             radius: 10
             color: "#15141b"
-            border.color: vaultSearchInput.activeFocus ? "#8b5cf680" : "#ffffff12"
+            border.color: vaultSearchInput.activeFocus ? "#808b5cf6" : "#12ffffff"
             border.width: 1
 
             RowLayout {
@@ -78,8 +78,8 @@ ColumnLayout {
         // Gerar Senha Segura Button
         Rectangle {
             width: 150; height: 38; radius: 10
-            color: genPassMouse.containsMouse ? "#7c3aed33" : "#7c3aed26"
-            border.color: "#8b5cf64d"
+            color: genPassMouse.containsMouse ? "#337c3aed" : "#267c3aed"
+            border.color: "#4d8b5cf6"
 
             RowLayout {
                 anchors.centerIn: parent
@@ -101,8 +101,8 @@ ColumnLayout {
         Rectangle {
             visible: dataController.isVaultConfigured && dataController.isVaultUnlocked
             width: 104; height: 38; radius: 10
-            color: lockMouse.containsMouse ? "#ef444426" : "#ef444415"
-            border.color: "#ef444440"
+            color: lockMouse.containsMouse ? "#26ef4444" : "#15ef4444"
+            border.color: "#40ef4444"
 
             RowLayout {
                 anchors.centerIn: parent
@@ -155,7 +155,7 @@ ColumnLayout {
             width: allGroupText.contentWidth + 24
             radius: 16
             color: allGroupRect.isSelected ? "#6366f1" : "#1a1924"
-            border.color: allGroupRect.isSelected ? "#818cf8" : "#ffffff0f"
+            border.color: allGroupRect.isSelected ? "#818cf8" : "#0fffffff"
             Text {
                 id: allGroupText
                 anchors.centerIn: parent
@@ -179,8 +179,8 @@ ColumnLayout {
                 height: 32
                 width: grpText.contentWidth + 24
                 radius: 16
-                color: grpDelegate.isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#ffffff12" : "#1a1924")
-                border.color: grpDelegate.isSelected ? "#818cf8" : "#ffffff0f"
+                color: grpDelegate.isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#12ffffff" : "#1a1924")
+                border.color: grpDelegate.isSelected ? "#818cf8" : "#0fffffff"
                 Text {
                     id: grpText
                     anchors.centerIn: parent

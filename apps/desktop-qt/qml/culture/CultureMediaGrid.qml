@@ -38,8 +38,8 @@ ColumnLayout {
                     width: typePillText.contentWidth + 18
                     height: 32
                     radius: 8
-                    color: mediaGridRoot.activeTypeFilter === modelData.key ? "#8b5cf626" : "#1a1924"
-                    border.color: mediaGridRoot.activeTypeFilter === modelData.key ? "#8b5cf666" : "#ffffff0f"
+                    color: mediaGridRoot.activeTypeFilter === modelData.key ? "#268b5cf6" : "#1a1924"
+                    border.color: mediaGridRoot.activeTypeFilter === modelData.key ? "#668b5cf6" : "#0fffffff"
 
                     Text {
                         id: typePillText
@@ -59,7 +59,7 @@ ColumnLayout {
             }
         }
 
-        Rectangle { width: 1; height: 20; color: "#ffffff15" }
+        Rectangle { width: 1; height: 20; color: "#15ffffff" }
 
         // Status Pills
         RowLayout {
@@ -77,8 +77,8 @@ ColumnLayout {
                     width: statusPillText.contentWidth + 18
                     height: 32
                     radius: 8
-                    color: mediaGridRoot.activeStatusFilter === modelData.key ? "#8b5cf626" : "#1a1924"
-                    border.color: mediaGridRoot.activeStatusFilter === modelData.key ? "#8b5cf666" : "#ffffff0f"
+                    color: mediaGridRoot.activeStatusFilter === modelData.key ? "#268b5cf6" : "#1a1924"
+                    border.color: mediaGridRoot.activeStatusFilter === modelData.key ? "#668b5cf6" : "#0fffffff"
 
                     Text {
                         id: statusPillText
@@ -115,7 +115,7 @@ ColumnLayout {
             height: 154
             radius: 12
             color: cardMouse.containsMouse ? "#211f30" : "#1a1924"
-            border.color: cardMouse.containsMouse ? "#8b5cf666" : "#ffffff0f"
+            border.color: cardMouse.containsMouse ? "#668b5cf6" : "#0fffffff"
             border.width: 1
 
             Behavior on color { ColorAnimation { duration: 150 } }
@@ -183,7 +183,7 @@ ColumnLayout {
                             width: typeText.contentWidth + 8
                             height: 18
                             radius: 4
-                            color: "#8b5cf61a"
+                            color: "#1a8b5cf6"
 
                             Text {
                                 id: typeText
@@ -240,7 +240,7 @@ ColumnLayout {
                         // -1 Ep Stepper
                         Rectangle {
                             width: 28; height: 26; radius: 6
-                            color: "#262438"; border.color: "#ffffff12"
+                            color: "#262438"; border.color: "#12ffffff"
                             Text { anchors.centerIn: parent; text: "-1"; color: "#fffffe"; font.pixelSize: 10; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -254,7 +254,7 @@ ColumnLayout {
                         // +1 Ep Stepper
                         Rectangle {
                             width: 44; height: 26; radius: 6
-                            color: "#8b5cf626"; border.color: "#8b5cf666"
+                            color: "#268b5cf6"; border.color: "#668b5cf6"
                             Text { anchors.centerIn: parent; text: "+1 Ep"; color: "#c4b5fd"; font.pixelSize: 10; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -265,8 +265,8 @@ ColumnLayout {
                         // Delete Button
                         Rectangle {
                             width: 28; height: 26; radius: 6
-                            color: delCultureMouse.containsMouse ? "#f43f5e26" : "transparent"
-                            border.color: delCultureMouse.containsMouse ? "#f43f5e55" : "transparent"
+                            color: delCultureMouse.containsMouse ? "#26f43f5e" : "transparent"
+                            border.color: delCultureMouse.containsMouse ? "#55f43f5e" : "transparent"
                             Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
                             MouseArea {
                                 id: delCultureMouse

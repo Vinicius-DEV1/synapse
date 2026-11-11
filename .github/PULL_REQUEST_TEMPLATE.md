@@ -15,9 +15,12 @@
 
 Before submitting this pull request, please verify:
 
-- [ ] **TypeScript Contract Verification**: `npx tsc -b --noEmit` passes with 0 errors.
-- [ ] **Targeted Tests**: Added or verified tests via `npx vitest related --run <files>` or `npx vitest run <path>`.
+- [ ] **TypeScript Contract Verification**: `npm run typecheck` passes with 0 errors.
+- [ ] **Targeted Tests**: Added or verified tests via `npm run test:related -- <files>` or `npm run test -- <path>`.
 - [ ] **Linter**: `npm run lint` passes without style violations.
 - [ ] **100% Functional & Visual Parity**: All animations, shortcuts, dark theme styling, and user flows are preserved.
 - [ ] **Zero Sensitive Data**: No real credentials, `.env` values, API keys, or personal tokens are included.
-- [ ] **Documentation**: Updated corresponding markdown files in `docs/` if modifying APIs or architecture.
+- [ ] **Documentation**: Updated the relevant current sources of truth and app-level guidance; checked links and commands.
+- [ ] **Status Claims**: Historical plans and prior test totals are not used as evidence of current completion.
+- [ ] **Cryptography Changes**: Updated `docs/security/native-encryption-audit.md` and tested the modified client/bridge if crypto, keychain, or media protection changed.
+- [ ] **Native Parity**: Updated `docs/native-desktop-parity.md` if a Qt module's verified coverage or remaining gaps changed.

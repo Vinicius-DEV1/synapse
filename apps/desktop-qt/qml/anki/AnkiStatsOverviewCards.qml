@@ -14,7 +14,7 @@ RowLayout {
         height: 104
         radius: 14
         color: "#1a1924"
-        border.color: "#ffffff0d"
+        border.color: "#0dffffff"
         border.width: 1
 
         ColumnLayout {
@@ -23,7 +23,7 @@ RowLayout {
             RowLayout {
                 spacing: 8
                 Rectangle {
-                    width: 28; height: 28; radius: 6; color: "#6366f120"
+                    width: 28; height: 28; radius: 6; color: "#206366f1"
                     Text { anchors.centerIn: parent; text: "🧠"; font.pixelSize: 14 }
                 }
                 Text { text: "Total de Cartões"; color: "#a7a9be"; font.pixelSize: 12 }
@@ -43,7 +43,7 @@ RowLayout {
         height: 104
         radius: 14
         color: "#1a1924"
-        border.color: "#ffffff0d"
+        border.color: "#0dffffff"
         border.width: 1
 
         ColumnLayout {
@@ -52,7 +52,7 @@ RowLayout {
             RowLayout {
                 spacing: 8
                 Rectangle {
-                    width: 28; height: 28; radius: 6; color: "#38bdf820"
+                    width: 28; height: 28; radius: 6; color: "#2038bdf8"
                     Text { anchors.centerIn: parent; text: "⚡"; font.pixelSize: 14 }
                 }
                 Text { text: "Total de Revisões"; color: "#a7a9be"; font.pixelSize: 12 }
@@ -72,7 +72,7 @@ RowLayout {
         height: 104
         radius: 14
         color: "#1a1924"
-        border.color: "#ffffff0d"
+        border.color: "#0dffffff"
         border.width: 1
 
         ColumnLayout {
@@ -81,7 +81,7 @@ RowLayout {
             RowLayout {
                 spacing: 8
                 Rectangle {
-                    width: 28; height: 28; radius: 6; color: "#10b98120"
+                    width: 28; height: 28; radius: 6; color: "#2010b981"
                     Text { anchors.centerIn: parent; text: "🎯"; font.pixelSize: 14 }
                 }
                 Text { text: "Taxa de Retenção"; color: "#a7a9be"; font.pixelSize: 12 }
@@ -101,7 +101,7 @@ RowLayout {
         height: 104
         radius: 14
         color: "#1a1924"
-        border.color: "#ffffff0d"
+        border.color: "#0dffffff"
         border.width: 1
 
         ColumnLayout {
@@ -110,7 +110,7 @@ RowLayout {
             RowLayout {
                 spacing: 8
                 Rectangle {
-                    width: 28; height: 28; radius: 6; color: "#f59e0b20"
+                    width: 28; height: 28; radius: 6; color: "#20f59e0b"
                     Text { anchors.centerIn: parent; text: "⏱️"; font.pixelSize: 14 }
                 }
                 Text { text: "Estabilidade Média"; color: "#a7a9be"; font.pixelSize: 12 }

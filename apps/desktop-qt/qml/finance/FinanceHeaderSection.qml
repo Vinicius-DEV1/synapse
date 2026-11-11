@@ -63,7 +63,7 @@ ColumnLayout {
         Rectangle {
             width: 120; height: 38; radius: 10
             color: "#1a1924"
-            border.color: "#8b5cf64d"
+            border.color: "#4d8b5cf6"
 
             RowLayout {
                 anchors.centerIn: parent
@@ -87,7 +87,7 @@ ColumnLayout {
 
         Rectangle {
             width: 150; height: 36; radius: 8
-            color: headerRoot.activeSubTab === "transactions" ? "#6366f11a" : "transparent"
+            color: headerRoot.activeSubTab === "transactions" ? "#1a6366f1" : "transparent"
             border.color: headerRoot.activeSubTab === "transactions" ? "#6366f1" : "transparent"
             Text {
                 anchors.centerIn: parent
@@ -105,7 +105,7 @@ ColumnLayout {
 
         Rectangle {
             width: 150; height: 36; radius: 8
-            color: headerRoot.activeSubTab === "wishlist" ? "#6366f11a" : "transparent"
+            color: headerRoot.activeSubTab === "wishlist" ? "#1a6366f1" : "transparent"
             border.color: headerRoot.activeSubTab === "wishlist" ? "#6366f1" : "transparent"
             Text {
                 anchors.centerIn: parent
@@ -140,7 +140,7 @@ ColumnLayout {
                     width: fltText.contentWidth + 16
                     radius: 14
                     color: isSel ? "#6366f1" : "#161524"
-                    border.color: isSel ? "#818cf8" : "#ffffff10"
+                    border.color: isSel ? "#818cf8" : "#10ffffff"
                     border.width: 1
 
                     Text {
@@ -166,7 +166,7 @@ ColumnLayout {
             visible: headerRoot.activeSubTab === "transactions"
             width: 180; height: 32; radius: 8
             color: "#161524"
-            border.color: txSearchInput.activeFocus ? "#818cf8" : "#ffffff10"
+            border.color: txSearchInput.activeFocus ? "#818cf8" : "#10ffffff"
 
             RowLayout {
                 anchors.fill: parent

@@ -10,6 +10,27 @@ Rectangle {
     signal transactionSubmitted(string description, double amount, string type, string category)
     signal closed()
 
+    property var initialTransaction: null
+    property string errorMessage: ""
+
+    function loadInitialTransaction() {
+        errorMessage = ""
+        if (!initialTransaction) {
+            transDescInput.text = ""
+            transAmountInput.text = ""
+            transTypeCombo.currentIndex = 0
+            transCategoryInput.text = "Geral"
+            return
+        }
+        transDescInput.text = initialTransaction.description || ""
+        transAmountInput.text = Number(initialTransaction.amount || 0).toString()
+        transTypeCombo.currentIndex = transTypeCombo.transactionTypes.indexOf(initialTransaction.type)
+        transCategoryInput.text = initialTransaction.category || "Geral"
+    }
+
+    onVisibleChanged: if (visible) loadInitialTransaction()
+    onInitialTransactionChanged: if (visible) loadInitialTransaction()
+
     MouseArea { anchors.fill: parent; onClicked: modalRoot.closed() }
 
     Rectangle {
@@ -18,7 +39,7 @@ Rectangle {
         height: 380
         radius: 16
         color: "#1a1924"
-        border.color: "#ffffff1a"
+        border.color: "#1affffff"
 
         MouseArea { anchors.fill: parent }
 
@@ -28,7 +49,7 @@ Rectangle {
             spacing: 16
 
             Text {
-                text: "Nova Transação"
+                text: modalRoot.initialTransaction ? qsTr("Edit transaction") : qsTr("New transaction")
                 color: "#fffffe"
                 font.pixelSize: 18
                 font.bold: true
@@ -49,7 +70,8 @@ Rectangle {
             ComboBox {
                 id: transTypeCombo
                 Layout.fillWidth: true
-                model: ["expense", "income"]
+                property var transactionTypes: ["expense", "income"]
+                model: [qsTr("Expense"), qsTr("Income")]
             }
 
             TextField {
@@ -57,6 +79,15 @@ Rectangle {
                 Layout.fillWidth: true
                 placeholderText: "Categoria (Geral, Alimentação, Moradia)..."
                 text: "Geral"
+            }
+
+            Label {
+                Layout.fillWidth: true
+                visible: modalRoot.errorMessage.length > 0
+                text: modalRoot.errorMessage
+                color: "#fda4af"
+                font.pixelSize: 11
+                wrapMode: Text.Wrap
             }
 
             RowLayout {
@@ -68,15 +99,18 @@ Rectangle {
                     onClicked: modalRoot.closed()
                 }
                 Button {
-                    text: "Salvar"
+                    text: modalRoot.initialTransaction ? qsTr("Save changes") : qsTr("Save")
                     Layout.fillWidth: true
                     onClicked: {
                         var val = parseFloat(transAmountInput.text)
-                        if (transDescInput.text.trim().length > 0 && !isNaN(val)) {
-                            modalRoot.transactionSubmitted(transDescInput.text, val, transTypeCombo.currentText, transCategoryInput.text)
-                            transDescInput.text = ""
-                            transAmountInput.text = ""
+                        if (transDescInput.text.trim().length === 0 || !isFinite(val) || val < 0 || transTypeCombo.currentIndex < 0) {
+                            modalRoot.errorMessage = qsTr("Enter a description and a valid amount.")
+                            return
                         }
+                        modalRoot.errorMessage = ""
+                        modalRoot.transactionSubmitted(transDescInput.text, val,
+                                                       transTypeCombo.transactionTypes[transTypeCombo.currentIndex],
+                                                       transCategoryInput.text)
                     }
                 }
             }

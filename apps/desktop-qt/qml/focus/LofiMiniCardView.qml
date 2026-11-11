@@ -44,8 +44,8 @@ ColumnLayout {
             width: 32
             height: 32
             radius: 8
-            color: "#8b5cf626"
-            border.color: "#8b5cf640"
+            color: "#268b5cf6"
+            border.color: "#408b5cf6"
             border.width: 1
 
             Text {
@@ -80,7 +80,7 @@ ColumnLayout {
                 }
                 Text {
                     text: "•"
-                    color: "#ffffff33"
+                    color: "#33ffffff"
                     font.pixelSize: 8
                 }
                 Text {
@@ -97,7 +97,7 @@ ColumnLayout {
             width: 22
             height: 22
             radius: 11
-            color: minimizeMouse.containsMouse ? "#ffffff1f" : "transparent"
+            color: minimizeMouse.containsMouse ? "#1fffffff" : "transparent"
 
             Text {
                 anchors.centerIn: parent
@@ -121,7 +121,7 @@ ColumnLayout {
             width: 22
             height: 22
             radius: 11
-            color: closeMouse.containsMouse ? "#f43f5e33" : "transparent"
+            color: closeMouse.containsMouse ? "#33f43f5e" : "transparent"
 
             Text {
                 anchors.centerIn: parent
@@ -195,7 +195,7 @@ ColumnLayout {
                 width: volumeSlider.availableWidth
                 height: 4
                 radius: 2
-                color: "#ffffff1a"
+                color: "#1affffff"
 
                 Rectangle {
                     width: volumeSlider.visualPosition * parent.width

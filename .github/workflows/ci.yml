@@ -30,13 +30,13 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: 🔍 TypeScript Strict Contract Verification
-        run: npx tsc -b --noEmit
+        run: npm run typecheck
 
       - name: 🧹 ESLint Code Quality Verification
         run: npm run lint
 
       - name: 🔒 Core Cryptographic, Sync & Platform Integration Tests with Coverage
-        run: npx vitest run src/services/crypto.test.ts src/services/sync/ src/store/focus/ src/hooks/useAppBackPress.test.ts src/services/platform.test.ts src/api/web/sync.test.ts src/services/db-web.test.ts --coverage
+        run: npm run test -- src/services/crypto.test.ts src/services/sync/ src/store/focus/ src/hooks/useAppBackPress.test.ts src/services/platform.test.ts src/api/web/sync.test.ts src/services/db-web.test.ts --coverage
 
       - name: 🏗️ Production Bundle Build
         run: npm run build
@@ -70,4 +70,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: benchmark-results.json
+          path: apps/web-react/benchmark-results.json

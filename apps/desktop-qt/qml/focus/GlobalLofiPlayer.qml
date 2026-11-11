@@ -82,7 +82,7 @@ Item {
         anchors.fill: parent
         radius: isExpanded ? 16 : 24
         color: isExpanded ? "#181726" : (bubbleView.isHovered ? "#26223b" : "#1f1d2e")
-        border.color: isExpanded ? "#ffffff14" : (globalLofiRoot.isPlaying ? "#8b5cf680" : "#ffffff1a")
+        border.color: isExpanded ? "#14ffffff" : (globalLofiRoot.isPlaying ? "#808b5cf6" : "#1affffff")
         border.width: 1
         clip: true
 
@@ -95,7 +95,7 @@ Item {
             anchors.margins: -1
             radius: parent.radius
             color: "transparent"
-            border.color: globalLofiRoot.isPlaying ? "#8b5cf633" : "transparent"
+            border.color: globalLofiRoot.isPlaying ? "#338b5cf6" : "transparent"
             border.width: 2
             visible: globalLofiRoot.isPlaying
         }

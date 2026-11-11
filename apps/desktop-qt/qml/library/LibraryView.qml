@@ -1,52 +1,75 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Dialogs
 
 Rectangle {
     id: libraryRoot
     color: "#0f0e17" // bg-dark-bg
 
     property var books: []
+    property var collections: []
+    property int viewportWidth: 1366
     property string filterText: ""
     property string activeStatusFilter: "all" // "all", "reading", "finished", "queue"
+    property string activeViewMode: "books"
+    property string selectedCollectionId: ""
+    property bool isViewingArchived: false
     property var selectedBook: null
     property bool isEditingProgress: false
     property bool isCreatingBook: false
+    property bool isHelpOpen: false
+    property var importQueue: []
+    property string importStatus: ""
 
+    function importNextQueuedBook() {
+        if (importQueue.length === 0) return
+        var nextUrl = importQueue[0]
+        importQueue = importQueue.slice(1)
+        var path = nextUrl.toLocalFile()
+        if (path.length === 0) {
+            importStatus = "O arquivo selecionado não possui um caminho local válido."
+            Qt.callLater(libraryRoot.importNextQueuedBook)
+            return
+        }
+        dataController.importLibraryBook(path)
+    }
     function refreshBooks() {
         books = dataController.getLibraryBooks(filterText)
+        collections = dataController.getLibraryCollections()
+    }
+
+    function openReadingStats() {
+        var stats = dataController.getLibraryReadingStats()
+        var readingBooks = dataController.getLibraryBooks().filter(function(book) {
+            return book.reading_status === "reading"
+        })
+        readingStatsDialog.openFor(stats, readingBooks)
     }
 
     Component.onCompleted: {
         refreshBooks()
     }
 
-    function applyFilterAndStatus() {
-        var query = filterText.trim().toLowerCase()
-        var list = []
-        for (var i = 0; i < books.length; i++) {
-            var b = books[i]
-            var matchSearch = true
-            if (query.length > 0) {
-                var title = (b.title || "").toLowerCase()
-                var author = (b.author || "").toLowerCase()
-                matchSearch = (title.indexOf(query) !== -1 || author.indexOf(query) !== -1)
-            }
+    LibraryViewState {
+        id: viewState
+        controller: dataController
+        books: libraryRoot.books
+        collections: libraryRoot.collections
+        filterText: libraryRoot.filterText
+        statusFilter: libraryRoot.activeStatusFilter
+        selectedCollectionId: libraryRoot.selectedCollectionId
+        isViewingArchived: libraryRoot.isViewingArchived
+    }
 
-            var matchStatus = true
-            if (activeStatusFilter === "reading") {
-                matchStatus = ((b.current_page || 0) > 0 && (b.current_page < b.total_pages))
-            } else if (activeStatusFilter === "finished") {
-                matchStatus = (b.total_pages > 0 && b.current_page >= b.total_pages)
-            } else if (activeStatusFilter === "queue") {
-                matchStatus = ((b.current_page || 0) === 0)
-            }
-
-            if (matchSearch && matchStatus) {
-                list.push(b)
-            }
+    LibraryBulkSelection {
+        id: bulkSelection
+        controller: dataController
+        books: libraryRoot.books
+        onActionFinished: function(message) {
+            libraryRoot.importStatus = message
+            libraryRoot.refreshBooks()
         }
-        return list
     }
 
     ColumnLayout {
@@ -54,33 +77,121 @@ Rectangle {
         anchors.margins: 32
         spacing: 24
 
-        // Top KPI Header & Search
         LibraryKpiHeader {
             Layout.fillWidth: true
             books: libraryRoot.books
             filterText: libraryRoot.filterText
+            importRunning: dataController.fileOperationRunning
             onSearchTextChanged: function(text) {
                 libraryRoot.filterText = text
                 libraryRoot.refreshBooks()
             }
             onRequestAddBook: libraryRoot.isCreatingBook = true
+            onRequestImportBook: libraryImportDialog.open()
+            onRequestReadingStats: libraryRoot.openReadingStats()
         }
 
-        // Books Grid Section
-        LibraryBookGrid {
+        Rectangle {
+            visible: libraryRoot.importStatus.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 38 : 0
+            radius: 8
+            color: "#1d1b2a"
+            border.color: "#1f818cf8"
+            Text {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                text: libraryRoot.importStatus
+                color: "#c4c5d4"
+                font.pixelSize: 12
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+        }
+
+        LibraryViewModeBar {
+            viewMode: libraryRoot.activeViewMode
+            collectionCount: libraryRoot.collections.length
+            archivedCount: libraryRoot.books.filter(function(book) { return Boolean(book.is_archived) }).length
+            hasSelectedCollection: libraryRoot.activeViewMode === "books" && libraryRoot.selectedCollectionId.length > 0
+            isViewingArchived: libraryRoot.isViewingArchived
+            selectedCollectionName: viewState.selectedCollectionName()
+            onBooksRequested: {
+                libraryRoot.activeViewMode = "books"
+                libraryRoot.selectedCollectionId = ""
+            }
+            onCollectionsRequested: {
+                libraryRoot.activeViewMode = "collections"
+                libraryRoot.selectedCollectionId = ""
+            }
+            onBackToCollectionsRequested: {
+                libraryRoot.selectedCollectionId = ""
+                libraryRoot.activeViewMode = "collections"
+            }
+            onHelpRequested: libraryRoot.isHelpOpen = true
+            onArchiveViewRequested: function(archived) { libraryRoot.isViewingArchived = archived }
+        }
+
+        LibraryCollectionGrid {
+            visible: libraryRoot.activeViewMode === "collections"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            books: libraryRoot.applyFilterAndStatus()
+            viewportWidth: libraryRoot.viewportWidth
+            collections: libraryRoot.collections
+            books: viewState.archiveFilteredBooks()
+            onCollectionSelected: function(collection) {
+                libraryRoot.selectedCollectionId = collection.id
+                libraryRoot.activeViewMode = "books"
+            }
+            onCreateRequested: collectionActions.openEditor(null)
+            onEditRequested: function(collection) { collectionActions.openEditor(collection) }
+            onDeleteRequested: function(collection) { collectionActions.requestDelete(collection) }
+        }
+
+        LibraryBookGrid {
+            visible: libraryRoot.activeViewMode === "books"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            viewportWidth: libraryRoot.viewportWidth
+            books: viewState.filteredBooks()
+            collections: libraryRoot.collections
+            selectedBookIds: bulkSelection.selectedBookIds
             activeStatusFilter: libraryRoot.activeStatusFilter
+            onSelectionToggleRequested: function(bookId) { bulkSelection.toggle(bookId) }
             onStatusFilterChanged: function(filter) { libraryRoot.activeStatusFilter = filter }
             onBookSelected: function(book) {
                 libraryRoot.selectedBook = book
                 libraryRoot.isEditingProgress = true
             }
+            onBookEditRequested: function(book) { bookEditDialog.openFor(book) }
+            onBookCollectionToggleRequested: function(book, collectionId, checked) {
+                if (viewState.updateBookCollection(book, collectionId, checked)) {
+                    libraryRoot.importStatus = "Book collections updated."
+                    libraryRoot.refreshBooks()
+                } else {
+                    libraryRoot.importStatus = "Could not update this book's collections."
+                }
+            }
+            onBookStatusChangeRequested: function(book, status) {
+                if (dataController.updateLibraryBookStatus(book.id, status)) {
+                    libraryRoot.importStatus = "Reading status updated."
+                    libraryRoot.refreshBooks()
+                } else {
+                    libraryRoot.importStatus = "Could not update this book's status."
+                }
+            }
+            onBookArchiveToggleRequested: function(book, archived) {
+                if (dataController.setLibraryBookArchived(book.id, archived)) {
+                    libraryRoot.importStatus = archived ? "Book archived." : "Book restored to the library."
+                    libraryRoot.refreshBooks()
+                } else {
+                    libraryRoot.importStatus = "Could not update this book's archive status."
+                }
+            }
         }
     }
 
-    // Book Progress & Reading Details Modal
     BookDetailsModal {
         isOpen: libraryRoot.isEditingProgress
         book: libraryRoot.selectedBook
@@ -96,9 +207,13 @@ Rectangle {
             dataController.deleteLibraryBook(bookId)
             libraryRoot.refreshBooks()
         }
+        onBookOpenRequested: function(book) {
+            libraryRoot.isEditingProgress = false
+            libraryRoot.selectedBook = null
+            libraryReader.openBook(book)
+        }
     }
 
-    // Create Book Modal
     CreateBookModal {
         isOpen: libraryRoot.isCreatingBook
         onClosed: libraryRoot.isCreatingBook = false
@@ -106,5 +221,79 @@ Rectangle {
             dataController.createLibraryBook(title, author, totalPages, coverColor)
             libraryRoot.refreshBooks()
         }
+    }
+
+    LibraryCollectionActions {
+        id: collectionActions
+        anchors.fill: parent
+        controller: dataController
+        selectedCollectionId: libraryRoot.selectedCollectionId
+        onDataChanged: libraryRoot.refreshBooks()
+        onStatusRequested: function(message) { libraryRoot.importStatus = message }
+        onCollectionDeleted: function(collectionId) {
+            if (libraryRoot.selectedCollectionId === collectionId) libraryRoot.selectedCollectionId = ""
+        }
+    }
+
+    LibraryBookEditDialog {
+        id: bookEditDialog
+        anchors.centerIn: parent
+        controller: dataController
+        collections: libraryRoot.collections
+        onSaved: {
+            libraryRoot.refreshBooks()
+            libraryRoot.importStatus = "Book details saved."
+        }
+        onStatusRequested: function(message) { libraryRoot.importStatus = message }
+    }
+
+    LibraryHelpDialog {
+        anchors.centerIn: parent
+        isOpen: libraryRoot.isHelpOpen
+        onDismissRequested: libraryRoot.isHelpOpen = false
+    }
+
+    LibraryReadingStatsDialog {
+        id: readingStatsDialog
+        anchors.centerIn: parent
+    }
+
+    LibraryReaderView {
+        id: libraryReader
+        anchors.fill: parent
+    }
+
+    FileDialog {
+        id: libraryImportDialog
+        title: "Importar livros para a biblioteca"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Livros PDF e EPUB (*.pdf *.epub)"]
+        onAccepted: {
+            libraryRoot.importQueue = selectedFiles.slice()
+            libraryRoot.importStatus = libraryRoot.importQueue.length > 0
+                ? "Criptografando e importando " + libraryRoot.importQueue.length + " arquivo(s)…" : ""
+            libraryRoot.importNextQueuedBook()
+        }
+    }
+
+    Connections {
+        target: dataController
+        function onFileOperationFinished(result) {
+            if (result.operation !== "library-import") return
+            libraryRoot.importStatus = result.success
+                ? "Livro ‘" + (result.name || "") + "’ importado e criptografado."
+                : (result.error || "Não foi possível importar o livro.")
+            libraryRoot.refreshBooks()
+            if (libraryRoot.importQueue.length > 0) Qt.callLater(libraryRoot.importNextQueuedBook)
+        }
+    }
+
+    LibraryBulkActionHost {
+        anchors.fill: parent
+        selectionController: bulkSelection
+        collections: libraryRoot.collections
+        isViewingArchived: libraryRoot.isViewingArchived
+        actionsVisible: !libraryRoot.isEditingProgress && !libraryRoot.isCreatingBook &&
+                        !libraryRoot.isHelpOpen && !bookEditDialog.visible && !readingStatsDialog.visible
     }
 }

@@ -1,104 +1,25 @@
-# Guia do Aplicativo Mobile Android (Jetpack Compose + Media3)
+# Native Android Guide
 
-> **Documento Oficial de Engenharia Mobile**  
-> **Caminho:** `apps/mobile-android/`  
-> **Tecnologias:** Kotlin 1.9+, Jetpack Compose, Material3, AndroidX Media3 (ExoPlayer), UniFFI JNI  
-> **Target SDK:** 34 (Android 14) / Min SDK: 26 (Android 8.0)
+**Status:** The Kotlin/Compose app is a separate native target. This guide does not certify feature parity or production readiness; verify each module against its current implementation.
 
----
+## Source Ownership
 
-## 1. Arquitetura do App Android
+- App module: `apps/mobile-android/app/`.
+- Compose feature screens: `app/src/main/java/com/synapse/features/<module>/ui/`.
+- Shared Rust crate: `core/synapse-core/`.
+- UniFFI bridge: `bridges/bridge-uniffi/`.
+- Android-specific lifecycle, media, and platform APIs remain in the Android app.
 
-O cliente mobile substitui a antiga WebView por telas 100% nativas em Jetpack Compose, consumindo o mesmo banco de dados SQLite e o mesmo motor criptográfico Rust através da ponte UniFFI.
+Use the actual Gradle configuration and generated bindings as the source of truth for SDK versions and available APIs. Do not copy API levels or feature claims from older migration drafts.
 
-```
-+-------------------------------------------------------------------------+
-|                          apps/mobile-android                            |
-+-------------------------------------------------------------------------+
-|                                                                         |
-|  [app/src/main/java/com/synapse/app/]                                   |
-|    - MainActivity.kt: Ponto de entrada, ciclo de vida e tema escuro     |
-|    - SynapseCoreBindings.kt: Classes JNI geradas pelo UniFFI            |
-|    - EncryptedChunkDataSource.kt: Fonte de mídia customizada Media3     |
-|    - ui/                                                                |
-|      - theme/Theme.kt: Paleta de cores (#0f0e17) e tipografia            |
-|      - screens/                                                         |
-|        - VideoPlayerScreen.kt: Player nativo ExoPlayer acelerado        |
-|        - ZenQuizScreen.kt: Simulado imersivo com Material3 Cards        |
-|        - AnkiStudyScreen.kt: Estudo de flashcards com FSRS v5           |
-|        - NotesListScreen.kt: Lista de páginas com pesquisa rápida       |
-|                                                                         |
-|  [app/build.gradle.kts]                                                 |
-|    - Dependências: Compose BOM, Media3-ExoPlayer, Media3-UI             |
-|    - Integração de bibliotecas nativas .so (libsynapse_bridge_uniffi.so)|
-|                                                                         |
-+-------------------------------------------------------------------------+
+## Build
+
+From the repository root:
+
+```bash
+cd apps/mobile-android
+./gradlew testDebugUnitTest
+./gradlew assembleDebug
 ```
 
----
-
-## 2. Streaming de Vídeo Criptografado com Media3 ExoPlayer
-
-Em vez de decifrar o arquivo de vídeo inteiro para a memória interna do smartphone, o `EncryptedChunkDataSource` estende `androidx.media3.datasource.BaseDataSource` e requisita chunks de 1 MB sob demanda via JNI:
-
-```kotlin
-class EncryptedChunkDataSource(
-    private val filePath: String,
-    private val keyHex: String
-) : BaseDataSource(/* isNetwork = */ false) {
-
-    private var currentPosition: Long = 0
-    private var bytesRemaining: Long = 0
-
-    override fun open(dataSpec: DataSpec): Long {
-        currentPosition = dataSpec.position
-        val fileSize = SynapseCoreBindings.getVideoSize(filePath, keyHex)
-        bytesRemaining = if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
-            fileSize - dataSpec.position
-        } else {
-            dataSpec.length
-        }
-        return bytesRemaining
-    }
-
-    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-        if (bytesRemaining <= 0) return C.RESULT_END_OF_INPUT
-        val bytesToRead = minOf(length.toLong(), bytesRemaining).toInt()
-        val chunk = SynapseCoreBindings.readVideoChunk(filePath, keyHex, currentPosition, bytesToRead.toLong())
-        System.arraycopy(chunk, 0, buffer, offset, chunk.size)
-        currentPosition += chunk.size
-        bytesRemaining -= chunk.size
-        return chunk.size
-    }
-
-    override fun close() {
-        bytesRemaining = 0
-    }
-}
-```
-
----
-
-## 3. Gestão do Botão Voltar (Android Hardware Back Navigation)
-
-De acordo com as diretrizes do projeto Caderno/Synapse:
-- Qualquer modal, simulado imersivo ou drawer lateral deve interceptar o evento de retorno físico ou gesto do Android (`BackHandler { ... }` em Compose).
-- Se uma tela imersiva estiver ativa (ex.: Simulado Zen), a primeira pressão no botão voltar sai do simulado com confirmação; a segunda pressão fecha o aplicativo.
-
----
-
-## 4. Como Compilar para Android
-
-1. Instalar o Android NDK e CMake via Android Studio SDK Manager.
-2. Gerar as bibliotecas `.so` do Rust para as arquiteturas desejadas:
-   ```bash
-   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
-   cargo build --release -p synapse-bridge-uniffi --target aarch64-linux-android
-   ```
-3. Copiar os arquivos `.so` gerados para `apps/mobile-android/app/src/main/jniLibs/arm64-v8a/`.
-4. Compilar o APK:
-   ```bash
-   cd apps/mobile-android
-   ./gradlew assembleDebug
-   ```
-
+Run instrumentation tests on a configured emulator or device. For cross-app module naming and ownership, see the [module structure guide](../architecture/module-structure.md). The Android app's parity must be reviewed independently from the Qt desktop matrix.

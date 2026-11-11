@@ -8,7 +8,7 @@ Rectangle {
     Layout.fillHeight: true
     radius: 16
     color: "#1a1924" // bg-dark-card
-    border.color: "#ffffff0f"
+    border.color: "#0fffffff"
     border.width: 1
 
     property var lofis: []
@@ -55,8 +55,8 @@ Rectangle {
                 width: lofiList.width
                 height: 44
                 radius: 8
-                color: historyRoot.activeLofi === modelData ? "#8b5cf626" : (lofiRowMouse.containsMouse ? "#211f30" : "#15141b")
-                border.color: historyRoot.activeLofi === modelData ? "#8b5cf680" : "#ffffff0a"
+                color: historyRoot.activeLofi === modelData ? "#268b5cf6" : (lofiRowMouse.containsMouse ? "#211f30" : "#15141b")
+                border.color: historyRoot.activeLofi === modelData ? "#808b5cf6" : "#0affffff"
                 border.width: 1
 
                 RowLayout {
@@ -102,7 +102,7 @@ Rectangle {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: "#ffffff0f" }
+        Rectangle { Layout.fillWidth: true; height: 1; color: "#0fffffff" }
 
         // Session History Section
         RowLayout {
@@ -134,7 +134,7 @@ Rectangle {
                 height: 54
                 radius: 8
                 color: "#15141b"
-                border.color: "#ffffff0a"
+                border.color: "#0affffff"
 
                 RowLayout {
                     anchors.fill: parent
@@ -168,7 +168,7 @@ Rectangle {
                     // Delete Session
                     Rectangle {
                         width: 28; height: 28; radius: 6
-                        color: delSessMouse.containsMouse ? "#f43f5e26" : "transparent"
+                        color: delSessMouse.containsMouse ? "#26f43f5e" : "transparent"
                         Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
                         MouseArea {
                             id: delSessMouse

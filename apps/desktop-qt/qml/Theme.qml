@@ -4,17 +4,17 @@ QtObject {
     id: theme
 
     // Canvas & Surfaces (Caderno Signature Violet/Midnight Design System)
-    readonly property color bgDarkBg: "#0d0b14"       // Main deep dark purple canvas
-    readonly property color bgDarkCard: "#161325"     // Card & panel surfaces
-    readonly property color bgDarkSurface: "#1d1830"  // Elevated pills, item tiles, inputs
-    readonly property color bgHover: "#ffffff0a"      // Subtle hover highlight
-    readonly property color activePillBg: "#231c38"   // Active capsule in navigation & tabs
-    readonly property color activePillBorder: "#8b5cf633" // Delicate purple accent border
+    readonly property color bgDarkBg: "#0f0e17"       // Main application canvas
+    readonly property color bgDarkCard: "#1a1924"     // Card & panel surfaces
+    readonly property color bgDarkSurface: "#15141b"  // Elevated pills, item tiles, inputs
+    readonly property color bgHover: "#0affffff"      // Subtle hover highlight
+    readonly property color activePillBg: "#268b5cf6" // Brand accent at 15% opacity
+    readonly property color activePillBorder: "#408b5cf6" // Brand accent at 25% opacity
 
     // Text Scale
     readonly property color textDark: "#ffffff"       // Primary high-contrast text
-    readonly property color textSubtext: "#9ca3af"    // Secondary muted text (zinc-400)
-    readonly property color textMuted: "#6b7280"      // Micro labels, placeholders (zinc-500)
+    readonly property color textSubtext: "#a7a9be"    // Secondary text from the web design system
+    readonly property color textMuted: "#77798d"      // Micro labels and placeholders
 
     // Brand Palette (Signature Violet / Purple)
     readonly property color brand50: "#f5f3ff"
@@ -27,24 +27,24 @@ QtObject {
 
     // Functional & Semantic Colors
     readonly property color success: "#10b981"        // Emerald
-    readonly property color successBg: "#10b9811a"
-    readonly property color successBorder: "#10b98133"
+    readonly property color successBg: "#1a10b981"
+    readonly property color successBorder: "#3310b981"
 
     readonly property color error: "#f43f5e"          // Rose
-    readonly property color errorBg: "#f43f5e1a"
-    readonly property color errorBorder: "#f43f5e33"
+    readonly property color errorBg: "#1af43f5e"
+    readonly property color errorBorder: "#33f43f5e"
 
     readonly property color warning: "#f59e0b"        // Amber
-    readonly property color warningBg: "#f59e0b1a"
-    readonly property color warningBorder: "#f59e0b33"
+    readonly property color warningBg: "#1af59e0b"
+    readonly property color warningBorder: "#33f59e0b"
 
     // Borders & Dividers
-    readonly property color borderSubtle: "#ffffff0a" // Whisper-thin border
-    readonly property color borderCard: "#26203b"     // Subtle purple-card border
-    readonly property color borderBrand: "#8b5cf64d"  // hover:border-brand-500/30
-    readonly property color borderFocus: "#8b5cf680"
+    readonly property color borderSubtle: "#0affffff" // Whisper-thin border
+    readonly property color borderCard: "#0fffffff"   // Whisper-thin neutral card border
+    readonly property color borderBrand: "#4d8b5cf6"  // hover:border-brand-500/30
+    readonly property color borderFocus: "#808b5cf6"
 
     // Typography
-    readonly property string fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif"
-    readonly property string fontMono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    readonly property string fontFamily: "Sans Serif"
+    readonly property string fontMono: "Monospace"
 }

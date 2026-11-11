@@ -6,7 +6,7 @@ Rectangle {
     Layout.fillWidth: true
     height: 56
     color: "#161524"
-    border.color: "#ffffff0f"
+    border.color: "#0fffffff"
     border.width: 1
 
     property string diagramTitle: "Diagrama"
@@ -38,7 +38,7 @@ Rectangle {
             }
         }
 
-        Rectangle { width: 1; height: 24; color: "#ffffff12" }
+        Rectangle { width: 1; height: 24; color: "#12ffffff" }
 
         // Title
         Text {
@@ -65,7 +65,7 @@ Rectangle {
                     property bool isSelected: toolbarRoot.activeTool === modelData.tool
                     width: 86; height: 32; radius: 6
                     color: isSelected ? "#8b5cf6" : "#211f30"
-                    border.color: isSelected ? "#a78bfa" : "#ffffff10"
+                    border.color: isSelected ? "#a78bfa" : "#10ffffff"
 
                     Text {
                         anchors.centerIn: parent
@@ -84,7 +84,7 @@ Rectangle {
             }
         }
 
-        Rectangle { width: 1; height: 24; color: "#ffffff12" }
+        Rectangle { width: 1; height: 24; color: "#12ffffff" }
 
         // Color Selector
         RowLayout {
@@ -104,11 +104,11 @@ Rectangle {
             }
         }
 
-        Rectangle { width: 1; height: 24; color: "#ffffff12" }
+        Rectangle { width: 1; height: 24; color: "#12ffffff" }
 
         // Clear Canvas
         Rectangle {
-            width: 76; height: 32; radius: 6; color: "#f43f5e18"; border.color: "#f43f5e33"
+            width: 76; height: 32; radius: 6; color: "#18f43f5e"; border.color: "#33f43f5e"
             Text { anchors.centerIn: parent; text: "Limpar"; color: "#fda4af"; font.pixelSize: 11; font.bold: true }
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor

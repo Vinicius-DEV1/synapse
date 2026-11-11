@@ -30,7 +30,7 @@ ColumnLayout {
 
         // -5 Button
         Rectangle {
-            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#ffffff12"
+            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#12ffffff"
             Text { anchors.centerIn: parent; text: "-5"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -42,7 +42,7 @@ ColumnLayout {
 
         // -1 Button
         Rectangle {
-            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#ffffff12"
+            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#12ffffff"
             Text { anchors.centerIn: parent; text: "-1"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -58,7 +58,7 @@ ColumnLayout {
             height: 38
             radius: 8
             color: "#15141b"
-            border.color: pageInput.activeFocus ? "#7c3aed" : "#ffffff15"
+            border.color: pageInput.activeFocus ? "#7c3aed" : "#15ffffff"
             TextInput {
                 id: pageInput
                 anchors.centerIn: parent
@@ -78,7 +78,7 @@ ColumnLayout {
 
         // +1 Button
         Rectangle {
-            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#ffffff12"
+            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#12ffffff"
             Text { anchors.centerIn: parent; text: "+1"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -90,7 +90,7 @@ ColumnLayout {
 
         // +5 Button
         Rectangle {
-            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#ffffff12"
+            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#12ffffff"
             Text { anchors.centerIn: parent; text: "+5"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -102,7 +102,7 @@ ColumnLayout {
 
         // +10 Button
         Rectangle {
-            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#ffffff12"
+            width: 50; height: 38; radius: 8; color: "#211f30"; border.color: "#12ffffff"
             Text { anchors.centerIn: parent; text: "+10"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -118,8 +118,8 @@ ColumnLayout {
         Layout.fillWidth: true
         height: 38
         radius: 8
-        color: stepperRoot.currentPage >= stepperRoot.totalPages ? "#10b98126" : "#211f30"
-        border.color: stepperRoot.currentPage >= stepperRoot.totalPages ? "#10b981" : "#ffffff12"
+        color: stepperRoot.currentPage >= stepperRoot.totalPages ? "#2610b981" : "#211f30"
+        border.color: stepperRoot.currentPage >= stepperRoot.totalPages ? "#10b981" : "#12ffffff"
 
         RowLayout {
             anchors.centerIn: parent

@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: modalRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     z: 95
 
     signal itemSubmitted(string label, string username, string password, string url)
@@ -19,7 +19,7 @@ Rectangle {
         height: 420
         radius: 16
         color: "#161524"
-        border.color: "#ffffff14"
+        border.color: "#14ffffff"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -44,7 +44,7 @@ Rectangle {
                 Layout.fillWidth: true; spacing: 4
                 Text { text: "Serviço ou Rótulo"; color: "#a7a9be"; font.pixelSize: 12 }
                 Rectangle {
-                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultLabelInput.activeFocus ? "#7c3aed" : "#ffffff15"
+                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultLabelInput.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: vaultLabelInput; anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
                         verticalAlignment: TextInput.AlignVCenter; color: "#fffffe"; font.pixelSize: 13; selectByMouse: true
@@ -57,7 +57,7 @@ Rectangle {
                 Layout.fillWidth: true; spacing: 4
                 Text { text: "Usuário ou E-mail"; color: "#a7a9be"; font.pixelSize: 12 }
                 Rectangle {
-                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultUserInput.activeFocus ? "#7c3aed" : "#ffffff15"
+                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultUserInput.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: vaultUserInput; anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
                         verticalAlignment: TextInput.AlignVCenter; color: "#fffffe"; font.pixelSize: 13; selectByMouse: true
@@ -70,7 +70,7 @@ Rectangle {
                 Layout.fillWidth: true; spacing: 4
                 Text { text: "Senha"; color: "#a7a9be"; font.pixelSize: 12 }
                 Rectangle {
-                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultPassInput.activeFocus ? "#7c3aed" : "#ffffff15"
+                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultPassInput.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: vaultPassInput; anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
                         verticalAlignment: TextInput.AlignVCenter; color: "#fffffe"; font.pixelSize: 13; echoMode: TextInput.Password; selectByMouse: true
@@ -83,7 +83,7 @@ Rectangle {
                 Layout.fillWidth: true; spacing: 4
                 Text { text: "URL do Site (opcional)"; color: "#a7a9be"; font.pixelSize: 12 }
                 Rectangle {
-                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultUrlInput.activeFocus ? "#7c3aed" : "#ffffff15"
+                    Layout.fillWidth: true; height: 38; radius: 8; color: "#15141b"; border.color: vaultUrlInput.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: vaultUrlInput; anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
                         verticalAlignment: TextInput.AlignVCenter; color: "#fffffe"; font.pixelSize: 13; selectByMouse: true

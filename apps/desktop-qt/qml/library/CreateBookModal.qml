@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: createBookRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     visible: isOpen
     z: 95
 
@@ -36,7 +36,7 @@ Rectangle {
         height: 420
         radius: 16
         color: "#161524"
-        border.color: "#ffffff14"
+        border.color: "#14ffffff"
         border.width: 1
 
         MouseArea {
@@ -74,7 +74,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: newBookTitle.activeFocus ? "#7c3aed" : "#ffffff15"
+                    border.color: newBookTitle.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: newBookTitle
                         anchors.fill: parent
@@ -97,7 +97,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: newBookAuthor.activeFocus ? "#7c3aed" : "#ffffff15"
+                    border.color: newBookAuthor.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: newBookAuthor
                         anchors.fill: parent
@@ -120,7 +120,7 @@ Rectangle {
                     height: 38
                     radius: 8
                     color: "#15141b"
-                    border.color: newBookPages.activeFocus ? "#7c3aed" : "#ffffff15"
+                    border.color: newBookPages.activeFocus ? "#7c3aed" : "#15ffffff"
                     TextInput {
                         id: newBookPages
                         anchors.fill: parent

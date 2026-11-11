@@ -24,7 +24,7 @@ ListView {
         height: 76
         radius: 12
         color: vaultCardMouse.containsMouse ? "#211f30" : "#1a1924" // bg-dark-card
-        border.color: vaultCardMouse.containsMouse ? "#8b5cf666" : "#ffffff0f"
+        border.color: vaultCardMouse.containsMouse ? "#668b5cf6" : "#0fffffff"
         border.width: 1
 
         Behavior on color { ColorAnimation { duration: 150 } }
@@ -37,8 +37,8 @@ ListView {
 
             Rectangle {
                 width: 44; height: 44; radius: 10
-                color: "#8b5cf61a"
-                border.color: "#8b5cf633"
+                color: "#1a8b5cf6"
+                border.color: "#338b5cf6"
 
                 Text {
                     anchors.centerIn: parent
@@ -72,7 +72,7 @@ ListView {
                 height: 38
                 radius: 8
                 color: "#15141b"
-                border.color: "#ffffff12"
+                border.color: "#12ffffff"
 
                 RowLayout {
                     anchors.fill: parent
@@ -92,7 +92,7 @@ ListView {
                     // Ver / Ocultar
                     Rectangle {
                         width: 50; height: 26; radius: 6
-                        color: "#ffffff0a"
+                        color: "#0affffff"
 
                         Text {
                             anchors.centerIn: parent
@@ -111,7 +111,7 @@ ListView {
                     // Copiar Senha
                     Rectangle {
                         width: 56; height: 26; radius: 6
-                        color: vaultListView.copiedId === modelData.id ? "#10b98126" : "#ffffff0a"
+                        color: vaultListView.copiedId === modelData.id ? "#2610b981" : "#0affffff"
                         border.color: vaultListView.copiedId === modelData.id ? "#10b981" : "transparent"
 
                         Text {
@@ -134,8 +134,8 @@ ListView {
             // Delete Button
             Rectangle {
                 width: 68; height: 32; radius: 8
-                color: delCredMouse.containsMouse ? "#f43f5e26" : "#f43f5e1a"
-                border.color: delCredMouse.containsMouse ? "#f43f5e66" : "#f43f5e33"
+                color: delCredMouse.containsMouse ? "#26f43f5e" : "#1af43f5e"
+                border.color: delCredMouse.containsMouse ? "#66f43f5e" : "#33f43f5e"
 
                 Text {
                     anchors.centerIn: parent

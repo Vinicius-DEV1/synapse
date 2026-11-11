@@ -87,32 +87,63 @@ sudo pacman -S --needed \
 
 ## 3. Development Workflows
 
-Synapse provides two distinct development modes:
+Synapse has four app targets. The root npm scripts operate the React workspace; the Expo shell has its own package and lockfile. The native Qt and Compose apps use CMake and Gradle respectively.
 
-### 3.1. Web-Only Development (Instant Startup)
-For rapid frontend iteration, UI styling, and component design without building Rust binaries:
+### 3.1. React Web App
+
+For browser development with HMR and IndexedDB-backed web storage:
+
 ```bash
 npm run dev
 ```
-- Starts the Vite development server at `http://localhost:35174`.
-- Automatically activates the browser fallback storage (`webApi` with IndexedDB persistence) and the native Web Crypto API.
 
-### 3.2. Full Hybrid Desktop Development (Tauri v2 + Rust)
-For testing native IPC commands, SQLite persistence, custom `encrypted://` streaming, and OS shell integrations:
+Vite serves the app at `http://localhost:35174`.
+
+### 3.2. React + Tauri Desktop App
+
+For the hybrid desktop target with native IPC, SQLite persistence, and OS integrations:
+
 ```bash
-npm run tauri dev
+npm run tauri -- dev
 ```
-- Automatically launches the Vite frontend server and compiles the Rust backend in debug mode.
-- *Note*: Initial compilation compiles native cryptographic and networking crates (`aes-gcm`, `axum`, `rusqlite`, `reqwest`), which may take 1–3 minutes. Subsequent incremental builds execute in seconds.
 
----
+The first Rust build compiles the cryptography and networking dependencies; subsequent builds use Cargo's root `target/` cache.
+
+### 3.3. Native Qt Desktop App
+
+The fully native desktop client is in `apps/desktop-qt/` and uses Qt 6, QML, C++17, and the Rust Qt bridge. Install Qt 6 development packages, CMake, libmpv, and libarchive, then configure and build it:
+
+```bash
+cmake -S apps/desktop-qt -B apps/desktop-qt/build -DCMAKE_BUILD_TYPE=Release
+cmake --build apps/desktop-qt/build --config Release
+```
+
+### 3.4. Native Android App
+
+The Kotlin/Jetpack Compose app is in `apps/mobile-android/`. Open that directory in Android Studio or build with the Gradle wrapper after installing the Android SDK and NDK:
+
+```bash
+cd apps/mobile-android
+./gradlew assembleDebug
+```
+
+### 3.5. Android WebView Shell
+
+The Expo shell is a separate package in `apps/mobile-webview/`:
+
+```bash
+npm --prefix apps/mobile-webview install
+npm --prefix apps/mobile-webview run start
+```
+
+Use `npm --prefix apps/mobile-webview run android` to launch it on an emulator or connected device.
 
 ## 4. Environment Variables Configuration
 
-Create a `.env` file in the project root to configure cloud sync, OAuth, and AI features:
+Create `apps/web-react/.env` to configure cloud sync, OAuth, and AI features:
 
 ```bash
-cp .env.example .env
+cp apps/web-react/.env.example apps/web-react/.env
 ```
 
 | Variable | Description | Default / Example |
@@ -130,7 +161,7 @@ cp .env.example .env
 | `VITE_GEMINI_API_KEY` | Google Gemini API Key for conversational AI & study cards | `AIzaSy...` |
 
 > [!NOTE]
-> All cloud credentials and sync endpoints are strictly opt-in. Synapse functions 100% offline without any API keys or network connection.
+> Cloud, AI, and online metadata integrations require configuration and connectivity. Local workflows may remain available offline, depending on the app and feature.
 
 ---
 
@@ -143,19 +174,19 @@ Synapse enforces strict quality gates. Run targeted checks to ensure zero regres
 > Do not run `npm test` on every turn. Run specific test suites with sub-second feedback:
 ```bash
 # Cryptographic service test suite
-npx vitest run src/services/crypto.test.ts
+npm run test -- src/services/crypto.test.ts
 
 # Storage and API adapter test suites
-npx vitest run src/api/
+npm run test -- src/api/
 
 # Run tests related to modified/uncommitted files
-npx vitest related --run src/services/crypto.ts
+npm run test:related -- src/services/crypto.ts
 ```
 
 ### 5.2. Strict TypeScript Contract Verification
 Verify type safety across all frontend and IPC boundaries without running heavy DOM harnesses:
 ```bash
-npx tsc -b --noEmit
+npm run typecheck
 ```
 
 ### 5.3. Static Analysis & Linting
@@ -170,10 +201,10 @@ npm run lint
 ### 6.1. Desktop Native Release Packaging
 To build an optimized, stripped production binary:
 ```bash
-npm run tauri build
+npm run tauri -- build
 ```
 
-This generates native installers in `src-tauri/target/release/bundle/`:
+This generates native installers in the root Cargo workspace output at `target/release/bundle/`:
 - **Linux**: `.AppImage` (portable) and `.deb` (Debian/Ubuntu package).
 - **Windows**: `.msi` (Windows Installer) and `.exe` (NSIS setup).
 - **macOS**: `.dmg` (Disk Image) and `.app` bundle (Universal binary).
@@ -183,7 +214,7 @@ To build the standalone Progressive Web App for hosting on static edge CDNs (Clo
 ```bash
 npm run build:web
 ```
-The optimized production bundle will be generated in `dist-web/`.
+The optimized production bundle will be generated in `apps/web-react/dist-web/`.
 
 ---
 
@@ -194,4 +225,4 @@ The optimized production bundle will be generated in `dist-web/`.
 | `failed to run webkit2gtk-4.1 build script` | Missing development headers on Linux | Run the package manager command in §1.2 to install `libwebkit2gtk-4.1-dev`. |
 | `GLIBCXX / libstdc++ not found` | Outdated C++ runtime | Update GCC and system libraries via package manager. |
 | Tauri window renders blank white screen | WebView2 missing or WebKitGTK crash | On Linux, check graphics drivers; on Windows, install the Evergreen WebView2 runtime. |
-| Port 35174 already in use | Stale Vite dev server process | Run `killall -9 node` or change the port in `vite.config.ts`. |
+| Port 35174 already in use | Stale Vite dev server process | Stop the process listening on the port or change it in `apps/web-react/vite.config.ts`. |

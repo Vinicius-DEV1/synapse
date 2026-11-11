@@ -7,7 +7,7 @@ Rectangle {
     height: 360
     radius: 16
     color: "#1a1924"
-    border.color: "#ffffff12"
+    border.color: "#12ffffff"
 
     property int cardsReviewedCount: 0
 

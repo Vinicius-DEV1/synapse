@@ -31,7 +31,7 @@ Rectangle {
     Rectangle {
         anchors.centerIn: parent
         width: 480; height: 360; radius: 16
-        color: "#161524"; border.color: "#ffffff1a"
+        color: "#161524"; border.color: "#1affffff"
 
         MouseArea { anchors.fill: parent }
 
@@ -66,7 +66,7 @@ Rectangle {
                 height: 48
                 radius: 10
                 color: "#0f0e17"
-                border.color: "#34d3994d"
+                border.color: "#4d34d399"
                 border.width: 1
 
                 RowLayout {
@@ -135,8 +135,8 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 34
                     radius: 6
-                    color: dialogRoot.incUpper ? "#6366f126" : "#211f30"
-                    border.color: dialogRoot.incUpper ? "#818cf8" : "#ffffff10"
+                    color: dialogRoot.incUpper ? "#266366f1" : "#211f30"
+                    border.color: dialogRoot.incUpper ? "#818cf8" : "#10ffffff"
                     Text { anchors.centerIn: parent; text: "A-Z"; color: dialogRoot.incUpper ? "#818cf8" : "#64748b"; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -152,8 +152,8 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 34
                     radius: 6
-                    color: dialogRoot.incLower ? "#6366f126" : "#211f30"
-                    border.color: dialogRoot.incLower ? "#818cf8" : "#ffffff10"
+                    color: dialogRoot.incLower ? "#266366f1" : "#211f30"
+                    border.color: dialogRoot.incLower ? "#818cf8" : "#10ffffff"
                     Text { anchors.centerIn: parent; text: "a-z"; color: dialogRoot.incLower ? "#818cf8" : "#64748b"; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -169,8 +169,8 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 34
                     radius: 6
-                    color: dialogRoot.incNumbers ? "#6366f126" : "#211f30"
-                    border.color: dialogRoot.incNumbers ? "#818cf8" : "#ffffff10"
+                    color: dialogRoot.incNumbers ? "#266366f1" : "#211f30"
+                    border.color: dialogRoot.incNumbers ? "#818cf8" : "#10ffffff"
                     Text { anchors.centerIn: parent; text: "0-9"; color: dialogRoot.incNumbers ? "#818cf8" : "#64748b"; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -186,8 +186,8 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 34
                     radius: 6
-                    color: dialogRoot.incSymbols ? "#6366f126" : "#211f30"
-                    border.color: dialogRoot.incSymbols ? "#818cf8" : "#ffffff10"
+                    color: dialogRoot.incSymbols ? "#266366f1" : "#211f30"
+                    border.color: dialogRoot.incSymbols ? "#818cf8" : "#10ffffff"
                     Text { anchors.centerIn: parent; text: "!@#"; color: dialogRoot.incSymbols ? "#818cf8" : "#64748b"; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor

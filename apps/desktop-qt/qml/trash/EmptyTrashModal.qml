@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: modalRoot
     anchors.fill: parent
-    color: "#00000088"
+    color: "#88000000"
     z: 99
     visible: false
 
@@ -25,7 +25,7 @@ Rectangle {
         height: 200
         radius: 16
         color: "#161524"
-        border.color: "#f43f5e55"
+        border.color: "#55f43f5e"
         border.width: 1
 
         MouseArea { anchors.fill: parent } // Prevent click-through

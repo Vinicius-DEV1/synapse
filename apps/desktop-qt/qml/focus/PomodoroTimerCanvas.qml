@@ -54,8 +54,8 @@ ColumnLayout {
                 width: tagText.contentWidth + 16
                 height: 28
                 radius: 6
-                color: canvasRoot.activeTag === modelData ? "#8b5cf626" : "#1a1924"
-                border.color: canvasRoot.activeTag === modelData ? "#8b5cf680" : "#ffffff10"
+                color: canvasRoot.activeTag === modelData ? "#268b5cf6" : "#1a1924"
+                border.color: canvasRoot.activeTag === modelData ? "#808b5cf6" : "#10ffffff"
 
                 Text {
                     id: tagText
@@ -81,24 +81,24 @@ ColumnLayout {
 
         Rectangle {
             width: 140; height: 36; radius: 18
-            color: canvasRoot.totalSeconds === 25 * 60 ? "#8b5cf633" : "#1a1924"
-            border.color: canvasRoot.totalSeconds === 25 * 60 ? "#8b5cf680" : "#ffffff12"
+            color: canvasRoot.totalSeconds === 25 * 60 ? "#338b5cf6" : "#1a1924"
+            border.color: canvasRoot.totalSeconds === 25 * 60 ? "#808b5cf6" : "#12ffffff"
             Text { anchors.centerIn: parent; text: "Pomodoro (25m)"; color: canvasRoot.totalSeconds === 25 * 60 ? "#c4b5fd" : "#a7a9be"; font.pixelSize: 12; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: canvasRoot.presetSelected(25) }
         }
 
         Rectangle {
             width: 140; height: 36; radius: 18
-            color: canvasRoot.totalSeconds === 50 * 60 ? "#8b5cf633" : "#1a1924"
-            border.color: canvasRoot.totalSeconds === 50 * 60 ? "#8b5cf680" : "#ffffff12"
+            color: canvasRoot.totalSeconds === 50 * 60 ? "#338b5cf6" : "#1a1924"
+            border.color: canvasRoot.totalSeconds === 50 * 60 ? "#808b5cf6" : "#12ffffff"
             Text { anchors.centerIn: parent; text: "Foco Longo (50m)"; color: canvasRoot.totalSeconds === 50 * 60 ? "#c4b5fd" : "#a7a9be"; font.pixelSize: 12; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: canvasRoot.presetSelected(50) }
         }
 
         Rectangle {
             width: 140; height: 36; radius: 18
-            color: canvasRoot.totalSeconds === 5 * 60 ? "#8b5cf633" : "#1a1924"
-            border.color: canvasRoot.totalSeconds === 5 * 60 ? "#8b5cf680" : "#ffffff12"
+            color: canvasRoot.totalSeconds === 5 * 60 ? "#338b5cf6" : "#1a1924"
+            border.color: canvasRoot.totalSeconds === 5 * 60 ? "#808b5cf6" : "#12ffffff"
             Text { anchors.centerIn: parent; text: "Pausa Curta (5m)"; color: canvasRoot.totalSeconds === 5 * 60 ? "#c4b5fd" : "#a7a9be"; font.pixelSize: 12; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: canvasRoot.presetSelected(5) }
         }
@@ -106,7 +106,7 @@ ColumnLayout {
         Rectangle {
             width: 130; height: 36; radius: 18
             color: "#1a1924"
-            border.color: "#ffffff12"
+            border.color: "#12ffffff"
             Text { anchors.centerIn: parent; text: "⚙ Ajustar..."; color: "#a7a9be"; font.pixelSize: 12; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: canvasRoot.customTimeRequested() }
         }
@@ -140,7 +140,7 @@ ColumnLayout {
                 width: statusTimerText.contentWidth + 14
                 height: 22
                 radius: 11
-                color: canvasRoot.isRunning ? "#10b98126" : "#8b5cf626"
+                color: canvasRoot.isRunning ? "#2610b981" : "#268b5cf6"
 
                 Text {
                     id: statusTimerText
@@ -185,7 +185,7 @@ ColumnLayout {
             height: 44
             radius: 22
             color: "#1a1924"
-            border.color: "#ffffff1a"
+            border.color: "#1affffff"
 
             Text {
                 anchors.centerIn: parent
@@ -208,7 +208,7 @@ ColumnLayout {
         height: 52
         radius: 12
         color: "#161524"
-        border.color: "#ffffff0f"
+        border.color: "#0fffffff"
         border.width: 1
 
         RowLayout {

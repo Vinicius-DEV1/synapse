@@ -2,7 +2,7 @@
 
 - **Status**: Proposed / In Review
 - **Document Version**: 1.0.0
-- **Target Modules**: `src/components/library/`, `src/components/anki/`, `src/services/gemini/`
+- **Target Modules**: `apps/web-react/src/components/library/`, `apps/web-react/src/components/anki/`, `apps/web-react/src/services/gemini/`
 - **Core Dependencies**: Google Gemini 2.0 Flash, FSRS-4.5 Engine, EpubJS / PDF.js
 
 ---
@@ -149,5 +149,6 @@ $$\text{Initial Interval} = I(S, R_{\text{desired}})$$
 
 ## 7. Security & Cryptographic Boundaries
 
-- **Zero Plaintext Leakage**: Vocabulary card fields (definitions, sentences, notes) are encrypted using the user's active `anki_key` or `files_key` prior to persistent storage.
-- **Offline Resilience**: Saved cards persist locally in SQLite / IndexedDB and synchronize asynchronously across devices using conflict-free state resolution.
+- **Proposed Encryption Requirement**: If this feature is implemented, vocabulary definitions, context sentences, and notes must follow the active card-storage encryption contract. The RFC does not establish that these fields are currently encrypted.
+- **Proposed Offline Behavior**: Saved cards should persist locally and synchronize through the relevant adapter. Cross-client conflict and encryption behavior must be verified during implementation.
+- **Implementation Status**: This RFC remains Proposed / In Review. Consult the [native encryption audit](../security/native-encryption-audit.md) before making storage-protection claims.

@@ -1,6 +1,8 @@
 # 🔐 Synapse Password & Credential Vault — Technical Specification
 
-The **Synapse Vault** is a military-grade password, secret, and credential manager engineered with **Zero-Knowledge field-level encryption** and **k-Anonymity breach verification**.
+The **Synapse Vault** is a credential-management module with AES-GCM protection in supported flows and k-anonymity breach checking. This document describes the product design; it does not certify every client or every related data field.
+
+Native Qt setup protects selected vault item fields, groups, and password history. It does not encrypt every SQLite table or every metadata field. See the [native encryption audit](../security/native-encryption-audit.md) for current scope and remaining plaintext coverage.
 
 ---
 
@@ -25,25 +27,22 @@ The **Synapse Vault** is a military-grade password, secret, and credential manag
 ```
 
 - **Source Code Locations**:
-  - UI Presentation: `src/components/vault/`
-  - Client Cryptographic Services: `src/services/vault-crypto.ts`
-  - Tauri Native Backend: `src-tauri/src/cmd_vault/` (`mod.rs`, `items.rs`, `passwords.rs`, `groups.rs`)
+  - UI Presentation: `apps/web-react/src/components/vault/`
+  - Client Cryptographic Services: `apps/web-react/src/services/vault-crypto.ts`
+  - Tauri Native Backend: `apps/web-react/src-tauri/src/cmd_vault/` (`mod.rs`, `items.rs`, `passwords.rs`, `groups.rs`)
 
 ---
 
 ## 2. Field-Level Encryption Model
 
-Unlike naive vaults that encrypt entire tables into opaque blobs (preventing indexing or fast sorting), Synapse Vault implements granular **field-level encryption**:
+The clients have separate vault adapters. The native Qt setup currently encrypts the following local content fields during setup and on supported writes:
 
-1. **Non-Sensitive Searchable Columns**: Item titles, categories, and group identifiers are indexed locally for sub-millisecond retrieval.
-2. **Encrypted Secret Columns**:
-   - `password`
-   - `totp_secret`
-   - `notes`
-   - `card_number`
-3. **Wire Format**: Each sensitive field is stored as an independent ciphertext payload:
+1. **Credential fields**: `label`, `username`, `email`, `password`, `url`, `notes`, and `custom_fields`.
+2. **Group and history fields**: group `name`, `icon`, and `color`, plus historical password values.
+3. **Visible metadata**: flags, ordering, timestamps, relationships, and other operational columns are not all encrypted. The current field inventory is in the [native encryption audit](../security/native-encryption-audit.md).
+4. **Wire format**: each protected text value is stored as an AES-GCM ciphertext payload:
    $$\text{Payload} = \text{IV}_{\text{12B}} : \text{Ciphertext} : \text{AuthTag}_{\text{16B}}$$
-   Every encryption cycle generates a fresh 96-bit random IV using a Cryptographically Secure Pseudo-Random Number Generator (`crypto.getRandomValues`).
+  Supported encryption flows generate a fresh 96-bit nonce. React/Tauri and Qt use separate persistence adapters; verify each implementation before assuming identical coverage.
 
 ---
 
@@ -69,7 +68,7 @@ Synapse verifies whether stored or generated credentials have appeared in known 
 ```
 
 - **Zero Plaintext Exposure**: Only 5 hexadecimal characters of the SHA-1 hash are sent to the external API.
-- **Mathematical Privacy**: Over 500 potential password suffixes share the same 5-character prefix, making it mathematically impossible for the external API or network sniffers to determine the actual password.
+  - **Privacy Boundary**: The request sends only the configured hash prefix, not the password itself. This reduces information disclosed to the service; it is not a claim that every network or service-side inference is mathematically impossible.
 
 ---
 
@@ -84,7 +83,6 @@ The built-in generator produces cryptographically strong credentials based on **
 
 ---
 
-## 5. Memory Hygiene & Zeroization
+## 5. Memory Hygiene and Zeroization
 
-- Master and vault cryptographic keys are held exclusively in volatile RAM.
-- Upon session lock, window minimization (configurable), or inactivity timeout, all memory allocations containing cryptographic keys (`DbState.keys` in Rust and CryptoKey references in Web memory) are overwritten and wiped.
+Selected bridge buffers and Qt key-map values are cleared during lock. Full zeroization of Qt implicit-shared strings, QML state, JSON query buffers, IndexedDB copies, temporary files, and WAL snapshots has not been proven. Treat this as a defense-in-depth measure, not a zero-residual guarantee.

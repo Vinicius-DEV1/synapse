@@ -6,7 +6,7 @@
   "hosting": [
     {
       "site": "synapse-dev",
-      "public": "dist-web",
+      "public": "apps/web-react/dist-web",
       "ignore": [
         "firebase.json",
         "**/.*",
@@ -63,7 +63,7 @@
     },
     {
       "site": "synapsedev",
-      "public": "dist-web",
+      "public": "apps/web-react/dist-web",
       "ignore": [
         "firebase.json",
         "**/.*",
@@ -120,7 +120,7 @@
     },
     {
       "site": "synapse-web",
-      "public": "dist-web",
+      "public": "apps/web-react/dist-web",
       "ignore": [
         "firebase.json",
         "**/.*",
@@ -177,7 +177,7 @@
     },
     {
       "site": "fourth-cirrus-468923-h7",
-      "public": "dist-web",
+      "public": "apps/web-react/dist-web",
       "ignore": [
         "firebase.json",
         "**/.*",

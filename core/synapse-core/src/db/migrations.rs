@@ -1,7 +1,20 @@
+mod quiz;
+pub use quiz::migrate_quiz_schema;
+
 use rusqlite::Connection;
 
 /// Executes all idempotent column and table schema migrations on the SQLite connection.
 pub fn run_migrations(conn: &Connection) {
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS vault_asset_migrations (
+            id TEXT PRIMARY KEY,
+            target_path TEXT NOT NULL,
+            staged_path TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    );
+
     // Migrations for existing databases
     let _ = conn.execute(
         "CREATE TABLE IF NOT EXISTS youtube_summaries (
@@ -16,7 +29,10 @@ pub fn run_migrations(conn: &Connection) {
         )",
         [],
     );
-    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id)", []);
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id)",
+        [],
+    );
     let _ = conn.execute(
         "CREATE TABLE IF NOT EXISTS link_metadata_cache (
             url TEXT PRIMARY KEY,
@@ -44,8 +60,16 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE pages ADD COLUMN encrypted_content TEXT", []);
     let _ = conn.execute("ALTER TABLE calendar_events ADD COLUMN page_id TEXT", []);
     let _ = conn.execute("ALTER TABLE quiz_batteries ADD COLUMN parent_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE quiz_batteries ADD COLUMN sort_order INTEGER DEFAULT 0", []);
-    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_batteries_parent ON quiz_batteries(parent_id)", []);
+    let _ = conn.execute(
+        "ALTER TABLE quiz_batteries ADD COLUMN sort_order INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_quiz_batteries_parent ON quiz_batteries(parent_id)",
+        [],
+    );
+
+    migrate_quiz_schema(conn);
 
     // Dynamic column migrations for legacy schemas updated via web/sync
     let _ = conn.execute("ALTER TABLE config ADD COLUMN created_at DATETIME", []);
@@ -63,11 +87,23 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN cover_image TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN language TEXT", []);
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN publisher TEXT", []);
-    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN published_year INTEGER", []);
+    let _ = conn.execute(
+        "ALTER TABLE library_books ADD COLUMN published_year INTEGER",
+        [],
+    );
     let _ = conn.execute("ALTER TABLE library_books ADD COLUMN description TEXT", []);
-    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN is_local BOOLEAN DEFAULT 1", []);
-    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN is_archived BOOLEAN DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE library_books ADD COLUMN archived_at DATETIME", []);
+    let _ = conn.execute(
+        "ALTER TABLE library_books ADD COLUMN is_local BOOLEAN DEFAULT 1",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE library_books ADD COLUMN is_archived BOOLEAN DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE library_books ADD COLUMN archived_at DATETIME",
+        [],
+    );
 
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_web_file_id TEXT", []);
@@ -182,10 +218,16 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE anki_decks ADD COLUMN parent_id TEXT", []);
 
     // Migration for page_history
-    let _ = conn.execute("ALTER TABLE page_history ADD COLUMN encrypted_content TEXT", []);
+    let _ = conn.execute(
+        "ALTER TABLE page_history ADD COLUMN encrypted_content TEXT",
+        [],
+    );
 
     // Migration for anki tags
-    let _ = conn.execute("ALTER TABLE anki_cards ADD COLUMN tags TEXT DEFAULT '[]'", []);
+    let _ = conn.execute(
+        "ALTER TABLE anki_cards ADD COLUMN tags TEXT DEFAULT '[]'",
+        [],
+    );
 
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, tag TEXT NOT NULL, description TEXT NOT NULL, target_time_minutes INTEGER NOT NULL, status TEXT NOT NULL, justification TEXT, summary TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)", []);
 
@@ -214,19 +256,41 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("CREATE TABLE IF NOT EXISTS finance_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT DEFAULT '#10b981', icon TEXT DEFAULT 'wallet', initial_balance REAL DEFAULT 0.0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, deleted_at DATETIME DEFAULT NULL)", []);
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN due_date TEXT", []);
     let _ = conn.execute("ALTER TABLE transactions ADD COLUMN account_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN destination_account_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE transactions ADD COLUMN linked_loan_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE vault_items ADD COLUMN position INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE vault_items ADD COLUMN login_type TEXT DEFAULT 'password'", []);
+    let _ = conn.execute(
+        "ALTER TABLE transactions ADD COLUMN destination_account_id TEXT",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE transactions ADD COLUMN linked_loan_id TEXT",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE vault_items ADD COLUMN position INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE vault_items ADD COLUMN login_type TEXT DEFAULT 'password'",
+        [],
+    );
+    let _ = conn.execute("ALTER TABLE vault_items ADD COLUMN custom_fields TEXT", []);
 
-    let accounts_count: i64 = conn.query_row("SELECT COUNT(*) FROM finance_accounts WHERE deleted_at IS NULL", [], |row| row.get(0)).unwrap_or(0);
+    let accounts_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM finance_accounts WHERE deleted_at IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
     if accounts_count == 0 {
         let _ = conn.execute(
             "INSERT INTO finance_accounts (id, name, color, icon, initial_balance) VALUES ('default-wallet', 'Carteira Principal', '#10b981', 'wallet', 0.0)",
             [],
         );
     }
-    let _ = conn.execute("UPDATE transactions SET account_id = 'default-wallet' WHERE account_id IS NULL", []);
+    let _ = conn.execute(
+        "UPDATE transactions SET account_id = 'default-wallet' WHERE account_id IS NULL",
+        [],
+    );
 
     // Create strategic performance indexes for fast lookups, foreign keys, and soft deletes
     let _ = conn.execute_batch(

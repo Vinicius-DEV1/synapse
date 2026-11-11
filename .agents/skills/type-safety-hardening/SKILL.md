@@ -230,7 +230,7 @@ function fetchNote(id: NoteId): Promise<Note> { /* ... */ }
 ### Step 1: Scan for Loose Types & Assertions
 1. Run ripgrep search for forbidden patterns:
    ```bash
-   grep -rn ': any\|as any\|as unknown as' src/ --include='*.ts' --include='*.tsx'
+   grep -rn ': any\|as any\|as unknown as' apps/web-react/src/ --include='*.ts' --include='*.tsx'
    ```
 2. Catalog unchecked index signatures (`[key: string]: unknown` or `Record<string, any>`).
 3. Identify missing explicit return types on exported functions.
@@ -245,8 +245,8 @@ function fetchNote(id: NoteId): Promise<Note> { /* ... */ }
 3. Use `// @ts-expect-error [REASON]` only when bridging external third-party library typing defects, accompanied by an explicit explanation.
 
 ### Step 4: Verification
-1. Run full type check across project: `npx tsc -b --noEmit`.
-2. Run targeted tests: `npx vitest related --run <modified_files>`.
+1. Run full type check across project: `npm run typecheck`.
+2. Run targeted tests: `npm run test:related -- <modified_files>`.
 
 ---
 
@@ -258,4 +258,4 @@ function fetchNote(id: NoteId): Promise<Note> { /* ... */ }
 - [ ] Boundary data narrowed via Type Guards or runtime schema parsers?
 - [ ] Caught errors typed as `unknown` and safely resolved?
 - [ ] Branded types utilized for distinct entity identifiers?
-- [ ] `npx tsc -b --noEmit` completes cleanly with zero errors?
+- [ ] `npm run typecheck` completes cleanly with zero errors?

@@ -26,7 +26,7 @@ Rectangle {
         height: Math.min(parent.height - 64, 600)
         radius: 16
         color: "#161524"
-        border.color: "#ffffff18"
+        border.color: "#18ffffff"
         border.width: 1
 
         ColumnLayout {
@@ -78,7 +78,7 @@ Rectangle {
                 Rectangle {
                     width: 96; height: 36; radius: 8
                     color: "#211f30"
-                    border.color: "#ffffff15"
+                    border.color: "#15ffffff"
 
                     RowLayout {
                         anchors.centerIn: parent; spacing: 6
@@ -96,7 +96,7 @@ Rectangle {
                 // Close Button
                 Rectangle {
                     width: 32; height: 32; radius: 8
-                    color: "#ffffff10"
+                    color: "#10ffffff"
 
                     Text { anchors.centerIn: parent; text: "✕"; color: "#a7a9be"; font.pixelSize: 14 }
 
@@ -114,7 +114,7 @@ Rectangle {
                 Layout.fillHeight: true
                 radius: 10
                 color: "#0f0e17"
-                border.color: "#ffffff0f"
+                border.color: "#0fffffff"
                 clip: true
 
                 ListView {
@@ -129,7 +129,7 @@ Rectangle {
                         height: 60
                         radius: 8
                         color: "#1a1924"
-                        border.color: "#ffffff0a"
+                        border.color: "#0affffff"
 
                         RowLayout {
                             anchors.fill: parent
@@ -176,7 +176,7 @@ Rectangle {
                             // Delete Card Button
                             Rectangle {
                                 width: 28; height: 28; radius: 6
-                                color: "#f43f5e1a"
+                                color: "#1af43f5e"
 
                                 Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 12 }
 

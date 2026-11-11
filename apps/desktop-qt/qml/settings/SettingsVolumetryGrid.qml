@@ -33,7 +33,7 @@ ColumnLayout {
 
         // Páginas
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "PÁGINAS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.pageCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -41,7 +41,7 @@ ColumnLayout {
         }
         // Vídeos
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "VÍDEOS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.videoCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -49,7 +49,7 @@ ColumnLayout {
         }
         // Baralhos Anki
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "BARALHOS ANKI"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.deckCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -57,7 +57,7 @@ ColumnLayout {
         }
         // Livros
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "LIVROS / E-PUBS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.bookCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -65,7 +65,7 @@ ColumnLayout {
         }
         // Cultura
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "CULTURA & MÍDIA"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.cultureCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -73,7 +73,7 @@ ColumnLayout {
         }
         // Cofre
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "CREDENCIAS COFRE"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.vaultItemCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -81,7 +81,7 @@ ColumnLayout {
         }
         // Transações
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "TRANSAÇÕES"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.transactionCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -89,7 +89,7 @@ ColumnLayout {
         }
         // Eventos
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "AGENDA & EVENTOS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.eventCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -97,7 +97,7 @@ ColumnLayout {
         }
         // Hábitos
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "HÁBITOS ATIVOS"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.habitCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -105,7 +105,7 @@ ColumnLayout {
         }
         // Baterias Quiz
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "BATERIAS DE QUESTÕES"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.quizBatteryCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }
@@ -113,7 +113,7 @@ ColumnLayout {
         }
         // Sessões de Foco
         Rectangle {
-            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#ffffff0f"; border.width: 1
+            Layout.fillWidth: true; height: 72; radius: 10; color: "#1a1924"; border.color: "#0fffffff"; border.width: 1
             ColumnLayout { anchors.fill: parent; anchors.margins: 14; spacing: 2
                 Text { text: "SESSÕES DE FOCO"; color: "#a7a9be"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.1 }
                 Text { text: volumetryRoot.focusSessionCount.toString(); color: "#fffffe"; font.pixelSize: 20; font.bold: true }

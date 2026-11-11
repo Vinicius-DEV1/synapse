@@ -28,7 +28,7 @@ Rectangle {
             ctx.clearRect(0, 0, width, height)
 
             // Draw grid dots
-            ctx.fillStyle = "#ffffff08"
+            ctx.fillStyle = "#08ffffff"
             for (var x = 20; x < width; x += 30) {
                 for (var y = 20; y < height; y += 30) {
                     ctx.fillRect(x, y, 2, 2)

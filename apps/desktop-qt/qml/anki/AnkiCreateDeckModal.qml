@@ -32,7 +32,7 @@ Rectangle {
         height: 300
         radius: 16
         color: "#161524"
-        border.color: "#ffffff18"
+        border.color: "#18ffffff"
         border.width: 1
 
         ColumnLayout {
@@ -56,7 +56,7 @@ Rectangle {
                 color: "#ffffff"
                 background: Rectangle {
                     color: "#0f0e17"
-                    border.color: "#ffffff1a"
+                    border.color: "#1affffff"
                     radius: 8
                 }
             }
@@ -68,7 +68,7 @@ Rectangle {
                 color: "#ffffff"
                 background: Rectangle {
                     color: "#0f0e17"
-                    border.color: "#ffffff1a"
+                    border.color: "#1affffff"
                     radius: 8
                 }
             }

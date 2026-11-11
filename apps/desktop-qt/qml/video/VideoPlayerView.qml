@@ -8,42 +8,50 @@ Rectangle {
     color: "#0f0e17"
 
     property var videos: []
-    property var collections: []
-    property string selectedCollection: "Todos"
+    property string selectedCollection: "__all__"
+    property string selectedCollectionName: "Todos"
     property var activeVideo: null
     property bool isPlaying: false
     property double currentPos: 0
     property double videoDuration: 0
     property double currentSpeed: 1.0
-    property int currentVolume: 100
     property var videoBookmarks: []
     property bool isVocabDrawerOpen: false
+    property string importStatus: ""
+    property string playerError: ""
+    property int viewportWidth: 1366
+    property double lastSavedProgressBucket: -1
+    property bool durationPersisted: false
+    property bool showResumePrompt: false
 
     function loadVideos() {
-        videos = dataController.getVideos(selectedCollection === "Todos" ? "" : selectedCollection)
-        var cols = dataController.getVideoCollections()
-        var colList = ["Todos"]
-        for (var i = 0; i < cols.length; ++i) {
-            colList.push(cols[i].collection_name)
-        }
-        collections = colList
+        videos = galleryCollections.loadVideos(selectedCollection)
     }
-
-    function selectCollection(colName) {
-        selectedCollection = colName
+    function applyFolderResult(result) {
+        if (!result.success) { importStatus = result.message; return }
+        selectedCollection = result.selectedId
+        selectedCollectionName = result.selectedName
+        importStatus = result.message
         loadVideos()
     }
-
+    function selectCollection(collectionId, collectionName) { selectedCollection = collectionId; selectedCollectionName = collectionName; loadVideos() }
     function playVideo(vid) {
-        activeVideo = vid
-        loadVideoBookmarks(vid.id)
-        if (mpvPlayer) {
-            mpvPlayer.command(["loadfile", vid.file_path])
-            if (vid.progress && vid.progress > 0) {
-                mpvPlayer.command(["seek", vid.progress.toString(), "absolute"])
-            }
-            isPlaying = true
+        if (!playerSurface.mediaPlayer) return
+        playerError = ""
+        var result = dataController.configureVideoPlayback(playerSurface.mediaPlayer, vid.id)
+        if (!result.success) {
+            playerError = result.error || "Não foi possível abrir este vídeo."
+            importStatus = playerError
+            return
         }
+        activeVideo = vid; setSpeed(1.0); playerSurface.mediaPlayer.volume = 100; playerSurface.mediaPlayer.muted = false
+        currentPos = result.progress || 0
+        videoDuration = result.duration || 0
+        lastSavedProgressBucket = Math.floor(currentPos / 5)
+        durationPersisted = videoDuration > 0
+        showResumePrompt = result.showResumePrompt === true
+        loadVideoBookmarks(vid.id)
+        isPlaying = !showResumePrompt
     }
 
     function loadVideoBookmarks(videoId) {
@@ -55,8 +63,8 @@ Rectangle {
     }
 
     function jumpToTimestamp(seconds) {
-        if (mpvPlayer) {
-            mpvPlayer.command(["seek", seconds.toString(), "absolute"])
+        if (playerSurface.mediaPlayer) {
+            playerSurface.mediaPlayer.command(["seek", seconds.toString(), "absolute"])
         }
     }
 
@@ -74,141 +82,219 @@ Rectangle {
     }
 
     function exitPlayer() {
-        if (mpvPlayer) {
-            mpvPlayer.command(["stop"])
+        if (activeVideo && currentPos > 0) {
+            dataController.updateVideoProgress(activeVideo.id, currentPos)
+        }
+        if (playerSurface.mediaPlayer) {
+            playerSurface.mediaPlayer.command(["stop"])
+            playerSurface.mediaPlayer.source = ""
+            playerSurface.mediaPlayer.keyHex = ""
         }
         isPlaying = false
+        showResumePrompt = false
         activeVideo = null
+        playerError = ""
         loadVideos()
     }
 
     function setSpeed(spd) {
         currentSpeed = spd
-        if (mpvPlayer) {
-            mpvPlayer.command(["set", "speed", spd.toString()])
+        if (playerSurface.mediaPlayer) {
+            playerSurface.mediaPlayer.command(["set", "speed", spd.toString()])
         }
     }
 
     function seekRelative(seconds) {
-        if (mpvPlayer) {
-            mpvPlayer.command(["seek", seconds.toString()])
+        if (playerSurface.mediaPlayer) {
+            playerSurface.mediaPlayer.command(["seek", seconds.toString()])
         }
     }
 
     function seekAbsolute(seconds) {
-        if (mpvPlayer) {
-            mpvPlayer.command(["seek", seconds.toString(), "absolute"])
+        if (playerSurface.mediaPlayer) {
+            playerSurface.mediaPlayer.command(["seek", seconds.toString(), "absolute"])
         }
     }
 
     function togglePlayPause() {
-        if (mpvPlayer) {
-            mpvPlayer.command(["cycle", "pause"])
+        if (playerSurface.mediaPlayer) {
+            playerSurface.mediaPlayer.command(["cycle", "pause"])
             isPlaying = !isPlaying
         }
     }
 
-    Component.onCompleted: {
-        loadVideos()
+    Component.onCompleted: loadVideos()
+    VideoDialogs {
+        id: videoDialogs
+        anchors.fill: parent
+        onVideoImportRequested: function(sourcePath) {
+            videoRoot.importStatus = "Criptografando e adicionando vídeo…"
+            galleryCollections.importVideo(sourcePath, videoRoot.selectedCollection)
+        }
+        onVideoDeleteConfirmed: function(video) {
+            if (dataController.deleteVideo(video.id)) {
+                videoRoot.importStatus = "Vídeo excluído."
+                videoRoot.loadVideos()
+            } else {
+                videoRoot.importStatus = "Não foi possível excluir o vídeo e o arquivo local."
+            }
+        }
     }
 
-    // Keyboard navigation during playback
-    Shortcut {
-        sequence: "Space"
-        enabled: videoRoot.activeVideo !== null
-        onActivated: videoRoot.togglePlayPause()
-    }
-    Shortcut {
-        sequence: "Left"
-        enabled: videoRoot.activeVideo !== null
-        onActivated: videoRoot.seekRelative(-5)
-    }
-    Shortcut {
-        sequence: "Right"
-        enabled: videoRoot.activeVideo !== null
-        onActivated: videoRoot.seekRelative(5)
-    }
-    Shortcut {
-        sequence: "Esc"
-        enabled: videoRoot.activeVideo !== null
-        onActivated: videoRoot.exitPlayer()
-    }
-    Shortcut {
-        sequence: "B"
-        enabled: videoRoot.activeVideo !== null
-        onActivated: videoRoot.isVocabDrawerOpen = !videoRoot.isVocabDrawerOpen
-    }
-
-    // ===================================================================
-    // 1. Gallery Mode
-    // ===================================================================
-    VideoGallerySection {
-        visible: !videoRoot.activeVideo
-        videos: videoRoot.videos
-        collections: videoRoot.collections
-        selectedCollection: videoRoot.selectedCollection
-
-        onRefreshRequested: videoRoot.loadVideos()
-        onCollectionSelected: function(colName) { videoRoot.selectCollection(colName) }
-        onVideoSelected: function(vid) { videoRoot.playVideo(vid) }
-        onVideoDeleted: function(vidId) {
-            dataController.deleteVideo(vidId)
+    Connections {
+        target: dataController
+        function onFileOperationFinished(result) {
+            if (result.operation === "video-subtitle-import") {
+                if (!result.success) videoRoot.importStatus = result.error || "Não foi possível importar a legenda."
+                videoRoot.loadVideos()
+                if (videoInfoHost.video && result.videoId === videoInfoHost.video.id) {
+                    for (var i = 0; i < videoRoot.videos.length; ++i) {
+                        if (videoRoot.videos[i].id === result.videoId) {
+                            videoInfoHost.video = videoRoot.videos[i]
+                            break
+                        }
+                    }
+                }
+                return
+            }
+            if (result.operation !== "video-import") return
+            videoRoot.importStatus = result.success
+                ? "Vídeo importado e criptografado com sucesso."
+                : (result.error || "Não foi possível importar o vídeo.")
             videoRoot.loadVideos()
         }
+        function onVaultLocked() {
+            if (!videoRoot.activeVideo || !videoRoot.activeVideo.file_path) return
+            if (playerSurface.mediaPlayer && playerSurface.mediaPlayer.keyHex.length > 0) {
+                dataController.updateVideoProgress(videoRoot.activeVideo.id, videoRoot.currentPos)
+                playerSurface.mediaPlayer.command(["stop"])
+                playerSurface.mediaPlayer.source = ""
+                playerSurface.mediaPlayer.keyHex = ""
+                videoRoot.activeVideo = null
+                videoRoot.isPlaying = false
+                videoRoot.showResumePrompt = false
+                videoRoot.importStatus = "O cofre foi bloqueado; a reprodução criptografada foi encerrada."
+            }
+        }
     }
 
-    // ===================================================================
-    // 2. Active Video Player Mode (libmpv Hardware GPU Canvas)
-    // ===================================================================
-    Item {
+    VideoGalleryPreferences {
+        id: galleryPreferences
+        controller: dataController
+    }
+
+    VideoGalleryCollections {
+        id: galleryCollections
+        controller: dataController
+    }
+
+    VideoGallerySection {
+        visible: !videoRoot.activeVideo
+        viewportWidth: videoRoot.viewportWidth
+        videos: videoRoot.videos
+        videoFolders: galleryCollections.folders
+        collections: galleryCollections.names
+        selectedCollection: videoRoot.selectedCollection
+        activeFolderName: videoRoot.selectedCollection === "__all__" ? "" : videoRoot.selectedCollectionName
+        viewMode: galleryPreferences.viewMode
+
+        onRefreshRequested: videoRoot.loadVideos()
+        onFolderSelected: function(folderId, folderName) { videoRoot.selectCollection(folderId, folderName) }
+        onBackRequested: videoRoot.selectCollection("__all__", "Todos")
+        onFolderSaveRequested: function(folderId, _previousName, newName) {
+            videoRoot.applyFolderResult(galleryCollections.saveFolder(
+                folderId, newName, videoRoot.selectedCollection, videoRoot.selectedCollectionName))
+        }
+        onFolderDeleteRequested: function(folderId, _folderName) {
+            videoRoot.applyFolderResult(galleryCollections.removeFolder(
+                folderId, videoRoot.selectedCollection, videoRoot.selectedCollectionName))
+        }
+        onViewModeRequested: function(mode) { galleryPreferences.viewMode = mode }
+        onImportRequested: videoDialogs.openImport()
+        statusMessage: videoRoot.importStatus
+        importRunning: dataController.fileOperationRunning
+        onVideoSelected: function(vid) { videoRoot.playVideo(vid) }
+        onVideoMoveRequested: function(vid, folderId) {
+            var result = galleryCollections.moveVideo(vid.id, folderId)
+            if (!result.success) { videoRoot.importStatus = result.message; return }
+            videoRoot.importStatus = result.message
+            videoRoot.loadVideos()
+        }
+        onVideoDeleted: function(vid) {
+            videoDialogs.requestDelete(vid)
+        }
+        onVideoInfoRequested: function(vid) { videoInfoHost.openFor(vid) }
+    }
+
+    VideoInfoDialogHost {
+        id: videoInfoHost
         anchors.fill: parent
-        visible: videoRoot.activeVideo !== null
+        controller: dataController
+        mediaPlayer: playerSurface.mediaPlayer
+        onPlayRequested: function(vid) { videoRoot.playVideo(vid) }
+        onVideoUpdated: videoRoot.loadVideos()
+    }
 
-        // Hardware accelerated mpv frame
-        MpvVideoPlayer {
-            id: mpvPlayer
-            anchors.fill: parent
+    VideoPlayerSurface {
+        id: playerSurface
+        anchors.fill: parent
+        activeVideo: videoRoot.activeVideo
+        controller: dataController
+        bookmarks: videoRoot.videoBookmarks
+        currentPos: videoRoot.currentPos
+        videoDuration: videoRoot.videoDuration
+        currentSpeed: videoRoot.currentSpeed
+        isPlaying: videoRoot.isPlaying
+        bookmarksCount: videoRoot.videoBookmarks.length
+        isVocabDrawerOpen: videoRoot.isVocabDrawerOpen
+        shortcutsBlocked: videoRoot.showResumePrompt
+        showResumePrompt: videoRoot.showResumePrompt
+        playerError: videoRoot.playerError
 
-            onPositionChanged: function(pos) {
-                videoRoot.currentPos = pos
-                if (videoRoot.activeVideo && Math.floor(pos) % 5 === 0) {
-                    dataController.updateVideoProgress(videoRoot.activeVideo.id, pos)
-                }
-            }
-
-            onDurationChanged: function(dur) {
-                videoRoot.videoDuration = dur
+        onPositionObserved: function(position) {
+            videoRoot.currentPos = position
+            var bucket = Math.floor(position / 5)
+            if (videoRoot.activeVideo && bucket !== videoRoot.lastSavedProgressBucket) {
+                dataController.updateVideoProgress(videoRoot.activeVideo.id, position)
+                videoRoot.lastSavedProgressBucket = bucket
             }
         }
-
-        // Top Navigation Bar and Bottom Controls Bar
-        VideoPlayerControls {
-            activeVideo: videoRoot.activeVideo
-            currentPos: videoRoot.currentPos
-            videoDuration: videoRoot.videoDuration
-            currentSpeed: videoRoot.currentSpeed
-            isPlaying: videoRoot.isPlaying
-            bookmarksCount: videoRoot.videoBookmarks.length
-            isVocabDrawerOpen: videoRoot.isVocabDrawerOpen
-
-            onExitRequested: videoRoot.exitPlayer()
-            onSpeedChanged: function(spd) { videoRoot.setSpeed(spd) }
-            onVocabDrawerToggled: videoRoot.isVocabDrawerOpen = !videoRoot.isVocabDrawerOpen
-            onPlayPauseToggled: videoRoot.togglePlayPause()
-            onSeekRelativeRequested: function(secs) { videoRoot.seekRelative(secs) }
-            onSeekAbsoluteRequested: function(secs) { videoRoot.seekAbsolute(secs) }
+        onDurationObserved: function(duration) {
+            videoRoot.videoDuration = duration
+            if (videoRoot.activeVideo && !videoRoot.durationPersisted && duration > 0)
+                videoRoot.durationPersisted = dataController.updateVideoDuration(videoRoot.activeVideo.id, duration)
         }
-
-        // Right Vocabulary & Moments Drawer
-        VideoMomentsDrawer {
-            visible: videoRoot.isVocabDrawerOpen
-            bookmarks: videoRoot.videoBookmarks
-            currentPos: videoRoot.currentPos
-
-            onCloseRequested: videoRoot.isVocabDrawerOpen = false
-            onJumpRequested: function(ts) { videoRoot.jumpToTimestamp(ts) }
-            onBookmarkSaved: function(word, note) { videoRoot.saveBookmark(word, note) }
-            onBookmarkDeleted: function(bId) { videoRoot.deleteBookmark(bId) }
+        onPlayingObserved: function(playing) { videoRoot.isPlaying = playing }
+        onPlaybackErrorObserved: function(message) { videoRoot.playerError = message; videoRoot.isPlaying = false }
+        onEndOfFileObserved: {
+            if (videoRoot.activeVideo && videoRoot.videoDuration > 0) {
+                dataController.updateVideoProgress(videoRoot.activeVideo.id, videoRoot.videoDuration)
+                videoRoot.lastSavedProgressBucket = Math.floor(videoRoot.videoDuration / 5)
+            }
+        }
+        onExitRequested: videoRoot.exitPlayer()
+        onSpeedRequested: function(speed) { videoRoot.setSpeed(speed) }
+        onVocabDrawerToggled: videoRoot.isVocabDrawerOpen = !videoRoot.isVocabDrawerOpen
+        onPlayPauseToggled: videoRoot.togglePlayPause()
+        onSeekRelativeRequested: function(seconds) { videoRoot.seekRelative(seconds) }
+        onSeekAbsoluteRequested: function(seconds) { videoRoot.seekAbsolute(seconds) }
+        onVolumeRequested: function(volume) { playerSurface.mediaPlayer.volume = volume }
+        onDrawerCloseRequested: videoRoot.isVocabDrawerOpen = false
+        onTimestampRequested: function(timestamp) { videoRoot.jumpToTimestamp(timestamp) }
+        onBookmarkSaved: function(word, note) { videoRoot.saveBookmark(word, note) }
+        onBookmarkDeleted: function(bookmarkId) { videoRoot.deleteBookmark(bookmarkId) }
+        onResumeRestartRequested: {
+            videoRoot.showResumePrompt = false
+            videoRoot.currentPos = 0
+            videoRoot.lastSavedProgressBucket = 0
+            playerSurface.mediaPlayer.command(["seek", "0", "absolute"])
+            playerSurface.mediaPlayer.paused = false
+            videoRoot.isPlaying = true
+        }
+        onResumeContinueRequested: {
+            videoRoot.showResumePrompt = false
+            playerSurface.mediaPlayer.paused = false
+            videoRoot.isPlaying = true
         }
     }
 }

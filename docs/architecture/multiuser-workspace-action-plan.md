@@ -1,9 +1,6 @@
-# 🚀 Phase 2 — Comprehensive Architectural Action Plan: Multi-User Identity & Collaborative Workspaces
+# Proposal: Multi-User Identity and Collaborative Workspaces
 
-> **Document Status**: Complete & Approved for Implementation  
-> **Target Subsystems**: Firebase Authentication, Workspace Hierarchy, Granular RBAC, E2EE Key Sharing, Real-Time CRDT Scaling, Data Migration & Emulator Verification  
-> **Reference Audit**: [`docs/architecture/multiuser-workspace-analysis.md`](./multiuser-workspace-analysis.md)  
-> **Guiding Philosophy**: 100% Functional & Visual Parity, Zero Data Loss, Zero Plaintext Leakage, Sub-Second Local Latency, Minimal Firestore Operation Overhead  
+> **Document status:** Proposal only; this is not an implementation record or a security guarantee. The current checkout has not been certified for Firebase Authentication, workspace-scoped RBAC, collaborative E2EE, or lossless workspace migration. Revalidate every file path and dependency before using the design. See the [documentation status index](../documentation-status.md) and [historical analysis](./multiuser-workspace-analysis.md).
 
 ---
 
@@ -187,9 +184,8 @@ To ensure the current user experiences zero interruption or data loss:
      - The user enters their existing Master Password as always.
      - The password unlocks local data and verifies against cloud `config/auth_validator`.
      - The user is logged in immediately (0ms downtime).
-3. **Transparent Account Linking Prompt ("Evolua sua Conta")**:
-   - Once unlocked, a non-blocking modal or banner invites the user:
-     > *"Conecte seu e-mail para ativar autenticação em nuvem, workspaces colaborativos e login independente em múltiplos dispositivos."*
+3. **Proposed Account-Linking Prompt**:
+   - The draft proposes a non-blocking prompt after unlock to link an email account for cloud authentication and workspace access. This interaction has not been certified as shipped behavior.
    - User inputs their email address and confirms password.
    - The app calls `createUserWithEmailAndPassword(auth, email, password)`.
    - The user's UID is retrieved.
@@ -534,14 +530,14 @@ The implementation is broken into 6 isolated, verifiable stages. Code changes mu
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │ Stage 1: Firebase Auth & Multiplatform Adapters                               │
-│ • Initialize getAuth(app) in src/services/firebase.ts                         │
-│ • Create src/services/auth/firebase-auth.ts                                   │
+│ • Initialize getAuth(app) in apps/web-react/src/services/firebase.ts                         │
+│ • Create apps/web-react/src/services/auth/firebase-auth.ts                                   │
 │ • Update window.api.auth contract & platform adapters                         │
 └──────────────────────────────────────┬────────────────────────────────────────┘
                                        │
 ┌──────────────────────────────────────▼────────────────────────────────────────┐
 │ Stage 2: Workspace Data Layer & Services                                      │
-│ • Create src/types/workspace.ts & src/services/workspace/workspace-service.ts  │
+│ • Create apps/web-react/src/types/workspace.ts & apps/web-react/src/services/workspace/workspace-service.ts  │
 │ • Implement membership pointers, invitations, and role validation            │
 │ • Implement workspace encryption key wrapping                                 │
 └──────────────────────────────────────┬────────────────────────────────────────┘
@@ -569,7 +565,7 @@ The implementation is broken into 6 isolated, verifiable stages. Code changes mu
                                        │
 ┌──────────────────────────────────────▼────────────────────────────────────────┐
 │ Stage 6: Migration Script & Non-Regression Verification                       │
-│ • Implement src/services/migration/legacy-migrator.ts                         │
+│ • Implement apps/web-react/src/services/migration/legacy-migrator.ts                         │
 │ • Validate dry-run, execute migration, verify parity                          │
 │ • Run targeted test suite across all modified modules                         │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -580,13 +576,13 @@ The implementation is broken into 6 isolated, verifiable stages. Code changes mu
 ## 8. Test & Verification Plan
 
 ### 8.1. Unit & Integration Testing
-1. **Auth Service Tests (`src/services/auth/firebase-auth.test.ts`)**:
+1. **Auth Service Tests (`apps/web-react/src/services/auth/firebase-auth.test.ts`)**:
    - Tests sign up, sign in, sign out, password reset, and session persistence.
-2. **Workspace RBAC Tests (`src/services/workspace/workspace-service.test.ts`)**:
+2. **Workspace RBAC Tests (`apps/web-react/src/services/workspace/workspace-service.test.ts`)**:
    - Tests workspace creation, role assignment, permission boundary checks (viewer cannot edit, editor cannot delete workspace).
-3. **Sync Engine Scoped Tests (`src/services/sync/sync-push.test.ts`, `sync-pull.test.ts`)**:
+3. **Sync Engine Scoped Tests (`apps/web-react/src/services/sync/sync-push.test.ts`, `sync-pull.test.ts`)**:
    - Validates that document pushes and pulls target `/workspaces/{wsId}/{table}` exclusively.
-4. **Migration Tests (`src/services/migration/legacy-migrator.test.ts`)**:
+4. **Migration Tests (`apps/web-react/src/services/migration/legacy-migrator.test.ts`)**:
    - Tests dry-run mode, batch copy integrity, idempotency, and rollback on simulated error.
 
 ### 8.2. Firebase Security Rules Verification (Emulator Suite)
@@ -606,7 +602,7 @@ The implementation is broken into 6 isolated, verifiable stages. Code changes mu
 | **Data Loss during Migration** | Very Low | Critical | Mandatory pre-migration JSON export, dry-run validation, non-destructive copy (legacy data untouched), and automated rollback. |
 | **Password Mismatch between Firebase Auth & E2EE** | Low | High | Use the same password for initial account creation; prompt user clearly that changing cloud auth password requires Master Key re-derivation. |
 | **Cloud Quota Exceeded by Listeners** | Low | Medium | Scoped workspace listeners eliminate global fan-out; 30s debouncers and manifest diffing skip unchanged tables. |
-| **Offline User Blocked on Boot** | Very Low | High | Cached session token and local IndexedDB/SQLite fallback allow 100% offline startup even with zero network. |
+| **Offline User Blocked on Boot** | Unassessed | High | The proposal describes a cached-session and local-store fallback. Offline startup and recovery require implementation-specific tests before they can be claimed. |
 | **Yjs CRDT Delta Accumulation** | Medium | Medium | Automated document compaction: snapshot flushed and deltas purged after 50 continuous edits. |
 
 ---
@@ -622,4 +618,4 @@ The implementation is broken into 6 isolated, verifiable stages. Code changes mu
 
 ---
 
-*Phase 2 Action Plan is complete, self-consistent, and formally approved. Ready to proceed to Phase 3 Implementation upon user confirmation.*
+**Proposal status:** This design document is not implemented or approved as a shipped security architecture. Any future implementation requires a separate review, migration plan, and cross-client verification.

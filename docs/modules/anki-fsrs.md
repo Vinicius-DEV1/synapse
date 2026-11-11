@@ -20,14 +20,14 @@ The **Synapse Spaced Repetition Engine** provides an advanced active recall stud
 │  Note-to-Card Distillation  •  Video Transcript Parsing  •  Cloze Cards│
 ├────────────────────────────────────────────────────────────────────────┤
 │  PERSISTENCE & SECURITY                                                │
-│  SQLite (`anki_cards`)  •  IndexedDB  •  AES-256-GCM (`anki_key`)       │
+│  SQLite (`anki_cards`)  •  IndexedDB  •  Client-specific storage        │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **Source Code Locations**:
-  - UI Presentation: `src/components/anki/`
-  - FSRS Scheduling Core: `src/services/fsrs.ts`
-  - Rust Tauri Backend: `src-tauri/src/anki_fsrs.rs`, `src-tauri/src/cmd_anki.rs`
+  - UI Presentation: `apps/web-react/src/components/anki/`
+  - FSRS Scheduling Core: `apps/web-react/src/services/fsrs.ts`
+  - Rust Tauri Backend: `apps/web-react/src-tauri/src/anki_fsrs.rs`, `apps/web-react/src-tauri/src/cmd_anki.rs`
 
 ---
 
@@ -81,4 +81,4 @@ Synapse bridges passive reading with active recall through automated AI flashcar
 
 - **Hierarchical Deck Tagging**: Filter and review cards by subject, priority, or project tag.
 - **Retention Analytics**: Visual heatmaps display review density and projected memory stability over 30, 60, and 90-day horizons.
-- **Zero-Knowledge Encryption**: Flashcard prompts, answers, and review histories are encrypted at rest using the dedicated `anki_key`.
+- **At-Rest Encryption Scope**: The native Qt encryption audit currently lists Anki cards, review history, and related settings among the SQLite data that remains plaintext. A `anki_key` envelope is not proof that those records are encrypted. See the [native encryption audit](../security/native-encryption-audit.md) before making at-rest claims.

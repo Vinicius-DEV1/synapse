@@ -23,6 +23,7 @@ impl Database {
         conn.execute_batch(
             "PRAGMA journal_mode = WAL;
              PRAGMA synchronous = NORMAL;
+             PRAGMA secure_delete = ON;
              PRAGMA foreign_keys = ON;
              PRAGMA busy_timeout = 5000;
              
@@ -110,8 +111,12 @@ impl Database {
                  type TEXT DEFAULT 'multiple_choice',
                  question TEXT NOT NULL,
                  options TEXT DEFAULT '[]',
-                 correct_answer TEXT NOT NULL,
+                 correct_answer TEXT NOT NULL DEFAULT '',
+                 correct_index INTEGER DEFAULT 0,
+                 expected_answer TEXT DEFAULT '',
                  explanation TEXT,
+                 tags TEXT DEFAULT '[]',
+                 sort_order INTEGER DEFAULT 0,
                  weight REAL DEFAULT 1.0,
                  difficulty TEXT DEFAULT 'medium',
                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -122,8 +127,13 @@ impl Database {
                  id TEXT PRIMARY KEY,
                  battery_id TEXT NOT NULL,
                  question_id TEXT NOT NULL,
-                 user_answer TEXT NOT NULL,
+                 type TEXT DEFAULT 'multiple_choice',
+                 selected_index INTEGER,
+                 user_typed_answer TEXT DEFAULT '',
+                 user_answer TEXT NOT NULL DEFAULT '',
                  is_correct BOOLEAN NOT NULL,
+                 ai_feedback TEXT,
+                 duration_ms INTEGER DEFAULT 0,
                  time_spent_seconds INTEGER DEFAULT 0,
                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
              );
@@ -198,7 +208,9 @@ impl Database {
 
     /// Access the underlying connection with a mutex lock guard
     pub fn lock(&self) -> Result<std::sync::MutexGuard<'_, Connection>, String> {
-        self.conn.lock().map_err(|e| format!("Database lock poisoned: {}", e))
+        self.conn
+            .lock()
+            .map_err(|e| format!("Database lock poisoned: {}", e))
     }
 
     /// Returns the database path
@@ -216,26 +228,39 @@ mod tests {
     fn test_database_initialization_and_schema_creation() {
         let temp_db = NamedTempFile::new().unwrap();
         let db = Database::open(temp_db.path()).expect("Failed to initialize database");
-        
+
         let conn = db.lock().expect("Failed to lock database");
-        
+
         // Assert WAL mode
-        let journal_mode: String = conn.query_row("PRAGMA journal_mode", [], |r| r.get(0)).unwrap();
+        let journal_mode: String = conn
+            .query_row("PRAGMA journal_mode", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(journal_mode.to_lowercase(), "wal");
-        
+
         // Assert key tables exist
         let tables_to_check = [
-            "keychain", "pages", "videos", "anki_cards", "anki_srs_state", 
-            "quiz_batteries", "quiz_questions", "transactions", "habits", "habit_logs",
-            "vault_items", "library_books"
+            "keychain",
+            "pages",
+            "videos",
+            "anki_cards",
+            "anki_srs_state",
+            "quiz_batteries",
+            "quiz_questions",
+            "transactions",
+            "habits",
+            "habit_logs",
+            "vault_items",
+            "library_books",
         ];
-        
+
         for table in tables_to_check {
-            let count: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?",
-                [table],
-                |r| r.get(0)
-            ).unwrap();
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?",
+                    [table],
+                    |r| r.get(0),
+                )
+                .unwrap();
             assert_eq!(count, 1, "Table '{}' should exist in schema", table);
         }
     }

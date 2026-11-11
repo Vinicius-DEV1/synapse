@@ -5,12 +5,25 @@ All notable changes to **Synapse** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Historical release notes describe the mechanisms introduced at those releases; they are not a statement of current repository-wide security coverage. See the [native encryption audit](./docs/security/native-encryption-audit.md) for current status.
+
 ---
+
+## [Unreleased]
+
+### Changed
+- Added a documentation status index that names the current parity, encryption, architecture, and build sources of truth.
+- Reworked migration notes and legacy review entry points so historical checkboxes, test totals, and performance claims are not presented as current certification.
+- Updated English and Portuguese READMEs to describe current app targets and to avoid claiming repository-wide Zero-Knowledge encryption or completed native parity.
+
+### Security
+- Qt first-time vault setup stages and migrates referenced media inside the managed files, library, and videos folders using a persistent recovery journal. Unlock resumes pending records before exposing the vault.
+- The native encryption audit remains open: sensitive business-table fields, some metadata, unmanaged assets, and complete cross-client recovery are not yet covered.
 
 ## [1.2.0] - 2026-10-29
 
 ### Added
-- **Production Performance Budget Gate (`scripts/check-perf-budgets.mjs`)**:
+- **Production Performance Budget Gate (`apps/web-react/scripts/check-perf-budgets.mjs`)**:
   - Automated CI quality gate asserting total bundle size, CSS size, `react-vendor` chunk, `main` entry chunk, and heavy chunks stay within strictly defined thresholds.
   - Added `npm run check:budgets` script integrated into GitHub Actions CI pipeline.
 - **High-Volume Scale & Hardware Emulation Benchmarks**:
@@ -18,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed & Performance
 - **Granular Vendor Chunking & Code-Splitting**:
-  - Refined `manualChunks` in `vite.config.ts` to strictly isolate core React runtime (`/node_modules/(react|react-dom|scheduler)/`), shrinking `react-vendor` from **1,275.10 KB down to 182.04 KB (-85.7%)**.
+  - Refined `manualChunks` in `apps/web-react/vite.config.ts` to strictly isolate core React runtime (`/node_modules/(react|react-dom|scheduler)/`), shrinking `react-vendor` from **1,275.10 KB down to 182.04 KB (-85.7%)**.
   - Isolated `@xenova/transformers` and `onnxruntime-web` into a dedicated `'transformers'` chunk, shrinking `CultureView` from **1,094.08 KB down to 261.46 KB (-76.1%)**.
   - Dynamic `lazy()` code-splitting of `GlobalSearchModal`, `SyncErrorModal`, `RenamePageModal`, and workspace modals, shrinking `main` entry chunk from **262.57 KB down to 196.98 KB (-25.0%)**.
   - Eradicated `[INEFFECTIVE_DYNAMIC_IMPORT]` warning in `SidebarItem`.
@@ -39,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Reproducible Performance Benchmark Suite**:
-  - Automated benchmark harness (`scripts/benchmark.mjs` / `npm run benchmark`) measuring Vite build times, bundle sizing, cryptographic primitives (PBKDF2, AES-GCM), Base64 throughput, state cascade traversals, and search filtering across 5 measured iterations.
+  - Automated benchmark harness (`apps/web-react/scripts/benchmark.mjs` / `npm run benchmark`) measuring Vite build times, bundle sizing, cryptographic primitives (PBKDF2, AES-GCM), Base64 throughput, state cascade traversals, and search filtering across 5 measured iterations.
   - Dedicated non-blocking performance benchmarking job in GitHub Actions CI pipeline (`.github/workflows/ci.yml`).
   - Comprehensive performance documentation with methodology, hardware specs, and comparative tables in `docs/DESEMPENHO.md`.
   - Comprehensive 4-tier architectural specification and Mermaid diagram in `docs/ARQUITETURA.md`.
@@ -51,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Optimized compressed sync payload ingestion with direct native ArrayBuffer stream piping (`DecompressionStream`), yielding a **5.6x speedup** (8.15 ms down to 1.45 ms).
 - **Bundle & Code Splitting**:
   - Converted static book enricher imports in `BookEditModal` and `BookInfoModal` into dynamic `import()`, reducing the `LibraryView` chunk size by **-7.65%** (-9.82 KB) and resolving Vite bundler warnings.
-  - Migrated `vite.config.ts` path resolution to native modern ESM `import.meta.dirname`.
+  - Migrated `apps/web-react/vite.config.ts` path resolution to native modern ESM `import.meta.dirname`.
 - **In-Memory Search Optimization**:
   - Reduced entity filtering and search query scan latency by **-54.36%** (3.90 ms down to 1.78 ms).
 
@@ -71,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core Architecture**:
   - Offline-first hybrid runtime powered by **Tauri v2 + Rust** (Desktop) and **React 19 + TypeScript + Vite** (Web/PWA).
   - Multiplatform persistence layer supporting local SQLite with Write-Ahead Logging (`rusqlite`) and IndexedDB (`idb`).
-  - Zero-Knowledge End-to-End Encryption (E2EE) with PBKDF2-HMAC-SHA256 (600,000 iterations) and AES-256-GCM.
+  - Master-key derivation and selected AES-256-GCM key-envelope and content-protection flows. Current entity coverage is documented in the security audit.
   - Two-Tier Keychain hierarchy separating user Master Password derivation from individual module keys.
 - **Synapse Notes (Rich-Text Second Brain)**:
   - ProseMirror/TipTap v3 block writing engine with LaTeX math formulas, callouts, task checklists, and code highlighting (`lowlight`).
@@ -114,4 +127,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **DevOps & Packaging**:
   - Multi-stage `Dockerfile` and `docker-compose.yml` for self-hosted container deployments.
   - Native desktop bundle generation for Linux (`.AppImage`, `.deb`), Windows (`.msi`, `.exe`), and macOS (`.dmg`, `.app`).
-  - Mobile companion application shell powered by Expo SDK 54 (`caderno-mobile-webview`).
+  - Mobile companion application shell powered by Expo SDK 54 (`apps/mobile-webview`).

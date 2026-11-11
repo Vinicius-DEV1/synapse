@@ -16,21 +16,22 @@ Item {
         clip: true
         spacing: 3
         model: [
-            { key: "home", name: "Início", icon: "🏠", count: 0 },
-            { key: "notes", name: "Caderno", icon: "📖", count: dataController.pageCount },
-            { key: "quiz", name: "Quiz", icon: "☑️", count: dataController.quizBatteryCount },
-            { key: "library", name: "Biblioteca", icon: "📚", count: dataController.bookCount },
-            { key: "finance", name: "Finanças", icon: "💵", count: dataController.transactionCount },
-            { key: "culture", name: "Cultura", icon: "🎭", count: dataController.cultureCount },
-            { key: "video", name: "Vídeos", icon: "🎬", count: dataController.videoCount },
-            { key: "anki", name: "Flashcards", icon: "🎴", count: dataController.deckCount },
-            { key: "calendar", name: "Agenda", icon: "📅", count: dataController.eventCount },
-            { key: "habits", name: "Hábitos", icon: "⚡", count: dataController.habitCount },
-            { key: "diagrams", name: "Diagramas", icon: "🎨", count: 0 },
-            { key: "focus", name: "Foco", icon: "⏳", count: dataController.focusSessionCount },
-            { key: "vault", name: "Cofre", icon: "🔒", count: dataController.vaultItemCount },
-            { key: "trash", name: "Lixeira", icon: "🗑️", count: 0 },
-            { key: "settings", name: "Configurações", icon: "⚙️", count: 0 }
+            { key: "home", name: "Início", icon: "home", count: 0 },
+            { key: "notes", name: "Caderno", icon: "notes", count: dataController.pageCount },
+            { key: "quiz", name: "Questões", icon: "quiz", count: dataController.quizBatteryCount },
+            { key: "library", name: "Biblioteca", icon: "library", count: dataController.bookCount },
+            { key: "finance", name: "Finanças", icon: "finance", count: dataController.transactionCount },
+            { key: "culture", name: "Cultura", icon: "culture", count: dataController.cultureCount },
+            { key: "video", name: "Vídeos", icon: "video", count: dataController.videoCount },
+            { key: "anki", name: "Flashcards", icon: "anki", count: dataController.deckCount },
+            { key: "focus", name: "Foco", icon: "focus", count: dataController.focusSessionCount },
+            { key: "calendar", name: "Agenda", icon: "calendar", count: dataController.eventCount },
+            { key: "habits", name: "Hábitos", icon: "habits", count: dataController.habitCount },
+            { key: "files", name: "Arquivos", icon: "folder", count: 0 },
+            { key: "diagrams", name: "Diagramas", icon: "diagrams", count: 0 },
+            { key: "vault", name: "Cofre", icon: "vault", count: dataController.vaultItemCount },
+            { key: "trash", name: "Lixeira", icon: "trash", count: 0 },
+            { key: "settings", name: "Configurações", icon: "settings", count: 0 }
         ]
 
         delegate: Rectangle {
@@ -49,11 +50,12 @@ Item {
                 anchors.rightMargin: navListRoot.sidebarExpanded ? 10 : 0
                 spacing: 10
 
-                Text {
+                AppIcon {
+                    width: 18
+                    height: 18
                     Layout.alignment: navListRoot.sidebarExpanded ? Qt.AlignVCenter : Qt.AlignHCenter
-                    text: modelData.icon
-                    font.pixelSize: 14
-                    opacity: itemDelegate.isActive ? 1.0 : 0.85
+                    name: modelData.icon
+                    color: itemDelegate.isActive ? theme.brand400 : theme.textSubtext
                 }
 
                 Text {
@@ -74,7 +76,7 @@ Item {
                     width: Math.max(18, countText.contentWidth + 8)
                     height: 18
                     radius: 9
-                    color: itemDelegate.isActive ? theme.brand600 : "#ffffff0a"
+                    color: itemDelegate.isActive ? theme.brand600 : "#0affffff"
 
                     Text {
                         id: countText

@@ -3,11 +3,12 @@ pub mod stream;
 use aes_gcm::{
     aead::{consts::U16, Aead, KeyInit},
     aes::Aes256,
-    AesGcm, Aes256Gcm,
+    Aes256Gcm, AesGcm,
 };
 use pbkdf2::pbkdf2_hmac;
 use rand::RngCore;
 use sha2::Sha256;
+use zeroize::{Zeroize, Zeroizing};
 
 // Type alias for AES-256-GCM with 16-byte nonce (used for module keys)
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
@@ -26,17 +27,31 @@ pub fn derive_key_from_password(password: &str) -> [u8; 32] {
 pub fn hash_auth_password(password: &str) -> String {
     use sha2::Digest;
     let mut hasher = Sha256::new();
-    hasher.update(format!("{}caderno-auth-hash", password));
+    hasher.update(password.as_bytes());
+    hasher.update(b"caderno-auth-hash");
     hex::encode(hasher.finalize())
 }
 
+pub fn hash_auth_password_v2(password: &str) -> String {
+    use sha2::Digest;
+    let master_key = Zeroizing::new(derive_key_from_password(password));
+    let mut hasher = Sha256::new();
+    hasher.update(b"caderno-auth-verifier-v2");
+    hasher.update(master_key.as_slice());
+    format!("v2:{}", hex::encode(hasher.finalize()))
+}
+
 pub fn generate_module_key() -> String {
-    let mut key = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut key);
-    hex::encode(key)
+    let mut key = Zeroizing::new([0u8; 32]);
+    rand::thread_rng().fill_bytes(&mut key[..]);
+    hex::encode(key.as_slice())
 }
 
 pub fn encrypt_module_key_with_key(module_key: &str, key: &[u8; 32]) -> Result<String, String> {
+    let decoded_module_key = Zeroizing::new(hex::decode(module_key).map_err(|_| "Invalid module key")?);
+    if decoded_module_key.len() != 32 {
+        return Err("Module key must be 32 bytes".into());
+    }
     let cipher = Aes256Gcm16::new(key.into());
 
     let mut iv = [0u8; 16];
@@ -60,12 +75,12 @@ pub fn encrypt_module_key_with_key(module_key: &str, key: &[u8; 32]) -> Result<S
 }
 
 pub fn encrypt_module_key(module_key: &str, password: &str) -> Result<String, String> {
-    let key = derive_key_from_password(password);
+    let key = Zeroizing::new(derive_key_from_password(password));
     encrypt_module_key_with_key(module_key, &key)
 }
 
 pub fn decrypt_module_key(encrypted_payload: &str, password: &str) -> Result<String, String> {
-    let key = derive_key_from_password(password);
+    let key = Zeroizing::new(derive_key_from_password(password));
     decrypt_module_key_with_key(encrypted_payload, &key)
 }
 
@@ -87,21 +102,39 @@ pub fn decrypt_module_key_with_key(
     let nonce_bytes = hex::decode(iv_hex).map_err(|_| "Invalid IV")?;
     let auth_tag_bytes = hex::decode(auth_tag_hex).map_err(|_| "Invalid Auth Tag")?;
     let encrypted_bytes = hex::decode(encrypted_hex).map_err(|_| "Invalid Ciphertext")?;
+    if nonce_bytes.len() != 16 || auth_tag_bytes.len() != 16 {
+        return Err("Invalid module-key nonce or authentication-tag length".into());
+    }
 
     let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
 
     let mut ciphertext_with_tag = encrypted_bytes.clone();
     ciphertext_with_tag.extend_from_slice(&auth_tag_bytes);
 
-    let decrypted = cipher
+    let mut decrypted = cipher
         .decrypt(nonce, ciphertext_with_tag.as_ref())
         .map_err(|e| format!("Decryption failed: {:?}", e))?;
-
-    String::from_utf8(decrypted).map_err(|_| "Invalid UTF-8".into())
+    let result = match std::str::from_utf8(&decrypted) {
+        Ok(module_key) => match hex::decode(module_key) {
+            Ok(mut decoded_key) => {
+                let valid_length = decoded_key.len() == 32;
+                decoded_key.zeroize();
+                if valid_length {
+                    Ok(module_key.to_owned())
+                } else {
+                    Err("Module key must be 32 bytes".to_string())
+                }
+            }
+            Err(_) => Err("Invalid module key".to_string()),
+        },
+        Err(_) => Err("Invalid UTF-8".to_string()),
+    };
+    decrypted.zeroize();
+    result
 }
 
 pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String> {
-    let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
+    let key_bytes = Zeroizing::new(hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?);
     if key_bytes.len() != 32 {
         return Err("Key must be 32 bytes".into());
     }
@@ -137,7 +170,7 @@ pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String,
     let auth_tag_hex = parts[1];
     let encrypted_hex = parts[2];
 
-    let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
+    let key_bytes = Zeroizing::new(hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?);
     if key_bytes.len() != 32 {
         return Err("Key must be 32 bytes".into());
     }
@@ -145,6 +178,9 @@ pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String,
     let nonce_bytes = hex::decode(iv_hex).map_err(|_| "Invalid IV")?;
     let auth_tag_bytes = hex::decode(auth_tag_hex).map_err(|_| "Invalid Auth Tag")?;
     let encrypted_bytes = hex::decode(encrypted_hex).map_err(|_| "Invalid Ciphertext")?;
+    if auth_tag_bytes.len() != 16 {
+        return Err("Invalid authentication-tag length".into());
+    }
 
     let mut ciphertext_with_tag = encrypted_bytes.clone();
     ciphertext_with_tag.extend_from_slice(&auth_tag_bytes);
@@ -152,17 +188,25 @@ pub fn decrypt_content(key_hex: &str, encrypted_payload: &str) -> Result<String,
     if nonce_bytes.len() == 12 {
         let cipher = Aes256Gcm::new(aes_gcm::aead::Key::<Aes256Gcm>::from_slice(&key_bytes));
         let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
-        let decrypted_bytes = cipher
+        let mut decrypted_bytes = cipher
             .decrypt(nonce, ciphertext_with_tag.as_ref())
             .map_err(|e| format!("Decryption failed: {:?}", e))?;
-        return String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into());
+        let result = std::str::from_utf8(&decrypted_bytes)
+            .map(str::to_owned)
+            .map_err(|_| "Invalid UTF-8".to_string());
+        decrypted_bytes.zeroize();
+        return result;
     } else if nonce_bytes.len() == 16 {
         let cipher = Aes256Gcm16::new(aes_gcm::aead::Key::<Aes256Gcm16>::from_slice(&key_bytes));
         let nonce = aes_gcm::Nonce::<U16>::from_slice(&nonce_bytes);
-        let decrypted_bytes = cipher
+        let mut decrypted_bytes = cipher
             .decrypt(nonce, ciphertext_with_tag.as_ref())
             .map_err(|e| format!("Decryption failed: {:?}", e))?;
-        return String::from_utf8(decrypted_bytes).map_err(|_| "Invalid UTF-8".into());
+        let result = std::str::from_utf8(&decrypted_bytes)
+            .map(str::to_owned)
+            .map_err(|_| "Invalid UTF-8".to_string());
+        decrypted_bytes.zeroize();
+        return result;
     }
 
     Err("Invalid IV length".into())
@@ -205,5 +249,35 @@ mod tests {
         let decrypted = decrypt_content(&key_hex, &encrypted).expect("Decryption failed");
         assert_eq!(message, decrypted);
     }
-}
 
+    #[test]
+    fn malformed_payload_lengths_return_errors_without_panicking() {
+        let key_hex = generate_module_key();
+        let master_key = derive_key_from_password("master_password_vault");
+
+        assert!(decrypt_content(&key_hex, "00:00:").is_err());
+        assert!(decrypt_content(&key_hex, "000000000000000000000000:00:").is_err());
+        assert!(decrypt_module_key_with_key("00:00:", &master_key).is_err());
+        assert!(encrypt_module_key_with_key("not-hex", &master_key).is_err());
+    }
+
+    #[test]
+    fn identical_plaintext_uses_fresh_nonces() {
+        let key_hex = generate_module_key();
+        let first = encrypt_content(&key_hex, "same secret").unwrap();
+        let second = encrypt_content(&key_hex, "same secret").unwrap();
+        assert_ne!(first, second);
+        assert_eq!(decrypt_content(&key_hex, &first).unwrap(), "same secret");
+        assert_eq!(decrypt_content(&key_hex, &second).unwrap(), "same secret");
+    }
+
+    #[test]
+    fn versioned_password_verifier_is_pbkdf2_costed_and_distinct_from_legacy() {
+        let password = "master password for verifier";
+        let verifier = hash_auth_password_v2(password);
+        assert!(verifier.starts_with("v2:"));
+        assert_eq!(verifier, hash_auth_password_v2(password));
+        assert_ne!(verifier, hash_auth_password(password));
+        assert_ne!(verifier, hash_auth_password_v2("another password"));
+    }
+}

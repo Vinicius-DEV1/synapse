@@ -8,10 +8,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Quick Qml OpenGL Network)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Quick Qml OpenGL Network Concurrent)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MPV REQUIRED mpv)
+pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
 
 # Synapse Rust Bridge Static Library
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../target/release/libsynapse_bridge_qt.a")
@@ -24,14 +25,69 @@ add_executable(synapse-desktop
     src/main.cpp
     src/synapse_controller.cpp
     src/synapse_controller.h
+    src/controllers/platform/database_prepared_controller.cpp
+    src/controllers/notes/notes_controller.cpp
+    src/controllers/notes/notes_cover_controller.cpp
+    src/controllers/notes/notes_hierarchy_controller.cpp
+    src/controllers/anki/anki_decks_controller.cpp
+    src/controllers/anki/anki_cards_controller.cpp
+    src/controllers/questions/quiz_controller.cpp
+    src/controllers/finance/finance_controller.cpp
+    src/controllers/habits/habits_controller.cpp
+    src/controllers/calendar/calendar_controller.cpp
+    src/controllers/culture/culture_controller.cpp
+    src/controllers/focus/focus_controller.cpp
+    src/controllers/vault/vault_items_controller.cpp
+    src/controllers/files/files_browser_controller.cpp
+    src/controllers/files/files_items_controller.cpp
+    src/controllers/files/files_transfer_controller.cpp
+    src/controllers/files/files_preview_controller.cpp
+    src/controllers/platform/system_controller.cpp
+    src/controllers/trash/trash_controller.cpp
+    src/controllers/home/home_controller.cpp
+    src/controllers/notifications/notifications_controller.cpp
+    src/controllers/vault/vault_auth_controller.cpp
+    src/controllers/vault/vault_setup_controller.cpp
+    src/controllers/vault/vault_setup_assets_controller.cpp
+    src/controllers/vault/vault_password_controller.cpp
+    src/controllers/vault/vault_asset_migration_controller.cpp
+    src/controllers/vault/vault_removal_controller.cpp
+    src/controllers/video/video_controller.cpp
+    src/controllers/video/video_storage_controller.cpp
+    src/controllers/video/video_subtitles_controller.cpp
+    src/controllers/video/video_subtitle_metadata_controller.cpp
+    src/controllers/video/video_subtitle_import_controller.cpp
+    src/controllers/video/video_subtitle_helpers.cpp
+    src/controllers/video/video_subtitle_format.cpp
+    src/controllers/video/video_catalog_controller.cpp
+    src/controllers/video/video_collections_controller.cpp
+    src/controllers/library/library_controller.cpp
+    src/controllers/library/library_cover_controller.cpp
+    src/controllers/library/library_collections_controller.cpp
+    src/controllers/library/library_reader_controller.cpp
+    src/controllers/library/library_stats_controller.cpp
+    src/controllers/library/library_metadata_controller.cpp
+    src/controllers/library/library_search_controller.cpp
+    src/native_book_reader.cpp
+    src/native_book_metadata.cpp
+    src/native_book_cover.cpp
+    src/native_book_search.cpp
+    src/native_video_metadata.cpp
     src/mpv_player_item.cpp
     src/mpv_player_item.h
+    src/video/encrypted_video_stream.cpp
+    src/video/encrypted_video_stream.h
+    src/video/mpv_track_selection.cpp
+    src/video/mpv_track_parser.cpp
+    src/video/mpv_track_parser.h
+    src/video/mpv_player_events.cpp
 )
 
 target_include_directories(synapse-desktop PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bridges/bridge-qt/include
     ${MPV_INCLUDE_DIRS}
+    ${LIBARCHIVE_INCLUDE_DIRS}
 )
 
 target_link_libraries(synapse-desktop PRIVATE
@@ -41,7 +97,9 @@ target_link_libraries(synapse-desktop PRIVATE
     Qt6::Qml
     Qt6::OpenGL
     Qt6::Network
+    Qt6::Concurrent
     ${MPV_LIBRARIES}
+    ${LIBARCHIVE_LIBRARIES}
     ${SYNAPSE_BRIDGE_LIB}
     pthread
     dl
@@ -51,3 +109,97 @@ target_link_libraries(synapse-desktop PRIVATE
 target_compile_definitions(synapse-desktop PRIVATE
     $<$<CONFIG:Debug>:QT_QML_DEBUG>
 )
+
+option(SYNAPSE_BUILD_NATIVE_TESTS "Build native desktop controller tests" OFF)
+if(SYNAPSE_BUILD_NATIVE_TESTS)
+    enable_testing()
+    find_package(Qt6 6.2 REQUIRED COMPONENTS Test)
+
+    add_executable(synapse-desktop-tests
+        tests/native_test_main.cpp
+        tests/crypto/native_vault_crypto_test.cpp
+        tests/notes/native_notes_test.cpp
+        tests/finance/native_finance_test.cpp
+        tests/questions/native_questions_test.cpp
+        tests/calendar/native_calendar_test.cpp
+        tests/video/native_video_test.cpp
+        tests/video/native_video_subtitle_test.cpp
+        tests/library/native_library_test.cpp
+        tests/library/native_library_cover_test.cpp
+        tests/files/native_files_test.cpp
+        src/video/mpv_track_parser.cpp
+        src/synapse_controller.cpp
+        src/controllers/platform/database_prepared_controller.cpp
+        src/controllers/notes/notes_controller.cpp
+        src/controllers/notes/notes_cover_controller.cpp
+        src/controllers/notes/notes_hierarchy_controller.cpp
+        src/controllers/anki/anki_decks_controller.cpp
+        src/controllers/anki/anki_cards_controller.cpp
+        src/controllers/questions/quiz_controller.cpp
+        src/controllers/finance/finance_controller.cpp
+        src/controllers/habits/habits_controller.cpp
+        src/controllers/calendar/calendar_controller.cpp
+        src/controllers/culture/culture_controller.cpp
+        src/controllers/focus/focus_controller.cpp
+        src/controllers/vault/vault_items_controller.cpp
+        src/controllers/files/files_browser_controller.cpp
+        src/controllers/files/files_items_controller.cpp
+        src/controllers/files/files_transfer_controller.cpp
+        src/controllers/files/files_preview_controller.cpp
+        src/controllers/platform/system_controller.cpp
+        src/controllers/trash/trash_controller.cpp
+        src/controllers/home/home_controller.cpp
+        src/controllers/notifications/notifications_controller.cpp
+        src/controllers/vault/vault_auth_controller.cpp
+        src/controllers/vault/vault_setup_controller.cpp
+        src/controllers/vault/vault_setup_assets_controller.cpp
+        src/controllers/vault/vault_password_controller.cpp
+        src/controllers/vault/vault_asset_migration_controller.cpp
+        src/controllers/vault/vault_removal_controller.cpp
+        src/controllers/video/video_controller.cpp
+        src/controllers/video/video_storage_controller.cpp
+        src/controllers/video/video_subtitles_controller.cpp
+        src/controllers/video/video_subtitle_metadata_controller.cpp
+        src/controllers/video/video_subtitle_import_controller.cpp
+        src/controllers/video/video_subtitle_helpers.cpp
+        src/controllers/video/video_subtitle_format.cpp
+        src/controllers/video/video_catalog_controller.cpp
+        src/controllers/video/video_collections_controller.cpp
+        src/controllers/library/library_controller.cpp
+        src/controllers/library/library_cover_controller.cpp
+        src/controllers/library/library_collections_controller.cpp
+        src/controllers/library/library_reader_controller.cpp
+        src/controllers/library/library_stats_controller.cpp
+        src/controllers/library/library_metadata_controller.cpp
+        src/controllers/library/library_search_controller.cpp
+        src/native_book_reader.cpp
+        src/native_book_metadata.cpp
+        src/native_book_cover.cpp
+        src/native_book_search.cpp
+        src/native_video_metadata.cpp
+        src/synapse_controller.h
+    )
+
+    target_include_directories(synapse-desktop-tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bridges/bridge-qt/include
+        ${MPV_INCLUDE_DIRS}
+        ${LIBARCHIVE_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(synapse-desktop-tests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Network
+        Qt6::Concurrent
+        Qt6::Test
+        ${SYNAPSE_BRIDGE_LIB}
+        ${LIBARCHIVE_LIBRARIES}
+        pthread
+        dl
+        m
+    )
+
+    add_test(NAME native-priority-modules COMMAND synapse-desktop-tests)
+    set_tests_properties(native-priority-modules PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()

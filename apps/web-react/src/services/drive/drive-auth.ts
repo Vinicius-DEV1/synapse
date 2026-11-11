@@ -1,0 +1,301 @@
+import { getWebDb } from '../db-web';
+import { encryptText, decryptText } from '../crypto';
+import { NetworkResilience } from '../../utils/network-resilience';
+import { getErrorMessage } from '../../utils/error';
+import type { DriveToken } from './drive-types';
+import { DRIVE_CLIENT_ID } from './drive-pkce';
+export { DRIVE_CLIENT_ID, generateCodeVerifier, generateCodeChallenge, getDriveAuthUrl } from './drive-pkce';
+
+export class OAuthError extends Error {
+  status?: number;
+  oauthError?: string;
+
+  constructor(message: string, status?: number, oauthError?: string) {
+    super(message);
+    this.name = 'OAuthError';
+    this.status = status;
+    this.oauthError = oauthError;
+  }
+}
+
+export const resilientFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  return NetworkResilience.fetchWithBackoff(
+    async (signal) => fetch(input, { ...init, signal }),
+    3,
+    1000,
+    30000
+  );
+};
+
+export const DRIVE_CLIENT_SECRET = import.meta.env.VITE_DRIVE_CLIENT_SECRET || '';
+
+// Extended drive auth helper for OAuth token storage
+// tauriDriveApi (apps/web-react/src/api/tauri/drive.ts) also implements getCredentials/saveCredentials
+// (fallback compatibility for locally stored credentials).
+type DriveApiWithCredentials = {
+  openExternalUrl: (url: string) => Promise<void>;
+  getCredentials?: () => Promise<{ token: DriveToken | null } | null>;
+  saveCredentials?: (data: { token: DriveToken | null }) => Promise<void>;
+};
+
+let _inMemoryMasterKey: CryptoKey | null = null;
+
+export function setDriveMasterKey(key: CryptoKey | null) {
+  _inMemoryMasterKey = key;
+}
+
+/**
+ * Exchanges OAuth authorization code for Access & Refresh tokens via Google OAuth2.
+ */
+export async function exchangeCodeForToken(
+  code: string,
+  codeVerifier: string
+): Promise<DriveToken> {
+  const params = new URLSearchParams();
+  params.append('client_id', DRIVE_CLIENT_ID);
+  if (DRIVE_CLIENT_SECRET) {
+    params.append('client_secret', DRIVE_CLIENT_SECRET);
+  }
+  params.append('code', code);
+  params.append('grant_type', 'authorization_code');
+  params.append('redirect_uri', import.meta.env.VITE_DRIVE_REDIRECT_URI || 'http://localhost:35174');
+  params.append('code_verifier', codeVerifier);
+
+  const res = await resilientFetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    const error = (await res.json()) as { error?: string; error_description?: string };
+    throw new Error(`Falha ao obter token: ${error.error_description || error.error}`);
+  }
+
+  const token: DriveToken = await res.json();
+  token.expires_at = Date.now() + token.expires_in * 1000;
+  return token;
+}
+
+/**
+ * Renova o token de acesso usando o refresh token
+ */
+export async function refreshToken(refresh_token: string): Promise<DriveToken> {
+  const params = new URLSearchParams();
+  params.append('client_id', DRIVE_CLIENT_ID);
+  if (DRIVE_CLIENT_SECRET) {
+    params.append('client_secret', DRIVE_CLIENT_SECRET);
+  }
+  params.append('refresh_token', refresh_token);
+  params.append('grant_type', 'refresh_token');
+
+  const res = await resilientFetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    let errorData: { error?: string; error_description?: string } = {};
+    try {
+      errorData = (await res.json()) as { error?: string; error_description?: string };
+    } catch (parseErr: unknown) {
+      console.debug('[Drive Auth] Failed to parse OAuth error response as JSON:', parseErr);
+    }
+    const message =
+      errorData.error_description ||
+      errorData.error ||
+      `Falha ao renovar token do Google Drive (HTTP ${res.status})`;
+    throw new OAuthError(message, res.status, errorData.error);
+  }
+
+  const token: DriveToken = await res.json();
+  token.expires_at = Date.now() + token.expires_in * 1000;
+  if (!token.refresh_token) {
+    token.refresh_token = refresh_token;
+  }
+  return token;
+}
+
+/**
+ * Checks whether an error during token refresh represents an explicit OAuth revocation/expiration,
+ * rather than a temporary network failure or server timeout.
+ */
+export function isOAuthRevocationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { status?: number; oauthError?: string; message?: string };
+  if (
+    err.oauthError === 'invalid_grant' ||
+    err.oauthError === 'unauthorized_client' ||
+    err.oauthError === 'invalid_client'
+  ) {
+    return true;
+  }
+  if (err.status === 400 || err.status === 401) {
+    return true;
+  }
+  const msg = (err.message || '').toLowerCase();
+  if (
+    msg.includes('invalid_grant') ||
+    msg.includes('token has been expired') ||
+    msg.includes('revoked')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Pega as credenciais persistidas localmente
+ */
+export async function getDriveCredentials(): Promise<{ token: DriveToken | null }> {
+  if (window.api?.sync) {
+    try {
+      const rows = await window.api.sync.getTable<{ id?: string; data?: string; value?: string }>('config');
+      const row = rows.find(
+        (r) => r.id === 'drive_credentials'
+      );
+      if (row) {
+        const val = typeof row.data === 'string' ? row.data : typeof row.value === 'string' ? row.value : undefined;
+        if (val) {
+          let parsed;
+          try {
+            parsed = JSON.parse(val);
+          } catch (jsonErr: unknown) {
+            console.debug('[Drive Auth] Credential is encrypted, decrypting with in-memory master key:', jsonErr);
+            if (_inMemoryMasterKey) {
+              const decrypted = await decryptText(val, _inMemoryMasterKey);
+              parsed = JSON.parse(decrypted);
+            } else {
+              return { token: null };
+            }
+          }
+          return parsed ? parsed : { token: null };
+        }
+      }
+    } catch (e: unknown) {
+      console.warn('Failed to read drive_credentials from SQLite:', getErrorMessage(e));
+    }
+    // Fallback to local file for backwards compatibility
+    const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
+    if (driveApi?.getCredentials) {
+      const creds = await driveApi.getCredentials();
+      return creds ? creds : { token: null };
+    }
+    return { token: null };
+  }
+
+  // Web fallback (reads from IndexedDB config)
+  const db = await getWebDb();
+  const config = await db.get('config', 'drive_credentials');
+  if (config) {
+    const val = typeof config.data === 'string' ? config.data : typeof config.value === 'string' ? config.value : null;
+    if (val) {
+      try {
+        let parsed;
+        try {
+          parsed = JSON.parse(val);
+        } catch (jsonErr: unknown) {
+          console.debug('[Drive Auth Web] Credential is encrypted, decrypting with in-memory master key:', jsonErr);
+          if (_inMemoryMasterKey) {
+            const decrypted = await decryptText(val, _inMemoryMasterKey);
+            parsed = JSON.parse(decrypted);
+          } else {
+            return { token: null };
+          }
+        }
+        return parsed ? parsed : { token: null };
+      } catch (e: unknown) {
+        console.warn('[Drive Auth] Error parsing web drive credentials:', getErrorMessage(e));
+        return { token: null };
+      }
+    }
+  }
+  return { token: null };
+}
+
+/**
+ * Persists Google Drive OAuth credentials locally (encrypted when master key is present).
+ */
+export async function saveDriveCredentials(token: DriveToken | null): Promise<void> {
+  const dataPayload = { token };
+
+  let valToSave = JSON.stringify(dataPayload);
+  if (_inMemoryMasterKey) {
+    valToSave = await encryptText(valToSave, _inMemoryMasterKey);
+  }
+
+  if (window.api?.sync) {
+    await window.api.sync.upsertRow('config', {
+      id: 'drive_credentials',
+      data: valToSave,
+      updated_at: new Date().toISOString(),
+    });
+    // Never overwrite encrypted SQLite data with plaintext payload
+    if (!_inMemoryMasterKey) {
+      const driveApi = window.api?.drive as DriveApiWithCredentials | undefined;
+      if (driveApi?.saveCredentials) {
+        await driveApi.saveCredentials(dataPayload);
+      }
+    }
+    return;
+  }
+
+  const db = await getWebDb();
+  await db.put('config', {
+    id: 'drive_credentials',
+    data: valToSave,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export async function forceTokenRefresh(): Promise<string | null> {
+  const creds = await getDriveCredentials();
+  if (!creds.token || !creds.token.refresh_token) return null;
+
+  try {
+    const newToken = await refreshToken(creds.token.refresh_token);
+    await saveDriveCredentials(newToken);
+    return newToken.access_token;
+  } catch (e: unknown) {
+    console.error('Failed to force refresh token', e);
+    if (isOAuthRevocationError(e)) {
+      await saveDriveCredentials(null);
+      window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+    }
+    return null;
+  }
+}
+
+/**
+ * Returns a valid Google Drive access token, automatically refreshing expired tokens.
+ * Only clears local credentials if Google OAuth explicitly reports the token is revoked/invalid.
+ */
+export async function getValidAccessToken(forceRefresh = false): Promise<string | null> {
+  if (forceRefresh) return await forceTokenRefresh();
+
+  const creds = await getDriveCredentials();
+  if (!creds.token) return null;
+
+  if (Date.now() > (creds.token.expires_at || 0) - 60000) {
+    // 1 min buffer
+    if (!creds.token.refresh_token) {
+      return null;
+    }
+    try {
+      const newToken = await refreshToken(creds.token.refresh_token);
+      await saveDriveCredentials(newToken);
+      return newToken.access_token;
+    } catch (e: unknown) {
+      console.error('Failed to refresh token', e);
+      // Only clear credentials if the token was explicitly revoked/invalidated by Google
+      if (isOAuthRevocationError(e)) {
+        await saveDriveCredentials(null);
+        window.dispatchEvent(new CustomEvent('drive-auth-expired'));
+      }
+      return null;
+    }
+  }
+
+  return creds.token.access_token;
+}

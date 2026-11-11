@@ -36,7 +36,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 34; height: 34; radius: 8
-                    color: "#8b5cf620"
+                    color: "#208b5cf6"
                     Text { anchors.centerIn: parent; text: "🕒"; font.pixelSize: 15 }
                 }
 
@@ -67,8 +67,8 @@ ColumnLayout {
                     Layout.fillWidth: true
                     height: 42
                     radius: 10
-                    color: recMouse.containsMouse ? "#ffffff0c" : "#ffffff05"
-                    border.color: recMouse.containsMouse ? "#8b5cf633" : "transparent"
+                    color: recMouse.containsMouse ? "#0cffffff" : "#05ffffff"
+                    border.color: recMouse.containsMouse ? "#338b5cf6" : "transparent"
                     border.width: 1
 
                     RowLayout {
@@ -136,7 +136,7 @@ ColumnLayout {
 
                 Rectangle {
                     width: 34; height: 34; radius: 8
-                    color: "#8b5cf620"
+                    color: "#208b5cf6"
                     Text { anchors.centerIn: parent; text: "📌"; font.pixelSize: 15 }
                 }
 
@@ -156,8 +156,8 @@ ColumnLayout {
                     Layout.fillWidth: true
                     height: 40
                     radius: 10
-                    color: pinMouse.containsMouse ? "#ffffff0c" : "#ffffff05"
-                    border.color: pinMouse.containsMouse ? "#8b5cf633" : "transparent"
+                    color: pinMouse.containsMouse ? "#0cffffff" : "#05ffffff"
+                    border.color: pinMouse.containsMouse ? "#338b5cf6" : "transparent"
                     border.width: 1
 
                     RowLayout {

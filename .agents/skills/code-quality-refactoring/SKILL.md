@@ -79,35 +79,31 @@ description: >-
 
 ---
 
-## 3. The 4-Part Decomposition Pattern
+## 3. Cross-Application Module Boundaries
 
-When decomposing a monolithic component, target this directory structure:
+Keep each module discoverable under the same canonical ID across app targets. Follow each app's layer boundaries instead of copying one framework's folder layout into every client:
 
-```text
-src/components/<feature>/
-├── <Feature>View.tsx              # Pure Presentation Container (< 150 lines)
-├── hooks/
-│   └── use<Feature>.ts            # Orchestration: state, callbacks, effects
-├── components/
-│   ├── <Feature>Header.tsx        # Atomic sub-component
-│   ├── <Feature>List.tsx          # Atomic sub-component
-│   └── <Feature>Item.tsx          # Atomic sub-component
-├── services/
-│   └── <feature>Utils.ts          # Pure domain logic, algorithms, formatters
-└── types/
-    └── index.ts                   # Feature-specific strict interfaces
-```
+| App | Presentation | Orchestration | Domain and platform |
+| :--- | :--- | :--- | :--- |
+| React/Tauri | `apps/web-react/src/components/<module>/` | `src/hooks/`, `src/store/`, or a focused module hook directory | `src/services/<module>/`, `src/utils/`, and `src/api/` |
+| Qt desktop | `apps/desktop-qt/qml/<module>/` | `src/controllers/<module>/` | Native controller persistence, `core/synapse-core/`, and `bridges/bridge-qt/` |
+| Android Compose | `app/src/main/java/com/synapse/features/<module>/ui/` | A module `viewmodel/` package when needed | A module `domain/`/`data/` package and `bridges/bridge-uniffi/` |
+| Expo WebView | Host shell only | Shell lifecycle | No duplicate product domain; delegate to the React app |
+
+Keep shared app-level composition and platform adapters out of feature folders. Use the canonical names in `docs/architecture/module-structure.md`; preserve public route keys and persisted IDs when renaming source directories.
 
 ### Step-by-Step Execution Order
 
-1. **Extract Types First** — Move all inline interfaces, discriminated unions, and
-   action payloads into `types/index.ts`. This creates the contract.
+1. **Extract Types First** — Move inline interfaces, discriminated unions, and
+   action payloads into `apps/web-react/src/types/` or a cohesive module `types.ts`.
+   This creates the contract before the implementation moves.
 
-2. **Extract Pure Domain Logic** — Move calculation functions, formatters, validators
-   into `services/<feature>Utils.ts`. These must be React-free.
+2. **Extract Pure Domain Logic** — Move calculation functions, formatters, and
+   validators into `apps/web-react/src/services/<module>/`. Keep these React-free.
 
 3. **Extract Orchestration Hook** — Move `useState`, `useEffect`, `useCallback`,
-   `useMemo`, and async dispatchers into `hooks/use<Feature>.ts`:
+   `useMemo`, and async dispatchers into `apps/web-react/src/hooks/` or a focused
+   hook directory owned by that module:
 
    ```typescript
    export interface Use<Feature>Return {
@@ -131,7 +127,9 @@ src/components/<feature>/
 5. **Assemble Clean View** — The main `<Feature>View.tsx` consumes `use<Feature>()`
    and delegates rendering to sub-components (< 150 lines).
 
-6. **Update Barrel Exports** — Ensure original import paths still work.
+6. **Update Consumers and Exports** — Update imports after moves. Add a barrel only
+   when it is the module's intentional public API; do not keep compatibility wrappers
+   solely to preserve obsolete paths.
 
 ---
 
@@ -142,13 +140,14 @@ src/components/<feature>/
 1. Read the entire target file. Identify: line count, useState/useEffect count,
    external dependencies, consumer modules.
 2. Map Presentation vs Orchestration vs Domain Logic vs Infrastructure I/O.
-3. Formulate clear decomposition goals.
+3. Formulate clear decomposition goals and identify the owning app-specific module path.
 
 ### Step 2: Implementation Plan
 
-- Create a plan artifact with: proposed file structure, module boundaries, parity
-  guarantees, and verification steps.
-- Request user approval before modifying code.
+- Record a concise plan with the proposed file structure, module boundaries, parity
+  guarantees, and verification steps. Use a separate plan artifact for multi-module
+  or high-risk reorganizations.
+- Confirm authorization before modifying code. An explicit authorization already given for the current migration or reorganization applies to its necessary follow-up path updates; ask only when a new irreversible or external action is outside that authorization.
 
 ### Step 3: Atomic Execution
 
@@ -158,8 +157,8 @@ src/components/<feature>/
 
 ### Step 4: Verification
 
-- Run targeted tests: `npx vitest run <target_path>` or `npx vitest related --run <files>`.
-- Run type check: `npx tsc -b --noEmit` if cross-module contracts changed.
+- Run targeted tests: `npm run test -- <target_path>` or `npm run test:related -- <files>`.
+- Run type check: `npm run typecheck` if cross-module contracts changed.
 - Confirm zero visual regressions by reviewing Tailwind class preservation.
 
 ---
