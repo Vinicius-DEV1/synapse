@@ -1,9 +1,11 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesInlineFormatting.js" as NotesInlineFormatting
 
 ScrollView {
     id: canvasRoot
+    objectName: "notesEditorCanvas"
     Layout.fillWidth: true
     Layout.fillHeight: true
     clip: true
@@ -25,15 +27,24 @@ ScrollView {
     property bool isDirty: false
     property bool saveFailed: false
     property bool isPreviewMode: false
+    property bool isRichMode: false
     readonly property bool isEmojiPickerOpen: iconPicker.isOpen
-    readonly property bool contentEditorFocused: noteEditorArea.activeFocus
+    readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible || linkInsertion.isDialogOpen
+    readonly property bool contentEditorFocused: isRichMode ? richTextEditor.editor.activeFocus : noteEditorArea.activeFocus
+    readonly property bool canUseRichMode: richTextEditor.canEditSource
+    readonly property bool richContentInvalid: richTextEditor.hasInvalidContent
 
     signal saveRequested()
     signal deleteRequested()
     signal historyRequested()
+    signal helpRequested()
+    signal richModeRequested(bool enabled)
+    signal richValidationChanged(bool invalid)
+    signal richColorRequested(bool background, string color)
     signal titleModified(string newTitle)
     signal descriptionModified(string newDescription)
     signal contentModified(string newContent)
+    signal richContentModified(string newContent)
     signal iconModified(string newIcon)
     signal previewToggled(bool preview)
     signal formatRequested(string prefix, string suffix)
@@ -90,14 +101,46 @@ ScrollView {
         var start = noteEditorArea.selectionStart
         var end = noteEditorArea.selectionEnd
         var oldText = noteEditorArea.text
+        if (prefix === "<strong>" || prefix === "<em>" || prefix === "<u>" || prefix === "<s>" || prefix === "<code>") {
+            var result = NotesInlineFormatting.toggle(oldText, start, end, prefix, suffix)
+            if (!notesTextOperations.replace(noteEditorArea.textDocument, result.editStart, result.editEnd, result.replacement)) {
+                console.error("[Notes] Could not apply inline formatting to the selected source range")
+                return
+            }
+            noteEditorArea.select(result.start, result.end)
+            noteEditorArea.forceActiveFocus()
+            return
+        }
         var selected = oldText.substring(start, end)
         var replacement = prefix + selected + suffix
-        noteEditorArea.text = oldText.substring(0, start) + replacement + oldText.substring(end)
-        noteEditorArea.cursorPosition = start + (selected.length === 0 ? prefix.length : replacement.length)
+        if (!notesTextOperations.replace(noteEditorArea.textDocument, start, end, replacement)) {
+            console.error("[Notes] Could not apply formatting to the selected source range")
+            return
+        }
+        noteEditorArea.cursorPosition = start + (selected.length === 0 ? prefix.length : String(replacement).length)
     }
 
     function formatSelection(prefix, suffix) {
-        if (!isPreviewMode && noteEditorArea.activeFocus) insertFormatting(prefix, suffix)
+        if (isPreviewMode) return
+        if (isRichMode) {
+            if (prefix === "<strong>") richTextEditor.toggleMark("bold")
+            else if (prefix === "<em>") richTextEditor.toggleMark("italic")
+            else if (prefix === "<u>") richTextEditor.toggleMark("underline")
+            else if (prefix === "<s>") richTextEditor.toggleMark("strike")
+            else if (prefix === "<code>") richTextEditor.toggleMark("code")
+            else if (prefix === "<spoiler>") richTextEditor.toggleMark("spoiler")
+            return
+        }
+        if (noteEditorArea.activeFocus) insertFormatting(prefix, suffix)
+    }
+
+    function toggleRichMark(mark) {
+        if (!isPreviewMode && isRichMode) return richTextEditor.toggleMark(mark)
+        return false
+    }
+
+    function flushRichEditor() {
+        return !isRichMode || richTextEditor.commitEditorText()
     }
 
     ColumnLayout {
@@ -105,6 +148,7 @@ ScrollView {
         spacing: 0
 
         NotesPageCover {
+            id: pageCover
             coverImage: canvasRoot.activeCoverImage
             controller: canvasRoot.controller
             pageId: canvasRoot.activePageId
@@ -162,10 +206,12 @@ ScrollView {
                 }
                 NotesEditorHeader {
                     id: notesEditorHeader
-                    Layout.preferredWidth: 210
+                    Layout.preferredWidth: 278
                     isDirty: canvasRoot.isDirty
                     saveFailed: canvasRoot.saveFailed
                     isPreviewMode: canvasRoot.isPreviewMode
+                    isRichMode: canvasRoot.isRichMode
+                    canUseRichMode: canvasRoot.canUseRichMode
                     actionsVisible: pageTitleHover.hovered || noteTitleInput.activeFocus || notesEditorHeader.activeFocus
                     pageDate: canvasRoot.activeDate
                     wordCount: canvasRoot.plainTextContent.trim().length > 0 ? canvasRoot.plainTextContent.trim().split(/\s+/).length : 0
@@ -173,6 +219,8 @@ ScrollView {
                     onSaveRequested: canvasRoot.saveRequested()
                     onDeleteRequested: canvasRoot.deleteRequested()
                     onHistoryRequested: canvasRoot.historyRequested()
+                    onHelpRequested: canvasRoot.helpRequested()
+                    onRichModeRequested: function(enabled) { canvasRoot.richModeRequested(enabled) }
                     onMoveRequested: movePageDialog.openForPage(canvasRoot.activePageId)
                     onPreviewToggled: function(preview) { canvasRoot.previewToggled(preview) }
                 }
@@ -212,21 +260,60 @@ ScrollView {
             }
 
             NotesFormattingToolbar {
-                visible: !canvasRoot.isPreviewMode && noteEditorArea.activeFocus && noteEditorArea.selectionStart !== noteEditorArea.selectionEnd
+                visible: !canvasRoot.isPreviewMode && (canvasRoot.isRichMode
+                         ? richTextEditor.editor.activeFocus
+                         : noteEditorArea.activeFocus && noteEditorArea.selectionStart !== noteEditorArea.selectionEnd)
+                richMode: canvasRoot.isRichMode
+                tableCellActive: richTextEditor.tableActions.isInsideTable
+                canMoveTableRowUp: richTextEditor.tableActions.canEditTable("moveRowUp")
+                canMoveTableRowDown: richTextEditor.tableActions.canEditTable("moveRowDown")
+                canMoveTableColumnLeft: richTextEditor.tableActions.canEditTable("moveColumnLeft")
+                canMoveTableColumnRight: richTextEditor.tableActions.canEditTable("moveColumnRight")
+                canDeleteTableRow: richTextEditor.tableActions.canEditTable("deleteRow")
+                canDeleteTableColumn: richTextEditor.tableActions.canEditTable("deleteColumn")
+                richSpoilerActive: richTextEditor.spoilerAtCursor
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
-                onFormatRequested: function(prefix, suffix) { canvasRoot.insertFormatting(prefix, suffix) }
-                onLinkRequested: linkInsertion.openFor(
-                    noteEditorArea.selectedText, noteEditorArea.selectionStart, noteEditorArea.selectionEnd)
+                onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
+                onRichColorRequested: function(background, color) {
+                    richTextEditor.tableActions.setColor(background, color)
+                }
+                onRichBlockRequested: function(blockType) { richTextEditor.toggleBlock(blockType) }
+                onRichTableRequested: richTextEditor.tableActions.insertTable()
+                onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
+                onRichCellBackgroundRequested: function(color) { richTextEditor.tableActions.setCellBackground(color) }
+                onRichDividerRequested: richTextEditor.tableActions.insertDivider()
+                onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
+                onLinkRequested: {
+                    if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()
+                    else linkInsertion.openFor(noteEditorArea.selectedText,
+                                               noteEditorArea.selectionStart,
+                                               noteEditorArea.selectionEnd)
+                }
+            }
+
+            NotesRichTextEditor {
+                id: richTextEditor
+                visible: !canvasRoot.isPreviewMode && canvasRoot.isRichMode
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(300, richTextEditor.editor.contentHeight + 40)
+                sourceHtml: canvasRoot.activeContent
+                active: visible
+                onContentModified: function(html) { canvasRoot.richContentModified(html) }
+                onValidationChanged: function(invalid, message) {
+                    canvasRoot.richValidationChanged(invalid)
+                    if (invalid) canvasRoot.pageActionFailed(message)
+                }
             }
 
             Rectangle {
-                visible: !canvasRoot.isPreviewMode
+                visible: !canvasRoot.isPreviewMode && !canvasRoot.isRichMode
                 Layout.fillWidth: true
                 implicitHeight: Math.max(300, noteEditorArea.implicitHeight + 40)
                 color: "transparent"
                 TextArea {
                     id: noteEditorArea
+                    objectName: "notesSourceEditor"
                     anchors.fill: parent
                     text: canvasRoot.activeContent
                     color: "#fffffe"
@@ -276,12 +363,13 @@ ScrollView {
                 }
             }
 
-            Item { height: 48 }
+            Item { Layout.preferredHeight: 48 }
         }
     }
 
     NotesMovePageDialog {
         id: movePageDialog
+        objectName: "notesMovePageDialog"
         pages: canvasRoot.allPages
         hierarchyActions: canvasRoot.hierarchyActions
     }

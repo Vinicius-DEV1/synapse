@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: notesRoot
+    objectName: "notesEditorView"
     color: "#0f0e17" // bg-dark-bg
 
     property string selectedPageId: ""
@@ -26,7 +27,9 @@ Rectangle {
     property bool descriptionDirty: false
     property bool saveFailed: false
     property bool isPreviewMode: true
+    property bool isRichMode: false
     property bool isHistoryOpen: false
+    property bool isHelpOpen: false
     Component.onCompleted: {
         loadPages()
     }
@@ -90,11 +93,12 @@ Rectangle {
 
     function selectPage(pageId) {
         if (selectedPageId === pageId) return true
-        if (isDirty && selectedPageId !== "" && !saveActiveNote()) return false
+        if ((isDirty || isRichMode) && selectedPageId !== "" && !saveActiveNote()) return false
 
         var p = dataController.getPage(pageId)
         if (!p || !p.id) return false
 
+        isRichMode = false
         selectedPageId = pageId
         activeTitle = p.title || "Sem título"
         activeDescription = p.description || ""
@@ -115,7 +119,16 @@ Rectangle {
     }
 
     function saveActiveNote() {
-        if (!selectedPageId || !isDirty) {
+        if (!selectedPageId) {
+            autoSaveTimer.stop()
+            return true
+        }
+        if (editorCanvas.richContentInvalid || !editorCanvas.flushRichEditor()) {
+            isDirty = true
+            saveFailed = true
+            return false
+        }
+        if (!isDirty) {
             autoSaveTimer.stop()
             return true
         }
@@ -137,6 +150,17 @@ Rectangle {
         return true
     }
 
+    function setPreviewMode(preview) {
+        if (preview === isPreviewMode) return true
+        if (isRichMode && !editorCanvas.flushRichEditor()) {
+            isDirty = true
+            saveFailed = true
+            return false
+        }
+        isPreviewMode = preview
+        return true
+    }
+
     function openPageHistory() {
         if (!selectedPageId) return
         pageHistoryEntries = dataController.getPageHistory(selectedPageId)
@@ -151,7 +175,7 @@ Rectangle {
     }
 
     function createNewRootNote() {
-        if (isDirty && !saveActiveNote()) return
+        if ((isDirty || isRichMode) && !saveActiveNote()) return
 
         var newId = dataController.createSubPage("", "Nova Nota", "📄")
         if (newId) {
@@ -161,7 +185,7 @@ Rectangle {
     }
 
     function createNewSubNote(parentId) {
-        if (isDirty && !saveActiveNote()) return
+        if ((isDirty || isRichMode) && !saveActiveNote()) return
 
         var newId = dataController.createSubPage(parentId, "Nova Sub-página", "📄")
         if (newId) {
@@ -181,7 +205,7 @@ Rectangle {
 
     function deleteActiveNote() {
         if (!selectedPageId) return false
-        if (isDirty && !saveActiveNote()) {
+        if ((isDirty || isRichMode) && !saveActiveNote()) {
             deleteNoteDialog.errorMessage = qsTr("The note could not be saved. Save it before moving it to Trash.")
             Qt.callLater(function() { deleteNoteDialog.open() })
             return false
@@ -201,7 +225,7 @@ Rectangle {
 
     function requestDeleteActiveNote() {
         if (!selectedPageId) return
-        if (isDirty && !saveActiveNote()) return
+        if ((isDirty || isRichMode) && !saveActiveNote()) return
         deleteNoteDialog.errorMessage = ""
         deleteNoteDialog.open()
     }
@@ -221,12 +245,13 @@ Rectangle {
     NotesEditorShortcuts {
         hasPage: notesRoot.selectedPageId.length > 0
         isPreviewMode: notesRoot.isPreviewMode
-        isHistoryOpen: notesRoot.isHistoryOpen
+        isHistoryOpen: notesRoot.isHistoryOpen || notesRoot.isHelpOpen || deleteNoteDialog.visible || editorCanvas.isDialogOpen
         isEmojiPickerOpen: editorCanvas.isEmojiPickerOpen
         contentEditorFocused: editorCanvas.contentEditorFocused
         onSaveRequested: notesRoot.saveActiveNote()
-        onPreviewToggleRequested: notesRoot.isPreviewMode = !notesRoot.isPreviewMode
+        onPreviewToggleRequested: notesRoot.setPreviewMode(!notesRoot.isPreviewMode)
         onFormatRequested: function(prefix, suffix) { editorCanvas.formatSelection(prefix, suffix) }
+        onRichMarkRequested: function(mark) { editorCanvas.toggleRichMark(mark) }
     }
 
     RowLayout {
@@ -251,11 +276,21 @@ Rectangle {
             isDirty: notesRoot.isDirty
             saveFailed: notesRoot.saveFailed
             isPreviewMode: notesRoot.isPreviewMode
+            isRichMode: notesRoot.isRichMode
 
             onSaveRequested: notesRoot.saveActiveNote()
             onDeleteRequested: notesRoot.requestDeleteActiveNote()
             onHistoryRequested: notesRoot.openPageHistory()
-            onPreviewToggled: function(prev) { notesRoot.isPreviewMode = prev }
+            onHelpRequested: notesRoot.isHelpOpen = true
+            onPreviewToggled: function(prev) { notesRoot.setPreviewMode(prev) }
+            onRichModeRequested: function(enabled) {
+                if (enabled) {
+                    if (!notesTextOperations.supportsRichSource(notesRoot.activeContent)) return
+                    notesRoot.isRichMode = true
+                    return
+                }
+                if (editorCanvas.flushRichEditor()) notesRoot.isRichMode = false
+            }
             onTitleModified: function(t) {
                 notesRoot.activeTitle = t
                 notesRoot.isDirty = true
@@ -272,6 +307,16 @@ Rectangle {
                 notesRoot.activeContent = c
                 notesRoot.isDirty = true
                 autoSaveTimer.restart()
+            }
+            onRichContentModified: function(html) {
+                notesRoot.activeContent = html
+                editorCanvas.setEditorText(html)
+                notesRoot.isDirty = true
+                autoSaveTimer.restart()
+            }
+            onRichValidationChanged: function(invalid) {
+                notesRoot.saveFailed = invalid
+                if (invalid) notesRoot.isDirty = true
             }
             onIconModified: function(ico) {
                 notesRoot.activeIcon = ico
@@ -296,6 +341,11 @@ Rectangle {
         pageTitle: notesRoot.activeTitle
         history: notesRoot.pageHistoryEntries
         onCloseRequested: notesRoot.isHistoryOpen = false
+    }
+
+    NotesHelpDialog {
+        isOpen: notesRoot.isHelpOpen
+        onClosed: notesRoot.isHelpOpen = false
     }
 
     NotesDeleteDialog {

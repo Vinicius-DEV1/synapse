@@ -27,6 +27,23 @@ add_executable(synapse-desktop
     src/synapse_controller.h
     src/controllers/platform/database_prepared_controller.cpp
     src/controllers/notes/notes_controller.cpp
+    src/controllers/notes/notes_text_operations.cpp
+    src/controllers/notes/notes_rich_document.cpp
+    src/controllers/notes/notes_rich_spoilers.cpp
+    src/controllers/notes/notes_rich_block_editing.cpp
+    src/controllers/notes/notes_rich_serialization.cpp
+    src/controllers/notes/notes_rich_list_serialization.cpp
+    src/controllers/notes/notes_rich_markup.cpp
+    src/controllers/notes/notes_rich_tables.cpp
+    src/controllers/notes/notes_rich_table_cell_formatting.cpp
+    src/controllers/notes/notes_rich_table_operations.cpp
+    src/controllers/notes/notes_rich_table_styles.cpp
+    src/controllers/notes/notes_rich_heading.cpp
+    src/controllers/notes/notes_rich_validation.cpp
+    src/controllers/notes/notes_rich_task_markup.cpp
+    src/controllers/notes/notes_rich_task_lists.cpp
+    src/controllers/notes/notes_rich_task_checkbox.cpp
+    src/controllers/notes/notes_rich_task_checkbox.h
     src/controllers/notes/notes_cover_controller.cpp
     src/controllers/notes/notes_hierarchy_controller.cpp
     src/controllers/anki/anki_decks_controller.cpp
@@ -119,6 +136,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/native_test_main.cpp
         tests/crypto/native_vault_crypto_test.cpp
         tests/notes/native_notes_test.cpp
+        tests/notes/native_notes_rich_tables_test.cpp
         tests/finance/native_finance_test.cpp
         tests/questions/native_questions_test.cpp
         tests/calendar/native_calendar_test.cpp
@@ -131,6 +149,23 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
         src/controllers/notes/notes_controller.cpp
+        src/controllers/notes/notes_text_operations.cpp
+        src/controllers/notes/notes_rich_document.cpp
+        src/controllers/notes/notes_rich_spoilers.cpp
+        src/controllers/notes/notes_rich_block_editing.cpp
+        src/controllers/notes/notes_rich_serialization.cpp
+        src/controllers/notes/notes_rich_list_serialization.cpp
+        src/controllers/notes/notes_rich_markup.cpp
+        src/controllers/notes/notes_rich_tables.cpp
+        src/controllers/notes/notes_rich_table_cell_formatting.cpp
+        src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_styles.cpp
+        src/controllers/notes/notes_rich_heading.cpp
+        src/controllers/notes/notes_rich_validation.cpp
+        src/controllers/notes/notes_rich_task_markup.cpp
+        src/controllers/notes/notes_rich_task_lists.cpp
+        src/controllers/notes/notes_rich_task_checkbox.cpp
+        src/controllers/notes/notes_rich_task_checkbox.h
         src/controllers/notes/notes_cover_controller.cpp
         src/controllers/notes/notes_hierarchy_controller.cpp
         src/controllers/anki/anki_decks_controller.cpp
@@ -190,6 +225,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     target_link_libraries(synapse-desktop-tests PRIVATE
         Qt6::Core
         Qt6::Gui
+        Qt6::Quick
         Qt6::Network
         Qt6::Concurrent
         Qt6::Test
@@ -202,4 +238,60 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
 
     add_test(NAME native-priority-modules COMMAND synapse-desktop-tests)
     set_tests_properties(native-priority-modules PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(synapse-notes-rich-qml-tests
+        tests/notes/native_rich_qml_test.cpp
+        src/controllers/notes/notes_text_operations.cpp
+        src/controllers/notes/notes_rich_document.cpp
+        src/controllers/notes/notes_rich_spoilers.cpp
+        src/controllers/notes/notes_rich_block_editing.cpp
+        src/controllers/notes/notes_rich_serialization.cpp
+        src/controllers/notes/notes_rich_list_serialization.cpp
+        src/controllers/notes/notes_rich_markup.cpp
+        src/controllers/notes/notes_rich_tables.cpp
+        src/controllers/notes/notes_rich_table_cell_formatting.cpp
+        src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_styles.cpp
+        src/controllers/notes/notes_rich_heading.cpp
+        src/controllers/notes/notes_rich_validation.cpp
+        src/controllers/notes/notes_rich_task_markup.cpp
+        src/controllers/notes/notes_rich_task_lists.cpp
+        src/controllers/notes/notes_rich_task_checkbox.cpp
+        src/controllers/notes/notes_rich_task_checkbox.h
+    )
+    target_include_directories(synapse-notes-rich-qml-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_definitions(synapse-notes-rich-qml-tests PRIVATE
+        SYNAPSE_DESKTOP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    target_link_libraries(synapse-notes-rich-qml-tests PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Test)
+    add_test(NAME native-notes-rich-qml COMMAND synapse-notes-rich-qml-tests)
+    set_tests_properties(native-notes-rich-qml PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(synapse-notes-table-qml-tests
+        tests/notes/native_rich_table_qml_test.cpp
+        src/controllers/notes/notes_text_operations.cpp
+        src/controllers/notes/notes_rich_document.cpp
+        src/controllers/notes/notes_rich_spoilers.cpp
+        src/controllers/notes/notes_rich_block_editing.cpp
+        src/controllers/notes/notes_rich_serialization.cpp
+        src/controllers/notes/notes_rich_list_serialization.cpp
+        src/controllers/notes/notes_rich_markup.cpp
+        src/controllers/notes/notes_rich_tables.cpp
+        src/controllers/notes/notes_rich_table_cell_formatting.cpp
+        src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_styles.cpp
+        src/controllers/notes/notes_rich_heading.cpp
+        src/controllers/notes/notes_rich_validation.cpp
+        src/controllers/notes/notes_rich_task_markup.cpp
+        src/controllers/notes/notes_rich_task_lists.cpp
+        src/controllers/notes/notes_rich_task_checkbox.cpp
+        src/controllers/notes/notes_rich_task_checkbox.h
+    )
+    target_include_directories(synapse-notes-table-qml-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_definitions(synapse-notes-table-qml-tests PRIVATE
+        SYNAPSE_DESKTOP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    target_link_libraries(synapse-notes-table-qml-tests PRIVATE Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml Qt6::Test)
+    add_test(NAME native-notes-table-qml COMMAND synapse-notes-table-qml-tests)
+    set_tests_properties(native-notes-table-qml PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()

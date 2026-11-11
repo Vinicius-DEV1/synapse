@@ -12,14 +12,17 @@ Item {
     signal saveRequested()
     signal previewToggleRequested()
     signal formatRequested(string prefix, string suffix)
+    signal richMarkRequested(string mark)
 
     Shortcut {
         sequences: ["Ctrl+S", "Cmd+S"]
+        enabled: shortcutsRoot.hasPage && !shortcutsRoot.isHistoryOpen && !shortcutsRoot.isEmojiPickerOpen
         onActivated: shortcutsRoot.saveRequested()
     }
 
     Shortcut {
         sequences: ["Ctrl+E", "Cmd+E"]
+        enabled: shortcutsRoot.hasPage && !shortcutsRoot.isHistoryOpen && !shortcutsRoot.isEmojiPickerOpen
         onActivated: shortcutsRoot.previewToggleRequested()
     }
 
@@ -40,10 +43,26 @@ Item {
     }
 
     Shortcut {
+        sequences: ["Ctrl+U", "Cmd+U"]
+        enabled: shortcutsRoot.hasPage && !shortcutsRoot.isPreviewMode &&
+                 !shortcutsRoot.isHistoryOpen && !shortcutsRoot.isEmojiPickerOpen &&
+                 shortcutsRoot.contentEditorFocused
+        onActivated: shortcutsRoot.formatRequested("<u>", "</u>")
+    }
+
+    Shortcut {
         sequences: ["Ctrl+Shift+X", "Cmd+Shift+X"]
         enabled: shortcutsRoot.hasPage && !shortcutsRoot.isPreviewMode &&
                  !shortcutsRoot.isHistoryOpen && !shortcutsRoot.isEmojiPickerOpen &&
                  shortcutsRoot.contentEditorFocused
         onActivated: shortcutsRoot.formatRequested("<s>", "</s>")
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+Shift+S", "Cmd+Shift+S"]
+        enabled: shortcutsRoot.hasPage && !shortcutsRoot.isPreviewMode &&
+                 !shortcutsRoot.isHistoryOpen && !shortcutsRoot.isEmojiPickerOpen &&
+                 shortcutsRoot.contentEditorFocused
+        onActivated: shortcutsRoot.richMarkRequested("spoiler")
     }
 }

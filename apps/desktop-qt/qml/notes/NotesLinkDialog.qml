@@ -15,14 +15,17 @@ Dialog {
     property string originalLabel: ""
     property string labelText: ""
     property string targetUrl: ""
+    property bool hasExistingLink: false
 
     signal linkCreated(string html)
+    signal linkRemoved()
 
-    function openFor(selectedHtml, plainText) {
+    function openFor(selectedHtml, plainText, existingUrl) {
         originalHtml = selectedHtml || ""
         originalLabel = plainText || ""
         labelText = originalLabel
-        targetUrl = ""
+        targetUrl = existingUrl || ""
+        hasExistingLink = targetUrl.length > 0
         open()
     }
 
@@ -112,6 +115,14 @@ Dialog {
         implicitHeight: 58
         spacing: 8
         Item { Layout.fillWidth: true }
+        Button {
+            visible: linkDialog.hasExistingLink
+            text: qsTr("Remove link")
+            onClicked: {
+                linkDialog.linkRemoved()
+                linkDialog.close()
+            }
+        }
         Button { text: "Cancel"; onClicked: linkDialog.close() }
         Button {
             text: "Insert link"

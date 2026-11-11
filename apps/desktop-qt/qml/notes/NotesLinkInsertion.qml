@@ -4,6 +4,7 @@ Item {
     id: insertion
 
     property var editor: null
+    readonly property bool isDialogOpen: linkDialog.visible
     property int selectionStart: 0
     property int selectionEnd: 0
 
@@ -29,8 +30,10 @@ Item {
 
     function insertLink(html) {
         if (!editor) return
-        var content = editor.text
-        editor.text = content.substring(0, selectionStart) + html + content.substring(selectionEnd)
+        if (!notesTextOperations.replace(editor.textDocument, selectionStart, selectionEnd, html)) {
+            console.error("[Notes] Could not insert link into the selected source range")
+            return
+        }
         editor.cursorPosition = selectionStart + html.length
         editor.forceActiveFocus()
     }

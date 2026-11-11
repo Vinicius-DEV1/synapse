@@ -5,6 +5,7 @@ import ".."
 
 Item {
     id: coverRoot
+    readonly property bool isDialogOpen: coverDialog.visible
 
     property var controller: null
     property string pageId: ""

@@ -8,6 +8,7 @@
 #include <clocale>
 #include "mpv_player_item.h"
 #include "synapse_controller.h"
+#include "controllers/notes/notes_text_operations.h"
 #include "synapse_bridge.h"
 
 int main(int argc, char *argv[]) {
@@ -39,7 +40,9 @@ int main(int argc, char *argv[]) {
     qmlRegisterType<MpvPlayerItem>("Synapse.Media", 1, 0, "MpvPlayerItem");
 
     QQmlApplicationEngine engine;
+    NotesTextOperations notesTextOperations;
     engine.rootContext()->setContextProperty("dataController", &dataController);
+    engine.rootContext()->setContextProperty("notesTextOperations", &notesTextOperations);
     engine.rootContext()->setContextProperty("appVersion", "2.0.0");
 
     const QUrl url(QStringLiteral("qrc:/qml/main.qml"));

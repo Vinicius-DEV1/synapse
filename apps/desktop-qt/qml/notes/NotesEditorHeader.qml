@@ -8,6 +8,8 @@ RowLayout {
     property bool isDirty: false
     property bool saveFailed: false
     property bool isPreviewMode: false
+    property bool isRichMode: false
+    property bool canUseRichMode: false
     property bool actionsVisible: false
     property string pageDate: ""
     property int wordCount: 0
@@ -18,10 +20,35 @@ RowLayout {
     signal previewToggled(bool preview)
     signal historyRequested()
     signal moveRequested()
+    signal helpRequested()
+    signal richModeRequested(bool enabled)
 
     spacing: 4
     opacity: actionsVisible ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 150 } }
+
+    ToolButton {
+        Layout.preferredWidth: 30
+        Layout.preferredHeight: 30
+        text: headerRoot.isRichMode ? "⌨" : "¶"
+        enabled: headerRoot.isRichMode || headerRoot.canUseRichMode
+        Accessible.name: headerRoot.isRichMode ? qsTr("Switch to source editing") : qsTr("Switch to visual editing")
+        ToolTip.visible: hovered
+        ToolTip.text: headerRoot.isRichMode ? qsTr("Source editing") : headerRoot.canUseRichMode ? qsTr("Visual editing") : qsTr("This note uses formatting not supported in visual editing")
+        onClicked: headerRoot.richModeRequested(!headerRoot.isRichMode)
+        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
+        contentItem: Text { text: parent.text; color: parent.enabled ? "#a7a9be" : "#51515d"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+    }
+
+    ToolButton {
+        Layout.preferredWidth: 30
+        Layout.preferredHeight: 30
+        text: "?"
+        Accessible.name: qsTr("Notes guide")
+        ToolTip.visible: hovered
+        ToolTip.text: qsTr("Notes guide")
+        onClicked: headerRoot.helpRequested()
+    }
 
     ToolButton {
         Layout.preferredWidth: 30

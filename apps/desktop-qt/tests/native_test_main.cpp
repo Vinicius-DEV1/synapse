@@ -1,6 +1,7 @@
-#include <QtCore/QCoreApplication>
+#include <QtGui/QGuiApplication>
 
 int runNativeNotesTest(int argc, char **argv);
+int runNativeNotesRichTablesTest(int argc, char **argv);
 int runNativeFinanceTest(int argc, char **argv);
 int runNativeQuestionsTest(int argc, char **argv);
 int runNativeCalendarTest(int argc, char **argv);
@@ -12,9 +13,10 @@ int runNativeFilesTest(int argc, char **argv);
 int runNativeVaultCryptoTest(int argc, char **argv);
 
 int main(int argc, char **argv) {
-    QCoreApplication application(argc, argv);
+    QGuiApplication application(argc, argv);
     int result = 0;
     result |= runNativeNotesTest(argc, argv);
+    result |= runNativeNotesRichTablesTest(argc, argv);
     result |= runNativeFinanceTest(argc, argv);
     result |= runNativeQuestionsTest(argc, argv);
     result |= runNativeCalendarTest(argc, argv);
