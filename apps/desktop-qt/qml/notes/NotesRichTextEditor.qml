@@ -159,6 +159,7 @@ Item {
     function openImagePicker() { return richImageActions.openForPosition() }
     function pasteImageFromClipboard() { return richImageActions.pasteFromClipboard() }
     function importDroppedImage(fileUrl, position) { return richImageActions.importDroppedImage(fileUrl, position) }
+    function importDroppedImages(fileUrls, position) { return richImageActions.importDroppedImages(fileUrls, position) }
     function setImageAlignment(alignment) { return richImageActions.setAlignment(alignment) }
     function moveImage(upward) { return richImageActions.moveImage(upward) }
     function fitImageToWidth() { return richImageActions.fitToWidth() }

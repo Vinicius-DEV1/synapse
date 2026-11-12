@@ -57,6 +57,8 @@ public:
     Q_INVOKABLE bool canInsertRichImage(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE int insertRichImage(QQuickTextDocument *document, int start, int end,
                                     const QString &dataUrl, const QString &alt, int width, int height) const;
+    Q_INVOKABLE int insertRichImages(QQuickTextDocument *document, int start, int end,
+                                     const QVariantList &images) const;
     Q_INVOKABLE QVariantMap richImageAt(QQuickTextDocument *document, int cursorPosition,
                                         int selectionStart, int selectionEnd) const;
     Q_INVOKABLE QString richImageData(QQuickTextDocument *document, int imagePosition) const;

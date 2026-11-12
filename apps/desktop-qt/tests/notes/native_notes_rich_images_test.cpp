@@ -98,6 +98,28 @@ private slots:
         QVERIFY(NotesRichImages::insert(listDocument, 1, 1, dataUrl, "", 32, 16) < 0);
     }
 
+    void imageBatchPreservesOrderAndUsesOneUndoStep() {
+        const QVariantList images{
+            QVariantMap{{"imageDataUrl", pngDataUrl()}, {"fileName", "first.png"}, {"width", 32}, {"height", 16}},
+            QVariantMap{{"imageDataUrl", pngDataUrl()}, {"fileName", "second.png"}, {"width", 32}, {"height", 16}}
+        };
+        QTextDocument document;
+        document.setHtml("<p>BeforeAfter</p>");
+        const int insertionPosition = NotesRichImages::insertMany(document, 6, 6, images);
+        QVERIFY(insertionPosition >= 0);
+        const QString inserted = NotesRichDocument::serialize(document);
+        QVERIFY(inserted.indexOf("alt=\"first.png\"") < inserted.indexOf("alt=\"second.png\""));
+        QVERIFY(inserted.startsWith("<p>Before</p><img"));
+        QVERIFY(inserted.endsWith("<p>After</p>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral("<p>BeforeAfter</p>"));
+
+        QVariantList oversized = images;
+        while (oversized.size() <= NotesRichImages::MaximumBatchSize) oversized.append(images.first());
+        QCOMPARE(NotesRichImages::insertMany(document, 6, 6, oversized), -1);
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral("<p>BeforeAfter</p>"));
+    }
+
     void imageInsertionRejectsSelectionAcrossBlocks() {
         QTextDocument document;
         document.setHtml("<p>First</p><ul><li><p>Second</p></li></ul>");

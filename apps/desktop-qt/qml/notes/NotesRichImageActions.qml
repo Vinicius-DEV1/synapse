@@ -135,6 +135,10 @@ Item {
         return imageImportFlow.importDroppedImage(fileUrl, position)
     }
 
+    function importDroppedImages(fileUrls, position) {
+        return imageImportFlow.importDroppedImages(fileUrls, position)
+    }
+
     Connections {
         target: imageActionsRoot.textEditor
         function onCursorPositionChanged() { imageActionsRoot.refreshImageState() }

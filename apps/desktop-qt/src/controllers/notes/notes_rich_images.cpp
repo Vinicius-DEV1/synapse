@@ -1,6 +1,7 @@
 #include "notes_rich_images.h"
 
 #include "notes_rich_format.h"
+#include "notes_rich_image_internal.h"
 
 #include <QtCore/QBuffer>
 #include <QtCore/QRegularExpression>
@@ -17,8 +18,10 @@ namespace {
 
 constexpr qint64 MaximumImageBytes = 2 * 1024 * 1024;
 constexpr qint64 MaximumImagePixels = 30 * 1000 * 1000;
-constexpr int MaximumImageDimension = 8192;
-constexpr int MaximumImageLabelLength = 1024;
+using Internal::MaximumImageDimension;
+using Internal::MaximumImageLabelLength;
+using Internal::alignmentForName;
+using Internal::imageOnlyBlock;
 
 QString mimeForFormat(const QByteArray &format) {
     const QByteArray normalized = format.toLower();
@@ -76,46 +79,6 @@ QVector<ImageMetadata> imageMetadataFromSource(const QString &source) {
     }
     if (xml.hasError()) images.clear();
     return images;
-}
-
-bool imageOnlyBlock(const QTextBlock &block, QTextImageFormat *imageFormat = nullptr,
-                    int *imagePosition = nullptr) {
-    if (!block.isValid() || block.textList() || block.blockFormat().headingLevel() != 0 ||
-        block.blockFormat().intProperty(QTextFormat::BlockQuoteLevel) != 0) return false;
-    bool found = false;
-    for (auto it = block.begin(); !it.atEnd(); ++it) {
-        const QTextFragment fragment = it.fragment();
-        if (!fragment.isValid()) continue;
-        if (fragment.charFormat().isImageFormat()) {
-            if (found || fragment.length() != 1) return false;
-            found = true;
-            if (imageFormat) *imageFormat = fragment.charFormat().toImageFormat();
-            if (imagePosition) *imagePosition = fragment.position();
-        } else if (!fragment.text().trimmed().isEmpty()) {
-            return false;
-        }
-    }
-    return found;
-}
-
-bool findImage(const QTextDocument &document, int position, QTextBlock &block,
-               QTextImageFormat &format, int &imagePosition) {
-    if (position < 0 || position >= document.characterCount()) return false;
-    block = document.findBlock(position);
-    if (!imageOnlyBlock(block, &format, &imagePosition)) return false;
-    return imagePosition == position || imagePosition + 1 == position;
-}
-
-Qt::Alignment alignmentForName(const QString &alignment) {
-    if (alignment == QStringLiteral("left")) return Qt::AlignLeft;
-    if (alignment == QStringLiteral("right")) return Qt::AlignRight;
-    return Qt::AlignHCenter;
-}
-
-QString nameForAlignment(const QTextBlockFormat &format) {
-    if (format.alignment() & Qt::AlignLeft) return QStringLiteral("left");
-    if (format.alignment() & Qt::AlignRight) return QStringLiteral("right");
-    return QStringLiteral("center");
 }
 
 bool isVoidTag(const QString &name) {
@@ -263,193 +226,6 @@ bool prepare(QTextDocument &document, const QString &source) {
         blockCursor.setBlockFormat(blockFormat);
     }
     return imageIndex == metadata.size();
-}
-
-bool canInsertAt(const QTextDocument &document, int position) {
-    if (position < 0 || position > document.characterCount() - 1) return false;
-    QTextCursor cursor(const_cast<QTextDocument *>(&document));
-    cursor.setPosition(position);
-    const QTextBlock block = cursor.block();
-    if (!block.isValid() || block.textList() || cursor.currentTable() ||
-        block.blockFormat().headingLevel() > 0 || block.blockFormat().intProperty(QTextFormat::BlockQuoteLevel) > 0 ||
-        block.blockFormat().boolProperty(QTextFormat::BlockNonBreakableLines) ||
-        block.blockFormat().hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth)) return false;
-    for (auto it = block.begin(); !it.atEnd(); ++it) {
-        const QTextFragment fragment = it.fragment();
-        if (fragment.isValid() && fragment.charFormat().isImageFormat()) return false;
-    }
-    return true;
-}
-
-QVariantMap imageAt(const QTextDocument &document, int cursorPosition,
-                    int selectionStart, int selectionEnd) {
-    QVector<int> candidates;
-    if (selectionEnd - selectionStart == 1) candidates.append(selectionStart);
-    candidates.append(cursorPosition);
-    candidates.append(cursorPosition - 1);
-    if (selectionEnd > selectionStart) candidates.append(selectionEnd - 1);
-
-    for (const int candidate : candidates) {
-        QTextBlock block;
-        QTextImageFormat format;
-        int imagePosition = -1;
-        if (!findImage(document, candidate, block, format, imagePosition)) continue;
-        QSize naturalSize;
-        if (!supportsDataUrl(format.name(), &naturalSize)) continue;
-        const qreal width = format.hasProperty(QTextFormat::ImageWidth)
-            ? format.width() : naturalSize.width();
-        const qreal height = format.hasProperty(QTextFormat::ImageHeight)
-            ? format.height() : width * naturalSize.height() / naturalSize.width();
-        QString alignment = format.stringProperty(NotesRichFormat::ImageAlignment);
-        if (alignment.isEmpty()) alignment = nameForAlignment(block.blockFormat());
-        return {{"valid", true}, {"position", imagePosition}, {"width", qRound(width)},
-                {"height", qRound(height)}, {"naturalWidth", naturalSize.width()},
-                {"naturalHeight", naturalSize.height()}, {"alignment", alignment},
-                {"hasWidth", format.hasProperty(QTextFormat::ImageWidth)},
-                {"hasHeight", format.hasProperty(QTextFormat::ImageHeight)},
-                {"caption", format.stringProperty(NotesRichFormat::ImageCaption)}};
-    }
-    return {{"valid", false}, {"position", -1}};
-}
-
-QString imageData(const QTextDocument &document, int imagePosition) {
-    QTextBlock block;
-    QTextImageFormat format;
-    int resolvedPosition = -1;
-    if (!findImage(document, imagePosition, block, format, resolvedPosition) ||
-        !supportsDataUrl(format.name())) return {};
-    return format.name();
-}
-
-QVariantList captions(const QTextDocument &document) {
-    QVariantList result;
-    for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
-        QTextImageFormat format;
-        int position = -1;
-        if (!imageOnlyBlock(block, &format, &position)) continue;
-        const QString caption = format.stringProperty(NotesRichFormat::ImageCaption);
-        if (caption.isEmpty()) continue;
-        QVariantMap item{{"position", position}, {"caption", caption},
-                         {"width", qRound(format.width())},
-                         {"alignment", format.stringProperty(NotesRichFormat::ImageAlignment)}};
-        result.append(item);
-    }
-    return result;
-}
-
-bool setAlignment(QTextDocument &document, int imagePosition, const QString &alignment) {
-    if (alignment != QStringLiteral("left") && alignment != QStringLiteral("center") &&
-        alignment != QStringLiteral("right")) return false;
-    QTextBlock block;
-    QTextImageFormat imageFormat;
-    int resolvedPosition = -1;
-    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
-    QString currentAlignment = imageFormat.stringProperty(NotesRichFormat::ImageAlignment);
-    if (currentAlignment.isEmpty()) currentAlignment = nameForAlignment(block.blockFormat());
-    if (currentAlignment == alignment) return true;
-    imageFormat.setProperty(NotesRichFormat::ImageAlignment, alignment);
-    QTextCursor edit(&document);
-    edit.setPosition(resolvedPosition);
-    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
-    edit.beginEditBlock();
-    edit.setCharFormat(imageFormat);
-    QTextBlockFormat blockFormat = block.blockFormat();
-    blockFormat.setAlignment(alignmentForName(alignment));
-    QTextCursor blockCursor(block);
-    blockCursor.setBlockFormat(blockFormat);
-    edit.endEditBlock();
-    return true;
-}
-
-bool setCaption(QTextDocument &document, int imagePosition, const QString &caption) {
-    if (caption.size() > MaximumImageLabelLength) return false;
-    QTextBlock block;
-    QTextImageFormat imageFormat;
-    int resolvedPosition = -1;
-    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
-    const QString normalizedCaption = caption.trimmed();
-    if (imageFormat.stringProperty(NotesRichFormat::ImageCaption) == normalizedCaption) return true;
-    imageFormat.setProperty(NotesRichFormat::ImageCaption, normalizedCaption);
-    QTextCursor edit(&document);
-    edit.setPosition(resolvedPosition);
-    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
-    edit.beginEditBlock();
-    edit.setCharFormat(imageFormat);
-    QTextBlockFormat blockFormat = block.blockFormat();
-    blockFormat.setBottomMargin(normalizedCaption.isEmpty() ? 12.0 : 30.0);
-    QTextCursor blockCursor(block);
-    blockCursor.setBlockFormat(blockFormat);
-    edit.endEditBlock();
-    return true;
-}
-
-bool setSize(QTextDocument &document, int imagePosition, int width, int height) {
-    QTextBlock block;
-    QTextImageFormat imageFormat;
-    int resolvedPosition = -1;
-    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
-    const bool sameWidth = width == -1
-        ? !imageFormat.hasProperty(QTextFormat::ImageWidth)
-        : imageFormat.hasProperty(QTextFormat::ImageWidth) && qRound(imageFormat.width()) == width;
-    const bool sameHeight = height == -1
-        ? !imageFormat.hasProperty(QTextFormat::ImageHeight)
-        : imageFormat.hasProperty(QTextFormat::ImageHeight) && qRound(imageFormat.height()) == height;
-    if (sameWidth && sameHeight) return true;
-    if ((width != -1 && (width < 60 || width > MaximumImageDimension)) ||
-        (height != -1 && (height < 60 || height > MaximumImageDimension))) return false;
-
-    if (width == -1) imageFormat.clearProperty(QTextFormat::ImageWidth);
-    else imageFormat.setWidth(width);
-    if (height == -1) imageFormat.clearProperty(QTextFormat::ImageHeight);
-    else imageFormat.setHeight(height);
-    QTextCursor edit(&document);
-    edit.setPosition(resolvedPosition);
-    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
-    edit.beginEditBlock();
-    edit.setCharFormat(imageFormat);
-    edit.endEditBlock();
-    return true;
-}
-
-int insert(QTextDocument &document, int start, int end, const QString &dataUrl,
-           const QString &alt, int width, int height) {
-    if (start < 0 || end < start || end > document.characterCount() - 1 ||
-        !supportsDataUrl(dataUrl) || width < 1 || width > MaximumImageDimension ||
-        height < 1 || height > MaximumImageDimension || alt.size() > MaximumImageLabelLength ||
-        !canInsertAt(document, start)) return -1;
-    if (end > start && document.findBlock(start) != document.findBlock(end - 1)) return -1;
-
-    QTextCursor cursor(&document);
-    cursor.setPosition(start);
-    cursor.setPosition(end, QTextCursor::KeepAnchor);
-    cursor.beginEditBlock();
-    if (cursor.hasSelection()) cursor.removeSelectedText();
-
-    const QTextBlock originalBlock = cursor.block();
-    const bool hasPrefix = cursor.position() > originalBlock.position();
-    QTextBlockFormat imageBlockFormat;
-    imageBlockFormat.setAlignment(Qt::AlignHCenter);
-    imageBlockFormat.setTopMargin(12.0);
-    imageBlockFormat.setBottomMargin(12.0);
-    if (hasPrefix) cursor.insertBlock(imageBlockFormat, QTextCharFormat());
-    else cursor.setBlockFormat(imageBlockFormat);
-
-    QTextImageFormat imageFormat;
-    imageFormat.setName(dataUrl);
-    imageFormat.setWidth(width);
-    imageFormat.setHeight(height);
-    imageFormat.setProperty(NotesRichFormat::ImageAlignment, QStringLiteral("center"));
-    imageFormat.setProperty(NotesRichFormat::ImageCaption, QString());
-    if (!alt.isEmpty()) imageFormat.setProperty(QTextFormat::ImageAltText, alt);
-    cursor.setCharFormat(QTextCharFormat());
-    cursor.insertImage(imageFormat);
-    QTextBlockFormat followingParagraphFormat;
-    followingParagraphFormat.setTopMargin(12.0);
-    followingParagraphFormat.setBottomMargin(12.0);
-    cursor.insertBlock(followingParagraphFormat, QTextCharFormat());
-    const int resultPosition = cursor.position();
-    cursor.endEditBlock();
-    return resultPosition;
 }
 
 }

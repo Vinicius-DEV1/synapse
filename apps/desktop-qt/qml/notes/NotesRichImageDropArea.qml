@@ -35,14 +35,17 @@ DropArea {
 
     function handleImageDrop(urls, x, y) {
         if (!active || !editorRoot || !textEditor || !urls) return false
+        var imageUrls = []
         for (var index = 0; index < urls.length; ++index) {
             var fileUrl = urls[index]
             if (!supportedLocalImageUrl(fileUrl)) continue
-            var position = positionForPoint(x, y)
-            if (position >= 0) editorRoot.importDroppedImage(fileUrl, position)
-            return true
+            imageUrls.push(fileUrl)
         }
-        return false
+        if (imageUrls.length === 0) return false
+        var position = positionForPoint(x, y)
+        if (position < 0) return false
+        editorRoot.importDroppedImages(imageUrls, position)
+        return true
     }
 
     onDropped: function(drop) {

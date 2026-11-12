@@ -2,6 +2,7 @@
 
 #include <QtCore/QString>
 #include <QtCore/QXmlStreamReader>
+#include <QtCore/QVariantList>
 #include <QtGui/QTextImageFormat>
 #include <QtCore/QVariantMap>
 
@@ -9,6 +10,8 @@ class QTextBlock;
 class QTextDocument;
 
 namespace NotesRichImages {
+
+inline constexpr int MaximumBatchSize = 20;
 
 bool supportsAttributes(const QXmlStreamAttributes &attributes);
 bool supportsDataUrl(const QString &dataUrl, QSize *naturalSize = nullptr);
@@ -26,5 +29,6 @@ bool setCaption(QTextDocument &document, int imagePosition, const QString &capti
 bool setSize(QTextDocument &document, int imagePosition, int width, int height);
 int insert(QTextDocument &document, int start, int end, const QString &dataUrl,
            const QString &alt, int width, int height);
+int insertMany(QTextDocument &document, int start, int end, const QVariantList &images);
 
 }

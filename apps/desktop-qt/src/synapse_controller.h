@@ -129,6 +129,7 @@ public:
     Q_INVOKABLE void processNotesPageCover(const QUrl &sourceUrl);
     Q_INVOKABLE void processRandomNotesPageCover();
     Q_INVOKABLE void processNotesRichImage(const QUrl &sourceUrl);
+    Q_INVOKABLE void processNotesRichImages(const QVariantList &sourceUrls);
     Q_INVOKABLE bool hasClipboardNotesRichImage() const;
     Q_INVOKABLE void processClipboardNotesRichImage();
 

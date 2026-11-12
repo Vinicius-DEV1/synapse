@@ -17,16 +17,21 @@ class DropImageControllerStub final : public QObject {
 public:
     bool fileOperationRunning() const { return false; }
     Q_INVOKABLE bool hasClipboardNotesRichImage() const { return false; }
-    Q_INVOKABLE void processNotesRichImage(const QUrl &fileUrl) {
+    Q_INVOKABLE void processNotesRichImages(const QVariantList &fileUrls) {
         ++importCount;
-        importedPath = fileUrl.toLocalFile();
-        emit fileOperationFinished({{"success", true}, {"operation", "notes-rich-image"},
-                                    {"imageDataUrl", QStringLiteral("data:image/png;base64,") + imageBytes},
-                                    {"width", 32}, {"height", 16}, {"fileName", "dropped.png"}});
+        QVariantList images;
+        for (int index = 0; index < fileUrls.size(); ++index) {
+            const QUrl fileUrl = fileUrls.at(index).toUrl();
+            importedPaths.append(fileUrl.toLocalFile());
+            images.append(QVariantMap{{"imageDataUrl", QStringLiteral("data:image/png;base64,") + imageBytes},
+                                      {"width", 32}, {"height", 16},
+                                      {"fileName", QStringLiteral("dropped-%1.png").arg(index + 1)}});
+        }
+        emit fileOperationFinished({{"success", true}, {"operation", "notes-rich-image"}, {"images", images}});
     }
 
     int importCount = 0;
-    QString importedPath;
+    QStringList importedPaths;
     QString imageBytes;
 
 signals:
@@ -40,9 +45,11 @@ private slots:
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());
         const QString imagePath = sandbox.filePath("dropped image.png");
+        const QString secondImagePath = sandbox.filePath("second dropped image.png");
         QImage sourceImage(32, 16, QImage::Format_ARGB32);
         sourceImage.fill(QColor("#22c55e"));
         QVERIFY(sourceImage.save(imagePath, "PNG"));
+        QVERIFY(sourceImage.save(secondImagePath, "PNG"));
         QByteArray encodedImage;
         QBuffer encodedBuffer(&encodedImage);
         QVERIFY(encodedBuffer.open(QIODevice::WriteOnly));
@@ -109,6 +116,7 @@ private slots:
 
         QVariantList urls{QVariant::fromValue(QUrl::fromLocalFile(sandbox.filePath("notes.txt"))),
                           QVariant::fromValue(QUrl::fromLocalFile(imagePath)),
+                          QVariant::fromValue(QUrl::fromLocalFile(secondImagePath)),
                           QVariant::fromValue(QUrl(QStringLiteral("https://example.com/remote.png")))};
         QVariant supportedImage;
         QVERIFY(QMetaObject::invokeMethod(dropArea, "supportedLocalImageUrl", Qt::DirectConnection,
@@ -122,7 +130,7 @@ private slots:
                                           Q_ARG(QVariant, QVariant(targetY))));
         QVERIFY(dropped.toBool());
         QCOMPARE(controller.importCount, 1);
-        QCOMPARE(controller.importedPath, imagePath);
+        QCOMPARE(controller.importedPaths, (QStringList{imagePath, secondImagePath}));
         QCOMPARE(imageActions->property("savedStart").toInt(), 6);
         QCOMPARE(imageActions->property("savedEnd").toInt(), 6);
 
@@ -131,6 +139,8 @@ private slots:
         QVERIFY(flushed.toBool());
         const QString inserted = root->property("sourceHtml").toString();
         QVERIFY(inserted.indexOf("Before</p>") < inserted.indexOf("<img"));
+        QCOMPARE(inserted.count("<img"), 2);
+        QVERIFY(inserted.indexOf("alt=\"dropped-1.png\"") < inserted.indexOf("alt=\"dropped-2.png\""));
         QVERIFY(inserted.indexOf("<img") < inserted.indexOf("After</p>"));
         QVERIFY(QMetaObject::invokeMethod(editor, "undo"));
         QVERIFY(QMetaObject::invokeMethod(root.data(), "commitEditorText", Q_RETURN_ARG(QVariant, flushed)));

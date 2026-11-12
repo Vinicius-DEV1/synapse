@@ -23,11 +23,13 @@ public:
         QByteArray bytes;
         QBuffer buffer(&bytes);
         if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) return;
-        emit fileOperationFinished({{"success", true}, {"operation", "notes-rich-image"},
-                                    {"imageDataUrl", QStringLiteral("data:image/png;base64,%1")
-                                         .arg(QString::fromLatin1(bytes.toBase64()))},
-                                    {"width", 32}, {"height", 16},
-                                    {"fileName", "clipboard-image.png"}});
+        const QString dataUrl = QStringLiteral("data:image/png;base64,%1")
+            .arg(QString::fromLatin1(bytes.toBase64()));
+        const QVariantList images{
+            QVariantMap{{"imageDataUrl", dataUrl}, {"width", 32}, {"height", 16}, {"fileName", "first-clipboard.png"}},
+            QVariantMap{{"imageDataUrl", dataUrl}, {"width", 32}, {"height", 16}, {"fileName", "second-clipboard.png"}}
+        };
+        emit fileOperationFinished({{"success", true}, {"operation", "notes-rich-image"}, {"images", images}});
     }
 
     bool clipboardImageAvailable = true;
@@ -74,7 +76,10 @@ private slots:
         QVariant flushed;
         QVERIFY(QMetaObject::invokeMethod(root.data(), "commitEditorText", Q_RETURN_ARG(QVariant, flushed)));
         QVERIFY(flushed.toBool());
-        QVERIFY(root->property("sourceHtml").toString().contains("<img src=\"data:image/png;base64,"));
+        const QString inserted = root->property("sourceHtml").toString();
+        QCOMPARE(inserted.count("<img"), 2);
+        QVERIFY(inserted.indexOf("alt=\"first-clipboard.png\"") <
+                inserted.indexOf("alt=\"second-clipboard.png\""));
         QCOMPARE(published.count(), 1);
         QVERIFY(QMetaObject::invokeMethod(editor, "undo"));
         QVERIFY(QMetaObject::invokeMethod(root.data(), "commitEditorText", Q_RETURN_ARG(QVariant, flushed)));

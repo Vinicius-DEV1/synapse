@@ -63,9 +63,13 @@ Item {
     }
 
     function importDroppedImage(fileUrl, position) {
-        if (!fileUrl || !String(fileUrl).startsWith("file://") || !captureInsertionTarget(position, position))
+        return importDroppedImages([fileUrl], position)
+    }
+
+    function importDroppedImages(fileUrls, position) {
+        if (!fileUrls || fileUrls.length === 0 || !captureInsertionTarget(position, position))
             return false
-        controller.processNotesRichImage(fileUrl)
+        controller.processNotesRichImages(fileUrls)
         return true
     }
 
@@ -78,24 +82,37 @@ Item {
             showError(qsTr("The note changed while the image was being prepared. Choose the image again."))
             return false
         }
-        var naturalWidth = Number(result.width)
-        var naturalHeight = Number(result.height)
-        var dataUrl = String(result.imageDataUrl || "")
-        if (naturalWidth <= 0 || naturalHeight <= 0 || dataUrl.length === 0) {
-            showError(qsTr("The selected image is incomplete."))
+        var preparedImages = result.images && result.images.length ? result.images : [result]
+        var insertions = []
+        for (var index = 0; index < preparedImages.length; ++index) {
+            var image = preparedImages[index]
+            var naturalWidth = Number(image.width)
+            var naturalHeight = Number(image.height)
+            var dataUrl = String(image.imageDataUrl || "")
+            if (naturalWidth <= 0 || naturalHeight <= 0 || dataUrl.length === 0) {
+                showError(qsTr("One of the selected images is incomplete."))
+                return false
+            }
+            var displayWidth = Math.min(720, naturalWidth)
+            insertions.push({
+                imageDataUrl: dataUrl,
+                fileName: String(image.fileName || "").trim(),
+                width: displayWidth,
+                height: Math.max(1, Math.round(naturalHeight * displayWidth / naturalWidth))
+            })
+        }
+        if (insertions.length === 0) {
+            showError(qsTr("No supported images could be inserted."))
             return false
         }
-        var displayWidth = Math.min(720, naturalWidth)
-        var displayHeight = Math.max(1, Math.round(naturalHeight * displayWidth / naturalWidth))
-        var altText = String(result.fileName || "").trim()
-        var insertionPosition = textOperations.insertRichImage(
-                    textEditor.textDocument, Number(start), Number(end), dataUrl,
-                    altText, displayWidth, displayHeight)
+        var insertionPosition = textOperations.insertRichImages(
+                    textEditor.textDocument, Number(start), Number(end), insertions)
         if (insertionPosition < 0) {
-            showError(qsTr("The image could not be inserted at this position. Place the caret in a regular paragraph and try again."))
+            showError(qsTr("The images could not be inserted at this position. Place the caret in a regular paragraph and try again."))
             return false
         }
-        errorMessage = ""
+        if (String(result.warning || "").length > 0) imageStatus.showWarning(result.warning)
+        else errorMessage = ""
         textEditor.cursorPosition = insertionPosition
         textEditor.forceActiveFocus()
         if (commitTimer) commitTimer.restart()

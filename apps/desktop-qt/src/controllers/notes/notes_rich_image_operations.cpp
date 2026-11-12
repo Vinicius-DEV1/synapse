@@ -19,6 +19,12 @@ int NotesTextOperations::insertRichImage(QQuickTextDocument *document, int start
     return NotesRichImages::insert(*document->textDocument(), start, end, dataUrl, alt, width, height);
 }
 
+int NotesTextOperations::insertRichImages(QQuickTextDocument *document, int start, int end,
+                                           const QVariantList &images) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichImages::insertMany(*document->textDocument(), start, end, images);
+}
+
 QVariantMap NotesTextOperations::richImageAt(QQuickTextDocument *document, int cursorPosition,
                                               int selectionStart, int selectionEnd) const {
     if (!document || !document->textDocument()) return {{"valid", false}, {"position", -1}};
