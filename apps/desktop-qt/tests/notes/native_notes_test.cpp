@@ -163,6 +163,59 @@ private slots:
         QVERIFY(!NotesRichDocument::toggleInline(document, 0, 100, "bold"));
         QVERIFY(!NotesRichDocument::toggleInline(document, 0, 5, "unsupported"));
 
+        QTextDocument insertionDocument;
+        insertionDocument.setHtml("<p>abc</p>");
+        const QString insertionOriginal = NotesRichDocument::serialize(insertionDocument);
+        QVERIFY(NotesRichDocument::toggleInlineAtCursor(insertionDocument, 3, "bold"));
+        QCOMPARE(NotesRichDocument::serialize(insertionDocument), insertionOriginal);
+        QTextCursor insertionCursor(&insertionDocument);
+        insertionCursor.setPosition(3);
+        insertionCursor.insertText("X");
+        QVERIFY(NotesRichDocument::applyPendingInlineMarks(insertionDocument, 3, 4));
+        QCOMPARE(NotesRichDocument::serialize(insertionDocument), QStringLiteral("<p>abc<strong>X</strong></p>"));
+        QVERIFY(NotesRichDocument::toggleInlineAtCursor(insertionDocument, 4, "bold"));
+        QVERIFY(NotesRichDocument::toggleInlineAtCursor(insertionDocument, 4, "italic"));
+        QTextCursor secondInsertionCursor(&insertionDocument);
+        secondInsertionCursor.setPosition(4);
+        secondInsertionCursor.insertText("Y");
+        QVERIFY(NotesRichDocument::applyPendingInlineMarks(insertionDocument, 4, 5));
+        QCOMPARE(NotesRichDocument::serialize(insertionDocument),
+                 QStringLiteral("<p>abc<strong>X</strong><em>Y</em></p>"));
+        QVERIFY(NotesRichDocument::toggleInlineAtCursor(insertionDocument, 5, "spoiler"));
+        QTextCursor spoilerInsertionCursor(&insertionDocument);
+        spoilerInsertionCursor.setPosition(5);
+        spoilerInsertionCursor.insertText("Z");
+        QVERIFY(NotesRichDocument::applyPendingInlineMarks(insertionDocument, 5, 6));
+        const QString spoilerInsertionHtml = NotesRichDocument::serialize(insertionDocument);
+        QVERIFY2(spoilerInsertionHtml.contains("data-type=\"spoiler\"") && spoilerInsertionHtml.contains("Z"),
+                 qPrintable(spoilerInsertionHtml));
+
+        QTextDocument canceledMarkDocument;
+        canceledMarkDocument.setHtml("<p>abc</p>");
+        QVERIFY(NotesRichDocument::toggleInlineAtCursor(canceledMarkDocument, 3, "underline"));
+        QVERIFY(NotesRichDocument::toggleInlineAtCursor(canceledMarkDocument, 3, "underline"));
+        QTextCursor canceledMarkCursor(&canceledMarkDocument);
+        canceledMarkCursor.setPosition(3);
+        canceledMarkCursor.insertText("X");
+        QVERIFY(NotesRichDocument::applyPendingInlineMarks(canceledMarkDocument, 3, 4));
+        QCOMPARE(NotesRichDocument::serialize(canceledMarkDocument), QStringLiteral("<p>abcX</p>"));
+
+        const QVector<QPair<QString, QString>> insertionCases = {
+            {"underline", "<u>X</u>"}, {"strike", "<s>X</s>"}, {"code", "<code>X</code>"}
+        };
+        for (const auto &insertionCase : insertionCases) {
+            QTextDocument markedDocument;
+            markedDocument.setHtml("<p>a</p>");
+            QVERIFY(NotesRichDocument::toggleInlineAtCursor(markedDocument, 1, insertionCase.first));
+            QTextCursor markedCursor(&markedDocument);
+            markedCursor.setPosition(1);
+            markedCursor.insertText("X");
+            QVERIFY(NotesRichDocument::applyPendingInlineMarks(markedDocument, 1, 2));
+            const QString markedHtml = NotesRichDocument::serialize(markedDocument);
+            QVERIFY2(markedHtml.contains(insertionCase.second.toHtmlEscaped()) || markedHtml.contains(insertionCase.second),
+                     qPrintable(markedHtml));
+        }
+
         document.setHtml("<p>First</p><p>Second</p>");
         QVERIFY(NotesRichDocument::toggleBlock(document, 0, 5, "heading1"));
         QCOMPARE(NotesRichDocument::serialize(document), QString("<h1>First</h1><p>Second</p>"));

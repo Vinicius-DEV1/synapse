@@ -9,7 +9,13 @@ namespace NotesRichDocument {
 bool supportsSource(const QString &source);
 // Returns a null string if the document contains formatting this adapter cannot preserve.
 QString serialize(const QTextDocument &document);
-bool toggleInline(QTextDocument &document, int start, int end, const QString &mark);
+bool toggleInline(QTextDocument &document, int start, int end, const QString &mark,
+                  bool joinPreviousEditBlock = false);
+bool toggleInlineAtCursor(QTextDocument &document, int position, const QString &mark);
+bool clearInlineInsertionMarks(QTextDocument &document);
+bool applyInlineMark(QTextDocument &document, int start, int end, const QString &mark,
+                     bool enabled, bool joinPreviousEditBlock = false);
+bool applyPendingInlineMarks(QTextDocument &document, int start, int end);
 bool toggleBlock(QTextDocument &document, int start, int end, const QString &blockType);
 bool setCalloutColor(QTextDocument &document, int start, int end, const QString &color);
 bool isCalloutAt(const QTextDocument &document, int position);

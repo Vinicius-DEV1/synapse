@@ -53,13 +53,22 @@ Item {
     }
 
     function toggleMark(mark) {
-        if (!editorRoot.active || editorRoot.hasInvalidContent || textEditor.selectionStart === textEditor.selectionEnd)
-            return false
+        if (!editorRoot.active || editorRoot.hasInvalidContent) return false
+        if (textEditor.selectionStart === textEditor.selectionEnd) {
+            var appliedAtCursor = textOperations.toggleRichAtCursor(
+                        textEditor.textDocument, textEditor.cursorPosition, mark)
+            if (appliedAtCursor) textEditor.forceActiveFocus()
+            return appliedAtCursor
+        }
         if (!textOperations.toggleRich(
                 textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, mark)) return false
         contentModified()
         textEditor.forceActiveFocus()
         return true
+    }
+
+    function clearPendingMarks() {
+        return textOperations.clearRichPendingMarks(textEditor.textDocument)
     }
 
     function setSpoilerVisibility(position, action) {

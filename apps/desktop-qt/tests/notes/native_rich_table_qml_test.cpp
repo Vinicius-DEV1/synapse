@@ -20,6 +20,92 @@ class NativeRichTableQmlTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void collapsedCaretMarksApplyToTypedTextAndUndoAsOneAction() {
+        QQmlEngine engine;
+        NotesTextOperations operations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
+        QQmlComponent component(&engine);
+        const QUrl harnessUrl = QUrl::fromLocalFile(
+            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/NotesRichTableHarness.qml"));
+        component.loadUrl(harnessUrl);
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        QQuickWindow window;
+        window.resize(960, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *richEditor = root->findChild<QObject *>("richTableEditor");
+        QObject *textEdit = root->findChild<QObject *>("notesRichTextEditor");
+        QVERIFY(richEditor);
+        QVERIFY(textEdit);
+        richEditor->setProperty("sourceHtml", "<p>abc</p>");
+        richEditor->setProperty("hasPendingChanges", false);
+        richEditor->setProperty("active", true);
+        QVariant result;
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        QTRY_COMPARE(textEdit->property("cursorPosition").toInt(), 0);
+        textEdit->setProperty("cursorPosition", 3);
+
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "toggleMark", Q_RETURN_ARG(QVariant, result),
+                                          Q_ARG(QVariant, QVariant("bold"))));
+        QVERIFY(result.toBool());
+        QVERIFY(!richEditor->property("hasPendingChanges").toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral("<p>abc</p>"));
+
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "insert", Q_ARG(int, 3), Q_ARG(QString, QStringLiteral("XY"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(),
+                 QStringLiteral("<p>abc<strong>XY</strong></p>"));
+
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral("<p>abc</p>"));
+
+        richEditor->setProperty("active", false);
+        richEditor->setProperty("sourceHtml", "<p>abc</p>");
+        richEditor->setProperty("active", true);
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        textEdit->setProperty("cursorPosition", 3);
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "toggleMark", Q_RETURN_ARG(QVariant, result),
+                                          Q_ARG(QVariant, QVariant("italic"))));
+        QVERIFY(result.toBool());
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "toggleMark", Q_RETURN_ARG(QVariant, result),
+                                          Q_ARG(QVariant, QVariant("italic"))));
+        QVERIFY(result.toBool());
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "insert", Q_ARG(int, 3), Q_ARG(QString, QStringLiteral("Z"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral("<p>abcZ</p>"));
+
+        richEditor->setProperty("active", false);
+        richEditor->setProperty("sourceHtml", "<p>abc</p>");
+        richEditor->setProperty("active", true);
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        textEdit->setProperty("cursorPosition", 3);
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "toggleMark", Q_RETURN_ARG(QVariant, result),
+                                          Q_ARG(QVariant, QVariant("underline"))));
+        QVERIFY(result.toBool());
+        auto *textItem = qobject_cast<QQuickItem *>(textEdit);
+        QVERIFY(textItem);
+        textItem->forceActiveFocus();
+        QTRY_VERIFY(textItem->hasActiveFocus());
+        QTest::keyClick(&window, Qt::Key_Left);
+        QTest::keyClick(&window, Qt::Key_Right);
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "insert", Q_ARG(int, 3), Q_ARG(QString, QStringLiteral("W"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral("<p>abcW</p>"));
+    }
+
     void toolbarSignalInsertsAndSavesEditableTable() {
         QQmlEngine engine;
         NotesTextOperations operations;

@@ -64,6 +64,47 @@ private:
 class NativeRichQmlTest final : public QObject {
     Q_OBJECT
 private slots:
+    void collapsedCursorFormattingAppliesOnlyToFollowingText() {
+        QQmlEngine engine;
+        NotesTextOperations operations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            TextEdit {
+                property string previousPlainText: ""
+                textFormat: TextEdit.RichText
+                text: "<p>abc</p>"
+                Component.onCompleted: previousPlainText = notesTextOperations.richPlainText(textDocument)
+                onTextChanged: {
+                    var currentPlainText = notesTextOperations.richPlainText(textDocument)
+                    var previous = previousPlainText
+                    previousPlainText = currentPlainText
+                    notesTextOperations.applyRichPendingMarks(textDocument, previous, currentPlainText, cursorPosition)
+                }
+                function exercise() {
+                    cursorPosition = 3
+                    var saved = notesTextOperations.serializeRich(textDocument)
+                    if (!saved.ok || saved.html !== "<p>abc</p>") return false
+                    if (!notesTextOperations.toggleRichAtCursor(textDocument, cursorPosition, "bold")) return false
+                    saved = notesTextOperations.serializeRich(textDocument)
+                    if (!saved.ok || saved.html !== "<p>abc</p>") return false
+                    insert(cursorPosition, "X")
+                    saved = notesTextOperations.serializeRich(textDocument)
+                    if (!saved.ok || saved.html !== "<p>abc<strong>X</strong></p>") return false
+                    undo()
+                    saved = notesTextOperations.serializeRich(textDocument)
+                    return saved.ok && saved.html === "<p>abc</p>"
+                }
+            }
+        )", QUrl());
+        QScopedPointer<QObject> editor(component.create());
+        QVERIFY2(editor, qPrintable(component.errorString()));
+        QVariant result;
+        QVERIFY(QMetaObject::invokeMethod(editor.data(), "exercise", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+    }
+
     void richDocumentBridgePreservesChangesAndRejectsUnsupported() {
         QQmlEngine engine;
         NotesTextOperations operations;

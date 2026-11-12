@@ -1,107 +1,36 @@
 #include "notes_rich_document.h"
 #include "notes_rich_callouts.h"
-#include "notes_rich_format.h"
 #include "notes_rich_markup.h"
+#include "notes_rich_inline_marks.h"
 #include "notes_rich_spoilers.h"
 
-#include <algorithm>
-#include <QtCore/QVector>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextFragment>
-#include <QtGui/QTextList>
-#include <QtGui/QTextListFormat>
 
 namespace NotesRichDocument {
 
-static bool isCodeFormat(const QTextCharFormat &format) {
-    return format.fontFamilies().toStringList().contains(QStringLiteral("monospace"), Qt::CaseInsensitive);
+bool toggleInline(QTextDocument &document, int start, int end, const QString &mark,
+                  bool joinPreviousEditBlock) {
+    return NotesRichInlineMarks::toggle(document, start, end, mark, joinPreviousEditBlock);
 }
 
-static bool isExplicitBold(const QTextCharFormat &format, int headingLevel) {
-    return headingLevel > 0 ? format.intProperty(NotesRichFormat::HeadingBoldState) != NotesRichFormat::HeadingGeneratedBold
-                            : format.fontWeight() >= QFont::Bold;
+bool toggleInlineAtCursor(QTextDocument &document, int position, const QString &mark) {
+    return NotesRichInlineMarks::toggleAtCursor(document, position, mark);
 }
 
-bool toggleInline(QTextDocument &document, int start, int end, const QString &mark) {
-    if (start < 0 || end <= start || end > document.characterCount() - 1) return false;
-    if (mark == "spoiler") return NotesRichSpoilers::toggle(document, start, end);
-    if (mark != "bold" && mark != "italic" && mark != "underline" && mark != "strike" && mark != "code") return false;
-    QTextCursor cursor(&document);
-    cursor.setPosition(start);
-    cursor.setPosition(end, QTextCursor::KeepAnchor);
-    bool allMarked = true;
-    for (QTextBlock block = document.findBlock(start); block.isValid() && block.position() < end; block = block.next()) {
-        for (auto it = block.begin(); !it.atEnd(); ++it) {
-            const QTextFragment fragment = it.fragment();
-            if (!fragment.isValid() || fragment.position() >= end || fragment.position() + fragment.length() <= start) continue;
-            const QTextCharFormat format = fragment.charFormat();
-            const bool marked = mark == "bold" ? isExplicitBold(format, block.blockFormat().headingLevel())
-                : mark == "italic" ? format.fontItalic()
-                : mark == "underline" ? format.fontUnderline()
-                : mark == "strike" ? format.fontStrikeOut() : isCodeFormat(format);
-            allMarked = allMarked && marked;
-        }
-    }
-    if (mark == "code" && allMarked) {
-        cursor.beginEditBlock();
-        for (QTextBlock block = document.findBlock(start); block.isValid() && block.position() < end; block = block.next()) {
-            for (auto it = block.begin(); !it.atEnd(); ++it) {
-                const QTextFragment fragment = it.fragment();
-                if (!fragment.isValid() || fragment.position() >= end || fragment.position() + fragment.length() <= start) continue;
-                const int fragmentStart = qMax(start, fragment.position());
-                const int fragmentEnd = qMin(end, fragment.position() + fragment.length());
-                QTextCursor fragmentCursor(&document);
-                fragmentCursor.setPosition(fragmentStart);
-                fragmentCursor.setPosition(fragmentEnd, QTextCursor::KeepAnchor);
-                QTextCharFormat format = fragment.charFormat();
-                format.clearProperty(QTextFormat::FontFamilies);
-                fragmentCursor.setCharFormat(format);
-            }
-        }
-        cursor.endEditBlock();
-        return true;
-    }
-    if (mark == "bold") {
-        struct PendingFormat { int start; int end; QTextCharFormat format; };
-        QVector<PendingFormat> pending;
-        cursor.beginEditBlock();
-        for (QTextBlock block = document.findBlock(start); block.isValid() && block.position() < end; block = block.next()) {
-            const int headingLevel = block.blockFormat().headingLevel();
-            for (auto it = block.begin(); !it.atEnd(); ++it) {
-                const QTextFragment fragment = it.fragment();
-                if (!fragment.isValid() || fragment.position() >= end || fragment.position() + fragment.length() <= start) continue;
-                QTextCharFormat format = fragment.charFormat();
-                if (headingLevel > 0) {
-                    format.setFontWeight(QFont::Bold);
-                    format.setProperty(NotesRichFormat::HeadingBoldState,
-                                       allMarked ? NotesRichFormat::HeadingGeneratedBold : NotesRichFormat::HeadingExplicitBold);
-                } else {
-                    format.setFontWeight(allMarked ? QFont::Normal : QFont::Bold);
-                }
-                pending.append({qMax(start, fragment.position()),
-                                qMin(end, fragment.position() + fragment.length()), format});
-            }
-        }
-        for (const PendingFormat &item : pending) {
-            QTextCursor fragmentCursor(&document);
-            fragmentCursor.setPosition(item.start);
-            fragmentCursor.setPosition(item.end, QTextCursor::KeepAnchor);
-            fragmentCursor.setCharFormat(item.format);
-        }
-        cursor.endEditBlock();
-        return true;
-    }
-    QTextCharFormat next;
-    if (mark == "italic") next.setFontItalic(!allMarked);
-    else if (mark == "underline") next.setFontUnderline(!allMarked);
-    else if (mark == "strike") next.setFontStrikeOut(!allMarked);
-    else next.setFontFamilies({QStringLiteral("monospace")});
-    cursor.beginEditBlock();
-    cursor.mergeCharFormat(next);
-    cursor.endEditBlock();
-    return true;
+bool clearInlineInsertionMarks(QTextDocument &document) {
+    return NotesRichInlineMarks::clearInsertionMarks(document);
+}
+
+bool applyInlineMark(QTextDocument &document, int start, int end, const QString &mark,
+                     bool enabled, bool joinPreviousEditBlock) {
+    return NotesRichInlineMarks::applyMark(document, start, end, mark, enabled, joinPreviousEditBlock);
+}
+
+bool applyPendingInlineMarks(QTextDocument &document, int start, int end) {
+    return NotesRichInlineMarks::applyPendingMarks(document, start, end);
 }
 
 bool prepareSpoilerStyles(QTextDocument &document) {

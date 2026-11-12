@@ -43,6 +43,11 @@ public:
                                               const QString &action) const;
     Q_INVOKABLE QVariantMap serializeRich(QQuickTextDocument *document) const;
     Q_INVOKABLE bool toggleRich(QQuickTextDocument *document, int start, int end, const QString &mark) const;
+    Q_INVOKABLE bool toggleRichAtCursor(QQuickTextDocument *document, int position, const QString &mark) const;
+    Q_INVOKABLE bool clearRichPendingMarks(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool applyRichPendingMarks(QQuickTextDocument *document, const QString &previousText,
+                                           const QString &currentText, int cursorPosition) const;
+    Q_INVOKABLE QString richPlainText(QQuickTextDocument *document) const;
     Q_INVOKABLE bool toggleRichBlock(QQuickTextDocument *document, int start, int end, const QString &blockType) const;
     Q_INVOKABLE bool changeRichListIndent(QQuickTextDocument *document, int position, bool outdent) const;
     Q_INVOKABLE bool toggleRichTaskItem(QQuickTextDocument *document, int position) const;

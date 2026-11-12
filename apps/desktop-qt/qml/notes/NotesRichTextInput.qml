@@ -6,8 +6,12 @@ Item {
     property var editorRoot
     property var taskListControls
     property var spoilerRevealControl
+    property var richCommands
     property var commitTimer
+    property string previousPlainText: ""
     readonly property alias editor: richEditor
+
+    Component.onCompleted: previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
 
     TextArea {
         id: richEditor
@@ -30,6 +34,12 @@ Item {
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
             var commandModifier = (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) !== 0
+            if (event.key === Qt.Key_Left || event.key === Qt.Key_Right || event.key === Qt.Key_Up ||
+                    event.key === Qt.Key_Down || event.key === Qt.Key_Home || event.key === Qt.Key_End ||
+                    event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown || event.key === Qt.Key_Tab ||
+                    event.key === Qt.Key_Backtab || (commandModifier && event.key === Qt.Key_A)) {
+                inputRoot.richCommands.clearPendingMarks()
+            }
             if (commandModifier && event.key === Qt.Key_Z) {
                 if ((event.modifiers & Qt.ShiftModifier) !== 0) richEditor.redo()
                 else richEditor.undo()
@@ -57,6 +67,7 @@ Item {
         TapHandler {
             acceptedButtons: Qt.LeftButton
             acceptedModifiers: Qt.AltModifier
+            onPressedChanged: if (pressed) inputRoot.richCommands.clearPendingMarks()
             onTapped: function(point) {
                 var position = richEditor.positionAt(point.position.x, point.position.y)
                 inputRoot.editorRoot.setSpoilerVisibility(position, "toggle")
@@ -65,6 +76,7 @@ Item {
         TapHandler {
             acceptedButtons: Qt.LeftButton
             acceptedModifiers: Qt.NoModifier
+            onPressedChanged: if (pressed) inputRoot.richCommands.clearPendingMarks()
             onTapped: function(point) {
                 var position = richEditor.positionAt(point.position.x, point.position.y)
                 if (inputRoot.editorRoot.setSpoilerVisibility(position, "reveal")) return
@@ -76,7 +88,17 @@ Item {
             }
         }
         onTextChanged: {
-            if (inputRoot.editorRoot.isLoading) return
+            var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
+            if (inputRoot.editorRoot.isLoading) {
+                inputRoot.previousPlainText = currentPlainText
+                return
+            }
+            var previousPlainText = inputRoot.previousPlainText
+            inputRoot.previousPlainText = currentPlainText
+            if (currentPlainText !== previousPlainText) {
+                inputRoot.editorRoot.textOperations.applyRichPendingMarks(
+                            richEditor.textDocument, previousPlainText, currentPlainText, richEditor.cursorPosition)
+            }
             inputRoot.editorRoot.hasPendingChanges = true
             inputRoot.commitTimer.restart()
             inputRoot.spoilerRevealControl.refresh()

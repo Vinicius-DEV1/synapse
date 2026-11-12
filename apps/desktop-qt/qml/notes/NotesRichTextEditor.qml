@@ -38,6 +38,7 @@ Item {
             return false
         }
         isLoading = true
+        richCommands.clearPendingMarks()
         var editorSource = textOperations.richSourceForEditor(sourceHtml)
         if (sourceHtml.length > 0 && editorSource.length === 0) {
             canEditSource = false
@@ -153,6 +154,7 @@ Item {
         editorRoot: richRoot
         taskListControls: taskListControls
         spoilerRevealControl: spoilerRevealControl
+        richCommands: richCommands
         commitTimer: commitTimer
     }
 

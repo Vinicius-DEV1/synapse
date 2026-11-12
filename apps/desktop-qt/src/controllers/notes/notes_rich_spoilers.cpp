@@ -289,7 +289,7 @@ bool prepare(QTextDocument &document) {
     return true;
 }
 
-bool toggle(QTextDocument &document, int start, int end) {
+bool toggle(QTextDocument &document, int start, int end, bool joinPreviousEditBlock) {
     if (start < 0 || end <= start || end > document.characterCount() - 1) return false;
     const QVector<FormatChange> fragments = fragmentsInRange(document, start, end);
     if (fragments.isEmpty()) return false;
@@ -320,7 +320,8 @@ bool toggle(QTextDocument &document, int start, int end) {
         changes.append({fragment.start, fragment.end, format});
     }
     QTextCursor cursor(&document);
-    cursor.beginEditBlock();
+    if (joinPreviousEditBlock) cursor.joinPreviousEditBlock();
+    else cursor.beginEditBlock();
     applyChanges(document, changes);
     cursor.endEditBlock();
     removeRevealedRanges(document, start, end);

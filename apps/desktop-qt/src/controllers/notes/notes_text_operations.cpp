@@ -163,6 +163,34 @@ bool NotesTextOperations::toggleRich(QQuickTextDocument *document, int start, in
     return document && document->textDocument() && NotesRichDocument::toggleInline(*document->textDocument(), start, end, mark);
 }
 
+bool NotesTextOperations::toggleRichAtCursor(QQuickTextDocument *document, int position, const QString &mark) const {
+    return document && document->textDocument() &&
+        NotesRichDocument::toggleInlineAtCursor(*document->textDocument(), position, mark);
+}
+
+bool NotesTextOperations::clearRichPendingMarks(QQuickTextDocument *document) const {
+    return document && document->textDocument() &&
+        NotesRichDocument::clearInlineInsertionMarks(*document->textDocument());
+}
+
+bool NotesTextOperations::applyRichPendingMarks(QQuickTextDocument *document, const QString &previousText,
+                                                 const QString &currentText, int cursorPosition) const {
+    if (!document || !document->textDocument() || currentText == previousText) return false;
+    int prefix = 0;
+    const int shorterLength = qMin(previousText.size(), currentText.size());
+    while (prefix < shorterLength && previousText.at(prefix) == currentText.at(prefix)) ++prefix;
+    int suffix = 0;
+    while (suffix < previousText.size() - prefix && suffix < currentText.size() - prefix &&
+           previousText.at(previousText.size() - suffix - 1) == currentText.at(currentText.size() - suffix - 1)) ++suffix;
+    const int added = currentText.size() - prefix - suffix;
+    if (added <= 0 || cursorPosition != prefix + added) return false;
+    return NotesRichDocument::applyPendingInlineMarks(*document->textDocument(), prefix, prefix + added);
+}
+
+QString NotesTextOperations::richPlainText(QQuickTextDocument *document) const {
+    return document && document->textDocument() ? document->textDocument()->toPlainText() : QString();
+}
+
 bool NotesTextOperations::toggleRichBlock(QQuickTextDocument *document, int start, int end, const QString &blockType) const {
     return document && document->textDocument() && NotesRichDocument::toggleBlock(*document->textDocument(), start, end, blockType);
 }
