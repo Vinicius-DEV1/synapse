@@ -76,6 +76,8 @@ Item {
         onRichCellBackgroundRequested: function(color, scope) {
             toolbarBinding.richEditor.tableActions.setCellBackground(color, scope)
         }
+        onRichTableSelectionFormattingClearRequested:
+            toolbarBinding.richEditor.tableActions.clearSelectedCellFormatting()
         onRichDividerRequested: toolbarBinding.richEditor.tableActions.insertDivider()
         onRichDividerActionRequested: function(action) { toolbarBinding.richEditor.tableActions.editDivider(action) }
         onRichDividerDropRequested: function(targetPosition, afterTarget) {

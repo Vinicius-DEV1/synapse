@@ -50,6 +50,13 @@ bool NotesTextOperations::canSetRichTableBackgroundOnSelection(QQuickTextDocumen
             *document->textDocument(), selectionStart, selectionEnd);
 }
 
+bool NotesTextOperations::clearRichTableFormattingOnSelection(QQuickTextDocument *document,
+                                                               int selectionStart, int selectionEnd) const {
+    return document && document->textDocument() &&
+        NotesRichTableCellFormatting::clearFormattingOnSelection(
+            *document->textDocument(), selectionStart, selectionEnd);
+}
+
 bool NotesTextOperations::setRichTableCellBackground(QQuickTextDocument *document, int position,
                                                       const QString &color, const QString &scope,
                                                       int selectionStart, int selectionEnd) const {

@@ -110,6 +110,8 @@ public:
                                            int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool canSetRichTableBackgroundOnSelection(QQuickTextDocument *document,
                                                           int selectionStart, int selectionEnd) const;
+    Q_INVOKABLE bool clearRichTableFormattingOnSelection(QQuickTextDocument *document,
+                                                         int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool setRichTableCellBackground(QQuickTextDocument *document, int position,
                                                 const QString &color, const QString &scope,
                                                 int selectionStart, int selectionEnd) const;

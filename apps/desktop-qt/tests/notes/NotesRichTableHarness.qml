@@ -50,6 +50,9 @@ Item {
         function onRichCellBackgroundRequested(color, scope) {
             richEditor.tableActions.setCellBackground(color, scope)
         }
+        function onRichTableSelectionFormattingClearRequested() {
+            richEditor.tableActions.clearSelectedCellFormatting()
+        }
         function onRichDividerRequested() { richEditor.tableActions.insertDivider() }
         function onRichDividerActionRequested(action) { richEditor.tableActions.editDivider(action) }
         function onRichDividerDropRequested(targetPosition, afterTarget) {

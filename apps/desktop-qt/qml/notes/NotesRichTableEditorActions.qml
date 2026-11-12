@@ -60,6 +60,13 @@ QtObject {
         return finishEdit()
     }
 
+    function clearSelectedCellFormatting() {
+        if (!active || invalid || !canColorSelectedCells ||
+                !textOperations.clearRichTableFormattingOnSelection(
+                    textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)) return false
+        return finishEdit()
+    }
+
     function canEditTable(action) {
         return active && !invalid && textOperations.canApplyRichTableAction(
                     textEditor.textDocument, textEditor.cursorPosition, action)

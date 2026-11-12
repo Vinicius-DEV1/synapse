@@ -31,6 +31,7 @@ Rectangle {
     signal richImageDeleteRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
+    signal richTableSelectionFormattingClearRequested()
     signal richDividerRequested()
     signal richDividerActionRequested(string action)
     signal richDividerDropRequested(int targetPosition, bool afterTarget)
@@ -222,6 +223,12 @@ Rectangle {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 30
             onColorSelected: function(color, scope) { toolbarRoot.richCellBackgroundRequested(color, scope) }
+        }
+        NotesTableSelectionFormattingAction {
+            selectionAvailable: toolbarRoot.richMode && toolbarRoot.canColorSelectedTableCells
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            onClearRequested: toolbarRoot.richTableSelectionFormattingClearRequested()
         }
 
         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }

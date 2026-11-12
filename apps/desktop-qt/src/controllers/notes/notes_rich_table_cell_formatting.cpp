@@ -1,6 +1,8 @@
 #include "notes_rich_table_cell_formatting.h"
 
 #include "notes_rich_markup.h"
+#include "notes_rich_format.h"
+#include "notes_rich_spoilers.h"
 #include "notes_rich_table_merging.h"
 #include "notes_rich_table_styles.h"
 
@@ -8,8 +10,10 @@
 #include <QtCore/QSet>
 #include <QtCore/QVector>
 #include <QtGui/QBrush>
+#include <QtGui/QFont>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
+#include <QtGui/QTextFragment>
 #include <QtGui/QTextTable>
 #include <QtGui/QTextTableCell>
 
@@ -160,6 +164,77 @@ QString editorMarkup(const QString &source) {
 bool canSetBackgroundOnSelection(const QTextDocument &document, int selectionStart, int selectionEnd) {
     QVector<QTextTableCell> cells;
     return selectedCells(*const_cast<QTextDocument *>(&document), selectionStart, selectionEnd, cells);
+}
+
+bool clearFormattingOnSelection(QTextDocument &document, int selectionStart, int selectionEnd) {
+    QVector<QTextTableCell> cells;
+    if (!selectedCells(document, selectionStart, selectionEnd, cells)) return false;
+
+    struct FormatChange {
+        int start;
+        int end;
+        QTextCharFormat format;
+    };
+    QVector<FormatChange> changes;
+    for (const QTextTableCell &cell : cells) {
+        for (auto item = cell.begin(); item != cell.end(); ++item) {
+            const QTextBlock block = item.currentBlock();
+            if (!block.isValid()) continue;
+            for (auto fragmentItem = block.begin(); !fragmentItem.atEnd(); ++fragmentItem) {
+                const QTextFragment fragment = fragmentItem.fragment();
+                if (!fragment.isValid()) continue;
+                const int start = qMax(cell.firstCursorPosition().position(), fragment.position());
+                const int end = qMin(cell.lastCursorPosition().position(), fragment.position() + fragment.length());
+                if (end <= start) continue;
+
+                QTextCharFormat format = fragment.charFormat();
+                QString pageId;
+                if (format.isAnchor() && NotesRichMarkup::pageReferenceFromHref(format.anchorHref(), &pageId))
+                    continue;
+
+                if (format.boolProperty(NotesRichFormat::SpoilerMark))
+                    format = NotesRichSpoilers::formatForSerialization(format);
+
+                const int headingLevel = block.blockFormat().headingLevel();
+                if (headingLevel > 0 && format.intProperty(NotesRichFormat::HeadingBoldState) != 0) {
+                    format.setFontWeight(QFont::Bold);
+                    format.setProperty(NotesRichFormat::HeadingBoldState,
+                                       NotesRichFormat::HeadingGeneratedBold);
+                } else if (format.intProperty(NotesRichFormat::TableHeaderBoldState) != 0) {
+                    format.setFontWeight(QFont::Bold);
+                    format.setProperty(NotesRichFormat::TableHeaderBoldState,
+                                       NotesRichFormat::TableHeaderGeneratedBold);
+                } else {
+                    format.clearProperty(QTextFormat::FontWeight);
+                    format.clearProperty(NotesRichFormat::HeadingBoldState);
+                    format.clearProperty(NotesRichFormat::TableHeaderBoldState);
+                }
+                format.clearProperty(QTextFormat::FontItalic);
+                format.clearProperty(QTextFormat::FontUnderline);
+                format.clearProperty(QTextFormat::TextUnderlineStyle);
+                format.clearProperty(QTextFormat::FontStrikeOut);
+                if (format.fontFamilies().toStringList().contains(QStringLiteral("monospace"), Qt::CaseInsensitive))
+                    format.clearProperty(QTextFormat::FontFamilies);
+                format.clearProperty(QTextFormat::ForegroundBrush);
+                format.clearProperty(QTextFormat::BackgroundBrush);
+                format.clearProperty(QTextFormat::IsAnchor);
+                format.clearProperty(QTextFormat::AnchorHref);
+                changes.append({start, end, format});
+            }
+        }
+    }
+
+    if (changes.isEmpty()) return true;
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    for (const FormatChange &change : changes) {
+        QTextCursor cursor(&document);
+        cursor.setPosition(change.start);
+        cursor.setPosition(change.end, QTextCursor::KeepAnchor);
+        cursor.setCharFormat(change.format);
+    }
+    edit.endEditBlock();
+    return true;
 }
 
 bool setBackground(QTextDocument &document, int position, const QString &colorValue, const QString &scope,
