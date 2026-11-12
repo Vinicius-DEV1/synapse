@@ -27,6 +27,7 @@ add_executable(synapse-desktop
     src/synapse_controller.h
     src/controllers/platform/database_prepared_controller.cpp
     src/controllers/notes/notes_controller.cpp
+    src/controllers/notes/notes_reference_search_controller.cpp
     src/controllers/notes/notes_code_syntax_highlighter.cpp
     src/controllers/notes/notes_code_syntax_highlighter.h
     src/controllers/notes/notes_text_operations.cpp
@@ -145,6 +146,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/native_test_main.cpp
         tests/crypto/native_vault_crypto_test.cpp
         tests/notes/native_notes_test.cpp
+        tests/notes/native_notes_reference_search_test.cpp
         tests/notes/native_notes_rich_tables_test.cpp
         tests/notes/native_notes_callout_test.cpp
         tests/notes/native_notes_code_language_test.cpp
@@ -161,6 +163,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
         src/controllers/notes/notes_controller.cpp
+        src/controllers/notes/notes_reference_search_controller.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp
@@ -264,6 +267,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_rich_qml_test.cpp
         tests/notes/native_notes_slash_menu_qml_test.cpp
         tests/notes/native_notes_page_reference_qml_test.cpp
+        tests/notes/native_notes_reference_search_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp
         tests/notes/native_notes_code_language_qml_test.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp

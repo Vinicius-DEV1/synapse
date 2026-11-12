@@ -1,6 +1,7 @@
 #include <QtGui/QGuiApplication>
 
 int runNativeNotesTest(int argc, char **argv);
+int runNativeNotesReferenceSearchTest(int argc, char **argv);
 int runNativeNotesRichTablesTest(int argc, char **argv);
 int runNativeNotesCalloutTest(int argc, char **argv);
 int runNativeNotesCodeLanguageTest(int argc, char **argv);
@@ -19,6 +20,7 @@ int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
     int result = 0;
     result |= runNativeNotesTest(argc, argv);
+    result |= runNativeNotesReferenceSearchTest(argc, argv);
     result |= runNativeNotesRichTablesTest(argc, argv);
     result |= runNativeNotesCalloutTest(argc, argv);
     result |= runNativeNotesCodeLanguageTest(argc, argv);

@@ -247,6 +247,7 @@ void SynapseDataController::checkKeychainState() {
 }
 
 void SynapseDataController::clearUnlockedKeys() {
+    cancelPageReferenceSearchTasks(true);
     for (auto it = m_unlockedKeys.begin(); it != m_unlockedKeys.end(); ++it) {
         it.value().fill(QChar(0));
     }

@@ -109,6 +109,8 @@ public:
     Q_INVOKABLE QVariantList getPages(const QString &filter = "");
     Q_INVOKABLE QVariantList getPinnedPages();
     Q_INVOKABLE QVariantList getPageTree(const QString &filter = "");
+    Q_INVOKABLE void searchPageReferences(const QString &query, int requestId);
+    Q_INVOKABLE void cancelPageReferenceSearch(int requestId);
     Q_INVOKABLE QVariantMap getPage(const QString &pageId);
     Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon = "📄");
     Q_INVOKABLE QVariantList getPageHistory(const QString &pageId);
@@ -362,6 +364,7 @@ signals:
     void libraryBookReady(const QVariantMap &result);
     void libraryPdfPageReady(const QVariantMap &result);
     void libraryBookSearchReady(const QVariantMap &result);
+    void pageReferenceSearchReady(const QVariantMap &result);
     void libraryBookMetadataSearchFinished(const QVariantMap &result);
     void filePreviewsInvalidated();
 
@@ -405,6 +408,12 @@ private:
     QString m_librarySearchPath;
     std::shared_ptr<std::atomic_bool> m_librarySearchCancellation;
     QSet<QNetworkReply *> m_libraryMetadataReplies;
+    struct PageReferenceSearchTask {
+        int requestId = 0;
+        std::shared_ptr<std::atomic_bool> cancellation;
+    };
+    QHash<QFutureWatcher<QVariantMap> *, PageReferenceSearchTask> m_pageReferenceSearchTasks;
+    int m_latestPageReferenceSearchRequestId = 0;
 
     void checkKeychainState();
     void clearUnlockedKeys();
@@ -412,6 +421,7 @@ private:
     void recordFailedVaultUnlock();
     void clearFailedVaultUnlocks();
     bool finishActiveLibraryReadingSession();
+    void cancelPageReferenceSearchTasks(bool waitForFinish);
     void cancelLibraryMetadataRequests();
     QString encryptContent(const QString &keyHex, const QString &plaintext);
     QString decryptContent(const QString &keyHex, const QString &ciphertext);

@@ -13,6 +13,7 @@ int runNativeNotesCodeLanguageQmlTest(int argc, char **argv);
 int runNativeNotesDividerDragQmlTest(int argc, char **argv);
 int runNativeNotesSlashMenuQmlTest(int argc, char **argv);
 int runNativeNotesPageReferenceQmlTest(int argc, char **argv);
+int runNativeNotesReferenceSearchQmlTest(int argc, char **argv);
 
 class MockNotesController final : public QObject {
     Q_OBJECT
@@ -374,6 +375,7 @@ int main(int argc, char **argv) {
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesSlashMenuQmlTest(argc, argv) |
         runNativeNotesPageReferenceQmlTest(argc, argv) |
+        runNativeNotesReferenceSearchQmlTest(argc, argv) |
         runNativeNotesCalloutQmlTest(argc, argv) |
         runNativeNotesCodeLanguageQmlTest(argc, argv) |
         runNativeNotesDividerDragQmlTest(argc, argv);

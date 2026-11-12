@@ -12,14 +12,23 @@ Item {
     property string mode: "link"
     property string searchQuery: ""
     property string errorMessage: ""
+    property string searchErrorMessage: ""
+    property bool searchPending: false
     property real anchorX: 0
     property real anchorY: 0
     property int selectedIndex: 0
     property var pages: []
+    property var contentMatches: []
     readonly property var filteredPages: {
         var query = searchQuery.trim().toLowerCase()
+        var contentIds = ({})
+        for (var i = 0; i < contentMatches.length; ++i) {
+            var matchId = String(contentMatches[i].id || "")
+            if (matchId.length > 0) contentIds[matchId] = true
+        }
         return pages.filter(function(page) {
-            return page && page.id && String(page.title || "").toLowerCase().indexOf(query) >= 0
+            return page && page.id && (String(page.title || "").toLowerCase().indexOf(query) >= 0 ||
+                Boolean(contentIds[String(page.id)]))
         })
     }
     readonly property string effectiveTitle: searchQuery.trim() || qsTr("Untitled")
@@ -35,12 +44,14 @@ Item {
         else if (searchQuery.trim().length > 0) result.push(createOption)
         return result
     }
-    readonly property int footerHeight: errorMessage.length > 0 ? 36 : 0
+    readonly property string visibleErrorMessage: searchErrorMessage || errorMessage
+    readonly property int footerHeight: visibleErrorMessage.length > 0 ? 36 : 0
     readonly property int menuHeight: 80 + (options.length === 0
         ? 48 : Math.min(260, options.length * 52)) + footerHeight
 
     signal pageSelected(string pageId, string title, bool createNew)
     signal dismissed()
+    signal searchQueryEdited(string query)
 
     visible: open
     z: 22
@@ -55,8 +66,10 @@ Item {
     }
     Accessible.role: Accessible.List
     Accessible.name: mode === "create" ? qsTr("Create a linked page") : qsTr("Link to a page")
-    Accessible.description: options.length === 0
-        ? qsTr("No matching pages. Search by page title.")
+    Accessible.description: searchPending
+        ? qsTr("Searching page titles and content.")
+        : options.length === 0
+        ? qsTr("No matching pages. Search by page title or content.")
         : qsTr("%1 choices. Use Up or Down to choose, Enter to continue, or Escape to close.")
             .arg(options.length)
     Accessible.ignored: !visible
@@ -78,6 +91,7 @@ Item {
         searchQuery = initialQuery
         selectedIndex = 0
         errorMessage = ""
+        searchErrorMessage = ""
         Qt.callLater(function() { searchField.forceActiveFocus() })
     }
     onInitialQueryChanged: if (open) searchQuery = initialQuery
@@ -126,6 +140,8 @@ Item {
             onTextChanged: {
                 referenceMenu.searchQuery = text
                 referenceMenu.errorMessage = ""
+                referenceMenu.searchErrorMessage = ""
+                referenceMenu.searchQueryEdited(text)
             }
             Keys.priority: Keys.BeforeItem
             Keys.onPressed: function(event) {
@@ -198,20 +214,21 @@ Item {
                 visible: referenceMenu.options.length === 0
                 color: "#a7a9be"
                 font.pixelSize: 11
-                text: qsTr("No matching pages found")
+                text: referenceMenu.searchPending
+                    ? qsTr("Searching page content…") : qsTr("No matching pages found")
             }
         }
 
         Text {
             width: Math.max(0, parent.width - 24)
             height: referenceMenu.footerHeight
-            visible: referenceMenu.errorMessage.length > 0
+            visible: referenceMenu.visibleErrorMessage.length > 0
             anchors.horizontalCenter: parent.horizontalCenter
             verticalAlignment: Text.AlignVCenter
             wrapMode: Text.Wrap
             color: "#fda4af"
             font.pixelSize: 10
-            text: referenceMenu.errorMessage
+            text: referenceMenu.visibleErrorMessage
         }
     }
 }
