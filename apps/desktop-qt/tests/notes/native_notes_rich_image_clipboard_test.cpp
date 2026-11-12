@@ -1,4 +1,5 @@
 #include "synapse_controller.h"
+#include "controllers/notes/notes_rich_document.h"
 #include "controllers/notes/notes_rich_images.h"
 
 #include <QtCore/QBuffer>
@@ -8,12 +9,47 @@
 #include <QtGui/QClipboard>
 #include <QtGui/QImage>
 #include <QtGui/QGuiApplication>
+#include <QtGui/QTextBlock>
+#include <QtGui/QTextDocument>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 
 class NativeNotesRichImageClipboardTest final : public QObject {
     Q_OBJECT
 private slots:
+    void imageBatchCanInsertAfterSelectedImageWithOneUndo() {
+        QImage originalImage(32, 16, QImage::Format_ARGB32);
+        originalImage.fill(QColor("#22c55e"));
+        QByteArray originalBytes;
+        QBuffer originalBuffer(&originalBytes);
+        QVERIFY(originalBuffer.open(QIODevice::WriteOnly));
+        QVERIFY(originalImage.save(&originalBuffer, "PNG"));
+        const QString originalDataUrl = QStringLiteral("data:image/png;base64,%1")
+            .arg(QString::fromLatin1(originalBytes.toBase64()));
+        const QString source = QStringLiteral(
+            "<p>Before</p><p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"existing.png\"/></p><p>After</p>")
+            .arg(originalDataUrl);
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichImages::prepare(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        const int selectedImagePosition = document.findBlockByNumber(1).position();
+        const int insertionPosition = NotesRichImages::insertionPositionAfter(document, selectedImagePosition);
+        QVERIFY(insertionPosition >= 0);
+        QVERIFY(NotesRichImages::canInsertAt(document, insertionPosition));
+        const QVariantList images{
+            QVariantMap{{"imageDataUrl", originalDataUrl}, {"fileName", "pasted-1.png"}, {"width", 32}, {"height", 16}},
+            QVariantMap{{"imageDataUrl", originalDataUrl}, {"fileName", "pasted-2.png"}, {"width", 32}, {"height", 16}}
+        };
+        QVERIFY(NotesRichImages::insertMany(document, insertionPosition, insertionPosition, images) >= 0);
+        const QString inserted = NotesRichDocument::serialize(document);
+        QVERIFY(inserted.indexOf("alt=\"existing.png\"") < inserted.indexOf("alt=\"pasted-1.png\""));
+        QVERIFY(inserted.indexOf("alt=\"pasted-1.png\"") < inserted.indexOf("alt=\"pasted-2.png\""));
+        QVERIFY(inserted.indexOf("alt=\"pasted-2.png\"") < inserted.indexOf("After"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+    }
+
     void clipboardImagesAndLocalPathsProduceValidatedImagePayloads() {
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());

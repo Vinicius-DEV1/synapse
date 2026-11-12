@@ -20,6 +20,7 @@ bool serialize(const QTextImageFormat &format, QString &html);
 bool serializeStandaloneBlock(const QTextBlock &block, QString &html);
 bool prepare(QTextDocument &document, const QString &source);
 bool canInsertAt(const QTextDocument &document, int position);
+int insertionPositionAfter(const QTextDocument &document, int imagePosition);
 QVariantMap imageAt(const QTextDocument &document, int cursorPosition,
                     int selectionStart, int selectionEnd);
 QString imageData(const QTextDocument &document, int imagePosition);

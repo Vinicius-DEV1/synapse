@@ -14,6 +14,7 @@
 namespace NotesRichImages {
 using Internal::MaximumImageDimension;
 using Internal::MaximumImageLabelLength;
+using Internal::findImage;
 using Internal::imageOnlyBlock;
 
 bool canInsertAt(const QTextDocument &document, int position) {
@@ -31,6 +32,16 @@ bool canInsertAt(const QTextDocument &document, int position) {
         if (fragment.isValid() && fragment.charFormat().isImageFormat()) return false;
     }
     return true;
+}
+
+int insertionPositionAfter(const QTextDocument &document, int imagePosition) {
+    QTextBlock imageBlock;
+    QTextImageFormat imageFormat;
+    int resolvedPosition = -1;
+    if (!findImage(document, imagePosition, imageBlock, imageFormat, resolvedPosition) ||
+        resolvedPosition != imagePosition) return -1;
+    const QTextBlock followingBlock = imageBlock.next();
+    return followingBlock.isValid() ? followingBlock.position() : -1;
 }
 
 int insert(QTextDocument &document, int start, int end, const QString &dataUrl,

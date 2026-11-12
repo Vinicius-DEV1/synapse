@@ -25,6 +25,12 @@ int NotesTextOperations::insertRichImages(QQuickTextDocument *document, int star
     return NotesRichImages::insertMany(*document->textDocument(), start, end, images);
 }
 
+int NotesTextOperations::richImageInsertionPositionAfter(QQuickTextDocument *document,
+                                                          int imagePosition) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichImages::insertionPositionAfter(*document->textDocument(), imagePosition);
+}
+
 QVariantMap NotesTextOperations::richImageAt(QQuickTextDocument *document, int cursorPosition,
                                               int selectionStart, int selectionEnd) const {
     if (!document || !document->textDocument()) return {{"valid", false}, {"position", -1}};

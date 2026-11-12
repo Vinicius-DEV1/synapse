@@ -39,6 +39,20 @@ Item {
         savedEnd = hasRequestedRange
                 ? Math.max(requestedStart, requestedEnd)
                 : Math.max(Number(textEditor.selectionStart), Number(textEditor.selectionEnd))
+        if (savedEnd - savedStart === 1) {
+            var selectedImage = textOperations.richImageAt(
+                        textEditor.textDocument, savedStart, savedStart, savedEnd)
+            if (selectedImage && selectedImage.valid && Number(selectedImage.position) === savedStart) {
+                var positionAfterImage = textOperations.richImageInsertionPositionAfter(
+                            textEditor.textDocument, savedStart)
+                if (Number(positionAfterImage) < 0) {
+                    showError(qsTr("The selected image has no editable paragraph after it."))
+                    return false
+                }
+                savedStart = Number(positionAfterImage)
+                savedEnd = savedStart
+            }
+        }
         savedPageId = String(pageId)
         savedDocumentSource = String(textEditor.text)
         if (!textOperations.canInsertRichImage(textEditor.textDocument, savedStart)) {
