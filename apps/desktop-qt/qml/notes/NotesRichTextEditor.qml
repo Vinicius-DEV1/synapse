@@ -5,6 +5,8 @@ Item {
     objectName: "notesRichTextEditorRoot"
     property string sourceHtml: ""
     property var pageList: []
+    property var controller: null
+    property string parentPageId: ""
     property var textOperations: notesTextOperations
     property bool active: false
     property bool isLoading: false
@@ -31,6 +33,16 @@ Item {
     signal validationChanged(bool invalid, string message)
     signal pageNavigationRequested(string pageId)
     signal externalLinkRequested(string link)
+    signal pageHierarchyChanged()
+
+    function createLinkedPage(title) {
+        var pageTitle = String(title || "").trim()
+        if (!controller || !parentPageId || pageTitle.length === 0) return ""
+        var pageId = controller.createSubPage(parentPageId, pageTitle, "📄")
+        if (!pageId) return ""
+        pageHierarchyChanged()
+        return String(pageId)
+    }
 
     function loadSource() {
         if (active && hasPendingChanges) return false

@@ -31,6 +31,8 @@ Item {
             keywords: ["code", "javascript", "typescript", "codigo"] },
         { id: "page", title: qsTr("Link to page"), subtitle: qsTr("Reference an existing page."), icon: "↗",
             keywords: ["page", "page link", "reference", "link to page", "pagina", "vincular pagina"] },
+        { id: "page-create", title: qsTr("Create linked page"), subtitle: qsTr("Create a child page and link it here."), icon: "+",
+            keywords: ["page create", "create page", "new page", "subpage", "criar pagina", "nova pagina"] },
         { id: "divider", title: qsTr("Divider"), subtitle: qsTr("Separate content blocks."), icon: "—",
             keywords: ["divider", "line", "hr", "divisor", "linha"] },
         { id: "table", title: qsTr("Table"), subtitle: qsTr("Insert a structured table."), icon: "▦",

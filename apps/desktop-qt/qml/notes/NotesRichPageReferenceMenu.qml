@@ -9,7 +9,9 @@ Item {
 
     property bool open: false
     property string initialQuery: ""
+    property string mode: "link"
     property string searchQuery: ""
+    property string errorMessage: ""
     property real anchorX: 0
     property real anchorY: 0
     property int selectedIndex: 0
@@ -20,10 +22,24 @@ Item {
             return page && page.id && String(page.title || "").toLowerCase().indexOf(query) >= 0
         })
     }
-    readonly property int menuHeight: 80 + (filteredPages.length === 0
-        ? 48 : Math.min(260, filteredPages.length * 52))
+    readonly property string effectiveTitle: searchQuery.trim() || qsTr("Untitled")
+    readonly property var options: {
+        var result = filteredPages.slice()
+        var createOption = {
+            id: "new",
+            title: qsTr("Create ‘%1’").arg(effectiveTitle),
+            icon: "✨",
+            createNew: true
+        }
+        if (mode === "create") result.unshift(createOption)
+        else if (searchQuery.trim().length > 0) result.push(createOption)
+        return result
+    }
+    readonly property int footerHeight: errorMessage.length > 0 ? 36 : 0
+    readonly property int menuHeight: 80 + (options.length === 0
+        ? 48 : Math.min(260, options.length * 52)) + footerHeight
 
-    signal pageSelected(string pageId, string title)
+    signal pageSelected(string pageId, string title, bool createNew)
     signal dismissed()
 
     visible: open
@@ -38,28 +54,30 @@ Item {
             : Math.max(8, anchorY - height - 8)
     }
     Accessible.role: Accessible.List
-    Accessible.name: qsTr("Link to an existing page")
-    Accessible.description: filteredPages.length === 0
+    Accessible.name: mode === "create" ? qsTr("Create a linked page") : qsTr("Link to a page")
+    Accessible.description: options.length === 0
         ? qsTr("No matching pages. Search by page title.")
-        : qsTr("%1 matching pages. Use Up or Down to choose, Enter to link, or Escape to close.")
-            .arg(filteredPages.length)
+        : qsTr("%1 choices. Use Up or Down to choose, Enter to continue, or Escape to close.")
+            .arg(options.length)
     Accessible.ignored: !visible
 
     function moveSelection(delta) {
-        if (filteredPages.length === 0) return
-        selectedIndex = (selectedIndex + delta + filteredPages.length) % filteredPages.length
+        if (options.length === 0) return
+        selectedIndex = (selectedIndex + delta + options.length) % options.length
     }
 
     function select(index) {
-        if (index < 0 || index >= filteredPages.length) return
-        var page = filteredPages[index]
-        pageSelected(String(page.id), String(page.title || qsTr("Untitled")))
+        if (index < 0 || index >= options.length) return
+        var page = options[index]
+        pageSelected(String(page.id), page.createNew ? effectiveTitle : String(page.title || qsTr("Untitled")),
+                     Boolean(page.createNew))
     }
 
     onOpenChanged: {
         if (!open) return
         searchQuery = initialQuery
         selectedIndex = 0
+        errorMessage = ""
         Qt.callLater(function() { searchField.forceActiveFocus() })
     }
     onInitialQueryChanged: if (open) searchQuery = initialQuery
@@ -85,7 +103,7 @@ Item {
             color: "#a7a9be"
             font.pixelSize: 10
             font.weight: Font.DemiBold
-            text: qsTr("LINK TO PAGE").toUpperCase()
+            text: (referenceMenu.mode === "create" ? qsTr("CREATE OR LINK PAGE") : qsTr("LINK TO PAGE")).toUpperCase()
         }
 
         TextField {
@@ -94,7 +112,7 @@ Item {
             x: 8
             width: parent.width - 16
             height: 38
-            placeholderText: qsTr("Search page titles…")
+            placeholderText: referenceMenu.mode === "create" ? qsTr("New page title or existing page…") : qsTr("Search page titles…")
             text: referenceMenu.searchQuery
             color: "#fffffe"
             placeholderTextColor: "#77798c"
@@ -105,7 +123,10 @@ Item {
                 radius: 6
                 border.color: "#18ffffff"
             }
-            onTextChanged: referenceMenu.searchQuery = text
+            onTextChanged: {
+                referenceMenu.searchQuery = text
+                referenceMenu.errorMessage = ""
+            }
             Keys.priority: Keys.BeforeItem
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
@@ -125,9 +146,9 @@ Item {
             id: pageList
             objectName: "notesRichPageReferenceList"
             width: parent.width
-            height: Math.max(0, referenceMenu.height - 80)
+            height: Math.max(0, referenceMenu.height - 80 - referenceMenu.footerHeight)
             clip: true
-            model: referenceMenu.filteredPages
+            model: referenceMenu.options
             currentIndex: referenceMenu.selectedIndex
             boundsBehavior: Flickable.StopAtBounds
 
@@ -174,11 +195,23 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                visible: referenceMenu.filteredPages.length === 0
+                visible: referenceMenu.options.length === 0
                 color: "#a7a9be"
                 font.pixelSize: 11
                 text: qsTr("No matching pages found")
             }
+        }
+
+        Text {
+            width: Math.max(0, parent.width - 24)
+            height: referenceMenu.footerHeight
+            visible: referenceMenu.errorMessage.length > 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.Wrap
+            color: "#fda4af"
+            font.pixelSize: 10
+            text: referenceMenu.errorMessage
         }
     }
 }

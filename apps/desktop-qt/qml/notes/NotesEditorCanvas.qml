@@ -328,10 +328,13 @@ ScrollView {
                 Layout.preferredHeight: Math.max(300, richTextEditor.editor.contentHeight + 40)
                 sourceHtml: canvasRoot.activeContent
                 pageList: canvasRoot.allPages
+                controller: canvasRoot.controller
+                parentPageId: canvasRoot.activePageId
                 active: visible
                 onContentModified: function(html) { canvasRoot.richContentModified(html) }
                 onPageNavigationRequested: function(pageId) { canvasRoot.pageNavigationRequested(pageId) }
                 onExternalLinkRequested: function(link) { canvasRoot.openExternalLink(link) }
+                onPageHierarchyChanged: canvasRoot.pageHierarchyChanged()
                 onValidationChanged: function(invalid, message) {
                     canvasRoot.richValidationChanged(invalid)
                     if (invalid) canvasRoot.pageActionFailed(message)
