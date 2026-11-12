@@ -243,6 +243,33 @@ private slots:
         QVERIFY(!NotesRichImageEditing::canMove(edges, edgeImagePosition, false));
     }
 
+    void replacingCroppedImagePreservesMetadataAndUsesOneUndoStep() {
+        const QString originalDataUrl = pngDataUrl(QSize(80, 40));
+        const QString croppedDataUrl = pngDataUrl(QSize(24, 16));
+        const QString source = QStringLiteral(
+            "<p><img src=\"%1\" width=\"160\" height=\"80\" alt=\"scene\" "
+            "title=\"Evening scene\" data-align=\"right\" data-caption=\"Quiet evening\"/></p>")
+            .arg(originalDataUrl);
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichImages::prepare(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        const int imagePosition = document.begin().position();
+
+        QVERIFY(NotesRichImages::replaceSource(document, imagePosition, croppedDataUrl));
+        const QString cropped = NotesRichDocument::serialize(document);
+        QVERIFY(cropped.contains(croppedDataUrl));
+        QVERIFY(cropped.contains("alt=\"scene\""));
+        QVERIFY(cropped.contains("title=\"Evening scene\""));
+        QVERIFY(cropped.contains("data-align=\"right\""));
+        QVERIFY(cropped.contains("data-caption=\"Quiet evening\""));
+        QVERIFY(!cropped.contains("width=\"160\""));
+        QVERIFY(!cropped.contains("height=\"80\""));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+    }
+
     void controllerImportsVerifiedLocalImagesWithinBounds() {
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());

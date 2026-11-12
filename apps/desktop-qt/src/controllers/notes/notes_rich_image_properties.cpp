@@ -143,4 +143,22 @@ bool setSize(QTextDocument &document, int imagePosition, int width, int height) 
     edit.endEditBlock();
     return true;
 }
+
+bool replaceSource(QTextDocument &document, int imagePosition, const QString &dataUrl) {
+    if (!supportsDataUrl(dataUrl)) return false;
+    QTextBlock block;
+    QTextImageFormat imageFormat;
+    int resolvedPosition = -1;
+    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
+    imageFormat.setName(dataUrl);
+    imageFormat.clearProperty(QTextFormat::ImageWidth);
+    imageFormat.clearProperty(QTextFormat::ImageHeight);
+    QTextCursor edit(&document);
+    edit.setPosition(resolvedPosition);
+    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
+    edit.beginEditBlock();
+    edit.setCharFormat(imageFormat);
+    edit.endEditBlock();
+    return true;
+}
 }

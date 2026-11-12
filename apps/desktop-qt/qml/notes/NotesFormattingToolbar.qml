@@ -27,6 +27,7 @@ Rectangle {
     signal richImageParagraphBelowRequested()
     signal richImageCopyRequested()
     signal richImageDownloadRequested()
+    signal richImageViewRequested()
     signal richImageDeleteRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
@@ -121,6 +122,7 @@ Rectangle {
             onParagraphBelowRequested: toolbarRoot.richImageParagraphBelowRequested()
             onCopyRequested: toolbarRoot.richImageCopyRequested()
             onDownloadRequested: toolbarRoot.richImageDownloadRequested()
+            onViewRequested: toolbarRoot.richImageViewRequested()
             onDeleteRequested: toolbarRoot.richImageDeleteRequested()
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }

@@ -28,6 +28,7 @@ QVariantList captions(const QTextDocument &document);
 bool setAlignment(QTextDocument &document, int imagePosition, const QString &alignment);
 bool setCaption(QTextDocument &document, int imagePosition, const QString &caption);
 bool setSize(QTextDocument &document, int imagePosition, int width, int height);
+bool replaceSource(QTextDocument &document, int imagePosition, const QString &dataUrl);
 int insert(QTextDocument &document, int start, int end, const QString &dataUrl,
            const QString &alt, int width, int height);
 int insertMany(QTextDocument &document, int start, int end, const QVariantList &images);

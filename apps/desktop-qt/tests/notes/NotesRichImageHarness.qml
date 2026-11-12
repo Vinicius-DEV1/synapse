@@ -40,6 +40,7 @@ Item {
         onRichImageParagraphBelowRequested: imageActions.insertParagraphBelowImage()
         onRichImageCopyRequested: imageActions.copySelectedImage()
         onRichImageDownloadRequested: imageActions.downloadSelectedImage()
+        onRichImageViewRequested: imageActions.openImageViewer()
         onRichImageDeleteRequested: imageActions.requestDelete()
     }
 

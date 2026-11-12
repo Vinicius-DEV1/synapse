@@ -13,7 +13,7 @@ Item {
     property bool actionsEnabled: false
     property string copyState: "idle"
     visible: active
-    implicitWidth: active ? 11 * 28 + 10 * 4 : 0
+    implicitWidth: active ? 12 * 28 + 11 * 4 : 0
     implicitHeight: 30
 
     signal alignmentRequested(string alignment)
@@ -23,6 +23,7 @@ Item {
     signal resetRequested()
     signal copyRequested()
     signal downloadRequested()
+    signal viewRequested()
     signal deleteRequested()
 
     RowLayout {
@@ -147,6 +148,23 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: imageToolbar.paragraphBelowRequested()
             }
+        }
+        ToolButton {
+            objectName: "notesRichImageViewButton"
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 26
+            padding: 2
+            Accessible.name: qsTr("View or crop image")
+            ToolTip.visible: hovered
+            ToolTip.text: Accessible.name
+            contentItem: Text {
+                text: "⌕"
+                color: "#c4b5fd"
+                font.pixelSize: 18
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: imageToolbar.viewRequested()
         }
         ToolButton {
             Layout.preferredWidth: 28

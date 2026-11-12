@@ -17,6 +17,15 @@
 
 namespace {
 
+QString testPngDataUrl(const QSize &size) {
+    QImage image(size, QImage::Format_ARGB32);
+    image.fill(QColor("#22c55e"));
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) return {};
+    return QStringLiteral("data:image/png;base64,%1").arg(QString::fromLatin1(bytes.toBase64()));
+}
+
 QQuickItem *findQuickItem(QQuickItem *parent, const QString &objectName) {
     if (!parent) return nullptr;
     if (parent->objectName() == objectName) return parent;
@@ -34,10 +43,16 @@ class MockNotesImageController final : public QObject {
     Q_PROPERTY(bool fileOperationRunning READ fileOperationRunning CONSTANT)
 public:
     bool fileOperationRunning() const { return false; }
+    Q_INVOKABLE void cropNotesRichImage(const QString &source, int x, int y, int width, int height,
+                                        const QString &requestId) {
+        emit cropRequested(source, x, y, width, height, requestId);
+    }
     void finish(const QVariantMap &result) { emit fileOperationFinished(result); }
 
 signals:
     void fileOperationFinished(const QVariantMap &result);
+    void cropRequested(const QString &source, int x, int y, int width, int height,
+                       const QString &requestId);
 };
 
 class NativeNotesRichImagesQmlTest final : public QObject {
@@ -148,6 +163,102 @@ private slots:
                                 .arg(captionInput->y() + captionInput->height())
                                 .arg(afterTextRect.y())));
 
+        QObject *viewer = root->findChild<QObject *>("notesRichImageViewer");
+        QObject *viewerCanvas = root->findChild<QObject *>("notesRichImageViewerViewport");
+        QQuickItem *openViewerTarget = rootItem->findChild<QQuickItem *>("notesRichImageOpenViewerTarget");
+        QVERIFY(viewer);
+        QVERIFY(viewerCanvas);
+        QVERIFY(openViewerTarget);
+        QVERIFY(openViewerTarget->isVisible());
+        QVERIFY(openViewerTarget->width() > 0 && openViewerTarget->height() > 0);
+        QSignalSpy cropRequests(&controller, SIGNAL(cropRequested(QString,int,int,int,int,QString)));
+        const QPoint imageCenter = openViewerTarget->mapToScene(
+            QPointF(openViewerTarget->width() / 2, openViewerTarget->height() / 2)).toPoint();
+        QTest::mouseDClick(&window, Qt::LeftButton, Qt::NoModifier, imageCenter);
+        QTRY_VERIFY(viewer->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(viewer, "close", Qt::DirectConnection));
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageViewRequested", Qt::DirectConnection));
+        QTRY_VERIFY(viewer->property("visible").toBool());
+        QCOMPARE(viewer->property("imageSource").toString(), dataUrl);
+        QCOMPARE(viewer->property("mode").toString(), QString("view"));
+        QTRY_VERIFY(viewerCanvas->property("imageReady").toBool());
+        QVERIFY(QMetaObject::invokeMethod(viewerCanvas, "zoomStepRequested", Qt::DirectConnection,
+                                          Q_ARG(qreal, 0.15)));
+        QCOMPARE(viewer->property("zoom").toDouble(), 1.15);
+        QVERIFY(QMetaObject::invokeMethod(viewerCanvas, "zoomStepRequested", Qt::DirectConnection,
+                                          Q_ARG(qreal, 20.0)));
+        QCOMPARE(viewer->property("zoom").toDouble(), 5.0);
+        QVERIFY(QMetaObject::invokeMethod(viewerCanvas, "zoomStepRequested", Qt::DirectConnection,
+                                          Q_ARG(qreal, -20.0)));
+        QCOMPARE(viewer->property("zoom").toDouble(), 0.5);
+        viewer->setProperty("zoom", 1.0);
+
+        const QString beforeCrop = serializer.serializeRich(quickDocument).value("html").toString();
+        QVERIFY(QMetaObject::invokeMethod(viewer, "beginCrop", Qt::DirectConnection));
+        QCOMPARE(viewer->property("mode").toString(), QString("crop"));
+        QVERIFY(viewerCanvas->property("cropPixels").toRect().width() > 0);
+        QVERIFY(QMetaObject::invokeMethod(viewer, "cancelCrop", Qt::DirectConnection));
+        QCOMPARE(viewer->property("mode").toString(), QString("view"));
+        QCOMPARE(serializer.serializeRich(quickDocument).value("html").toString(), beforeCrop);
+
+        QVERIFY(QMetaObject::invokeMethod(viewer, "beginCrop", Qt::DirectConnection));
+        QVERIFY(QMetaObject::invokeMethod(viewer, "requestCrop", Qt::DirectConnection));
+        QCOMPARE(cropRequests.count(), 1);
+        const QList<QVariant> cropRequest = cropRequests.takeFirst();
+        QCOMPARE(cropRequest.at(0).toString(), dataUrl);
+        const int cropX = cropRequest.at(1).toInt();
+        const int cropY = cropRequest.at(2).toInt();
+        const int cropWidth = cropRequest.at(3).toInt();
+        const int cropHeight = cropRequest.at(4).toInt();
+        QVERIFY(cropX >= 0 && cropY >= 0 && cropWidth > 0 && cropHeight > 0);
+        QVERIFY(cropX + cropWidth <= 40 && cropY + cropHeight <= 20);
+        const QString cropRequestId = cropRequest.at(5).toString();
+        QVERIFY(!cropRequestId.isEmpty());
+
+        QImage croppedImage(24, 16, QImage::Format_ARGB32);
+        croppedImage.fill(QColor("#22c55e"));
+        QByteArray croppedBytes;
+        QBuffer croppedBuffer(&croppedBytes);
+        QVERIFY(croppedBuffer.open(QIODevice::WriteOnly));
+        QVERIFY(croppedImage.save(&croppedBuffer, "JPEG", 92));
+        const QString croppedDataUrl = QStringLiteral("data:image/jpeg;base64,%1")
+            .arg(QString::fromLatin1(croppedBytes.toBase64()));
+        controller.finish({{"success", true}, {"operation", "notes-rich-image-crop"},
+                           {"requestId", cropRequestId}, {"imageDataUrl", croppedDataUrl}});
+        QTRY_VERIFY(!viewer->property("visible").toBool());
+        QCOMPARE(changed.count(), 4);
+        const QString appliedCrop = serializer.serializeRich(quickDocument).value("html").toString();
+        QVERIFY(appliedCrop.contains(croppedDataUrl));
+        QVERIFY(appliedCrop.contains("data-align=\"right\""));
+        QVERIFY(appliedCrop.contains("data-caption=\"A quiet evening\""));
+        QVERIFY(appliedCrop.contains("alt=\"photo.png\""));
+        QVERIFY(!appliedCrop.contains("width=\"40\""));
+        quickDocument->textDocument()->undo();
+        QCOMPARE(serializer.serializeRich(quickDocument).value("html").toString(), beforeCrop);
+
+        const QString unchangedByExternalEdit = testPngDataUrl(QSize(30, 15));
+        imageEditor->setProperty("cursorPosition", imagePosition);
+        QVERIFY(QMetaObject::invokeMethod(imageActions, "refreshImageState", Qt::DirectConnection));
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageViewRequested", Qt::DirectConnection));
+        QTRY_VERIFY(viewer->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(viewer, "beginCrop", Qt::DirectConnection));
+        QVERIFY(QMetaObject::invokeMethod(viewer, "requestCrop", Qt::DirectConnection));
+        QCOMPARE(cropRequests.count(), 1);
+        const QString staleRequestId = cropRequests.takeFirst().at(5).toString();
+        QVERIFY(operations.replaceRichImageSource(quickDocument, imagePosition, unchangedByExternalEdit));
+        controller.finish({{"success", true}, {"operation", "notes-rich-image-crop"},
+                           {"requestId", staleRequestId}, {"imageDataUrl", croppedDataUrl}});
+        QTRY_VERIFY(viewer->property("visible").toBool());
+        QCOMPARE(quickDocument->textDocument() ? operations.richImageData(quickDocument, imagePosition) : QString(),
+                 unchangedByExternalEdit);
+        QVERIFY(!viewer->property("errorMessage").toString().isEmpty());
+        QVERIFY(QMetaObject::invokeMethod(viewer, "close", Qt::DirectConnection));
+        quickDocument->textDocument()->undo();
+        QCOMPARE(serializer.serializeRich(quickDocument).value("html").toString(), beforeCrop);
+        imageEditor->setProperty("cursorPosition", imagePosition);
+        QVERIFY(QMetaObject::invokeMethod(imageActions, "refreshImageState", Qt::DirectConnection));
+        const int changesBeforeResize = changed.count();
+
         QObject *resizeOverlay = root->findChild<QObject *>("notesRichImageResizeOverlay");
         QQuickItem *resizeHandle = findQuickItem(qobject_cast<QQuickItem *>(resizeOverlay),
                                                  "notesRichImageResizeHandle_se");
@@ -161,10 +272,10 @@ private slots:
         QTest::mouseMove(&window, dragEnd, 10);
         QTRY_COMPARE(resizeOverlay->property("previewWidth").toInt(), 60);
         QTRY_VERIFY(resizeOverlay->property("previewReady").toBool());
-        QCOMPARE(changed.count(), 3);
+        QCOMPARE(changed.count(), changesBeforeResize);
         QVERIFY(serializer.serializeRich(quickDocument).value("html").toString().contains("width=\"40\""));
         QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, dragEnd);
-        QTRY_COMPARE(changed.count(), 4);
+        QTRY_COMPARE(changed.count(), changesBeforeResize + 1);
         QVariantMap resized = serializer.serializeRich(quickDocument);
         QVERIFY(resized.value("html").toString().contains("width=\"60\""));
         QVERIFY(!resized.value("html").toString().contains("height=\""));
@@ -181,10 +292,10 @@ private slots:
         QTRY_COMPARE(resizeOverlay->property("previewWidth").toInt(), 80);
         QTRY_COMPARE(resizeOverlay->property("previewHeight").toInt(), 60);
         QVERIFY(resizeOverlay->property("previewHasExplicitHeight").toBool());
-        QCOMPARE(changed.count(), 4);
+        QCOMPARE(changed.count(), changesBeforeResize + 1);
         QTest::mouseRelease(&window, Qt::LeftButton, Qt::ShiftModifier, freeResizeEnd);
         QTest::keyRelease(&window, Qt::Key_Shift);
-        QTRY_COMPARE(changed.count(), 5);
+        QTRY_COMPARE(changed.count(), changesBeforeResize + 2);
         resized = serializer.serializeRich(quickDocument);
         QVERIFY(resized.value("html").toString().contains("width=\"80\" height=\"60\""));
 
@@ -198,10 +309,10 @@ private slots:
         QTRY_VERIFY(resizeOverlay->property("resizing").toBool());
         QTest::mouseMove(&window, cancelEnd, 10);
         QTRY_COMPARE(resizeOverlay->property("previewWidth").toInt(), 110);
-        QCOMPARE(changed.count(), 5);
+        QCOMPARE(changed.count(), changesBeforeResize + 2);
         QTest::keyPress(&window, Qt::Key_Escape);
         QTRY_VERIFY(!resizeOverlay->property("resizing").toBool());
-        QCOMPARE(changed.count(), 5);
+        QCOMPARE(changed.count(), changesBeforeResize + 2);
         QVERIFY(serializer.serializeRich(quickDocument).value("html").toString()
                     .contains("width=\"80\" height=\"60\""));
         QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, cancelEnd);
@@ -213,10 +324,10 @@ private slots:
         QTRY_VERIFY(resizeOverlay->property("resizing").toBool());
         QTest::mouseMove(&window, pointerCancelEnd, 10);
         QTRY_VERIFY(resizeOverlay->property("previewWidth").toInt() > 80);
-        QCOMPARE(changed.count(), 5);
+        QCOMPARE(changed.count(), changesBeforeResize + 2);
         eastHandle->ungrabMouse();
         QTRY_VERIFY(!resizeOverlay->property("resizing").toBool());
-        QCOMPARE(changed.count(), 5);
+        QCOMPARE(changed.count(), changesBeforeResize + 2);
         QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, pointerCancelEnd);
         QVERIFY(serializer.serializeRich(quickDocument).value("html").toString()
                     .contains("width=\"80\" height=\"60\""));
@@ -224,18 +335,18 @@ private slots:
         const QPoint resetStart = resizeHandle->mapToScene(
             QPointF(resizeHandle->width() / 2, resizeHandle->height() / 2)).toPoint();
         QTest::mouseDClick(&window, Qt::LeftButton, Qt::NoModifier, resetStart);
-        QTRY_COMPARE(changed.count(), 6);
+        QTRY_COMPARE(changed.count(), changesBeforeResize + 3);
         resized = serializer.serializeRich(quickDocument);
         QVERIFY(!resized.value("html").toString().contains("width=\""));
         QVERIFY(!resized.value("html").toString().contains("height=\""));
 
         QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageFitRequested", Qt::DirectConnection));
-        QCOMPARE(changed.count(), 7);
+        QCOMPARE(changed.count(), changesBeforeResize + 4);
         resized = serializer.serializeRich(quickDocument);
         QVERIFY(resized.value("html").toString().contains("width=\"800\""));
         QVERIFY(!resized.value("html").toString().contains("height=\""));
         QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageResetRequested", Qt::DirectConnection));
-        QCOMPARE(changed.count(), 8);
+        QCOMPARE(changed.count(), changesBeforeResize + 5);
         resized = serializer.serializeRich(quickDocument);
         QVERIFY(!resized.value("html").toString().contains("width=\""));
         QVERIFY(!resized.value("html").toString().contains("height=\""));
@@ -278,12 +389,12 @@ private slots:
         undone = serializer.serializeRich(quickDocument);
         QVERIFY(undone.value("ok").toBool());
         QCOMPARE(undone.value("html").toString(), QString("<p>BeforeAfter</p>"));
-        QCOMPARE(changed.count(), 8);
+        QCOMPARE(changed.count(), changesBeforeResize + 5);
 
         imageActions->setProperty("pageId", "page-two");
         controller.finish(payload);
         QTRY_VERIFY(imageActions->property("errorMessage").toString().contains("note changed"));
-        QCOMPARE(changed.count(), 8);
+        QCOMPARE(changed.count(), changesBeforeResize + 5);
     }
 };
 

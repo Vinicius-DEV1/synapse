@@ -136,6 +136,8 @@ public:
     Q_INVOKABLE void saveNotesRichImage(const QString &imageDataUrl, const QUrl &destinationUrl);
     Q_INVOKABLE QUrl suggestedNotesRichImageSaveUrl(const QString &imageDataUrl,
                                                      const QString &caption) const;
+    Q_INVOKABLE void cropNotesRichImage(const QString &imageDataUrl, int x, int y,
+                                        int width, int height, const QString &requestId);
 
     // 2. Videos / Media Center
     Q_INVOKABLE QVariantList getVideos(const QString &collectionFilter = "");

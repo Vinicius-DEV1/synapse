@@ -77,6 +77,8 @@ public:
                                           const QString &caption) const;
     Q_INVOKABLE bool setRichImageSize(QQuickTextDocument *document, int imagePosition,
                                        int width, int height) const;
+    Q_INVOKABLE bool replaceRichImageSource(QQuickTextDocument *document, int imagePosition,
+                                             const QString &dataUrl) const;
     Q_INVOKABLE bool toggleRich(QQuickTextDocument *document, int start, int end, const QString &mark) const;
     Q_INVOKABLE bool toggleRichAtCursor(QQuickTextDocument *document, int position, const QString &mark) const;
     Q_INVOKABLE bool clearRichPendingMarks(QQuickTextDocument *document) const;

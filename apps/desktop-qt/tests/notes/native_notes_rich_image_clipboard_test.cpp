@@ -241,6 +241,42 @@ private slots:
         QVERIFY(!QFile::exists(rejectedPath));
         clipboard->clear();
     }
+
+    void asynchronousCropReturnsValidatedJpegWithRequestedPixels() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("image-crop.sqlite")));
+        QSignalSpy operations(&controller, &SynapseDataController::fileOperationFinished);
+
+        QImage original(80, 60, QImage::Format_ARGB32);
+        original.fill(QColor("#7c3aed"));
+        QByteArray sourceBytes;
+        QBuffer sourceBuffer(&sourceBytes);
+        QVERIFY(sourceBuffer.open(QIODevice::WriteOnly));
+        QVERIFY(original.save(&sourceBuffer, "PNG"));
+        const QString sourceDataUrl = QStringLiteral("data:image/png;base64,%1")
+            .arg(QString::fromLatin1(sourceBytes.toBase64()));
+
+        controller.cropNotesRichImage(sourceDataUrl, 12, 7, 31, 19, "crop-1");
+        QTRY_COMPARE_WITH_TIMEOUT(operations.count(), 1, 10000);
+        QVariantMap result = operations.takeFirst().at(0).toMap();
+        QVERIFY2(result.value("success").toBool(), qPrintable(result.value("error").toString()));
+        QCOMPARE(result.value("operation").toString(), QString("notes-rich-image-crop"));
+        QCOMPARE(result.value("requestId").toString(), QString("crop-1"));
+        QCOMPARE(result.value("width").toInt(), 31);
+        QCOMPARE(result.value("height").toInt(), 19);
+        const QString croppedDataUrl = result.value("imageDataUrl").toString();
+        QVERIFY(croppedDataUrl.startsWith("data:image/jpeg;base64,"));
+        QVERIFY(NotesRichImages::supportsDataUrl(croppedDataUrl));
+
+        controller.cropNotesRichImage(sourceDataUrl, 70, 0, 20, 10, "crop-invalid");
+        QTRY_COMPARE_WITH_TIMEOUT(operations.count(), 1, 10000);
+        result = operations.takeFirst().at(0).toMap();
+        QVERIFY(!result.value("success").toBool());
+        QCOMPARE(result.value("requestId").toString(), QString("crop-invalid"));
+        QVERIFY(result.value("error").toString().contains("outside the image bounds"));
+    }
 };
 
 int runNativeNotesRichImageClipboardTest(int argc, char **argv) {

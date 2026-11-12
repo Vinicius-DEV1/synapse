@@ -34,6 +34,7 @@ add_executable(synapse-desktop
     src/controllers/notes/notes_rich_page_reference_actions.cpp
     src/controllers/notes/notes_rich_image_controller.cpp
     src/controllers/notes/notes_rich_image_export.cpp
+    src/controllers/notes/notes_rich_image_crop.cpp
     src/controllers/notes/notes_rich_images.cpp
     src/controllers/notes/notes_rich_image_insertions.cpp
     src/controllers/notes/notes_rich_image_properties.cpp
@@ -181,6 +182,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_page_reference_actions.cpp
         src/controllers/notes/notes_rich_image_controller.cpp
         src/controllers/notes/notes_rich_image_export.cpp
+        src/controllers/notes/notes_rich_image_crop.cpp
         src/controllers/notes/notes_rich_images.cpp
         src/controllers/notes/notes_rich_image_insertions.cpp
         src/controllers/notes/notes_rich_image_properties.cpp

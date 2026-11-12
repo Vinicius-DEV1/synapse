@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 
 Item {
     id: imageActionsRoot
@@ -19,13 +18,14 @@ Item {
     property alias savedDocumentSource: imageImportFlow.savedDocumentSource
     property alias copyState: imageExportActions.copyState
     property alias exportActionsEnabled: imageExportActions.actionsEnabled
+    property alias captionDraft: captionEditor.draft
+    readonly property bool viewerOpen: imageViewerFlow.viewerOpen
     property var imageState: ({ valid: false, position: -1, alignment: "center", caption: "" })
     readonly property bool canMoveUp: active && imageState.valid && textOperations && textEditor
         ? textOperations.canMoveRichImage(textEditor.textDocument, imageState.position, true) : false
     readonly property bool canMoveDown: active && imageState.valid && textOperations && textEditor
         ? textOperations.canMoveRichImage(textEditor.textDocument, imageState.position, false) : false
     property var imageCaptionItems: []
-    property string captionDraft: ""
     property alias errorMessage: imageImportFlow.errorMessage
 
     signal contentModified()
@@ -41,7 +41,7 @@ Item {
         imageState = nextState && nextState.valid
                 ? nextState : { valid: false, position: -1, alignment: "center", caption: "" }
         imageCaptionItems = textOperations.richImageCaptions(textEditor.textDocument)
-        if (!captionField.activeFocus) captionDraft = String(imageState.caption || "")
+        if (!captionEditor.captionFocused) captionDraft = String(imageState.caption || "")
     }
 
     function setAlignment(alignment) {
@@ -135,6 +135,9 @@ Item {
 
     function copySelectedImage() { return imageExportActions.copySelectedImage() }
     function downloadSelectedImage() { return imageExportActions.downloadSelectedImage() }
+    function openImageViewer() {
+        return imageState.valid && imageViewerFlow.openForImage(imageState.position)
+    }
 
     function openForPosition() {
         return imageImportFlow.openForPosition()
@@ -170,52 +173,35 @@ Item {
         onTriggered: imageActionsRoot.refreshImageState()
     }
 
-    Repeater {
-        model: imageActionsRoot.imageCaptionItems
-        delegate: Text {
-            required property var modelData
-            objectName: "notesRichImageCaption_" + modelData.position
-            readonly property rect imageRect: imageActionsRoot.textEditor.positionToRectangle(modelData.position)
-            visible: imageActionsRoot.active && imageActionsRoot.imageState.position !== modelData.position
-            x: Math.max(0, imageRect.x)
-            y: imageRect.y + imageRect.height + 3
-            width: Math.max(0, Math.min(Number(modelData.width), parent.width - x))
-            text: modelData.caption
-            color: "#a7a9be"
-            font.pixelSize: 13
-            font.italic: true
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            z: 2
-        }
+    NotesRichImageCaptionEditor {
+        id: captionEditor
+        anchors.fill: parent
+        active: imageActionsRoot.active
+        imageState: imageActionsRoot.imageState
+        captionItems: imageActionsRoot.imageCaptionItems
+        textEditor: imageActionsRoot.textEditor
+        draft: imageActionsRoot.imageState.caption || ""
+        resizing: imageResizeOverlay.resizing
+        onDraftEdited: function(value) { imageActionsRoot.captionDraft = value }
+        onCommitRequested: imageActionsRoot.commitCaption()
     }
 
-    TextField {
-        id: captionField
-        objectName: "notesRichImageCaptionInput"
+    MouseArea {
+        id: imageViewerOpenTarget
+        objectName: "notesRichImageOpenViewerTarget"
         readonly property rect imageRect: imageActionsRoot.imageState.valid
             ? imageActionsRoot.textEditor.positionToRectangle(imageActionsRoot.imageState.position)
             : Qt.rect(0, 0, 0, 0)
-        visible: imageActionsRoot.active && imageActionsRoot.imageState.valid && !imageResizeOverlay.resizing
-        x: Math.max(0, imageRect.x)
-        y: imageRect.y + imageRect.height + 1
-        width: Math.max(120, Math.min(Number(imageActionsRoot.imageState.width || 240), parent.width - x))
-        height: 29
-        padding: 4
-        text: imageActionsRoot.captionDraft
-        placeholderText: qsTr("Write a caption…")
-        horizontalAlignment: TextInput.AlignHCenter
-        color: "#fffffe"
-        selectByMouse: true
-        Accessible.name: qsTr("Image caption")
-        background: Rectangle {
-            color: captionField.activeFocus ? "#201e2d" : "#10101a"
-            border.color: captionField.activeFocus ? "#7c6fa8" : "#18ffffff"
-            radius: 4
-        }
-        onTextEdited: imageActionsRoot.captionDraft = text
-        onEditingFinished: imageActionsRoot.commitCaption()
-        onActiveFocusChanged: if (!activeFocus && visible) imageActionsRoot.commitCaption()
+        visible: imageActionsRoot.active && imageActionsRoot.imageState.valid && !imageActionsRoot.viewerOpen
+        x: imageRect.x
+        y: imageRect.y
+        width: Number(imageActionsRoot.imageState.width || imageRect.width)
+        height: Number(imageActionsRoot.imageState.height || imageRect.height)
+        acceptedButtons: Qt.LeftButton
+        cursorShape: Qt.PointingHandCursor
+        Accessible.name: qsTr("Double-click to view or crop image")
+        onPressed: imageActionsRoot.textEditor.cursorPosition = imageActionsRoot.imageState.position
+        onDoubleClicked: imageActionsRoot.openImageViewer()
         z: 3
     }
 
@@ -277,6 +263,19 @@ Item {
         imageState: imageActionsRoot.imageState
         statusTarget: imageImportFlow
         active: imageActionsRoot.active
+    }
+
+    NotesRichImageViewerFlow {
+        id: imageViewerFlow
+        anchors.fill: parent
+        controller: imageActionsRoot.controller
+        textEditor: imageActionsRoot.textEditor
+        textOperations: imageActionsRoot.textOperations
+        commitTimer: imageActionsRoot.commitTimer
+        pageId: imageActionsRoot.pageId
+        active: imageActionsRoot.active
+        onContentModified: imageActionsRoot.contentModified()
+        z: 35
     }
 
 }

@@ -310,6 +310,7 @@ ScrollView {
                 onRichImageParagraphBelowRequested: richTextEditor.insertParagraphBelowImage()
                 onRichImageCopyRequested: richTextEditor.copyRichImage()
                 onRichImageDownloadRequested: richTextEditor.downloadRichImage()
+                onRichImageViewRequested: richTextEditor.viewRichImage()
                 onRichImageDeleteRequested: richTextEditor.requestImageDelete()
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
                 onRichCellBackgroundRequested: function(color, scope) {

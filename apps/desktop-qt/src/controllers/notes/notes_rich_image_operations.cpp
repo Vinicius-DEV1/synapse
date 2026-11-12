@@ -93,3 +93,9 @@ bool NotesTextOperations::setRichImageSize(QQuickTextDocument *document, int ima
     return document && document->textDocument() &&
         NotesRichImages::setSize(*document->textDocument(), imagePosition, width, height);
 }
+
+bool NotesTextOperations::replaceRichImageSource(QQuickTextDocument *document, int imagePosition,
+                                                  const QString &dataUrl) const {
+    return document && document->textDocument() &&
+        NotesRichImages::replaceSource(*document->textDocument(), imagePosition, dataUrl);
+}

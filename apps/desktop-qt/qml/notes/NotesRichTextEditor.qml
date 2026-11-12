@@ -171,6 +171,7 @@ Item {
     function handleRichImageDeleteKey(key) { return richImageActions.handleDeleteKey(key) }
     function copyRichImage() { return richImageActions.copySelectedImage() }
     function downloadRichImage() { return richImageActions.downloadSelectedImage() }
+    function viewRichImage() { return richImageActions.openImageViewer() }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()
