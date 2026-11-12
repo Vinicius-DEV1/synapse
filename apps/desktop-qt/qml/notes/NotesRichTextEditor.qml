@@ -30,6 +30,8 @@ Item {
     readonly property alias spoilerAtCursor: richCommands.spoilerAtCursor
     readonly property bool richImageSelected: richImageActions.imageState.valid
     readonly property string richImageAlignment: richImageActions.imageState.alignment || "center"
+    readonly property bool richImageCanMoveUp: richImageActions.canMoveUp
+    readonly property bool richImageCanMoveDown: richImageActions.canMoveDown
 
     signal contentModified(string html)
     signal validationChanged(bool invalid, string message)
@@ -156,8 +158,10 @@ Item {
     function refreshCodeSyntaxHighlighting() { richCommands.refreshCodeSyntaxHighlighting() }
     function openImagePicker() { return richImageActions.openForPosition() }
     function setImageAlignment(alignment) { return richImageActions.setAlignment(alignment) }
+    function moveImage(upward) { return richImageActions.moveImage(upward) }
     function fitImageToWidth() { return richImageActions.fitToWidth() }
     function resetImageSize() { return richImageActions.resetImageSize() }
+    function insertParagraphBelowImage() { return richImageActions.insertParagraphBelowImage() }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()

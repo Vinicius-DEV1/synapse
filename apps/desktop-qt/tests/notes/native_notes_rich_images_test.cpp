@@ -1,5 +1,6 @@
 #include "synapse_controller.h"
 #include "controllers/notes/notes_rich_document.h"
+#include "controllers/notes/notes_rich_image_editing.h"
 #include "controllers/notes/notes_rich_images.h"
 #include "controllers/notes/notes_text_operations.h"
 
@@ -147,6 +148,77 @@ private slots:
         QVERIFY(NotesRichDocument::serialize(document).contains("width=\"32\" height=\"16\""));
         QVERIFY(!NotesRichImages::setSize(document, imagePosition, 59, -1));
         QVERIFY(!NotesRichImages::setSize(document, imagePosition, 60, 8193));
+    }
+
+    void imageBlockMovesPreserveMetadataAndUndo() {
+        const QString source = QStringLiteral(
+            "<p>Before</p><p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"photo.png\" data-caption=\"Evening\" data-align=\"right\"/></p><h2>After</h2>")
+            .arg(pngDataUrl());
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichImages::prepare(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        const int imagePosition = document.findBlockByNumber(1).position();
+        QVERIFY(NotesRichImageEditing::canMove(document, imagePosition, true));
+        QVERIFY(NotesRichImageEditing::canMove(document, imagePosition, false));
+
+        int movedPosition = NotesRichImageEditing::move(document, imagePosition, true);
+        QVERIFY(movedPosition >= 0);
+        QString moved = NotesRichDocument::serialize(document);
+        QVERIFY(moved.indexOf("<img") < moved.indexOf("<p>Before</p>"));
+        QVERIFY(moved.contains("data-caption=\"Evening\""));
+        QVERIFY(moved.contains("data-align=\"right\""));
+        QVERIFY(moved.indexOf("After") > moved.indexOf("<h2"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        movedPosition = NotesRichImageEditing::move(document, imagePosition, false);
+        QVERIFY(movedPosition >= 0);
+        moved = NotesRichDocument::serialize(document);
+        QVERIFY(moved.indexOf("After") < moved.indexOf("<img"));
+        QVERIFY(moved.contains("data-caption=\"Evening\""));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+    }
+
+    void imageMovementRespectsStructureAndParagraphInsertionIsUndoable() {
+        const QString image = QStringLiteral("<img src=\"%1\" width=\"32\" height=\"16\"/>")
+            .arg(pngDataUrl());
+        const QString structuredSource = "<p>" + image + "</p><ul><li><p>List item</p></li></ul>";
+        QTextDocument structured;
+        structured.setHtml(structuredSource);
+        QVERIFY(NotesRichImages::prepare(structured, structuredSource));
+        const int structuredImagePosition = structured.begin().position();
+        QVERIFY(!NotesRichImageEditing::canMove(structured, structuredImagePosition, true));
+        QVERIFY(!NotesRichImageEditing::canMove(structured, structuredImagePosition, false));
+        QCOMPARE(NotesRichImageEditing::move(structured, structuredImagePosition, false), -1);
+
+        const QString source = QStringLiteral("<p>Before</p><p>%1</p><p>After</p>").arg(image);
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichImages::prepare(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        const int imagePosition = document.findBlockByNumber(1).position();
+        const int paragraphPosition = NotesRichImageEditing::insertParagraphBelow(document, imagePosition);
+        QVERIFY(paragraphPosition >= 0);
+        QString inserted = NotesRichDocument::serialize(document);
+        QVERIFY(inserted.indexOf("<img") < inserted.indexOf("<p>After</p>"));
+        const QTextBlock afterBlock = document.findBlock(document.find("After").position());
+        QVERIFY(afterBlock.previous().text().isEmpty());
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        const QString edgeSource = QStringLiteral("<p>%1</p><p>After</p>").arg(image);
+        QTextDocument edges;
+        edges.setHtml(edgeSource);
+        QVERIFY(NotesRichImages::prepare(edges, edgeSource));
+        int edgeImagePosition = edges.begin().position();
+        QVERIFY(!NotesRichImageEditing::canMove(edges, edgeImagePosition, true));
+        QVERIFY(NotesRichImageEditing::canMove(edges, edgeImagePosition, false));
+        edgeImagePosition = NotesRichImageEditing::move(edges, edgeImagePosition, false);
+        QVERIFY(edgeImagePosition >= 0);
+        QVERIFY(NotesRichImageEditing::canMove(edges, edgeImagePosition, true));
+        QVERIFY(!NotesRichImageEditing::canMove(edges, edgeImagePosition, false));
     }
 
     void controllerImportsVerifiedLocalImagesWithinBounds() {

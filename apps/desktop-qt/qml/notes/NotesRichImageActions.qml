@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Dialogs
 
 Item {
     id: imageActionsRoot
@@ -19,9 +18,13 @@ Item {
     property string savedPageId: ""
     property string savedDocumentSource: ""
     property var imageState: ({ valid: false, position: -1, alignment: "center", caption: "" })
+    readonly property bool canMoveUp: active && imageState.valid && textOperations && textEditor
+        ? textOperations.canMoveRichImage(textEditor.textDocument, imageState.position, true) : false
+    readonly property bool canMoveDown: active && imageState.valid && textOperations && textEditor
+        ? textOperations.canMoveRichImage(textEditor.textDocument, imageState.position, false) : false
     property var imageCaptionItems: []
     property string captionDraft: ""
-    property string errorMessage: ""
+    property alias errorMessage: imageStatus.message
 
     signal contentModified()
 
@@ -93,9 +96,35 @@ Item {
         return commitSize(-1, -1)
     }
 
+    function moveImage(upward) {
+        if (!active || !imageState.valid || !textOperations || !textEditor ||
+                !textOperations.canMoveRichImage(textEditor.textDocument, imageState.position, upward)) return false
+        var movedPosition = textOperations.moveRichImage(
+                    textEditor.textDocument, imageState.position, upward)
+        if (movedPosition < 0) return false
+        textEditor.cursorPosition = movedPosition
+        textEditor.forceActiveFocus()
+        refreshImageState()
+        if (commitTimer) commitTimer.restart()
+        contentModified()
+        return true
+    }
+
+    function insertParagraphBelowImage() {
+        if (!active || !imageState.valid || !textOperations || !textEditor) return false
+        var paragraphPosition = textOperations.insertRichParagraphBelowImage(
+                    textEditor.textDocument, imageState.position)
+        if (paragraphPosition < 0) return false
+        textEditor.cursorPosition = paragraphPosition
+        textEditor.forceActiveFocus()
+        refreshImageState()
+        if (commitTimer) commitTimer.restart()
+        contentModified()
+        return true
+    }
+
     function showError(message) {
-        errorMessage = String(message || qsTr("The image could not be inserted."))
-        errorTimer.restart()
+        imageStatus.show(message)
     }
 
     function openForPosition() {
@@ -253,37 +282,18 @@ Item {
         z: 4
     }
 
-    FileDialog {
+    NotesRichImageImportDialog {
         id: imageFileDialog
-        title: qsTr("Choose an image for the note")
-        fileMode: FileDialog.OpenFile
-        nameFilters: [qsTr("Images (*.png *.jpg *.jpeg *.gif *.webp *.bmp)")]
-        onAccepted: {
-            if (!imageActionsRoot.controller) {
-                imageActionsRoot.showError(qsTr("Image import is unavailable."))
-                return
-            }
-            imageActionsRoot.controller.processNotesRichImage(selectedFile)
+        controller: imageActionsRoot.controller
+        onImageSelected: function(fileUrl) {
+            imageActionsRoot.controller.processNotesRichImage(fileUrl)
         }
+        onControllerUnavailable: imageActionsRoot.showError(qsTr("Image import is unavailable."))
     }
 
-    Label {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        visible: imageActionsRoot.errorMessage.length > 0
-        text: imageActionsRoot.errorMessage
-        color: "#fda4af"
-        wrapMode: Text.Wrap
-        padding: 8
-        background: Rectangle { color: "#f21a1924"; border.color: "#22fb7185"; radius: 8 }
+    NotesRichImageStatusBanner {
+        id: imageStatus
+        anchors.fill: parent
         z: 20
-    }
-
-    Timer {
-        id: errorTimer
-        interval: 5000
-        repeat: false
-        onTriggered: imageActionsRoot.errorMessage = ""
     }
 }

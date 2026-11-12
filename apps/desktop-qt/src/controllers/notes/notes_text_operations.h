@@ -61,6 +61,9 @@ public:
                                         int selectionStart, int selectionEnd) const;
     Q_INVOKABLE QString richImageData(QQuickTextDocument *document, int imagePosition) const;
     Q_INVOKABLE QVariantList richImageCaptions(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool canMoveRichImage(QQuickTextDocument *document, int imagePosition, bool upward) const;
+    Q_INVOKABLE int moveRichImage(QQuickTextDocument *document, int imagePosition, bool upward) const;
+    Q_INVOKABLE int insertRichParagraphBelowImage(QQuickTextDocument *document, int imagePosition) const;
     Q_INVOKABLE bool setRichImageAlignment(QQuickTextDocument *document, int imagePosition,
                                             const QString &alignment) const;
     Q_INVOKABLE bool setRichImageCaption(QQuickTextDocument *document, int imagePosition,

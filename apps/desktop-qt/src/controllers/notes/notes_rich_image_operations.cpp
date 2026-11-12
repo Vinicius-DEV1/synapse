@@ -1,6 +1,7 @@
 #include "notes_text_operations.h"
 
 #include "notes_rich_images.h"
+#include "notes_rich_image_editing.h"
 
 bool NotesTextOperations::prepareRichImages(QQuickTextDocument *document, const QString &source) const {
     return document && document->textDocument() && NotesRichImages::prepare(*document->textDocument(), source);
@@ -32,6 +33,24 @@ QString NotesTextOperations::richImageData(QQuickTextDocument *document, int ima
 QVariantList NotesTextOperations::richImageCaptions(QQuickTextDocument *document) const {
     if (!document || !document->textDocument()) return {};
     return NotesRichImages::captions(*document->textDocument());
+}
+
+bool NotesTextOperations::canMoveRichImage(QQuickTextDocument *document, int imagePosition,
+                                            bool upward) const {
+    return document && document->textDocument() &&
+        NotesRichImageEditing::canMove(*document->textDocument(), imagePosition, upward);
+}
+
+int NotesTextOperations::moveRichImage(QQuickTextDocument *document, int imagePosition,
+                                        bool upward) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichImageEditing::move(*document->textDocument(), imagePosition, upward);
+}
+
+int NotesTextOperations::insertRichParagraphBelowImage(QQuickTextDocument *document,
+                                                         int imagePosition) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichImageEditing::insertParagraphBelow(*document->textDocument(), imagePosition);
 }
 
 bool NotesTextOperations::setRichImageAlignment(QQuickTextDocument *document, int imagePosition,

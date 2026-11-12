@@ -29,9 +29,13 @@ Item {
         richMode: true
         richImageSelected: imageActions.imageState.valid
         richImageAlignment: imageActions.imageState.alignment || "center"
+        richImageCanMoveUp: imageActions.canMoveUp
+        richImageCanMoveDown: imageActions.canMoveDown
         onRichImageAlignmentRequested: function(alignment) { imageActions.setAlignment(alignment) }
+        onRichImageMoveRequested: function(upward) { imageActions.moveImage(upward) }
         onRichImageFitRequested: imageActions.fitToWidth()
         onRichImageResetRequested: imageActions.resetImageSize()
+        onRichImageParagraphBelowRequested: imageActions.insertParagraphBelowImage()
     }
 
     NotesRichImageActions {

@@ -26,6 +26,7 @@ QQuickItem *findQuickItem(QQuickItem *parent, const QString &objectName) {
     return nullptr;
 }
 
+
 }
 
 class MockNotesImageController final : public QObject {
@@ -123,6 +124,9 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageAlignmentRequested", Qt::DirectConnection,
                                           Q_ARG(QString, QString("center"))));
         QCOMPARE(changed.count(), 1);
+        selectedImage = imageActions->property("imageState").toMap();
+        QVERIFY(selectedImage.value("valid").toBool());
+        QCOMPARE(selectedImage.value("alignment").toString(), QString("center"));
         QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageAlignmentRequested", Qt::DirectConnection,
                                           Q_ARG(QString, QString("right"))));
         QCOMPARE(changed.count(), 2);

@@ -21,8 +21,10 @@ Rectangle {
     signal richTableRequested()
     signal richImageRequested()
     signal richImageAlignmentRequested(string alignment)
+    signal richImageMoveRequested(bool upward)
     signal richImageFitRequested()
     signal richImageResetRequested()
+    signal richImageParagraphBelowRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
@@ -58,6 +60,8 @@ Rectangle {
     property int codeBlockCopyRevision: 0
     property bool richImageSelected: false
     property string richImageAlignment: "center"
+    property bool richImageCanMoveUp: false
+    property bool richImageCanMoveDown: false
 
     RowLayout {
         anchors.fill: parent
@@ -90,32 +94,24 @@ Rectangle {
             onFormatRequested: function(prefix, suffix) { toolbarRoot.formatRequested(prefix, suffix) }
             onRichMarkRequested: function(mark) { toolbarRoot.richMarkRequested(mark) }
         }
-        Rectangle {
+        NotesRichImageInsertButton {
             visible: toolbarRoot.richMode
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 26
-            radius: 4
-            color: imageButtonMouse.containsMouse ? "#12ffffff" : "#08ffffff"
-            Accessible.name: qsTr("Insert image")
-            ToolTip.visible: imageButtonMouse.containsMouse
-            ToolTip.text: qsTr("Insert image")
-            Text { anchors.centerIn: parent; text: "▧"; color: "#c4b5fd"; font.pixelSize: 16 }
-            MouseArea {
-                id: imageButtonMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: toolbarRoot.richImageRequested()
-            }
+            Layout.preferredWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
+            onClicked: toolbarRoot.richImageRequested()
         }
         NotesRichImageToolbar {
             active: toolbarRoot.richMode && toolbarRoot.richImageSelected
             alignment: toolbarRoot.richImageAlignment
+            canMoveUp: toolbarRoot.richImageCanMoveUp
+            canMoveDown: toolbarRoot.richImageCanMoveDown
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             onAlignmentRequested: function(value) { toolbarRoot.richImageAlignmentRequested(value) }
+            onMoveRequested: function(upward) { toolbarRoot.richImageMoveRequested(upward) }
             onFitRequested: toolbarRoot.richImageFitRequested()
             onResetRequested: toolbarRoot.richImageResetRequested()
+            onParagraphBelowRequested: toolbarRoot.richImageParagraphBelowRequested()
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
         NotesBlockStyleActions {
