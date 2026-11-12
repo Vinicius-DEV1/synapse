@@ -53,6 +53,7 @@ Item {
         }
         function onRichCodeLanguageRequested(language) { richEditor.setCodeBlockLanguage(language) }
         function onRichCodeCopyRequested() { richEditor.copyCodeBlock() }
+        function onRichCodeParagraphBelowRequested() { richEditor.insertParagraphBelowCodeBlock() }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
         function onRichCalloutRequested(color) { richEditor.setCalloutColor(color) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }

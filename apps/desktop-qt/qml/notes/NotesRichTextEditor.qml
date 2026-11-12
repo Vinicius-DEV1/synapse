@@ -192,6 +192,19 @@ Item {
         return codeBlockCopySucceeded
     }
 
+    function insertParagraphBelowCodeBlock() {
+        if (!active || hasInvalidContent || !codeBlockActive) return false
+        var paragraphPosition = textOperations.insertRichParagraphBelowCodeBlock(
+                    richEditor.textDocument, richEditor.cursorPosition)
+        if (paragraphPosition < 0) return false
+        richEditor.cursorPosition = paragraphPosition
+        codeBlockRevision += 1
+        hasPendingChanges = true
+        commitTimer.restart()
+        richEditor.forceActiveFocus()
+        return true
+    }
+
     function openLinkDialog() {
         if (!active || hasInvalidContent || richEditor.selectionStart === richEditor.selectionEnd) return false
         linkSelectionStart = richEditor.selectionStart

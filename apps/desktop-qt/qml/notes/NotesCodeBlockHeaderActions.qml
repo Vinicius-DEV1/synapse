@@ -15,10 +15,36 @@ RowLayout {
     property int copyRevision: 0
     signal languageRequested(string language)
     signal copyRequested()
+    signal paragraphBelowRequested()
 
     NotesCodeLanguageSelector {
         language: actionsRoot.language
         onLanguageRequested: function(value) { actionsRoot.languageRequested(value) }
+    }
+
+    ToolButton {
+        id: paragraphButton
+        objectName: "notesCodeParagraphBelowButton"
+        Layout.preferredWidth: 92
+        Layout.preferredHeight: 26
+        padding: 3
+        text: qsTr("+ Paragraph")
+        Accessible.name: qsTr("Add paragraph below code block")
+        ToolTip.visible: hovered
+        ToolTip.text: qsTr("Add paragraph below code block")
+        contentItem: Text {
+            text: paragraphButton.text
+            color: "#ddd6fe"
+            font.pixelSize: 11
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+        background: Rectangle {
+            radius: 5
+            color: paragraphButton.hovered ? "#1affffff" : "#08ffffff"
+            border.color: "#18ffffff"
+        }
+        onClicked: actionsRoot.paragraphBelowRequested()
     }
 
     ToolButton {

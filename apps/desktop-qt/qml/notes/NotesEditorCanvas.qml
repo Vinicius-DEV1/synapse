@@ -304,6 +304,7 @@ ScrollView {
                     richTextEditor.setCodeBlockLanguage(language)
                 }
                 onRichCodeCopyRequested: richTextEditor.copyCodeBlock()
+                onRichCodeParagraphBelowRequested: richTextEditor.insertParagraphBelowCodeBlock()
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {
                     if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()

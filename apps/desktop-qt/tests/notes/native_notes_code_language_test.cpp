@@ -75,6 +75,34 @@ private slots:
             "<pre><code class=\"language-rust\">first</code></pre>"
             "<pre><code class=\"language-python\">second</code></pre>"));
     }
+
+    void paragraphInsertionAfterMultilineCodePreservesNextBlockAndUndoes() {
+        const QString source = QStringLiteral(
+            "<pre><code class=\"language-rust\">fn main() {\n    run();\n}</code></pre><h2>Following heading</h2>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+        const QTextBlock firstCodeBlock = document.begin();
+        const QTextBlock secondCodeBlock = firstCodeBlock.next();
+        QVERIFY(NotesRichCodeBlocks::isAt(document, secondCodeBlock.position()));
+
+        const int paragraphPosition = NotesRichCodeBlocks::insertParagraphBelow(document, secondCodeBlock.position());
+        QVERIFY(paragraphPosition >= 0);
+        const QTextBlock paragraph = document.findBlock(paragraphPosition);
+        QVERIFY(paragraph.isValid());
+        QVERIFY(paragraph.text().isEmpty());
+        QVERIFY(!NotesRichCodeBlocks::isAt(document, paragraphPosition));
+        QCOMPARE(paragraph.blockFormat().headingLevel(), 0);
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
+            "<pre><code class=\"language-rust\">fn main() {\n    run();\n}</code></pre>"
+            "<p><br/></p><h2><strong>Following heading</strong></h2>"));
+        QCOMPARE(paragraph.next().blockFormat().headingLevel(), 2);
+        QCOMPARE(paragraph.next().text(), QStringLiteral("Following heading"));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
 };
 
 int runNativeNotesCodeLanguageTest(int argc, char **argv) {

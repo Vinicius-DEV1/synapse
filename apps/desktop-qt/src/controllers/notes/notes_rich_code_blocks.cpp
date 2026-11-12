@@ -155,6 +155,43 @@ QString textAt(const QTextDocument &document, int position) {
     return result;
 }
 
+int insertParagraphBelow(QTextDocument &document, int position) {
+    if (!isAt(document, position)) return -1;
+    const QTextBlock selected = document.findBlock(position);
+    const int groupId = selected.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup);
+    QTextBlock last = selected;
+    if (groupId > 0) {
+        for (QTextBlock block = selected.next(); block.isValid() &&
+             block.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId; block = block.next())
+            last = block;
+    }
+
+    const QTextBlock following = last.next();
+    const QTextBlockFormat followingFormat = following.isValid() ? following.blockFormat() : QTextBlockFormat();
+    const int insertionPosition = qMin(last.position() + last.text().size(), document.characterCount() - 1);
+    QTextCursor cursor(&document);
+    cursor.beginEditBlock();
+    cursor.setPosition(insertionPosition);
+    QTextBlockFormat paragraphFormat;
+    paragraphFormat.setTopMargin(12.0);
+    paragraphFormat.setBottomMargin(12.0);
+    cursor.insertBlock(paragraphFormat, QTextCharFormat());
+
+    const QTextBlock inserted = cursor.block();
+    if (!inserted.isValid()) {
+        cursor.endEditBlock();
+        return -1;
+    }
+    QTextBlock originalFollowing = inserted.next();
+    if (originalFollowing.isValid()) {
+        QTextCursor followingCursor(originalFollowing);
+        followingCursor.setBlockFormat(followingFormat);
+    }
+    const int insertedPosition = inserted.position();
+    cursor.endEditBlock();
+    return insertedPosition;
+}
+
 int nextGroupId(const QTextDocument &document) {
     int greatest = 0;
     for (QTextBlock block = document.begin(); block.isValid(); block = block.next())

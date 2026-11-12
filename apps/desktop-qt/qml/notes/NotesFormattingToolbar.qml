@@ -26,6 +26,7 @@ Rectangle {
     signal richDividerDropRequested(int targetPosition, bool afterTarget)
     signal richCodeLanguageRequested(string language)
     signal richCodeCopyRequested()
+    signal richCodeParagraphBelowRequested()
     signal richMarkRequested(string mark)
     property bool richMode: false
     property bool tableCellActive: false
@@ -133,6 +134,7 @@ Rectangle {
             copyRevision: toolbarRoot.codeBlockCopyRevision
             onLanguageRequested: function(language) { toolbarRoot.richCodeLanguageRequested(language) }
             onCopyRequested: toolbarRoot.richCodeCopyRequested()
+            onParagraphBelowRequested: toolbarRoot.richCodeParagraphBelowRequested()
         }
         NotesCalloutPalette {
             active: toolbarRoot.richMode && toolbarRoot.calloutActive

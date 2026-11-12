@@ -94,6 +94,22 @@ private slots:
         QVERIFY(committed.toBool());
         QCOMPARE(richEditor->property("sourceHtml").toString(), source);
         QTRY_VERIFY_WITH_TIMEOUT(!headerActions->property("copied").toBool(), 2500);
+
+        QObject *paragraphButton = root->findChild<QObject *>("notesCodeParagraphBelowButton");
+        QVERIFY(paragraphButton);
+        QVERIFY(paragraphButton->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(paragraphButton, "clicked"));
+        QTRY_VERIFY(richEditor->property("hasPendingChanges").toBool());
+        QVERIFY(!richEditor->property("codeBlockActive").toBool());
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral(
+            "<pre><code class=\"language-c++\">int main() {\n    return 0;\n}</code></pre><p><br/></p>"));
+
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), source);
     }
 };
 
