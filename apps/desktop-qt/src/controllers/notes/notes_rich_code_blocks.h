@@ -15,6 +15,7 @@ bool isAt(const QTextDocument &document, int position);
 QString languageAt(const QTextDocument &document, int position);
 QString textAt(const QTextDocument &document, int position);
 int insertParagraphBelow(QTextDocument &document, int position);
+int remove(QTextDocument &document, int position);
 int nextGroupId(const QTextDocument &document);
 void setGroup(QTextBlock block, int groupId, const QString &language = QString());
 bool setLanguage(QTextDocument &document, int position, const QString &language);

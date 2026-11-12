@@ -305,6 +305,7 @@ ScrollView {
                 }
                 onRichCodeCopyRequested: richTextEditor.copyCodeBlock()
                 onRichCodeParagraphBelowRequested: richTextEditor.insertParagraphBelowCodeBlock()
+                onRichCodeDeleteConfirmed: richTextEditor.deleteCodeBlock()
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {
                     if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()

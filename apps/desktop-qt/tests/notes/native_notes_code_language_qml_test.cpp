@@ -8,6 +8,8 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QTextBlock>
 #include <QtQuick/QQuickTextDocument>
+#include <QtQuick/QQuickItem>
+#include <QtQuick/QQuickWindow>
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
@@ -26,6 +28,13 @@ private slots:
             SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/NotesRichTableHarness.qml")));
         QScopedPointer<QObject> root(component.create());
         QVERIFY2(root, qPrintable(component.errorString()));
+        QQuickWindow window;
+        window.resize(960, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+        QTRY_VERIFY(window.isVisible());
 
         QObject *toolbar = root->findChild<QObject *>("notesFormattingToolbar");
         QObject *richEditor = root->findChild<QObject *>("richTableEditor");
@@ -105,6 +114,30 @@ private slots:
         QVERIFY(committed.toBool());
         QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral(
             "<pre><code class=\"language-c++\">int main() {\n    return 0;\n}</code></pre><p><br/></p>"));
+
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), source);
+
+        QObject *deleteButton = root->findChild<QObject *>("notesCodeDeleteButton");
+        QObject *deleteConfirmation = root->findChild<QObject *>("notesCodeDeleteConfirmation");
+        QVERIFY(deleteButton);
+        QVERIFY(deleteConfirmation);
+        QVERIFY(QMetaObject::invokeMethod(deleteButton, "clicked"));
+        QVERIFY(deleteConfirmation->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(deleteConfirmation, "reject"));
+        QVERIFY(!deleteConfirmation->property("visible").toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), source);
+        QVERIFY(!richEditor->property("hasPendingChanges").toBool());
+
+        QVERIFY(QMetaObject::invokeMethod(deleteButton, "clicked"));
+        QVERIFY(QMetaObject::invokeMethod(deleteConfirmation, "accept"));
+        QTRY_VERIFY(richEditor->property("hasPendingChanges").toBool());
+        QVERIFY(!richEditor->property("codeBlockActive").toBool());
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral("<p><br/></p>"));
 
         QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));

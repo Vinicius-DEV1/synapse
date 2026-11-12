@@ -23,6 +23,7 @@ public:
                                               const QString &language) const;
     Q_INVOKABLE bool copyRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE int insertRichParagraphBelowCodeBlock(QQuickTextDocument *document, int position) const;
+    Q_INVOKABLE int deleteRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool prepareRichCallouts(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool isRichCalloutAt(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE QString richCalloutColorAt(QQuickTextDocument *document, int position) const;

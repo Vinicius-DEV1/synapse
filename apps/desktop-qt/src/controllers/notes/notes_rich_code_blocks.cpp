@@ -7,8 +7,11 @@
 #include <QtCore/QXmlStreamReader>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextBlockFormat>
+#include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
+#include <QtGui/QTextTable>
+#include <QtGui/QTextTableCell>
 #include <QtGui/QTextFormat>
 
 namespace NotesRichCodeBlocks {
@@ -60,6 +63,34 @@ void applyLanguage(QTextBlock block, const QString &language) {
     else format.setProperty(NotesRichFormat::CodeBlockLanguage, language);
     QTextCursor cursor(block);
     cursor.setBlockFormat(format);
+}
+
+bool shareEditableRegion(const QTextBlock &left, const QTextBlock &right) {
+    if (!left.isValid() || !right.isValid()) return false;
+    const QTextCursor leftCursor(left);
+    const QTextCursor rightCursor(right);
+    if (leftCursor.currentFrame() != rightCursor.currentFrame()) return false;
+    QTextTable *leftTable = leftCursor.currentTable();
+    QTextTable *rightTable = rightCursor.currentTable();
+    if (leftTable != rightTable) return false;
+    if (!leftTable) return true;
+    const QTextTableCell leftCell = leftTable->cellAt(leftCursor);
+    const QTextTableCell rightCell = rightTable->cellAt(rightCursor);
+    return leftCell.isValid() && rightCell.isValid() && leftCell.row() == rightCell.row() &&
+        leftCell.column() == rightCell.column();
+}
+
+void resetToParagraph(QTextBlock block) {
+    if (!block.isValid()) return;
+    QTextBlockFormat format = block.blockFormat();
+    format.clearProperty(QTextFormat::BlockNonBreakableLines);
+    format.clearProperty(NotesRichFormat::CodeBlockGroup);
+    format.clearProperty(NotesRichFormat::CodeBlockLanguage);
+    format.setTopMargin(12.0);
+    format.setBottomMargin(12.0);
+    QTextCursor cursor(block);
+    cursor.setBlockFormat(format);
+    cursor.setCharFormat(QTextCharFormat());
 }
 }
 
@@ -190,6 +221,57 @@ int insertParagraphBelow(QTextDocument &document, int position) {
     const int insertedPosition = inserted.position();
     cursor.endEditBlock();
     return insertedPosition;
+}
+
+int remove(QTextDocument &document, int position) {
+    if (!isAt(document, position)) return -1;
+    const QTextBlock selected = document.findBlock(position);
+    const int groupId = selected.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup);
+    QTextBlock first = selected;
+    QTextBlock last = selected;
+    if (groupId > 0) {
+        while (first.previous().isValid() &&
+               first.previous().blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId)
+            first = first.previous();
+        while (last.next().isValid() &&
+               last.next().blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId)
+            last = last.next();
+    }
+
+    const QTextBlock previous = first.previous();
+    const QTextBlock following = last.next();
+    const bool hasPrevious = shareEditableRegion(first, previous);
+    const bool hasFollowing = shareEditableRegion(first, following);
+    const QTextBlockFormat followingFormat = hasFollowing ? following.blockFormat() : QTextBlockFormat();
+    const int start = hasFollowing
+        ? first.position()
+        : hasPrevious ? previous.position() + previous.length() - 1 : first.position();
+    const int end = last.position() + last.text().size();
+
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    if (end > start) {
+        edit.setPosition(start);
+        edit.setPosition(end, QTextCursor::KeepAnchor);
+        edit.removeSelectedText();
+    }
+    QTextBlock resultBlock = document.findBlock(start);
+    if (!resultBlock.isValid()) resultBlock = document.begin();
+    if (hasFollowing) {
+        if (resultBlock.text().isEmpty() && resultBlock.next().isValid()) {
+            QTextCursor joinCursor(resultBlock);
+            joinCursor.setPosition(resultBlock.position() + resultBlock.length() - 1);
+            joinCursor.deleteChar();
+            resultBlock = document.findBlock(start);
+        }
+        QTextCursor resultCursor(resultBlock);
+        resultCursor.setBlockFormat(followingFormat);
+    } else if (!hasPrevious) {
+        resetToParagraph(resultBlock);
+    }
+    const int resultPosition = resultBlock.position();
+    edit.endEditBlock();
+    return resultPosition;
 }
 
 int nextGroupId(const QTextDocument &document) {

@@ -72,6 +72,11 @@ int NotesTextOperations::insertRichParagraphBelowCodeBlock(QQuickTextDocument *d
     return NotesRichCodeBlocks::insertParagraphBelow(*document->textDocument(), position);
 }
 
+int NotesTextOperations::deleteRichCodeBlock(QQuickTextDocument *document, int position) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichCodeBlocks::remove(*document->textDocument(), position);
+}
+
 bool NotesTextOperations::prepareRichCallouts(QQuickTextDocument *document, const QString &source) const {
     return document && document->textDocument() &&
         NotesRichDocument::prepareCalloutStyles(*document->textDocument(), source);

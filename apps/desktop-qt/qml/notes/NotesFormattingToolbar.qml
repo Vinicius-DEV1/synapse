@@ -27,6 +27,7 @@ Rectangle {
     signal richCodeLanguageRequested(string language)
     signal richCodeCopyRequested()
     signal richCodeParagraphBelowRequested()
+    signal richCodeDeleteConfirmed()
     signal richMarkRequested(string mark)
     property bool richMode: false
     property bool tableCellActive: false
@@ -71,13 +72,11 @@ Rectangle {
         }
         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
 
-        // Bold
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             Text { anchors.centerIn: parent; text: "B"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<strong>", "</strong>") }
         }
-        // Italic
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             Text { anchors.centerIn: parent; text: "I"; color: "#ffffff"; font.pixelSize: 12; font.italic: true }
@@ -89,13 +88,11 @@ Rectangle {
             Text { anchors.centerIn: parent; text: "U"; color: "#ffffff"; font.pixelSize: 12; font.underline: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<u>", "</u>") }
         }
-        // Strikethrough
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             Text { anchors.centerIn: parent; text: "S"; color: "#ffffff"; font.pixelSize: 12; font.strikeout: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<s>", "</s>") }
         }
-        // Code
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             Accessible.name: qsTr("Inline code")
@@ -135,6 +132,7 @@ Rectangle {
             onLanguageRequested: function(language) { toolbarRoot.richCodeLanguageRequested(language) }
             onCopyRequested: toolbarRoot.richCodeCopyRequested()
             onParagraphBelowRequested: toolbarRoot.richCodeParagraphBelowRequested()
+            onDeleteRequested: toolbarRoot.richCodeDeleteConfirmed()
         }
         NotesCalloutPalette {
             active: toolbarRoot.richMode && toolbarRoot.calloutActive
@@ -213,14 +211,12 @@ Rectangle {
 
         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
 
-        // H1
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
             Text { anchors.centerIn: parent; text: "H1"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<h1>", "</h1>") }
         }
-        // H2
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
@@ -248,7 +244,6 @@ Rectangle {
                 }
             }
         }
-        // Bullet List
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
@@ -262,21 +257,18 @@ Rectangle {
             Text { anchors.centerIn: parent; text: "1."; color: "#ffffff"; font.pixelSize: 12 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<ol><li>", "</li></ol>") }
         }
-        // Blockquote
         Rectangle {
             Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
             Text { anchors.centerIn: parent; text: "”"; color: "#ffffff"; font.pixelSize: 14 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<blockquote>", "</blockquote>") }
         }
-        // Callout Note
         Rectangle {
             Layout.preferredWidth: 32; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
             Text { anchors.centerIn: parent; text: "ℹ️"; font.pixelSize: 11 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<div class=\"blockquote-toggle\" data-title=\"Nota\" data-color=\"default\" data-is-open=\"true\"><p>", "</p></div>") }
         }
-        // Callout Warning
         Rectangle {
             Layout.preferredWidth: 32; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
@@ -290,7 +282,6 @@ Rectangle {
             Text { anchors.centerIn: parent; text: "—"; color: "#ffffff"; font.pixelSize: 16 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<hr>", "") }
         }
-        // Code Block
         Rectangle {
             Layout.preferredWidth: 32; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
             visible: !toolbarRoot.richMode
@@ -298,4 +289,5 @@ Rectangle {
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<pre><code>", "</code></pre>") }
         }
     }
+
 }

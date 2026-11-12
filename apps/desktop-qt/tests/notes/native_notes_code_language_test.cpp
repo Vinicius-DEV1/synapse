@@ -1,10 +1,15 @@
 #include "controllers/notes/notes_rich_code_blocks.h"
 #include "controllers/notes/notes_rich_document.h"
 #include "controllers/notes/notes_rich_format.h"
+#include "controllers/notes/notes_rich_format.h"
 
 #include <QtGui/QTextBlock>
+#include <QtGui/QTextBlockFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
+#include <QtGui/QTextTable>
+#include <QtGui/QTextTableCell>
+#include <QtGui/QTextFormat>
 #include <QtTest/QtTest>
 
 class NativeNotesCodeLanguageTest final : public QObject {
@@ -102,6 +107,73 @@ private slots:
 
         document.undo();
         QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
+
+    void deleteRemovesTheWholeCodeGroupWithoutChangingNeighborBlocks() {
+        const QString source = QStringLiteral(
+            "<p>Before</p><pre><code class=\"language-rust\">fn main() {\n    run();\n}</code></pre><h2>After</h2>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+        QTextBlock selectedCode;
+        for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+            if (NotesRichCodeBlocks::isAt(document, block.position())) selectedCode = block;
+        }
+        QVERIFY(selectedCode.isValid());
+
+        const int caretPosition = NotesRichCodeBlocks::remove(document, selectedCode.position());
+        QVERIFY(caretPosition >= 0);
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
+            "<p>Before</p><h2><strong>After</strong></h2>"));
+        QVERIFY(!NotesRichCodeBlocks::isAt(document, caretPosition));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
+
+    void deletingOnlyCodeLeavesAnUndoableEditableParagraph() {
+        const QString source = QStringLiteral("<pre><code class=\"language-python\">one\ntwo</code></pre>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+
+        const int caretPosition = NotesRichCodeBlocks::remove(document, 0);
+        QVERIFY(caretPosition >= 0);
+        QVERIFY(!NotesRichCodeBlocks::isAt(document, caretPosition));
+        QVERIFY(document.findBlock(caretPosition).text().isEmpty());
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral("<p><br/></p>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
+
+    void deletingCodeInOneTableCellDoesNotAffectAnotherCell() {
+        QTextDocument document;
+        QTextCursor tableCursor(&document);
+        QTextTable *table = tableCursor.insertTable(1, 2);
+        QTextTableCell codeCell = table->cellAt(0, 0);
+        QTextCursor codeCursor = codeCell.firstCursorPosition();
+        codeCursor.insertText(QStringLiteral("first"));
+        codeCursor.insertBlock();
+        codeCursor.insertText(QStringLiteral("second"));
+        const QTextBlock firstCode = codeCell.firstCursorPosition().block();
+        const QTextBlock lastCode = codeCursor.block();
+        for (QTextBlock block = firstCode; block.isValid(); block = block.next()) {
+            QTextBlockFormat format = block.blockFormat();
+            format.setNonBreakableLines(true);
+            format.setProperty(NotesRichFormat::CodeBlockGroup, 77);
+            QTextCursor blockCursor(block);
+            blockCursor.setBlockFormat(format);
+            if (block == lastCode) break;
+        }
+        QTextTableCell neighborCell = table->cellAt(0, 1);
+        QTextCursor neighborCursor = neighborCell.firstCursorPosition();
+        neighborCursor.insertText(QStringLiteral("neighbor cell"));
+        QVERIFY(NotesRichCodeBlocks::isAt(document, firstCode.position()));
+        QVERIFY(NotesRichCodeBlocks::remove(document, firstCode.position()) >= 0);
+        QCOMPARE(table->cellAt(0, 1).firstCursorPosition().block().text(), QStringLiteral("neighbor cell"));
+        QVERIFY(!NotesRichCodeBlocks::isAt(document, codeCell.firstCursorPosition().position()));
     }
 };
 
