@@ -1,6 +1,7 @@
 #include "notes_rich_document.h"
 #include "notes_rich_format.h"
 #include "notes_rich_list_serialization.h"
+#include "notes_rich_images.h"
 #include "notes_rich_tables.h"
 
 #include <QtGui/QTextBlock>
@@ -55,6 +56,12 @@ static bool appendBlocks(const QVector<QTextBlock> &blocks, QString &result) {
                 if (!appendBlockText(result, block)) return false;
                 result += "</p>";
             }
+            ++index;
+            continue;
+        }
+        QString imageHtml;
+        if (NotesRichImages::serializeStandaloneBlock(block, imageHtml)) {
+            result += imageHtml;
             ++index;
             continue;
         }

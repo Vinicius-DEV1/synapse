@@ -61,6 +61,12 @@ Item {
             return false
         }
         editor.text = editorSource.length > 0 ? editorSource : "<p></p>"
+        if (!textOperations.prepareRichImages(editor.textDocument)) {
+            isLoading = false
+            canEditSource = false
+            validationMessage = qsTr("This note contains an image that the native editor could not load safely. Switch to source editing to preserve it.")
+            return false
+        }
         if (!textOperations.prepareRichPageReferenceBoundaries(editor.textDocument)) {
             isLoading = false
             canEditSource = false
@@ -146,6 +152,7 @@ Item {
     function openLinkDialog() { return richCommands.openLinkDialog() }
     function setLink(url) { return richCommands.setLink(url) }
     function refreshCodeSyntaxHighlighting() { richCommands.refreshCodeSyntaxHighlighting() }
+    function openImagePicker() { return richImageActions.openForPosition() }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()
@@ -204,6 +211,21 @@ Item {
         textOperations: richRoot.textOperations
         active: richRoot.active
         invalid: richRoot.hasInvalidContent
+        onContentModified: {
+            richRoot.hasPendingChanges = true
+            commitTimer.restart()
+        }
+    }
+
+    NotesRichImageActions {
+        id: richImageActions
+        anchors.fill: parent
+        textEditor: richTextInput.editor
+        textOperations: richRoot.textOperations
+        controller: richRoot.controller
+        commitTimer: commitTimer
+        pageId: richRoot.parentPageId
+        active: richRoot.active && !richRoot.hasInvalidContent
         onContentModified: {
             richRoot.hasPendingChanges = true
             commitTimer.restart()

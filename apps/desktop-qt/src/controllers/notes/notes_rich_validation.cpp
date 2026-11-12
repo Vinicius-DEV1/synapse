@@ -3,6 +3,7 @@
 #include "notes_rich_spoilers.h"
 #include "notes_rich_table_cell_formatting.h"
 #include "notes_rich_code_blocks.h"
+#include "notes_rich_images.h"
 #include "notes_rich_task_markup.h"
 
 #include <QtCore/QSet>
@@ -87,9 +88,9 @@ bool supportsSource(const QString &source) {
     QString normalizedListSource;
     QVector<NotesRichTaskMarkup::ListItemState> listItemStates;
     if (!NotesRichTaskMarkup::normalizeSource(source, normalizedListSource, listItemStates)) return false;
-    const QString normalizedSource = normalizeVoidTags(normalizedListSource);
+    const QString normalizedSource = NotesRichImages::wrapRootImages(normalizeVoidTags(normalizedListSource));
     QXmlStreamReader xml(QStringLiteral("<root>") + normalizedSource + QStringLiteral("</root>"));
-    const QSet<QString> inlineTags = {"strong", "b", "em", "i", "u", "s", "strike", "br", "span", "mark", "a", "code"};
+    const QSet<QString> inlineTags = {"strong", "b", "em", "i", "u", "s", "strike", "br", "span", "mark", "a", "code", "img"};
     const QSet<QString> blockTags = {"p", "h1", "h2", "h3", "h4", "h5", "h6"};
     QStringList stack;
     QString expectedText;
@@ -122,6 +123,8 @@ bool supportsSource(const QString &source) {
             if (insidePageReference) return false;
             const QString name = xml.name().toString();
             const auto attributes = xml.attributes();
+            if (name == "img" && (stack.size() != 2 || stack.last() != "p" ||
+                                   !NotesRichImages::supportsAttributes(attributes))) return false;
             const bool paragraphParent = stack.isEmpty() || stack.last() == "root" || stack.last() == "li" ||
                 stack.last() == "blockquote" || stack.last() == "td" || stack.last() == "th";
             const bool preservesWhitespace = name == "p" && paragraphParent && attributes.size() == 1 &&
@@ -129,6 +132,7 @@ bool supportsSource(const QString &source) {
             const bool supportedCellSpan = (name == "td" || name == "th") &&
                 NotesRichTableCellFormatting::supportsCellAttributes(name, attributes);
             bool supportedStyle = false;
+            if (name == "img") supportedStyle = NotesRichImages::supportsAttributes(attributes);
             if (name == "a" && attributes.hasAttribute("href") && attributes.size() <= 3) {
                 supportedStyle = isSafeLink(attributes.value("href").toString());
                 if (attributes.hasAttribute("target"))
@@ -255,6 +259,9 @@ bool supportsSource(const QString &source) {
                 if (name == "br") {
                     expectedText += '\n';
                     expectedSemanticText += QChar::LineSeparator;
+                } else if (name == "img") {
+                    expectedText += QChar::ObjectReplacementCharacter;
+                    expectedSemanticText += QChar::ObjectReplacementCharacter;
                 }
             } else {
                 return false;

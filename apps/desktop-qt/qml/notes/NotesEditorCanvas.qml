@@ -294,6 +294,7 @@ ScrollView {
                 onRichBlockRequested: function(blockType) { richTextEditor.toggleBlock(blockType) }
                 onRichCalloutRequested: function(color) { richTextEditor.setCalloutColor(color) }
                 onRichTableRequested: richTextEditor.tableActions.insertTable()
+                onRichImageRequested: richTextEditor.openImagePicker()
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
                 onRichCellBackgroundRequested: function(color, scope) {
                     richTextEditor.tableActions.setCellBackground(color, scope)

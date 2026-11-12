@@ -32,6 +32,9 @@ add_executable(synapse-desktop
     src/controllers/notes/notes_code_syntax_highlighter.h
     src/controllers/notes/notes_text_operations.cpp
     src/controllers/notes/notes_rich_page_reference_actions.cpp
+    src/controllers/notes/notes_rich_image_controller.cpp
+    src/controllers/notes/notes_rich_images.cpp
+    src/controllers/notes/notes_rich_image_operations.cpp
     src/controllers/notes/notes_text_table_operations.cpp
     src/controllers/notes/notes_rich_slash_commands.cpp
     src/controllers/notes/notes_rich_slash_commands.h
@@ -147,6 +150,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/native_test_main.cpp
         tests/crypto/native_vault_crypto_test.cpp
         tests/notes/native_notes_test.cpp
+        tests/notes/native_notes_rich_images_test.cpp
         tests/notes/native_notes_reference_search_test.cpp
         tests/notes/native_notes_rich_tables_test.cpp
         tests/notes/native_notes_callout_test.cpp
@@ -169,6 +173,9 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_page_reference_actions.cpp
+        src/controllers/notes/notes_rich_image_controller.cpp
+        src/controllers/notes/notes_rich_images.cpp
+        src/controllers/notes/notes_rich_image_operations.cpp
         src/controllers/notes/notes_text_table_operations.cpp
         src/controllers/notes/notes_rich_slash_commands.cpp
         src/controllers/notes/notes_rich_slash_commands.h
@@ -269,6 +276,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_rich_qml_test.cpp
         tests/notes/native_notes_slash_menu_qml_test.cpp
         tests/notes/native_notes_page_reference_qml_test.cpp
+        tests/notes/native_notes_rich_images_qml_test.cpp
         tests/notes/native_notes_reference_search_qml_test.cpp
         tests/notes/native_notes_reference_actions_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp
@@ -277,6 +285,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_code_syntax_highlighter.h
         tests/notes/native_notes_divider_drag_qml_test.cpp
         src/controllers/notes/notes_text_operations.cpp
+        src/controllers/notes/notes_rich_images.cpp
+        src/controllers/notes/notes_rich_image_operations.cpp
         src/controllers/notes/notes_rich_page_reference_actions.cpp
         src/controllers/notes/notes_text_table_operations.cpp
         src/controllers/notes/notes_rich_slash_commands.cpp

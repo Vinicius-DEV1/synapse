@@ -3,6 +3,7 @@
 #include "notes_code_syntax_highlighter.h"
 #include "notes_rich_document.h"
 #include "notes_rich_markup.h"
+#include "notes_rich_images.h"
 #include "notes_rich_callouts.h"
 #include "notes_rich_code_blocks.h"
 #include "notes_rich_divider_editing.h"
@@ -34,7 +35,8 @@ QString NotesTextOperations::richSourceForEditor(const QString &source) const {
     QVector<NotesRichTaskMarkup::ListItemState> items;
     if (!NotesRichTaskMarkup::normalizeSource(source, normalized, items)) return {};
     normalized = NotesRichCallouts::sourceForEditor(normalized);
-    return NotesRichTableCellFormatting::editorMarkup(NotesRichSpoilers::editorMarkup(normalized));
+    normalized = NotesRichTableCellFormatting::editorMarkup(NotesRichSpoilers::editorMarkup(normalized));
+    return NotesRichImages::wrapRootImages(NotesRichMarkup::normalizeVoidTags(normalized));
 }
 
 QString NotesTextOperations::richSourceForEditorWithPages(const QString &source, const QVariantList &pages) const {

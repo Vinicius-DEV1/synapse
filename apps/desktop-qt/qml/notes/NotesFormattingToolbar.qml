@@ -19,6 +19,7 @@ Rectangle {
     signal richBlockRequested(string blockType)
     signal richCalloutRequested(string color)
     signal richTableRequested()
+    signal richImageRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
@@ -120,6 +121,24 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: toolbarRoot.richMarkRequested("spoiler")
+            }
+        }
+        Rectangle {
+            visible: toolbarRoot.richMode
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 26
+            radius: 4
+            color: imageButtonMouse.containsMouse ? "#12ffffff" : "#08ffffff"
+            Accessible.name: qsTr("Insert image")
+            ToolTip.visible: imageButtonMouse.containsMouse
+            ToolTip.text: qsTr("Insert image")
+            Text { anchors.centerIn: parent; text: "▧"; color: "#c4b5fd"; font.pixelSize: 16 }
+            MouseArea {
+                id: imageButtonMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: toolbarRoot.richImageRequested()
             }
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }

@@ -189,6 +189,9 @@ QString normalizeVoidTags(const QString &source) {
     const QRegularExpression inputTag(QStringLiteral("(<input\\b[^>]*?)(?<!/)\\s*>"),
                                      QRegularExpression::CaseInsensitiveOption);
     normalized.replace(inputTag, QStringLiteral("\\1/>"));
+    const QRegularExpression imageTag(QStringLiteral("(<img\\b[^>]*?)(?<!/)\\s*>"),
+                                     QRegularExpression::CaseInsensitiveOption);
+    normalized.replace(imageTag, QStringLiteral("\\1/>"));
     return normalized;
 }
 

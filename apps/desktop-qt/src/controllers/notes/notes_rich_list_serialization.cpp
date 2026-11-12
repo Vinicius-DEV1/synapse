@@ -1,6 +1,7 @@
 #include "notes_rich_list_serialization.h"
 #include "notes_rich_serialization_support.h"
 #include "notes_rich_format.h"
+#include "notes_rich_images.h"
 #include "notes_rich_code_blocks.h"
 #include "notes_rich_markup.h"
 #include "notes_rich_task_lists.h"
@@ -145,6 +146,12 @@ bool appendBlockText(QString &result, const QTextBlock &block) {
     for (auto it = block.begin(); !it.atEnd(); ++it) {
         const QTextFragment fragment = it.fragment();
         if (!fragment.isValid()) continue;
+        if (fragment.charFormat().isImageFormat()) {
+            QString imageHtml;
+            if (!NotesRichImages::serialize(fragment.charFormat().toImageFormat(), imageHtml)) return false;
+            result += imageHtml;
+            continue;
+        }
         if (fragment.charFormat().objectType() == NotesRichFormat::TaskCheckboxObjectType) {
             if (!block.textList() || !block.textList()->format().boolProperty(NotesRichFormat::TaskListState) ||
                 !block.blockFormat().hasProperty(NotesRichFormat::TaskItemChecked)) return false;

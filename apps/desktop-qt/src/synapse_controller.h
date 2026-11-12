@@ -127,6 +127,7 @@ public:
     Q_INVOKABLE QString createRandomPageCoverUrl() const;
     Q_INVOKABLE void processNotesPageCover(const QUrl &sourceUrl);
     Q_INVOKABLE void processRandomNotesPageCover();
+    Q_INVOKABLE void processNotesRichImage(const QUrl &sourceUrl);
 
     // 2. Videos / Media Center
     Q_INVOKABLE QVariantList getVideos(const QString &collectionFilter = "");
