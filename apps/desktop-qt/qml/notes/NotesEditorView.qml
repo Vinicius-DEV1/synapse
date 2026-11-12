@@ -324,6 +324,7 @@ Rectangle {
                 notesRoot.saveActiveNote()
             }
             onPageNavigationRequested: function(pageId) { notesRoot.selectPage(pageId) }
+            onPageReferencePreviewRequested: function(pageId) { referencePreview.openForPage(pageId) }
             onCreateSubPageRequested: notesRoot.createNewSubNote(notesRoot.selectedPageId)
             onPageHierarchyChanged: notesRoot.loadPages()
             onPageActionFailed: function(message) { editorCanvas.pageActionStatus = message }
@@ -341,6 +342,14 @@ Rectangle {
         pageTitle: notesRoot.activeTitle
         history: notesRoot.pageHistoryEntries
         onCloseRequested: notesRoot.isHistoryOpen = false
+    }
+
+    NotesPageReferencePreview {
+        id: referencePreview
+        controller: dataController
+        onExpandRequested: function(pageId) {
+            if (notesRoot.selectPage(pageId)) referencePreview.close()
+        }
     }
 
     NotesHelpDialog {

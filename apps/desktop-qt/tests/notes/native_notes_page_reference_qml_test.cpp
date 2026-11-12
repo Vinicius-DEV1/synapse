@@ -31,11 +31,50 @@ public:
         lastIcon = icon;
         return shouldFail ? QString() : createdPageId;
     }
+
+    Q_INVOKABLE QVariantMap getPage(const QString &pageId) {
+        if (pageId != QStringLiteral("page-one")) return {};
+        return {{"id", pageId}, {"title", "Stored target"}, {"icon", "📄"},
+                {"description", "Target description"}, {"content", "<p>Target body</p>"}};
+    }
 };
 
 class NativeNotesPageReferenceQmlTest final : public QObject {
     Q_OBJECT
 private slots:
+    void floatingPagePreviewLoadsStoredContentAndGuardsExpand() {
+        QQmlEngine engine;
+        MockPageCreationController controller;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesPageReferencePreview.qml")));
+        QScopedPointer<QObject> preview(component.create());
+        QVERIFY2(preview, qPrintable(component.errorString()));
+        preview->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        preview->setProperty("pageId", "page-one");
+
+        QVariant loaded;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "loadPage", Q_RETURN_ARG(QVariant, loaded)));
+        QVERIFY(loaded.toBool());
+        QCOMPARE(preview->property("pageData").toMap().value("title").toString(), QString("Stored target"));
+        QCOMPARE(preview->property("pageData").toMap().value("content").toString(), QString("<p>Target body</p>"));
+
+        QSignalSpy expanded(preview.data(), SIGNAL(expandRequested(QString)));
+        QVariant expandedResult;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "requestExpand", Q_RETURN_ARG(QVariant, expandedResult)));
+        QVERIFY(expandedResult.toBool());
+        QCOMPARE(expanded.count(), 1);
+        QCOMPARE(expanded.takeFirst().at(0).toString(), QString("page-one"));
+
+        preview->setProperty("pageId", "missing-page");
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "loadPage", Q_RETURN_ARG(QVariant, loaded)));
+        QVERIFY(!loaded.toBool());
+        QVERIFY(preview->property("loadError").toString().contains("unavailable"));
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "requestExpand", Q_RETURN_ARG(QVariant, expandedResult)));
+        QVERIFY(!expandedResult.toBool());
+        QCOMPARE(expanded.count(), 0);
+    }
+
     void reactPageReferenceMarkupRoundTripsAndRejectsUnsafeIds() {
         NotesTextOperations operations;
         const QVariantList pages = {QVariantMap{
@@ -81,7 +120,7 @@ private slots:
             "<p><span data-page-id=\"removed-page\" title=\"Old title\"></span></p>"));
     }
 
-    void slashSearchInsertsAtCaretSupportsUndoAndActivatesNavigation() {
+    void slashSearchInsertsAtCaretSupportsUndoAndOpensFloatingPreview() {
         QQmlEngine engine;
         NotesTextOperations operations;
         engine.rootContext()->setContextProperty("notesTextOperations", &operations);
@@ -162,11 +201,11 @@ private slots:
         QCOMPARE(richEditor->property("sourceHtml").toString(), QString(
             "<p>Begin<span data-page-id=\"page-two\" title=\"Second page\"></span>End</p>"));
 
-        QSignalSpy navigation(richEditor, SIGNAL(pageNavigationRequested(QString)));
+        QSignalSpy preview(richEditor, SIGNAL(pagePreviewRequested(QString)));
         const QString href = QStringLiteral("synapse-page:/page-two?title=Second%20page");
         QVERIFY(QMetaObject::invokeMethod(textEdit, "linkActivated", Qt::DirectConnection, Q_ARG(QString, href)));
-        QCOMPARE(navigation.count(), 1);
-        QCOMPARE(navigation.takeFirst().at(0).toString(), QString("page-two"));
+        QCOMPARE(preview.count(), 1);
+        QCOMPARE(preview.takeFirst().at(0).toString(), QString("page-two"));
 
         QTest::keyClick(&window, Qt::Key_Z, Qt::ControlModifier);
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));

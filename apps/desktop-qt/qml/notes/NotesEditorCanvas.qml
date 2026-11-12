@@ -49,6 +49,7 @@ ScrollView {
     signal previewToggled(bool preview)
     signal formatRequested(string prefix, string suffix)
     signal pageNavigationRequested(string pageId)
+    signal pageReferencePreviewRequested(string pageId)
     signal createSubPageRequested()
     signal pageHierarchyChanged()
     signal pageActionFailed(string message)
@@ -332,7 +333,7 @@ ScrollView {
                 parentPageId: canvasRoot.activePageId
                 active: visible
                 onContentModified: function(html) { canvasRoot.richContentModified(html) }
-                onPageNavigationRequested: function(pageId) { canvasRoot.pageNavigationRequested(pageId) }
+                onPagePreviewRequested: function(pageId) { canvasRoot.pageReferencePreviewRequested(pageId) }
                 onExternalLinkRequested: function(link) { canvasRoot.openExternalLink(link) }
                 onPageHierarchyChanged: canvasRoot.pageHierarchyChanged()
                 onValidationChanged: function(invalid, message) {

@@ -18,7 +18,7 @@ Item {
     property real slashAnchorY: 0
     readonly property alias pageReferenceMenu: pageReferenceFlow.menu
     readonly property alias editor: richEditor
-    signal pageNavigationRequested(string pageId)
+    signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
     readonly property string editorAccessibleDescription: {
         var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
@@ -266,7 +266,7 @@ Item {
         textOperations: inputRoot.editorRoot.textOperations
         commitTimer: inputRoot.commitTimer
         pageList: inputRoot.editorRoot.pageList
-        onPageNavigationRequested: function(pageId) { inputRoot.pageNavigationRequested(pageId) }
+        onPagePreviewRequested: function(pageId) { inputRoot.pagePreviewRequested(pageId) }
         onExternalLinkRequested: function(link) { inputRoot.externalLinkRequested(link) }
     }
 

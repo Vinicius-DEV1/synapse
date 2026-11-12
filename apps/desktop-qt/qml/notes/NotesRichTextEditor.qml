@@ -31,7 +31,7 @@ Item {
 
     signal contentModified(string html)
     signal validationChanged(bool invalid, string message)
-    signal pageNavigationRequested(string pageId)
+    signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
     signal pageHierarchyChanged()
 
@@ -177,7 +177,7 @@ Item {
         spoilerRevealControl: spoilerRevealControl
         richCommands: richCommands
         commitTimer: commitTimer
-        onPageNavigationRequested: function(pageId) { richRoot.pageNavigationRequested(pageId) }
+        onPagePreviewRequested: function(pageId) { richRoot.pagePreviewRequested(pageId) }
         onExternalLinkRequested: function(link) { richRoot.externalLinkRequested(link) }
     }
 

@@ -14,7 +14,7 @@ Item {
     property var commitTimer
     property var pageList: []
 
-    signal pageNavigationRequested(string pageId)
+    signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
 
     function hasActivePage(pageId) {
@@ -43,7 +43,7 @@ Item {
             return true
         }
         if (hasActivePage(pageId)) {
-            pageNavigationRequested(pageId)
+            pagePreviewRequested(pageId)
             return true
         }
 
