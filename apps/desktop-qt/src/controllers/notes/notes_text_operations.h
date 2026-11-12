@@ -108,8 +108,11 @@ public:
                                               int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool mergeOrSplitRichTable(QQuickTextDocument *document, int cursorPosition,
                                            int selectionStart, int selectionEnd) const;
+    Q_INVOKABLE bool canSetRichTableBackgroundOnSelection(QQuickTextDocument *document,
+                                                          int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool setRichTableCellBackground(QQuickTextDocument *document, int position,
-                                                const QString &color, const QString &scope) const;
+                                                const QString &color, const QString &scope,
+                                                int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool setRichColor(QQuickTextDocument *document, int start, int end,
                                   const QString &color, bool background) const;
     Q_INVOKABLE bool setRichLink(QQuickTextDocument *document, int start, int end, const QString &url) const;

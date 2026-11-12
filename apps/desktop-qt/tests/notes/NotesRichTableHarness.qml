@@ -17,6 +17,7 @@ Item {
         canDeleteTableRow: richEditor.tableActions.canEditTable("deleteRow")
         canDeleteTableColumn: richEditor.tableActions.canEditTable("deleteColumn")
         canMergeOrSplitTableCells: richEditor.tableActions.canMergeOrSplit
+        canColorSelectedTableCells: richEditor.tableActions.canColorSelectedCells
         dividerActive: richEditor.tableActions.isOnDivider
         canMoveDividerUp: richEditor.tableActions.canMoveDividerUp
         canMoveDividerDown: richEditor.tableActions.canMoveDividerDown

@@ -14,6 +14,9 @@ QtObject {
     readonly property bool canMergeOrSplit: active && !invalid && textEditor &&
         textOperations.canMergeOrSplitRichTable(textEditor.textDocument, textEditor.cursorPosition,
                                                 textEditor.selectionStart, textEditor.selectionEnd)
+    readonly property bool canColorSelectedCells: active && !invalid && textEditor &&
+        textOperations.canSetRichTableBackgroundOnSelection(
+            textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)
     readonly property bool isOnDivider: active && !invalid && textEditor &&
         textOperations.isRichDivider(textEditor.textDocument, textEditor.cursorPosition)
     readonly property bool canMoveDividerUp: isOnDivider &&
@@ -52,7 +55,8 @@ QtObject {
 
     function setCellBackground(color, scope) {
         if (!active || invalid || !isInsideTable || !textOperations.setRichTableCellBackground(
-                textEditor.textDocument, textEditor.cursorPosition, color, scope || "cell")) return false
+                textEditor.textDocument, textEditor.cursorPosition, color, scope || "cell",
+                textEditor.selectionStart, textEditor.selectionEnd)) return false
         return finishEdit()
     }
 

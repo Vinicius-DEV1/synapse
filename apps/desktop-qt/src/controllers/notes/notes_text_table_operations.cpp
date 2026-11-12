@@ -43,10 +43,19 @@ bool NotesTextOperations::mergeOrSplitRichTable(QQuickTextDocument *document, in
                                             selectionStart, selectionEnd);
 }
 
-bool NotesTextOperations::setRichTableCellBackground(QQuickTextDocument *document, int position,
-                                                      const QString &color, const QString &scope) const {
+bool NotesTextOperations::canSetRichTableBackgroundOnSelection(QQuickTextDocument *document,
+                                                                int selectionStart, int selectionEnd) const {
     return document && document->textDocument() &&
-        NotesRichTableCellFormatting::setBackground(*document->textDocument(), position, color, scope);
+        NotesRichTableCellFormatting::canSetBackgroundOnSelection(
+            *document->textDocument(), selectionStart, selectionEnd);
+}
+
+bool NotesTextOperations::setRichTableCellBackground(QQuickTextDocument *document, int position,
+                                                      const QString &color, const QString &scope,
+                                                      int selectionStart, int selectionEnd) const {
+    return document && document->textDocument() &&
+        NotesRichTableCellFormatting::setBackground(
+            *document->textDocument(), position, color, scope, selectionStart, selectionEnd);
 }
 
 bool NotesTextOperations::setRichColor(QQuickTextDocument *document, int start, int end,

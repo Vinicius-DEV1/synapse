@@ -17,6 +17,7 @@
 #include <QtTest/QtTest>
 
 int runNativeNotesTableMergeQmlTest(int argc, char **argv);
+int runNativeNotesTableBackgroundSelectionQmlTest(int argc, char **argv);
 
 class NativeRichTableQmlTest final : public QObject {
     Q_OBJECT
@@ -700,7 +701,9 @@ int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
     NativeRichTableQmlTest test;
     const int baseResult = QTest::qExec(&test, argc, argv);
-    return baseResult == 0 ? runNativeNotesTableMergeQmlTest(argc, argv) : baseResult;
+    if (baseResult != 0) return baseResult;
+    const int mergeResult = runNativeNotesTableMergeQmlTest(argc, argv);
+    return mergeResult == 0 ? runNativeNotesTableBackgroundSelectionQmlTest(argc, argv) : mergeResult;
 }
 
 #include "native_rich_table_qml_test.moc"

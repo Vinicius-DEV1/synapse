@@ -7,6 +7,7 @@ int runNativeNotesRichImageClipboardTest(int argc, char **argv);
 int runNativeNotesReferenceSearchTest(int argc, char **argv);
 int runNativeNotesRichTablesTest(int argc, char **argv);
 int runNativeNotesTableMergeTest(int argc, char **argv);
+int runNativeNotesTableBackgroundSelectionTest(int argc, char **argv);
 int runNativeNotesCalloutTest(int argc, char **argv);
 int runNativeNotesCodeLanguageTest(int argc, char **argv);
 int runNativeNotesDividerDragTest(int argc, char **argv);
@@ -30,6 +31,7 @@ int main(int argc, char **argv) {
     result |= runNativeNotesReferenceSearchTest(argc, argv);
     result |= runNativeNotesRichTablesTest(argc, argv);
     result |= runNativeNotesTableMergeTest(argc, argv);
+    result |= runNativeNotesTableBackgroundSelectionTest(argc, argv);
     result |= runNativeNotesCalloutTest(argc, argv);
     result |= runNativeNotesCodeLanguageTest(argc, argv);
     result |= runNativeNotesDividerDragTest(argc, argv);

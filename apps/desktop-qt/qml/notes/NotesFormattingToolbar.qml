@@ -50,6 +50,7 @@ Rectangle {
     property bool canDeleteTableRow: false
     property bool canDeleteTableColumn: false
     property bool canMergeOrSplitTableCells: false
+    property bool canColorSelectedTableCells: false
     property bool dividerActive: false
     property bool canMoveDividerUp: false
     property bool canMoveDividerDown: false
@@ -217,6 +218,7 @@ Rectangle {
         }
         NotesTableCellBackgroundPalette {
             active: toolbarRoot.richMode && toolbarRoot.tableCellActive
+            selectionAvailable: toolbarRoot.canColorSelectedTableCells
             Layout.preferredWidth: 30
             Layout.preferredHeight: 30
             onColorSelected: function(color, scope) { toolbarRoot.richCellBackgroundRequested(color, scope) }

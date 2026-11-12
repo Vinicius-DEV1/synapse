@@ -10,15 +10,19 @@ Item {
     visible: active
     property bool active: false
     property string backgroundScope: "cell"
+    property bool selectionAvailable: false
 
     signal colorSelected(string color, string scope)
 
-    readonly property var scopes: [
+    readonly property var baseScopes: [
         { label: qsTr("Cell"), value: "cell" },
         { label: qsTr("Row"), value: "row" },
         { label: qsTr("Column"), value: "column" },
         { label: qsTr("Table"), value: "table" }
     ]
+    readonly property var scopes: selectionAvailable
+        ? baseScopes.concat([{ label: qsTr("Selection"), value: "selection" }])
+        : baseScopes
 
     readonly property var colors: [
         { label: qsTr("Clear"), value: "" },
@@ -32,6 +36,7 @@ Item {
     ]
 
     function scopeDescription(scope) {
+        if (scope === "selection") return qsTr("selected cells")
         if (scope === "row") return qsTr("current row")
         if (scope === "column") return qsTr("current column")
         if (scope === "table") return qsTr("entire table")
@@ -45,9 +50,15 @@ Item {
     }
 
     function selectBackgroundScope(scope) {
-        if (scope !== "cell" && scope !== "row" && scope !== "column" && scope !== "table") return false
+        if (scope !== "cell" && scope !== "row" && scope !== "column" &&
+                scope !== "table" && scope !== "selection") return false
+        if (scope === "selection" && !selectionAvailable) return false
         backgroundScope = scope
         return true
+    }
+
+    onSelectionAvailableChanged: {
+        if (!selectionAvailable && backgroundScope === "selection") backgroundScope = "cell"
     }
 
     ToolButton {

@@ -168,6 +168,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_reference_search_test.cpp
         tests/notes/native_notes_rich_tables_test.cpp
         tests/notes/native_notes_table_merge_test.cpp
+        tests/notes/native_notes_table_background_selection_test.cpp
         tests/notes/native_notes_callout_test.cpp
         tests/notes/native_notes_code_language_test.cpp
         tests/notes/native_notes_divider_drag_test.cpp
@@ -369,6 +370,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     add_executable(synapse-notes-table-qml-tests
         tests/notes/native_rich_table_qml_test.cpp
         tests/notes/native_notes_table_merge_qml_test.cpp
+        tests/notes/native_notes_table_background_selection_qml_test.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp

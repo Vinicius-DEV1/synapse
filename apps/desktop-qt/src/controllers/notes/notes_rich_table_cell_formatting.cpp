@@ -5,6 +5,7 @@
 #include "notes_rich_table_styles.h"
 
 #include <QtCore/QRegularExpression>
+#include <QtCore/QSet>
 #include <QtCore/QVector>
 #include <QtGui/QBrush>
 #include <QtGui/QTextCursor>
@@ -65,6 +66,47 @@ bool validSpanAttribute(const QXmlStreamAttributes &attributes, const QString &n
     const int span = value.toInt(&valid);
     return valid && span <= NotesRichTableMerging::MaxSupportedCellSpan;
 }
+
+QTextTable *tableAt(QTextDocument &document, int position) {
+    if (position < 0 || position >= document.characterCount()) return nullptr;
+    QTextCursor cursor(&document);
+    cursor.setPosition(position);
+    return cursor.currentTable();
+}
+
+bool selectedCells(QTextDocument &document, int selectionStart, int selectionEnd,
+                   QVector<QTextTableCell> &cells) {
+    if (selectionStart < 0 || selectionEnd <= selectionStart ||
+        selectionEnd > document.characterCount() - 1) return false;
+    QTextTable *table = tableAt(document, selectionStart);
+    if (!table || tableAt(document, selectionEnd - 1) != table) return false;
+
+    QTextCursor selection(&document);
+    selection.setPosition(selectionStart);
+    selection.setPosition(selectionEnd, QTextCursor::KeepAnchor);
+    int firstRow = -1;
+    int rowCount = 0;
+    int firstColumn = -1;
+    int columnCount = 0;
+    selection.selectedTableCells(&firstRow, &rowCount, &firstColumn, &columnCount);
+    if (rowCount < 1 || columnCount < 1 || rowCount * columnCount < 2 || firstRow < 0 || firstColumn < 0 ||
+        firstRow + rowCount > table->rows() || firstColumn + columnCount > table->columns()) return false;
+
+    QSet<int> seenCells;
+    for (int row = firstRow; row < firstRow + rowCount; ++row) {
+        for (int column = firstColumn; column < firstColumn + columnCount; ++column) {
+            const QTextTableCell cell = table->cellAt(row, column);
+            if (!NotesRichTableMerging::isSupportedCellSpan(cell) || cell.row() < firstRow ||
+                cell.column() < firstColumn || cell.row() + cell.rowSpan() > firstRow + rowCount ||
+                cell.column() + cell.columnSpan() > firstColumn + columnCount) return false;
+            const int index = cell.row() * table->columns() + cell.column();
+            if (seenCells.contains(index)) continue;
+            seenCells.insert(index);
+            cells.append(cell);
+        }
+    }
+    return !cells.isEmpty();
+}
 }
 
 bool isSupportedBackground(const QColor &color) {
@@ -115,36 +157,49 @@ QString editorMarkup(const QString &source) {
     return result;
 }
 
-bool setBackground(QTextDocument &document, int position, const QString &colorValue, const QString &scope) {
+bool canSetBackgroundOnSelection(const QTextDocument &document, int selectionStart, int selectionEnd) {
+    QVector<QTextTableCell> cells;
+    return selectedCells(*const_cast<QTextDocument *>(&document), selectionStart, selectionEnd, cells);
+}
+
+bool setBackground(QTextDocument &document, int position, const QString &colorValue, const QString &scope,
+                   int selectionStart, int selectionEnd) {
     if (position < 0 || position > document.characterCount() - 1) return false;
     if (scope != QStringLiteral("cell") && scope != QStringLiteral("row") &&
-        scope != QStringLiteral("column") && scope != QStringLiteral("table")) return false;
+        scope != QStringLiteral("column") && scope != QStringLiteral("table") &&
+        scope != QStringLiteral("selection")) return false;
     const QColor color = colorValue.isEmpty() || colorValue == QStringLiteral("transparent")
         ? QColor() : NotesRichMarkup::parseCssColor(colorValue);
     if (color.isValid() && !isSupportedBackground(color)) return false;
 
-    QTextCursor cursor(&document);
-    cursor.setPosition(position);
-    QTextTable *table = cursor.currentTable();
-    if (!table) return false;
-    QTextTableCell cell = table->cellAt(cursor);
-    if (!cell.isValid()) return false;
-
     QVector<QTextTableCell> cells;
-    if (scope == QStringLiteral("cell")) {
-        cells.append(cell);
-    } else if (scope == QStringLiteral("row")) {
-        for (int column = 0; column < table->columns(); ++column)
-            cells.append(table->cellAt(cell.row(), column));
-    } else if (scope == QStringLiteral("column")) {
-        for (int row = 0; row < table->rows(); ++row)
-            cells.append(table->cellAt(row, cell.column()));
+    if (scope == QStringLiteral("selection")) {
+        if (!selectedCells(document, selectionStart, selectionEnd, cells)) return false;
     } else {
-        for (int row = 0; row < table->rows(); ++row) {
+        QTextCursor cursor(&document);
+        cursor.setPosition(position);
+        QTextTable *table = cursor.currentTable();
+        if (!table) return false;
+        QTextTableCell cell = table->cellAt(cursor);
+        if (!cell.isValid()) return false;
+        if (scope == QStringLiteral("cell")) {
+            cells.append(cell);
+        } else if (scope == QStringLiteral("row")) {
             for (int column = 0; column < table->columns(); ++column)
-                cells.append(table->cellAt(row, column));
+                cells.append(table->cellAt(cell.row(), column));
+        } else if (scope == QStringLiteral("column")) {
+            for (int row = 0; row < table->rows(); ++row)
+                cells.append(table->cellAt(row, cell.column()));
+        } else {
+            for (int row = 0; row < table->rows(); ++row) {
+                for (int column = 0; column < table->columns(); ++column)
+                    cells.append(table->cellAt(row, column));
+            }
         }
     }
+
+    QTextCursor cursor(&document);
+    cursor.setPosition(scope == QStringLiteral("selection") ? selectionStart : position);
 
     cursor.beginEditBlock();
     for (QTextTableCell selectedCell : cells) {
@@ -153,7 +208,7 @@ bool setBackground(QTextDocument &document, int position, const QString &colorVa
         else format.clearProperty(QTextFormat::BackgroundBrush);
         selectedCell.setFormat(format);
     }
-    NotesRichTableStyles::apply(*table);
+    if (QTextTable *table = cursor.currentTable()) NotesRichTableStyles::apply(*table);
     cursor.endEditBlock();
     return true;
 }
