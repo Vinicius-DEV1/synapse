@@ -1,7 +1,7 @@
 .pragma library
 
 function parseAction(link) {
-    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes)\?(.+)$/i)
+    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes|color)\?(.+)$/i)
     if (!match) return null
     var actionType = String(match[1]).toLowerCase()
     var values = ({})
@@ -28,6 +28,13 @@ function parseAction(link) {
             return { handled: true, success: false }
         }
         return { handled: true, type: actionType, url: values.url, start: blockStart }
+    }
+    if (actionType === "color") {
+        var colorBlockStart = Number(values.start)
+        if (!isFinite(colorBlockStart) || colorBlockStart < 0 || Math.floor(colorBlockStart) !== colorBlockStart) {
+            return { handled: true, success: false }
+        }
+        return { handled: true, type: actionType, url: values.url, start: colorBlockStart }
     }
     if (actionType === "toggle-notes" || actionType === "edit-notes") {
         var notesBlockStart = Number(values.start)
@@ -65,6 +72,15 @@ function activate(link, source, controller, renderer) {
         if (!replacement.success) return { handled: true, success: false }
         return { handled: true, success: true, type: "convert", start: replacement.start,
                  end: replacement.end, replacement: replacement.replacement }
+    }
+    if (action.type === "color") {
+        if (!renderer || typeof renderer.linkPreviewData !== "function") {
+            return { handled: true, success: false }
+        }
+        var colorData = renderer.linkPreviewData(source, action.url, action.start, controller)
+        if (!colorData.success) return { handled: true, success: false }
+        return { handled: true, success: true, type: action.type, url: action.url,
+                 start: action.start, color: colorData.color }
     }
     if (action.type === "toggle-notes") {
         if (!renderer || typeof renderer.replacePreviewAttributes !== "function") {

@@ -56,6 +56,43 @@ private slots:
         QVERIFY(!controller.setLinkEntityNotes("javascript:alert(1)", "unsafe")
                      .value("success").toBool());
     }
+
+    void linkColorUpsertValidatesPaletteValuesAndPreservesSharedFields() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("notes-link-color.sqlite")));
+
+        const QString canonicalUrl = QStringLiteral("https://www.youtube.com/watch?v=color123");
+        const QString configKey = QStringLiteral("link_entity:") + canonicalUrl;
+        QJsonObject initial = {{"canonicalUrl", canonicalUrl}, {"originalUrl", "https://youtu.be/color123"},
+                               {"title", "Saved title"}, {"notes", "Saved note"},
+                               {"color", "default"}, {"watched", true}, {"watching", false},
+                               {"extensionField", "preserve me"}};
+        QString payload = QString::fromUtf8(QJsonDocument(initial).toJson(QJsonDocument::Compact));
+        payload.replace("'", "''");
+        QVERIFY(controller.executeSql(QStringLiteral(
+            "INSERT INTO config (id, data, value, updated_at) VALUES ('%1', '%2', '%2', CURRENT_TIMESTAMP)")
+            .arg(configKey, payload)));
+
+        const QVariantMap colored = controller.setLinkEntityColor(
+            QStringLiteral("https://youtu.be/color123?si=share"), "#3b82f6");
+        QVERIFY(colored.value("success").toBool());
+        QVariantMap saved = controller.getLinkEntity(canonicalUrl);
+        QCOMPARE(saved.value("color").toString(), QString("#3B82F6"));
+        QCOMPARE(saved.value("title").toString(), QString("Saved title"));
+        QCOMPARE(saved.value("notes").toString(), QString("Saved note"));
+        QVERIFY(saved.value("watched").toBool());
+        QCOMPARE(saved.value("extensionField").toString(), QString("preserve me"));
+
+        QVERIFY(controller.setLinkEntityColor(canonicalUrl, "default").value("success").toBool());
+        QCOMPARE(controller.getLinkEntity(canonicalUrl).value("color").toString(), QString("default"));
+        QVERIFY(!controller.setLinkEntityColor(canonicalUrl, "rgba(59,130,246,.2)")
+                     .value("success").toBool());
+        QVERIFY(!controller.setLinkEntityColor(canonicalUrl, "#abc").value("success").toBool());
+        QVERIFY(!controller.setLinkEntityColor("javascript:alert(1)", "#3B82F6")
+                     .value("success").toBool());
+    }
 };
 
 int runNativeNotesLinkVaultTest(int argc, char **argv) {

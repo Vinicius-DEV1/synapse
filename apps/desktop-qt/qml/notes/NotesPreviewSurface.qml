@@ -11,7 +11,7 @@ Rectangle {
     property var controller: null
     property var sourceEditor: null
     property var textOperations: null
-    readonly property bool isDialogOpen: linkNotesDialog.visible
+    readonly property bool isDialogOpen: linkNotesDialog.visible || linkColorDialog.visible
     signal linkActivated(string link)
     signal actionFailed(string message)
 
@@ -21,6 +21,10 @@ Rectangle {
 
     function openLinkNotes(url, start, notes) {
         linkNotesDialog.openForLink(url, start, notes)
+    }
+
+    function openLinkColor(url, start, color) {
+        linkColorDialog.openForLink(url, start, color)
     }
 
     function replaceTextRange(start, end, replacement) {
@@ -72,6 +76,34 @@ Rectangle {
         return true
     }
 
+    function saveLinkColor(url, start, color) {
+        if (!controller || typeof controller.setLinkEntityColor !== "function" || !sourceEditor) {
+            actionFailed(qsTr("Link colors are unavailable right now."))
+            linkColorDialog.finishSave(false)
+            return false
+        }
+        var update = replacePreviewAttributes(
+                    sourceEditor.text, url, start, {color: color}, controller)
+        if (!update.success) {
+            actionFailed(qsTr("Could not find this saved link card."))
+            linkColorDialog.finishSave(false)
+            return false
+        }
+        var saved = controller.setLinkEntityColor(url, color)
+        if (!saved || saved.success !== true) {
+            actionFailed(qsTr("Could not save the link color."))
+            linkColorDialog.finishSave(false)
+            return false
+        }
+        if (!replaceTextRange(update.start, update.end, update.replacement)) {
+            actionFailed(qsTr("Link color was saved, but the page card could not be updated."))
+            linkColorDialog.finishSave(false)
+            return false
+        }
+        linkColorDialog.finishSave(true)
+        return true
+    }
+
     ColumnLayout {
         id: previewContentColumn
         anchors.fill: parent
@@ -101,6 +133,13 @@ Rectangle {
         id: linkNotesDialog
         onSaveRequested: function(url, start, notes) {
             previewSurface.saveLinkNotes(url, start, notes)
+        }
+    }
+
+    NotesLinkColorDialog {
+        id: linkColorDialog
+        onColorSelected: function(url, start, color) {
+            previewSurface.saveLinkColor(url, start, color)
         }
     }
 }

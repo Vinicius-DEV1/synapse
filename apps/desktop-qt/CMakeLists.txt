@@ -305,6 +305,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_rich_image_deletion_qml_test.cpp
         tests/notes/native_notes_rich_image_drop_qml_test.cpp
         tests/notes/native_notes_link_preview_qml_test.cpp
+        tests/notes/native_notes_link_color_qml_test.cpp
         tests/notes/native_notes_reference_search_qml_test.cpp
         tests/notes/native_notes_reference_actions_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp

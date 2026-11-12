@@ -104,6 +104,9 @@ ScrollView {
             else if (action.type === "edit-notes") {
                 previewSurface.openLinkNotes(action.url, action.start, action.notes)
             }
+            else if (action.type === "color") {
+                previewSurface.openLinkColor(action.url, action.start, action.color)
+            }
             else if (action.type === "convert") {
                 if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement)) {
                     pageActionFailed(qsTr("Could not convert this preview to a link."))

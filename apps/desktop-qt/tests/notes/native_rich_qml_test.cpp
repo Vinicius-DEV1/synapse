@@ -22,6 +22,7 @@ int runNativeNotesRichImageClipboardQmlTest(int argc, char **argv);
 int runNativeNotesRichImageDeletionQmlTest(int argc, char **argv);
 int runNativeNotesRichImageDropQmlTest(int argc, char **argv);
 int runNativeNotesLinkPreviewQmlTest();
+int runNativeNotesLinkColorQmlTest(int argc, char **argv);
 
 class NativeRichQmlTest final : public QObject {
     Q_OBJECT
@@ -333,7 +334,8 @@ int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
     NativeRichQmlTest test;
     const int richResult = QTest::qExec(&test, argc, argv);
-    return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesSlashMenuQmlTest(argc, argv) |
+    return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |
+        runNativeNotesSlashMenuQmlTest(argc, argv) |
         runNativeNotesPageReferenceQmlTest(argc, argv) |
         runNativeNotesReferenceSearchQmlTest(argc, argv) |
         runNativeNotesReferenceActionsQmlTest(argc, argv) |

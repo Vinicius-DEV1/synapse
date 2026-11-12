@@ -122,7 +122,8 @@ function linkPreviewData(source, url, start, provider) {
         if (safeHttpUrl(attributes.url) !== expectedUrl) continue
         var entity = linkEntityFor(expectedUrl, provider, entityCache)
         return {success: true, notes: String(attributes.notes || entity.notes || ""),
-                showNotes: attributes.shownotes === "true"}
+                showNotes: attributes.shownotes === "true",
+                color: String(attributes.color || entity.color || "default")}
     }
     return {success: false}
 }
@@ -146,6 +147,9 @@ function replacePreviewAttributes(source, url, start, changes, provider) {
         var openingTag = openingTagMatch[0]
         if (changes && changes.notes !== undefined) {
             openingTag = setTagAttribute(openingTag, "notes", String(changes.notes))
+        }
+        if (changes && changes.color !== undefined) {
+            openingTag = setTagAttribute(openingTag, "color", String(changes.color))
         }
         if (changes && changes.showNotes !== undefined) {
             var showNotes = changes.showNotes === true || changes.showNotes === "true"

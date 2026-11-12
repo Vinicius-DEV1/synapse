@@ -106,12 +106,12 @@ private slots:
         QVERIFY(editor);
         QVERIFY(actionMenu);
         const QVariantList actions = actionMenu->property("actions").toList();
-        QCOMPARE(actions.size(), 12);
-        QCOMPARE(actions.at(11).toMap().value("label").toString(), QString("Convert to text: Saved"));
+        QCOMPARE(actions.size(), 14);
+        QCOMPARE(actions.at(13).toMap().value("label").toString(), QString("Convert to text: Saved"));
 
         QSignalSpy contentChanged(canvas.data(), SIGNAL(contentModified(QString)));
         QVERIFY(contentChanged.isValid());
-        const QString conversionAction = actions.at(11).toMap().value("url").toString();
+        const QString conversionAction = actions.at(13).toMap().value("url").toString();
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated", Q_ARG(QString, conversionAction)));
 
         const QString converted = QStringLiteral(
@@ -165,7 +165,7 @@ private slots:
         QVERIFY(dialog);
 
         QVariantList actions = actionMenu->property("actions").toList();
-        QCOMPARE(actions.size(), 6);
+        QCOMPARE(actions.size(), 7);
         QCOMPARE(actions.at(4).toMap().value("label").toString(), QString("Show link notes: Saved"));
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
                                           Q_ARG(QString, actions.at(4).toMap().value("url").toString())));
@@ -175,7 +175,7 @@ private slots:
         QTRY_VERIFY(previewText->property("text").toString().contains("Saved from Link Vault"));
 
         actions = actionMenu->property("actions").toList();
-        QTRY_COMPARE(actionMenu->property("actions").toList().size(), 7);
+        QTRY_COMPARE(actionMenu->property("actions").toList().size(), 8);
         actions = actionMenu->property("actions").toList();
         QCOMPARE(actions.at(5).toMap().value("label").toString(), QString("Edit link notes: Saved"));
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",

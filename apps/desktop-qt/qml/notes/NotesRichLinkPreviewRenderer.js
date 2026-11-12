@@ -94,6 +94,19 @@ function durationText(value) {
     return minutes + ":" + String(remainder).padStart(2, "0")
 }
 
+function cardSurfaceColor(color, opacity) {
+    var match = String(color || "").match(/^#([0-9a-f]{6})$/i)
+    if (!match) return "#1c1b24"
+    var base = [28, 27, 36]
+    var channels = [0, 2, 4].map(function(offset, index) {
+        var source = parseInt(match[1].substring(offset, offset + 2), 16)
+        return Math.round(base[index] + (source - base[index]) * opacity)
+    })
+    return "#" + channels.map(function(channel) {
+        return channel.toString(16).padStart(2, "0")
+    }).join("")
+}
+
 function previewBlocks(source) {
     var html = String(source || "")
     var blocks = []
@@ -121,6 +134,9 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
 
     var metadata = metadataFor(url, provider, metadataCache)
     var entity = linkEntityFor(url, provider, entityCache)
+    var cardColor = String(attributes.color || entity.color || "default")
+    var cardBackground = cardSurfaceColor(cardColor, 0.094)
+    var cardBorder = cardSurfaceColor(cardColor, 0.376)
     var host = hostForUrl(url)
     var title = String(attributes.title || metadata.title || "").trim() || host
     var channel = String(attributes.channel || metadata.channel || "").trim()
@@ -155,7 +171,7 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
             "<p><font color=\"#f4f4f5\">" + noteContent + "</font></p>"
     }
 
-    return "<table width=\"100%\" border=\"1\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#1c1b24\"><tr><td>" +
+    return "<table width=\"100%\" border=\"1\" bordercolor=\"" + cardBorder + "\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"" + cardBackground + "\"><tr><td>" +
         "<p><font color=\"#a7a9be\" size=\"2\">↗ " + escapeHtml(host) + "</font></p>" +
         "<p><font color=\"#f4f4f5\" size=\"4\"><b>" + escapeHtml(title) + "</b></font></p>" +
         details +
@@ -196,6 +212,8 @@ function actionItems(source, provider, copiedUrl) {
                           url: "synapse-link://edit-notes?url=" + encodeURIComponent(url) +
                                "&start=" + block.start})
         }
+        actions.push({label: "Change link color: " + title,
+                      url: "synapse-link://color?url=" + encodeURIComponent(url) + "&start=" + block.start})
         actions.push({label: "Convert to text: " + title,
                       url: "synapse-link://convert?url=" + encodeURIComponent(url) + "&start=" + block.start})
     }
