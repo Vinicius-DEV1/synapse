@@ -59,11 +59,14 @@ public:
                                     const QString &dataUrl, const QString &alt, int width, int height) const;
     Q_INVOKABLE QVariantMap richImageAt(QQuickTextDocument *document, int cursorPosition,
                                         int selectionStart, int selectionEnd) const;
+    Q_INVOKABLE QString richImageData(QQuickTextDocument *document, int imagePosition) const;
     Q_INVOKABLE QVariantList richImageCaptions(QQuickTextDocument *document) const;
     Q_INVOKABLE bool setRichImageAlignment(QQuickTextDocument *document, int imagePosition,
                                             const QString &alignment) const;
     Q_INVOKABLE bool setRichImageCaption(QQuickTextDocument *document, int imagePosition,
                                           const QString &caption) const;
+    Q_INVOKABLE bool setRichImageSize(QQuickTextDocument *document, int imagePosition,
+                                       int width, int height) const;
     Q_INVOKABLE bool toggleRich(QQuickTextDocument *document, int start, int end, const QString &mark) const;
     Q_INVOKABLE bool toggleRichAtCursor(QQuickTextDocument *document, int position, const QString &mark) const;
     Q_INVOKABLE bool clearRichPendingMarks(QQuickTextDocument *document) const;

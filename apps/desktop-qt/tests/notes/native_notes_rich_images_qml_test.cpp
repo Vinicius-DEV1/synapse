@@ -15,6 +15,19 @@
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextFragment>
 
+namespace {
+
+QQuickItem *findQuickItem(QQuickItem *parent, const QString &objectName) {
+    if (!parent) return nullptr;
+    if (parent->objectName() == objectName) return parent;
+    for (QQuickItem *child : parent->childItems()) {
+        if (QQuickItem *match = findQuickItem(child, objectName)) return match;
+    }
+    return nullptr;
+}
+
+}
+
 class MockNotesImageController final : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool fileOperationRunning READ fileOperationRunning CONSTANT)
@@ -40,7 +53,7 @@ private slots:
         QVERIFY2(root, qPrintable(component.errorString()));
 
         QQuickWindow window;
-        window.resize(800, 420);
+        window.resize(1000, 420);
         auto *rootItem = qobject_cast<QQuickItem *>(root.data());
         QVERIFY(rootItem);
         rootItem->setParentItem(window.contentItem());
@@ -131,8 +144,125 @@ private slots:
                                 .arg(captionInput->y() + captionInput->height())
                                 .arg(afterTextRect.y())));
 
+        QObject *resizeOverlay = root->findChild<QObject *>("notesRichImageResizeOverlay");
+        QQuickItem *resizeHandle = findQuickItem(qobject_cast<QQuickItem *>(resizeOverlay),
+                                                 "notesRichImageResizeHandle_se");
+        QVERIFY(resizeOverlay);
+        QVERIFY(resizeHandle);
+        const QPoint dragStart = resizeHandle->mapToScene(
+            QPointF(resizeHandle->width() / 2, resizeHandle->height() / 2)).toPoint();
+        const QPoint dragEnd = dragStart + QPoint(20, 0);
+        QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, dragStart);
+        QTRY_VERIFY(resizeOverlay->property("resizing").toBool());
+        QTest::mouseMove(&window, dragEnd, 10);
+        QTRY_COMPARE(resizeOverlay->property("previewWidth").toInt(), 60);
+        QTRY_VERIFY(resizeOverlay->property("previewReady").toBool());
+        QCOMPARE(changed.count(), 3);
+        QVERIFY(serializer.serializeRich(quickDocument).value("html").toString().contains("width=\"40\""));
+        QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, dragEnd);
+        QTRY_COMPARE(changed.count(), 4);
+        QVariantMap resized = serializer.serializeRich(quickDocument);
+        QVERIFY(resized.value("html").toString().contains("width=\"60\""));
+        QVERIFY(!resized.value("html").toString().contains("height=\""));
+
+        const QPoint proportionalStart = resizeHandle->mapToScene(
+            QPointF(resizeHandle->width() / 2, resizeHandle->height() / 2)).toPoint();
+        QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, proportionalStart);
+        QTRY_VERIFY(resizeOverlay->property("resizing").toBool());
+        QVERIFY(resizeOverlay->property("activeFocus").toBool());
+        QTest::keyPress(&window, Qt::Key_Shift);
+        QTRY_VERIFY(resizeOverlay->property("previewHasExplicitHeight").toBool());
+        const QPoint freeResizeEnd = proportionalStart + QPoint(20, 10);
+        QTest::mouseMove(&window, freeResizeEnd, 10);
+        QTRY_COMPARE(resizeOverlay->property("previewWidth").toInt(), 80);
+        QTRY_COMPARE(resizeOverlay->property("previewHeight").toInt(), 60);
+        QVERIFY(resizeOverlay->property("previewHasExplicitHeight").toBool());
+        QCOMPARE(changed.count(), 4);
+        QTest::mouseRelease(&window, Qt::LeftButton, Qt::ShiftModifier, freeResizeEnd);
+        QTest::keyRelease(&window, Qt::Key_Shift);
+        QTRY_COMPARE(changed.count(), 5);
+        resized = serializer.serializeRich(quickDocument);
+        QVERIFY(resized.value("html").toString().contains("width=\"80\" height=\"60\""));
+
+        QQuickItem *eastHandle = findQuickItem(qobject_cast<QQuickItem *>(resizeOverlay),
+                                               "notesRichImageResizeHandle_e");
+        QVERIFY(eastHandle);
+        const QPoint cancelStart = eastHandle->mapToScene(
+            QPointF(eastHandle->width() / 2, eastHandle->height() / 2)).toPoint();
+        const QPoint cancelEnd = cancelStart + QPoint(30, 0);
+        QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, cancelStart);
+        QTRY_VERIFY(resizeOverlay->property("resizing").toBool());
+        QTest::mouseMove(&window, cancelEnd, 10);
+        QTRY_COMPARE(resizeOverlay->property("previewWidth").toInt(), 110);
+        QCOMPARE(changed.count(), 5);
+        QTest::keyPress(&window, Qt::Key_Escape);
+        QTRY_VERIFY(!resizeOverlay->property("resizing").toBool());
+        QCOMPARE(changed.count(), 5);
+        QVERIFY(serializer.serializeRich(quickDocument).value("html").toString()
+                    .contains("width=\"80\" height=\"60\""));
+        QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, cancelEnd);
+
+        const QPoint pointerCancelStart = eastHandle->mapToScene(
+            QPointF(eastHandle->width() / 2, eastHandle->height() / 2)).toPoint();
+        const QPoint pointerCancelEnd = pointerCancelStart + QPoint(25, 0);
+        QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, pointerCancelStart);
+        QTRY_VERIFY(resizeOverlay->property("resizing").toBool());
+        QTest::mouseMove(&window, pointerCancelEnd, 10);
+        QTRY_VERIFY(resizeOverlay->property("previewWidth").toInt() > 80);
+        QCOMPARE(changed.count(), 5);
+        eastHandle->ungrabMouse();
+        QTRY_VERIFY(!resizeOverlay->property("resizing").toBool());
+        QCOMPARE(changed.count(), 5);
+        QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, pointerCancelEnd);
+        QVERIFY(serializer.serializeRich(quickDocument).value("html").toString()
+                    .contains("width=\"80\" height=\"60\""));
+
+        const QPoint resetStart = resizeHandle->mapToScene(
+            QPointF(resizeHandle->width() / 2, resizeHandle->height() / 2)).toPoint();
+        QTest::mouseDClick(&window, Qt::LeftButton, Qt::NoModifier, resetStart);
+        QTRY_COMPARE(changed.count(), 6);
+        resized = serializer.serializeRich(quickDocument);
+        QVERIFY(!resized.value("html").toString().contains("width=\""));
+        QVERIFY(!resized.value("html").toString().contains("height=\""));
+
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageFitRequested", Qt::DirectConnection));
+        QCOMPARE(changed.count(), 7);
+        resized = serializer.serializeRich(quickDocument);
+        QVERIFY(resized.value("html").toString().contains("width=\"800\""));
+        QVERIFY(!resized.value("html").toString().contains("height=\""));
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageResetRequested", Qt::DirectConnection));
+        QCOMPARE(changed.count(), 8);
+        resized = serializer.serializeRich(quickDocument);
+        QVERIFY(!resized.value("html").toString().contains("width=\""));
+        QVERIFY(!resized.value("html").toString().contains("height=\""));
+
         QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
         QVariantMap undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(undone.value("html").toString().contains("width=\"800\""));
+        QVERIFY(undone.value("html").toString().contains("data-caption=\"A quiet evening\""));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(!undone.value("html").toString().contains("width=\""));
+        QVERIFY(undone.value("html").toString().contains("data-caption=\"A quiet evening\""));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(undone.value("html").toString().contains("width=\"80\" height=\"60\""));
+        QVERIFY(undone.value("html").toString().contains("data-caption=\"A quiet evening\""));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(undone.value("html").toString().contains("width=\"60\""));
+        QVERIFY(!undone.value("html").toString().contains("height=\""));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(undone.value("html").toString().contains("width=\"40\" height=\"20\""));
+        QVERIFY(undone.value("html").toString().contains("data-caption=\"A quiet evening\""));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
         QVERIFY(undone.value("ok").toBool());
         QVERIFY(undone.value("html").toString().contains("data-align=\"right\""));
         QVERIFY(!undone.value("html").toString().contains("data-caption="));
@@ -144,12 +274,12 @@ private slots:
         undone = serializer.serializeRich(quickDocument);
         QVERIFY(undone.value("ok").toBool());
         QCOMPARE(undone.value("html").toString(), QString("<p>BeforeAfter</p>"));
-        QCOMPARE(changed.count(), 3);
+        QCOMPARE(changed.count(), 8);
 
         imageActions->setProperty("pageId", "page-two");
         controller.finish(payload);
         QTRY_VERIFY(imageActions->property("errorMessage").toString().contains("note changed"));
-        QCOMPARE(changed.count(), 3);
+        QCOMPARE(changed.count(), 8);
     }
 };
 

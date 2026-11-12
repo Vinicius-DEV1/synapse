@@ -30,6 +30,8 @@ Item {
         richImageSelected: imageActions.imageState.valid
         richImageAlignment: imageActions.imageState.alignment || "center"
         onRichImageAlignmentRequested: function(alignment) { imageActions.setAlignment(alignment) }
+        onRichImageFitRequested: imageActions.fitToWidth()
+        onRichImageResetRequested: imageActions.resetImageSize()
     }
 
     NotesRichImageActions {

@@ -300,6 +300,8 @@ ScrollView {
                 onRichImageAlignmentRequested: function(alignment) {
                     richTextEditor.setImageAlignment(alignment)
                 }
+                onRichImageFitRequested: richTextEditor.fitImageToWidth()
+                onRichImageResetRequested: richTextEditor.resetImageSize()
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
                 onRichCellBackgroundRequested: function(color, scope) {
                     richTextEditor.tableActions.setCellBackground(color, scope)

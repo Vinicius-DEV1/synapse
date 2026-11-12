@@ -21,6 +21,8 @@ Rectangle {
     signal richTableRequested()
     signal richImageRequested()
     signal richImageAlignmentRequested(string alignment)
+    signal richImageFitRequested()
+    signal richImageResetRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
@@ -80,51 +82,13 @@ Rectangle {
         }
         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
 
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            Text { anchors.centerIn: parent; text: "B"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<strong>", "</strong>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            Text { anchors.centerIn: parent; text: "I"; color: "#ffffff"; font.pixelSize: 12; font.italic: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<em>", "</em>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            Accessible.name: qsTr("Underline")
-            Text { anchors.centerIn: parent; text: "U"; color: "#ffffff"; font.pixelSize: 12; font.underline: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<u>", "</u>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            Text { anchors.centerIn: parent; text: "S"; color: "#ffffff"; font.pixelSize: 12; font.strikeout: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<s>", "</s>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            Accessible.name: qsTr("Inline code")
-            Text { anchors.centerIn: parent; text: "</>"; color: "#c4b5fd"; font.pixelSize: 10 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<code>", "</code>") }
-        }
-
-        Rectangle {
-            visible: toolbarRoot.richMode
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 26
-            radius: 4
-            color: toolbarRoot.richSpoilerActive ? "#1b8b5cf6" : "#08ffffff"
-            Accessible.name: qsTr("Spoiler")
-            ToolTip.visible: spoilerButtonMouse.containsMouse
-            ToolTip.text: qsTr("Spoiler")
-            Text { anchors.centerIn: parent; text: "S"; color: "#c4b5fd"; font.pixelSize: 12; font.bold: true; font.strikeout: true }
-            MouseArea {
-                id: spoilerButtonMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: toolbarRoot.richMarkRequested("spoiler")
-            }
+        NotesInlineMarkToolbar {
+            richMode: toolbarRoot.richMode
+            spoilerActive: toolbarRoot.richSpoilerActive
+            Layout.preferredWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
+            onFormatRequested: function(prefix, suffix) { toolbarRoot.formatRequested(prefix, suffix) }
+            onRichMarkRequested: function(mark) { toolbarRoot.richMarkRequested(mark) }
         }
         Rectangle {
             visible: toolbarRoot.richMode
@@ -144,37 +108,14 @@ Rectangle {
                 onClicked: toolbarRoot.richImageRequested()
             }
         }
-        Repeater {
-            model: ["left", "center", "right"]
-            delegate: Rectangle {
-                id: imageAlignmentButton
-                required property string modelData
-                readonly property string accessibleLabel: modelData === "left" ? qsTr("Align image left")
-                    : modelData === "right" ? qsTr("Align image right") : qsTr("Center image")
-                visible: toolbarRoot.richMode && toolbarRoot.richImageSelected
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 26
-                radius: 4
-                color: toolbarRoot.richImageAlignment === modelData ? "#1b8b5cf6" : "#08ffffff"
-                Accessible.name: accessibleLabel
-                ToolTip.visible: imageAlignmentMouse.containsMouse
-                ToolTip.text: accessibleLabel
-                Text {
-                    id: imageAlignmentIcon
-                    anchors.centerIn: parent
-                    text: imageAlignmentButton.modelData === "left" ? "⇤"
-                        : imageAlignmentButton.modelData === "right" ? "⇥" : "↔"
-                    color: "#c4b5fd"
-                    font.pixelSize: 14
-                }
-                MouseArea {
-                    id: imageAlignmentMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: toolbarRoot.richImageAlignmentRequested(imageAlignmentButton.modelData)
-                }
-            }
+        NotesRichImageToolbar {
+            active: toolbarRoot.richMode && toolbarRoot.richImageSelected
+            alignment: toolbarRoot.richImageAlignment
+            Layout.preferredWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
+            onAlignmentRequested: function(value) { toolbarRoot.richImageAlignmentRequested(value) }
+            onFitRequested: toolbarRoot.richImageFitRequested()
+            onResetRequested: toolbarRoot.richImageResetRequested()
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
         NotesBlockStyleActions {

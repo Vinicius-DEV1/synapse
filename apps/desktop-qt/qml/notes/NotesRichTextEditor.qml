@@ -156,6 +156,8 @@ Item {
     function refreshCodeSyntaxHighlighting() { richCommands.refreshCodeSyntaxHighlighting() }
     function openImagePicker() { return richImageActions.openForPosition() }
     function setImageAlignment(alignment) { return richImageActions.setAlignment(alignment) }
+    function fitImageToWidth() { return richImageActions.fitToWidth() }
+    function resetImageSize() { return richImageActions.resetImageSize() }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()

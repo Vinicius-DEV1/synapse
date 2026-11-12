@@ -108,6 +108,47 @@ private slots:
         QVERIFY(NotesRichDocument::serialize(document).contains("<ul><li><p>Second</p></li></ul>"));
     }
 
+    void imageSizeEditsPreserveAttributeModesAndUndo() {
+        const QString dataUrl = pngDataUrl();
+        const QString source = QStringLiteral("<p><img src=\"%1\" width=\"32\" height=\"16\"/></p>")
+            .arg(dataUrl);
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichImages::prepare(document, source));
+        const int imagePosition = document.begin().position();
+        QCOMPARE(NotesRichImages::imageData(document, imagePosition), dataUrl);
+
+        QSignalSpy contentChanges(&document, &QTextDocument::contentsChanged);
+        QVERIFY(NotesRichImages::setSize(document, imagePosition, 32, 16));
+        QCOMPARE(contentChanges.count(), 0);
+        QVERIFY(NotesRichImages::setSize(document, imagePosition, 64, -1));
+        QString resized = NotesRichDocument::serialize(document);
+        QVERIFY(resized.contains("width=\"64\""));
+        QVERIFY(!resized.contains("height=\""));
+        QVariantMap image = NotesRichImages::imageAt(document, imagePosition, imagePosition, imagePosition);
+        QCOMPARE(image.value("width").toInt(), 64);
+        QCOMPARE(image.value("height").toInt(), 32);
+        QVERIFY(image.value("hasWidth").toBool());
+        QVERIFY(!image.value("hasHeight").toBool());
+        document.undo();
+        QVERIFY(NotesRichDocument::serialize(document).contains("width=\"32\" height=\"16\""));
+
+        QVERIFY(NotesRichImages::setSize(document, imagePosition, 80, 60));
+        QVERIFY(NotesRichDocument::serialize(document).contains("width=\"80\" height=\"60\""));
+        document.undo();
+        QVERIFY(NotesRichImages::setSize(document, imagePosition, -1, -1));
+        resized = NotesRichDocument::serialize(document);
+        QVERIFY(!resized.contains("width=\""));
+        QVERIFY(!resized.contains("height=\""));
+        image = NotesRichImages::imageAt(document, imagePosition, imagePosition, imagePosition);
+        QCOMPARE(image.value("width").toInt(), 32);
+        QCOMPARE(image.value("height").toInt(), 16);
+        document.undo();
+        QVERIFY(NotesRichDocument::serialize(document).contains("width=\"32\" height=\"16\""));
+        QVERIFY(!NotesRichImages::setSize(document, imagePosition, 59, -1));
+        QVERIFY(!NotesRichImages::setSize(document, imagePosition, 60, 8193));
+    }
+
     void controllerImportsVerifiedLocalImagesWithinBounds() {
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());

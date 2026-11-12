@@ -305,9 +305,20 @@ QVariantMap imageAt(const QTextDocument &document, int cursorPosition,
         return {{"valid", true}, {"position", imagePosition}, {"width", qRound(width)},
                 {"height", qRound(height)}, {"naturalWidth", naturalSize.width()},
                 {"naturalHeight", naturalSize.height()}, {"alignment", alignment},
+                {"hasWidth", format.hasProperty(QTextFormat::ImageWidth)},
+                {"hasHeight", format.hasProperty(QTextFormat::ImageHeight)},
                 {"caption", format.stringProperty(NotesRichFormat::ImageCaption)}};
     }
     return {{"valid", false}, {"position", -1}};
+}
+
+QString imageData(const QTextDocument &document, int imagePosition) {
+    QTextBlock block;
+    QTextImageFormat format;
+    int resolvedPosition = -1;
+    if (!findImage(document, imagePosition, block, format, resolvedPosition) ||
+        !supportsDataUrl(format.name())) return {};
+    return format.name();
 }
 
 QVariantList captions(const QTextDocument &document) {
@@ -368,6 +379,34 @@ bool setCaption(QTextDocument &document, int imagePosition, const QString &capti
     blockFormat.setBottomMargin(normalizedCaption.isEmpty() ? 12.0 : 30.0);
     QTextCursor blockCursor(block);
     blockCursor.setBlockFormat(blockFormat);
+    edit.endEditBlock();
+    return true;
+}
+
+bool setSize(QTextDocument &document, int imagePosition, int width, int height) {
+    QTextBlock block;
+    QTextImageFormat imageFormat;
+    int resolvedPosition = -1;
+    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
+    const bool sameWidth = width == -1
+        ? !imageFormat.hasProperty(QTextFormat::ImageWidth)
+        : imageFormat.hasProperty(QTextFormat::ImageWidth) && qRound(imageFormat.width()) == width;
+    const bool sameHeight = height == -1
+        ? !imageFormat.hasProperty(QTextFormat::ImageHeight)
+        : imageFormat.hasProperty(QTextFormat::ImageHeight) && qRound(imageFormat.height()) == height;
+    if (sameWidth && sameHeight) return true;
+    if ((width != -1 && (width < 60 || width > MaximumImageDimension)) ||
+        (height != -1 && (height < 60 || height > MaximumImageDimension))) return false;
+
+    if (width == -1) imageFormat.clearProperty(QTextFormat::ImageWidth);
+    else imageFormat.setWidth(width);
+    if (height == -1) imageFormat.clearProperty(QTextFormat::ImageHeight);
+    else imageFormat.setHeight(height);
+    QTextCursor edit(&document);
+    edit.setPosition(resolvedPosition);
+    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
+    edit.beginEditBlock();
+    edit.setCharFormat(imageFormat);
     edit.endEditBlock();
     return true;
 }

@@ -62,6 +62,37 @@ Item {
         return true
     }
 
+    function commitSize(width, height) {
+        if (!active || !imageState.valid) return false
+        var hasWidth = Number(width) >= 0
+        var hasHeight = Number(height) >= 0
+        if (hasWidth === Boolean(imageState.hasWidth) &&
+                hasHeight === Boolean(imageState.hasHeight) &&
+                (!hasWidth || Number(imageState.width) === Number(width)) &&
+                (!hasHeight || Number(imageState.height) === Number(height))) return true
+        if (!textOperations.setRichImageSize(textEditor.textDocument, imageState.position,
+                                             Number(width), Number(height))) return false
+        refreshImageState()
+        textEditor.forceActiveFocus()
+        if (commitTimer) commitTimer.restart()
+        contentModified()
+        return true
+    }
+
+    function fitToWidth() {
+        if (!imageState.valid || !textEditor) return false
+        var targetWidth = Math.min(8192, Math.round(Number(textEditor.width)))
+        if (targetWidth < 60) {
+            showError(qsTr("The editor is too narrow to fit this image."))
+            return false
+        }
+        return commitSize(targetWidth, -1)
+    }
+
+    function resetImageSize() {
+        return commitSize(-1, -1)
+    }
+
     function showError(message) {
         errorMessage = String(message || qsTr("The image could not be inserted."))
         errorTimer.restart()
@@ -176,7 +207,7 @@ Item {
         readonly property rect imageRect: imageActionsRoot.imageState.valid
             ? imageActionsRoot.textEditor.positionToRectangle(imageActionsRoot.imageState.position)
             : Qt.rect(0, 0, 0, 0)
-        visible: imageActionsRoot.active && imageActionsRoot.imageState.valid
+        visible: imageActionsRoot.active && imageActionsRoot.imageState.valid && !imageResizeOverlay.resizing
         x: Math.max(0, imageRect.x)
         y: imageRect.y + imageRect.height + 1
         width: Math.max(120, Math.min(Number(imageActionsRoot.imageState.width || 240), parent.width - x))
@@ -197,6 +228,29 @@ Item {
         onEditingFinished: imageActionsRoot.commitCaption()
         onActiveFocusChanged: if (!activeFocus && visible) imageActionsRoot.commitCaption()
         z: 3
+    }
+
+    NotesRichImageResizeOverlay {
+        id: imageResizeOverlay
+        anchors.fill: parent
+        active: imageActionsRoot.active && imageActionsRoot.imageState.valid
+        imageRect: active
+            ? imageActionsRoot.textEditor.positionToRectangle(imageActionsRoot.imageState.position)
+            : Qt.rect(0, 0, 0, 0)
+        imageWidth: Number(imageActionsRoot.imageState.width || 0)
+        imageHeight: Number(imageActionsRoot.imageState.height || 0)
+        maximumWidth: Math.round(imageActionsRoot.textEditor ? imageActionsRoot.textEditor.width : 0)
+        alignment: String(imageActionsRoot.imageState.alignment || "center")
+        onResizeStarted: {
+            imageSource = imageActionsRoot.textOperations.richImageData(
+                              imageActionsRoot.textEditor.textDocument,
+                              imageActionsRoot.imageState.position)
+        }
+        onResizeCommitted: function(width, height) {
+            imageActionsRoot.commitSize(width, height)
+        }
+        onResetRequested: imageActionsRoot.resetImageSize()
+        z: 4
     }
 
     FileDialog {

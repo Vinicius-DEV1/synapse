@@ -24,6 +24,11 @@ QVariantMap NotesTextOperations::richImageAt(QQuickTextDocument *document, int c
     return NotesRichImages::imageAt(*document->textDocument(), cursorPosition, selectionStart, selectionEnd);
 }
 
+QString NotesTextOperations::richImageData(QQuickTextDocument *document, int imagePosition) const {
+    if (!document || !document->textDocument()) return {};
+    return NotesRichImages::imageData(*document->textDocument(), imagePosition);
+}
+
 QVariantList NotesTextOperations::richImageCaptions(QQuickTextDocument *document) const {
     if (!document || !document->textDocument()) return {};
     return NotesRichImages::captions(*document->textDocument());
@@ -39,4 +44,10 @@ bool NotesTextOperations::setRichImageCaption(QQuickTextDocument *document, int 
                                                const QString &caption) const {
     return document && document->textDocument() &&
         NotesRichImages::setCaption(*document->textDocument(), imagePosition, caption);
+}
+
+bool NotesTextOperations::setRichImageSize(QQuickTextDocument *document, int imagePosition,
+                                            int width, int height) const {
+    return document && document->textDocument() &&
+        NotesRichImages::setSize(*document->textDocument(), imagePosition, width, height);
 }
