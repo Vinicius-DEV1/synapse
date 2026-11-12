@@ -284,6 +284,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_rich_images_qml_test.cpp
         tests/notes/native_notes_rich_image_movement_qml_test.cpp
         tests/notes/native_notes_rich_image_clipboard_qml_test.cpp
+        tests/notes/native_notes_rich_image_drop_qml_test.cpp
         tests/notes/native_notes_reference_search_qml_test.cpp
         tests/notes/native_notes_reference_actions_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp

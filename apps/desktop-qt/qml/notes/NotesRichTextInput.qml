@@ -84,7 +84,6 @@ Item {
             slashCommandMenu.selectedIndex = 0
         }
     }
-
     function executeSlashCommand(commandId) {
         if (!slashMenuOpen) return false
         var commandStart = slashStart
@@ -120,7 +119,6 @@ Item {
     function closePageReferenceMenu() {
         pageReferenceFlow.close()
     }
-
     TextArea {
         id: richEditor
         objectName: "notesRichTextEditor"
@@ -253,6 +251,13 @@ Item {
             inputRoot.commitTimer.restart()
             inputRoot.spoilerRevealControl.refresh()
         }
+    }
+
+    NotesRichImageDropArea {
+        anchors.fill: richEditor
+        editorRoot: inputRoot.editorRoot
+        textEditor: richEditor
+        active: inputRoot.editorRoot.active && !inputRoot.editorRoot.hasInvalidContent
     }
 
     NotesRichSlashCommandMenu {
