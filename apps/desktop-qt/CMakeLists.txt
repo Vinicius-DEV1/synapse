@@ -28,6 +28,7 @@ add_executable(synapse-desktop
     src/controllers/platform/database_prepared_controller.cpp
     src/controllers/notes/notes_controller.cpp
     src/controllers/notes/notes_link_metadata_controller.cpp
+    src/controllers/notes/notes_link_vault_controller.cpp
     src/controllers/notes/notes_reference_search_controller.cpp
     src/controllers/notes/notes_code_syntax_highlighter.cpp
     src/controllers/notes/notes_code_syntax_highlighter.h
@@ -177,6 +178,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/platform/database_prepared_controller.cpp
         src/controllers/notes/notes_controller.cpp
         src/controllers/notes/notes_link_metadata_controller.cpp
+        src/controllers/notes/notes_link_vault_controller.cpp
         src/controllers/notes/notes_reference_search_controller.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h

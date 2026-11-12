@@ -55,6 +55,54 @@ function metadataFor(url, provider, cache) {
     return cache[url]
 }
 
+function linkEntityFor(url, provider, cache) {
+    if (!provider || typeof provider.getLinkEntity !== "function") return ({})
+    if (cache[url] !== undefined) return cache[url]
+    try {
+        cache[url] = provider.getLinkEntity(url) || ({})
+    } catch (error) {
+        console.warn("[NotesLinkPreview] Could not read link-vault status for", url, error)
+        cache[url] = ({})
+    }
+    return cache[url]
+}
+
+function statusActionUrl(url, watched, watching, field) {
+    var nextWatched = watched
+    var nextWatching = watching
+    if (field === "watched") {
+        nextWatched = !watched
+        if (nextWatched) nextWatching = false
+    } else {
+        nextWatching = !watching
+        if (nextWatching) nextWatched = false
+    }
+    return "synapse-link://status?url=" + encodeURIComponent(url) +
+        "&watched=" + String(nextWatched) + "&watching=" + String(nextWatching)
+}
+
+function setTagBooleanAttribute(tag, name, value) {
+    var pattern = new RegExp("(\\s+" + name + "\\s*=\\s*)(?:\"[^\"]*\"|'[^']*'|[^\\s>]+)", "i")
+    if (pattern.test(tag)) {
+        return tag.replace(pattern, function(match, prefix) { return prefix + "\"" + value + "\"" })
+    }
+    var closingStart = tag.lastIndexOf(">")
+    if (closingStart < 0) return tag
+    var insertAt = closingStart > 0 && tag.charAt(closingStart - 1) === "/" ? closingStart - 1 : closingStart
+    return tag.substring(0, insertAt) + " " + name + "=\"" + value + "\"" + tag.substring(insertAt)
+}
+
+function updateStatusAttributes(source, url, watched, watching) {
+    var expectedUrl = safeHttpUrl(url)
+    if (!expectedUrl) return String(source || "")
+    var blockTag = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>/gi
+    return String(source || "").replace(blockTag, function(tag) {
+        if (safeHttpUrl(attributesFromTag(tag).url) !== expectedUrl) return tag
+        var next = setTagBooleanAttribute(tag, "watched", watched ? "true" : "false")
+        return setTagBooleanAttribute(next, "watching", watching ? "true" : "false")
+    })
+}
+
 function durationText(value) {
     var seconds = Number(value)
     if (!isFinite(seconds) || seconds <= 0) return ""
@@ -68,14 +116,15 @@ function durationText(value) {
     return minutes + ":" + String(remainder).padStart(2, "0")
 }
 
-function cardForTag(tag, provider, cache) {
+function cardForTag(tag, provider, metadataCache, entityCache) {
     var attributes = attributesFromTag(tag)
     var url = safeHttpUrl(attributes.url)
     if (!url) {
         return "<p><font color=\"#a7a9be\">Unsupported link preview</font></p>"
     }
 
-    var metadata = metadataFor(url, provider, cache)
+    var metadata = metadataFor(url, provider, metadataCache)
+    var entity = linkEntityFor(url, provider, entityCache)
     var host = hostForUrl(url)
     var title = String(attributes.title || metadata.title || "").trim() || host
     var channel = String(attributes.channel || metadata.channel || "").trim()
@@ -89,6 +138,15 @@ function cardForTag(tag, provider, cache) {
         details += "<p><font color=\"#a7a9be\" size=\"2\">" +
             Math.floor(playlistCount) + " videos</font></p>"
     }
+    var watched = entity.watched !== undefined ? entity.watched === true : attributes.watched === "true"
+    var watching = entity.watching !== undefined ? entity.watching === true : attributes.watching === "true"
+    var status = watched ? "Completed" : watching ? "Watching" : "Not started"
+    var watchedLabel = watched ? "Mark as not completed" : "Mark as completed"
+    var watchingLabel = watching ? "Stop watching" : "Mark as watching"
+    details += "<p><font color=\"#a7a9be\" size=\"2\">Status: " + status + "</font></p>" +
+        "<p><a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watched")) + "\">" +
+        watchedLabel + "</a> &nbsp; <a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watching")) + "\">" +
+        watchingLabel + "</a></p>"
 
     return "<table width=\"100%\" border=\"1\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#1c1b24\"><tr><td>" +
         "<p><font color=\"#a7a9be\" size=\"2\">↗ " + escapeHtml(host) + "</font></p>" +
@@ -100,9 +158,18 @@ function cardForTag(tag, provider, cache) {
 
 function render(source, metadataProvider) {
     var html = String(source || "")
-    var cache = ({})
+    var metadataCache = ({})
+    var entityCache = ({})
     var blockPattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^\"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>\s*<\/div\s*>/gi
     var selfClosingPattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^\"]*"|'[^']*\blink-preview-block[^']*'))[^>]*\/\s*>/gi
-    html = html.replace(blockPattern, function(tag) { return cardForTag(tag, metadataProvider, cache) })
-    return html.replace(selfClosingPattern, function(tag) { return cardForTag(tag, metadataProvider, cache) })
+    html = html.replace(blockPattern, function(tag) {
+        return cardForTag(tag, metadataProvider, metadataCache, entityCache)
+    })
+    return html.replace(selfClosingPattern, function(tag) {
+        return cardForTag(tag, metadataProvider, metadataCache, entityCache)
+    })
+}
+
+function replaceStatusAttributes(source, url, watched, watching) {
+    return updateStatusAttributes(source, url, watched, watching)
 }

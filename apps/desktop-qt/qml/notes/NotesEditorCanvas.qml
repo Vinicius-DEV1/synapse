@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesInlineFormatting.js" as NotesInlineFormatting
 import "NotesRichLinkPreviewRenderer.js" as NotesLinkPreviewRenderer
+import "NotesRichLinkPreviewActions.js" as NotesLinkPreviewActions
 
 ScrollView {
     id: canvasRoot
@@ -100,6 +101,16 @@ ScrollView {
     }
 
     function openExternalLink(link) {
+        var action = NotesLinkPreviewActions.activate(
+                    link, activeContent || noteEditorArea.text || "", controller, NotesLinkPreviewRenderer)
+        if (action.handled) {
+            if (!action.success) {
+                pageActionFailed(qsTr("Could not save this link status."))
+                return
+            }
+            contentModified(action.content)
+            return
+        }
         if (/^(https?:\/\/|mailto:)/i.test(link || "")) Qt.openUrlExternally(link)
     }
 
@@ -412,8 +423,8 @@ ScrollView {
                     id: markdownDisplayArea
                     objectName: "notesPageContentPreview"
                     anchors.fill: parent
-                    text: canvasRoot.renderPreviewContent(noteEditorArea.text || canvasRoot.activeContent || "")
-                    textFormat: canvasRoot.isHtmlDocument(noteEditorArea.text || canvasRoot.activeContent) ? Text.RichText : Text.MarkdownText
+                    text: canvasRoot.renderPreviewContent(canvasRoot.activeContent || noteEditorArea.text || "")
+                    textFormat: canvasRoot.isHtmlDocument(canvasRoot.activeContent || noteEditorArea.text) ? Text.RichText : Text.MarkdownText
                     color: "#fffffe"
                     font.pixelSize: 15
                     font.family: "Inter, -apple-system, sans-serif"

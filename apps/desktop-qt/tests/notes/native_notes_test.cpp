@@ -944,6 +944,76 @@ private slots:
         QVERIFY(rendered.contains("4 videos"));
         QVERIFY(!rendered.contains("Unsupported link preview"));
     }
+
+    void nativeLinkStatusActionPreservesVaultFieldsAndReactBlockMarkup() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("notes-link-vault-status.sqlite")));
+
+        const QString canonicalUrl = "https://www.youtube.com/watch?v=native123";
+        const QString pastedUrl = canonicalUrl + "&utm_source=notes";
+        const QString configKey = "link_entity:" + canonicalUrl;
+        QJsonObject record = {
+            {"canonicalUrl", canonicalUrl}, {"originalUrl", pastedUrl}, {"domain", "www.youtube.com"},
+            {"title", "Saved title"}, {"channel", "Saved channel"}, {"notes", "Preserve these notes"},
+            {"color", "#516273"}, {"watched", false}, {"watching", true},
+            {"scrapId", "saved-scrap"}, {"aiSummary", "saved summary"},
+            {"firstSeenAt", "2026-01-01T00:00:00.000Z"}, {"lastReferencedAt", "2026-01-02T00:00:00.000Z"},
+            {"orphanedAt", "2026-01-03T00:00:00.000Z"}, {"extensionField", "preserve me"}};
+        QString payload = QString::fromUtf8(QJsonDocument(record).toJson(QJsonDocument::Compact));
+        payload.replace("'", "''");
+        const QString insert = QStringLiteral(
+            "INSERT INTO config (id, data, value, updated_at) VALUES ('%1', '%2', '%2', CURRENT_TIMESTAMP)")
+            .arg(configKey, payload);
+        QVERIFY(controller.executeSql(insert));
+
+        const QVariantMap cached = controller.getLinkEntity(pastedUrl);
+        QCOMPARE(cached.value("canonicalUrl").toString(), canonicalUrl);
+        QCOMPARE(controller.getLinkEntity("https://youtu.be/native123?si=share")
+                     .value("canonicalUrl").toString(), canonicalUrl);
+        QCOMPARE(controller.getLinkEntity("https://youtube.com/shorts/native123?feature=share")
+                     .value("canonicalUrl").toString(), canonicalUrl);
+        QVERIFY(cached.value("watching").toBool());
+        QCOMPARE(cached.value("notes").toString(), "Preserve these notes");
+
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("metadataController", &controller);
+        QQmlComponent component(&engine);
+        component.setData(QByteArrayLiteral(
+            "import QtQuick\n"
+            "import \"../../qml/notes/NotesRichLinkPreviewRenderer.js\" as Renderer\n"
+            "import \"../../qml/notes/NotesRichLinkPreviewActions.js\" as Actions\n"
+            "Item {\n"
+            " property string sourceHtml: \"<div class=\\\"link-preview-block\\\" url=\\\"https://www.youtube.com/watch?v=native123\\\" watched=\\\"false\\\" watching=\\\"true\\\" data-extra=\\\"keep\\\"></div>\"\n"
+            " property string renderedHtml: Renderer.render(sourceHtml, metadataController)\n"
+            " property var statusAction: Actions.activate(\"synapse-link://status?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dnative123&watched=true&watching=false\", sourceHtml, metadataController, Renderer)\n"
+            " property bool actionSucceeded: statusAction.success === true\n"
+            " property string updatedSource: statusAction.content || \"\"\n"
+            "}\n"), QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/LinkPreviewTest.qml")));
+        QScopedPointer<QObject> preview(component.create());
+        QVERIFY2(preview, qPrintable(component.errorString()));
+        const QString rendered = preview->property("renderedHtml").toString();
+        QVERIFY(rendered.contains("Status: Watching"));
+        QVERIFY(rendered.contains("Mark as completed"));
+        QVERIFY(preview->property("actionSucceeded").toBool());
+        const QString updatedSource = preview->property("updatedSource").toString();
+        QVERIFY(updatedSource.contains("data-extra=\"keep\""));
+        QVERIFY(updatedSource.contains("watched=\"true\""));
+        QVERIFY(updatedSource.contains("watching=\"false\""));
+
+        const QVariantMap updated = controller.getLinkEntity(canonicalUrl);
+        QVERIFY(updated.value("watched").toBool());
+        QVERIFY(!updated.value("watching").toBool());
+        QCOMPARE(updated.value("notes").toString(), "Preserve these notes");
+        QCOMPARE(updated.value("color").toString(), "#516273");
+        QCOMPARE(updated.value("scrapId").toString(), "saved-scrap");
+        QCOMPARE(updated.value("aiSummary").toString(), "saved summary");
+        QCOMPARE(updated.value("extensionField").toString(), "preserve me");
+        QVERIFY(updated.value("orphanedAt").isNull());
+        QVERIFY(!controller.setLinkEntityStatus("javascript:alert(1)", true, false).value("success").toBool());
+        QVERIFY(!controller.setLinkEntityStatus(canonicalUrl, true, true).value("success").toBool());
+    }
 };
 
 int runNativeNotesTest(int argc, char **argv) {
