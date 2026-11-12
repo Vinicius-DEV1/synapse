@@ -96,7 +96,7 @@ ScrollView {
     }
 
     function renderPreviewContent(value) {
-        return NotesLinkPreviewRenderer.render(value)
+        return NotesLinkPreviewRenderer.render(value, controller)
     }
 
     function openExternalLink(link) {

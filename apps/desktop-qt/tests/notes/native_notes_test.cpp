@@ -7,7 +7,12 @@
 #include "controllers/notes/notes_rich_task_markup.h"
 #include "controllers/notes/notes_rich_task_lists.h"
 
+#include <QtCore/QObject>
 #include <QtCore/QTemporaryDir>
+#include <QtCore/QUrl>
+#include <QtQml/QQmlComponent>
+#include <QtQml/QQmlContext>
+#include <QtQml/QQmlEngine>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 #include <QtGui/QColor>
@@ -863,6 +868,81 @@ private slots:
 
         const QVariantList trashItems = controller.getTrashItems();
         QCOMPARE(trashItems.size(), 4);
+    }
+
+    void linkMetadataCacheMatchesReactFieldsAndRevivesSoftDeletedRows() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("notes-link-metadata.sqlite")));
+        const QString url = "https://example.com/docs?id=17";
+        QVERIFY(controller.getLinkMetadata(url).isEmpty());
+
+        QVariantMap entry = {
+            {"url", url}, {"title", "Native metadata"}, {"channel", "Research"},
+            {"duration", 97.5}, {"is_playlist", true}, {"playlist_count", 12},
+            {"upload_date", "2026-11-12"}, {"image_url", "https://example.com/cover.png"}
+        };
+        QVERIFY(controller.saveLinkMetadata(entry));
+        QVariantMap cached = controller.getLinkMetadata(url);
+        QCOMPARE(cached.value("url").toString(), url);
+        QCOMPARE(cached.value("title").toString(), "Native metadata");
+        QCOMPARE(cached.value("channel").toString(), "Research");
+        QCOMPARE(cached.value("duration").toDouble(), 97.5);
+        QVERIFY(cached.value("isPlaylist").toBool());
+        QCOMPARE(cached.value("playlistCount").toInt(), 12);
+        QCOMPARE(cached.value("uploadDate").toString(), "2026-11-12");
+        QCOMPARE(cached.value("imageUrl").toString(), "https://example.com/cover.png");
+
+        entry.insert("title", "Updated title");
+        entry.insert("isPlaylist", false);
+        entry.remove("is_playlist");
+        QVERIFY(controller.saveLinkMetadata(entry));
+        cached = controller.getLinkMetadata(url);
+        QCOMPARE(cached.value("title").toString(), "Updated title");
+        QVERIFY(!cached.value("isPlaylist").toBool());
+
+        QVERIFY(controller.executeSql(
+            "UPDATE link_metadata_cache SET deleted_at = CURRENT_TIMESTAMP WHERE url = 'https://example.com/docs?id=17'"));
+        QVERIFY(controller.getLinkMetadata(url).isEmpty());
+        QVERIFY(controller.saveLinkMetadata(entry));
+        QCOMPARE(controller.getLinkMetadata(url).value("title").toString(), "Updated title");
+
+        QVERIFY(!controller.saveLinkMetadata({{"url", "javascript:alert(1)"}, {"title", "Unsafe"}}));
+        QVERIFY(!controller.saveLinkMetadata({{"url", url}, {"title", QString(513, QLatin1Char('x'))}}));
+        QVERIFY(controller.getLinkMetadata(url).value("title").toString() == "Updated title");
+    }
+
+    void readingPreviewHydratesMissingCardFieldsFromTheIsolatedSqliteCache() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("notes-link-preview-hydration.sqlite")));
+
+        const QString url = "https://cached.example/watch?id=8";
+        QVERIFY(controller.saveLinkMetadata({
+            {"url", url}, {"title", "Cached title"}, {"channel", "Cached channel"},
+            {"duration", 65}, {"isPlaylist", true}, {"playlistCount", 4}}));
+
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("metadataController", &controller);
+        QQmlComponent component(&engine);
+        component.setData(QByteArrayLiteral(
+            "import QtQuick\n"
+            "import \"../../qml/notes/NotesRichLinkPreviewRenderer.js\" as Renderer\n"
+            "Item {\n"
+            " property string sourceHtml: \"<div class=\\\"link-preview-block\\\" url=\\\"https://cached.example/watch?id=8\\\"></div>\"\n"
+            " property string renderedHtml: Renderer.render(sourceHtml, metadataController)\n"
+            "}\n"), QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/LinkPreviewTest.qml")));
+        QScopedPointer<QObject> renderer(component.create());
+        QVERIFY2(renderer, qPrintable(component.errorString()));
+        const QString rendered = renderer->property("renderedHtml").toString();
+        QVERIFY(rendered.contains("<b>Cached title</b>"));
+        QVERIFY(rendered.contains("Cached channel"));
+        QVERIFY(rendered.contains("1:05"));
+        QVERIFY(rendered.contains("4 videos"));
+        QVERIFY(!rendered.contains("Unsupported link preview"));
     }
 };
 

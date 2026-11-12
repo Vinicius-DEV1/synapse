@@ -27,6 +27,7 @@ add_executable(synapse-desktop
     src/synapse_controller.h
     src/controllers/platform/database_prepared_controller.cpp
     src/controllers/notes/notes_controller.cpp
+    src/controllers/notes/notes_link_metadata_controller.cpp
     src/controllers/notes/notes_reference_search_controller.cpp
     src/controllers/notes/notes_code_syntax_highlighter.cpp
     src/controllers/notes/notes_code_syntax_highlighter.h
@@ -175,6 +176,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
         src/controllers/notes/notes_controller.cpp
+        src/controllers/notes/notes_link_metadata_controller.cpp
         src/controllers/notes/notes_reference_search_controller.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h
@@ -267,11 +269,15 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         ${MPV_INCLUDE_DIRS}
         ${LIBARCHIVE_INCLUDE_DIRS}
     )
+    target_compile_definitions(synapse-desktop-tests PRIVATE
+        SYNAPSE_DESKTOP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
 
     target_link_libraries(synapse-desktop-tests PRIVATE
         Qt6::Core
         Qt6::Gui
         Qt6::Quick
+        Qt6::Qml
         Qt6::Network
         Qt6::Concurrent
         Qt6::Test
