@@ -127,7 +127,7 @@ Item {
         imageStatus.show(message)
     }
 
-    function openForPosition() {
+    function captureInsertionTarget() {
         if (!active || !textEditor || !textOperations || !controller || controller.fileOperationRunning) {
             showError(qsTr("Wait for the current file operation to finish."))
             return false
@@ -141,7 +141,19 @@ Item {
             return false
         }
         errorMessage = ""
+        return true
+    }
+
+    function openForPosition() {
+        if (!captureInsertionTarget()) return false
         imageFileDialog.open()
+        return true
+    }
+
+    function pasteFromClipboard() {
+        if (!active || !controller || !controller.hasClipboardNotesRichImage ||
+                !controller.hasClipboardNotesRichImage() || !captureInsertionTarget()) return false
+        controller.processClipboardNotesRichImage()
         return true
     }
 

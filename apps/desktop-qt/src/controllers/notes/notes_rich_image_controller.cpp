@@ -2,11 +2,17 @@
 
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtCore/QBuffer>
+#include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QFutureWatcher>
+#include <QtCore/QMimeData>
+#include <QtCore/QRegularExpression>
+#include <QtGui/QClipboard>
+#include <QtGui/QGuiApplication>
 #include <QtGui/QImage>
 #include <QtGui/QImageReader>
+#include <QtGui/QPixmap>
 
 namespace {
 
@@ -24,6 +30,50 @@ QString imageMimeType(const QByteArray &format) {
     if (normalized == "gif") return QStringLiteral("image/gif");
     if (normalized == "webp") return QStringLiteral("image/webp");
     if (normalized == "bmp") return QStringLiteral("image/bmp");
+    return {};
+}
+
+bool isSupportedRasterImagePath(const QString &path) {
+    const QString extension = QFileInfo(path).suffix().toLower();
+    return extension == QStringLiteral("png") || extension == QStringLiteral("jpg") ||
+        extension == QStringLiteral("jpeg") || extension == QStringLiteral("gif") ||
+        extension == QStringLiteral("webp") || extension == QStringLiteral("bmp");
+}
+
+QUrl localImageUrl(const QString &value) {
+    const QString candidate = value.trimmed();
+    if (candidate.isEmpty()) return {};
+    QUrl url(candidate);
+    if (url.isLocalFile()) {
+        return isSupportedRasterImagePath(url.toLocalFile()) ? url : QUrl();
+    }
+    static const QRegularExpression windowsPath(QStringLiteral("^[A-Za-z]:[/\\\\]"));
+    if (QDir::isAbsolutePath(candidate) || windowsPath.match(candidate).hasMatch() ||
+        candidate.startsWith(QStringLiteral("\\\\\\\\"))) {
+        return isSupportedRasterImagePath(candidate) ? QUrl::fromLocalFile(candidate) : QUrl();
+    }
+    return {};
+}
+
+QUrl clipboardImageUrl(const QMimeData *mimeData) {
+    if (!mimeData) return {};
+    for (const QUrl &url : mimeData->urls()) {
+        if (url.isLocalFile() && isSupportedRasterImagePath(url.toLocalFile())) return url;
+    }
+    const QStringList lines = mimeData->text().split(QRegularExpression(QStringLiteral("[\\r\\n]+")));
+    for (const QString &line : lines) {
+        const QUrl url = localImageUrl(line);
+        if (!url.isEmpty()) return url;
+    }
+    return {};
+}
+
+QImage clipboardImage(const QMimeData *mimeData) {
+    if (!mimeData || !mimeData->hasImage()) return {};
+    const QVariant imageValue = mimeData->imageData();
+    QImage image = qvariant_cast<QImage>(imageValue);
+    if (!image.isNull()) return image;
+    if (imageValue.canConvert<QPixmap>()) return qvariant_cast<QPixmap>(imageValue).toImage();
     return {};
 }
 
@@ -61,22 +111,31 @@ QVariantMap readRichImage(const QString &canonicalPath, const QString &fileName)
             {"fileName", fileName}};
 }
 
+QVariantMap encodeClipboardImage(const QImage &image, const QString &fileName) {
+    const QSize dimensions = image.size();
+    if (image.isNull() || !dimensions.isValid() ||
+        static_cast<qint64>(dimensions.width()) * dimensions.height() > MaximumRichImagePixels) {
+        return richImageFailure(QStringLiteral("The clipboard image is invalid or exceeds 30 megapixels."));
+    }
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG"))
+        return richImageFailure(QStringLiteral("The clipboard image could not be encoded."));
+    if (bytes.isEmpty() || bytes.size() > MaximumRichImageBytes)
+        return richImageFailure(QStringLiteral("Choose a clipboard image no larger than 2 MiB."));
+    return {{"success", true}, {"operation", "notes-rich-image"},
+            {"imageDataUrl", QStringLiteral("data:image/png;base64,%1")
+                .arg(QString::fromLatin1(bytes.toBase64()))},
+            {"width", dimensions.width()}, {"height", dimensions.height()}, {"fileName", fileName}};
 }
 
-void SynapseDataController::processNotesRichImage(const QUrl &sourceUrl) {
+}
+
+void SynapseDataController::startNotesRichImageOperation(std::function<QVariantMap()> operation) {
     if (m_fileOperationRunning) {
         emit fileOperationFinished(richImageFailure(QStringLiteral("Wait for the current file operation to finish.")));
         return;
     }
-
-    const QFileInfo sourceInfo(sourceUrl.toLocalFile());
-    const QString canonicalPath = sourceInfo.canonicalFilePath();
-    if (canonicalPath.isEmpty() || !sourceInfo.isFile() || !sourceInfo.isReadable() ||
-        sourceInfo.size() <= 0 || sourceInfo.size() > MaximumRichImageBytes) {
-        emit fileOperationFinished(richImageFailure(QStringLiteral("Choose a readable image no larger than 2 MiB.")));
-        return;
-    }
-
     m_fileOperationRunning = true;
     emit fileOperationStateChanged();
     auto *watcher = new QFutureWatcher<QVariantMap>(this);
@@ -89,8 +148,50 @@ void SynapseDataController::processNotesRichImage(const QUrl &sourceUrl) {
         if (m_fileOperationWatcher == watcher) m_fileOperationWatcher = nullptr;
         emit fileOperationFinished(result);
     });
+    watcher->setFuture(QtConcurrent::run(std::move(operation)));
+}
+
+void SynapseDataController::processNotesRichImage(const QUrl &sourceUrl) {
+    const QFileInfo sourceInfo(sourceUrl.toLocalFile());
+    const QString canonicalPath = sourceInfo.canonicalFilePath();
+    if (canonicalPath.isEmpty() || !sourceInfo.isFile() || !sourceInfo.isReadable() ||
+        sourceInfo.size() <= 0 || sourceInfo.size() > MaximumRichImageBytes) {
+        emit fileOperationFinished(richImageFailure(QStringLiteral("Choose a readable image no larger than 2 MiB.")));
+        return;
+    }
+
     const QString fileName = sourceInfo.fileName();
-    watcher->setFuture(QtConcurrent::run([canonicalPath, fileName]() {
+    startNotesRichImageOperation([canonicalPath, fileName]() {
         return readRichImage(canonicalPath, fileName);
-    }));
+    });
+}
+
+bool SynapseDataController::hasClipboardNotesRichImage() const {
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (!clipboard) return false;
+    const QMimeData *mimeData = clipboard->mimeData(QClipboard::Clipboard);
+    if (!mimeData) return false;
+    return !clipboardImage(mimeData).isNull() || !clipboardImageUrl(mimeData).isEmpty();
+}
+
+void SynapseDataController::processClipboardNotesRichImage() {
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    const QMimeData *mimeData = clipboard ? clipboard->mimeData(QClipboard::Clipboard) : nullptr;
+    if (!mimeData) {
+        emit fileOperationFinished(richImageFailure(QStringLiteral("The clipboard does not contain an image.")));
+        return;
+    }
+    const QImage image = clipboardImage(mimeData);
+    if (!image.isNull()) {
+        startNotesRichImageOperation([image]() {
+            return encodeClipboardImage(image, QStringLiteral("clipboard-image.png"));
+        });
+        return;
+    }
+    const QUrl sourceUrl = clipboardImageUrl(mimeData);
+    if (!sourceUrl.isEmpty()) {
+        processNotesRichImage(sourceUrl);
+        return;
+    }
+    emit fileOperationFinished(richImageFailure(QStringLiteral("The clipboard does not contain a supported image.")));
 }

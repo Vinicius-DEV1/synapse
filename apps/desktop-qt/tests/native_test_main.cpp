@@ -2,6 +2,7 @@
 
 int runNativeNotesTest(int argc, char **argv);
 int runNativeNotesRichImagesTest(int argc, char **argv);
+int runNativeNotesRichImageClipboardTest(int argc, char **argv);
 int runNativeNotesReferenceSearchTest(int argc, char **argv);
 int runNativeNotesRichTablesTest(int argc, char **argv);
 int runNativeNotesCalloutTest(int argc, char **argv);
@@ -22,6 +23,7 @@ int main(int argc, char **argv) {
     int result = 0;
     result |= runNativeNotesTest(argc, argv);
     result |= runNativeNotesRichImagesTest(argc, argv);
+    result |= runNativeNotesRichImageClipboardTest(argc, argv);
     result |= runNativeNotesReferenceSearchTest(argc, argv);
     result |= runNativeNotesRichTablesTest(argc, argv);
     result |= runNativeNotesCalloutTest(argc, argv);

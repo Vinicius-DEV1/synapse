@@ -157,6 +157,7 @@ Item {
     function setLink(url) { return richCommands.setLink(url) }
     function refreshCodeSyntaxHighlighting() { richCommands.refreshCodeSyntaxHighlighting() }
     function openImagePicker() { return richImageActions.openForPosition() }
+    function pasteImageFromClipboard() { return richImageActions.pasteFromClipboard() }
     function setImageAlignment(alignment) { return richImageActions.setAlignment(alignment) }
     function moveImage(upward) { return richImageActions.moveImage(upward) }
     function fitImageToWidth() { return richImageActions.fitToWidth() }

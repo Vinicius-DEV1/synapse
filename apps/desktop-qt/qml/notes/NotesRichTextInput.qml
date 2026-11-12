@@ -161,6 +161,12 @@ Item {
                     inputRoot.closeSlashMenu()
             }
             if (referenceActions.handleKey(event)) return
+            if (commandModifier && event.key === Qt.Key_V &&
+                    (event.modifiers & Qt.ShiftModifier) === 0 &&
+                    !inputRoot.editorRoot.codeBlockActive && inputRoot.editorRoot.pasteImageFromClipboard()) {
+                event.accepted = true
+                return
+            }
             if (event.text === "/" && !commandModifier && (event.modifiers & Qt.AltModifier) === 0) {
                 if (inputRoot.slashMenuOpen) inputRoot.closeSlashMenu()
                 inputRoot.pendingSlashStart = richEditor.cursorPosition

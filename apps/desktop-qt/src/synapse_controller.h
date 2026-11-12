@@ -21,6 +21,7 @@
 #include <QtCore/QMap>
 #include <QtCore/QTemporaryFile>
 #include <atomic>
+#include <functional>
 #include <memory>
 #include "synapse_bridge.h"
 
@@ -128,6 +129,8 @@ public:
     Q_INVOKABLE void processNotesPageCover(const QUrl &sourceUrl);
     Q_INVOKABLE void processRandomNotesPageCover();
     Q_INVOKABLE void processNotesRichImage(const QUrl &sourceUrl);
+    Q_INVOKABLE bool hasClipboardNotesRichImage() const;
+    Q_INVOKABLE void processClipboardNotesRichImage();
 
     // 2. Videos / Media Center
     Q_INVOKABLE QVariantList getVideos(const QString &collectionFilter = "");
@@ -370,6 +373,7 @@ signals:
     void filePreviewsInvalidated();
 
 private:
+    void startNotesRichImageOperation(std::function<QVariantMap()> operation);
     Database *m_db;
     QString m_dbPath;
     int m_pageCount;
