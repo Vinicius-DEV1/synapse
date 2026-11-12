@@ -6,6 +6,8 @@
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSet>
 #include <QtCore/QUrlQuery>
+#include <QtGui/QClipboard>
+#include <QtGui/QGuiApplication>
 
 namespace {
 
@@ -181,4 +183,18 @@ QVariantMap SynapseDataController::setLinkEntityStatus(const QString &url, bool 
     QVariantMap result = entity.toVariantMap();
     result.insert("success", true);
     return result;
+}
+
+bool SynapseDataController::copyLinkUrlToClipboard(const QString &url) {
+    if (canonicalLinkUrl(url).isEmpty()) {
+        qWarning() << "[NotesLinkVault] Rejected unsafe clipboard URL" << url;
+        return false;
+    }
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (!clipboard) {
+        qWarning() << "[NotesLinkVault] Qt clipboard is unavailable for URL copy";
+        return false;
+    }
+    clipboard->setText(url, QClipboard::Clipboard);
+    return true;
 }

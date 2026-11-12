@@ -30,9 +30,11 @@ ScrollView {
     property bool saveFailed: false
     property bool isPreviewMode: false
     property bool isRichMode: false
-    readonly property bool isEmojiPickerOpen: iconPicker.isOpen
-    readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible || linkInsertion.isDialogOpen
-    readonly property bool contentEditorFocused: isRichMode ? richTextEditor.editor.activeFocus : noteEditorArea.activeFocus
+    property string copiedLinkUrl: ""
+    onActivePageIdChanged: copiedLinkUrl = ""
+    readonly property bool isEmojiPickerOpen: pageHeader.isEmojiPickerOpen
+    readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible || sourceEditorSurface.isDialogOpen
+    readonly property bool contentEditorFocused: isRichMode ? richTextEditor.editor.activeFocus : sourceEditorSurface.editor.activeFocus
     readonly property bool canUseRichMode: richTextEditor.canEditSource
     readonly property bool richContentInvalid: richTextEditor.hasInvalidContent
 
@@ -65,76 +67,57 @@ ScrollView {
     }
 
     function setEditorText(txt) {
-        noteEditorArea.text = txt
-        plainTextContent = plainTextFromContent(txt)
+        sourceEditorSurface.setText(txt)
+        plainTextContent = sourceEditorSurface.plainTextFromSource(txt)
     }
 
     function setTitleText(txt) {
-        noteTitleInput.text = txt
+        pageHeader.setTitleText(txt)
     }
 
     function setDescriptionText(txt) {
-        noteDescriptionInput.text = txt
+        pageHeader.setDescriptionText(txt)
     }
 
     function openMovePageDialog(pageId) { movePageDialog.openForPage(pageId) }
 
-    function isHtmlDocument(value) {
-        return /<[a-z][^>]*>/i.test(value || "")
-    }
-
-    function plainTextFromContent(value) {
-        return String(value || "")
-            .replace(/<br\s*\/?\s*>/gi, "\n")
-            .replace(/<\/(p|div|li|h[1-6]|blockquote|pre)>/gi, "\n")
-            .replace(/<[^>]*>/g, " ")
-            .replace(/&nbsp;/gi, " ")
-            .replace(/&amp;/gi, "&")
-            .replace(/&lt;/gi, "<")
-            .replace(/&gt;/gi, ">")
-            .replace(/&quot;/gi, "\"")
-            .replace(/&#39;/gi, "'")
-    }
-
-    function renderPreviewContent(value) {
-        return NotesLinkPreviewRenderer.render(value, controller)
-    }
-
     function openExternalLink(link) {
         var action = NotesLinkPreviewActions.activate(
-                    link, activeContent || noteEditorArea.text || "", controller, NotesLinkPreviewRenderer)
+                    link, activeContent || sourceEditorSurface.editor.text || "",
+                    controller, NotesLinkPreviewRenderer)
         if (action.handled) {
             if (!action.success) {
-                pageActionFailed(qsTr("Could not save this link status."))
+                pageActionFailed(qsTr("Could not complete this link action."))
                 return
             }
-            contentModified(action.content)
+            if (action.type === "copy") copiedLinkUrl = action.copiedUrl
+            else contentModified(action.content)
             return
         }
         if (/^(https?:\/\/|mailto:)/i.test(link || "")) Qt.openUrlExternally(link)
     }
 
     function insertFormatting(prefix, suffix) {
-        var start = noteEditorArea.selectionStart
-        var end = noteEditorArea.selectionEnd
-        var oldText = noteEditorArea.text
+        var start = sourceEditorSurface.editor.selectionStart
+        var end = sourceEditorSurface.editor.selectionEnd
+        var oldText = sourceEditorSurface.editor.text
         if (prefix === "<strong>" || prefix === "<em>" || prefix === "<u>" || prefix === "<s>" || prefix === "<code>") {
             var result = NotesInlineFormatting.toggle(oldText, start, end, prefix, suffix)
-            if (!notesTextOperations.replace(noteEditorArea.textDocument, result.editStart, result.editEnd, result.replacement)) {
+            if (!notesTextOperations.replace(sourceEditorSurface.editor.textDocument, result.editStart, result.editEnd, result.replacement)) {
                 console.error("[Notes] Could not apply inline formatting to the selected source range")
                 return
             }
-            noteEditorArea.select(result.start, result.end)
-            noteEditorArea.forceActiveFocus()
+            sourceEditorSurface.editor.select(result.start, result.end)
+            sourceEditorSurface.editor.forceActiveFocus()
             return
         }
         var selected = oldText.substring(start, end)
         var replacement = prefix + selected + suffix
-        if (!notesTextOperations.replace(noteEditorArea.textDocument, start, end, replacement)) {
+        if (!notesTextOperations.replace(sourceEditorSurface.editor.textDocument, start, end, replacement)) {
             console.error("[Notes] Could not apply formatting to the selected source range")
             return
         }
-        noteEditorArea.cursorPosition = start + (selected.length === 0 ? prefix.length : String(replacement).length)
+        sourceEditorSurface.editor.cursorPosition = start + (selected.length === 0 ? prefix.length : String(replacement).length)
     }
 
     function formatSelection(prefix, suffix) {
@@ -148,7 +131,7 @@ ScrollView {
             else if (prefix === "<spoiler>") richTextEditor.toggleMark("spoiler")
             return
         }
-        if (noteEditorArea.activeFocus) insertFormatting(prefix, suffix)
+        if (sourceEditorSurface.editor.activeFocus) insertFormatting(prefix, suffix)
     }
 
     function toggleRichMark(mark) {
@@ -180,180 +163,48 @@ ScrollView {
             Layout.topMargin: canvasRoot.activeCoverImage.length > 0 ? 32 : 0
             spacing: 0
 
-            RowLayout {
-                id: pageTitleRow
+            NotesEditorPageHeader {
+                id: pageHeader
                 Layout.fillWidth: true
-                Layout.preferredHeight: 28
-                Layout.bottomMargin: 24
-                spacing: 4
-                NotesSiblingNavigation {
-                    pages: canvasRoot.allPages
-                    pageId: canvasRoot.activePageId
-                    onPageSelected: function(pageId) { canvasRoot.pageNavigationRequested(pageId) }
-                }
-                NotesBreadcrumbs {
-                    Layout.fillWidth: true
-                    pages: canvasRoot.activeBreadcrumbs
-                    onPageSelected: function(pageId) { canvasRoot.pageNavigationRequested(pageId) }
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 64
-                Layout.bottomMargin: 8
-                spacing: 12
-                NotesIconPicker {
-                    id: iconPicker
-                    activeIcon: canvasRoot.activeIcon
-                    onIconSelected: function(icon) { canvasRoot.iconModified(icon) }
-                }
-                TextField {
-                    id: noteTitleInput
-                    Layout.fillWidth: true
-                    text: canvasRoot.activeTitle
-                    color: "#fffffe"
-                    font.pixelSize: 36
-                    font.bold: true
-                    background: null
-                    selectByMouse: true
-                    placeholderText: qsTr("Untitled")
-                    placeholderTextColor: "#80a7a9be"
-                    onTextChanged: if (text !== canvasRoot.activeTitle) canvasRoot.titleModified(text)
-                }
-                NotesEditorHeader {
-                    id: notesEditorHeader
-                    Layout.preferredWidth: 278
-                    isDirty: canvasRoot.isDirty
-                    saveFailed: canvasRoot.saveFailed
-                    isPreviewMode: canvasRoot.isPreviewMode
-                    isRichMode: canvasRoot.isRichMode
-                    canUseRichMode: canvasRoot.canUseRichMode
-                    actionsVisible: pageTitleHover.hovered || noteTitleInput.activeFocus || notesEditorHeader.activeFocus
-                    pageDate: canvasRoot.activeDate
-                    wordCount: canvasRoot.plainTextContent.trim().length > 0 ? canvasRoot.plainTextContent.trim().split(/\s+/).length : 0
-                    characterCount: canvasRoot.plainTextContent.length
-                    onSaveRequested: canvasRoot.saveRequested()
-                    onDeleteRequested: canvasRoot.deleteRequested()
-                    onHistoryRequested: canvasRoot.historyRequested()
-                    onHelpRequested: canvasRoot.helpRequested()
-                    onRichModeRequested: function(enabled) { canvasRoot.richModeRequested(enabled) }
-                    onMoveRequested: movePageDialog.openForPage(canvasRoot.activePageId)
-                    onPreviewToggled: function(preview) { canvasRoot.previewToggled(preview) }
-                }
-
-                HoverHandler { id: pageTitleHover; target: pageTitleRow }
-            }
-
-            TextField {
-                id: noteDescriptionInput
-                Layout.fillWidth: true
-                Layout.preferredHeight: 24
-                Layout.leftMargin: 56
-                Layout.bottomMargin: 32
-                text: canvasRoot.activeDescription
-                color: "#a7a9be"
-                font.pixelSize: 16
-                background: null
-                selectByMouse: true
-                placeholderText: qsTr("Add a description")
-                placeholderTextColor: "#4da7a9be"
-                onEditingFinished: {
-                    var nextDescription = text.trim()
-                    if (nextDescription !== canvasRoot.activeDescription) canvasRoot.descriptionModified(nextDescription)
-                }
-            }
-
-            NotesSubPageGrid {
-                visible: canvasRoot.childPages.length > 0
-                pages: canvasRoot.childPages
+                activeTitle: canvasRoot.activeTitle
+                activeDescription: canvasRoot.activeDescription
+                activeIcon: canvasRoot.activeIcon
+                activeDate: canvasRoot.activeDate
+                activePageId: canvasRoot.activePageId
                 actionStatus: canvasRoot.pageActionStatus
-                Layout.fillWidth: true
+                breadcrumbs: canvasRoot.activeBreadcrumbs
+                childPages: canvasRoot.childPages
+                pages: canvasRoot.allPages
+                hierarchyActions: canvasRoot.hierarchyActions
+                isDirty: canvasRoot.isDirty
+                saveFailed: canvasRoot.saveFailed
+                isPreviewMode: canvasRoot.isPreviewMode
+                isRichMode: canvasRoot.isRichMode
+                canUseRichMode: canvasRoot.canUseRichMode
+                wordCount: canvasRoot.plainTextContent.trim().length > 0
+                           ? canvasRoot.plainTextContent.trim().split(/\s+/).length : 0
+                characterCount: canvasRoot.plainTextContent.length
                 onPageSelected: function(pageId) { canvasRoot.pageNavigationRequested(pageId) }
-                onCreateRequested: canvasRoot.createSubPageRequested()
-                onReorderRequested: function(orderedPageIds) { canvasRoot.hierarchyActions.reorder(orderedPageIds) }
-                onMoveRequested: function(pageId, newParentId) { canvasRoot.hierarchyActions.move(pageId, newParentId) }
-                onMoveToRequested: function(pageId) { movePageDialog.openForPage(pageId) }
+                onCreateSubPageRequested: canvasRoot.createSubPageRequested()
+                onTitleModified: function(title) { canvasRoot.titleModified(title) }
+                onDescriptionModified: function(description) { canvasRoot.descriptionModified(description) }
+                onIconModified: function(icon) { canvasRoot.iconModified(icon) }
+                onSaveRequested: canvasRoot.saveRequested()
+                onDeleteRequested: canvasRoot.deleteRequested()
+                onHistoryRequested: canvasRoot.historyRequested()
+                onHelpRequested: canvasRoot.helpRequested()
+                onRichModeRequested: function(enabled) { canvasRoot.richModeRequested(enabled) }
+                onMoveRequested: function(pageId) { movePageDialog.openForPage(pageId) }
+                onPreviewToggled: function(preview) { canvasRoot.previewToggled(preview) }
             }
 
-            NotesFormattingToolbar {
-                visible: !canvasRoot.isPreviewMode && (canvasRoot.isRichMode
-                         ? richTextEditor.editor.activeFocus
-                         : noteEditorArea.activeFocus && noteEditorArea.selectionStart !== noteEditorArea.selectionEnd)
-                richMode: canvasRoot.isRichMode
-                tableCellActive: richTextEditor.tableActions.isInsideTable
-                canMoveTableRowUp: richTextEditor.tableActions.canEditTable("moveRowUp")
-                canMoveTableRowDown: richTextEditor.tableActions.canEditTable("moveRowDown")
-                canMoveTableColumnLeft: richTextEditor.tableActions.canEditTable("moveColumnLeft")
-                canMoveTableColumnRight: richTextEditor.tableActions.canEditTable("moveColumnRight")
-                canDeleteTableRow: richTextEditor.tableActions.canEditTable("deleteRow")
-                canDeleteTableColumn: richTextEditor.tableActions.canEditTable("deleteColumn")
-                dividerActive: richTextEditor.tableActions.isOnDivider
-                canMoveDividerUp: richTextEditor.tableActions.canMoveDividerUp
-                canMoveDividerDown: richTextEditor.tableActions.canMoveDividerDown
-                dividerDropTarget: richTextEditor.editor
-                richSpoilerActive: richTextEditor.spoilerAtCursor
-                calloutActive: richTextEditor.calloutAtCursor
-                calloutColor: richTextEditor.calloutColorAtCursor
-                codeBlockActive: richTextEditor.codeBlockActive
-                codeBlockLanguage: richTextEditor.codeBlockLanguage
-                codeBlockCanMoveUp: richTextEditor.codeBlockCanMoveUp
-                codeBlockCanMoveDown: richTextEditor.codeBlockCanMoveDown
-                codeBlockCopySucceeded: richTextEditor.codeBlockCopySucceeded
-                codeBlockCopyRevision: richTextEditor.codeBlockCopyRevision
-                richImageSelected: richTextEditor.richImageSelected
-                richImageAlignment: richTextEditor.richImageAlignment
-                richImageCanMoveUp: richTextEditor.richImageCanMoveUp
-                richImageCanMoveDown: richTextEditor.richImageCanMoveDown
-                richImageActionsEnabled: richTextEditor.richImageActionsEnabled
-                richImageCopyState: richTextEditor.richImageCopyState
-                Layout.alignment: Qt.AlignRight
-                Layout.bottomMargin: 8
+            NotesEditorFormattingToolbar {
+                isPreviewMode: canvasRoot.isPreviewMode
+                isRichMode: canvasRoot.isRichMode
+                richEditor: richTextEditor
+                sourceEditor: sourceEditorSurface.editor
+                linkInsertionDialog: sourceEditorSurface.linkInsertionDialog
                 onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
-                onRichColorRequested: function(background, color) {
-                    richTextEditor.tableActions.setColor(background, color)
-                }
-                onRichBlockRequested: function(blockType) { richTextEditor.toggleBlock(blockType) }
-                onRichCalloutRequested: function(color) { richTextEditor.setCalloutColor(color) }
-                onRichTableRequested: richTextEditor.tableActions.insertTable()
-                onRichImageRequested: richTextEditor.openImagePicker()
-                onRichImageAlignmentRequested: function(alignment) {
-                    richTextEditor.setImageAlignment(alignment)
-                }
-                onRichImageMoveRequested: function(upward) { richTextEditor.moveImage(upward) }
-                onRichImageFitRequested: richTextEditor.fitImageToWidth()
-                onRichImageResetRequested: richTextEditor.resetImageSize()
-                onRichImageParagraphBelowRequested: richTextEditor.insertParagraphBelowImage()
-                onRichImageCopyRequested: richTextEditor.copyRichImage()
-                onRichImageDownloadRequested: richTextEditor.downloadRichImage()
-                onRichImageViewRequested: richTextEditor.viewRichImage()
-                onRichImageDeleteRequested: richTextEditor.requestImageDelete()
-                onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
-                onRichCellBackgroundRequested: function(color, scope) {
-                    richTextEditor.tableActions.setCellBackground(color, scope)
-                }
-                onRichDividerRequested: richTextEditor.tableActions.insertDivider()
-                onRichDividerActionRequested: function(action) { richTextEditor.tableActions.editDivider(action) }
-                onRichDividerDropRequested: function(targetPosition, afterTarget) {
-                    richTextEditor.dropDividerAt(targetPosition, afterTarget)
-                }
-                onRichCodeLanguageRequested: function(language) {
-                    richTextEditor.setCodeBlockLanguage(language)
-                }
-                onRichCodeMoveRequested: function(upward) { richTextEditor.moveCodeBlock(upward) }
-                onRichCodeDropRequested: function(targetPosition, afterTarget) {
-                    richTextEditor.dropCodeBlockAt(targetPosition, afterTarget)
-                }
-                onRichCodeCopyRequested: richTextEditor.copyCodeBlock()
-                onRichCodeParagraphBelowRequested: richTextEditor.insertParagraphBelowCodeBlock()
-                onRichCodeDeleteConfirmed: richTextEditor.deleteCodeBlock()
-                onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
-                onLinkRequested: {
-                    if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()
-                    else linkInsertion.openFor(noteEditorArea.selectedText,
-                                               noteEditorArea.selectionStart,
-                                               noteEditorArea.selectionEnd)
-                }
             }
 
             NotesRichTextEditor {
@@ -376,62 +227,23 @@ ScrollView {
                 }
             }
 
-            Rectangle {
+            NotesSourceEditorSurface {
+                id: sourceEditorSurface
                 visible: !canvasRoot.isPreviewMode && !canvasRoot.isRichMode
+                sourceHtml: canvasRoot.activeContent
                 Layout.fillWidth: true
-                implicitHeight: Math.max(300, noteEditorArea.implicitHeight + 40)
-                color: "transparent"
-                TextArea {
-                    id: noteEditorArea
-                    objectName: "notesSourceEditor"
-                    anchors.fill: parent
-                    text: canvasRoot.activeContent
-                    color: "#fffffe"
-                    font.pixelSize: 15
-                    font.family: "Inter, -apple-system, sans-serif"
-                    wrapMode: Text.Wrap
-                    selectByMouse: true
-                    background: null
-                    onTextChanged: {
-                        canvasRoot.plainTextContent = canvasRoot.plainTextFromContent(text)
-                        if (text !== canvasRoot.activeContent) canvasRoot.contentModified(text)
-                    }
-                }
-
-                NotesEditorContextMenu {
-                    anchors.fill: noteEditorArea
-                    editor: noteEditorArea
-                    onFormatRequested: function(prefix, suffix) { canvasRoot.insertFormatting(prefix, suffix) }
-                    onLinkRequested: function(selectedHtml, selectionStart, selectionEnd) {
-                        linkInsertion.openFor(selectedHtml, selectionStart, selectionEnd)
-                    }
-                }
-
-                NotesLinkInsertion {
-                    id: linkInsertion
-                    anchors.fill: noteEditorArea
-                    editor: noteEditorArea
-                }
+                onContentModified: function(content) { canvasRoot.contentModified(content) }
+                onPlainTextModified: function(text) { canvasRoot.plainTextContent = text }
+                onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
             }
 
-            Rectangle {
+            NotesPreviewSurface {
                 visible: canvasRoot.isPreviewMode
+                sourceHtml: canvasRoot.activeContent || sourceEditorSurface.editor.text || ""
+                controller: canvasRoot.controller
+                copiedLinkUrl: canvasRoot.copiedLinkUrl
                 Layout.fillWidth: true
-                implicitHeight: Math.max(300, markdownDisplayArea.implicitHeight + 60)
-                color: "transparent"
-                Text {
-                    id: markdownDisplayArea
-                    objectName: "notesPageContentPreview"
-                    anchors.fill: parent
-                    text: canvasRoot.renderPreviewContent(canvasRoot.activeContent || noteEditorArea.text || "")
-                    textFormat: canvasRoot.isHtmlDocument(canvasRoot.activeContent || noteEditorArea.text) ? Text.RichText : Text.MarkdownText
-                    color: "#fffffe"
-                    font.pixelSize: 15
-                    font.family: "Inter, -apple-system, sans-serif"
-                    wrapMode: Text.Wrap
-                    lineHeight: 1.45
-                    onLinkActivated: function(link) { canvasRoot.openExternalLink(link) }
-                }
+                onLinkActivated: function(link) { canvasRoot.openExternalLink(link) }
             }
 
             Item { Layout.preferredHeight: 48 }

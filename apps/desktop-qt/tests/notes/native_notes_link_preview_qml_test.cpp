@@ -1,7 +1,63 @@
 #include <QtCore/QDebug>
+#include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
+#include <QtGui/QAccessible>
+#include <QtGui/QGuiApplication>
+#include <QtQuick/QQuickItem>
+#include <QtQuick/QQuickWindow>
 #include <QtQml/QQmlComponent>
+#include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
+#include <QtTest/QSignalSpy>
+#include <QtTest/QtTest>
+
+class NativeNotesLinkPreviewActionMenuTest final : public QObject {
+    Q_OBJECT
+private slots:
+    void actionMenuExposesNamedKeyboardActions() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesLinkPreviewActionMenu.qml")));
+        QScopedPointer<QObject> actionBar(component.create());
+        QVERIFY2(actionBar, qPrintable(component.errorString()));
+        actionBar->setProperty("actions", QVariantList{
+            QVariantMap{{"label", "Mark completed: Example"}, {"url", "synapse-link://status?item=1"}},
+            QVariantMap{{"label", "Copy URL: Example"}, {"url", "synapse-link://copy?item=1"}}});
+
+        QQuickWindow window;
+        window.resize(640, 240);
+        auto *rootItem = qobject_cast<QQuickItem *>(actionBar.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+        QAccessible::setActive(true);
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *trigger = actionBar->findChild<QObject *>("notesLinkPreviewActionButton");
+        QObject *popup = actionBar->findChild<QObject *>("notesLinkPreviewActionPopup");
+        QVERIFY(trigger);
+        QVERIFY(popup);
+        auto *triggerItem = qobject_cast<QQuickItem *>(trigger);
+        QVERIFY(triggerItem);
+        auto *accessibleTrigger = QAccessible::queryAccessibleInterface(trigger);
+        QVERIFY(accessibleTrigger);
+        QCOMPARE(accessibleTrigger->role(), QAccessible::Button);
+        QCOMPARE(accessibleTrigger->text(QAccessible::Name), QString("Link actions"));
+
+        QSignalSpy activated(actionBar.data(), SIGNAL(actionActivated(QString)));
+        QVERIFY(activated.isValid());
+        triggerItem->forceActiveFocus();
+        QTRY_VERIFY(triggerItem->hasActiveFocus());
+        QTest::keyClick(&window, Qt::Key_Space);
+        QTRY_VERIFY(popup->property("visible").toBool());
+        QTest::keyClick(&window, Qt::Key_Down);
+        QTest::keyClick(&window, Qt::Key_Down);
+        QTest::keyClick(&window, Qt::Key_Return);
+        QTRY_COMPARE(activated.size(), 1);
+        QCOMPARE(activated.takeFirst().at(0).toString(), QString("synapse-link://copy?item=1"));
+    }
+};
 
 int runNativeNotesLinkPreviewQmlTest() {
     QQmlEngine engine;
@@ -59,5 +115,8 @@ int runNativeNotesLinkPreviewQmlTest() {
     }
 
     qInfo() << "Native Notes link-preview rendering passed.";
-    return 0;
+    NativeNotesLinkPreviewActionMenuTest test;
+    return QTest::qExec(&test);
 }
+
+#include "native_notes_link_preview_qml_test.moc"

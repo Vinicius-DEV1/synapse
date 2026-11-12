@@ -1,10 +1,11 @@
 .pragma library
 
-function parseStatusAction(link) {
-    var match = String(link || "").match(/^synapse-link:\/\/status\?(.+)$/i)
+function parseAction(link) {
+    var match = String(link || "").match(/^synapse-link:\/\/(status|copy)\?(.+)$/i)
     if (!match) return null
+    var actionType = String(match[1]).toLowerCase()
     var values = ({})
-    var pairs = match[1].replace(/&amp;/gi, "&").split("&")
+    var pairs = match[2].replace(/&amp;/gi, "&").split("&")
     try {
         for (var index = 0; index < pairs.length; index++) {
             var separator = pairs[index].indexOf("=")
@@ -17,18 +18,27 @@ function parseStatusAction(link) {
         console.warn("[NotesLinkPreview] Could not decode a status action URL", error)
         return { handled: true, success: false }
     }
-    if (!values.url || (values.watched !== "true" && values.watched !== "false") ||
+    if (!values.url) {
+        return { handled: true, success: false }
+    }
+    if (actionType === "copy") return { handled: true, type: actionType, url: values.url }
+    if ((values.watched !== "true" && values.watched !== "false") ||
             (values.watching !== "true" && values.watching !== "false")) {
         return { handled: true, success: false }
     }
-    return { handled: true, url: values.url,
+    return { handled: true, type: actionType, url: values.url,
              watched: values.watched === "true", watching: values.watching === "true" }
 }
 
 function activate(link, source, controller, renderer) {
-    var action = parseStatusAction(link)
+    var action = parseAction(link)
     if (!action) return { handled: false }
     if (action.success === false) return action
+    if (action.type === "copy") {
+        if (!controller || typeof controller.copyLinkUrlToClipboard !== "function" ||
+                !controller.copyLinkUrlToClipboard(action.url)) return { handled: true, success: false }
+        return { handled: true, success: true, type: "copy", copiedUrl: action.url }
+    }
     if (!controller || typeof controller.setLinkEntityStatus !== "function" ||
             !renderer || typeof renderer.replaceStatusAttributes !== "function") {
         return { handled: true, success: false }
@@ -40,5 +50,5 @@ function activate(link, source, controller, renderer) {
     if (updatedContent === content) return { handled: true, success: false }
     var saved = controller.setLinkEntityStatus(action.url, action.watched, action.watching)
     if (!saved || saved.success !== true) return { handled: true, success: false }
-    return { handled: true, success: true, content: updatedContent }
+    return { handled: true, success: true, type: "status", content: updatedContent }
 }

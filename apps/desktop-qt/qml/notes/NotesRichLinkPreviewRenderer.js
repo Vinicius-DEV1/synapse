@@ -116,7 +116,7 @@ function durationText(value) {
     return minutes + ":" + String(remainder).padStart(2, "0")
 }
 
-function cardForTag(tag, provider, metadataCache, entityCache) {
+function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
     var attributes = attributesFromTag(tag)
     var url = safeHttpUrl(attributes.url)
     if (!url) {
@@ -146,7 +146,8 @@ function cardForTag(tag, provider, metadataCache, entityCache) {
     details += "<p><font color=\"#a7a9be\" size=\"2\">Status: " + status + "</font></p>" +
         "<p><a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watched")) + "\">" +
         watchedLabel + "</a> &nbsp; <a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watching")) + "\">" +
-        watchingLabel + "</a></p>"
+        watchingLabel + "</a> &nbsp; <a href=\"synapse-link://copy?url=" +
+        escapeHtml(encodeURIComponent(url)) + "\">" + (copiedUrl === url ? "Copied" : "Copy URL") + "</a></p>"
 
     return "<table width=\"100%\" border=\"1\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#1c1b24\"><tr><td>" +
         "<p><font color=\"#a7a9be\" size=\"2\">↗ " + escapeHtml(host) + "</font></p>" +
@@ -156,17 +157,44 @@ function cardForTag(tag, provider, metadataCache, entityCache) {
         "</td></tr></table>"
 }
 
-function render(source, metadataProvider) {
+function actionItems(source, provider, copiedUrl) {
+    var actions = []
+    var metadataCache = ({})
+    var entityCache = ({})
+    var pattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>/gi
+    var match
+    while ((match = pattern.exec(String(source || ""))) !== null) {
+        var attributes = attributesFromTag(match[0])
+        var url = safeHttpUrl(attributes.url)
+        if (!url) continue
+        var metadata = metadataFor(url, provider, metadataCache)
+        var entity = linkEntityFor(url, provider, entityCache)
+        var title = String(attributes.title || metadata.title || entity.title || "").trim() || hostForUrl(url)
+        var watched = entity.watched !== undefined ? entity.watched === true : attributes.watched === "true"
+        var watching = entity.watching !== undefined ? entity.watching === true : attributes.watching === "true"
+
+        actions.push({label: "Open link: " + title, url: url})
+        actions.push({label: (watched ? "Mark not completed: " : "Mark completed: ") + title,
+                      url: statusActionUrl(url, watched, watching, "watched")})
+        actions.push({label: (watching ? "Stop watching: " : "Mark watching: ") + title,
+                      url: statusActionUrl(url, watched, watching, "watching")})
+        actions.push({label: (copiedUrl === url ? "Copied URL: " : "Copy URL: ") + title,
+                      url: "synapse-link://copy?url=" + encodeURIComponent(url)})
+    }
+    return actions
+}
+
+function render(source, metadataProvider, copiedUrl) {
     var html = String(source || "")
     var metadataCache = ({})
     var entityCache = ({})
     var blockPattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^\"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>\s*<\/div\s*>/gi
     var selfClosingPattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^\"]*"|'[^']*\blink-preview-block[^']*'))[^>]*\/\s*>/gi
     html = html.replace(blockPattern, function(tag) {
-        return cardForTag(tag, metadataProvider, metadataCache, entityCache)
+        return cardForTag(tag, metadataProvider, metadataCache, entityCache, copiedUrl)
     })
     return html.replace(selfClosingPattern, function(tag) {
-        return cardForTag(tag, metadataProvider, metadataCache, entityCache)
+        return cardForTag(tag, metadataProvider, metadataCache, entityCache, copiedUrl)
     })
 }
 

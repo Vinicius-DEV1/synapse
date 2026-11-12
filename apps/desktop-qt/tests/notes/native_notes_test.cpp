@@ -16,6 +16,8 @@
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 #include <QtGui/QColor>
+#include <QtGui/QClipboard>
+#include <QtGui/QGuiApplication>
 #include <QtGui/QImage>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextCursor>
@@ -987,16 +989,28 @@ private slots:
             "Item {\n"
             " property string sourceHtml: \"<div class=\\\"link-preview-block\\\" url=\\\"https://www.youtube.com/watch?v=native123\\\" watched=\\\"false\\\" watching=\\\"true\\\" data-extra=\\\"keep\\\"></div>\"\n"
             " property string renderedHtml: Renderer.render(sourceHtml, metadataController)\n"
+            " property var previewActions: Renderer.actionItems(sourceHtml, metadataController, \"\")\n"
+            " property int previewActionCount: previewActions.length\n"
+            " property string firstPreviewAction: previewActions.length > 0 ? previewActions[0].label : \"\"\n"
             " property var statusAction: Actions.activate(\"synapse-link://status?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dnative123&watched=true&watching=false\", sourceHtml, metadataController, Renderer)\n"
             " property bool actionSucceeded: statusAction.success === true\n"
             " property string updatedSource: statusAction.content || \"\"\n"
+            " property var copyAction: Actions.activate(\"synapse-link://copy?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dnative123\", sourceHtml, metadataController, Renderer)\n"
+            " property bool copySucceeded: copyAction.success === true\n"
+            " property string copiedHtml: Renderer.render(sourceHtml, metadataController, \"https://www.youtube.com/watch?v=native123\")\n"
             "}\n"), QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/LinkPreviewTest.qml")));
         QScopedPointer<QObject> preview(component.create());
         QVERIFY2(preview, qPrintable(component.errorString()));
         const QString rendered = preview->property("renderedHtml").toString();
         QVERIFY(rendered.contains("Status: Watching"));
         QVERIFY(rendered.contains("Mark as completed"));
+        QVERIFY(rendered.contains("Copy URL"));
+        QCOMPARE(preview->property("previewActionCount").toInt(), 4);
+        QCOMPARE(preview->property("firstPreviewAction").toString(), "Open link: Saved title");
         QVERIFY(preview->property("actionSucceeded").toBool());
+        QVERIFY(preview->property("copySucceeded").toBool());
+        QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Clipboard), canonicalUrl);
+        QVERIFY(preview->property("copiedHtml").toString().contains(">Copied</a>"));
         const QString updatedSource = preview->property("updatedSource").toString();
         QVERIFY(updatedSource.contains("data-extra=\"keep\""));
         QVERIFY(updatedSource.contains("watched=\"true\""));
