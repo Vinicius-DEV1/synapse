@@ -4,13 +4,21 @@ import QtQuick.Controls 2.15
 Item {
     id: revealControl
     objectName: "notesRichSpoilerRevealControl"
-    anchors.fill: parent
     property var textEditor
     property var textOperations
     property bool active: false
     property bool invalid: false
     property int spoilerPosition: -1
     property bool revealed: false
+
+    function alignToEditor() {
+        if (!textEditor || !parent) return
+        var origin = textEditor.mapToItem(parent, 0, 0)
+        x = origin.x
+        y = origin.y
+        width = textEditor.width
+        height = textEditor.height
+    }
 
     function refresh() {
         if (!active || invalid || !textEditor || !textEditor.textDocument) {
@@ -40,12 +48,20 @@ Item {
         return true
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: {
+        alignToEditor()
+        refresh()
+    }
+    onTextEditorChanged: alignToEditor()
     onActiveChanged: refresh()
     onInvalidChanged: refresh()
 
     Connections {
         target: revealControl.textEditor
+        function onXChanged() { revealControl.alignToEditor() }
+        function onYChanged() { revealControl.alignToEditor() }
+        function onWidthChanged() { revealControl.alignToEditor() }
+        function onHeightChanged() { revealControl.alignToEditor() }
         function onCursorPositionChanged() { revealControl.refresh() }
         function onTextChanged() { revealControl.refresh() }
     }

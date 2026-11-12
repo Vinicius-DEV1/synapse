@@ -265,7 +265,6 @@ Item {
 
     NotesRichSpoilerRevealControl {
         id: spoilerRevealControl
-        anchors.fill: richTextInput.editor
         textEditor: richTextInput.editor
         textOperations: richRoot.textOperations
         active: richRoot.active

@@ -371,6 +371,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_rich_table_qml_test.cpp
         tests/notes/native_notes_table_merge_qml_test.cpp
         tests/notes/native_notes_table_background_selection_qml_test.cpp
+        tests/notes/native_notes_spoiler_geometry_qml_test.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp

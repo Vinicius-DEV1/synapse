@@ -321,6 +321,12 @@ Qt vault setup now encrypts referenced, readable media in the managed `files/`, 
 
 - Scope gap: the animated smoke treatment and same-viewport visual comparison remain open.
 
+### Notes work item: spoiler accessibility control alignment
+
+- Expected: position the native spoiler checkbox over the rich-text editor coordinate space so it stays next to the active spoiler marker, tracks editor geometry changes, and produces no invalid cross-parent anchor warnings. Keep Space, Alt+R, Escape, accessible state, and transient reveal behavior intact.
+- React comparison: `Editor.tsx` reveals spoiler marks through click, Alt+click, and double-click; Qt adds a keyboard-accessible checkbox as a native accessibility affordance. Its marker rectangle comes from the `QQuickTextEdit`, so the overlay must map that editor's local coordinates into the containing Notes view.
+- Evidence: `cmake -S apps/desktop-qt -B apps/desktop-qt/build -DSYNAPSE_BUILD_NATIVE_TESTS=ON -DCMAKE_BUILD_TYPE=Release`, `cmake --build apps/desktop-qt/build --target synapse-notes-table-qml-tests -j 2`, and `ctest --test-dir apps/desktop-qt/build -R '^native-notes-table-qml$' --output-on-failure` pass. The QML integration test verifies that the overlay origin maps to the text editor, tracks a resize, and keeps the spoiler checkbox visible; the existing keyboard/accessibility test passes without the previous invalid-anchor warning. `qmllint` on the modified QML files exits 0 with the existing unqualified `notesTextOperations` access warning in `NotesRichTextEditor.qml`; `git diff --check` passes.
+
 ### Notes work item: task paragraphs before nested children
 
 - Expected: preserve all direct task paragraphs around nested lists in the same item, then serialize the nested items between those paragraphs without changing checkbox state, nesting, inline marks, accessibility labels, or undo behavior. Keep source mode for unsupported non-list block children.
