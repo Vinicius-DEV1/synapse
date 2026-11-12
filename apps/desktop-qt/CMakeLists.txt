@@ -158,6 +158,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/native_test_main.cpp
         tests/crypto/native_vault_crypto_test.cpp
         tests/notes/native_notes_test.cpp
+        tests/notes/native_notes_link_vault_test.cpp
         tests/notes/native_notes_rich_images_test.cpp
         tests/notes/native_notes_rich_image_clipboard_test.cpp
         tests/notes/native_notes_reference_search_test.cpp

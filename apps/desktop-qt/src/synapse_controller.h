@@ -136,6 +136,7 @@ public:
     Q_INVOKABLE bool saveLinkMetadata(const QVariantMap &entry);
     Q_INVOKABLE QVariantMap getLinkEntity(const QString &url);
     Q_INVOKABLE QVariantMap setLinkEntityStatus(const QString &url, bool watched, bool watching);
+    Q_INVOKABLE QVariantMap setLinkEntityNotes(const QString &url, const QString &notes);
     Q_INVOKABLE bool copyLinkUrlToClipboard(const QString &url);
     Q_INVOKABLE void copyNotesRichImage(const QString &imageDataUrl);
     Q_INVOKABLE void saveNotesRichImage(const QString &imageDataUrl, const QUrl &destinationUrl);

@@ -61,6 +61,26 @@ private slots:
     }
 };
 
+class NativeNotesLinkVaultController final : public QObject {
+    Q_OBJECT
+public:
+    QVariantMap entity{{"canonicalUrl", "https://notes.example/resource"},
+                       {"title", "Saved title"}, {"notes", "Saved from Link Vault"},
+                       {"watched", false}, {"watching", false}, {"color", "default"},
+                       {"extensionField", "preserve me"}};
+
+    Q_INVOKABLE QVariantMap getLinkEntity(const QString &url) const {
+        return url == entity.value("canonicalUrl").toString() ? entity : QVariantMap{};
+    }
+
+    Q_INVOKABLE QVariantMap setLinkEntityNotes(const QString &url, const QString &notes) {
+        if (url != entity.value("canonicalUrl").toString()) return {{"success", false}};
+        entity.insert("notes", notes);
+        entity.insert("orphanedAt", QVariant{});
+        return {{"success", true}};
+    }
+};
+
 class NativeNotesLinkPreviewConversionTest final : public QObject {
     Q_OBJECT
 private slots:
@@ -86,12 +106,12 @@ private slots:
         QVERIFY(editor);
         QVERIFY(actionMenu);
         const QVariantList actions = actionMenu->property("actions").toList();
-        QCOMPARE(actions.size(), 10);
-        QCOMPARE(actions.at(9).toMap().value("label").toString(), QString("Convert to text: Saved"));
+        QCOMPARE(actions.size(), 12);
+        QCOMPARE(actions.at(11).toMap().value("label").toString(), QString("Convert to text: Saved"));
 
         QSignalSpy contentChanged(canvas.data(), SIGNAL(contentModified(QString)));
         QVERIFY(contentChanged.isValid());
-        const QString conversionAction = actions.at(9).toMap().value("url").toString();
+        const QString conversionAction = actions.at(11).toMap().value("url").toString();
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated", Q_ARG(QString, conversionAction)));
 
         const QString converted = QStringLiteral(
@@ -102,6 +122,111 @@ private slots:
         QTRY_VERIFY(contentChanged.size() > 0);
         QVERIFY(QMetaObject::invokeMethod(editor, "undo"));
         QTRY_COMPARE(editor->property("text").toString(), source);
+    }
+
+    void linkNotesActionsShowEditClearAndHide() {
+        const QString url = QStringLiteral("https://notes.example/resource");
+        QQmlEngine engine;
+        NotesTextOperations textOperations;
+        NativeNotesLinkVaultController controller;
+        engine.rootContext()->setContextProperty("notesTextOperations", &textOperations);
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorCanvas.qml")));
+        QScopedPointer<QObject> canvas(component.create());
+        QVERIFY2(canvas, qPrintable(component.errorString()));
+
+        const QString source = QStringLiteral(
+            "<p>before</p><div class=\"link-preview-block\" url=\"https://notes.example/resource\" "
+            "title=\"Saved\" notes=\"\" showNotes=\"false\"></div><p><strong>after</strong></p>");
+        canvas->setProperty("activeContent", source);
+        canvas->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        canvas->setProperty("isPreviewMode", true);
+
+        QQuickWindow window;
+        window.resize(1000, 700);
+        auto *canvasItem = qobject_cast<QQuickItem *>(canvas.data());
+        QVERIFY(canvasItem);
+        canvasItem->setParentItem(window.contentItem());
+        canvasItem->setWidth(1000);
+        canvasItem->setHeight(700);
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *editor = canvas->findChild<QObject *>("notesSourceEditor");
+        QObject *actionMenu = canvas->findChild<QObject *>("notesLinkPreviewActionMenu");
+        QObject *previewText = canvas->findChild<QObject *>("notesPageContentPreview");
+        QObject *previewSurface = canvas->findChild<QObject *>("notesPreviewSurface");
+        QObject *dialog = canvas->findChild<QObject *>("notesLinkNotesDialog");
+        QVERIFY(editor);
+        QVERIFY(actionMenu);
+        QVERIFY(previewText);
+        QVERIFY(previewSurface);
+        QVERIFY(dialog);
+
+        QVariantList actions = actionMenu->property("actions").toList();
+        QCOMPARE(actions.size(), 6);
+        QCOMPARE(actions.at(4).toMap().value("label").toString(), QString("Show link notes: Saved"));
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
+                                          Q_ARG(QString, actions.at(4).toMap().value("url").toString())));
+        QTRY_VERIFY(editor->property("text").toString().contains("showNotes=\"true\""));
+        canvas->setProperty("activeContent", editor->property("text"));
+        QTRY_VERIFY(previewSurface->property("sourceHtml").toString().contains("showNotes=\"true\""));
+        QTRY_VERIFY(previewText->property("text").toString().contains("Saved from Link Vault"));
+
+        actions = actionMenu->property("actions").toList();
+        QTRY_COMPARE(actionMenu->property("actions").toList().size(), 7);
+        actions = actionMenu->property("actions").toList();
+        QCOMPARE(actions.at(5).toMap().value("label").toString(), QString("Edit link notes: Saved"));
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
+                                          Q_ARG(QString, actions.at(5).toMap().value("url").toString())));
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QVERIFY(canvas->property("isDialogOpen").toBool());
+        QObject *notesEditor = dialog->findChild<QObject *>("notesLinkNotesEditor");
+        QObject *saveButton = dialog->findChild<QObject *>("notesLinkNotesSaveButton");
+        QObject *clearButton = dialog->findChild<QObject *>("notesLinkNotesClearButton");
+        QVERIFY(notesEditor);
+        QVERIFY(saveButton);
+        QVERIFY(clearButton);
+
+        const QString note = QStringLiteral("First line\n<script>plain note</script>");
+        notesEditor->setProperty("text", note);
+        QVERIFY(QMetaObject::invokeMethod(saveButton, "click"));
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        QCOMPARE(controller.entity.value("notes").toString(), note);
+        QTRY_VERIFY(editor->property("text").toString().contains("notes=\"First line\n&lt;script&gt;"));
+        canvas->setProperty("activeContent", editor->property("text"));
+        const QString visibleNotes = previewText->property("text").toString();
+        QVERIFY(visibleNotes.contains("First line"));
+        QVERIFY(visibleNotes.contains("&lt;script&gt;plain note"));
+        QVERIFY(!visibleNotes.contains("<script>plain note</script>"));
+        QVERIFY(controller.entity.value("extensionField").toString() == "preserve me");
+
+        actions = actionMenu->property("actions").toList();
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
+                                          Q_ARG(QString, actions.at(5).toMap().value("url").toString())));
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        notesEditor = dialog->findChild<QObject *>("notesLinkNotesEditor");
+        clearButton = dialog->findChild<QObject *>("notesLinkNotesClearButton");
+        saveButton = dialog->findChild<QObject *>("notesLinkNotesSaveButton");
+        QVERIFY(QMetaObject::invokeMethod(clearButton, "click"));
+        QCOMPARE(notesEditor->property("text").toString(), QString());
+        QVERIFY(QMetaObject::invokeMethod(saveButton, "click"));
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        QCOMPARE(controller.entity.value("notes").toString(), QString());
+        QTRY_VERIFY(editor->property("text").toString().contains("notes=\"\""));
+        canvas->setProperty("activeContent", editor->property("text"));
+        QVERIFY(previewText->property("text").toString().contains("No link notes yet."));
+
+        actions = actionMenu->property("actions").toList();
+        QCOMPARE(actions.at(4).toMap().value("label").toString(), QString("Hide link notes: Saved"));
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
+                                          Q_ARG(QString, actions.at(4).toMap().value("url").toString())));
+        QTRY_VERIFY(editor->property("text").toString().contains("showNotes=\"false\""));
+        canvas->setProperty("activeContent", editor->property("text"));
+        QVERIFY(!previewText->property("text").toString().contains("No link notes yet."));
+        QVERIFY(editor->property("text").toString().startsWith("<p>before</p>"));
+        QVERIFY(editor->property("text").toString().endsWith("<p><strong>after</strong></p>"));
     }
 };
 

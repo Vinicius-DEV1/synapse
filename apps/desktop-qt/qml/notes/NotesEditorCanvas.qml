@@ -2,7 +2,6 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesInlineFormatting.js" as NotesInlineFormatting
-import "NotesRichLinkPreviewRenderer.js" as NotesLinkPreviewRenderer
 import "NotesRichLinkPreviewActions.js" as NotesLinkPreviewActions
 
 ScrollView {
@@ -23,6 +22,7 @@ ScrollView {
     property var childPages: []
     property var allPages: []
     property var controller: null
+    property var textOperations: notesTextOperations
     property string activePageId: ""
     property string pageActionStatus: ""
     property string plainTextContent: ""
@@ -33,7 +33,8 @@ ScrollView {
     property string copiedLinkUrl: ""
     onActivePageIdChanged: copiedLinkUrl = ""
     readonly property bool isEmojiPickerOpen: pageHeader.isEmojiPickerOpen
-    readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible || sourceEditorSurface.isDialogOpen
+    readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible ||
+                                         sourceEditorSurface.isDialogOpen || previewSurface.isDialogOpen
     readonly property bool contentEditorFocused: isRichMode ? richTextEditor.editor.activeFocus : sourceEditorSurface.editor.activeFocus
     readonly property bool canUseRichMode: richTextEditor.canEditSource
     readonly property bool richContentInvalid: richTextEditor.hasInvalidContent
@@ -79,24 +80,32 @@ ScrollView {
         pageHeader.setDescriptionText(txt)
     }
 
-    function replaceSourceRange(start, end, replacement) {
-        return notesTextOperations.replace(sourceEditorSurface.editor.textDocument, start, end, replacement)
-    }
-
     function openMovePageDialog(pageId) { movePageDialog.openForPage(pageId) }
+
+    function replaceSourceRange(start, end, replacement) {
+        return textOperations && textOperations.replace(
+                    sourceEditorSurface.editor.textDocument, start, end, replacement)
+    }
 
     function openExternalLink(link) {
         var action = NotesLinkPreviewActions.activate(
-                    link, activeContent || sourceEditorSurface.editor.text || "",
-                    controller, NotesLinkPreviewRenderer)
+                    link, sourceEditorSurface.editor.text || activeContent || "",
+                    controller, previewSurface)
         if (action.handled) {
             if (!action.success) {
                 pageActionFailed(qsTr("Could not complete this link action."))
                 return
             }
             if (action.type === "copy") copiedLinkUrl = action.copiedUrl
+            else if (action.type === "toggle-notes") {
+                if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement))
+                    pageActionFailed(qsTr("Could not update link note visibility."))
+            }
+            else if (action.type === "edit-notes") {
+                previewSurface.openLinkNotes(action.url, action.start, action.notes)
+            }
             else if (action.type === "convert") {
-                if (!replaceSourceRange(action.start, action.end, action.replacement)) {
+                if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement)) {
                     pageActionFailed(qsTr("Could not convert this preview to a link."))
                 }
             }
@@ -247,12 +256,16 @@ ScrollView {
             }
 
             NotesPreviewSurface {
+                id: previewSurface
                 visible: canvasRoot.isPreviewMode
                 sourceHtml: canvasRoot.activeContent || sourceEditorSurface.editor.text || ""
                 controller: canvasRoot.controller
+                sourceEditor: sourceEditorSurface.editor
+                textOperations: canvasRoot.textOperations
                 copiedLinkUrl: canvasRoot.copiedLinkUrl
                 Layout.fillWidth: true
                 onLinkActivated: function(link) { canvasRoot.openExternalLink(link) }
+                onActionFailed: function(message) { canvasRoot.pageActionFailed(message) }
             }
 
             Item { Layout.preferredHeight: 48 }

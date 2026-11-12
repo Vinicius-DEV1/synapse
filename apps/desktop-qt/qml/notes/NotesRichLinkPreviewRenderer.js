@@ -81,28 +81,6 @@ function statusActionUrl(url, watched, watching, field) {
         "&watched=" + String(nextWatched) + "&watching=" + String(nextWatching)
 }
 
-function setTagBooleanAttribute(tag, name, value) {
-    var pattern = new RegExp("(\\s+" + name + "\\s*=\\s*)(?:\"[^\"]*\"|'[^']*'|[^\\s>]+)", "i")
-    if (pattern.test(tag)) {
-        return tag.replace(pattern, function(match, prefix) { return prefix + "\"" + value + "\"" })
-    }
-    var closingStart = tag.lastIndexOf(">")
-    if (closingStart < 0) return tag
-    var insertAt = closingStart > 0 && tag.charAt(closingStart - 1) === "/" ? closingStart - 1 : closingStart
-    return tag.substring(0, insertAt) + " " + name + "=\"" + value + "\"" + tag.substring(insertAt)
-}
-
-function updateStatusAttributes(source, url, watched, watching) {
-    var expectedUrl = safeHttpUrl(url)
-    if (!expectedUrl) return String(source || "")
-    var blockTag = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>/gi
-    return String(source || "").replace(blockTag, function(tag) {
-        if (safeHttpUrl(attributesFromTag(tag).url) !== expectedUrl) return tag
-        var next = setTagBooleanAttribute(tag, "watched", watched ? "true" : "false")
-        return setTagBooleanAttribute(next, "watching", watching ? "true" : "false")
-    })
-}
-
 function durationText(value) {
     var seconds = Number(value)
     if (!isFinite(seconds) || seconds <= 0) return ""
@@ -127,29 +105,11 @@ function previewBlocks(source) {
         var pattern = patterns[patternIndex]
         var match
         while ((match = pattern.exec(html)) !== null) {
-            blocks.push({start: match.index, end: match.index + match[0].length, markup: match[0]})
+            blocks.push({start: match.index, markup: match[0]})
         }
     }
     blocks.sort(function(left, right) { return left.start - right.start })
     return blocks
-}
-
-function replacePreviewWithText(source, url, start) {
-    var html = String(source || "")
-    var expectedUrl = safeHttpUrl(url)
-    var blockStart = Number(start)
-    if (!expectedUrl || !isFinite(blockStart) || blockStart < 0 || Math.floor(blockStart) !== blockStart) {
-        return {success: false}
-    }
-    var blocks = previewBlocks(html)
-    for (var index = 0; index < blocks.length; index++) {
-        var block = blocks[index]
-        if (block.start !== blockStart || safeHttpUrl(attributesFromTag(block.markup).url) !== expectedUrl) continue
-        var escapedUrl = escapeHtml(expectedUrl)
-        return {success: true, start: block.start, end: block.end,
-                replacement: "<p><a href=\"" + escapedUrl + "\">" + escapedUrl + "</a></p>"}
-    }
-    return {success: false}
 }
 
 function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
@@ -185,10 +145,21 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
         watchingLabel + "</a> &nbsp; <a href=\"synapse-link://copy?url=" +
         escapeHtml(encodeURIComponent(url)) + "\">" + (copiedUrl === url ? "Copied" : "Copy URL") + "</a></p>"
 
+    var notesSection = ""
+    if (attributes.shownotes === "true") {
+        var notes = String(attributes.notes || entity.notes || "")
+        var noteContent = notes.length > 0
+            ? escapeHtml(notes).replace(/\r\n|\r|\n/g, "<br/>")
+            : "<font color=\"#71717a\">No link notes yet. Choose Edit link notes to add one.</font>"
+        notesSection = "<p><font color=\"#a7a9be\" size=\"2\"><b>Link notes</b></font></p>" +
+            "<p><font color=\"#f4f4f5\">" + noteContent + "</font></p>"
+    }
+
     return "<table width=\"100%\" border=\"1\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#1c1b24\"><tr><td>" +
         "<p><font color=\"#a7a9be\" size=\"2\">↗ " + escapeHtml(host) + "</font></p>" +
         "<p><font color=\"#f4f4f5\" size=\"4\"><b>" + escapeHtml(title) + "</b></font></p>" +
         details +
+        notesSection +
         "<p><a href=\"" + escapeHtml(url) + "\">" + escapeHtml(url) + "</a></p>" +
         "</td></tr></table>"
 }
@@ -216,10 +187,31 @@ function actionItems(source, provider, copiedUrl) {
                       url: statusActionUrl(url, watched, watching, "watching")})
         actions.push({label: (copiedUrl === url ? "Copied URL: " : "Copy URL: ") + title,
                       url: "synapse-link://copy?url=" + encodeURIComponent(url)})
+        var showNotes = attributes.shownotes === "true"
+        actions.push({label: (showNotes ? "Hide link notes: " : "Show link notes: ") + title,
+                      url: "synapse-link://toggle-notes?url=" + encodeURIComponent(url) +
+                           "&start=" + block.start + "&show=" + String(!showNotes)})
+        if (showNotes) {
+            actions.push({label: "Edit link notes: " + title,
+                          url: "synapse-link://edit-notes?url=" + encodeURIComponent(url) +
+                               "&start=" + block.start})
+        }
         actions.push({label: "Convert to text: " + title,
                       url: "synapse-link://convert?url=" + encodeURIComponent(url) + "&start=" + block.start})
     }
     return actions
+}
+
+function setTagBooleanAttribute(tag, name, value) {
+    var serializedValue = value === true || value === "true" ? "true" : "false"
+    var pattern = new RegExp("(\\s+" + name + "\\s*=\\s*)(?:\"[^\"]*\"|'[^']*'|[^\\s>]+)", "i")
+    if (pattern.test(tag)) {
+        return tag.replace(pattern, function(match, prefix) { return prefix + "\"" + serializedValue + "\"" })
+    }
+    var closingStart = tag.lastIndexOf(">")
+    if (closingStart < 0) return tag
+    var insertAt = closingStart > 0 && tag.charAt(closingStart - 1) === "/" ? closingStart - 1 : closingStart
+    return tag.substring(0, insertAt) + " " + name + "=\"" + serializedValue + "\"" + tag.substring(insertAt)
 }
 
 function render(source, metadataProvider, copiedUrl) {
@@ -237,5 +229,12 @@ function render(source, metadataProvider, copiedUrl) {
 }
 
 function replaceStatusAttributes(source, url, watched, watching) {
-    return updateStatusAttributes(source, url, watched, watching)
+    var expectedUrl = safeHttpUrl(url)
+    if (!expectedUrl) return String(source || "")
+    var blockTag = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>/gi
+    return String(source || "").replace(blockTag, function(tag) {
+        if (safeHttpUrl(attributesFromTag(tag).url) !== expectedUrl) return tag
+        var next = setTagBooleanAttribute(tag, "watched", watched ? "true" : "false")
+        return setTagBooleanAttribute(next, "watching", watching ? "true" : "false")
+    })
 }

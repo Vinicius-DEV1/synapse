@@ -185,6 +185,49 @@ QVariantMap SynapseDataController::setLinkEntityStatus(const QString &url, bool 
     return result;
 }
 
+QVariantMap SynapseDataController::setLinkEntityNotes(const QString &url, const QString &notes) {
+    const QString canonicalUrl = canonicalLinkUrl(url);
+    if (canonicalUrl.isEmpty()) {
+        qWarning() << "[NotesLinkVault] Rejected notes for an invalid link URL" << url;
+        return {{"success", false}};
+    }
+
+    const QString configKey = entityConfigKey(canonicalUrl);
+    const QJsonArray rows = executeQueryPrepared(
+        "SELECT data, value FROM config WHERE id = ?1 LIMIT 1", {configKey});
+    QJsonObject entity = defaultLinkEntity(canonicalUrl, url);
+    if (!rows.isEmpty()) {
+        QJsonObject storedEntity;
+        if (!readEntityObject(rows.first().toObject(), &storedEntity)) {
+            qWarning() << "[NotesLinkVault] Preserving malformed config row for" << canonicalUrl;
+            return {{"success", false}};
+        }
+        entity = storedEntity;
+    }
+
+    const QString now = nowIsoUtc();
+    entity.insert("canonicalUrl", canonicalUrl);
+    if (entity.value("originalUrl").toString().isEmpty()) entity.insert("originalUrl", url);
+    if (entity.value("domain").toString().isEmpty())
+        entity.insert("domain", QUrl(canonicalUrl).host().toLower());
+    if (entity.value("firstSeenAt").toString().isEmpty()) entity.insert("firstSeenAt", now);
+    entity.insert("lastReferencedAt", now);
+    entity.insert("orphanedAt", QJsonValue::Null);
+    entity.insert("notes", notes);
+
+    const QString payload = QString::fromUtf8(QJsonDocument(entity).toJson(QJsonDocument::Compact));
+    const int changedRows = executeSqlPrepared(
+        "INSERT INTO config (id, data, value, updated_at) VALUES (?1, ?2, ?2, ?3) "
+        "ON CONFLICT(id) DO UPDATE SET data = excluded.data, value = excluded.value, "
+        "updated_at = excluded.updated_at",
+        {configKey, payload, now});
+    if (changedRows < 1) return {{"success", false}};
+
+    QVariantMap result = entity.toVariantMap();
+    result.insert("success", true);
+    return result;
+}
+
 bool SynapseDataController::copyLinkUrlToClipboard(const QString &url) {
     if (canonicalLinkUrl(url).isEmpty()) {
         qWarning() << "[NotesLinkVault] Rejected unsafe clipboard URL" << url;

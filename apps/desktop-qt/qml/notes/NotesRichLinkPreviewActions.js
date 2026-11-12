@@ -1,7 +1,7 @@
 .pragma library
 
 function parseAction(link) {
-    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert)\?(.+)$/i)
+    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes)\?(.+)$/i)
     if (!match) return null
     var actionType = String(match[1]).toLowerCase()
     var values = ({})
@@ -15,7 +15,7 @@ function parseAction(link) {
             values[name] = value
         }
     } catch (error) {
-        console.warn("[NotesLinkPreview] Could not decode a status action URL", error)
+        console.warn("[NotesLinkPreview] Could not decode a link action URL", error)
         return { handled: true, success: false }
     }
     if (!values.url) {
@@ -28,6 +28,17 @@ function parseAction(link) {
             return { handled: true, success: false }
         }
         return { handled: true, type: actionType, url: values.url, start: blockStart }
+    }
+    if (actionType === "toggle-notes" || actionType === "edit-notes") {
+        var notesBlockStart = Number(values.start)
+        if (!isFinite(notesBlockStart) || notesBlockStart < 0 || Math.floor(notesBlockStart) !== notesBlockStart) {
+            return { handled: true, success: false }
+        }
+        if (actionType === "toggle-notes" && values.show !== "true" && values.show !== "false") {
+            return { handled: true, success: false }
+        }
+        return { handled: true, type: actionType, url: values.url, start: notesBlockStart,
+                 showNotes: values.show === "true" }
     }
     if ((values.watched !== "true" && values.watched !== "false") ||
             (values.watching !== "true" && values.watching !== "false")) {
@@ -54,6 +65,25 @@ function activate(link, source, controller, renderer) {
         if (!replacement.success) return { handled: true, success: false }
         return { handled: true, success: true, type: "convert", start: replacement.start,
                  end: replacement.end, replacement: replacement.replacement }
+    }
+    if (action.type === "toggle-notes") {
+        if (!renderer || typeof renderer.replacePreviewAttributes !== "function") {
+            return { handled: true, success: false }
+        }
+        var visibilityUpdate = renderer.replacePreviewAttributes(
+                    source, action.url, action.start, {showNotes: action.showNotes}, controller)
+        if (!visibilityUpdate.success) return { handled: true, success: false }
+        return { handled: true, success: true, type: action.type, start: visibilityUpdate.start,
+                 end: visibilityUpdate.end, replacement: visibilityUpdate.replacement }
+    }
+    if (action.type === "edit-notes") {
+        if (!renderer || typeof renderer.linkPreviewData !== "function") {
+            return { handled: true, success: false }
+        }
+        var linkData = renderer.linkPreviewData(source, action.url, action.start, controller)
+        if (!linkData.success) return { handled: true, success: false }
+        return { handled: true, success: true, type: action.type, url: action.url,
+                 start: action.start, notes: linkData.notes }
     }
     if (!controller || typeof controller.setLinkEntityStatus !== "function" ||
             !renderer || typeof renderer.replaceStatusAttributes !== "function") {

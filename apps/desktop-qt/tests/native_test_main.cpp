@@ -1,6 +1,7 @@
 #include <QtGui/QGuiApplication>
 
 int runNativeNotesTest(int argc, char **argv);
+int runNativeNotesLinkVaultTest(int argc, char **argv);
 int runNativeNotesRichImagesTest(int argc, char **argv);
 int runNativeNotesRichImageClipboardTest(int argc, char **argv);
 int runNativeNotesReferenceSearchTest(int argc, char **argv);
@@ -22,6 +23,7 @@ int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
     int result = 0;
     result |= runNativeNotesTest(argc, argv);
+    result |= runNativeNotesLinkVaultTest(argc, argv);
     result |= runNativeNotesRichImagesTest(argc, argv);
     result |= runNativeNotesRichImageClipboardTest(argc, argv);
     result |= runNativeNotesReferenceSearchTest(argc, argv);
