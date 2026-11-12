@@ -1,7 +1,7 @@
 .pragma library
 
 function parseAction(link) {
-    var match = String(link || "").match(/^synapse-link:\/\/(status|copy)\?(.+)$/i)
+    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert)\?(.+)$/i)
     if (!match) return null
     var actionType = String(match[1]).toLowerCase()
     var values = ({})
@@ -22,6 +22,13 @@ function parseAction(link) {
         return { handled: true, success: false }
     }
     if (actionType === "copy") return { handled: true, type: actionType, url: values.url }
+    if (actionType === "convert") {
+        var blockStart = Number(values.start)
+        if (!isFinite(blockStart) || blockStart < 0 || Math.floor(blockStart) !== blockStart) {
+            return { handled: true, success: false }
+        }
+        return { handled: true, type: actionType, url: values.url, start: blockStart }
+    }
     if ((values.watched !== "true" && values.watched !== "false") ||
             (values.watching !== "true" && values.watching !== "false")) {
         return { handled: true, success: false }
@@ -38,6 +45,15 @@ function activate(link, source, controller, renderer) {
         if (!controller || typeof controller.copyLinkUrlToClipboard !== "function" ||
                 !controller.copyLinkUrlToClipboard(action.url)) return { handled: true, success: false }
         return { handled: true, success: true, type: "copy", copiedUrl: action.url }
+    }
+    if (action.type === "convert") {
+        if (!renderer || typeof renderer.replacePreviewWithText !== "function") {
+            return { handled: true, success: false }
+        }
+        var replacement = renderer.replacePreviewWithText(source, action.url, action.start)
+        if (!replacement.success) return { handled: true, success: false }
+        return { handled: true, success: true, type: "convert", start: replacement.start,
+                 end: replacement.end, replacement: replacement.replacement }
     }
     if (!controller || typeof controller.setLinkEntityStatus !== "function" ||
             !renderer || typeof renderer.replaceStatusAttributes !== "function") {

@@ -116,6 +116,42 @@ function durationText(value) {
     return minutes + ":" + String(remainder).padStart(2, "0")
 }
 
+function previewBlocks(source) {
+    var html = String(source || "")
+    var blocks = []
+    var patterns = [
+        /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>\s*<\/div\s*>/gi,
+        /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*\/\s*>/gi
+    ]
+    for (var patternIndex = 0; patternIndex < patterns.length; patternIndex++) {
+        var pattern = patterns[patternIndex]
+        var match
+        while ((match = pattern.exec(html)) !== null) {
+            blocks.push({start: match.index, end: match.index + match[0].length, markup: match[0]})
+        }
+    }
+    blocks.sort(function(left, right) { return left.start - right.start })
+    return blocks
+}
+
+function replacePreviewWithText(source, url, start) {
+    var html = String(source || "")
+    var expectedUrl = safeHttpUrl(url)
+    var blockStart = Number(start)
+    if (!expectedUrl || !isFinite(blockStart) || blockStart < 0 || Math.floor(blockStart) !== blockStart) {
+        return {success: false}
+    }
+    var blocks = previewBlocks(html)
+    for (var index = 0; index < blocks.length; index++) {
+        var block = blocks[index]
+        if (block.start !== blockStart || safeHttpUrl(attributesFromTag(block.markup).url) !== expectedUrl) continue
+        var escapedUrl = escapeHtml(expectedUrl)
+        return {success: true, start: block.start, end: block.end,
+                replacement: "<p><a href=\"" + escapedUrl + "\">" + escapedUrl + "</a></p>"}
+    }
+    return {success: false}
+}
+
 function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
     var attributes = attributesFromTag(tag)
     var url = safeHttpUrl(attributes.url)
@@ -161,10 +197,10 @@ function actionItems(source, provider, copiedUrl) {
     var actions = []
     var metadataCache = ({})
     var entityCache = ({})
-    var pattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>/gi
-    var match
-    while ((match = pattern.exec(String(source || ""))) !== null) {
-        var attributes = attributesFromTag(match[0])
+    var blocks = previewBlocks(source)
+    for (var index = 0; index < blocks.length; index++) {
+        var block = blocks[index]
+        var attributes = attributesFromTag(block.markup)
         var url = safeHttpUrl(attributes.url)
         if (!url) continue
         var metadata = metadataFor(url, provider, metadataCache)
@@ -180,6 +216,8 @@ function actionItems(source, provider, copiedUrl) {
                       url: statusActionUrl(url, watched, watching, "watching")})
         actions.push({label: (copiedUrl === url ? "Copied URL: " : "Copy URL: ") + title,
                       url: "synapse-link://copy?url=" + encodeURIComponent(url)})
+        actions.push({label: "Convert to text: " + title,
+                      url: "synapse-link://convert?url=" + encodeURIComponent(url) + "&start=" + block.start})
     }
     return actions
 }

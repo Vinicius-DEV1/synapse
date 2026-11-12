@@ -1,3 +1,5 @@
+#include "controllers/notes/notes_text_operations.h"
+
 #include <QtCore/QDebug>
 #include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
@@ -59,6 +61,50 @@ private slots:
     }
 };
 
+class NativeNotesLinkPreviewConversionTest final : public QObject {
+    Q_OBJECT
+private slots:
+    void conversionReplacesOnlySelectedPreviewAndUndoRestoresIt() {
+        QQmlEngine engine;
+        NotesTextOperations textOperations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &textOperations);
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorCanvas.qml")));
+        QScopedPointer<QObject> canvas(component.create());
+        QVERIFY2(canvas, qPrintable(component.errorString()));
+
+        const QString source = QStringLiteral(
+            "<p>before</p><div class=\"link-preview-block\" url=\"https://example.com/docs?a=1&amp;b=2\"></div>"
+            "<p>middle</p><div class=\"link-preview-block\" url=\"https://example.com/docs?a=1&amp;b=2\" title=\"Saved\"></div>"
+            "<p><strong>after</strong></p>");
+        canvas->setProperty("activeContent", source);
+        canvas->setProperty("isPreviewMode", true);
+
+        QObject *editor = canvas->findChild<QObject *>("notesSourceEditor");
+        QObject *actionMenu = canvas->findChild<QObject *>("notesLinkPreviewActionMenu");
+        QVERIFY(editor);
+        QVERIFY(actionMenu);
+        const QVariantList actions = actionMenu->property("actions").toList();
+        QCOMPARE(actions.size(), 10);
+        QCOMPARE(actions.at(9).toMap().value("label").toString(), QString("Convert to text: Saved"));
+
+        QSignalSpy contentChanged(canvas.data(), SIGNAL(contentModified(QString)));
+        QVERIFY(contentChanged.isValid());
+        const QString conversionAction = actions.at(9).toMap().value("url").toString();
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated", Q_ARG(QString, conversionAction)));
+
+        const QString converted = QStringLiteral(
+            "<p>before</p><div class=\"link-preview-block\" url=\"https://example.com/docs?a=1&amp;b=2\"></div>"
+            "<p>middle</p><p><a href=\"https://example.com/docs?a=1&amp;b=2\">"
+            "https://example.com/docs?a=1&amp;b=2</a></p><p><strong>after</strong></p>");
+        QTRY_COMPARE(editor->property("text").toString(), converted);
+        QTRY_VERIFY(contentChanged.size() > 0);
+        QVERIFY(QMetaObject::invokeMethod(editor, "undo"));
+        QTRY_COMPARE(editor->property("text").toString(), source);
+    }
+};
+
 int runNativeNotesLinkPreviewQmlTest() {
     QQmlEngine engine;
     QQmlComponent component(&engine);
@@ -116,7 +162,9 @@ int runNativeNotesLinkPreviewQmlTest() {
 
     qInfo() << "Native Notes link-preview rendering passed.";
     NativeNotesLinkPreviewActionMenuTest test;
-    return QTest::qExec(&test);
+    const int menuResult = QTest::qExec(&test);
+    NativeNotesLinkPreviewConversionTest conversionTest;
+    return menuResult | QTest::qExec(&conversionTest);
 }
 
 #include "native_notes_link_preview_qml_test.moc"

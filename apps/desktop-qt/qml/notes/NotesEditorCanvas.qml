@@ -79,6 +79,10 @@ ScrollView {
         pageHeader.setDescriptionText(txt)
     }
 
+    function replaceSourceRange(start, end, replacement) {
+        return notesTextOperations.replace(sourceEditorSurface.editor.textDocument, start, end, replacement)
+    }
+
     function openMovePageDialog(pageId) { movePageDialog.openForPage(pageId) }
 
     function openExternalLink(link) {
@@ -91,6 +95,11 @@ ScrollView {
                 return
             }
             if (action.type === "copy") copiedLinkUrl = action.copiedUrl
+            else if (action.type === "convert") {
+                if (!replaceSourceRange(action.start, action.end, action.replacement)) {
+                    pageActionFailed(qsTr("Could not convert this preview to a link."))
+                }
+            }
             else contentModified(action.content)
             return
         }
@@ -103,7 +112,7 @@ ScrollView {
         var oldText = sourceEditorSurface.editor.text
         if (prefix === "<strong>" || prefix === "<em>" || prefix === "<u>" || prefix === "<s>" || prefix === "<code>") {
             var result = NotesInlineFormatting.toggle(oldText, start, end, prefix, suffix)
-            if (!notesTextOperations.replace(sourceEditorSurface.editor.textDocument, result.editStart, result.editEnd, result.replacement)) {
+            if (!replaceSourceRange(result.editStart, result.editEnd, result.replacement)) {
                 console.error("[Notes] Could not apply inline formatting to the selected source range")
                 return
             }
@@ -113,7 +122,7 @@ ScrollView {
         }
         var selected = oldText.substring(start, end)
         var replacement = prefix + selected + suffix
-        if (!notesTextOperations.replace(sourceEditorSurface.editor.textDocument, start, end, replacement)) {
+        if (!replaceSourceRange(start, end, replacement)) {
             console.error("[Notes] Could not apply formatting to the selected source range")
             return
         }
