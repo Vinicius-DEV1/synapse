@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesInlineFormatting.js" as NotesInlineFormatting
+import "NotesRichLinkPreviewRenderer.js" as NotesLinkPreviewRenderer
 
 ScrollView {
     id: canvasRoot
@@ -92,6 +93,10 @@ ScrollView {
             .replace(/&gt;/gi, ">")
             .replace(/&quot;/gi, "\"")
             .replace(/&#39;/gi, "'")
+    }
+
+    function renderPreviewContent(value) {
+        return NotesLinkPreviewRenderer.render(value)
     }
 
     function openExternalLink(link) {
@@ -405,8 +410,9 @@ ScrollView {
                 color: "transparent"
                 Text {
                     id: markdownDisplayArea
+                    objectName: "notesPageContentPreview"
                     anchors.fill: parent
-                    text: noteEditorArea.text || canvasRoot.activeContent || ""
+                    text: canvasRoot.renderPreviewContent(noteEditorArea.text || canvasRoot.activeContent || "")
                     textFormat: canvasRoot.isHtmlDocument(noteEditorArea.text || canvasRoot.activeContent) ? Text.RichText : Text.MarkdownText
                     color: "#fffffe"
                     font.pixelSize: 15

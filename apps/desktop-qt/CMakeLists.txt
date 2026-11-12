@@ -287,6 +287,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
 
     add_executable(synapse-notes-rich-qml-tests
         tests/notes/native_rich_qml_test.cpp
+        tests/notes/native_notes_mock_controller.h
         tests/notes/native_notes_slash_menu_qml_test.cpp
         tests/notes/native_notes_page_reference_qml_test.cpp
         tests/notes/native_notes_rich_images_qml_test.cpp
@@ -294,6 +295,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_rich_image_clipboard_qml_test.cpp
         tests/notes/native_notes_rich_image_deletion_qml_test.cpp
         tests/notes/native_notes_rich_image_drop_qml_test.cpp
+        tests/notes/native_notes_link_preview_qml_test.cpp
         tests/notes/native_notes_reference_search_qml_test.cpp
         tests/notes/native_notes_reference_actions_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp
