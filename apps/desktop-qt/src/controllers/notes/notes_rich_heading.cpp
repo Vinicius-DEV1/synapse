@@ -33,6 +33,11 @@ struct TableHeaderCellMarkup {
     QVector<BoldRange> explicitBold;
 };
 
+struct TableHeaderRowMarkup {
+    int rowIndex = 0;
+    QVector<TableHeaderCellMarkup> cells;
+};
+
 int headingLevel(const QString &tag) {
     if (tag == "h1") return 1;
     if (tag == "h2") return 2;
@@ -43,7 +48,8 @@ int headingLevel(const QString &tag) {
     return 0;
 }
 
-void prepareTableHeaderStyles(QTextDocument &document, const QVector<QVector<TableHeaderCellMarkup>> &tables) {
+void prepareTableHeaderStyles(QTextDocument &document,
+                              const QVector<QVector<TableHeaderRowMarkup>> &tables) {
     if (tables.isEmpty()) return;
     QVector<QTextTable *> documentTables;
     for (QTextFrame *frame : document.rootFrame()->childFrames()) {
@@ -57,27 +63,29 @@ void prepareTableHeaderStyles(QTextDocument &document, const QVector<QVector<Tab
     QVector<QTextCursor> insertionCursors;
     for (int tableIndex = 0; tableIndex < tables.size(); ++tableIndex) {
         QTextTable *table = documentTables.at(tableIndex);
-        const auto &headerCells = tables.at(tableIndex);
-        if (headerCells.isEmpty()) continue;
-        if (table->rows() == 0 || table->columns() != headerCells.size()) return;
-        for (int column = 0; column < headerCells.size(); ++column) {
-            const QTextTableCell cell = table->cellAt(0, column);
-            QTextCursor insertionCursor = cell.firstCursorPosition();
-            const int cellStart = insertionCursor.position();
-            insertionCursors.append(insertionCursor);
-            for (auto cellItem = cell.begin(); cellItem != cell.end(); ++cellItem) {
-                const QTextBlock block = cellItem.currentBlock();
-                if (!block.isValid()) continue;
-                for (auto fragmentItem = block.begin(); !fragmentItem.atEnd(); ++fragmentItem) {
-                    const QTextFragment fragment = fragmentItem.fragment();
-                    if (!fragment.isValid()) continue;
-                    QTextCharFormat format = fragment.charFormat();
-                    format.setProperty(NotesRichFormat::TableHeaderBoldState, NotesRichFormat::TableHeaderGeneratedBold);
-                    pending.append({fragment.position(), fragment.position() + fragment.length(), format});
+        for (const TableHeaderRowMarkup &headerRow : tables.at(tableIndex)) {
+            if (headerRow.rowIndex < 0 || headerRow.rowIndex >= table->rows() ||
+                table->columns() != headerRow.cells.size()) return;
+            for (int column = 0; column < headerRow.cells.size(); ++column) {
+                const QTextTableCell cell = table->cellAt(headerRow.rowIndex, column);
+                QTextCursor insertionCursor = cell.firstCursorPosition();
+                const int cellStart = insertionCursor.position();
+                insertionCursors.append(insertionCursor);
+                for (auto cellItem = cell.begin(); cellItem != cell.end(); ++cellItem) {
+                    const QTextBlock block = cellItem.currentBlock();
+                    if (!block.isValid()) continue;
+                    for (auto fragmentItem = block.begin(); !fragmentItem.atEnd(); ++fragmentItem) {
+                        const QTextFragment fragment = fragmentItem.fragment();
+                        if (!fragment.isValid()) continue;
+                        QTextCharFormat format = fragment.charFormat();
+                        format.setProperty(NotesRichFormat::TableHeaderBoldState,
+                                           NotesRichFormat::TableHeaderGeneratedBold);
+                        pending.append({fragment.position(), fragment.position() + fragment.length(), format});
+                    }
                 }
+                for (const BoldRange &range : headerRow.cells.at(column).explicitBold)
+                    explicitRanges.append(qMakePair(cellStart + range.start, cellStart + range.end));
             }
-            for (const BoldRange &range : headerCells.at(column).explicitBold)
-                explicitRanges.append(qMakePair(cellStart + range.start, cellStart + range.end));
         }
     }
     document.setUndoRedoEnabled(false);
@@ -119,8 +127,9 @@ bool prepareHeadingStyles(QTextDocument &document, const QString &source) {
     int activeHeadingLevel = 0;
     int activeHeadingStart = 0;
     QVector<int> strongStarts;
-    QVector<QVector<TableHeaderCellMarkup>> tableHeaders;
-    QVector<TableHeaderCellMarkup> currentTableHeaders;
+    QVector<QVector<TableHeaderRowMarkup>> tableHeaders;
+    QVector<TableHeaderRowMarkup> currentTableHeaders;
+    QVector<TableHeaderCellMarkup> activeHeaderRow;
     TableHeaderCellMarkup activeHeaderCell;
     QVector<int> headerStrongStarts;
     int tableRows = 0;
@@ -143,7 +152,13 @@ bool prepareHeadingStyles(QTextDocument &document, const QString &source) {
                 if (name == "blockquote") quoteParagraphCount = 0;
                 activeHeadingLevel = headingLevel(name);
                 if (activeHeadingLevel > 0) activeHeadingStart = position;
-                if (name == "table") { currentTableHeaders.clear(); tableRows = 0; tableCellCount = 0; }
+                if (name == "table") {
+                    currentTableHeaders.clear();
+                    tableRows = 0;
+                    tableCellCount = 0;
+                }
+            } else if (name == "tr") {
+                activeHeaderRow.clear();
             } else if ((stack.last() == "ul" || stack.last() == "ol") && name == "li") {
                 if (listItemCount++ > 0) ++position;
                 taskParagraphCounts.append(0);
@@ -155,7 +170,7 @@ bool prepareHeadingStyles(QTextDocument &document, const QString &source) {
                 if (quoteParagraphCount++ > 0) ++position;
             } else if (stack.last() == "tr" && (name == "td" || name == "th")) {
                 if (tableCellCount++ > 0) ++position;
-                captureHeaderCell = tableRows == 0 && name == "th";
+                captureHeaderCell = name == "th";
                 if (captureHeaderCell) { activeHeaderCell = {}; headerParagraphs = 0; headerStrongStarts.clear(); }
             } else if ((stack.last() == "td" || stack.last() == "th") && name == "p" && captureHeaderCell) {
                 if (headerParagraphs++ > 0) { ++position; ++activeHeaderCell.textLength; }
@@ -179,9 +194,10 @@ bool prepareHeadingStyles(QTextDocument &document, const QString &source) {
                 activeHeadingLevel = 0;
             }
             if ((name == "td" || name == "th") && captureHeaderCell) {
-                currentTableHeaders.append(activeHeaderCell);
+                activeHeaderRow.append(activeHeaderCell);
                 captureHeaderCell = false;
             } else if (name == "tr" && stack.contains("table")) {
+                if (!activeHeaderRow.isEmpty()) currentTableHeaders.append({tableRows, activeHeaderRow});
                 ++tableRows;
             } else if (name == "table") {
                 tableHeaders.append(currentTableHeaders);

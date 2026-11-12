@@ -87,6 +87,7 @@ bool supportsSource(const QString &source) {
     int quoteParagraphs = 0;
     int codeChildren = 0;
     int tableRows = 0;
+    int tableHeaderRows = 0;
     int tableColumns = -1;
     int rowCells = 0;
     int tableCellCount = 0;
@@ -158,6 +159,7 @@ bool supportsSource(const QString &source) {
                 if (name == "table") {
                     hasTable = true;
                     tableRows = 0;
+                    tableHeaderRows = 0;
                     tableColumns = -1;
                     tableCellCount = 0;
                     sawTbody = false;
@@ -171,7 +173,6 @@ bool supportsSource(const QString &source) {
             } else if (stack.last() == "tr" && (name == "td" || name == "th")) {
                 const bool isHeader = name == "th";
                 if (rowHeaderStateSet && currentRowHeader != isHeader) return false;
-                if (tableRows > 0 && isHeader) return false;
                 currentRowHeader = isHeader;
                 rowHeaderStateSet = true;
                 if (tableCellCount++ > 0) {
@@ -239,9 +240,10 @@ bool supportsSource(const QString &source) {
                 if (rowCells == 0) return false;
                 if (tableRows == 0) {
                     tableColumns = rowCells;
-                } else if (rowCells != tableColumns || currentRowHeader) {
+                } else if (rowCells != tableColumns) {
                     return false;
                 }
+                if (currentRowHeader && ++tableHeaderRows > 1) return false;
                 ++tableRows;
             } else if (name == "td" || name == "th") {
                 if (cellParagraphs == 0) return false;

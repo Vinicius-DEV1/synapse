@@ -9,4 +9,5 @@ void apply(QTextTable &table);
 void prepare(QTextDocument &document);
 bool isBorderBrush(const QBrush &brush);
 bool isHeaderBackground(const QBrush &brush);
+int headerRowIndex(const QTextTable &table);
 }

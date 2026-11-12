@@ -78,12 +78,37 @@ private slots:
         textEdit->setProperty("cursorPosition", cell.position());
         QCoreApplication::processEvents();
         QVERIFY(toolbar->property("tableCellActive").toBool());
-        QVERIFY(!toolbar->property("canMoveTableRowUp").toBool());
+        QVERIFY(toolbar->property("canMoveTableRowUp").toBool());
         QVERIFY(toolbar->property("canMoveTableRowDown").toBool());
         QVERIFY(QMetaObject::invokeMethod(toolbar, "richTableActionRequested", Q_ARG(QString, QStringLiteral("rowAfter"))));
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
         QVERIFY(committed.toBool());
         QCOMPARE(richEditor->property("sourceHtml").toString().count("<tr>"), 4);
+
+        const QString headerMoveOriginal = richEditor->property("sourceHtml").toString();
+        QTextCursor headerCell = table->cellAt(0, 0).firstCursorPosition();
+        textEdit->setProperty("cursorPosition", headerCell.position());
+        QCoreApplication::processEvents();
+        QVERIFY(!toolbar->property("canMoveTableRowUp").toBool());
+        QVERIFY(toolbar->property("canMoveTableRowDown").toBool());
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richTableActionRequested",
+                                          Q_ARG(QString, QStringLiteral("moveRowDown"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QString movedHeaderHtml = richEditor->property("sourceHtml").toString();
+        QVERIFY(movedHeaderHtml.indexOf("<td>") < movedHeaderHtml.indexOf("<th>"));
+        QVERIFY(NotesRichDocument::supportsSource(movedHeaderHtml));
+
+        headerCell = table->cellAt(1, 0).firstCursorPosition();
+        textEdit->setProperty("cursorPosition", headerCell.position());
+        QCoreApplication::processEvents();
+        QVERIFY(toolbar->property("canMoveTableRowUp").toBool());
+        QVERIFY(toolbar->property("canMoveTableRowDown").toBool());
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richTableActionRequested",
+                                          Q_ARG(QString, QStringLiteral("moveRowUp"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), headerMoveOriginal);
 
         richEditor->setProperty("active", false);
         richEditor->setProperty("sourceHtml", "<p>Heading</p>");

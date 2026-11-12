@@ -25,9 +25,22 @@ bool isHeaderBackground(const QBrush &brush) {
     return brush.color() == HeaderBackgroundColor;
 }
 
+int headerRowIndex(const QTextTable &table) {
+    int headerRow = -1;
+    for (int row = 0; row < table.rows(); ++row) {
+        const bool isHeader = table.cellAt(row, 0).format().fontWeight() >= QFont::Bold;
+        for (int column = 1; column < table.columns(); ++column) {
+            if ((table.cellAt(row, column).format().fontWeight() >= QFont::Bold) != isHeader) return -2;
+        }
+        if (!isHeader) continue;
+        if (headerRow >= 0) return -2;
+        headerRow = row;
+    }
+    return headerRow;
+}
+
 void apply(QTextTable &table) {
-    const bool hasHeaderRow = table.rows() > 0 && table.columns() > 0 &&
-        table.cellAt(0, 0).format().fontWeight() >= QFont::Bold;
+    const int headerRow = table.rows() > 0 && table.columns() > 0 ? headerRowIndex(table) : -1;
     QTextTableFormat tableFormat = table.format();
     tableFormat.setBorder(1.0);
     tableFormat.setBorderStyle(QTextFrameFormat::BorderStyle_Solid);
@@ -40,6 +53,7 @@ void apply(QTextTable &table) {
     tableFormat.setCellSpacing(0.0);
     tableFormat.setCellPadding(0.0);
     tableFormat.setBorderCollapse(true);
+    tableFormat.setHeaderRowCount(headerRow == 0 ? 1 : 0);
     table.setFormat(tableFormat);
 
     for (int row = 0; row < table.rows(); ++row) {
@@ -58,7 +72,7 @@ void apply(QTextTable &table) {
             const bool hasCustomBackground = NotesRichTableCellFormatting::isSupportedBackground(existingBackground) &&
                 !isHeaderBackground(existingBackground);
             if (hasCustomBackground) cellFormat.setBackground(existingBackground);
-            else if (hasHeaderRow && row == 0) cellFormat.setBackground(HeaderBackgroundColor);
+            else if (headerRow >= 0 && row == headerRow) cellFormat.setBackground(HeaderBackgroundColor);
             else cellFormat.clearProperty(QTextFormat::BackgroundBrush);
             cell.setFormat(cellFormat);
 

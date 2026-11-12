@@ -218,6 +218,7 @@ bool appendCell(QString &html, const QTextTableCell &cell, bool header) {
 bool serialize(const QTextTable &table, QString &html) {
     if (table.rows() < 1 || table.columns() < 1 || !supportedTableFormat(table.format(), table.columns())) return false;
     QVector<bool> rowHeaders;
+    int headerRows = 0;
     for (int row = 0; row < table.rows(); ++row) {
         bool headerRow = false;
         for (int column = 0; column < table.columns(); ++column) {
@@ -226,14 +227,7 @@ bool serialize(const QTextTable &table, QString &html) {
             if (column == 0) headerRow = header;
             else if (header != headerRow) return false;
         }
-        if (row == 0 && !headerRow) {
-            for (int later = 1; later < table.rows(); ++later) {
-                bool hasHeader = false;
-                if (!supportedCellFormat(table.cellAt(later, 0), hasHeader) || hasHeader) return false;
-            }
-        } else if (row > 0 && headerRow) {
-            return false;
-        }
+        if (headerRow && ++headerRows > 1) return false;
         rowHeaders.append(headerRow);
     }
 

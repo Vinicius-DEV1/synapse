@@ -232,11 +232,12 @@ private slots:
         QVERIFY(NotesRichTables::isCellAt(document, cellPosition(0, 0)));
         QVERIFY(NotesRichTables::applyStructureAction(document, cellPosition(0, 0), "rowBefore"));
         QCOMPARE(table()->rows(), 4);
-        QVERIFY(table()->cellAt(0, 0).format().fontWeight() >= QFont::Bold);
-        QVERIFY(table()->cellAt(1, 0).format().fontWeight() < QFont::Bold);
+        QVERIFY(table()->cellAt(0, 0).format().fontWeight() < QFont::Bold);
+        QVERIFY(table()->cellAt(1, 0).format().fontWeight() >= QFont::Bold);
         QString html = NotesRichDocument::serialize(document);
         QVERIFY2(!html.isNull(), qPrintable(html));
-        QVERIFY(html.contains("<td><p>Heading <strong>emphasis</strong></p></td>"));
+        QVERIFY(html.contains("<tr><td><p></p></td>"));
+        QVERIFY(html.contains("<tr><th><p>Heading <strong>emphasis</strong></p></th>"));
         document.undo();
         QCOMPARE(NotesRichDocument::serialize(document), original);
 
@@ -270,9 +271,25 @@ private slots:
         document.undo();
         QCOMPARE(NotesRichDocument::serialize(document), original);
 
+        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(0, 0), "moveRowUp"));
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, cellPosition(0, 0), "moveRowDown"));
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, cellPosition(1, 0), "moveRowUp"));
+        QVERIFY(NotesRichTables::applyStructureAction(document, cellPosition(0, 0), "moveRowDown"));
+        html = NotesRichDocument::serialize(document);
+        QVERIFY2(!html.isNull(), qPrintable(html));
+        QVERIFY(html.indexOf("Alpha") < html.indexOf("Heading"));
+        QVERIFY(html.indexOf("Heading") < html.indexOf("Beta"));
+        QVERIFY(html.contains("<tr><th><p>Heading <strong>emphasis</strong></p></th>"));
+        QVERIFY(html.contains("<tr><td><p>Alpha</p></td>"));
+        QTextDocument movedHeaderDocument;
+        movedHeaderDocument.setHtml(html);
+        QVERIFY(NotesRichDocument::prepareHeadingStyles(movedHeaderDocument, html));
+        QCOMPARE(NotesRichDocument::serialize(movedHeaderDocument), html);
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
         QVERIFY(NotesRichTables::canApplyStructureAction(document, cellPosition(1, 0), "moveRowDown"));
-        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(1, 0), "moveRowUp"));
-        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(0, 0), "moveRowDown"));
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, cellPosition(1, 0), "moveRowUp"));
         QVERIFY(NotesRichTables::applyStructureAction(document, cellPosition(1, 0), "moveRowDown"));
         html = NotesRichDocument::serialize(document);
         QVERIFY2(!html.isNull(), qPrintable(html));

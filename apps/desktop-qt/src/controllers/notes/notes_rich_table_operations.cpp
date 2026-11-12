@@ -95,11 +95,6 @@ void moveColumn(QTextTable &table, int from, int to) {
     table.removeColumns(to < from ? from + 1 : from, 1);
 }
 
-bool hasHeaderRow(const QTextTable &table) {
-    return table.rows() > 0 && table.columns() > 0 &&
-        table.cellAt(0, 0).format().fontWeight() >= QFont::Bold;
-}
-
 QTextCharFormat normalizeHeaderCharacterFormat(QTextCharFormat format, bool header, bool empty) {
     const int state = format.intProperty(NotesRichFormat::TableHeaderBoldState);
     const bool wasBold = format.fontWeight() >= QFont::Bold;
@@ -119,11 +114,11 @@ QTextCharFormat normalizeHeaderCharacterFormat(QTextCharFormat format, bool head
     return format;
 }
 
-void applyHeaderSemantics(QTextTable &table, bool headerEnabled) {
+void applyHeaderSemantics(QTextTable &table, int headerRow) {
     for (int row = 0; row < table.rows(); ++row) {
         for (int column = 0; column < table.columns(); ++column) {
             QTextTableCell cell = table.cellAt(row, column);
-            const bool header = headerEnabled && row == 0;
+            const bool header = row == headerRow;
             QTextTableCellFormat cellFormat;
             cellFormat.merge(cell.format());
             if (header) cellFormat.setFontWeight(QFont::Bold);
@@ -151,6 +146,14 @@ void applyHeaderSemantics(QTextTable &table, bool headerEnabled) {
             }
         }
     }
+}
+
+int movedRowIndex(int movedFrom, int movedTo, int rowIndex) {
+    if (rowIndex < 0) return -1;
+    if (rowIndex == movedFrom) return movedTo;
+    if (movedFrom < movedTo && rowIndex > movedFrom && rowIndex <= movedTo) return rowIndex - 1;
+    if (movedFrom > movedTo && rowIndex >= movedTo && rowIndex < movedFrom) return rowIndex + 1;
+    return rowIndex;
 }
 
 bool removeTable(QTextDocument &document, QTextTable &table) {
@@ -204,13 +207,12 @@ bool canApplyStructureAction(const QTextDocument &document, int position, const 
 
     const int row = cell.row();
     const int column = cell.column();
-    const bool headerEnabled = hasHeaderRow(*table);
+    const int headerRow = NotesRichTableStyles::headerRowIndex(*table);
+    if (headerRow == -2) return false;
     if (parsedAction == TableAction::DeleteRow) return table->rows() > 1;
     if (parsedAction == TableAction::DeleteColumn) return table->columns() > 1;
-    if (parsedAction == TableAction::MoveRowUp)
-        return row > 0 && !(headerEnabled && row == 1);
-    if (parsedAction == TableAction::MoveRowDown)
-        return row + 1 < table->rows() && !(headerEnabled && row == 0);
+    if (parsedAction == TableAction::MoveRowUp) return row > 0;
+    if (parsedAction == TableAction::MoveRowDown) return row + 1 < table->rows();
     if (parsedAction == TableAction::MoveColumnLeft) return column > 0;
     if (parsedAction == TableAction::MoveColumnRight) return column + 1 < table->columns();
     return true;
@@ -230,18 +232,35 @@ bool applyStructureAction(QTextDocument &document, int position, const QString &
     if (!cell.isValid()) return false;
     const int row = cell.row();
     const int column = cell.column();
-    const bool headerEnabled = hasHeaderRow(*table);
+    int headerRow = NotesRichTableStyles::headerRowIndex(*table);
+    if (headerRow == -2) return false;
 
     cursor.beginEditBlock();
     switch (parsedAction) {
-    case TableAction::RowBefore: table->insertRows(row, 1); break;
-    case TableAction::RowAfter: table->insertRows(row + 1, 1); break;
-    case TableAction::DeleteRow: table->removeRows(row, 1); break;
+    case TableAction::RowBefore:
+        table->insertRows(row, 1);
+        if (headerRow >= row) ++headerRow;
+        break;
+    case TableAction::RowAfter:
+        table->insertRows(row + 1, 1);
+        if (headerRow > row) ++headerRow;
+        break;
+    case TableAction::DeleteRow:
+        table->removeRows(row, 1);
+        if (headerRow > row) --headerRow;
+        else if (headerRow == row) headerRow = table->rows() > 0 ? qMin(row, table->rows() - 1) : -1;
+        break;
     case TableAction::ColumnBefore: table->insertColumns(column, 1); break;
     case TableAction::ColumnAfter: table->insertColumns(column + 1, 1); break;
     case TableAction::DeleteColumn: table->removeColumns(column, 1); break;
-    case TableAction::MoveRowUp: moveRow(*table, row, row - 1); break;
-    case TableAction::MoveRowDown: moveRow(*table, row, row + 1); break;
+    case TableAction::MoveRowUp:
+        moveRow(*table, row, row - 1);
+        headerRow = movedRowIndex(row, row - 1, headerRow);
+        break;
+    case TableAction::MoveRowDown:
+        moveRow(*table, row, row + 1);
+        headerRow = movedRowIndex(row, row + 1, headerRow);
+        break;
     case TableAction::MoveColumnLeft: moveColumn(*table, column, column - 1); break;
     case TableAction::MoveColumnRight: moveColumn(*table, column, column + 1); break;
     case TableAction::DeleteTable: {
@@ -251,7 +270,7 @@ bool applyStructureAction(QTextDocument &document, int position, const QString &
     }
     }
     synchronizeColumnFormat(*table);
-    applyHeaderSemantics(*table, headerEnabled);
+    applyHeaderSemantics(*table, headerRow);
     NotesRichTableStyles::apply(*table);
     cursor.endEditBlock();
     return true;
