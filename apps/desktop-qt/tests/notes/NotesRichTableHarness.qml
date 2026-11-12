@@ -25,6 +25,8 @@ Item {
         calloutColor: richEditor.calloutColorAtCursor
         codeBlockActive: richEditor.codeBlockActive
         codeBlockLanguage: richEditor.codeBlockLanguage
+        codeBlockCopySucceeded: richEditor.codeBlockCopySucceeded
+        codeBlockCopyRevision: richEditor.codeBlockCopyRevision
     }
 
     NotesRichTextEditor {
@@ -50,6 +52,7 @@ Item {
             richEditor.dropDividerAt(targetPosition, afterTarget)
         }
         function onRichCodeLanguageRequested(language) { richEditor.setCodeBlockLanguage(language) }
+        function onRichCodeCopyRequested() { richEditor.copyCodeBlock() }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
         function onRichCalloutRequested(color) { richEditor.setCalloutColor(color) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }

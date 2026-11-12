@@ -13,6 +13,8 @@ Item {
     property string validationMessage: ""
     property int calloutRevision: 0
     property int codeBlockRevision: 0
+    property int codeBlockCopyRevision: 0
+    property bool codeBlockCopySucceeded: false
     property int linkSelectionStart: 0
     property int linkSelectionEnd: 0
     property bool canEditSource: sourceHtml.length === 0
@@ -180,6 +182,14 @@ Item {
         commitTimer.restart()
         richEditor.forceActiveFocus()
         return true
+    }
+
+    function copyCodeBlock() {
+        codeBlockCopySucceeded = active && codeBlockActive &&
+            textOperations.copyRichCodeBlock(richEditor.textDocument, richEditor.cursorPosition)
+        codeBlockCopyRevision += 1
+        richEditor.forceActiveFocus()
+        return codeBlockCopySucceeded
     }
 
     function openLinkDialog() {

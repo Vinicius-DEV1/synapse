@@ -11,6 +11,8 @@
 
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
+#include <QtGui/QClipboard>
+#include <QtGui/QGuiApplication>
 #include <QtQuick/QQuickTextDocument>
 
 bool NotesTextOperations::replace(QQuickTextDocument *document, int start, int end, const QString &replacement) {
@@ -53,6 +55,16 @@ bool NotesTextOperations::setRichCodeBlockLanguage(QQuickTextDocument *document,
                                                      const QString &language) const {
     return document && document->textDocument() &&
         NotesRichCodeBlocks::setLanguage(*document->textDocument(), position, language);
+}
+
+bool NotesTextOperations::copyRichCodeBlock(QQuickTextDocument *document, int position) const {
+    if (!document || !document->textDocument() || !NotesRichCodeBlocks::isAt(*document->textDocument(), position))
+        return false;
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (!clipboard) return false;
+    const QString code = NotesRichCodeBlocks::textAt(*document->textDocument(), position);
+    clipboard->setText(code, QClipboard::Clipboard);
+    return clipboard->text(QClipboard::Clipboard) == code;
 }
 
 bool NotesTextOperations::prepareRichCallouts(QQuickTextDocument *document, const QString &source) const {

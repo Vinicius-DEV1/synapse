@@ -25,6 +25,7 @@ Rectangle {
     signal richDividerActionRequested(string action)
     signal richDividerDropRequested(int targetPosition, bool afterTarget)
     signal richCodeLanguageRequested(string language)
+    signal richCodeCopyRequested()
     signal richMarkRequested(string mark)
     property bool richMode: false
     property bool tableCellActive: false
@@ -43,6 +44,8 @@ Rectangle {
     property string calloutColor: "default"
     property bool codeBlockActive: false
     property string codeBlockLanguage: "auto"
+    property bool codeBlockCopySucceeded: false
+    property int codeBlockCopyRevision: 0
 
     RowLayout {
         anchors.fill: parent
@@ -123,13 +126,14 @@ Rectangle {
             visible: toolbarRoot.richMode
             onBlockRequested: function(blockType) { toolbarRoot.richBlockRequested(blockType) }
         }
-
-        NotesCodeLanguageSelector {
+        NotesCodeBlockHeaderActions {
             visible: toolbarRoot.richMode && toolbarRoot.codeBlockActive
             language: toolbarRoot.codeBlockLanguage
+            copySucceeded: toolbarRoot.codeBlockCopySucceeded
+            copyRevision: toolbarRoot.codeBlockCopyRevision
             onLanguageRequested: function(language) { toolbarRoot.richCodeLanguageRequested(language) }
+            onCopyRequested: toolbarRoot.richCodeCopyRequested()
         }
-
         NotesCalloutPalette {
             active: toolbarRoot.richMode && toolbarRoot.calloutActive
             currentColor: toolbarRoot.calloutColor
@@ -137,7 +141,6 @@ Rectangle {
             Layout.preferredHeight: 30
             onColorSelected: function(color) { toolbarRoot.richCalloutRequested(color) }
         }
-
         Rectangle {
             visible: toolbarRoot.richMode
             Layout.preferredWidth: 30

@@ -135,6 +135,26 @@ QString languageAt(const QTextDocument &document, int position) {
     return document.findBlock(position).blockFormat().stringProperty(NotesRichFormat::CodeBlockLanguage);
 }
 
+QString textAt(const QTextDocument &document, int position) {
+    if (!isAt(document, position)) return {};
+    const QTextBlock selected = document.findBlock(position);
+    const int groupId = selected.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup);
+    QString result;
+    bool hasLine = false;
+    for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+        const bool belongsToGroup = groupId > 0
+            ? block.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId
+            : block.position() == selected.position();
+        if (!belongsToGroup) continue;
+        if (hasLine) result += QChar::LineFeed;
+        QString line = block.text();
+        line.replace(QChar::LineSeparator, QChar::LineFeed);
+        result += line;
+        hasLine = true;
+    }
+    return result;
+}
+
 int nextGroupId(const QTextDocument &document) {
     int greatest = 0;
     for (QTextBlock block = document.begin(); block.isValid(); block = block.next())

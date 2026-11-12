@@ -280,6 +280,8 @@ ScrollView {
                 calloutColor: richTextEditor.calloutColorAtCursor
                 codeBlockActive: richTextEditor.codeBlockActive
                 codeBlockLanguage: richTextEditor.codeBlockLanguage
+                codeBlockCopySucceeded: richTextEditor.codeBlockCopySucceeded
+                codeBlockCopyRevision: richTextEditor.codeBlockCopyRevision
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
                 onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
@@ -301,6 +303,7 @@ ScrollView {
                 onRichCodeLanguageRequested: function(language) {
                     richTextEditor.setCodeBlockLanguage(language)
                 }
+                onRichCodeCopyRequested: richTextEditor.copyCodeBlock()
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {
                     if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()

@@ -4,6 +4,8 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
+#include <QtGui/QClipboard>
+#include <QtGui/QGuiApplication>
 #include <QtGui/QTextBlock>
 #include <QtQuick/QQuickTextDocument>
 #include <QtQml/QQmlComponent>
@@ -72,13 +74,26 @@ private slots:
         QVariant committed;
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
         QVERIFY(committed.toBool());
-        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral(
-            "<pre><code class=\"language-python\">int main() {\n    return 0;\n}</code></pre>"));
+        const QString savedSource = QStringLiteral(
+            "<pre><code class=\"language-python\">int main() {\n    return 0;\n}</code></pre>");
+        QCOMPARE(richEditor->property("sourceHtml").toString(), savedSource);
+
+        QObject *headerActions = root->findChild<QObject *>("notesCodeBlockHeaderActions");
+        QObject *copyButton = root->findChild<QObject *>("notesCodeCopyButton");
+        QVERIFY(headerActions);
+        QVERIFY(copyButton);
+        QVERIFY(QMetaObject::invokeMethod(copyButton, "clicked"));
+        QVERIFY(headerActions->property("copied").toBool());
+        QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Clipboard), QStringLiteral(
+            "int main() {\n    return 0;\n}"));
+        QCOMPARE(richEditor->property("sourceHtml").toString(), savedSource);
+        QVERIFY(!richEditor->property("hasPendingChanges").toBool());
 
         QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
         QVERIFY(committed.toBool());
         QCOMPARE(richEditor->property("sourceHtml").toString(), source);
+        QTRY_VERIFY_WITH_TIMEOUT(!headerActions->property("copied").toBool(), 2500);
     }
 };
 
