@@ -123,6 +123,14 @@ Item {
         return true
     }
 
+    function requestDelete() {
+        return imageDeletion.requestDelete(imageState.valid ? imageState.position : -1)
+    }
+
+    function handleDeleteKey(key) {
+        return imageDeletion.handleKey(key)
+    }
+
     function openForPosition() {
         return imageImportFlow.openForPosition()
     }
@@ -227,6 +235,18 @@ Item {
         }
         onResetRequested: imageActionsRoot.resetImageSize()
         z: 4
+    }
+
+    NotesRichImageDeletion {
+        id: imageDeletion
+        anchors.fill: parent
+        z: 30
+        textEditor: imageActionsRoot.textEditor
+        textOperations: imageActionsRoot.textOperations
+        commitTimer: imageActionsRoot.commitTimer
+        pageId: imageActionsRoot.pageId
+        active: imageActionsRoot.active
+        onContentModified: imageActionsRoot.contentModified()
     }
 
     NotesRichImageImportFlow {

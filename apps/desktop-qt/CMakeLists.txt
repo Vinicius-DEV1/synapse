@@ -288,6 +288,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_rich_images_qml_test.cpp
         tests/notes/native_notes_rich_image_movement_qml_test.cpp
         tests/notes/native_notes_rich_image_clipboard_qml_test.cpp
+        tests/notes/native_notes_rich_image_deletion_qml_test.cpp
         tests/notes/native_notes_rich_image_drop_qml_test.cpp
         tests/notes/native_notes_reference_search_qml_test.cpp
         tests/notes/native_notes_reference_actions_qml_test.cpp
@@ -342,6 +343,12 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_page_reference_actions.cpp
+        src/controllers/notes/notes_rich_images.cpp
+        src/controllers/notes/notes_rich_image_insertions.cpp
+        src/controllers/notes/notes_rich_image_properties.cpp
+        src/controllers/notes/notes_rich_image_editing.cpp
+        src/controllers/notes/notes_rich_image_editing.h
+        src/controllers/notes/notes_rich_image_operations.cpp
         src/controllers/notes/notes_text_table_operations.cpp
         src/controllers/notes/notes_rich_slash_commands.cpp
         src/controllers/notes/notes_rich_slash_commands.h

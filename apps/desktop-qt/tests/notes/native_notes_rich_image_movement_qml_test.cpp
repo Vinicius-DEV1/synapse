@@ -124,6 +124,17 @@ private slots:
         QVERIFY(saved.value("html").toString().contains("data-align=\"right\""));
         QVERIFY(saved.value("html").toString().contains("data-caption=\"Evening\""));
         QCOMPARE(changed.count(), 3);
+
+        imagePosition = findImagePosition(quickDocument->textDocument());
+        QVERIFY(imagePosition >= 0);
+        imageEditor->setProperty("cursorPosition", imagePosition);
+        QVERIFY(QMetaObject::invokeMethod(imageActions, "refreshImageState", Qt::DirectConnection));
+        QObject *deleteDialog = root->findChild<QObject *>("notesRichImageDeleteDialog");
+        QVERIFY(deleteDialog);
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageDeleteRequested", Qt::DirectConnection));
+        QTRY_VERIFY(deleteDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(deleteDialog, "close", Qt::DirectConnection));
+        QVERIFY(!deleteDialog->property("visible").toBool());
     }
 };
 

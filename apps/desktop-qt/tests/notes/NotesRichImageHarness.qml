@@ -36,6 +36,7 @@ Item {
         onRichImageFitRequested: imageActions.fitToWidth()
         onRichImageResetRequested: imageActions.resetImageSize()
         onRichImageParagraphBelowRequested: imageActions.insertParagraphBelowImage()
+        onRichImageDeleteRequested: imageActions.requestDelete()
     }
 
     NotesRichImageActions {

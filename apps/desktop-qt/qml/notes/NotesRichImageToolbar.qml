@@ -11,7 +11,7 @@ Item {
     property bool canMoveUp: false
     property bool canMoveDown: false
     visible: active
-    implicitWidth: active ? 8 * 28 + 7 * 4 : 0
+    implicitWidth: active ? 9 * 28 + 8 * 4 : 0
     implicitHeight: 30
 
     signal alignmentRequested(string alignment)
@@ -19,6 +19,7 @@ Item {
     signal paragraphBelowRequested()
     signal fitRequested()
     signal resetRequested()
+    signal deleteRequested()
 
     RowLayout {
         anchors.fill: parent
@@ -142,6 +143,23 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: imageToolbar.paragraphBelowRequested()
             }
+        }
+        ToolButton {
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 26
+            padding: 2
+            text: "×"
+            Accessible.name: qsTr("Delete image")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Delete image")
+            contentItem: Text {
+                text: "×"
+                color: "#fda4af"
+                font.pixelSize: 18
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: imageToolbar.deleteRequested()
         }
     }
 }

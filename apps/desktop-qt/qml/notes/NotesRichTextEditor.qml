@@ -165,6 +165,8 @@ Item {
     function fitImageToWidth() { return richImageActions.fitToWidth() }
     function resetImageSize() { return richImageActions.resetImageSize() }
     function insertParagraphBelowImage() { return richImageActions.insertParagraphBelowImage() }
+    function requestImageDelete() { return richImageActions.requestDelete() }
+    function handleRichImageDeleteKey(key) { return richImageActions.handleDeleteKey(key) }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()

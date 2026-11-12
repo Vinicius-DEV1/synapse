@@ -1,6 +1,7 @@
 #include "notes_rich_image_editing.h"
 
 #include "notes_rich_format.h"
+#include "notes_rich_image_internal.h"
 #include "notes_rich_images.h"
 
 #include <QtGui/QTextBlock>
@@ -145,6 +146,54 @@ int insertParagraphBelow(QTextDocument &document, int imagePosition) {
     const int insertedPosition = inserted.position();
     cursor.endEditBlock();
     return insertedPosition;
+}
+
+int adjacentImagePosition(const QTextDocument &document, int cursorPosition, bool backward) {
+    if (cursorPosition < 0 || cursorPosition > document.characterCount() - 1) return -1;
+    const QTextBlock caretBlock = document.findBlock(cursorPosition);
+    if (!caretBlock.isValid()) return -1;
+
+    if (backward) {
+        const int precedingCharacter = cursorPosition - 1;
+        if (precedingCharacter >= 0 && imageBlockAt(document, precedingCharacter))
+            return precedingCharacter;
+        if (cursorPosition == caretBlock.position()) {
+            const QTextBlock precedingBlock = caretBlock.previous();
+            int imagePosition = -1;
+            if (shareEditableRegion(caretBlock, precedingBlock) &&
+                NotesRichImages::Internal::imageOnlyBlock(precedingBlock, nullptr, &imagePosition))
+                return imagePosition;
+        }
+        return -1;
+    }
+
+    if (imageBlockAt(document, cursorPosition)) return cursorPosition;
+    const int blockEnd = caretBlock.position() + caretBlock.text().size();
+    if (cursorPosition == blockEnd) {
+        const QTextBlock followingBlock = caretBlock.next();
+        int imagePosition = -1;
+        if (shareEditableRegion(caretBlock, followingBlock) &&
+            NotesRichImages::Internal::imageOnlyBlock(followingBlock, nullptr, &imagePosition))
+            return imagePosition;
+    }
+    return -1;
+}
+
+bool removeAt(QTextDocument &document, int imagePosition) {
+    QTextBlock imageBlock;
+    if (!imageBlockAt(document, imagePosition, &imageBlock)) return false;
+    QTextCursor cursor(&document);
+    cursor.setPosition(imagePosition);
+    cursor.setPosition(imagePosition + 1, QTextCursor::KeepAnchor);
+    if (cursor.selectionEnd() - cursor.selectionStart() != 1) return false;
+    cursor.beginEditBlock();
+    cursor.removeSelectedText();
+    QTextBlockFormat paragraphFormat = imageBlock.blockFormat();
+    paragraphFormat.clearProperty(QTextFormat::BlockAlignment);
+    QTextCursor blockCursor(imageBlock);
+    blockCursor.setBlockFormat(paragraphFormat);
+    cursor.endEditBlock();
+    return true;
 }
 
 }

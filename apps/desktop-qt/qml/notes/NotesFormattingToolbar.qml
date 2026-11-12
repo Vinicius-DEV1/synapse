@@ -25,6 +25,7 @@ Rectangle {
     signal richImageFitRequested()
     signal richImageResetRequested()
     signal richImageParagraphBelowRequested()
+    signal richImageDeleteRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
@@ -112,6 +113,7 @@ Rectangle {
             onFitRequested: toolbarRoot.richImageFitRequested()
             onResetRequested: toolbarRoot.richImageResetRequested()
             onParagraphBelowRequested: toolbarRoot.richImageParagraphBelowRequested()
+            onDeleteRequested: toolbarRoot.richImageDeleteRequested()
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
         NotesBlockStyleActions {

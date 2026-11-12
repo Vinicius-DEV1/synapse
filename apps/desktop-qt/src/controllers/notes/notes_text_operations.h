@@ -61,6 +61,9 @@ public:
                                      const QVariantList &images) const;
     Q_INVOKABLE int richImageInsertionPositionAfter(QQuickTextDocument *document,
                                                     int imagePosition) const;
+    Q_INVOKABLE int adjacentRichImagePosition(QQuickTextDocument *document,
+                                              int cursorPosition, bool backward) const;
+    Q_INVOKABLE bool removeRichImage(QQuickTextDocument *document, int imagePosition) const;
     Q_INVOKABLE QVariantMap richImageAt(QQuickTextDocument *document, int cursorPosition,
                                         int selectionStart, int selectionEnd) const;
     Q_INVOKABLE QString richImageData(QQuickTextDocument *document, int imagePosition) const;

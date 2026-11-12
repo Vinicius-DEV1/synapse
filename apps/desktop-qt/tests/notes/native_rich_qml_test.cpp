@@ -18,6 +18,7 @@ int runNativeNotesReferenceActionsQmlTest(int argc, char **argv);
 int runNativeNotesRichImagesQmlTest(int argc, char **argv);
 int runNativeNotesRichImageMovementQmlTest(int argc, char **argv);
 int runNativeNotesRichImageClipboardQmlTest(int argc, char **argv);
+int runNativeNotesRichImageDeletionQmlTest(int argc, char **argv);
 int runNativeNotesRichImageDropQmlTest(int argc, char **argv);
 
 class MockNotesController final : public QObject {
@@ -388,6 +389,7 @@ int main(int argc, char **argv) {
         runNativeNotesRichImagesQmlTest(argc, argv) |
         runNativeNotesRichImageMovementQmlTest(argc, argv) |
         runNativeNotesRichImageClipboardQmlTest(argc, argv) |
+        runNativeNotesRichImageDeletionQmlTest(argc, argv) |
         runNativeNotesRichImageDropQmlTest(argc, argv);
 }
 

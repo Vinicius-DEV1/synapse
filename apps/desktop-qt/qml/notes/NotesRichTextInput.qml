@@ -44,7 +44,6 @@ Item {
     }
 
     Component.onCompleted: previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
-
     function closeSlashMenu() {
         slashMenuOpen = false
         slashStart = -1
@@ -53,7 +52,6 @@ Item {
         slashCommandMenu.errorMessage = ""
         pendingSlashStart = -1
     }
-
     function updateSlashMenu(currentPlainText) {
         if (pendingSlashStart >= 0) {
             var typedSlashStart = pendingSlashStart
@@ -115,10 +113,7 @@ Item {
         }
         return executed
     }
-
-    function closePageReferenceMenu() {
-        pageReferenceFlow.close()
-    }
+    function closePageReferenceMenu() { pageReferenceFlow.close() }
     TextArea {
         id: richEditor
         objectName: "notesRichTextEditor"
@@ -157,6 +152,10 @@ Item {
                 if (event.key === Qt.Key_Left || event.key === Qt.Key_Right || event.key === Qt.Key_Space ||
                         (event.key === Qt.Key_Backspace && inputRoot.slashQuery.length === 0))
                     inputRoot.closeSlashMenu()
+            }
+            if (inputRoot.editorRoot.handleRichImageDeleteKey(event.key)) {
+                event.accepted = true
+                return
             }
             if (referenceActions.handleKey(event)) return
             if (commandModifier && event.key === Qt.Key_V &&

@@ -1,5 +1,6 @@
 #include "synapse_controller.h"
 #include "controllers/notes/notes_rich_document.h"
+#include "controllers/notes/notes_rich_image_editing.h"
 #include "controllers/notes/notes_rich_images.h"
 
 #include <QtCore/QBuffer>
@@ -17,6 +18,50 @@
 class NativeNotesRichImageClipboardTest final : public QObject {
     Q_OBJECT
 private slots:
+    void adjacentImageDeletionIsConfirmedByTheCallerAndUndoable() {
+        QImage image(32, 16, QImage::Format_ARGB32);
+        image.fill(QColor("#22c55e"));
+        QByteArray bytes;
+        QBuffer buffer(&bytes);
+        QVERIFY(buffer.open(QIODevice::WriteOnly));
+        QVERIFY(image.save(&buffer, "PNG"));
+        const QString dataUrl = QStringLiteral("data:image/png;base64,%1")
+            .arg(QString::fromLatin1(bytes.toBase64()));
+        const QString source = QStringLiteral(
+            "<p>Before</p><p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"photo.png\"/></p><p>After</p>")
+            .arg(dataUrl);
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichImages::prepare(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        const QTextBlock imageBlock = document.findBlockByNumber(1);
+        const QTextBlock beforeBlock = document.findBlockByNumber(0);
+        const QTextBlock afterBlock = document.findBlockByNumber(2);
+        int imagePosition = -1;
+        for (auto it = imageBlock.begin(); !it.atEnd(); ++it) {
+            const QTextFragment fragment = it.fragment();
+            if (fragment.isValid() && fragment.charFormat().isImageFormat())
+                imagePosition = fragment.position();
+        }
+        QVERIFY(imagePosition >= 0);
+        QVERIFY(NotesRichImageEditing::adjacentImagePosition(
+                    document, afterBlock.position(), true) == imagePosition);
+        QVERIFY(NotesRichImageEditing::adjacentImagePosition(
+                    document, beforeBlock.position() + beforeBlock.text().size(), false) == imagePosition);
+        QCOMPARE(NotesRichImageEditing::adjacentImagePosition(
+                     document, beforeBlock.position() + 3, true), -1);
+        QCOMPARE(NotesRichImageEditing::adjacentImagePosition(
+                     document, afterBlock.position() + 2, false), -1);
+        QVERIFY(!NotesRichImageEditing::removeAt(document, imagePosition + 1));
+        QVERIFY(NotesRichImageEditing::removeAt(document, imagePosition));
+        const QString removed = NotesRichDocument::serialize(document);
+        QVERIFY(!removed.contains("<img"));
+        QVERIFY(removed.contains("Before"));
+        QVERIFY(removed.contains("After"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+    }
+
     void imageBatchCanInsertAfterSelectedImageWithOneUndo() {
         QImage originalImage(32, 16, QImage::Format_ARGB32);
         originalImage.fill(QColor("#22c55e"));

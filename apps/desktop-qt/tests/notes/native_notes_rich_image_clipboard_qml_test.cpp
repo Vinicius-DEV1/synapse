@@ -204,6 +204,8 @@ private slots:
         QVERIFY(flushed.toBool());
         QCOMPARE(root->property("sourceHtml").toString(), originalHtml);
     }
+
+
 };
 
 int runNativeNotesRichImageClipboardQmlTest(int argc, char **argv) {

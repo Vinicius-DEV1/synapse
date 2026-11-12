@@ -31,6 +31,17 @@ int NotesTextOperations::richImageInsertionPositionAfter(QQuickTextDocument *doc
     return NotesRichImages::insertionPositionAfter(*document->textDocument(), imagePosition);
 }
 
+int NotesTextOperations::adjacentRichImagePosition(QQuickTextDocument *document,
+                                                    int cursorPosition, bool backward) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichImageEditing::adjacentImagePosition(*document->textDocument(), cursorPosition, backward);
+}
+
+bool NotesTextOperations::removeRichImage(QQuickTextDocument *document, int imagePosition) const {
+    if (!document || !document->textDocument()) return false;
+    return NotesRichImageEditing::removeAt(*document->textDocument(), imagePosition);
+}
+
 QVariantMap NotesTextOperations::richImageAt(QQuickTextDocument *document, int cursorPosition,
                                               int selectionStart, int selectionEnd) const {
     if (!document || !document->textDocument()) return {{"valid", false}, {"position", -1}};
