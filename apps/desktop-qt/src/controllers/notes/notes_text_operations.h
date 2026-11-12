@@ -49,6 +49,8 @@ public:
                                            const QString &currentText, int cursorPosition) const;
     Q_INVOKABLE QString richPlainText(QQuickTextDocument *document) const;
     Q_INVOKABLE bool toggleRichBlock(QQuickTextDocument *document, int start, int end, const QString &blockType) const;
+    Q_INVOKABLE int executeRichSlashCommand(QQuickTextDocument *document, int start, int end,
+                                             const QString &commandId) const;
     Q_INVOKABLE bool changeRichListIndent(QQuickTextDocument *document, int position, bool outdent) const;
     Q_INVOKABLE bool toggleRichTaskItem(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool toggleRichTaskItemFromCursor(QQuickTextDocument *document, int position) const;

@@ -6,10 +6,10 @@
 #include "notes_rich_code_blocks.h"
 #include "notes_rich_divider_editing.h"
 #include "notes_rich_spoilers.h"
+#include "notes_rich_slash_commands.h"
 #include "notes_rich_table_cell_formatting.h"
 #include "notes_rich_task_markup.h"
 #include "notes_rich_task_lists.h"
-#include "notes_rich_tables.h"
 
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
@@ -195,6 +195,11 @@ bool NotesTextOperations::toggleRichBlock(QQuickTextDocument *document, int star
     return document && document->textDocument() && NotesRichDocument::toggleBlock(*document->textDocument(), start, end, blockType);
 }
 
+int NotesTextOperations::executeRichSlashCommand(QQuickTextDocument *document, int start, int end,
+                                                  const QString &commandId) const {
+    return NotesRichSlashCommands::execute(document, start, end, commandId);
+}
+
 bool NotesTextOperations::changeRichListIndent(QQuickTextDocument *document, int position, bool outdent) const {
     return document && document->textDocument() &&
         NotesRichDocument::changeListIndent(*document->textDocument(), position, outdent);
@@ -244,49 +249,6 @@ int NotesTextOperations::moveRichDividerTo(QQuickTextDocument *document, int pos
 int NotesTextOperations::insertRichParagraphBelowDivider(QQuickTextDocument *document, int position) const {
     if (!document || !document->textDocument()) return -1;
     return NotesRichDividerEditing::insertParagraphBelow(*document->textDocument(), position);
-}
-
-int NotesTextOperations::insertRichTable(QQuickTextDocument *document, int start, int end) const {
-    if (!document || !document->textDocument()) return -1;
-    return NotesRichTables::insertSimpleTable(*document->textDocument(), start, end);
-}
-
-bool NotesTextOperations::isRichTableCell(QQuickTextDocument *document, int position) const {
-    return document && document->textDocument() &&
-        NotesRichTables::isCellAt(*document->textDocument(), position);
-}
-
-bool NotesTextOperations::canApplyRichTableAction(QQuickTextDocument *document, int position,
-                                                   const QString &action) const {
-    return document && document->textDocument() &&
-        NotesRichTables::canApplyStructureAction(*document->textDocument(), position, action);
-}
-
-bool NotesTextOperations::applyRichTableAction(QQuickTextDocument *document, int position,
-                                                const QString &action) const {
-    return document && document->textDocument() &&
-        NotesRichTables::applyStructureAction(*document->textDocument(), position, action);
-}
-
-bool NotesTextOperations::setRichTableCellBackground(QQuickTextDocument *document, int position,
-                                                      const QString &color, const QString &scope) const {
-    return document && document->textDocument() &&
-        NotesRichTableCellFormatting::setBackground(*document->textDocument(), position, color, scope);
-}
-
-bool NotesTextOperations::setRichColor(QQuickTextDocument *document, int start, int end,
-                                       const QString &color, bool background) const {
-    return document && document->textDocument() &&
-        NotesRichDocument::setColor(*document->textDocument(), start, end, color, background);
-}
-
-bool NotesTextOperations::setRichLink(QQuickTextDocument *document, int start, int end, const QString &url) const {
-    return document && document->textDocument() && NotesRichDocument::setLink(*document->textDocument(), start, end, url);
-}
-
-QString NotesTextOperations::richLinkUrl(QQuickTextDocument *document, int start, int end) const {
-    if (!document || !document->textDocument()) return {};
-    return NotesRichDocument::linkAtSelection(*document->textDocument(), start, end);
 }
 
 bool NotesTextOperations::replaceDocumentText(QTextDocument *document, int start, int end, const QString &replacement) {

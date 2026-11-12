@@ -9,9 +9,84 @@ Item {
     property var richCommands
     property var commitTimer
     property string previousPlainText: ""
+    property bool slashMenuOpen: false
+    property int slashStart: -1
+    property int pendingSlashStart: -1
+    property string slashQuery: ""
+    property real slashAnchorX: 0
+    property real slashAnchorY: 0
     readonly property alias editor: richEditor
+    readonly property string editorAccessibleDescription: {
+        var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
+            ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
+            : inputRoot.spoilerRevealControl.revealed
+                ? qsTr("The caret is inside a revealed spoiler. Press Alt+R to hide it.")
+                : qsTr("The caret is inside a hidden spoiler. Press Alt+R to reveal it.")
+        if (!slashMenuOpen) return spoilerDescription
+        var matches = slashCommandMenu.filteredCommands
+        if (matches.length === 0)
+            return spoilerDescription + " " + qsTr("The block menu is open with no matches. Press Escape to close it.")
+        var current = Math.max(0, Math.min(slashCommandMenu.selectedIndex, matches.length - 1))
+        return spoilerDescription + " " + qsTr("Block menu, selected %1 of %2: %3. Use Up or Down to choose, Enter to apply, or Escape to close.")
+            .arg(current + 1).arg(matches.length).arg(matches[current].title)
+    }
 
     Component.onCompleted: previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
+
+    function closeSlashMenu() {
+        slashMenuOpen = false
+        slashStart = -1
+        slashQuery = ""
+        slashCommandMenu.selectedIndex = 0
+        slashCommandMenu.errorMessage = ""
+        pendingSlashStart = -1
+    }
+
+    function updateSlashMenu(currentPlainText) {
+        if (pendingSlashStart >= 0) {
+            var typedSlashStart = pendingSlashStart
+            pendingSlashStart = -1
+            if (typedSlashStart < currentPlainText.length &&
+                    currentPlainText.charAt(typedSlashStart) === "/" &&
+                    richEditor.cursorPosition === typedSlashStart + 1) {
+                slashStart = typedSlashStart
+                slashQuery = ""
+                slashCommandMenu.selectedIndex = 0
+                slashAnchorX = richEditor.cursorRectangle.x
+                slashAnchorY = richEditor.cursorRectangle.y + richEditor.cursorRectangle.height + 6
+                slashMenuOpen = true
+                return
+            }
+        }
+        if (!slashMenuOpen) return
+        var cursor = richEditor.cursorPosition
+        if (cursor <= slashStart || cursor > currentPlainText.length ||
+                currentPlainText.charAt(slashStart) !== "/" ||
+                currentPlainText.substring(slashStart + 1, cursor).indexOf("\n") >= 0) {
+            closeSlashMenu()
+            return
+        }
+        var nextQuery = currentPlainText.substring(slashStart + 1, cursor)
+        if (nextQuery !== slashQuery) {
+            slashQuery = nextQuery
+            slashCommandMenu.selectedIndex = 0
+        }
+    }
+
+    function executeSlashCommand(commandId) {
+        if (!slashMenuOpen) return false
+        var commandStart = slashStart
+        var commandEnd = richEditor.cursorPosition
+        var executed = richCommands.executeSlashCommand(commandStart, commandEnd, commandId)
+        if (executed) {
+            closeSlashMenu()
+            richEditor.forceActiveFocus()
+        } else {
+            slashCommandMenu.errorMessage = qsTr("This block action could not be applied safely.")
+            richEditor.forceActiveFocus()
+        }
+        return executed
+    }
 
     TextArea {
         id: richEditor
@@ -19,11 +94,7 @@ Item {
         anchors.fill: parent
         visible: inputRoot.editorRoot.active
         textFormat: TextEdit.RichText
-        Accessible.description: inputRoot.spoilerRevealControl.spoilerPosition < 0
-            ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
-            : inputRoot.spoilerRevealControl.revealed
-                ? qsTr("The caret is inside a revealed spoiler. Press Alt+R to hide it.")
-                : qsTr("The caret is inside a hidden spoiler. Press Alt+R to reveal it.")
+        Accessible.description: inputRoot.editorAccessibleDescription
         color: "#fffffe"
         font.pixelSize: 15
         font.family: "Inter, -apple-system, sans-serif"
@@ -34,6 +105,32 @@ Item {
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
             var commandModifier = (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) !== 0
+            if (inputRoot.slashMenuOpen) {
+                if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                    slashCommandMenu.moveSelection(event.key === Qt.Key_Down ? 1 : -1)
+                    event.accepted = true
+                    return
+                }
+                if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                    var filteredCommands = slashCommandMenu.filteredCommands
+                    if (filteredCommands.length > 0 && slashCommandMenu.selectedIndex < filteredCommands.length)
+                        inputRoot.executeSlashCommand(filteredCommands[slashCommandMenu.selectedIndex].id)
+                    event.accepted = true
+                    return
+                }
+                if (event.key === Qt.Key_Escape) {
+                    inputRoot.closeSlashMenu()
+                    event.accepted = true
+                    return
+                }
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_Right || event.key === Qt.Key_Space ||
+                        (event.key === Qt.Key_Backspace && inputRoot.slashQuery.length === 0))
+                    inputRoot.closeSlashMenu()
+            }
+            if (event.text === "/" && !commandModifier && (event.modifiers & Qt.AltModifier) === 0) {
+                if (inputRoot.slashMenuOpen) inputRoot.closeSlashMenu()
+                inputRoot.pendingSlashStart = richEditor.cursorPosition
+            }
             if (event.key === Qt.Key_Left || event.key === Qt.Key_Right || event.key === Qt.Key_Up ||
                     event.key === Qt.Key_Down || event.key === Qt.Key_Home || event.key === Qt.Key_End ||
                     event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown || event.key === Qt.Key_Tab ||
@@ -67,7 +164,10 @@ Item {
         TapHandler {
             acceptedButtons: Qt.LeftButton
             acceptedModifiers: Qt.AltModifier
-            onPressedChanged: if (pressed) inputRoot.richCommands.clearPendingMarks()
+            onPressedChanged: if (pressed) {
+                inputRoot.closeSlashMenu()
+                inputRoot.richCommands.clearPendingMarks()
+            }
             onTapped: function(point) {
                 var position = richEditor.positionAt(point.position.x, point.position.y)
                 inputRoot.editorRoot.setSpoilerVisibility(position, "toggle")
@@ -76,7 +176,10 @@ Item {
         TapHandler {
             acceptedButtons: Qt.LeftButton
             acceptedModifiers: Qt.NoModifier
-            onPressedChanged: if (pressed) inputRoot.richCommands.clearPendingMarks()
+            onPressedChanged: if (pressed) {
+                inputRoot.closeSlashMenu()
+                inputRoot.richCommands.clearPendingMarks()
+            }
             onTapped: function(point) {
                 var position = richEditor.positionAt(point.position.x, point.position.y)
                 if (inputRoot.editorRoot.setSpoilerVisibility(position, "reveal")) return
@@ -91,6 +194,7 @@ Item {
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
             if (inputRoot.editorRoot.isLoading) {
                 inputRoot.previousPlainText = currentPlainText
+                inputRoot.closeSlashMenu()
                 return
             }
             var previousPlainText = inputRoot.previousPlainText
@@ -99,9 +203,26 @@ Item {
                 inputRoot.editorRoot.textOperations.applyRichPendingMarks(
                             richEditor.textDocument, previousPlainText, currentPlainText, richEditor.cursorPosition)
             }
+            inputRoot.updateSlashMenu(currentPlainText)
             inputRoot.editorRoot.hasPendingChanges = true
             inputRoot.commitTimer.restart()
             inputRoot.spoilerRevealControl.refresh()
+        }
+    }
+
+    NotesRichSlashCommandMenu {
+        id: slashCommandMenu
+        open: inputRoot.slashMenuOpen
+        query: inputRoot.slashQuery
+        anchorX: inputRoot.slashAnchorX
+        anchorY: inputRoot.slashAnchorY
+        onCommandSelected: function(commandId) { inputRoot.executeSlashCommand(commandId) }
+    }
+
+    Connections {
+        target: richEditor
+        function onActiveFocusChanged() {
+            if (!richEditor.activeFocus) inputRoot.closeSlashMenu()
         }
     }
 }

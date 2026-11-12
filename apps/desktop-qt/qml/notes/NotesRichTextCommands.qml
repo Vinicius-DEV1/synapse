@@ -88,6 +88,19 @@ Item {
         return true
     }
 
+    function executeSlashCommand(start, end, commandId) {
+        if (!editorRoot.active || editorRoot.hasInvalidContent) return false
+        var position = textOperations.executeRichSlashCommand(textEditor.textDocument, start, end, commandId)
+        if (position < 0) return false
+        textEditor.cursorPosition = position
+        calloutRevision += 1
+        codeBlockRevision += 1
+        if (commandId === "code") refreshCodeSyntaxHighlighting()
+        contentModified()
+        textEditor.forceActiveFocus()
+        return true
+    }
+
     function dropDividerAt(targetPosition, afterTarget) {
         if (!editorRoot.active || editorRoot.hasInvalidContent || !editorRoot.tableActions.isOnDivider) return false
         var movedPosition = textOperations.moveRichDividerTo(
