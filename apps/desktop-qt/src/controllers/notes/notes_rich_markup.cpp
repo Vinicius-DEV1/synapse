@@ -2,6 +2,7 @@
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QHash>
+#include <QtCore/QSet>
 #include <QtCore/QVector>
 #include <QtCore/QUrl>
 #include <QtCore/QUrlQuery>
@@ -100,11 +101,14 @@ QString pageReferenceHref(const QString &pageId, const QString &title) {
 
 QString pageReferencesForEditor(const QString &source, const QVariantList &pages) {
     QHash<QString, QString> currentTitles;
+    QSet<QString> activePageIds;
     for (const QVariant &entry : pages) {
         const QVariantMap page = entry.toMap();
         const QString id = page.value(QStringLiteral("id")).toString();
         const QString title = page.value(QStringLiteral("title")).toString();
-        if (isPageReferenceId(id) && !title.isEmpty() && title.size() <= 512) currentTitles.insert(id, title);
+        if (!isPageReferenceId(id)) continue;
+        activePageIds.insert(id);
+        if (!title.isEmpty() && title.size() <= 512) currentTitles.insert(id, title);
     }
 
     const QRegularExpression referencePattern(QStringLiteral("<span\\b([^>]*?)(?:></span>|\\s*/>)"));
@@ -122,8 +126,15 @@ QString pageReferencesForEditor(const QString &source, const QVariantList &pages
         const QString title = currentTitles.value(id, storedTitle.isEmpty() ? id : storedTitle);
         const QString href = pageReferenceHref(id, title);
         if (href.isEmpty()) continue;
-        const QString replacement = QStringLiteral("<a href=\"%1\">%2</a>")
-            .arg(href.toHtmlEscaped(), title.toHtmlEscaped());
+        const bool isActive = activePageIds.contains(id);
+        const QString displayLabel = isActive
+            ? QStringLiteral("↗ %1").arg(title)
+            : QStringLiteral("⚠ %1 (Deleted)").arg(title);
+        const QString style = isActive
+            ? QStringLiteral("color:rgba(255,255,255,0.75);background-color:rgba(255,255,255,0.04);text-decoration:none")
+            : QStringLiteral("color:rgba(248,113,113,1);background-color:rgba(239,68,68,0.08);text-decoration:none");
+        const QString replacement = QStringLiteral("<a href=\"%1\" style=\"%2\">%3</a>")
+            .arg(href.toHtmlEscaped(), style, displayLabel.toHtmlEscaped());
         replacements.append({current.capturedStart(), current.capturedLength(), replacement});
     }
     for (auto it = replacements.crbegin(); it != replacements.crend(); ++it) {

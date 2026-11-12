@@ -5,6 +5,7 @@
 #include "notes_rich_spoilers.h"
 
 #include <QtGui/QTextBlock>
+#include <QtGui/QColor>
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
@@ -21,7 +22,9 @@ int insertPageReference(QTextDocument &document, int position, const QString &pa
     QTextCharFormat format;
     format.setAnchor(true);
     format.setAnchorHref(href);
-    cursor.insertText(title, format);
+    format.setForeground(QColor(255, 255, 255, 191));
+    format.setBackground(QColor(255, 255, 255, 10));
+    cursor.insertText(QStringLiteral("↗ ") + title, format);
     cursor.endEditBlock();
     return cursor.position();
 }

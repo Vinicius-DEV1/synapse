@@ -23,7 +23,8 @@ inline bool supportedCharacterFormat(const QTextCharFormat &format, int headingL
         if (key == QTextFormat::FontSizeAdjustment) {
             if (headingLevel == 0 || it.value().toInt() != expectedSize) return false;
         } else if (key != QTextFormat::FontWeight && key != QTextFormat::FontItalic &&
-                   key != QTextFormat::FontUnderline && key != QTextFormat::TextUnderlineStyle &&
+                   key != QTextFormat::FontUnderline && key != QTextFormat::FontOverline &&
+                   key != QTextFormat::TextUnderlineStyle &&
                    key != QTextFormat::FontStrikeOut && key != QTextFormat::ForegroundBrush &&
                    key != QTextFormat::BackgroundBrush && key != QTextFormat::IsAnchor &&
                    key != QTextFormat::AnchorHref && key != QTextFormat::FontFamilies &&
@@ -38,6 +39,7 @@ inline bool supportedCharacterFormat(const QTextCharFormat &format, int headingL
         if (key == NotesRichFormat::HeadingBoldState &&
             (headingLevel == 0 || (it.value().toInt() != NotesRichFormat::HeadingGeneratedBold &&
                                    it.value().toInt() != NotesRichFormat::HeadingExplicitBold))) return false;
+        if (key == QTextFormat::FontOverline && it.value().toBool()) return false;
         if (key == NotesRichFormat::TableHeaderBoldState &&
             (headingLevel != 0 || (it.value().toInt() != NotesRichFormat::TableHeaderGeneratedBold &&
                                    it.value().toInt() != NotesRichFormat::TableHeaderExplicitBold))) return false;

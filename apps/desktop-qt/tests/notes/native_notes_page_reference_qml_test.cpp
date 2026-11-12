@@ -2,6 +2,8 @@
 
 #include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
+#include <QtGui/QColor>
+#include <QtGui/QTextCursor>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QTextDocument>
 #include <QtQuick/QQuickItem>
@@ -46,6 +48,7 @@ private slots:
         const QString editorSource = operations.richSourceForEditorWithPages(source, pages);
         QVERIFY2(editorSource.contains("href=\"synapse-page:/page-one?title=Target%20%26%20page\""),
                  qPrintable(editorSource));
+        QVERIFY(editorSource.contains("↗ Target &amp; page"));
         QCOMPARE(operations.richPageReferenceId(QStringLiteral(
                      "synapse-page:/page-one?title=Target%20%26%20page")), QString("page-one"));
         QVERIFY(operations.richPageReferenceId(QStringLiteral("javascript:alert(1)")).isEmpty());
@@ -66,6 +69,16 @@ private slots:
         QVERIFY2(saved.value("ok").toBool(), qPrintable(document->textDocument()->toHtml()));
         QCOMPARE(saved.value("html").toString(), QStringLiteral(
             "<p>Before<span data-page-id=\"page-one\" title=\"Target &amp; page\"></span>After</p>"));
+
+        const QString deletedSource = operations.richSourceForEditorWithPages(
+            QStringLiteral("<p><span data-page-id=\"removed-page\" title=\"Old title\"></span></p>"), pages);
+        QVERIFY(deletedSource.contains("⚠ Old title (Deleted)"));
+        QVERIFY(deletedSource.contains("background-color:rgba(239,68,68,0.08)"));
+        editor->setProperty("text", deletedSource);
+        const QVariantMap deletedSaved = operations.serializeRich(document);
+        QVERIFY2(deletedSaved.value("ok").toBool(), qPrintable(document->textDocument()->toHtml()));
+        QCOMPARE(deletedSaved.value("html").toString(), QStringLiteral(
+            "<p><span data-page-id=\"removed-page\" title=\"Old title\"></span></p>"));
     }
 
     void slashSearchInsertsAtCaretSupportsUndoAndActivatesNavigation() {
@@ -134,6 +147,14 @@ private slots:
                  QString("page-two"));
         QTest::keyClick(&window, Qt::Key_Return);
         QTRY_VERIFY(!pageMenu->property("visible").toBool());
+        auto *quickDocument = qobject_cast<QQuickTextDocument *>(textEdit->property("textDocument").value<QObject *>());
+        QVERIFY(quickDocument);
+        QVERIFY(quickDocument->textDocument()->toPlainText().contains("↗ Second page"));
+        QTextCursor referenceCursor(quickDocument->textDocument());
+        referenceCursor.setPosition(5);
+        referenceCursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+        QVERIFY(referenceCursor.charFormat().isAnchor());
+        QCOMPARE(referenceCursor.charFormat().background().color(), QColor(255, 255, 255, 10));
 
         QVariant committed;
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
