@@ -4,6 +4,8 @@ import "../../qml/notes"
 Item {
     width: 800
     height: 420
+    property int afterPosition: 0
+    readonly property rect afterTextRect: imageEditor.positionToRectangle(afterPosition)
 
     TextEdit {
         id: imageEditor
@@ -17,6 +19,17 @@ Item {
         id: commitTimer
         interval: 180
         repeat: false
+    }
+
+    NotesFormattingToolbar {
+        id: imageToolbar
+        objectName: "notesRichImageToolbar"
+        width: parent.width
+        height: 38
+        richMode: true
+        richImageSelected: imageActions.imageState.valid
+        richImageAlignment: imageActions.imageState.alignment || "center"
+        onRichImageAlignmentRequested: function(alignment) { imageActions.setAlignment(alignment) }
     }
 
     NotesRichImageActions {

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Dialogs
@@ -16,9 +18,49 @@ Item {
     property int savedEnd: -1
     property string savedPageId: ""
     property string savedDocumentSource: ""
+    property var imageState: ({ valid: false, position: -1, alignment: "center", caption: "" })
+    property var imageCaptionItems: []
+    property string captionDraft: ""
     property string errorMessage: ""
 
     signal contentModified()
+
+    function refreshImageState() {
+        if (!active || !textEditor || !textOperations || !textEditor.textDocument) {
+            imageState = { valid: false, position: -1, alignment: "center", caption: "" }
+            imageCaptionItems = []
+            return
+        }
+        var nextState = textOperations.richImageAt(textEditor.textDocument, textEditor.cursorPosition,
+                                                   textEditor.selectionStart, textEditor.selectionEnd)
+        imageState = nextState && nextState.valid
+                ? nextState : { valid: false, position: -1, alignment: "center", caption: "" }
+        imageCaptionItems = textOperations.richImageCaptions(textEditor.textDocument)
+        if (!captionField.activeFocus) captionDraft = String(imageState.caption || "")
+    }
+
+    function setAlignment(alignment) {
+        if (String(imageState.alignment || "center") === String(alignment)) return true
+        if (!active || !imageState.valid || !textOperations.setRichImageAlignment(
+                    textEditor.textDocument, imageState.position, alignment)) return false
+        refreshImageState()
+        textEditor.forceActiveFocus()
+        if (commitTimer) commitTimer.restart()
+        contentModified()
+        return true
+    }
+
+    function commitCaption() {
+        var nextCaption = String(captionDraft).trim()
+        if (!imageState.valid || nextCaption === String(imageState.caption || "")) return false
+        if (!imageState.valid || !textOperations.setRichImageCaption(
+                    textEditor.textDocument, imageState.position, nextCaption)) return false
+        captionDraft = nextCaption
+        refreshImageState()
+        if (commitTimer) commitTimer.restart()
+        contentModified()
+        return true
+    }
 
     function showError(message) {
         errorMessage = String(message || qsTr("The image could not be inserted."))
@@ -88,6 +130,73 @@ Item {
             }
             imageActionsRoot.insertPreparedImage(result, imageActionsRoot.savedStart, imageActionsRoot.savedEnd)
         }
+    }
+
+    Connections {
+        target: imageActionsRoot.textEditor
+        function onCursorPositionChanged() { imageActionsRoot.refreshImageState() }
+        function onSelectionStartChanged() { imageActionsRoot.refreshImageState() }
+        function onSelectionEndChanged() { imageActionsRoot.refreshImageState() }
+        function onTextChanged() { captionRefreshTimer.restart() }
+    }
+
+    Component.onCompleted: refreshImageState()
+    onActiveChanged: refreshImageState()
+
+    Timer {
+        id: captionRefreshTimer
+        interval: 60
+        repeat: false
+        onTriggered: imageActionsRoot.refreshImageState()
+    }
+
+    Repeater {
+        model: imageActionsRoot.imageCaptionItems
+        delegate: Text {
+            required property var modelData
+            objectName: "notesRichImageCaption_" + modelData.position
+            readonly property rect imageRect: imageActionsRoot.textEditor.positionToRectangle(modelData.position)
+            visible: imageActionsRoot.active && imageActionsRoot.imageState.position !== modelData.position
+            x: Math.max(0, imageRect.x)
+            y: imageRect.y + imageRect.height + 3
+            width: Math.max(0, Math.min(Number(modelData.width), parent.width - x))
+            text: modelData.caption
+            color: "#a7a9be"
+            font.pixelSize: 13
+            font.italic: true
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+            z: 2
+        }
+    }
+
+    TextField {
+        id: captionField
+        objectName: "notesRichImageCaptionInput"
+        readonly property rect imageRect: imageActionsRoot.imageState.valid
+            ? imageActionsRoot.textEditor.positionToRectangle(imageActionsRoot.imageState.position)
+            : Qt.rect(0, 0, 0, 0)
+        visible: imageActionsRoot.active && imageActionsRoot.imageState.valid
+        x: Math.max(0, imageRect.x)
+        y: imageRect.y + imageRect.height + 1
+        width: Math.max(120, Math.min(Number(imageActionsRoot.imageState.width || 240), parent.width - x))
+        height: 29
+        padding: 4
+        text: imageActionsRoot.captionDraft
+        placeholderText: qsTr("Write a caption…")
+        horizontalAlignment: TextInput.AlignHCenter
+        color: "#fffffe"
+        selectByMouse: true
+        Accessible.name: qsTr("Image caption")
+        background: Rectangle {
+            color: captionField.activeFocus ? "#201e2d" : "#10101a"
+            border.color: captionField.activeFocus ? "#7c6fa8" : "#18ffffff"
+            radius: 4
+        }
+        onTextEdited: imageActionsRoot.captionDraft = text
+        onEditingFinished: imageActionsRoot.commitCaption()
+        onActiveFocusChanged: if (!activeFocus && visible) imageActionsRoot.commitCaption()
+        z: 3
     }
 
     FileDialog {

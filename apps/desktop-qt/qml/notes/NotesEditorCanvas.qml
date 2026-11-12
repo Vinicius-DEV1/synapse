@@ -285,6 +285,8 @@ ScrollView {
                 codeBlockCanMoveDown: richTextEditor.codeBlockCanMoveDown
                 codeBlockCopySucceeded: richTextEditor.codeBlockCopySucceeded
                 codeBlockCopyRevision: richTextEditor.codeBlockCopyRevision
+                richImageSelected: richTextEditor.richImageSelected
+                richImageAlignment: richTextEditor.richImageAlignment
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
                 onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
@@ -295,6 +297,9 @@ ScrollView {
                 onRichCalloutRequested: function(color) { richTextEditor.setCalloutColor(color) }
                 onRichTableRequested: richTextEditor.tableActions.insertTable()
                 onRichImageRequested: richTextEditor.openImagePicker()
+                onRichImageAlignmentRequested: function(alignment) {
+                    richTextEditor.setImageAlignment(alignment)
+                }
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
                 onRichCellBackgroundRequested: function(color, scope) {
                     richTextEditor.tableActions.setCellBackground(color, scope)

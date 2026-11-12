@@ -20,6 +20,7 @@ Rectangle {
     signal richCalloutRequested(string color)
     signal richTableRequested()
     signal richImageRequested()
+    signal richImageAlignmentRequested(string alignment)
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
@@ -53,6 +54,8 @@ Rectangle {
     property bool codeBlockCanMoveDown: false
     property bool codeBlockCopySucceeded: false
     property int codeBlockCopyRevision: 0
+    property bool richImageSelected: false
+    property string richImageAlignment: "center"
 
     RowLayout {
         anchors.fill: parent
@@ -139,6 +142,38 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: toolbarRoot.richImageRequested()
+            }
+        }
+        Repeater {
+            model: ["left", "center", "right"]
+            delegate: Rectangle {
+                id: imageAlignmentButton
+                required property string modelData
+                readonly property string accessibleLabel: modelData === "left" ? qsTr("Align image left")
+                    : modelData === "right" ? qsTr("Align image right") : qsTr("Center image")
+                visible: toolbarRoot.richMode && toolbarRoot.richImageSelected
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 26
+                radius: 4
+                color: toolbarRoot.richImageAlignment === modelData ? "#1b8b5cf6" : "#08ffffff"
+                Accessible.name: accessibleLabel
+                ToolTip.visible: imageAlignmentMouse.containsMouse
+                ToolTip.text: accessibleLabel
+                Text {
+                    id: imageAlignmentIcon
+                    anchors.centerIn: parent
+                    text: imageAlignmentButton.modelData === "left" ? "⇤"
+                        : imageAlignmentButton.modelData === "right" ? "⇥" : "↔"
+                    color: "#c4b5fd"
+                    font.pixelSize: 14
+                }
+                MouseArea {
+                    id: imageAlignmentMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: toolbarRoot.richImageAlignmentRequested(imageAlignmentButton.modelData)
+                }
             }
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }

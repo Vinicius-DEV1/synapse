@@ -33,7 +33,7 @@ private slots:
         const QString sourceUrl = pngDataUrl();
         QVERIFY(!sourceUrl.isEmpty());
         const QString source = QStringLiteral(
-            "<p>Before</p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"Photo &amp; place\" title=\"Sunset\"/><p>After</p>")
+            "<p>Before</p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"Photo &amp; place\" title=\"Sunset\" data-caption=\"Late light\" data-align=\"right\"/><p>After</p>")
             .arg(sourceUrl);
         QVERIFY(NotesRichDocument::supportsSource(source));
 
@@ -42,14 +42,35 @@ private slots:
         QVERIFY(editorSource.contains("<p><img"));
         QTextDocument document;
         document.setHtml(editorSource);
-        QVERIFY(NotesRichImages::prepare(document));
+        QVERIFY(NotesRichImages::prepare(document, editorSource));
         QVERIFY(document.resource(QTextDocument::ImageResource, QUrl(sourceUrl)).isValid());
         QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
-            "<p>Before</p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"Photo &amp; place\" title=\"Sunset\"/><p>After</p>")
+            "<p>Before</p><img src=\"%1\" width=\"32\" height=\"16\" alt=\"Photo &amp; place\" title=\"Sunset\" data-caption=\"Late light\" data-align=\"right\"/><p>After</p>")
             .arg(sourceUrl));
 
+        const int imagePosition = document.findBlockByNumber(1).position();
+        const QVariantMap state = NotesRichImages::imageAt(document, imagePosition,
+                                                           imagePosition, imagePosition);
+        QVERIFY(state.value("valid").toBool());
+        QCOMPARE(state.value("alignment").toString(), QString("right"));
+        QCOMPARE(state.value("caption").toString(), QString("Late light"));
+        QSignalSpy contentChanges(&document, &QTextDocument::contentsChanged);
+        QVERIFY(NotesRichImages::setAlignment(document, imagePosition, "right"));
+        QVERIFY(NotesRichImages::setCaption(document, imagePosition, " Late light "));
+        QCOMPARE(contentChanges.count(), 0);
+        QVERIFY(NotesRichImages::setAlignment(document, imagePosition, "left"));
+        QVERIFY(NotesRichDocument::serialize(document).contains("data-align=\"left\""));
+        document.undo();
+        QVERIFY(NotesRichDocument::serialize(document).contains("data-align=\"right\""));
+        QVERIFY(NotesRichImages::setCaption(document, imagePosition, "Evening sky"));
+        QVERIFY(NotesRichDocument::serialize(document).contains("data-caption=\"Evening sky\""));
+        document.undo();
+        QVERIFY(NotesRichDocument::serialize(document).contains("data-caption=\"Late light\""));
+
         QVERIFY(!NotesRichDocument::supportsSource("<p><img src=\"https://example.com/image.png\"/></p>"));
-        QVERIFY(!NotesRichDocument::supportsSource(source.left(source.indexOf(" title=")) + " data-caption=\"Caption\"/></p>"));
+        QVERIFY(!NotesRichDocument::supportsSource(source.left(source.indexOf(" title=")) + " data-custom=\"Caption\"/></p>"));
+        QVERIFY(!NotesRichDocument::supportsSource(QStringLiteral(
+            "<p><img src=\"%1\" data-align=\"diagonal\"/></p>").arg(sourceUrl)));
         QVERIFY(!NotesRichDocument::supportsSource(QStringLiteral(
             "<p><img src=\"data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=\"/></p>")));
     }

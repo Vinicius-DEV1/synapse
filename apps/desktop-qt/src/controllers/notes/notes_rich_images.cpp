@@ -46,7 +46,76 @@ bool supportedImageProperties(const QTextImageFormat &format) {
         (format.height() < 1 || format.height() > MaximumImageDimension)) return false;
     const QString alt = format.stringProperty(QTextFormat::ImageAltText);
     const QString title = format.toolTip();
-    return alt.size() <= MaximumImageLabelLength && title.size() <= MaximumImageLabelLength;
+    const QString caption = format.stringProperty(NotesRichFormat::ImageCaption);
+    const QString alignment = format.stringProperty(NotesRichFormat::ImageAlignment);
+    return alt.size() <= MaximumImageLabelLength && title.size() <= MaximumImageLabelLength &&
+        caption.size() <= MaximumImageLabelLength &&
+        (alignment.isEmpty() || alignment == QStringLiteral("left") ||
+         alignment == QStringLiteral("center") || alignment == QStringLiteral("right"));
+}
+
+struct ImageMetadata {
+    QString source;
+    QString caption;
+    QString alignment = QStringLiteral("center");
+};
+
+QVector<ImageMetadata> imageMetadataFromSource(const QString &source) {
+    QVector<ImageMetadata> images;
+    QXmlStreamReader xml(QStringLiteral("<root>") + source + QStringLiteral("</root>"));
+    while (!xml.atEnd()) {
+        xml.readNext();
+        if (!xml.isStartElement() || xml.name() != QStringLiteral("img")) continue;
+        const auto attributes = xml.attributes();
+        ImageMetadata image;
+        image.source = attributes.value(QStringLiteral("src")).toString();
+        image.caption = attributes.value(QStringLiteral("data-caption")).toString();
+        const QString alignment = attributes.value(QStringLiteral("data-align")).toString();
+        if (!alignment.isEmpty()) image.alignment = alignment;
+        images.append(image);
+    }
+    if (xml.hasError()) images.clear();
+    return images;
+}
+
+bool imageOnlyBlock(const QTextBlock &block, QTextImageFormat *imageFormat = nullptr,
+                    int *imagePosition = nullptr) {
+    if (!block.isValid() || block.textList() || block.blockFormat().headingLevel() != 0 ||
+        block.blockFormat().intProperty(QTextFormat::BlockQuoteLevel) != 0) return false;
+    bool found = false;
+    for (auto it = block.begin(); !it.atEnd(); ++it) {
+        const QTextFragment fragment = it.fragment();
+        if (!fragment.isValid()) continue;
+        if (fragment.charFormat().isImageFormat()) {
+            if (found || fragment.length() != 1) return false;
+            found = true;
+            if (imageFormat) *imageFormat = fragment.charFormat().toImageFormat();
+            if (imagePosition) *imagePosition = fragment.position();
+        } else if (!fragment.text().trimmed().isEmpty()) {
+            return false;
+        }
+    }
+    return found;
+}
+
+bool findImage(const QTextDocument &document, int position, QTextBlock &block,
+               QTextImageFormat &format, int &imagePosition) {
+    if (position < 0 || position >= document.characterCount()) return false;
+    block = document.findBlock(position);
+    if (!imageOnlyBlock(block, &format, &imagePosition)) return false;
+    return imagePosition == position || imagePosition + 1 == position;
+}
+
+Qt::Alignment alignmentForName(const QString &alignment) {
+    if (alignment == QStringLiteral("left")) return Qt::AlignLeft;
+    if (alignment == QStringLiteral("right")) return Qt::AlignRight;
+    return Qt::AlignHCenter;
+}
+
+QString nameForAlignment(const QTextBlockFormat &format) {
+    if (format.alignment() & Qt::AlignLeft) return QStringLiteral("left");
+    if (format.alignment() & Qt::AlignRight) return QStringLiteral("right");
+    return QStringLiteral("center");
 }
 
 bool isVoidTag(const QString &name) {
@@ -85,19 +154,24 @@ bool supportsDataUrl(const QString &dataUrl, QSize *naturalSize) {
 }
 
 bool supportsAttributes(const QXmlStreamAttributes &attributes) {
-    if (!attributes.hasAttribute(QStringLiteral("src")) || attributes.size() > 5) return false;
+    if (!attributes.hasAttribute(QStringLiteral("src")) || attributes.size() > 7) return false;
     for (const auto &attribute : attributes) {
         const QString name = attribute.name().toString();
         if (name != QStringLiteral("src") && name != QStringLiteral("width") &&
             name != QStringLiteral("height") && name != QStringLiteral("alt") &&
-            name != QStringLiteral("title")) return false;
+            name != QStringLiteral("title") && name != QStringLiteral("data-align") &&
+            name != QStringLiteral("data-caption")) return false;
     }
     if (attributes.hasAttribute(QStringLiteral("width")) &&
         !parsePositiveDimension(attributes.value(QStringLiteral("width")).toString())) return false;
     if (attributes.hasAttribute(QStringLiteral("height")) &&
         !parsePositiveDimension(attributes.value(QStringLiteral("height")).toString())) return false;
     if (attributes.value(QStringLiteral("alt")).size() > MaximumImageLabelLength ||
-        attributes.value(QStringLiteral("title")).size() > MaximumImageLabelLength) return false;
+        attributes.value(QStringLiteral("title")).size() > MaximumImageLabelLength ||
+        attributes.value(QStringLiteral("data-caption")).size() > MaximumImageLabelLength) return false;
+    const QString alignment = attributes.value(QStringLiteral("data-align")).toString();
+    if (!alignment.isEmpty() && alignment != QStringLiteral("left") &&
+        alignment != QStringLiteral("center") && alignment != QStringLiteral("right")) return false;
     return supportsDataUrl(attributes.value(QStringLiteral("src")).toString());
 }
 
@@ -150,43 +224,45 @@ bool serialize(const QTextImageFormat &format, QString &html) {
     const QString alt = format.stringProperty(QTextFormat::ImageAltText);
     if (!alt.isEmpty()) html += QStringLiteral(" alt=\"%1\"").arg(alt.toHtmlEscaped());
     if (!format.toolTip().isEmpty()) html += QStringLiteral(" title=\"%1\"").arg(format.toolTip().toHtmlEscaped());
+    const QString caption = format.stringProperty(NotesRichFormat::ImageCaption);
+    if (!caption.isEmpty()) html += QStringLiteral(" data-caption=\"%1\"").arg(caption.toHtmlEscaped());
+    const QString alignment = format.stringProperty(NotesRichFormat::ImageAlignment);
+    if (!alignment.isEmpty() && alignment != QStringLiteral("center"))
+        html += QStringLiteral(" data-align=\"%1\"").arg(alignment.toHtmlEscaped());
     html += QStringLiteral("/>");
     return true;
 }
 
 bool serializeStandaloneBlock(const QTextBlock &block, QString &html) {
-    if (!block.isValid() || block.textList() || block.blockFormat().headingLevel() != 0 ||
-        block.blockFormat().intProperty(QTextFormat::BlockQuoteLevel) != 0) return false;
-    bool foundImage = false;
-    QString imageHtml;
-    for (auto it = block.begin(); !it.atEnd(); ++it) {
-        const QTextFragment fragment = it.fragment();
-        if (!fragment.isValid()) continue;
-        if (fragment.charFormat().isImageFormat()) {
-            if (foundImage || fragment.length() != 1 || !serialize(fragment.charFormat().toImageFormat(), imageHtml))
-                return false;
-            foundImage = true;
-        } else if (!fragment.text().trimmed().isEmpty()) {
-            return false;
-        }
-    }
-    if (!foundImage) return false;
-    html = imageHtml;
-    return true;
+    QTextImageFormat format;
+    if (!imageOnlyBlock(block, &format)) return false;
+    return serialize(format, html);
 }
 
-bool prepare(QTextDocument &document) {
+bool prepare(QTextDocument &document, const QString &source) {
+    const QVector<ImageMetadata> metadata = imageMetadataFromSource(source);
+    int imageIndex = 0;
     for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
-        QString imageHtml;
-        if (!serializeStandaloneBlock(block, imageHtml)) continue;
-        QTextBlockFormat format = block.blockFormat();
-        format.setAlignment(Qt::AlignHCenter);
-        format.setTopMargin(12.0);
-        format.setBottomMargin(12.0);
-        QTextCursor cursor(block);
-        cursor.setBlockFormat(format);
+        QTextImageFormat imageFormat;
+        int imagePosition = -1;
+        if (!imageOnlyBlock(block, &imageFormat, &imagePosition)) continue;
+        if (imageIndex >= metadata.size() || metadata.at(imageIndex).source != imageFormat.name()) return false;
+        const ImageMetadata &image = metadata.at(imageIndex++);
+        imageFormat.setProperty(NotesRichFormat::ImageAlignment, image.alignment);
+        imageFormat.setProperty(NotesRichFormat::ImageCaption, image.caption);
+        QTextCursor imageCursor(&document);
+        imageCursor.setPosition(imagePosition);
+        imageCursor.setPosition(imagePosition + 1, QTextCursor::KeepAnchor);
+        imageCursor.setCharFormat(imageFormat);
+
+        QTextBlockFormat blockFormat = block.blockFormat();
+        blockFormat.setAlignment(alignmentForName(image.alignment));
+        blockFormat.setTopMargin(12.0);
+        blockFormat.setBottomMargin(image.caption.isEmpty() ? 12.0 : 30.0);
+        QTextCursor blockCursor(block);
+        blockCursor.setBlockFormat(blockFormat);
     }
-    return true;
+    return imageIndex == metadata.size();
 }
 
 bool canInsertAt(const QTextDocument &document, int position) {
@@ -202,6 +278,97 @@ bool canInsertAt(const QTextDocument &document, int position) {
         const QTextFragment fragment = it.fragment();
         if (fragment.isValid() && fragment.charFormat().isImageFormat()) return false;
     }
+    return true;
+}
+
+QVariantMap imageAt(const QTextDocument &document, int cursorPosition,
+                    int selectionStart, int selectionEnd) {
+    QVector<int> candidates;
+    if (selectionEnd - selectionStart == 1) candidates.append(selectionStart);
+    candidates.append(cursorPosition);
+    candidates.append(cursorPosition - 1);
+    if (selectionEnd > selectionStart) candidates.append(selectionEnd - 1);
+
+    for (const int candidate : candidates) {
+        QTextBlock block;
+        QTextImageFormat format;
+        int imagePosition = -1;
+        if (!findImage(document, candidate, block, format, imagePosition)) continue;
+        QSize naturalSize;
+        if (!supportsDataUrl(format.name(), &naturalSize)) continue;
+        const qreal width = format.hasProperty(QTextFormat::ImageWidth)
+            ? format.width() : naturalSize.width();
+        const qreal height = format.hasProperty(QTextFormat::ImageHeight)
+            ? format.height() : width * naturalSize.height() / naturalSize.width();
+        QString alignment = format.stringProperty(NotesRichFormat::ImageAlignment);
+        if (alignment.isEmpty()) alignment = nameForAlignment(block.blockFormat());
+        return {{"valid", true}, {"position", imagePosition}, {"width", qRound(width)},
+                {"height", qRound(height)}, {"naturalWidth", naturalSize.width()},
+                {"naturalHeight", naturalSize.height()}, {"alignment", alignment},
+                {"caption", format.stringProperty(NotesRichFormat::ImageCaption)}};
+    }
+    return {{"valid", false}, {"position", -1}};
+}
+
+QVariantList captions(const QTextDocument &document) {
+    QVariantList result;
+    for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+        QTextImageFormat format;
+        int position = -1;
+        if (!imageOnlyBlock(block, &format, &position)) continue;
+        const QString caption = format.stringProperty(NotesRichFormat::ImageCaption);
+        if (caption.isEmpty()) continue;
+        QVariantMap item{{"position", position}, {"caption", caption},
+                         {"width", qRound(format.width())},
+                         {"alignment", format.stringProperty(NotesRichFormat::ImageAlignment)}};
+        result.append(item);
+    }
+    return result;
+}
+
+bool setAlignment(QTextDocument &document, int imagePosition, const QString &alignment) {
+    if (alignment != QStringLiteral("left") && alignment != QStringLiteral("center") &&
+        alignment != QStringLiteral("right")) return false;
+    QTextBlock block;
+    QTextImageFormat imageFormat;
+    int resolvedPosition = -1;
+    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
+    QString currentAlignment = imageFormat.stringProperty(NotesRichFormat::ImageAlignment);
+    if (currentAlignment.isEmpty()) currentAlignment = nameForAlignment(block.blockFormat());
+    if (currentAlignment == alignment) return true;
+    imageFormat.setProperty(NotesRichFormat::ImageAlignment, alignment);
+    QTextCursor edit(&document);
+    edit.setPosition(resolvedPosition);
+    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
+    edit.beginEditBlock();
+    edit.setCharFormat(imageFormat);
+    QTextBlockFormat blockFormat = block.blockFormat();
+    blockFormat.setAlignment(alignmentForName(alignment));
+    QTextCursor blockCursor(block);
+    blockCursor.setBlockFormat(blockFormat);
+    edit.endEditBlock();
+    return true;
+}
+
+bool setCaption(QTextDocument &document, int imagePosition, const QString &caption) {
+    if (caption.size() > MaximumImageLabelLength) return false;
+    QTextBlock block;
+    QTextImageFormat imageFormat;
+    int resolvedPosition = -1;
+    if (!findImage(document, imagePosition, block, imageFormat, resolvedPosition)) return false;
+    const QString normalizedCaption = caption.trimmed();
+    if (imageFormat.stringProperty(NotesRichFormat::ImageCaption) == normalizedCaption) return true;
+    imageFormat.setProperty(NotesRichFormat::ImageCaption, normalizedCaption);
+    QTextCursor edit(&document);
+    edit.setPosition(resolvedPosition);
+    edit.setPosition(resolvedPosition + 1, QTextCursor::KeepAnchor);
+    edit.beginEditBlock();
+    edit.setCharFormat(imageFormat);
+    QTextBlockFormat blockFormat = block.blockFormat();
+    blockFormat.setBottomMargin(normalizedCaption.isEmpty() ? 12.0 : 30.0);
+    QTextCursor blockCursor(block);
+    blockCursor.setBlockFormat(blockFormat);
+    edit.endEditBlock();
     return true;
 }
 
@@ -232,6 +399,8 @@ int insert(QTextDocument &document, int start, int end, const QString &dataUrl,
     imageFormat.setName(dataUrl);
     imageFormat.setWidth(width);
     imageFormat.setHeight(height);
+    imageFormat.setProperty(NotesRichFormat::ImageAlignment, QStringLiteral("center"));
+    imageFormat.setProperty(NotesRichFormat::ImageCaption, QString());
     if (!alt.isEmpty()) imageFormat.setProperty(QTextFormat::ImageAltText, alt);
     cursor.setCharFormat(QTextCharFormat());
     cursor.insertImage(imageFormat);

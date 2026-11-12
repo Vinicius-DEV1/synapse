@@ -53,10 +53,17 @@ public:
     Q_INVOKABLE bool setRichSpoilerVisibility(QQuickTextDocument *document, int position,
                                               const QString &action) const;
     Q_INVOKABLE QVariantMap serializeRich(QQuickTextDocument *document) const;
-    Q_INVOKABLE bool prepareRichImages(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool prepareRichImages(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool canInsertRichImage(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE int insertRichImage(QQuickTextDocument *document, int start, int end,
                                     const QString &dataUrl, const QString &alt, int width, int height) const;
+    Q_INVOKABLE QVariantMap richImageAt(QQuickTextDocument *document, int cursorPosition,
+                                        int selectionStart, int selectionEnd) const;
+    Q_INVOKABLE QVariantList richImageCaptions(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool setRichImageAlignment(QQuickTextDocument *document, int imagePosition,
+                                            const QString &alignment) const;
+    Q_INVOKABLE bool setRichImageCaption(QQuickTextDocument *document, int imagePosition,
+                                          const QString &caption) const;
     Q_INVOKABLE bool toggleRich(QQuickTextDocument *document, int start, int end, const QString &mark) const;
     Q_INVOKABLE bool toggleRichAtCursor(QQuickTextDocument *document, int position, const QString &mark) const;
     Q_INVOKABLE bool clearRichPendingMarks(QQuickTextDocument *document) const;

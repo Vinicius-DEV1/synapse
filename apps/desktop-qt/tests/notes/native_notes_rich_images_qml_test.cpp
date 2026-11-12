@@ -11,7 +11,9 @@
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 #include <QtGui/QImage>
+#include <QtGui/QTextBlock>
 #include <QtGui/QTextDocument>
+#include <QtGui/QTextFragment>
 
 class MockNotesImageController final : public QObject {
     Q_OBJECT
@@ -47,8 +49,12 @@ private slots:
 
         QObject *imageActions = root->findChild<QObject *>("notesRichImageActions");
         QObject *imageEditor = root->findChild<QObject *>("notesRichImageEditor");
+        QObject *imageToolbar = root->findChild<QObject *>("notesRichImageToolbar");
+        QQuickItem *captionInput = rootItem->findChild<QQuickItem *>("notesRichImageCaptionInput");
         QVERIFY(imageActions);
         QVERIFY(imageEditor);
+        QVERIFY(imageToolbar);
+        QVERIFY(captionInput);
         MockNotesImageController controller;
         imageActions->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
         imageActions->setProperty("pageId", "page-one");
@@ -87,15 +93,63 @@ private slots:
         QVERIFY(saved.value("html").toString().contains("<img src=\"data:image/png;base64,"));
         QVERIFY(saved.value("html").toString().contains("alt=\"photo.png\""));
 
+        int imagePosition = -1;
+        for (QTextBlock block = quickDocument->textDocument()->begin(); block.isValid(); block = block.next()) {
+            for (auto fragment = block.begin(); !fragment.atEnd(); ++fragment) {
+                const QTextFragment textFragment = fragment.fragment();
+                if (textFragment.isValid() && textFragment.charFormat().isImageFormat())
+                    imagePosition = textFragment.position();
+            }
+        }
+        QVERIFY(imagePosition >= 0);
+        imageEditor->setProperty("cursorPosition", imagePosition);
+        QVERIFY(QMetaObject::invokeMethod(imageActions, "refreshImageState", Qt::DirectConnection));
+        QVariantMap selectedImage = imageActions->property("imageState").toMap();
+        QVERIFY(selectedImage.value("valid").toBool());
+        QVERIFY(imageToolbar->property("richImageSelected").toBool());
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageAlignmentRequested", Qt::DirectConnection,
+                                          Q_ARG(QString, QString("center"))));
+        QCOMPARE(changed.count(), 1);
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageAlignmentRequested", Qt::DirectConnection,
+                                          Q_ARG(QString, QString("right"))));
+        QCOMPARE(changed.count(), 2);
+        imageActions->setProperty("captionDraft", "A quiet evening");
+        QVariant captioned;
+        QVERIFY(QMetaObject::invokeMethod(imageActions, "commitCaption", Qt::DirectConnection,
+                                          Q_RETURN_ARG(QVariant, captioned)));
+        QVERIFY(captioned.toBool());
+        QCOMPARE(changed.count(), 3);
+        const QVariantMap formatted = serializer.serializeRich(quickDocument);
+        QVERIFY(formatted.value("html").toString().contains("data-align=\"right\""));
+        QVERIFY(formatted.value("html").toString().contains("data-caption=\"A quiet evening\""));
+        const int afterPosition = quickDocument->textDocument()->find(QStringLiteral("After")).position();
+        QVERIFY(afterPosition >= 0);
+        root->setProperty("afterPosition", afterPosition);
+        const QRectF afterTextRect = root->property("afterTextRect").toRectF();
+        QVERIFY2(captionInput->y() + captionInput->height() <= afterTextRect.y(),
+                 qPrintable(QStringLiteral("Caption input bottom %1 overlaps following text at %2")
+                                .arg(captionInput->y() + captionInput->height())
+                                .arg(afterTextRect.y())));
+
         QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
-        const QVariantMap undone = serializer.serializeRich(quickDocument);
+        QVariantMap undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(undone.value("html").toString().contains("data-align=\"right\""));
+        QVERIFY(!undone.value("html").toString().contains("data-caption="));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
+        QVERIFY(undone.value("ok").toBool());
+        QVERIFY(!undone.value("html").toString().contains("data-align="));
+        QVERIFY(QMetaObject::invokeMethod(imageEditor, "undo", Qt::DirectConnection));
+        undone = serializer.serializeRich(quickDocument);
         QVERIFY(undone.value("ok").toBool());
         QCOMPARE(undone.value("html").toString(), QString("<p>BeforeAfter</p>"));
+        QCOMPARE(changed.count(), 3);
 
         imageActions->setProperty("pageId", "page-two");
         controller.finish(payload);
         QTRY_VERIFY(imageActions->property("errorMessage").toString().contains("note changed"));
-        QCOMPARE(changed.count(), 1);
+        QCOMPARE(changed.count(), 3);
     }
 };
 

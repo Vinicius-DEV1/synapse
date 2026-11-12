@@ -28,6 +28,8 @@ Item {
     readonly property alias calloutAtCursor: richCommands.calloutAtCursor
     readonly property alias calloutColorAtCursor: richCommands.calloutColorAtCursor
     readonly property alias spoilerAtCursor: richCommands.spoilerAtCursor
+    readonly property bool richImageSelected: richImageActions.imageState.valid
+    readonly property string richImageAlignment: richImageActions.imageState.alignment || "center"
 
     signal contentModified(string html)
     signal validationChanged(bool invalid, string message)
@@ -61,7 +63,7 @@ Item {
             return false
         }
         editor.text = editorSource.length > 0 ? editorSource : "<p></p>"
-        if (!textOperations.prepareRichImages(editor.textDocument)) {
+        if (!textOperations.prepareRichImages(editor.textDocument, editorSource)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains an image that the native editor could not load safely. Switch to source editing to preserve it.")
@@ -153,6 +155,7 @@ Item {
     function setLink(url) { return richCommands.setLink(url) }
     function refreshCodeSyntaxHighlighting() { richCommands.refreshCodeSyntaxHighlighting() }
     function openImagePicker() { return richImageActions.openForPosition() }
+    function setImageAlignment(alignment) { return richImageActions.setAlignment(alignment) }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()
