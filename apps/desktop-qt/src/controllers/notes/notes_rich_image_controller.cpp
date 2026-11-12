@@ -22,8 +22,9 @@ namespace {
 constexpr qint64 MaximumRichImageBytes = 2 * 1024 * 1024;
 constexpr qint64 MaximumRichImagePixels = 30 * 1000 * 1000;
 
-QVariantMap richImageFailure(const QString &message) {
-    return {{"success", false}, {"error", message}, {"operation", "notes-rich-image"}};
+QVariantMap richImageFailure(const QString &message,
+                             const QString &operation = QStringLiteral("notes-rich-image")) {
+    return {{"success", false}, {"error", message}, {"operation", operation}};
 }
 
 QString imageMimeType(const QByteArray &format) {
@@ -144,17 +145,35 @@ QVariantMap encodeClipboardImage(const QImage &image, const QString &fileName) {
 
 }
 
-void SynapseDataController::startNotesRichImageOperation(std::function<QVariantMap()> operation) {
+void SynapseDataController::startNotesRichImageOperation(std::function<QVariantMap()> operation,
+                                                          const QString &operationName) {
     if (m_fileOperationRunning) {
-        emit fileOperationFinished(richImageFailure(QStringLiteral("Wait for the current file operation to finish.")));
+        emit fileOperationFinished(richImageFailure(
+            QStringLiteral("Wait for the current file operation to finish."), operationName));
         return;
     }
     m_fileOperationRunning = true;
     emit fileOperationStateChanged();
     auto *watcher = new QFutureWatcher<QVariantMap>(this);
     m_fileOperationWatcher = watcher;
-    connect(watcher, &QFutureWatcher<QVariantMap>::finished, this, [this, watcher]() {
+    connect(watcher, &QFutureWatcher<QVariantMap>::finished, this, [this, watcher, operationName]() {
         QVariantMap result = watcher->result();
+        result.insert("operation", operationName);
+        if (operationName == QStringLiteral("notes-rich-image-copy") &&
+            result.value("success").toBool()) {
+            const QByteArray pngBytes = result.take("clipboardPng").toByteArray();
+            const QImage image = result.take("clipboardImage").value<QImage>();
+            QClipboard *clipboard = QGuiApplication::clipboard();
+            if (!clipboard || pngBytes.isEmpty() || image.isNull()) {
+                result = richImageFailure(QStringLiteral("The image could not be placed on the clipboard."),
+                                          operationName);
+            } else {
+                auto *mimeData = new QMimeData;
+                mimeData->setImageData(image);
+                mimeData->setData(QStringLiteral("image/png"), pngBytes);
+                clipboard->setMimeData(mimeData);
+            }
+        }
         watcher->deleteLater();
         m_fileOperationRunning = false;
         emit fileOperationStateChanged();
@@ -237,7 +256,7 @@ void SynapseDataController::processNotesRichImages(const QVariantList &sourceUrl
                           .arg(rejectedCount));
         }
         return result;
-    });
+    }, QStringLiteral("notes-rich-image"));
 }
 
 bool SynapseDataController::hasClipboardNotesRichImage() const {
@@ -259,7 +278,7 @@ void SynapseDataController::processClipboardNotesRichImage() {
     if (!image.isNull()) {
         startNotesRichImageOperation([image]() {
             return encodeClipboardImage(image, QStringLiteral("clipboard-image.png"));
-        });
+        }, QStringLiteral("notes-rich-image"));
         return;
     }
     const QVariantList sourceUrls = clipboardImageUrls(mimeData);

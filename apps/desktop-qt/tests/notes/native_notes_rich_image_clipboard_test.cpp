@@ -5,10 +5,12 @@
 
 #include <QtCore/QBuffer>
 #include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QMimeData>
 #include <QtCore/QTemporaryDir>
 #include <QtGui/QClipboard>
 #include <QtGui/QImage>
+#include <QtGui/QImageReader>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextDocument>
@@ -180,6 +182,63 @@ private slots:
         result = operations.takeFirst().at(0).toMap();
         QVERIFY(!result.value("success").toBool());
         QCOMPARE(result.value("operation").toString(), QString("notes-rich-image"));
+        clipboard->clear();
+    }
+
+    void selectedImageCopiesAsPixelsAndDownloadsInItsOriginalFormat() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("image-export.sqlite")));
+        QSignalSpy operations(&controller, &SynapseDataController::fileOperationFinished);
+        QClipboard *clipboard = QGuiApplication::clipboard();
+        QVERIFY(clipboard);
+
+        QImage original(36, 18, QImage::Format_ARGB32);
+        original.fill(QColor("#7c3aed"));
+        QByteArray jpegBytes;
+        QBuffer jpegBuffer(&jpegBytes);
+        QVERIFY(jpegBuffer.open(QIODevice::WriteOnly));
+        QVERIFY(original.save(&jpegBuffer, "JPEG"));
+        const QString jpegDataUrl = QStringLiteral("data:image/jpeg;base64,%1")
+            .arg(QString::fromLatin1(jpegBytes.toBase64()));
+
+        controller.copyNotesRichImage(jpegDataUrl);
+        QTRY_COMPARE_WITH_TIMEOUT(operations.count(), 1, 10000);
+        QVariantMap result = operations.takeFirst().at(0).toMap();
+        QVERIFY2(result.value("success").toBool(), qPrintable(result.value("error").toString()));
+        QCOMPARE(result.value("operation").toString(), QString("notes-rich-image-copy"));
+        const QImage copiedImage = clipboard->image();
+        QCOMPARE(copiedImage.size(), original.size());
+        QVERIFY(clipboard->mimeData()->hasImage());
+        QVERIFY(clipboard->mimeData()->formats().contains(QStringLiteral("image/png")));
+
+        const QString selectedPath = sandbox.filePath("evening-photo");
+        controller.saveNotesRichImage(jpegDataUrl, QUrl::fromLocalFile(selectedPath));
+        QTRY_COMPARE_WITH_TIMEOUT(operations.count(), 1, 10000);
+        result = operations.takeFirst().at(0).toMap();
+        QVERIFY2(result.value("success").toBool(), qPrintable(result.value("error").toString()));
+        QCOMPARE(result.value("operation").toString(), QString("notes-rich-image-download"));
+        QCOMPARE(result.value("fileName").toString(), QString("evening-photo.jpg"));
+        QCOMPARE(QFileInfo(controller.suggestedNotesRichImageSaveUrl(jpegDataUrl, "Evening")
+                           .toLocalFile()).fileName(), QString("imagem_Evening.jpg"));
+        QCOMPARE(QFileInfo(controller.suggestedNotesRichImageSaveUrl(jpegDataUrl, "")
+                           .toLocalFile()).fileName(), QString("imagem_secreta.jpg"));
+        QVERIFY(controller.suggestedNotesRichImageSaveUrl(QStringLiteral("invalid"), "Evening").isEmpty());
+        const QString savedPath = sandbox.filePath("evening-photo.jpg");
+        QVERIFY(QFile::exists(savedPath));
+        QImageReader savedReader(savedPath);
+        QCOMPARE(savedReader.format().toLower(), QByteArray("jpeg"));
+        QCOMPARE(savedReader.read().size(), original.size());
+
+        const QString rejectedPath = sandbox.filePath("unsupported.svg");
+        controller.saveNotesRichImage(QStringLiteral("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="),
+                                      QUrl::fromLocalFile(rejectedPath));
+        QTRY_COMPARE_WITH_TIMEOUT(operations.count(), 1, 10000);
+        result = operations.takeFirst().at(0).toMap();
+        QVERIFY(!result.value("success").toBool());
+        QCOMPARE(result.value("operation").toString(), QString("notes-rich-image-download"));
+        QVERIFY(!QFile::exists(rejectedPath));
         clipboard->clear();
     }
 };

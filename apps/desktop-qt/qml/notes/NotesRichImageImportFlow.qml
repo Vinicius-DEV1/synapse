@@ -24,6 +24,10 @@ Item {
         imageStatus.show(message)
     }
 
+    function showSuccess(message) {
+        imageStatus.showSuccess(message)
+    }
+
     function captureInsertionTarget(start, end) {
         if (!active || !textEditor || !textOperations || !controller || controller.fileOperationRunning) {
             showError(qsTr("Wait for the current file operation to finish."))

@@ -132,6 +132,10 @@ public:
     Q_INVOKABLE void processNotesRichImages(const QVariantList &sourceUrls);
     Q_INVOKABLE bool hasClipboardNotesRichImage() const;
     Q_INVOKABLE void processClipboardNotesRichImage();
+    Q_INVOKABLE void copyNotesRichImage(const QString &imageDataUrl);
+    Q_INVOKABLE void saveNotesRichImage(const QString &imageDataUrl, const QUrl &destinationUrl);
+    Q_INVOKABLE QUrl suggestedNotesRichImageSaveUrl(const QString &imageDataUrl,
+                                                     const QString &caption) const;
 
     // 2. Videos / Media Center
     Q_INVOKABLE QVariantList getVideos(const QString &collectionFilter = "");
@@ -374,7 +378,8 @@ signals:
     void filePreviewsInvalidated();
 
 private:
-    void startNotesRichImageOperation(std::function<QVariantMap()> operation);
+    void startNotesRichImageOperation(std::function<QVariantMap()> operation,
+                                      const QString &operationName);
     Database *m_db;
     QString m_dbPath;
     int m_pageCount;

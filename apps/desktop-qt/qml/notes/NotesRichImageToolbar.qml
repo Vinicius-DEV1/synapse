@@ -10,8 +10,10 @@ Item {
     property string alignment: "center"
     property bool canMoveUp: false
     property bool canMoveDown: false
+    property bool actionsEnabled: false
+    property string copyState: "idle"
     visible: active
-    implicitWidth: active ? 9 * 28 + 8 * 4 : 0
+    implicitWidth: active ? 11 * 28 + 10 * 4 : 0
     implicitHeight: 30
 
     signal alignmentRequested(string alignment)
@@ -19,6 +21,8 @@ Item {
     signal paragraphBelowRequested()
     signal fitRequested()
     signal resetRequested()
+    signal copyRequested()
+    signal downloadRequested()
     signal deleteRequested()
 
     RowLayout {
@@ -143,6 +147,46 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: imageToolbar.paragraphBelowRequested()
             }
+        }
+        ToolButton {
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 26
+            enabled: imageToolbar.actionsEnabled
+            padding: 2
+            Accessible.name: imageToolbar.copyState === "copied" ? qsTr("Image copied")
+                : imageToolbar.copyState === "failed" ? qsTr("Image copy failed")
+                : imageToolbar.copyState === "copying" ? qsTr("Copying image") : qsTr("Copy image")
+            ToolTip.visible: hovered
+            ToolTip.text: Accessible.name
+            contentItem: Text {
+                text: imageToolbar.copyState === "copied" ? "✓"
+                    : imageToolbar.copyState === "failed" ? "!"
+                    : imageToolbar.copyState === "copying" ? "…" : "⧉"
+                color: imageToolbar.copyState === "copied" ? "#a7f3d0"
+                    : imageToolbar.copyState === "failed" ? "#fda4af" : "#c4b5fd"
+                font.pixelSize: 15
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: imageToolbar.copyRequested()
+        }
+        ToolButton {
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 26
+            enabled: imageToolbar.actionsEnabled
+            padding: 2
+            text: "↓"
+            Accessible.name: qsTr("Download image")
+            ToolTip.visible: hovered
+            ToolTip.text: Accessible.name
+            contentItem: Text {
+                text: "↓"
+                color: "#c4b5fd"
+                font.pixelSize: 16
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: imageToolbar.downloadRequested()
         }
         ToolButton {
             Layout.preferredWidth: 28

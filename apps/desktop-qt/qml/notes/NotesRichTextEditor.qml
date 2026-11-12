@@ -32,6 +32,8 @@ Item {
     readonly property string richImageAlignment: richImageActions.imageState.alignment || "center"
     readonly property bool richImageCanMoveUp: richImageActions.canMoveUp
     readonly property bool richImageCanMoveDown: richImageActions.canMoveDown
+    readonly property bool richImageActionsEnabled: richImageActions.exportActionsEnabled
+    readonly property string richImageCopyState: richImageActions.copyState
 
     signal contentModified(string html)
     signal validationChanged(bool invalid, string message)
@@ -167,6 +169,8 @@ Item {
     function insertParagraphBelowImage() { return richImageActions.insertParagraphBelowImage() }
     function requestImageDelete() { return richImageActions.requestDelete() }
     function handleRichImageDeleteKey(key) { return richImageActions.handleDeleteKey(key) }
+    function copyRichImage() { return richImageActions.copySelectedImage() }
+    function downloadRichImage() { return richImageActions.downloadSelectedImage() }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()

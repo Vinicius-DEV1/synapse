@@ -289,6 +289,8 @@ ScrollView {
                 richImageAlignment: richTextEditor.richImageAlignment
                 richImageCanMoveUp: richTextEditor.richImageCanMoveUp
                 richImageCanMoveDown: richTextEditor.richImageCanMoveDown
+                richImageActionsEnabled: richTextEditor.richImageActionsEnabled
+                richImageCopyState: richTextEditor.richImageCopyState
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
                 onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
@@ -306,6 +308,8 @@ ScrollView {
                 onRichImageFitRequested: richTextEditor.fitImageToWidth()
                 onRichImageResetRequested: richTextEditor.resetImageSize()
                 onRichImageParagraphBelowRequested: richTextEditor.insertParagraphBelowImage()
+                onRichImageCopyRequested: richTextEditor.copyRichImage()
+                onRichImageDownloadRequested: richTextEditor.downloadRichImage()
                 onRichImageDeleteRequested: richTextEditor.requestImageDelete()
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
                 onRichCellBackgroundRequested: function(color, scope) {

@@ -2,6 +2,8 @@
 
 #include <QtCore/QBuffer>
 #include <QtCore/QScopedPointer>
+#include <QtCore/QUrl>
+#include <QtCore/QVariantMap>
 #include <QtGui/QImage>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextCursor>
@@ -40,6 +42,36 @@ int findImagePosition(QTextDocument *document) {
 
 }
 
+class MockRichImageExportController final : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool fileOperationRunning READ fileOperationRunning CONSTANT)
+public:
+    bool fileOperationRunning() const { return false; }
+    void finish(const QVariantMap &result) { emit fileOperationFinished(result); }
+    Q_INVOKABLE QUrl suggestedNotesRichImageSaveUrl(const QString &, const QString &) const {
+        return QUrl::fromLocalFile(QStringLiteral("/tmp/image.png"));
+    }
+    Q_INVOKABLE void copyNotesRichImage(const QString &dataUrl) {
+        ++copyRequests;
+        lastImageDataUrl = dataUrl;
+        emit fileOperationFinished({{"success", true}, {"operation", "notes-rich-image-copy"}});
+    }
+    Q_INVOKABLE void saveNotesRichImage(const QString &dataUrl, const QUrl &destinationUrl) {
+        ++saveRequests;
+        lastImageDataUrl = dataUrl;
+        lastDestination = destinationUrl;
+        emit fileOperationFinished({{"success", true}, {"operation", "notes-rich-image-download"}});
+    }
+
+    int copyRequests = 0;
+    int saveRequests = 0;
+    QString lastImageDataUrl;
+    QUrl lastDestination;
+
+signals:
+    void fileOperationFinished(const QVariantMap &result);
+};
+
 class NativeNotesRichImageMovementQmlTest final : public QObject {
     Q_OBJECT
 private slots:
@@ -67,6 +99,9 @@ private slots:
         QVERIFY(imageActions);
         QVERIFY(imageEditor);
         QVERIFY(imageToolbar);
+        MockRichImageExportController exportController;
+        QVERIFY(imageActions);
+        imageActions->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&exportController)));
         const QString source = QStringLiteral(
             "<p>Before</p><p><img src=\"%1\" width=\"40\" height=\"20\" alt=\"photo.png\" data-caption=\"Evening\" data-align=\"right\"/></p><p>After</p>")
             .arg(imageDataUrl());
@@ -124,6 +159,36 @@ private slots:
         QVERIFY(saved.value("html").toString().contains("data-align=\"right\""));
         QVERIFY(saved.value("html").toString().contains("data-caption=\"Evening\""));
         QCOMPARE(changed.count(), 3);
+
+        imagePosition = findImagePosition(quickDocument->textDocument());
+        QVERIFY(imagePosition >= 0);
+        imageEditor->setProperty("cursorPosition", imagePosition);
+        QVERIFY(QMetaObject::invokeMethod(imageActions, "refreshImageState", Qt::DirectConnection));
+        const int changesBeforeExport = changed.count();
+        QVERIFY(imageToolbar->property("richImageActionsEnabled").toBool());
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageCopyRequested", Qt::DirectConnection));
+        QCOMPARE(exportController.copyRequests, 1);
+        QCOMPARE(exportController.lastImageDataUrl, imageDataUrl());
+        QCOMPARE(imageToolbar->property("richImageCopyState").toString(), QString("copied"));
+
+        QObject *saveDialog = root->findChild<QObject *>("notesRichImageSaveDialog");
+        QVERIFY(saveDialog);
+        QVERIFY(QMetaObject::invokeMethod(imageToolbar, "richImageDownloadRequested", Qt::DirectConnection));
+        QCOMPARE(saveDialog->property("imageDataUrl").toString(), imageDataUrl());
+        QCOMPARE(saveDialog->property("suggestedFileUrl").toUrl().toLocalFile(), QString("/tmp/image.png"));
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "closeDialog", Qt::DirectConnection));
+        const QUrl destination = QUrl::fromLocalFile(QStringLiteral("/tmp/evening.png"));
+        QVERIFY(QMetaObject::invokeMethod(saveDialog, "saveRequested", Qt::DirectConnection,
+                                          Q_ARG(QString, imageDataUrl()), Q_ARG(QUrl, destination)));
+        QCOMPARE(exportController.saveRequests, 1);
+        QCOMPARE(exportController.lastImageDataUrl, imageDataUrl());
+        QCOMPARE(exportController.lastDestination, destination);
+        exportController.finish({{"success", false}, {"operation", "notes-rich-image-copy"},
+                                 {"error", "Clipboard denied the image."}});
+        QCOMPARE(imageToolbar->property("richImageCopyState").toString(), QString("failed"));
+        QCOMPARE(imageActions->property("errorMessage").toString(),
+                 QString("Clipboard denied the image."));
+        QCOMPARE(changed.count(), changesBeforeExport);
 
         imagePosition = findImagePosition(quickDocument->textDocument());
         QVERIFY(imagePosition >= 0);

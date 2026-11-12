@@ -17,6 +17,8 @@ Item {
     property alias savedEnd: imageImportFlow.savedEnd
     property alias savedPageId: imageImportFlow.savedPageId
     property alias savedDocumentSource: imageImportFlow.savedDocumentSource
+    property alias copyState: imageExportActions.copyState
+    property alias exportActionsEnabled: imageExportActions.actionsEnabled
     property var imageState: ({ valid: false, position: -1, alignment: "center", caption: "" })
     readonly property bool canMoveUp: active && imageState.valid && textOperations && textEditor
         ? textOperations.canMoveRichImage(textEditor.textDocument, imageState.position, true) : false
@@ -130,6 +132,9 @@ Item {
     function handleDeleteKey(key) {
         return imageDeletion.handleKey(key)
     }
+
+    function copySelectedImage() { return imageExportActions.copySelectedImage() }
+    function downloadSelectedImage() { return imageExportActions.downloadSelectedImage() }
 
     function openForPosition() {
         return imageImportFlow.openForPosition()
@@ -260,6 +265,18 @@ Item {
         pageId: imageActionsRoot.pageId
         active: imageActionsRoot.active
         onContentModified: imageActionsRoot.contentModified()
+    }
+
+    NotesRichImageExportActions {
+        id: imageExportActions
+        anchors.fill: parent
+        z: 21
+        controller: imageActionsRoot.controller
+        textEditor: imageActionsRoot.textEditor
+        textOperations: imageActionsRoot.textOperations
+        imageState: imageActionsRoot.imageState
+        statusTarget: imageImportFlow
+        active: imageActionsRoot.active
     }
 
 }

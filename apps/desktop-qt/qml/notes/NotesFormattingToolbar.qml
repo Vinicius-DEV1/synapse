@@ -25,6 +25,8 @@ Rectangle {
     signal richImageFitRequested()
     signal richImageResetRequested()
     signal richImageParagraphBelowRequested()
+    signal richImageCopyRequested()
+    signal richImageDownloadRequested()
     signal richImageDeleteRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
@@ -63,6 +65,8 @@ Rectangle {
     property string richImageAlignment: "center"
     property bool richImageCanMoveUp: false
     property bool richImageCanMoveDown: false
+    property bool richImageActionsEnabled: false
+    property string richImageCopyState: "idle"
 
     RowLayout {
         anchors.fill: parent
@@ -106,6 +110,8 @@ Rectangle {
             alignment: toolbarRoot.richImageAlignment
             canMoveUp: toolbarRoot.richImageCanMoveUp
             canMoveDown: toolbarRoot.richImageCanMoveDown
+            actionsEnabled: toolbarRoot.richImageActionsEnabled
+            copyState: toolbarRoot.richImageCopyState
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             onAlignmentRequested: function(value) { toolbarRoot.richImageAlignmentRequested(value) }
@@ -113,6 +119,8 @@ Rectangle {
             onFitRequested: toolbarRoot.richImageFitRequested()
             onResetRequested: toolbarRoot.richImageResetRequested()
             onParagraphBelowRequested: toolbarRoot.richImageParagraphBelowRequested()
+            onCopyRequested: toolbarRoot.richImageCopyRequested()
+            onDownloadRequested: toolbarRoot.richImageDownloadRequested()
             onDeleteRequested: toolbarRoot.richImageDeleteRequested()
         }
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }

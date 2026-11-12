@@ -31,11 +31,15 @@ Item {
         richImageAlignment: imageActions.imageState.alignment || "center"
         richImageCanMoveUp: imageActions.canMoveUp
         richImageCanMoveDown: imageActions.canMoveDown
+        richImageActionsEnabled: imageActions.exportActionsEnabled
+        richImageCopyState: imageActions.copyState
         onRichImageAlignmentRequested: function(alignment) { imageActions.setAlignment(alignment) }
         onRichImageMoveRequested: function(upward) { imageActions.moveImage(upward) }
         onRichImageFitRequested: imageActions.fitToWidth()
         onRichImageResetRequested: imageActions.resetImageSize()
         onRichImageParagraphBelowRequested: imageActions.insertParagraphBelowImage()
+        onRichImageCopyRequested: imageActions.copySelectedImage()
+        onRichImageDownloadRequested: imageActions.downloadSelectedImage()
         onRichImageDeleteRequested: imageActions.requestDelete()
     }
 
