@@ -18,6 +18,7 @@ Item {
         canDeleteTableColumn: richEditor.tableActions.canEditTable("deleteColumn")
         canMergeOrSplitTableCells: richEditor.tableActions.canMergeOrSplit
         canColorSelectedTableCells: richEditor.tableActions.canColorSelectedCells
+        richTableSelectionScope: richEditor.tableActions.selectionScope
         dividerActive: richEditor.tableActions.isOnDivider
         canMoveDividerUp: richEditor.tableActions.canMoveDividerUp
         canMoveDividerDown: richEditor.tableActions.canMoveDividerDown
@@ -47,6 +48,7 @@ Item {
         target: formattingToolbar
         function onRichTableRequested() { richEditor.tableActions.insertTable() }
         function onRichTableActionRequested(action) { richEditor.tableActions.editTable(action) }
+        function onRichTableSelectionRequested(scope) { richEditor.tableActions.selectCells(scope) }
         function onRichCellBackgroundRequested(color, scope) {
             richEditor.tableActions.setCellBackground(color, scope)
         }

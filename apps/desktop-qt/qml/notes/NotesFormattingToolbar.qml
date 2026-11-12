@@ -30,6 +30,7 @@ Rectangle {
     signal richImageViewRequested()
     signal richImageDeleteRequested()
     signal richTableActionRequested(string action)
+    signal richTableSelectionRequested(string scope)
     signal richCellBackgroundRequested(string color, string scope)
     signal richTableSelectionFormattingClearRequested()
     signal richDividerRequested()
@@ -52,6 +53,7 @@ Rectangle {
     property bool canDeleteTableColumn: false
     property bool canMergeOrSplitTableCells: false
     property bool canColorSelectedTableCells: false
+    property string richTableSelectionScope: "none"
     property bool dividerActive: false
     property bool canMoveDividerUp: false
     property bool canMoveDividerDown: false
@@ -224,6 +226,13 @@ Rectangle {
             Layout.preferredHeight: 30
             onColorSelected: function(color, scope) { toolbarRoot.richCellBackgroundRequested(color, scope) }
         }
+        NotesTableSelectionActions {
+            active: toolbarRoot.richMode && toolbarRoot.tableCellActive
+            currentScope: toolbarRoot.richTableSelectionScope
+            Layout.preferredWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
+            onSelectionRequested: function(scope) { toolbarRoot.richTableSelectionRequested(scope) }
+        }
         NotesTableSelectionFormattingAction {
             selectionAvailable: toolbarRoot.richMode && toolbarRoot.canColorSelectedTableCells
             Layout.preferredWidth: 30
@@ -232,83 +241,13 @@ Rectangle {
         }
 
         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
-
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "H1"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<h1>", "</h1>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "H2"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<h2>", "</h2>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Accessible.name: qsTr("Heading 3")
-            Text { anchors.centerIn: parent; text: "H3"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<h3>", "</h3>") }
-        }
-        Repeater {
-            model: toolbarRoot.richMode ? [] : [4, 5, 6]
-            delegate: Rectangle {
-                required property int modelData
-                Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-                Accessible.name: qsTr("Heading %1").arg(modelData)
-                Text { anchors.centerIn: parent; text: "H" + parent.modelData; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: toolbarRoot.formatRequested("<h" + parent.modelData + ">", "</h" + parent.modelData + ">")
-                }
+        NotesSourceFormattingActions {
+            richMode: toolbarRoot.richMode
+            Layout.preferredWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
+            onFormatRequested: function(prefix, suffix) {
+                toolbarRoot.formatRequested(prefix, suffix)
             }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "•"; color: "#ffffff"; font.pixelSize: 14 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<ul><li>", "</li></ul>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Accessible.name: qsTr("Numbered list")
-            Text { anchors.centerIn: parent; text: "1."; color: "#ffffff"; font.pixelSize: 12 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<ol><li>", "</li></ol>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "”"; color: "#ffffff"; font.pixelSize: 14 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<blockquote>", "</blockquote>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 32; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "ℹ️"; font.pixelSize: 11 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<div class=\"blockquote-toggle\" data-title=\"Nota\" data-color=\"default\" data-is-open=\"true\"><p>", "</p></div>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 32; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "⚠️"; font.pixelSize: 11 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<div class=\"blockquote-toggle\" data-title=\"Atenção\" data-color=\"#f59e0b\" data-is-open=\"true\"><p>", "</p></div>") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Accessible.name: qsTr("Divider")
-            Text { anchors.centerIn: parent; text: "—"; color: "#ffffff"; font.pixelSize: 16 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<hr>", "") }
-        }
-        Rectangle {
-            Layout.preferredWidth: 32; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            visible: !toolbarRoot.richMode
-            Text { anchors.centerIn: parent; text: "{ }"; color: "#a78bfa"; font.pixelSize: 11; font.bold: true }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.formatRequested("<pre><code>", "</code></pre>") }
         }
     }
 

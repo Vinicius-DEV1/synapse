@@ -17,6 +17,10 @@ QtObject {
     readonly property bool canColorSelectedCells: active && !invalid && textEditor &&
         textOperations.canSetRichTableBackgroundOnSelection(
             textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)
+    readonly property string selectionScope: active && !invalid && textEditor
+        ? textOperations.richTableSelectionScope(textEditor.textDocument, textEditor.cursorPosition,
+                                                  textEditor.selectionStart, textEditor.selectionEnd)
+        : "none"
     readonly property bool isOnDivider: active && !invalid && textEditor &&
         textOperations.isRichDivider(textEditor.textDocument, textEditor.cursorPosition)
     readonly property bool canMoveDividerUp: isOnDivider &&
@@ -58,6 +62,18 @@ QtObject {
                 textEditor.textDocument, textEditor.cursorPosition, color, scope || "cell",
                 textEditor.selectionStart, textEditor.selectionEnd)) return false
         return finishEdit()
+    }
+
+    function selectCells(scope) {
+        if (!active || invalid || !isInsideTable) return false
+        var activePosition = textEditor.selectionStart !== textEditor.selectionEnd
+                ? textEditor.selectionStart : textEditor.cursorPosition
+        var range = textOperations.richTableSelectionRange(
+                    textEditor.textDocument, activePosition, scope)
+        if (!range || range.start === undefined || range.end < range.start) return false
+        textEditor.select(range.start, range.end)
+        textEditor.forceActiveFocus()
+        return true
     }
 
     function clearSelectedCellFormatting() {

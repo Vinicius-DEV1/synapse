@@ -2,6 +2,7 @@
 
 #include "notes_rich_document.h"
 #include "notes_rich_table_cell_formatting.h"
+#include "notes_rich_table_cell_selection.h"
 #include "notes_rich_table_merging.h"
 #include "notes_rich_tables.h"
 
@@ -48,6 +49,19 @@ bool NotesTextOperations::canSetRichTableBackgroundOnSelection(QQuickTextDocumen
     return document && document->textDocument() &&
         NotesRichTableCellFormatting::canSetBackgroundOnSelection(
             *document->textDocument(), selectionStart, selectionEnd);
+}
+
+QVariantMap NotesTextOperations::richTableSelectionRange(QQuickTextDocument *document, int position,
+                                                          const QString &scope) const {
+    if (!document || !document->textDocument()) return {};
+    return NotesRichTableCellSelection::selectionRange(*document->textDocument(), position, scope);
+}
+
+QString NotesTextOperations::richTableSelectionScope(QQuickTextDocument *document, int cursorPosition,
+                                                      int selectionStart, int selectionEnd) const {
+    if (!document || !document->textDocument()) return QStringLiteral("none");
+    return NotesRichTableCellSelection::selectionScope(*document->textDocument(), cursorPosition,
+                                                        selectionStart, selectionEnd);
 }
 
 bool NotesTextOperations::clearRichTableFormattingOnSelection(QQuickTextDocument *document,

@@ -34,6 +34,7 @@ Item {
         canDeleteTableColumn: toolbarBinding.richEditor.tableActions.canEditTable("deleteColumn")
         canMergeOrSplitTableCells: toolbarBinding.richEditor.tableActions.canMergeOrSplit
         canColorSelectedTableCells: toolbarBinding.richEditor.tableActions.canColorSelectedCells
+        richTableSelectionScope: toolbarBinding.richEditor.tableActions.selectionScope
         dividerActive: toolbarBinding.richEditor.tableActions.isOnDivider
         canMoveDividerUp: toolbarBinding.richEditor.tableActions.canMoveDividerUp
         canMoveDividerDown: toolbarBinding.richEditor.tableActions.canMoveDividerDown
@@ -73,6 +74,9 @@ Item {
         onRichImageViewRequested: toolbarBinding.richEditor.viewRichImage()
         onRichImageDeleteRequested: toolbarBinding.richEditor.requestImageDelete()
         onRichTableActionRequested: function(action) { toolbarBinding.richEditor.tableActions.editTable(action) }
+        onRichTableSelectionRequested: function(scope) {
+            toolbarBinding.richEditor.tableActions.selectCells(scope)
+        }
         onRichCellBackgroundRequested: function(color, scope) {
             toolbarBinding.richEditor.tableActions.setCellBackground(color, scope)
         }
