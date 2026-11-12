@@ -60,11 +60,19 @@ static bool appendBlocks(const QVector<QTextBlock> &blocks, QString &result) {
         }
         if (!supportedBlock(block)) return false;
         if (block.blockFormat().boolProperty(QTextFormat::BlockNonBreakableLines)) {
-            result += "<pre><code>";
-            while (index < blocks.size() && block.blockFormat().boolProperty(QTextFormat::BlockNonBreakableLines)) {
+            const int groupId = block.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup);
+            const QString language = block.blockFormat().stringProperty(NotesRichFormat::CodeBlockLanguage);
+            result += "<pre><code";
+            if (!language.isEmpty()) result += QStringLiteral(" class=\"language-%1\"").arg(language.toHtmlEscaped());
+            result += ">";
+            while (index < blocks.size() && block.blockFormat().boolProperty(QTextFormat::BlockNonBreakableLines) &&
+                   (groupId > 0 ? block.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId
+                                : block.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) <= 0)) {
                 if (!supportedBlock(block) || !appendCodeLine(result, block)) return false;
                 ++index;
-                if (index < blocks.size() && blocks.at(index).blockFormat().boolProperty(QTextFormat::BlockNonBreakableLines)) result += '\n';
+                if (index < blocks.size() && blocks.at(index).blockFormat().boolProperty(QTextFormat::BlockNonBreakableLines) &&
+                    (groupId > 0 ? blocks.at(index).blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId
+                                 : blocks.at(index).blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) <= 0)) result += '\n';
                 if (index < blocks.size()) block = blocks.at(index);
             }
             result += "</code></pre>";

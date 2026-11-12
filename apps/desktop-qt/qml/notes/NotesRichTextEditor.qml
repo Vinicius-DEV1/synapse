@@ -12,12 +12,22 @@ Item {
     property bool hasInvalidContent: false
     property string validationMessage: ""
     property int calloutRevision: 0
+    property int codeBlockRevision: 0
     property int linkSelectionStart: 0
     property int linkSelectionEnd: 0
     property bool canEditSource: sourceHtml.length === 0
     readonly property int commitDelayMs: 180
     readonly property alias editor: richEditor
     property alias tableActions: richTableActions
+    readonly property bool codeBlockActive: {
+        var revision = codeBlockRevision
+        return textOperations.isRichCodeBlock(richEditor.textDocument, richEditor.cursorPosition)
+    }
+    readonly property string codeBlockLanguage: {
+        var revision = codeBlockRevision
+        return codeBlockActive
+            ? textOperations.richCodeBlockLanguage(richEditor.textDocument, richEditor.cursorPosition) : "auto"
+    }
     readonly property bool calloutAtCursor: {
         var revision = calloutRevision
         return textOperations.isRichCalloutAt(richEditor.textDocument, richEditor.cursorPosition)
@@ -55,6 +65,13 @@ Item {
             validationMessage = qsTr("This note contains formatting that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
+        if (!textOperations.prepareRichCodeBlocks(richEditor.textDocument, sourceHtml)) {
+            isLoading = false
+            canEditSource = false
+            validationMessage = qsTr("This note contains a code block that the native editor could not load safely. Switch to source editing to preserve it.")
+            return false
+        }
+        codeBlockRevision += 1
         if (!textOperations.prepareRichCallouts(richEditor.textDocument, sourceHtml)) {
             isLoading = false
             canEditSource = false
@@ -123,6 +140,7 @@ Item {
         if (!textOperations.toggleRichBlock(
                 richEditor.textDocument, richEditor.selectionStart, richEditor.selectionEnd, blockType)) return false
         calloutRevision += 1
+        codeBlockRevision += 1
         hasPendingChanges = true
         commitTimer.restart()
         richEditor.forceActiveFocus()
@@ -147,6 +165,18 @@ Item {
                 richEditor.textDocument, richEditor.selectionStart, richEditor.selectionEnd, color)) return false
         calloutRevision += 1
         hasPendingChanges = true
+        commitTimer.restart()
+        richEditor.forceActiveFocus()
+        return true
+    }
+
+    function setCodeBlockLanguage(language) {
+        if (!active || hasInvalidContent || !codeBlockActive) return false
+        var nextLanguage = language === "auto" ? "" : language
+        if (!textOperations.setRichCodeBlockLanguage(
+                    richEditor.textDocument, richEditor.cursorPosition, nextLanguage)) return false
+        hasPendingChanges = true
+        codeBlockRevision += 1
         commitTimer.restart()
         richEditor.forceActiveFocus()
         return true

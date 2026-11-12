@@ -278,6 +278,8 @@ ScrollView {
                 richSpoilerActive: richTextEditor.spoilerAtCursor
                 calloutActive: richTextEditor.calloutAtCursor
                 calloutColor: richTextEditor.calloutColorAtCursor
+                codeBlockActive: richTextEditor.codeBlockActive
+                codeBlockLanguage: richTextEditor.codeBlockLanguage
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
                 onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
@@ -295,6 +297,9 @@ ScrollView {
                 onRichDividerActionRequested: function(action) { richTextEditor.tableActions.editDivider(action) }
                 onRichDividerDropRequested: function(targetPosition, afterTarget) {
                     richTextEditor.dropDividerAt(targetPosition, afterTarget)
+                }
+                onRichCodeLanguageRequested: function(language) {
+                    richTextEditor.setCodeBlockLanguage(language)
                 }
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {

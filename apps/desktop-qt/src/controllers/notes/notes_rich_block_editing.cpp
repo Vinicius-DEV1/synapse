@@ -1,4 +1,5 @@
 #include "notes_rich_document.h"
+#include "notes_rich_code_blocks.h"
 #include "notes_rich_format.h"
 #include "notes_rich_task_lists.h"
 
@@ -107,6 +108,8 @@ bool toggleBlock(QTextDocument &document, int start, int end, const QString &blo
                                           : list->format().style() == QTextListFormat::ListDecimal;
     };
     const bool removeTarget = std::all_of(blocks.cbegin(), blocks.cend(), matchesTarget);
+    const int codeBlockGroup = !removeTarget && blockType == "codeBlock"
+        ? NotesRichCodeBlocks::nextGroupId(document) : 0;
     if (!removeTarget && blockType == "codeBlock" &&
         !std::all_of(blocks.cbegin(), blocks.cend(), canBecomeCodeBlock)) return false;
 
@@ -126,6 +129,8 @@ bool toggleBlock(QTextDocument &document, int start, int end, const QString &blo
         format.clearProperty(QTextFormat::BlockQuoteLevel);
         format.clearProperty(QTextFormat::BlockLeftMargin);
         format.clearProperty(QTextFormat::BlockRightMargin);
+        format.clearProperty(NotesRichFormat::CodeBlockLanguage);
+        format.clearProperty(NotesRichFormat::CodeBlockGroup);
         format.setTopMargin(12.0);
         format.setBottomMargin(12.0);
 
@@ -139,6 +144,7 @@ bool toggleBlock(QTextDocument &document, int start, int end, const QString &blo
             format.setRightMargin(40.0);
         } else if (!removeTarget && blockType == "codeBlock") {
             format.setNonBreakableLines(true);
+            format.setProperty(NotesRichFormat::CodeBlockGroup, codeBlockGroup);
         }
         QTextCursor blockCursor(block);
         blockCursor.setBlockFormat(format);

@@ -2,6 +2,7 @@
 #include "notes_rich_markup.h"
 #include "notes_rich_spoilers.h"
 #include "notes_rich_table_cell_formatting.h"
+#include "notes_rich_code_blocks.h"
 #include "notes_rich_task_markup.h"
 
 #include <QtCore/QSet>
@@ -144,6 +145,10 @@ bool supportsSource(const QString &source) {
                 supportedStyle = parseSingleStyle(styleValue(attributes), "color").isValid();
             if (name == "span" && NotesRichSpoilers::isSpoilerAttributes(attributes))
                 supportedStyle = true;
+            if (name == "code" && stack.last() == "pre") {
+                QString language;
+                supportedStyle = NotesRichCodeBlocks::languageFromAttributes(attributes, language);
+            }
             if (name == "mark" && (attributes.size() == 1 || attributes.size() == 2) && attributes.hasAttribute("style")) {
                 const QColor background = parseHighlightStyle(styleValue(attributes));
                 supportedStyle = background.isValid();
@@ -213,8 +218,8 @@ bool supportsSource(const QString &source) {
                 return false;
             } else if ((stack.last() == "td" || stack.last() == "th") && name != "p") {
                 return false;
-            } else if (stack.last() == "pre" && name == "code" && attributes.isEmpty() && codeChildren++ == 0) {
-                // The visual adapter preserves plain code blocks without language metadata.
+            } else if (stack.last() == "pre" && name == "code" && codeChildren++ == 0) {
+                // Code language metadata is preserved; token markup remains source-only.
             } else if ((stack.last() == "ul" || stack.last() == "ol") && name == "li") {
                 if (listItems++ > 0) {
                     expectedText += '\n';

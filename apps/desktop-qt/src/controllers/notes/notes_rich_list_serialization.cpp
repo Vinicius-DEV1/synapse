@@ -1,6 +1,7 @@
 #include "notes_rich_list_serialization.h"
 #include "notes_rich_serialization_support.h"
 #include "notes_rich_format.h"
+#include "notes_rich_code_blocks.h"
 #include "notes_rich_markup.h"
 #include "notes_rich_task_lists.h"
 
@@ -23,6 +24,9 @@ bool supportedBlock(const QTextBlock &block) {
     const int headingLevel = format.headingLevel();
     const int quoteLevel = format.intProperty(QTextFormat::BlockQuoteLevel);
     const bool hasQuoteColor = format.hasProperty(NotesRichFormat::QuoteColor);
+    const bool isCodeBlock = format.boolProperty(QTextFormat::BlockNonBreakableLines);
+    const int codeGroup = format.intProperty(NotesRichFormat::CodeBlockGroup);
+    const QString codeLanguage = format.stringProperty(NotesRichFormat::CodeBlockLanguage);
     const QString quoteColorValue = format.stringProperty(NotesRichFormat::QuoteColor);
     static const QRegularExpression quoteColorPattern(QStringLiteral("^#[0-9a-fA-F]{6}$"));
     const QColor quoteColor = NotesRichMarkup::parseCssColor(quoteColorValue);
@@ -30,7 +34,9 @@ bool supportedBlock(const QTextBlock &block) {
     if (headingLevel < 0 || headingLevel > 6 || (headingLevel > 0 && quoteLevel > 0) ||
         (list && (headingLevel > 0 || quoteLevel > 0)) || quoteLevel > 1 ||
         (hasQuoteColor && (quoteLevel != 1 || !quoteColorPattern.match(quoteColorValue).hasMatch() ||
-                           !quoteColor.isValid()))) return false;
+                           !quoteColor.isValid())) ||
+        (codeGroup > 0 && !isCodeBlock) || (format.hasProperty(NotesRichFormat::CodeBlockGroup) && codeGroup <= 0) ||
+        (!codeLanguage.isEmpty() && (!isCodeBlock || !NotesRichCodeBlocks::supportsLanguage(codeLanguage)))) return false;
     const auto properties = format.properties();
     for (auto it = properties.cbegin(); it != properties.cend(); ++it) {
         const int key = it.key();
@@ -56,6 +62,10 @@ bool supportedBlock(const QTextBlock &block) {
             if (!listContinuation && (!list || value != list->format().indent() - 1)) return false;
         } else if (key == QTextFormat::BlockNonBreakableLines) {
             if (!it.value().toBool() || headingLevel > 0 || quoteLevel > 0 || list) return false;
+        } else if (key == NotesRichFormat::CodeBlockLanguage) {
+            if (!isCodeBlock || !NotesRichCodeBlocks::supportsLanguage(it.value().toString())) return false;
+        } else if (key == NotesRichFormat::CodeBlockGroup) {
+            if (!isCodeBlock || it.value().toInt() <= 0) return false;
         } else if (key == QTextFormat::BlockLeftMargin || key == QTextFormat::BlockRightMargin) {
             if (quoteLevel != 1 || value != 40.0) return false;
         } else if (key == QTextFormat::ObjectIndex) {

@@ -1,6 +1,7 @@
 #include "notes_text_operations.h"
 #include "notes_rich_document.h"
 #include "notes_rich_callouts.h"
+#include "notes_rich_code_blocks.h"
 #include "notes_rich_divider_editing.h"
 #include "notes_rich_spoilers.h"
 #include "notes_rich_table_cell_formatting.h"
@@ -31,6 +32,27 @@ QString NotesTextOperations::richSourceForEditor(const QString &source) const {
 bool NotesTextOperations::prepareRichHeadings(QQuickTextDocument *document, const QString &source) const {
     return document && document->textDocument() &&
         NotesRichDocument::prepareHeadingStyles(*document->textDocument(), source);
+}
+
+bool NotesTextOperations::prepareRichCodeBlocks(QQuickTextDocument *document, const QString &source) const {
+    return document && document->textDocument() &&
+        NotesRichCodeBlocks::prepare(*document->textDocument(), source);
+}
+
+bool NotesTextOperations::isRichCodeBlock(QQuickTextDocument *document, int position) const {
+    return document && document->textDocument() &&
+        NotesRichCodeBlocks::isAt(*document->textDocument(), position);
+}
+
+QString NotesTextOperations::richCodeBlockLanguage(QQuickTextDocument *document, int position) const {
+    if (!document || !document->textDocument()) return {};
+    return NotesRichCodeBlocks::languageAt(*document->textDocument(), position);
+}
+
+bool NotesTextOperations::setRichCodeBlockLanguage(QQuickTextDocument *document, int position,
+                                                     const QString &language) const {
+    return document && document->textDocument() &&
+        NotesRichCodeBlocks::setLanguage(*document->textDocument(), position, language);
 }
 
 bool NotesTextOperations::prepareRichCallouts(QQuickTextDocument *document, const QString &source) const {

@@ -1,0 +1,20 @@
+#pragma once
+
+#include <QtCore/QString>
+
+class QTextBlock;
+class QTextDocument;
+class QXmlStreamAttributes;
+
+namespace NotesRichCodeBlocks {
+
+bool supportsLanguage(const QString &language);
+bool languageFromAttributes(const QXmlStreamAttributes &attributes, QString &language);
+bool prepare(QTextDocument &document, const QString &source);
+bool isAt(const QTextDocument &document, int position);
+QString languageAt(const QTextDocument &document, int position);
+int nextGroupId(const QTextDocument &document);
+void setGroup(QTextBlock block, int groupId, const QString &language = QString());
+bool setLanguage(QTextDocument &document, int position, const QString &language);
+
+}

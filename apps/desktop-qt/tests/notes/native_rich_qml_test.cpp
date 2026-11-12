@@ -9,6 +9,7 @@
 #include <QtTest/QtTest>
 
 int runNativeNotesCalloutQmlTest(int argc, char **argv);
+int runNativeNotesCodeLanguageQmlTest(int argc, char **argv);
 int runNativeNotesDividerDragQmlTest(int argc, char **argv);
 
 class MockNotesController final : public QObject {
@@ -329,6 +330,7 @@ int main(int argc, char **argv) {
     NativeRichQmlTest test;
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesCalloutQmlTest(argc, argv) |
+        runNativeNotesCodeLanguageQmlTest(argc, argv) |
         runNativeNotesDividerDragQmlTest(argc, argv);
 }
 

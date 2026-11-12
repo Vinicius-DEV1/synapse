@@ -23,6 +23,8 @@ Item {
         richSpoilerActive: richEditor.spoilerAtCursor
         calloutActive: richEditor.calloutAtCursor
         calloutColor: richEditor.calloutColorAtCursor
+        codeBlockActive: richEditor.codeBlockActive
+        codeBlockLanguage: richEditor.codeBlockLanguage
     }
 
     NotesRichTextEditor {
@@ -47,6 +49,7 @@ Item {
         function onRichDividerDropRequested(targetPosition, afterTarget) {
             richEditor.dropDividerAt(targetPosition, afterTarget)
         }
+        function onRichCodeLanguageRequested(language) { richEditor.setCodeBlockLanguage(language) }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
         function onRichCalloutRequested(color) { richEditor.setCalloutColor(color) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }
