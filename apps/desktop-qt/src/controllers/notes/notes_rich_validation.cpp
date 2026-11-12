@@ -2,6 +2,8 @@
 #include "notes_rich_markup.h"
 #include "notes_rich_spoilers.h"
 #include "notes_rich_table_cell_formatting.h"
+#include "notes_rich_table_merging.h"
+#include "notes_rich_validation_semantics.h"
 #include "notes_rich_code_blocks.h"
 #include "notes_rich_images.h"
 #include "notes_rich_task_markup.h"
@@ -33,53 +35,6 @@ bool supportsCalloutAttributes(const QXmlStreamAttributes &attributes) {
     return style == expected;
 }
 
-bool appendSemanticBlock(QString &text, const QString &blockText, bool &hasPrevious) {
-    if (hasPrevious) text += SemanticBlockSeparator;
-    text += blockText;
-    hasPrevious = true;
-    return true;
-}
-
-bool hasHorizontalRule(const QTextBlock &block) {
-    return block.isValid() && block.blockFormat().hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth);
-}
-
-bool semanticText(const QTextDocument &document, QString &text) {
-    bool hasPrevious = false;
-    bool skipTableSeparator = false;
-    for (auto item = document.rootFrame()->begin(); !item.atEnd(); ++item) {
-        if (QTextFrame *frame = item.currentFrame()) {
-            const auto *table = qobject_cast<QTextTable *>(frame);
-            if (!table) return false;
-            for (int row = 0; row < table->rows(); ++row) {
-                for (int column = 0; column < table->columns(); ++column) {
-                    const QTextTableCell cell = table->cellAt(row, column);
-                    for (auto cellItem = cell.begin(); cellItem != cell.end(); ++cellItem) {
-                        if (cellItem.currentFrame()) return false;
-                        const QTextBlock block = cellItem.currentBlock();
-                        if (block.isValid()) appendSemanticBlock(text, block.text(), hasPrevious);
-                    }
-                }
-            }
-            skipTableSeparator = true;
-            continue;
-        }
-        const QTextBlock block = item.currentBlock();
-        if (!block.isValid()) continue;
-        if (skipTableSeparator) {
-            skipTableSeparator = false;
-            if (block.text().isEmpty() && !block.textList() && block.blockFormat().properties().isEmpty()) continue;
-        }
-        if (block.position() == 0 && block.text().isEmpty() && block.blockFormat().properties().isEmpty()) {
-            auto next = item;
-            ++next;
-            if (next.currentFrame() && qobject_cast<QTextTable *>(next.currentFrame())) continue;
-        }
-        if (hasHorizontalRule(block)) appendSemanticBlock(text, QString(), hasPrevious);
-        if (!hasHorizontalRule(block) || !block.text().isEmpty()) appendSemanticBlock(text, block.text(), hasPrevious);
-    }
-    return true;
-}
 }
 
 bool supportsSource(const QString &source) {
@@ -89,13 +44,14 @@ bool supportsSource(const QString &source) {
     QVector<NotesRichTaskMarkup::ListItemState> listItemStates;
     if (!NotesRichTaskMarkup::normalizeSource(source, normalizedListSource, listItemStates)) return false;
     const QString normalizedSource = NotesRichImages::wrapRootImages(normalizeVoidTags(normalizedListSource));
+    if (!NotesRichTableMerging::supportsSourceSpans(normalizedSource)) return false;
     QXmlStreamReader xml(QStringLiteral("<root>") + normalizedSource + QStringLiteral("</root>"));
     const QSet<QString> inlineTags = {"strong", "b", "em", "i", "u", "s", "strike", "br", "span", "mark", "a", "code", "img"};
     const QSet<QString> blockTags = {"p", "h1", "h2", "h3", "h4", "h5", "h6"};
     QStringList stack;
     QString expectedText;
     QString expectedSemanticText;
-    QVector<QPair<int, int>> expectedTables;
+    QVector<int> expectedTableRows;
     QVector<int> listItemParagraphCounts;
     QVector<int> listItemSourceIndices;
     int sourceListItemIndex = 0;
@@ -106,8 +62,6 @@ bool supportsSource(const QString &source) {
     int codeChildren = 0;
     int tableRows = 0;
     int tableHeaderRows = 0;
-    int tableColumns = -1;
-    int rowCells = 0;
     int tableCellCount = 0;
     int cellParagraphs = 0;
     bool currentRowHeader = false;
@@ -191,14 +145,12 @@ bool supportsSource(const QString &source) {
                     hasTable = true;
                     tableRows = 0;
                     tableHeaderRows = 0;
-                    tableColumns = -1;
                     tableCellCount = 0;
                     sawTbody = false;
                 }
             } else if (stack.last() == "table" && name == "tbody" && !sawTbody) {
                 sawTbody = true;
             } else if ((stack.last() == "table" || stack.last() == "tbody") && name == "tr") {
-                rowCells = 0;
                 currentRowHeader = false;
                 rowHeaderStateSet = false;
             } else if (stack.last() == "tr" && (name == "td" || name == "th")) {
@@ -210,7 +162,6 @@ bool supportsSource(const QString &source) {
                     expectedText += '\n';
                     expectedSemanticText += SemanticBlockSeparator;
                 }
-                ++rowCells;
                 cellParagraphs = 0;
             } else if ((stack.last() == "td" || stack.last() == "th") && name == "p") {
                 if (cellParagraphs++ > 0) {
@@ -272,19 +223,13 @@ bool supportsSource(const QString &source) {
             const QString name = xml.name().toString();
             if (insidePageReference && name == "span") insidePageReference = false;
             if (name == "tr") {
-                if (rowCells == 0) return false;
-                if (tableRows == 0) {
-                    tableColumns = rowCells;
-                } else if (rowCells != tableColumns) {
-                    return false;
-                }
                 if (currentRowHeader && ++tableHeaderRows > 1) return false;
                 ++tableRows;
             } else if (name == "td" || name == "th") {
                 if (cellParagraphs == 0) return false;
             } else if (name == "table") {
-                if (tableRows == 0 || tableColumns < 1) return false;
-                expectedTables.append(qMakePair(tableRows, tableColumns));
+                if (tableRows == 0) return false;
+                expectedTableRows.append(tableRows);
             } else if (name == "li") {
                 if (listItemParagraphCounts.isEmpty() || listItemSourceIndices.isEmpty()) return false;
                 const int itemIndex = listItemSourceIndices.last();
@@ -322,26 +267,24 @@ bool supportsSource(const QString &source) {
     QTextDocument document;
     document.setHtml(normalizedSource);
     if (hasTable || hasDivider) {
-        QString actualSemanticText;
-        if (!semanticText(document, actualSemanticText) || actualSemanticText != expectedSemanticText) return false;
+        if (!NotesRichValidationSemantics::matchesText(document, expectedSemanticText,
+                                                        SemanticBlockSeparator)) return false;
     } else if (document.toPlainText() != expectedText) {
         return false;
     }
-    if (expectedTables.isEmpty()) {
-        int embeddedDividers = 0;
-        for (auto item = document.rootFrame()->begin(); !item.atEnd(); ++item) {
-            const QTextBlock block = item.currentBlock();
-            if (hasHorizontalRule(block) && !block.text().isEmpty()) ++embeddedDividers;
-        }
+    if (expectedTableRows.isEmpty()) {
+        const int embeddedDividers = NotesRichValidationSemantics::embeddedDividerCount(document);
         return document.blockCount() == contentBlocks - embeddedDividers;
     }
 
-    QVector<QPair<int, int>> actualTables;
+    QVector<int> actualTableRows;
     for (QTextFrame *frame : document.rootFrame()->childFrames()) {
-        if (const auto *table = qobject_cast<QTextTable *>(frame))
-            actualTables.append(qMakePair(table->rows(), table->columns()));
+        if (const auto *table = qobject_cast<QTextTable *>(frame)) {
+            if (table->columns() < 1) return false;
+            actualTableRows.append(table->rows());
+        }
         else return false;
     }
-    return actualTables == expectedTables;
+    return actualTableRows == expectedTableRows;
 }
 }

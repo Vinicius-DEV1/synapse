@@ -16,6 +16,8 @@
 #include <QtQml/QQmlEngine>
 #include <QtTest/QtTest>
 
+int runNativeNotesTableMergeQmlTest(int argc, char **argv);
+
 class NativeRichTableQmlTest final : public QObject {
     Q_OBJECT
 
@@ -697,7 +699,8 @@ private slots:
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
     NativeRichTableQmlTest test;
-    return QTest::qExec(&test, argc, argv);
+    const int baseResult = QTest::qExec(&test, argc, argv);
+    return baseResult == 0 ? runNativeNotesTableMergeQmlTest(argc, argv) : baseResult;
 }
 
 #include "native_rich_table_qml_test.moc"

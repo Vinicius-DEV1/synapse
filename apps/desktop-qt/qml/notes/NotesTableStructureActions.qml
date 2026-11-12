@@ -11,12 +11,14 @@ RowLayout {
     spacing: 1
 
     property bool active: false
+    property bool currentCellActive: false
     property bool canMoveRowUp: false
     property bool canMoveRowDown: false
     property bool canMoveColumnLeft: false
     property bool canMoveColumnRight: false
     property bool canDeleteRow: false
     property bool canDeleteColumn: false
+    property bool canMergeOrSplit: false
     readonly property var actions: [
         { label: "↥", title: qsTr("Insert row above"), value: "rowBefore" },
         { label: "↧", title: qsTr("Insert row below"), value: "rowAfter" },
@@ -28,6 +30,7 @@ RowLayout {
         { label: "←", title: qsTr("Move column left"), value: "moveColumnLeft", capability: "canMoveColumnLeft" },
         { label: "→", title: qsTr("Move column right"), value: "moveColumnRight", capability: "canMoveColumnRight" },
         { label: "−C", title: qsTr("Delete column"), value: "deleteColumn", destructive: true, capability: "canDeleteColumn" },
+        { label: "⇄", title: qsTr("Merge or split cells"), value: "mergeOrSplit", capability: "canMergeOrSplit" },
         { label: "×", title: qsTr("Delete table"), value: "deleteTable", destructive: true }
     ]
 
@@ -38,6 +41,9 @@ RowLayout {
         delegate: ToolButton {
             id: actionButton
             required property var modelData
+            objectName: "notesTableAction" + actionButton.modelData.value.charAt(0).toUpperCase() +
+                        actionButton.modelData.value.slice(1)
+            visible: actionsRoot.currentCellActive || actionButton.modelData.value === "mergeOrSplit"
             Layout.preferredWidth: 27
             Layout.preferredHeight: 26
             padding: 2

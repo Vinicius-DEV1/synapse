@@ -3,6 +3,7 @@
 #include "notes_rich_serialization_support.h"
 #include "notes_rich_markup.h"
 #include "notes_rich_table_cell_formatting.h"
+#include "notes_rich_table_merging.h"
 #include "notes_rich_table_styles.h"
 
 #include <QtCore/QVector>
@@ -92,7 +93,7 @@ bool supportedTableFormat(const QTextTableFormat &format, int columns) {
 }
 
 bool supportedCellFormat(const QTextTableCell &cell, bool &header) {
-    if (!cell.isValid() || cell.rowSpan() != 1 || cell.columnSpan() != 1) return false;
+    if (!NotesRichTableMerging::isSupportedCellSpan(cell)) return false;
     const QTextCharFormat format = cell.format();
     header = format.fontWeight() >= QFont::Bold;
     const auto properties = format.properties();
@@ -106,10 +107,13 @@ bool supportedCellFormat(const QTextTableCell &cell, bool &header) {
             key == QTextFormat::TableCellLeftBorderBrush || key == QTextFormat::TableCellRightBorderBrush;
         const int paddingProperty = key == QTextFormat::TableCellTopPadding || key == QTextFormat::TableCellBottomPadding ||
             key == QTextFormat::TableCellLeftPadding || key == QTextFormat::TableCellRightPadding;
+        const bool spanProperty = (key == QTextFormat::TableCellRowSpan && it.value().toInt() == cell.rowSpan()) ||
+            (key == QTextFormat::TableCellColumnSpan && it.value().toInt() == cell.columnSpan());
         if (key == QTextFormat::ObjectIndex || key == QTextFormat::ObjectType ||
             (key == QTextFormat::FontWeight && header) || (key == QTextFormat::BackgroundBrush &&
              ((header && NotesRichTableStyles::isHeaderBackground(it.value().value<QBrush>())) ||
-              NotesRichTableCellFormatting::isSupportedBackground(it.value().value<QBrush>()))) || borderProperty || borderStyleProperty ||
+              NotesRichTableCellFormatting::isSupportedBackground(it.value().value<QBrush>()))) || spanProperty ||
+            borderProperty || borderStyleProperty ||
             borderBrushProperty || paddingProperty) {
             if (borderProperty && it.value().toDouble() != 1.0) return false;
             if (borderStyleProperty && it.value().toInt() != QTextFrameFormat::BorderStyle_Solid) return false;
@@ -181,15 +185,16 @@ bool stripVisualCellProperties(QTextCharFormat &format) {
 }
 
 bool appendCell(QString &html, const QTextTableCell &cell, bool header) {
+    const QString spanAttributes = NotesRichTableMerging::htmlSpanAttributes(cell);
     const QBrush background = cell.format().background();
     const bool customBackground = NotesRichTableCellFormatting::isSupportedBackground(background) &&
         !NotesRichTableStyles::isHeaderBackground(background);
     if (customBackground) {
         const QString color = NotesRichMarkup::colorCss(background.color());
         html += header ? "<th" : "<td";
-        html += QStringLiteral(" data-bg-color=\"%1\" style=\"background-color: %1 !important;\">").arg(color);
+        html += spanAttributes + QStringLiteral(" data-bg-color=\"%1\" style=\"background-color: %1 !important;\">").arg(color);
     } else {
-        html += header ? "<th>" : "<td>";
+        html += (header ? "<th" : "<td") + spanAttributes + ">";
     }
     int blocks = 0;
     for (auto it = cell.begin(); it != cell.end(); ++it) {
@@ -235,7 +240,9 @@ bool serialize(const QTextTable &table, QString &html) {
     for (int row = 0; row < table.rows(); ++row) {
         tableHtml += "<tr>";
         for (int column = 0; column < table.columns(); ++column) {
-            if (!appendCell(tableHtml, table.cellAt(row, column), rowHeaders.at(row))) return false;
+            const QTextTableCell cell = table.cellAt(row, column);
+            if (cell.row() != row || cell.column() != column) continue;
+            if (!appendCell(tableHtml, cell, rowHeaders.at(row))) return false;
         }
         tableHtml += "</tr>";
     }

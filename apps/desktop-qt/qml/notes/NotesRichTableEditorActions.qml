@@ -11,6 +11,9 @@ QtObject {
     property bool invalid: false
     readonly property bool isInsideTable: textEditor &&
         textOperations.isRichTableCell(textEditor.textDocument, textEditor.cursorPosition)
+    readonly property bool canMergeOrSplit: active && !invalid && textEditor &&
+        textOperations.canMergeOrSplitRichTable(textEditor.textDocument, textEditor.cursorPosition,
+                                                textEditor.selectionStart, textEditor.selectionEnd)
     readonly property bool isOnDivider: active && !invalid && textEditor &&
         textOperations.isRichDivider(textEditor.textDocument, textEditor.cursorPosition)
     readonly property bool canMoveDividerUp: isOnDivider &&
@@ -36,6 +39,12 @@ QtObject {
     }
 
     function editTable(action) {
+        if (action === "mergeOrSplit") {
+            if (!canMergeOrSplit || !textOperations.mergeOrSplitRichTable(
+                        textEditor.textDocument, textEditor.cursorPosition,
+                        textEditor.selectionStart, textEditor.selectionEnd)) return false
+            return finishEdit()
+        }
         if (!active || invalid || !textOperations.applyRichTableAction(
                 textEditor.textDocument, textEditor.cursorPosition, action)) return false
         return finishEdit()

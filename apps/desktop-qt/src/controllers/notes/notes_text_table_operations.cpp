@@ -2,6 +2,7 @@
 
 #include "notes_rich_document.h"
 #include "notes_rich_table_cell_formatting.h"
+#include "notes_rich_table_merging.h"
 #include "notes_rich_tables.h"
 
 #include <QtQuick/QQuickTextDocument>
@@ -26,6 +27,20 @@ bool NotesTextOperations::applyRichTableAction(QQuickTextDocument *document, int
                                                 const QString &action) const {
     return document && document->textDocument() &&
         NotesRichTables::applyStructureAction(*document->textDocument(), position, action);
+}
+
+bool NotesTextOperations::canMergeOrSplitRichTable(QQuickTextDocument *document, int cursorPosition,
+                                                    int selectionStart, int selectionEnd) const {
+    return document && document->textDocument() &&
+        NotesRichTableMerging::canMergeOrSplit(*document->textDocument(), cursorPosition,
+                                               selectionStart, selectionEnd);
+}
+
+bool NotesTextOperations::mergeOrSplitRichTable(QQuickTextDocument *document, int cursorPosition,
+                                                 int selectionStart, int selectionEnd) const {
+    return document && document->textDocument() &&
+        NotesRichTableMerging::mergeOrSplit(*document->textDocument(), cursorPosition,
+                                            selectionStart, selectionEnd);
 }
 
 bool NotesTextOperations::setRichTableCellBackground(QQuickTextDocument *document, int position,

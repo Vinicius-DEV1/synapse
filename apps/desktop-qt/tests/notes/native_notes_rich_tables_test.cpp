@@ -11,7 +11,7 @@ class NativeNotesRichTablesTest final : public QObject {
     Q_OBJECT
 
 private slots:
-    void sourceValidationKeepsOnlyUniformPlainTables() {
+    void sourceValidationKeepsUniformTablesAndSupportedSpans() {
         const QString supported = QStringLiteral(
             "<table><tbody><tr><th><p>Name</p></th><th><p>Value</p></th></tr>"
             "<tr><td><p>Alpha</p></td><td><p><em>42</em></p></td></tr></tbody></table>");
@@ -23,8 +23,8 @@ private slots:
             "<tr><td><p>C</p></td><td><p>D</p></td></tr></tbody></table>"));
         QVERIFY(!NotesRichDocument::supportsSource(
             "<table><tr><th><p>A</p></th></tr><tr><td><p>B</p></td><td><p>C</p></td></tr></table>"));
-        QVERIFY(!NotesRichDocument::supportsSource(
-            "<table><tr><th colspan=\"2\"><p>Merged</p></th></tr></table>"));
+        QVERIFY(NotesRichDocument::supportsSource(
+            "<table><tbody><tr><th colspan=\"2\"><p>Merged</p></th></tr></tbody></table>"));
         QVERIFY(!NotesRichDocument::supportsSource(
             "<table><tr><th data-column-type=\"number\"><p>Number</p></th></tr></table>"));
         QVERIFY(!NotesRichDocument::supportsSource(

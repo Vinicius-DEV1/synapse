@@ -199,7 +199,8 @@ bool canApplyStructureAction(const QTextDocument &document, int position, const 
     for (int row = 0; row < table->rows(); ++row) {
         for (int column = 0; column < table->columns(); ++column) {
             const QTextTableCell current = table->cellAt(row, column);
-            if (current.rowSpan() != 1 || current.columnSpan() != 1) return false;
+            if ((current.rowSpan() != 1 || current.columnSpan() != 1) &&
+                parsedAction != TableAction::DeleteTable) return false;
         }
     }
     for (const QTextLength &width : table->format().columnWidthConstraints())

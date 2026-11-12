@@ -1,6 +1,7 @@
 #include "notes_rich_table_cell_formatting.h"
 
 #include "notes_rich_markup.h"
+#include "notes_rich_table_merging.h"
 #include "notes_rich_table_styles.h"
 
 #include <QtCore/QRegularExpression>
@@ -54,6 +55,16 @@ QString openingCellTag(const QRegularExpressionMatch &match) {
         .arg(NotesRichMarkup::colorCss(color));
     return QStringLiteral("<%1%2%3>").arg(tag, retainedAttributes, canonicalStyle);
 }
+
+bool validSpanAttribute(const QXmlStreamAttributes &attributes, const QString &name) {
+    if (!attributes.hasAttribute(name)) return true;
+    static const QRegularExpression pattern(QStringLiteral("^[1-9][0-9]?$"));
+    const QString value = attributes.value(name).toString();
+    if (!pattern.match(value).hasMatch()) return false;
+    bool valid = false;
+    const int span = value.toInt(&valid);
+    return valid && span <= NotesRichTableMerging::MaxSupportedCellSpan;
+}
 }
 
 bool isSupportedBackground(const QColor &color) {
@@ -66,13 +77,16 @@ bool isSupportedBackground(const QBrush &brush) {
 
 bool supportsCellAttributes(const QString &tagName, const QXmlStreamAttributes &attributes) {
     if (tagName != QStringLiteral("td") && tagName != QStringLiteral("th")) return false;
+    if (!validSpanAttribute(attributes, QStringLiteral("colspan")) ||
+        !validSpanAttribute(attributes, QStringLiteral("rowspan"))) return false;
     bool hasColor = false;
     bool hasStyle = false;
     for (const auto &attribute : attributes) {
         const QString name = attribute.name().toString();
         if (name == QStringLiteral("colspan") || name == QStringLiteral("rowspan")) {
-            if (attribute.value() != QStringLiteral("1")) return false;
-        } else if (name == QStringLiteral("data-bg-color")) {
+            continue;
+        }
+        if (name == QStringLiteral("data-bg-color")) {
             hasColor = true;
         } else if (name == QStringLiteral("style")) {
             hasStyle = true;

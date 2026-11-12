@@ -49,6 +49,7 @@ Rectangle {
     property bool canMoveTableColumnRight: false
     property bool canDeleteTableRow: false
     property bool canDeleteTableColumn: false
+    property bool canMergeOrSplitTableCells: false
     property bool dividerActive: false
     property bool canMoveDividerUp: false
     property bool canMoveDividerDown: false
@@ -202,13 +203,16 @@ Rectangle {
             }
         }
         NotesTableStructureActions {
-            active: toolbarRoot.richMode && toolbarRoot.tableCellActive
+            active: toolbarRoot.richMode &&
+                    (toolbarRoot.tableCellActive || toolbarRoot.canMergeOrSplitTableCells)
+            currentCellActive: toolbarRoot.tableCellActive
             canMoveRowUp: toolbarRoot.canMoveTableRowUp
             canMoveRowDown: toolbarRoot.canMoveTableRowDown
             canMoveColumnLeft: toolbarRoot.canMoveTableColumnLeft
             canMoveColumnRight: toolbarRoot.canMoveTableColumnRight
             canDeleteRow: toolbarRoot.canDeleteTableRow
             canDeleteColumn: toolbarRoot.canDeleteTableColumn
+            canMergeOrSplit: toolbarRoot.canMergeOrSplitTableCells
             onActionRequested: function(action) { toolbarRoot.richTableActionRequested(action) }
         }
         NotesTableCellBackgroundPalette {

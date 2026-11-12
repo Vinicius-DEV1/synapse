@@ -59,9 +59,13 @@ add_executable(synapse-desktop
     src/controllers/notes/notes_rich_tables.cpp
     src/controllers/notes/notes_rich_table_cell_formatting.cpp
     src/controllers/notes/notes_rich_table_operations.cpp
+    src/controllers/notes/notes_rich_table_merging.cpp
+    src/controllers/notes/notes_rich_table_merging.h
     src/controllers/notes/notes_rich_table_styles.cpp
     src/controllers/notes/notes_rich_heading.cpp
     src/controllers/notes/notes_rich_validation.cpp
+    src/controllers/notes/notes_rich_validation_semantics.cpp
+    src/controllers/notes/notes_rich_validation_semantics.h
     src/controllers/notes/notes_rich_task_markup.cpp
     src/controllers/notes/notes_rich_task_lists.cpp
     src/controllers/notes/notes_rich_task_checkbox.cpp
@@ -163,6 +167,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_rich_image_clipboard_test.cpp
         tests/notes/native_notes_reference_search_test.cpp
         tests/notes/native_notes_rich_tables_test.cpp
+        tests/notes/native_notes_table_merge_test.cpp
         tests/notes/native_notes_callout_test.cpp
         tests/notes/native_notes_code_language_test.cpp
         tests/notes/native_notes_divider_drag_test.cpp
@@ -210,9 +215,13 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_tables.cpp
         src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_merging.cpp
+        src/controllers/notes/notes_rich_table_merging.h
         src/controllers/notes/notes_rich_table_styles.cpp
         src/controllers/notes/notes_rich_heading.cpp
         src/controllers/notes/notes_rich_validation.cpp
+        src/controllers/notes/notes_rich_validation_semantics.cpp
+        src/controllers/notes/notes_rich_validation_semantics.h
         src/controllers/notes/notes_rich_task_markup.cpp
         src/controllers/notes/notes_rich_task_lists.cpp
         src/controllers/notes/notes_rich_task_checkbox.cpp
@@ -337,9 +346,13 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_tables.cpp
         src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_merging.cpp
+        src/controllers/notes/notes_rich_table_merging.h
         src/controllers/notes/notes_rich_table_styles.cpp
         src/controllers/notes/notes_rich_heading.cpp
         src/controllers/notes/notes_rich_validation.cpp
+        src/controllers/notes/notes_rich_validation_semantics.cpp
+        src/controllers/notes/notes_rich_validation_semantics.h
         src/controllers/notes/notes_rich_task_markup.cpp
         src/controllers/notes/notes_rich_task_lists.cpp
         src/controllers/notes/notes_rich_task_checkbox.cpp
@@ -355,6 +368,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
 
     add_executable(synapse-notes-table-qml-tests
         tests/notes/native_rich_table_qml_test.cpp
+        tests/notes/native_notes_table_merge_qml_test.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp
@@ -381,9 +395,13 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_tables.cpp
         src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_merging.cpp
+        src/controllers/notes/notes_rich_table_merging.h
         src/controllers/notes/notes_rich_table_styles.cpp
         src/controllers/notes/notes_rich_heading.cpp
         src/controllers/notes/notes_rich_validation.cpp
+        src/controllers/notes/notes_rich_validation_semantics.cpp
+        src/controllers/notes/notes_rich_validation_semantics.h
         src/controllers/notes/notes_rich_task_markup.cpp
         src/controllers/notes/notes_rich_task_lists.cpp
         src/controllers/notes/notes_rich_task_checkbox.cpp

@@ -32,6 +32,7 @@ Item {
         canMoveTableColumnRight: toolbarBinding.richEditor.tableActions.canEditTable("moveColumnRight")
         canDeleteTableRow: toolbarBinding.richEditor.tableActions.canEditTable("deleteRow")
         canDeleteTableColumn: toolbarBinding.richEditor.tableActions.canEditTable("deleteColumn")
+        canMergeOrSplitTableCells: toolbarBinding.richEditor.tableActions.canMergeOrSplit
         dividerActive: toolbarBinding.richEditor.tableActions.isOnDivider
         canMoveDividerUp: toolbarBinding.richEditor.tableActions.canMoveDividerUp
         canMoveDividerDown: toolbarBinding.richEditor.tableActions.canMoveDividerDown
