@@ -263,6 +263,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     add_executable(synapse-notes-rich-qml-tests
         tests/notes/native_rich_qml_test.cpp
         tests/notes/native_notes_slash_menu_qml_test.cpp
+        tests/notes/native_notes_page_reference_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp
         tests/notes/native_notes_code_language_qml_test.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp

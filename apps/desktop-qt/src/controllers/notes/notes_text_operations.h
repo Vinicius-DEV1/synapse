@@ -15,6 +15,10 @@ public:
     Q_INVOKABLE bool replace(QQuickTextDocument *document, int start, int end, const QString &replacement);
     Q_INVOKABLE bool supportsRichSource(const QString &source) const;
     Q_INVOKABLE QString richSourceForEditor(const QString &source) const;
+    Q_INVOKABLE QString richSourceForEditorWithPages(const QString &source, const QVariantList &pages) const;
+    Q_INVOKABLE QString richPageReferenceId(const QString &href) const;
+    Q_INVOKABLE int insertRichPageReference(QQuickTextDocument *document, int position,
+                                            const QString &pageId, const QString &title) const;
     Q_INVOKABLE bool prepareRichHeadings(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool prepareRichCodeBlocks(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool isRichCodeBlock(QQuickTextDocument *document, int position) const;

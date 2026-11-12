@@ -29,6 +29,8 @@ Item {
             keywords: ["callout", "quote", "notice", "destaque", "aviso"] },
         { id: "code", title: qsTr("Code"), subtitle: qsTr("Insert a code block."), icon: "</>",
             keywords: ["code", "javascript", "typescript", "codigo"] },
+        { id: "page", title: qsTr("Link to page"), subtitle: qsTr("Reference an existing page."), icon: "↗",
+            keywords: ["page", "page link", "reference", "link to page", "pagina", "vincular pagina"] },
         { id: "divider", title: qsTr("Divider"), subtitle: qsTr("Separate content blocks."), icon: "—",
             keywords: ["divider", "line", "hr", "divisor", "linha"] },
         { id: "table", title: qsTr("Table"), subtitle: qsTr("Insert a structured table."), icon: "▦",

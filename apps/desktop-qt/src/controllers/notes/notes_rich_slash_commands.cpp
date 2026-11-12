@@ -23,7 +23,7 @@ int execute(QQuickTextDocument *document, int start, int end, const QString &com
     else if (commandId == "bullet") blockType = "bulletList";
     else if (commandId == "callout") blockType = "quote";
     else if (commandId == "code") blockType = "codeBlock";
-    else if (commandId != "divider" && commandId != "table") return -1;
+    else if (commandId != "divider" && commandId != "table" && commandId != "page") return -1;
 
     QTextCursor queryCursor(richDocument);
     queryCursor.setPosition(start);
@@ -34,6 +34,13 @@ int execute(QQuickTextDocument *document, int start, int end, const QString &com
     if (commandId == "divider") return NotesRichDocument::insertDivider(*richDocument, start, end);
     if (commandId == "table") return NotesRichTables::insertSimpleTable(*richDocument, start, end);
     const QTextDocumentFragment originalQuery = queryCursor.selection();
+
+    if (commandId == "page") {
+        queryCursor.beginEditBlock();
+        queryCursor.removeSelectedText();
+        queryCursor.endEditBlock();
+        return start;
+    }
 
     queryCursor.beginEditBlock();
     queryCursor.removeSelectedText();

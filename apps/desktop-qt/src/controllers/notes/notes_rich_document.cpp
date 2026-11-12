@@ -5,11 +5,26 @@
 #include "notes_rich_spoilers.h"
 
 #include <QtGui/QTextBlock>
+#include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextFragment>
 
 namespace NotesRichDocument {
+
+int insertPageReference(QTextDocument &document, int position, const QString &pageId, const QString &title) {
+    const QString href = NotesRichMarkup::pageReferenceHref(pageId, title);
+    if (href.isEmpty() || position < 0 || position > document.characterCount() - 1) return -1;
+    QTextCursor cursor(&document);
+    cursor.setPosition(position);
+    cursor.beginEditBlock();
+    QTextCharFormat format;
+    format.setAnchor(true);
+    format.setAnchorHref(href);
+    cursor.insertText(title, format);
+    cursor.endEditBlock();
+    return cursor.position();
+}
 
 bool toggleInline(QTextDocument &document, int start, int end, const QString &mark,
                   bool joinPreviousEditBlock) {

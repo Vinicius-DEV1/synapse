@@ -47,7 +47,8 @@ inline bool supportedCharacterFormat(const QTextCharFormat &format, int headingL
     return (weight == QFont::Normal || weight == QFont::Bold) &&
         (format.underlineStyle() == QTextCharFormat::NoUnderline ||
          format.underlineStyle() == QTextCharFormat::SingleUnderline) &&
-        (!format.isAnchor() || NotesRichMarkup::isSafeLink(format.anchorHref()));
+        (!format.isAnchor() || NotesRichMarkup::isSafeLink(format.anchorHref()) ||
+         NotesRichMarkup::pageReferenceFromHref(format.anchorHref()));
 }
 
 inline QString inlineHtml(const QString &text, const QTextCharFormat &format, int headingLevel, bool inTableHeader = false) {
@@ -73,6 +74,13 @@ inline QString inlineHtml(const QString &text, const QTextCharFormat &format, in
     }
     if (serialFormat.hasProperty(QTextFormat::ForegroundBrush)) {
         value = "<span style=\"color:" + NotesRichMarkup::colorCss(serialFormat.foreground().color()) + "\">" + value + "</span>";
+    }
+    QString pageId;
+    QString pageTitle;
+    if (serialFormat.isAnchor() &&
+        NotesRichMarkup::pageReferenceFromHref(serialFormat.anchorHref(), &pageId, &pageTitle)) {
+        return "<span data-page-id=\"" + pageId.toHtmlEscaped() + "\" title=\"" +
+            pageTitle.toHtmlEscaped() + "\"></span>";
     }
     if (serialFormat.isAnchor() && NotesRichMarkup::isSafeLink(serialFormat.anchorHref()))
         value = "<a href=\"" + serialFormat.anchorHref().toHtmlEscaped() + "\">" + value + "</a>";

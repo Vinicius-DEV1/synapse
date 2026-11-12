@@ -10,18 +10,33 @@ Item {
     property var commitTimer
     property string previousPlainText: ""
     property bool slashMenuOpen: false
+    property bool pageReferenceMenuOpen: false
     property int slashStart: -1
     property int pendingSlashStart: -1
     property string slashQuery: ""
     property real slashAnchorX: 0
     property real slashAnchorY: 0
+    property int pageReferenceTargetPosition: -1
+    property string pageReferenceInitialQuery: ""
+    property real pageReferenceAnchorX: 0
+    property real pageReferenceAnchorY: 0
     readonly property alias editor: richEditor
+    signal pageNavigationRequested(string pageId)
+    signal externalLinkRequested(string link)
     readonly property string editorAccessibleDescription: {
         var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
             ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
             : inputRoot.spoilerRevealControl.revealed
                 ? qsTr("The caret is inside a revealed spoiler. Press Alt+R to hide it.")
                 : qsTr("The caret is inside a hidden spoiler. Press Alt+R to reveal it.")
+        if (pageReferenceMenuOpen) {
+            var pages = pageReferenceMenu.filteredPages
+            if (pages.length === 0)
+                return spoilerDescription + " " + qsTr("Page search is open with no matches. Press Escape to close it.")
+            var pageIndex = Math.max(0, Math.min(pageReferenceMenu.selectedIndex, pages.length - 1))
+            return spoilerDescription + " " + qsTr("Page search, selected %1 of %2: %3. Use Up or Down to choose, Enter to link, or Escape to close.")
+                .arg(pageIndex + 1).arg(pages.length).arg(pages[pageIndex].title)
+        }
         if (!slashMenuOpen) return spoilerDescription
         var matches = slashCommandMenu.filteredCommands
         if (matches.length === 0)
@@ -77,6 +92,22 @@ Item {
         if (!slashMenuOpen) return false
         var commandStart = slashStart
         var commandEnd = richEditor.cursorPosition
+        if (commandId === "page") {
+            var initialQuery = slashQuery.replace(/^\s*page(?:-link)?/i, "").trim()
+            var pageCommandApplied = richCommands.executeSlashCommand(commandStart, commandEnd, "page")
+            if (!pageCommandApplied) {
+                slashCommandMenu.errorMessage = qsTr("This page reference could not be started safely.")
+                richEditor.forceActiveFocus()
+                return false
+            }
+            closeSlashMenu()
+            pageReferenceTargetPosition = commandStart
+            pageReferenceInitialQuery = initialQuery
+            pageReferenceAnchorX = richEditor.cursorRectangle.x
+            pageReferenceAnchorY = richEditor.cursorRectangle.y + richEditor.cursorRectangle.height + 6
+            pageReferenceMenuOpen = true
+            return true
+        }
         var executed = richCommands.executeSlashCommand(commandStart, commandEnd, commandId)
         if (executed) {
             closeSlashMenu()
@@ -86,6 +117,30 @@ Item {
             richEditor.forceActiveFocus()
         }
         return executed
+    }
+
+    function closePageReferenceMenu() {
+        pageReferenceMenuOpen = false
+        pageReferenceTargetPosition = -1
+        richEditor.forceActiveFocus()
+    }
+
+    function insertPageReference(pageId, title) {
+        var quickDocument = richEditor.textDocument
+        var insertedPosition = editorRoot.textOperations.insertRichPageReference(
+                    quickDocument, pageReferenceTargetPosition, pageId, title)
+        if (insertedPosition < 0) {
+            pageReferenceMenu.dismissed()
+            return false
+        }
+        pageReferenceMenuOpen = false
+        pageReferenceTargetPosition = -1
+        richEditor.cursorPosition = insertedPosition
+        previousPlainText = editorRoot.textOperations.richPlainText(quickDocument)
+        editorRoot.hasPendingChanges = true
+        commitTimer.restart()
+        richEditor.forceActiveFocus()
+        return true
     }
 
     TextArea {
@@ -166,6 +221,7 @@ Item {
             acceptedModifiers: Qt.AltModifier
             onPressedChanged: if (pressed) {
                 inputRoot.closeSlashMenu()
+                if (inputRoot.pageReferenceMenuOpen) inputRoot.closePageReferenceMenu()
                 inputRoot.richCommands.clearPendingMarks()
             }
             onTapped: function(point) {
@@ -178,6 +234,7 @@ Item {
             acceptedModifiers: Qt.NoModifier
             onPressedChanged: if (pressed) {
                 inputRoot.closeSlashMenu()
+                if (inputRoot.pageReferenceMenuOpen) inputRoot.closePageReferenceMenu()
                 inputRoot.richCommands.clearPendingMarks()
             }
             onTapped: function(point) {
@@ -189,6 +246,11 @@ Item {
                 var position = richEditor.positionAt(point.position.x, point.position.y)
                 inputRoot.editorRoot.setSpoilerVisibility(position, "hide")
             }
+        }
+        onLinkActivated: function(link) {
+            var pageId = inputRoot.editorRoot.textOperations.richPageReferenceId(link)
+            if (pageId.length > 0) inputRoot.pageNavigationRequested(pageId)
+            else inputRoot.externalLinkRequested(link)
         }
         onTextChanged: {
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
@@ -217,6 +279,17 @@ Item {
         anchorX: inputRoot.slashAnchorX
         anchorY: inputRoot.slashAnchorY
         onCommandSelected: function(commandId) { inputRoot.executeSlashCommand(commandId) }
+    }
+
+    NotesRichPageReferenceMenu {
+        id: pageReferenceMenu
+        open: inputRoot.pageReferenceMenuOpen
+        initialQuery: inputRoot.pageReferenceInitialQuery
+        anchorX: inputRoot.pageReferenceAnchorX
+        anchorY: inputRoot.pageReferenceAnchorY
+        pages: inputRoot.editorRoot.pageList
+        onPageSelected: function(pageId, title) { inputRoot.insertPageReference(pageId, title) }
+        onDismissed: inputRoot.closePageReferenceMenu()
     }
 
     Connections {

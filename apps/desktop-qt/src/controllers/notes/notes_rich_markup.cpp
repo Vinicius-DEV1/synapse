@@ -1,7 +1,10 @@
 #include "notes_rich_markup.h"
 
 #include <QtCore/QRegularExpression>
+#include <QtCore/QHash>
+#include <QtCore/QVector>
 #include <QtCore/QUrl>
+#include <QtCore/QUrlQuery>
 
 namespace NotesRichMarkup {
 
@@ -41,6 +44,92 @@ bool isSafeLink(const QString &value) {
     const QString scheme = url.scheme().toLower();
     if (scheme == "http" || scheme == "https") return url.isValid() && !url.host().isEmpty();
     return scheme == "mailto" && url.isValid() && url.path().contains('@');
+}
+
+namespace {
+bool isPageReferenceId(const QString &value) {
+    static const QRegularExpression idPattern(QStringLiteral("^[A-Za-z0-9_-]{1,128}$"));
+    return idPattern.match(value).hasMatch();
+}
+}
+
+bool isPageReferenceAttributes(const QXmlStreamAttributes &attributes) {
+    if (!attributes.hasAttribute(QStringLiteral("data-page-id")) || attributes.size() > 3 ||
+        !isPageReferenceId(attributes.value(QStringLiteral("data-page-id")).toString())) return false;
+    for (const auto &attribute : attributes) {
+        if (!attribute.namespaceUri().isEmpty()) return false;
+        const QString name = attribute.name().toString();
+        if (name == QStringLiteral("class")) {
+            if (attribute.value() != QStringLiteral("page-reference")) return false;
+        } else if (name == QStringLiteral("title")) {
+            if (attribute.value().size() > 512) return false;
+        } else if (name != QStringLiteral("data-page-id")) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool pageReferenceFromHref(const QString &value, QString *pageId, QString *title) {
+    const QUrl url(value, QUrl::StrictMode);
+    if (!url.isValid() || url.scheme() != QStringLiteral("synapse-page") || !url.host().isEmpty() ||
+        !url.userInfo().isEmpty() ||
+        !url.fragment().isEmpty()) return false;
+    static const QRegularExpression pathPattern(QStringLiteral("^/([A-Za-z0-9_-]{1,128})$"));
+    const auto pathMatch = pathPattern.match(url.path());
+    QUrlQuery query(url);
+    const auto queryItems = query.queryItems(QUrl::FullyDecoded);
+    if (!pathMatch.hasMatch() || queryItems.size() != 1 ||
+        queryItems.constFirst().first != QStringLiteral("title") || queryItems.constFirst().second.size() > 512)
+        return false;
+    if (pageId) *pageId = pathMatch.captured(1);
+    if (title) *title = queryItems.constFirst().second;
+    return true;
+}
+
+QString pageReferenceHref(const QString &pageId, const QString &title) {
+    if (!isPageReferenceId(pageId) || title.size() > 512) return {};
+    QUrl url;
+    url.setScheme(QStringLiteral("synapse-page"));
+    url.setPath(QStringLiteral("/") + pageId);
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("title"), title);
+    url.setQuery(query);
+    return url.toString(QUrl::FullyEncoded);
+}
+
+QString pageReferencesForEditor(const QString &source, const QVariantList &pages) {
+    QHash<QString, QString> currentTitles;
+    for (const QVariant &entry : pages) {
+        const QVariantMap page = entry.toMap();
+        const QString id = page.value(QStringLiteral("id")).toString();
+        const QString title = page.value(QStringLiteral("title")).toString();
+        if (isPageReferenceId(id) && !title.isEmpty() && title.size() <= 512) currentTitles.insert(id, title);
+    }
+
+    const QRegularExpression referencePattern(QStringLiteral("<span\\b([^>]*?)(?:></span>|\\s*/>)"));
+    QString result = source;
+    struct Replacement { qsizetype start; qsizetype length; QString html; };
+    QVector<Replacement> replacements;
+    auto match = referencePattern.globalMatch(source);
+    while (match.hasNext()) {
+        const auto current = match.next();
+        QXmlStreamReader xml(QStringLiteral("<span%1></span>").arg(current.captured(1)));
+        if (!xml.readNextStartElement() || !isPageReferenceAttributes(xml.attributes())) continue;
+        const auto attributes = xml.attributes();
+        const QString id = attributes.value(QStringLiteral("data-page-id")).toString();
+        const QString storedTitle = attributes.value(QStringLiteral("title")).toString();
+        const QString title = currentTitles.value(id, storedTitle.isEmpty() ? id : storedTitle);
+        const QString href = pageReferenceHref(id, title);
+        if (href.isEmpty()) continue;
+        const QString replacement = QStringLiteral("<a href=\"%1\">%2</a>")
+            .arg(href.toHtmlEscaped(), title.toHtmlEscaped());
+        replacements.append({current.capturedStart(), current.capturedLength(), replacement});
+    }
+    for (auto it = replacements.crbegin(); it != replacements.crend(); ++it) {
+        result.replace(it->start, it->length, it->html);
+    }
+    return result;
 }
 
 QString styleValue(const QXmlStreamAttributes &attributes) {

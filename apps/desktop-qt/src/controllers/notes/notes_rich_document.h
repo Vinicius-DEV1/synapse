@@ -25,6 +25,7 @@ bool toggleTaskItem(QTextDocument &document, int position);
 bool toggleTaskItemFromCursor(QTextDocument &document, int position);
 bool isTaskItemAt(const QTextDocument &document, int position);
 int insertDivider(QTextDocument &document, int start, int end);
+int insertPageReference(QTextDocument &document, int position, const QString &pageId, const QString &title);
 bool prepareHeadingStyles(QTextDocument &document, const QString &source);
 bool prepareCalloutStyles(QTextDocument &document, const QString &source);
 bool prepareSpoilerStyles(QTextDocument &document);

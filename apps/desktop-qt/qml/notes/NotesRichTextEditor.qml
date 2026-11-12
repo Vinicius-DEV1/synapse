@@ -4,6 +4,7 @@ Item {
     id: richRoot
     objectName: "notesRichTextEditorRoot"
     property string sourceHtml: ""
+    property var pageList: []
     property var textOperations: notesTextOperations
     property bool active: false
     property bool isLoading: false
@@ -28,6 +29,8 @@ Item {
 
     signal contentModified(string html)
     signal validationChanged(bool invalid, string message)
+    signal pageNavigationRequested(string pageId)
+    signal externalLinkRequested(string link)
 
     function loadSource() {
         if (active && hasPendingChanges) return false
@@ -39,7 +42,7 @@ Item {
         }
         isLoading = true
         richCommands.clearPendingMarks()
-        var editorSource = textOperations.richSourceForEditor(sourceHtml)
+        var editorSource = textOperations.richSourceForEditorWithPages(sourceHtml, pageList)
         if (sourceHtml.length > 0 && editorSource.length === 0) {
             canEditSource = false
             validationMessage = qsTr("This note contains task markup that cannot be preserved safely in visual editing.")
@@ -156,6 +159,8 @@ Item {
         spoilerRevealControl: spoilerRevealControl
         richCommands: richCommands
         commitTimer: commitTimer
+        onPageNavigationRequested: function(pageId) { richRoot.pageNavigationRequested(pageId) }
+        onExternalLinkRequested: function(link) { richRoot.externalLinkRequested(link) }
     }
 
     NotesRichTextCommands {

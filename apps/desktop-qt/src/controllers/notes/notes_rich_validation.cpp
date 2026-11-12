@@ -115,9 +115,11 @@ bool supportsSource(const QString &source) {
     bool sawTbody = false;
     bool hasTable = false;
     bool hasDivider = false;
+    bool insidePageReference = false;
     while (!xml.atEnd()) {
         xml.readNext();
         if (xml.isStartElement()) {
+            if (insidePageReference) return false;
             const QString name = xml.name().toString();
             const auto attributes = xml.attributes();
             const bool paragraphParent = stack.isEmpty() || stack.last() == "root" || stack.last() == "li" ||
@@ -143,6 +145,7 @@ bool supportsSource(const QString &source) {
                 supportedStyle = supportsCalloutAttributes(attributes);
             if (name == "span" && attributes.size() == 1 && attributes.hasAttribute("style"))
                 supportedStyle = parseSingleStyle(styleValue(attributes), "color").isValid();
+            if (name == "span" && isPageReferenceAttributes(attributes)) supportedStyle = true;
             if (name == "span" && NotesRichSpoilers::isSpoilerAttributes(attributes))
                 supportedStyle = true;
             if (name == "code" && stack.last() == "pre") {
@@ -160,6 +163,7 @@ bool supportsSource(const QString &source) {
             }
             if ((!attributes.isEmpty() && !preservesWhitespace && !supportedStyle && !supportedCellSpan) ||
                 !xml.namespaceUri().isEmpty()) return false;
+            if (name == "span" && isPageReferenceAttributes(attributes)) insidePageReference = true;
 
             if (stack.isEmpty()) {
                 if (name != "root") return false;
@@ -259,6 +263,7 @@ bool supportsSource(const QString &source) {
         } else if (xml.isEndElement()) {
             if (stack.isEmpty()) return false;
             const QString name = xml.name().toString();
+            if (insidePageReference && name == "span") insidePageReference = false;
             if (name == "tr") {
                 if (rowCells == 0) return false;
                 if (tableRows == 0) {
@@ -283,6 +288,7 @@ bool supportsSource(const QString &source) {
             }
             stack.removeLast();
         } else if (xml.isCharacters()) {
+            if (insidePageReference) return false;
             if ((stack.size() == 1 && !xml.isWhitespace()) || (!stack.isEmpty() && stack.last() == "br") ||
                 ((!stack.isEmpty() && (stack.last() == "table" || stack.last() == "tbody" || stack.last() == "tr" ||
                                       stack.last() == "td" || stack.last() == "th")) && !xml.isWhitespace())) return false;
