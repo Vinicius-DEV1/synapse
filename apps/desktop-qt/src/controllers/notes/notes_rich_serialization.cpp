@@ -1,4 +1,5 @@
 #include "notes_rich_document.h"
+#include "notes_rich_format.h"
 #include "notes_rich_list_serialization.h"
 #include "notes_rich_tables.h"
 
@@ -74,8 +75,14 @@ static bool appendBlocks(const QVector<QTextBlock> &blocks, QString &result) {
             continue;
         }
         if (block.blockFormat().intProperty(QTextFormat::BlockQuoteLevel) == 1) {
-            result += "<blockquote>";
-            while (index < blocks.size() && blocks.at(index).blockFormat().intProperty(QTextFormat::BlockQuoteLevel) == 1) {
+            const QString calloutColor = block.blockFormat().stringProperty(NotesRichFormat::QuoteColor);
+            result += QStringLiteral("<blockquote");
+            if (!calloutColor.isEmpty())
+                result += QStringLiteral(" data-color=\"%1\"").arg(calloutColor.toHtmlEscaped());
+            result += ">";
+            while (index < blocks.size() &&
+                   blocks.at(index).blockFormat().intProperty(QTextFormat::BlockQuoteLevel) == 1 &&
+                   blocks.at(index).blockFormat().stringProperty(NotesRichFormat::QuoteColor) == calloutColor) {
                 block = blocks.at(index);
                 if (!supportedBlock(block) || block.blockFormat().headingLevel() != 0) return false;
                 result += "<p>";

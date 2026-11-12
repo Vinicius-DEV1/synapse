@@ -112,7 +112,7 @@ private slots:
         QVERIFY(NotesRichDocument::supportsSource("<pre><code>const value = 1;\nreturn value;</code></pre>"));
         QVERIFY(!NotesRichDocument::supportsSource("<pre><code class=\"language-js\">const value = 1;</code></pre>"));
         QVERIFY(!NotesRichDocument::supportsSource("<pre><code>const <strong>value</strong></code></pre>"));
-        QVERIFY(!NotesRichDocument::supportsSource("<blockquote data-color=\"#ff0000\"><p>Custom quote</p></blockquote>"));
+        QVERIFY(NotesRichDocument::supportsSource("<blockquote data-color=\"#ff0000\"><p>Custom quote</p></blockquote>"));
         QVERIFY(!NotesRichDocument::supportsSource("<ul data-type=\"taskList\"><li><p>Task</p></li></ul>"));
         const QString taskMarkup = QStringLiteral(
             "<ul data-type=\"taskList\"><li data-checked=\"true\" data-type=\"taskItem\">"

@@ -1,5 +1,6 @@
 #include "notes_text_operations.h"
 #include "notes_rich_document.h"
+#include "notes_rich_callouts.h"
 #include "notes_rich_divider_editing.h"
 #include "notes_rich_spoilers.h"
 #include "notes_rich_table_cell_formatting.h"
@@ -23,12 +24,33 @@ QString NotesTextOperations::richSourceForEditor(const QString &source) const {
     QString normalized;
     QVector<NotesRichTaskMarkup::ListItemState> items;
     if (!NotesRichTaskMarkup::normalizeSource(source, normalized, items)) return {};
+    normalized = NotesRichCallouts::sourceForEditor(normalized);
     return NotesRichTableCellFormatting::editorMarkup(NotesRichSpoilers::editorMarkup(normalized));
 }
 
 bool NotesTextOperations::prepareRichHeadings(QQuickTextDocument *document, const QString &source) const {
     return document && document->textDocument() &&
         NotesRichDocument::prepareHeadingStyles(*document->textDocument(), source);
+}
+
+bool NotesTextOperations::prepareRichCallouts(QQuickTextDocument *document, const QString &source) const {
+    return document && document->textDocument() &&
+        NotesRichDocument::prepareCalloutStyles(*document->textDocument(), source);
+}
+
+bool NotesTextOperations::isRichCalloutAt(QQuickTextDocument *document, int position) const {
+    return document && document->textDocument() && NotesRichDocument::isCalloutAt(*document->textDocument(), position);
+}
+
+QString NotesTextOperations::richCalloutColorAt(QQuickTextDocument *document, int position) const {
+    if (!document || !document->textDocument()) return {};
+    return NotesRichDocument::calloutColorAt(*document->textDocument(), position);
+}
+
+bool NotesTextOperations::setRichCalloutColor(QQuickTextDocument *document, int start, int end,
+                                               const QString &color) const {
+    return document && document->textDocument() &&
+        NotesRichDocument::setCalloutColor(*document->textDocument(), start, end, color);
 }
 
 bool NotesTextOperations::prepareRichSpoilers(QQuickTextDocument *document) const {

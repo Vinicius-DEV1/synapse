@@ -1,4 +1,5 @@
 #include "notes_rich_document.h"
+#include "notes_rich_callouts.h"
 #include "notes_rich_format.h"
 #include "notes_rich_markup.h"
 #include "notes_rich_spoilers.h"
@@ -202,5 +203,21 @@ QString linkAtSelection(const QTextDocument &document, int start, int end) {
         }
     }
     return found ? result : QString();
+}
+
+bool setCalloutColor(QTextDocument &document, int start, int end, const QString &color) {
+    return NotesRichCallouts::applyColor(document, start, end, color);
+}
+
+bool isCalloutAt(const QTextDocument &document, int position) {
+    return NotesRichCallouts::isAt(document, position);
+}
+
+QString calloutColorAt(const QTextDocument &document, int position) {
+    return NotesRichCallouts::colorAt(document, position);
+}
+
+bool prepareCalloutStyles(QTextDocument &document, const QString &source) {
+    return NotesRichCallouts::prepare(document, source);
 }
 }

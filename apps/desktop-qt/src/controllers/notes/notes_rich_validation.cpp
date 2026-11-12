@@ -5,6 +5,7 @@
 #include "notes_rich_task_markup.h"
 
 #include <QtCore/QSet>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QXmlStreamReader>
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextFrame>
@@ -14,6 +15,21 @@ namespace NotesRichDocument {
 
 namespace {
 const QChar SemanticBlockSeparator(0xFDD0);
+
+bool supportsCalloutAttributes(const QXmlStreamAttributes &attributes) {
+    if (!attributes.hasAttribute(QStringLiteral("data-color")) || attributes.size() > 2) return false;
+    static const QRegularExpression colorPattern(QStringLiteral("^#[0-9a-fA-F]{6}$"));
+    const QString color = attributes.value(QStringLiteral("data-color")).toString();
+    if (!colorPattern.match(color).hasMatch() || !NotesRichMarkup::parseCssColor(color).isValid()) return false;
+    if (!attributes.hasAttribute(QStringLiteral("style"))) return true;
+    QString style = attributes.value(QStringLiteral("style")).toString();
+    style.remove(QRegularExpression(QStringLiteral("\\s+")));
+    style = style.toLower();
+    const QString normalizedColor = color.toLower();
+    const QString expected = QStringLiteral("background-color:%1!important;border-left-color:%2!important;")
+        .arg(normalizedColor + QStringLiteral("15"), normalizedColor);
+    return style == expected;
+}
 
 bool appendSemanticBlock(QString &text, const QString &blockText, bool &hasPrevious) {
     if (hasPrevious) text += SemanticBlockSeparator;
@@ -122,6 +138,8 @@ bool supportsSource(const QString &source) {
                 }
                 if (attributes.hasAttribute("rel") && !attributes.hasAttribute("target")) supportedStyle = false;
             }
+            if (name == "blockquote" && !attributes.isEmpty())
+                supportedStyle = supportsCalloutAttributes(attributes);
             if (name == "span" && attributes.size() == 1 && attributes.hasAttribute("style"))
                 supportedStyle = parseSingleStyle(styleValue(attributes), "color").isValid();
             if (name == "span" && NotesRichSpoilers::isSpoilerAttributes(attributes))

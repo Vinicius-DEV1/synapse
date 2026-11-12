@@ -1,10 +1,14 @@
 #include "notes_rich_list_serialization.h"
 #include "notes_rich_serialization_support.h"
 #include "notes_rich_format.h"
+#include "notes_rich_markup.h"
 #include "notes_rich_task_lists.h"
 
+#include <QtCore/QRegularExpression>
 #include <QtCore/QVector>
 #include <QtCore/QVariant>
+#include <QtGui/QBrush>
+#include <QtGui/QColor>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextBlockFormat>
 #include <QtGui/QTextCharFormat>
@@ -18,9 +22,15 @@ bool supportedBlock(const QTextBlock &block) {
     const QTextBlockFormat format = block.blockFormat();
     const int headingLevel = format.headingLevel();
     const int quoteLevel = format.intProperty(QTextFormat::BlockQuoteLevel);
+    const bool hasQuoteColor = format.hasProperty(NotesRichFormat::QuoteColor);
+    const QString quoteColorValue = format.stringProperty(NotesRichFormat::QuoteColor);
+    static const QRegularExpression quoteColorPattern(QStringLiteral("^#[0-9a-fA-F]{6}$"));
+    const QColor quoteColor = NotesRichMarkup::parseCssColor(quoteColorValue);
     const QTextList *list = block.textList();
     if (headingLevel < 0 || headingLevel > 6 || (headingLevel > 0 && quoteLevel > 0) ||
-        (list && (headingLevel > 0 || quoteLevel > 0)) || quoteLevel > 1) return false;
+        (list && (headingLevel > 0 || quoteLevel > 0)) || quoteLevel > 1 ||
+        (hasQuoteColor && (quoteLevel != 1 || !quoteColorPattern.match(quoteColorValue).hasMatch() ||
+                           !quoteColor.isValid()))) return false;
     const auto properties = format.properties();
     for (auto it = properties.cbegin(); it != properties.cend(); ++it) {
         const int key = it.key();
@@ -34,6 +44,12 @@ bool supportedBlock(const QTextBlock &block) {
             if (headingLevel < 1 || headingLevel > 6) return false;
         } else if (key == QTextFormat::BlockQuoteLevel) {
             if (quoteLevel != 1) return false;
+        } else if (key == NotesRichFormat::QuoteColor) {
+            if (!hasQuoteColor) return false;
+        } else if (key == QTextFormat::BackgroundBrush) {
+            QColor expectedBackground = quoteColor;
+            expectedBackground.setAlpha(0x15);
+            if (!hasQuoteColor || it.value().value<QBrush>().color() != expectedBackground) return false;
         } else if (key == QTextFormat::BlockIndent) {
             const bool listContinuation = !list && format.intProperty(NotesRichFormat::ListItemGroup) > 0 &&
                 value == format.intProperty(NotesRichFormat::ListItemGroupDepth);

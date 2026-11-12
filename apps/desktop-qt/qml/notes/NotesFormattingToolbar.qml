@@ -17,6 +17,7 @@ Rectangle {
     signal linkRequested()
     signal richColorRequested(bool background, string color)
     signal richBlockRequested(string blockType)
+    signal richCalloutRequested(string color)
     signal richTableRequested()
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
@@ -35,6 +36,8 @@ Rectangle {
     property bool canMoveDividerUp: false
     property bool canMoveDividerDown: false
     property bool richSpoilerActive: false
+    property bool calloutActive: false
+    property string calloutColor: "default"
     readonly property var richBlocks: [
         { label: "P", title: qsTr("Paragraph"), value: "paragraph" },
         { label: "H1", title: qsTr("Heading 1"), value: "heading1" },
@@ -152,6 +155,14 @@ Rectangle {
                     onClicked: toolbarRoot.richBlockRequested(blockButton.modelData.value)
                 }
             }
+        }
+
+        NotesCalloutPalette {
+            active: toolbarRoot.richMode && toolbarRoot.calloutActive
+            currentColor: toolbarRoot.calloutColor
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            onColorSelected: function(color) { toolbarRoot.richCalloutRequested(color) }
         }
 
         Rectangle {

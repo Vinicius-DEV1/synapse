@@ -20,6 +20,8 @@ Item {
         canMoveDividerUp: richEditor.tableActions.canMoveDividerUp
         canMoveDividerDown: richEditor.tableActions.canMoveDividerDown
         richSpoilerActive: richEditor.spoilerAtCursor
+        calloutActive: richEditor.calloutAtCursor
+        calloutColor: richEditor.calloutColorAtCursor
     }
 
     NotesRichTextEditor {
@@ -42,6 +44,7 @@ Item {
         function onRichDividerRequested() { richEditor.tableActions.insertDivider() }
         function onRichDividerActionRequested(action) { richEditor.tableActions.editDivider(action) }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
+        function onRichCalloutRequested(color) { richEditor.setCalloutColor(color) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }
     }
 }

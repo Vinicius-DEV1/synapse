@@ -16,6 +16,11 @@ public:
     Q_INVOKABLE bool supportsRichSource(const QString &source) const;
     Q_INVOKABLE QString richSourceForEditor(const QString &source) const;
     Q_INVOKABLE bool prepareRichHeadings(QQuickTextDocument *document, const QString &source) const;
+    Q_INVOKABLE bool prepareRichCallouts(QQuickTextDocument *document, const QString &source) const;
+    Q_INVOKABLE bool isRichCalloutAt(QQuickTextDocument *document, int position) const;
+    Q_INVOKABLE QString richCalloutColorAt(QQuickTextDocument *document, int position) const;
+    Q_INVOKABLE bool setRichCalloutColor(QQuickTextDocument *document, int start, int end,
+                                         const QString &color) const;
     Q_INVOKABLE bool prepareRichSpoilers(QQuickTextDocument *document) const;
     Q_INVOKABLE bool isRichSpoilerAt(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool isRichSpoilerRevealedAt(QQuickTextDocument *document, int position) const;

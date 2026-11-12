@@ -275,6 +275,8 @@ ScrollView {
                 canMoveDividerUp: richTextEditor.tableActions.canMoveDividerUp
                 canMoveDividerDown: richTextEditor.tableActions.canMoveDividerDown
                 richSpoilerActive: richTextEditor.spoilerAtCursor
+                calloutActive: richTextEditor.calloutAtCursor
+                calloutColor: richTextEditor.calloutColorAtCursor
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
                 onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
@@ -282,6 +284,7 @@ ScrollView {
                     richTextEditor.tableActions.setColor(background, color)
                 }
                 onRichBlockRequested: function(blockType) { richTextEditor.toggleBlock(blockType) }
+                onRichCalloutRequested: function(color) { richTextEditor.setCalloutColor(color) }
                 onRichTableRequested: richTextEditor.tableActions.insertTable()
                 onRichTableActionRequested: function(action) { richTextEditor.tableActions.editTable(action) }
                 onRichCellBackgroundRequested: function(color, scope) {
