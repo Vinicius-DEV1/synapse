@@ -4,9 +4,12 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
+#include <algorithm>
 #include <QtGui/QClipboard>
+#include <QtGui/QColor>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QTextBlock>
+#include <QtGui/QTextLayout>
 #include <QtQuick/QQuickTextDocument>
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
@@ -19,6 +22,90 @@ class NativeNotesCodeLanguageQmlTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void syntaxHighlighterAttachesToTheQtEditorDocument() {
+        QQmlEngine engine;
+        NotesTextOperations operations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/NotesRichTableHarness.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        QQuickWindow window;
+        window.resize(960, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *richEditor = root->findChild<QObject *>("richTableEditor");
+        QObject *textEdit = root->findChild<QObject *>("notesRichTextEditor");
+        QVERIFY(richEditor);
+        QVERIFY(textEdit);
+        const QString source = QStringLiteral(
+            "<pre><code class=\"language-javascript\">const value = 2;</code></pre>");
+        richEditor->setProperty("sourceHtml", source);
+        richEditor->setProperty("active", true);
+        QVariant loaded;
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, loaded)));
+        QVERIFY(loaded.toBool());
+
+        auto *quickDocument = qobject_cast<QQuickTextDocument *>(
+            textEdit->property("textDocument").value<QObject *>());
+        QVERIFY(quickDocument);
+        const QTextBlock code = quickDocument->textDocument()->begin();
+        QVERIFY(NotesRichCodeBlocks::isAt(*quickDocument->textDocument(), code.position()));
+        QTRY_VERIFY(!code.layout()->formats().isEmpty());
+        const auto ranges = code.layout()->formats();
+        QVERIFY(std::any_of(ranges.cbegin(), ranges.cend(), [](const QTextLayout::FormatRange &range) {
+            return range.start == 0 && range.length == 5 &&
+                range.format.foreground().color() == QColor(QStringLiteral("#c4b5fd"));
+        }));
+
+        textEdit->setProperty("cursorPosition", code.position());
+        QVariant changedLanguage;
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "setCodeBlockLanguage",
+                                          Q_RETURN_ARG(QVariant, changedLanguage),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("python")))));
+        QVERIFY(changedLanguage.toBool());
+        const auto pythonRanges = code.layout()->formats();
+        QVERIFY(std::none_of(pythonRanges.cbegin(), pythonRanges.cend(), [](const QTextLayout::FormatRange &range) {
+            return range.start == 0 && range.length == 5 &&
+                range.format.foreground().color() == QColor(QStringLiteral("#c4b5fd"));
+        }));
+
+        textEdit->setProperty("focus", true);
+        QTRY_VERIFY(textEdit->property("activeFocus").toBool());
+        QTest::keyClick(&window, Qt::Key_Z, Qt::ControlModifier);
+        QCoreApplication::processEvents();
+        QCOMPARE(NotesRichCodeBlocks::languageAt(*quickDocument->textDocument(), code.position()),
+                 QStringLiteral("javascript"));
+        const auto undoRanges = code.layout()->formats();
+        QVERIFY(std::any_of(undoRanges.cbegin(), undoRanges.cend(), [](const QTextLayout::FormatRange &range) {
+            return range.start == 0 && range.length == 5 &&
+                range.format.foreground().color() == QColor(QStringLiteral("#c4b5fd"));
+        }));
+
+        QTest::keyClick(&window, Qt::Key_Z, Qt::ControlModifier | Qt::ShiftModifier);
+        QCoreApplication::processEvents();
+        QCOMPARE(NotesRichCodeBlocks::languageAt(*quickDocument->textDocument(), code.position()),
+                 QStringLiteral("python"));
+        const auto redoRanges = code.layout()->formats();
+        QVERIFY(std::none_of(redoRanges.cbegin(), redoRanges.cend(), [](const QTextLayout::FormatRange &range) {
+            return range.start == 0 && range.length == 5 &&
+                range.format.foreground().color() == QColor(QStringLiteral("#c4b5fd"));
+        }));
+
+        QTest::keyClick(&window, Qt::Key_Z, Qt::ControlModifier);
+        QCoreApplication::processEvents();
+
+        QVariant committed;
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), source);
+    }
+
     void dragDropSignalRepositionsTheCodeGroupAndUndoes() {
         QQmlEngine engine;
         NotesTextOperations operations;

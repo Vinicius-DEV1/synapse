@@ -1,5 +1,4 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 
 Item {
     id: richRoot
@@ -11,45 +10,21 @@ Item {
     property bool hasPendingChanges: false
     property bool hasInvalidContent: false
     property string validationMessage: ""
-    property int calloutRevision: 0
-    property int codeBlockRevision: 0
-    property int codeBlockCopyRevision: 0
-    property bool codeBlockCopySucceeded: false
-    property int linkSelectionStart: 0
-    property int linkSelectionEnd: 0
     property bool canEditSource: sourceHtml.length === 0
     readonly property int commitDelayMs: 180
-    readonly property alias editor: richEditor
+    readonly property alias editor: richTextInput.editor
     property alias tableActions: richTableActions
-    readonly property bool codeBlockActive: {
-        var revision = codeBlockRevision
-        return textOperations.isRichCodeBlock(richEditor.textDocument, richEditor.cursorPosition)
-    }
-    readonly property string codeBlockLanguage: {
-        var revision = codeBlockRevision
-        return codeBlockActive
-            ? textOperations.richCodeBlockLanguage(richEditor.textDocument, richEditor.cursorPosition) : "auto"
-    }
-    readonly property bool codeBlockCanMoveUp: {
-        var revision = codeBlockRevision
-        return codeBlockActive && textOperations.canMoveRichCodeBlock(
-                    richEditor.textDocument, richEditor.cursorPosition, true)
-    }
-    readonly property bool codeBlockCanMoveDown: {
-        var revision = codeBlockRevision
-        return codeBlockActive && textOperations.canMoveRichCodeBlock(
-                    richEditor.textDocument, richEditor.cursorPosition, false)
-    }
-    readonly property bool calloutAtCursor: {
-        var revision = calloutRevision
-        return textOperations.isRichCalloutAt(richEditor.textDocument, richEditor.cursorPosition)
-    }
-    readonly property string calloutColorAtCursor: {
-        var revision = calloutRevision
-        return textOperations.richCalloutColorAt(richEditor.textDocument, richEditor.cursorPosition)
-    }
-    readonly property bool spoilerAtCursor: textOperations.isRichSpoilerAt(
-                                                richEditor.textDocument, richEditor.cursorPosition)
+    property alias calloutRevision: richCommands.calloutRevision
+    property alias codeBlockRevision: richCommands.codeBlockRevision
+    property alias codeBlockCopyRevision: richCommands.codeBlockCopyRevision
+    property alias codeBlockCopySucceeded: richCommands.codeBlockCopySucceeded
+    readonly property alias codeBlockActive: richCommands.codeBlockActive
+    readonly property alias codeBlockLanguage: richCommands.codeBlockLanguage
+    readonly property alias codeBlockCanMoveUp: richCommands.codeBlockCanMoveUp
+    readonly property alias codeBlockCanMoveDown: richCommands.codeBlockCanMoveDown
+    readonly property alias calloutAtCursor: richCommands.calloutAtCursor
+    readonly property alias calloutColorAtCursor: richCommands.calloutColorAtCursor
+    readonly property alias spoilerAtCursor: richCommands.spoilerAtCursor
 
     signal contentModified(string html)
     signal validationChanged(bool invalid, string message)
@@ -69,29 +44,29 @@ Item {
             validationMessage = qsTr("This note contains task markup that cannot be preserved safely in visual editing.")
             return false
         }
-        richEditor.text = editorSource.length > 0 ? editorSource : "<p></p>"
-        var prepared = textOperations.prepareRichHeadings(richEditor.textDocument, sourceHtml)
+        editor.text = editorSource.length > 0 ? editorSource : "<p></p>"
+        var prepared = textOperations.prepareRichHeadings(editor.textDocument, sourceHtml)
         if (!prepared) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains formatting that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
-        if (!textOperations.prepareRichCodeBlocks(richEditor.textDocument, sourceHtml)) {
+        if (!textOperations.prepareRichCodeBlocks(editor.textDocument, sourceHtml)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains a code block that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
         codeBlockRevision += 1
-        if (!textOperations.prepareRichCallouts(richEditor.textDocument, sourceHtml)) {
+        if (!textOperations.prepareRichCallouts(editor.textDocument, sourceHtml)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains a callout that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
         calloutRevision += 1
-        if (!textOperations.prepareRichSpoilers(richEditor.textDocument)) {
+        if (!textOperations.prepareRichSpoilers(editor.textDocument)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains spoiler formatting that the native editor could not load safely. Switch to source editing to preserve it.")
@@ -110,7 +85,7 @@ Item {
     function commitEditorText() {
         commitTimer.stop()
         if (!hasPendingChanges) return !hasInvalidContent
-        var result = textOperations.serializeRich(richEditor.textDocument)
+        var result = textOperations.serializeRich(editor.textDocument)
         if (!result.ok) {
             hasInvalidContent = true
             validationMessage = qsTr("This change uses formatting that cannot be saved safely. Undo it or switch to source editing after undoing the change.")
@@ -131,149 +106,24 @@ Item {
         return true
     }
 
-    function toggleMark(mark) {
-        if (!active || hasInvalidContent || richEditor.selectionStart === richEditor.selectionEnd) return false
-        if (!textOperations.toggleRich(
-                richEditor.textDocument, richEditor.selectionStart, richEditor.selectionEnd, mark)) return false
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
-    function setSpoilerVisibility(position, action) {
-        var updated = textOperations.setRichSpoilerVisibility(richEditor.textDocument, position, action)
-        spoilerRevealControl.refresh()
-        return updated
-    }
-
-    function toggleBlock(blockType) {
-        if (!active || hasInvalidContent) return false
-        if (!textOperations.toggleRichBlock(
-                richEditor.textDocument, richEditor.selectionStart, richEditor.selectionEnd, blockType)) return false
-        calloutRevision += 1
-        codeBlockRevision += 1
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
+    function toggleMark(mark) { return richCommands.toggleMark(mark) }
+    function setSpoilerVisibility(position, action) { return richCommands.setSpoilerVisibility(position, action) }
+    function toggleBlock(blockType) { return richCommands.toggleBlock(blockType) }
     function dropDividerAt(targetPosition, afterTarget) {
-        if (!active || hasInvalidContent || !tableActions.isOnDivider) return false
-        var movedPosition = textOperations.moveRichDividerTo(
-                    richEditor.textDocument, richEditor.cursorPosition, targetPosition, afterTarget)
-        if (movedPosition < 0) return false
-        richEditor.cursorPosition = movedPosition
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
+        return richCommands.dropDividerAt(targetPosition, afterTarget)
     }
-
-    function setCalloutColor(color) {
-        if (!active || hasInvalidContent || !calloutAtCursor) return false
-        if (!textOperations.setRichCalloutColor(
-                richEditor.textDocument, richEditor.selectionStart, richEditor.selectionEnd, color)) return false
-        calloutRevision += 1
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
-    function setCodeBlockLanguage(language) {
-        if (!active || hasInvalidContent || !codeBlockActive) return false
-        var nextLanguage = language === "auto" ? "" : language
-        if (!textOperations.setRichCodeBlockLanguage(
-                    richEditor.textDocument, richEditor.cursorPosition, nextLanguage)) return false
-        hasPendingChanges = true
-        codeBlockRevision += 1
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
-    function moveCodeBlock(upward) {
-        if (!active || hasInvalidContent || !codeBlockActive) return false
-        var position = textOperations.moveRichCodeBlock(
-                    richEditor.textDocument, richEditor.cursorPosition, upward)
-        if (position < 0) return false
-        richEditor.cursorPosition = position
-        codeBlockRevision += 1
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
+    function setCalloutColor(color) { return richCommands.setCalloutColor(color) }
+    function setCodeBlockLanguage(language) { return richCommands.setCodeBlockLanguage(language) }
+    function moveCodeBlock(upward) { return richCommands.moveCodeBlock(upward) }
     function dropCodeBlockAt(targetPosition, afterTarget) {
-        if (!active || hasInvalidContent || !codeBlockActive) return false
-        var position = textOperations.moveRichCodeBlockTo(
-                    richEditor.textDocument, richEditor.cursorPosition, targetPosition, afterTarget)
-        if (position < 0) return false
-        richEditor.cursorPosition = position
-        codeBlockRevision += 1
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
+        return richCommands.dropCodeBlockAt(targetPosition, afterTarget)
     }
-
-    function copyCodeBlock() {
-        codeBlockCopySucceeded = active && codeBlockActive &&
-            textOperations.copyRichCodeBlock(richEditor.textDocument, richEditor.cursorPosition)
-        codeBlockCopyRevision += 1
-        richEditor.forceActiveFocus()
-        return codeBlockCopySucceeded
-    }
-
-    function insertParagraphBelowCodeBlock() {
-        if (!active || hasInvalidContent || !codeBlockActive) return false
-        var paragraphPosition = textOperations.insertRichParagraphBelowCodeBlock(
-                    richEditor.textDocument, richEditor.cursorPosition)
-        if (paragraphPosition < 0) return false
-        richEditor.cursorPosition = paragraphPosition
-        codeBlockRevision += 1
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
-    function deleteCodeBlock() {
-        if (!active || hasInvalidContent || !codeBlockActive) return false
-        var paragraphPosition = textOperations.deleteRichCodeBlock(
-                    richEditor.textDocument, richEditor.cursorPosition)
-        if (paragraphPosition < 0) return false
-        richEditor.cursorPosition = paragraphPosition
-        codeBlockRevision += 1
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
-
-    function openLinkDialog() {
-        if (!active || hasInvalidContent || richEditor.selectionStart === richEditor.selectionEnd) return false
-        linkSelectionStart = richEditor.selectionStart
-        linkSelectionEnd = richEditor.selectionEnd
-        var selectedText = richEditor.selectedText
-        var existingUrl = textOperations.richLinkUrl(
-                    richEditor.textDocument, linkSelectionStart, linkSelectionEnd)
-        richLinkDialog.openFor(selectedText, selectedText, existingUrl)
-        return true
-    }
-
-    function setLink(url) {
-        if (!active || hasInvalidContent) return false
-        if (!textOperations.setRichLink(
-                richEditor.textDocument, linkSelectionStart, linkSelectionEnd, url)) return false
-        hasPendingChanges = true
-        commitTimer.restart()
-        richEditor.forceActiveFocus()
-        return true
-    }
+    function copyCodeBlock() { return richCommands.copyCodeBlock() }
+    function insertParagraphBelowCodeBlock() { return richCommands.insertParagraphBelowCodeBlock() }
+    function deleteCodeBlock() { return richCommands.deleteCodeBlock() }
+    function openLinkDialog() { return richCommands.openLinkDialog() }
+    function setLink(url) { return richCommands.setLink(url) }
+    function refreshCodeSyntaxHighlighting() { richCommands.refreshCodeSyntaxHighlighting() }
 
     onSourceHtmlChanged: {
         if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()
@@ -297,69 +147,35 @@ Item {
         onTriggered: richRoot.loadSource()
     }
 
-    TextArea {
-        id: richEditor
-        objectName: "notesRichTextEditor"
+    NotesRichTextInput {
+        id: richTextInput
         anchors.fill: parent
-        visible: richRoot.active
-        textFormat: TextEdit.RichText
-        Accessible.description: spoilerRevealControl.spoilerPosition < 0
-            ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
-            : spoilerRevealControl.revealed
-                ? qsTr("The caret is inside a revealed spoiler. Press Alt+R to hide it.")
-                : qsTr("The caret is inside a hidden spoiler. Press Alt+R to reveal it.")
-        color: "#fffffe"
-        font.pixelSize: 15
-        font.family: "Inter, -apple-system, sans-serif"
-        wrapMode: TextEdit.Wrap
-        selectByMouse: true
-        selectByKeyboard: true
-        background: null
-        Keys.priority: Keys.BeforeItem
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_R && (event.modifiers & Qt.AltModifier) !== 0 &&
-                    spoilerRevealControl.spoilerPosition >= 0) {
-                spoilerRevealControl.setRevealed(!spoilerRevealControl.revealed)
-                event.accepted = true
-                return
-            }
-            if (taskListControls.handleKey(event)) {
-                event.accepted = true
-                return
-            }
-        }
-        TapHandler {
-            acceptedButtons: Qt.LeftButton
-            acceptedModifiers: Qt.AltModifier
-            onTapped: function(point) {
-                var position = richEditor.positionAt(point.position.x, point.position.y)
-                richRoot.setSpoilerVisibility(position, "toggle")
-            }
-        }
-        TapHandler {
-            acceptedButtons: Qt.LeftButton
-            acceptedModifiers: Qt.NoModifier
-            onTapped: function(point) {
-                var position = richEditor.positionAt(point.position.x, point.position.y)
-                if (richRoot.setSpoilerVisibility(position, "reveal")) return
-                taskListControls.toggleItem(position, false)
-            }
-            onDoubleTapped: function(point) {
-                var position = richEditor.positionAt(point.position.x, point.position.y)
-                richRoot.setSpoilerVisibility(position, "hide")
-            }
-        }
-        onTextChanged: {
-            if (richRoot.isLoading) return
+        editorRoot: richRoot
+        taskListControls: taskListControls
+        spoilerRevealControl: spoilerRevealControl
+        commitTimer: commitTimer
+    }
+
+    NotesRichTextCommands {
+        id: richCommands
+        editorRoot: richRoot
+        textEditor: richTextInput.editor
+        textOperations: richRoot.textOperations
+        linkDialog: richLinkDialog
+        spoilerRevealControl: spoilerRevealControl
+    }
+
+    Connections {
+        target: richCommands
+        function onContentModified() {
             richRoot.hasPendingChanges = true
             commitTimer.restart()
-            spoilerRevealControl.refresh()
         }
     }
 
     NotesRichTableEditorActions {
         id: richTableActions
-        textEditor: richEditor
+        textEditor: richTextInput.editor
         textOperations: richRoot.textOperations
         active: richRoot.active
         invalid: richRoot.hasInvalidContent
@@ -371,7 +187,7 @@ Item {
 
     NotesRichTaskListControls {
         id: taskListControls
-        textEditor: richEditor
+        textEditor: richTextInput.editor
         textOperations: richRoot.textOperations
         active: richRoot.active
         invalid: richRoot.hasInvalidContent
@@ -383,8 +199,8 @@ Item {
 
     NotesRichSpoilerRevealControl {
         id: spoilerRevealControl
-        anchors.fill: richEditor
-        textEditor: richEditor
+        anchors.fill: richTextInput.editor
+        textEditor: richTextInput.editor
         textOperations: richRoot.textOperations
         active: richRoot.active
         invalid: richRoot.hasInvalidContent

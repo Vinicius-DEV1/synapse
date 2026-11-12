@@ -25,6 +25,9 @@ public:
     Q_INVOKABLE QString richCodeBlockLanguage(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool setRichCodeBlockLanguage(QQuickTextDocument *document, int position,
                                               const QString &language) const;
+    Q_INVOKABLE QObject *createRichCodeSyntaxHighlighter(QQuickTextDocument *document);
+    Q_INVOKABLE void releaseRichCodeSyntaxHighlighter(QObject *highlighter);
+    Q_INVOKABLE void refreshRichCodeSyntaxHighlighting(QObject *highlighter);
     Q_INVOKABLE bool copyRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE int insertRichParagraphBelowCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE int deleteRichCodeBlock(QQuickTextDocument *document, int position) const;

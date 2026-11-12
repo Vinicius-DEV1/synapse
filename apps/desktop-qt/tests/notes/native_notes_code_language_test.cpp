@@ -1,8 +1,9 @@
 #include "controllers/notes/notes_rich_code_blocks.h"
 #include "controllers/notes/notes_rich_document.h"
 #include "controllers/notes/notes_rich_format.h"
-#include "controllers/notes/notes_rich_format.h"
+#include "controllers/notes/notes_code_syntax_highlighter.h"
 
+#include <QtGui/QColor>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextBlockFormat>
 #include <QtGui/QTextCursor>
@@ -10,12 +11,54 @@
 #include <QtGui/QTextTable>
 #include <QtGui/QTextTableCell>
 #include <QtGui/QTextFormat>
+#include <QtGui/QTextLayout>
 #include <QtTest/QtTest>
 
 class NativeNotesCodeLanguageTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void syntaxHighlightingIsTransientAndLanguageAware() {
+        const QString source = QStringLiteral(
+            "<pre><code class=\"language-javascript\">const title = \"ready\";\n"
+            "/* first line\nsecond line */\nconst count = 42;</code></pre><p>const stays plain</p>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        QTextBlock code = document.begin();
+        QVERIFY(NotesRichCodeBlocks::isAt(document, code.position()));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+
+        const auto colorAt = [](const QTextBlock &block, int position) {
+            const QList<QTextLayout::FormatRange> ranges = block.layout()->formats();
+            for (const QTextLayout::FormatRange &range : ranges) {
+                if (position >= range.start && position < range.start + range.length)
+                    return range.format.foreground().color();
+            }
+            return QColor();
+        };
+
+        NotesCodeSyntaxHighlighter highlighter(&document);
+        highlighter.rehighlight();
+        QCOMPARE(colorAt(code, 0), QColor(QStringLiteral("#c4b5fd")));
+        QCOMPARE(colorAt(code, 15), QColor(QStringLiteral("#86efac")));
+        QVERIFY(colorAt(code.next(), 0) == QColor(QStringLiteral("#8b91a3")));
+        QCOMPARE(colorAt(code.next().next(), 0), QColor(QStringLiteral("#8b91a3")));
+        QCOMPARE(colorAt(code.next().next().next(), 0), QColor(QStringLiteral("#c4b5fd")));
+        QVERIFY(!colorAt(code.next().next().next().next(), 0).isValid());
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+
+        QVERIFY(NotesRichCodeBlocks::setLanguage(document, code.position(), QStringLiteral("python")));
+        highlighter.rehighlight();
+        QVERIFY(!colorAt(code, 0).isValid());
+        const QString pythonSource = NotesRichDocument::serialize(document);
+        QVERIFY(pythonSource.contains(QStringLiteral("language-python")));
+        document.undo();
+        highlighter.rehighlight();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+        QCOMPARE(colorAt(code, 0), QColor(QStringLiteral("#c4b5fd")));
+    }
+
     void languageMetadataRoundTripsAndUndoesAsOneEdit() {
         const QString source = QStringLiteral(
             "<pre><code class=\"language-typescript\">const value = 1;\nreturn value;</code></pre><p>After</p>");

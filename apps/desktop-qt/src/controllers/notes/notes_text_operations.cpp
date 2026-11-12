@@ -1,4 +1,6 @@
 #include "notes_text_operations.h"
+
+#include "notes_code_syntax_highlighter.h"
 #include "notes_rich_document.h"
 #include "notes_rich_callouts.h"
 #include "notes_rich_code_blocks.h"
@@ -65,6 +67,23 @@ int NotesTextOperations::moveRichCodeBlockTo(QQuickTextDocument *document, int p
 QString NotesTextOperations::richCodeBlockLanguage(QQuickTextDocument *document, int position) const {
     if (!document || !document->textDocument()) return {};
     return NotesRichCodeBlocks::languageAt(*document->textDocument(), position);
+}
+
+QObject *NotesTextOperations::createRichCodeSyntaxHighlighter(QQuickTextDocument *document) {
+    if (!document || !document->textDocument()) return nullptr;
+    auto *highlighter = new NotesCodeSyntaxHighlighter(document->textDocument());
+    highlighter->setParent(this);
+    return highlighter;
+}
+
+void NotesTextOperations::releaseRichCodeSyntaxHighlighter(QObject *highlighter) {
+    auto *codeHighlighter = qobject_cast<NotesCodeSyntaxHighlighter *>(highlighter);
+    if (codeHighlighter && codeHighlighter->parent() == this) delete codeHighlighter;
+}
+
+void NotesTextOperations::refreshRichCodeSyntaxHighlighting(QObject *highlighter) {
+    auto *codeHighlighter = qobject_cast<NotesCodeSyntaxHighlighter *>(highlighter);
+    if (codeHighlighter && codeHighlighter->parent() == this) codeHighlighter->rehighlight();
 }
 
 bool NotesTextOperations::setRichCodeBlockLanguage(QQuickTextDocument *document, int position,

@@ -27,6 +27,8 @@ add_executable(synapse-desktop
     src/synapse_controller.h
     src/controllers/platform/database_prepared_controller.cpp
     src/controllers/notes/notes_controller.cpp
+    src/controllers/notes/notes_code_syntax_highlighter.cpp
+    src/controllers/notes/notes_code_syntax_highlighter.h
     src/controllers/notes/notes_text_operations.cpp
     src/controllers/notes/notes_rich_document.cpp
     src/controllers/notes/notes_rich_callouts.cpp
@@ -155,6 +157,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
         src/controllers/notes/notes_controller.cpp
+        src/controllers/notes/notes_code_syntax_highlighter.cpp
+        src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_document.cpp
         src/controllers/notes/notes_rich_callouts.cpp
@@ -252,6 +256,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_rich_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp
         tests/notes/native_notes_code_language_qml_test.cpp
+        src/controllers/notes/notes_code_syntax_highlighter.cpp
+        src/controllers/notes/notes_code_syntax_highlighter.h
         tests/notes/native_notes_divider_drag_qml_test.cpp
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_document.cpp
@@ -284,6 +290,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
 
     add_executable(synapse-notes-table-qml-tests
         tests/notes/native_rich_table_qml_test.cpp
+        src/controllers/notes/notes_code_syntax_highlighter.cpp
+        src/controllers/notes/notes_code_syntax_highlighter.h
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_document.cpp
         src/controllers/notes/notes_rich_callouts.cpp
