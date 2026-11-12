@@ -33,7 +33,8 @@ inline bool supportedCharacterFormat(const QTextCharFormat &format, int headingL
                    key != NotesRichFormat::SpoilerOriginalForegroundPresent &&
                    key != NotesRichFormat::SpoilerOriginalForeground &&
                    key != NotesRichFormat::SpoilerOriginalBackgroundPresent &&
-                   key != NotesRichFormat::SpoilerOriginalBackground) {
+                   key != NotesRichFormat::SpoilerOriginalBackground &&
+                   key != NotesRichFormat::PageReferenceBoundary) {
             return false;
         }
         if (key == NotesRichFormat::HeadingBoldState &&

@@ -11,9 +11,12 @@
 #include "notes_rich_table_cell_formatting.h"
 #include "notes_rich_task_markup.h"
 #include "notes_rich_task_lists.h"
+#include "notes_rich_format.h"
 
 #include <QtGui/QTextCursor>
+#include <QtGui/QTextBlock>
 #include <QtGui/QTextDocument>
+#include <QtGui/QTextFragment>
 #include <QtGui/QClipboard>
 #include <QtGui/QGuiApplication>
 #include <QtQuick/QQuickTextDocument>
@@ -206,7 +209,22 @@ bool NotesTextOperations::applyRichPendingMarks(QQuickTextDocument *document, co
 }
 
 QString NotesTextOperations::richPlainText(QQuickTextDocument *document) const {
-    return document && document->textDocument() ? document->textDocument()->toPlainText() : QString();
+    if (!document || !document->textDocument()) return {};
+    QTextDocument *textDocument = document->textDocument();
+    QString plainText = textDocument->toPlainText();
+    for (int position = textDocument->characterCount() - 2; position >= 0; --position) {
+        const QTextBlock block = textDocument->findBlock(position);
+        for (auto it = block.begin(); !it.atEnd(); ++it) {
+            const QTextFragment fragment = it.fragment();
+            if (fragment.isValid() && position >= fragment.position() &&
+                position < fragment.position() + fragment.length() &&
+                fragment.charFormat().boolProperty(NotesRichFormat::PageReferenceBoundary)) {
+                plainText.remove(position, 1);
+                break;
+            }
+        }
+    }
+    return plainText;
 }
 
 bool NotesTextOperations::toggleRichBlock(QQuickTextDocument *document, int start, int end, const QString &blockType) const {

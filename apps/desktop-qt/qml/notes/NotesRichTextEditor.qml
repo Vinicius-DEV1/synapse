@@ -61,6 +61,12 @@ Item {
             return false
         }
         editor.text = editorSource.length > 0 ? editorSource : "<p></p>"
+        if (!textOperations.prepareRichPageReferenceBoundaries(editor.textDocument)) {
+            isLoading = false
+            canEditSource = false
+            validationMessage = qsTr("This note contains page references that the native editor could not load safely. Switch to source editing to preserve them.")
+            return false
+        }
         var prepared = textOperations.prepareRichHeadings(editor.textDocument, sourceHtml)
         if (!prepared) {
             isLoading = false

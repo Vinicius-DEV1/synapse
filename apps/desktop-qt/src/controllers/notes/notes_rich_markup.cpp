@@ -140,6 +140,10 @@ QString pageReferencesForEditor(const QString &source, const QVariantList &pages
     for (auto it = replacements.crbegin(); it != replacements.crend(); ++it) {
         result.replace(it->start, it->length, it->html);
     }
+    static const QRegularExpression adjacentPageReferences(QStringLiteral(
+        "(<a href=\"synapse-page:[^\"]+\" style=\"[^\"]*\">[^<]*</a>)"
+        "(<a href=\"synapse-page:[^\"]+\" style=\"[^\"]*\">)"));
+    result.replace(adjacentPageReferences, QStringLiteral("\\1&#8288;\\2"));
     return result;
 }
 

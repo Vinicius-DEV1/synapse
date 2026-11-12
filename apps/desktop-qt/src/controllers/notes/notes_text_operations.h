@@ -17,9 +17,16 @@ public:
     Q_INVOKABLE QString richSourceForEditor(const QString &source) const;
     Q_INVOKABLE QString richSourceForEditorWithPages(const QString &source, const QVariantList &pages) const;
     Q_INVOKABLE QString richPageReferenceId(const QString &href) const;
+    Q_INVOKABLE QVariantMap richPageReferenceAt(QQuickTextDocument *document, int start, int end,
+                                                 bool preferPreviousCharacter) const;
+    Q_INVOKABLE QVariantMap richPageReferenceRangeForHref(QQuickTextDocument *document,
+                                                           const QString &href,
+                                                           int hintPosition) const;
+    Q_INVOKABLE bool removeRichPageReference(QQuickTextDocument *document, int start, int end) const;
     Q_INVOKABLE int insertRichPageReference(QQuickTextDocument *document, int position,
                                             const QString &pageId, const QString &title) const;
     Q_INVOKABLE bool prepareRichHeadings(QQuickTextDocument *document, const QString &source) const;
+    Q_INVOKABLE bool prepareRichPageReferenceBoundaries(QQuickTextDocument *document) const;
     Q_INVOKABLE bool prepareRichCodeBlocks(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool isRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool canMoveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;

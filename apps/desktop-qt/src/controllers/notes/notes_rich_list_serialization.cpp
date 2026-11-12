@@ -150,6 +150,10 @@ bool appendBlockText(QString &result, const QTextBlock &block) {
                 !block.blockFormat().hasProperty(NotesRichFormat::TaskItemChecked)) return false;
             continue;
         }
+        if (fragment.charFormat().boolProperty(NotesRichFormat::PageReferenceBoundary)) {
+            if (fragment.text() != QString(QChar(0x2060))) return false;
+            continue;
+        }
         QTextCharFormat format = fragment.charFormat();
         if (format.boolProperty(NotesRichFormat::TaskCheckedVisual)) {
             const QVariant saved = format.property(NotesRichFormat::TaskOriginalCharacterFormat);

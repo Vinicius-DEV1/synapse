@@ -24,5 +24,6 @@ inline constexpr int SpoilerOriginalForegroundPresent = QTextFormat::UserPropert
 inline constexpr int SpoilerOriginalForeground = QTextFormat::UserProperty + 10;
 inline constexpr int SpoilerOriginalBackgroundPresent = QTextFormat::UserProperty + 11;
 inline constexpr int SpoilerOriginalBackground = QTextFormat::UserProperty + 12;
+inline constexpr int PageReferenceBoundary = QTextFormat::UserProperty + 18;
 inline constexpr int TaskCheckboxObjectType = QTextFormat::UserObject + 1;
 }

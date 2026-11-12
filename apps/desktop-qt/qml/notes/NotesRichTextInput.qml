@@ -160,6 +160,7 @@ Item {
                         (event.key === Qt.Key_Backspace && inputRoot.slashQuery.length === 0))
                     inputRoot.closeSlashMenu()
             }
+            if (referenceActions.handleKey(event)) return
             if (event.text === "/" && !commandModifier && (event.modifiers & Qt.AltModifier) === 0) {
                 if (inputRoot.slashMenuOpen) inputRoot.closeSlashMenu()
                 inputRoot.pendingSlashStart = richEditor.cursorPosition
@@ -226,9 +227,7 @@ Item {
             }
         }
         onLinkActivated: function(link) {
-            var pageId = inputRoot.editorRoot.textOperations.richPageReferenceId(link)
-            if (pageId.length > 0) inputRoot.pageNavigationRequested(pageId)
-            else inputRoot.externalLinkRequested(link)
+            referenceActions.activateLink(link)
         }
         onTextChanged: {
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
@@ -257,6 +256,18 @@ Item {
         anchorX: inputRoot.slashAnchorX
         anchorY: inputRoot.slashAnchorY
         onCommandSelected: function(commandId) { inputRoot.executeSlashCommand(commandId) }
+    }
+
+    NotesRichPageReferenceActions {
+        id: referenceActions
+        anchors.fill: parent
+        editorRoot: inputRoot.editorRoot
+        textEditor: richEditor
+        textOperations: inputRoot.editorRoot.textOperations
+        commitTimer: inputRoot.commitTimer
+        pageList: inputRoot.editorRoot.pageList
+        onPageNavigationRequested: function(pageId) { inputRoot.pageNavigationRequested(pageId) }
+        onExternalLinkRequested: function(link) { inputRoot.externalLinkRequested(link) }
     }
 
     NotesRichPageReferenceFlow {
