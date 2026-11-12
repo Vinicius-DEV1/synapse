@@ -31,6 +31,7 @@ add_executable(synapse-desktop
     src/controllers/notes/notes_rich_document.cpp
     src/controllers/notes/notes_rich_spoilers.cpp
     src/controllers/notes/notes_rich_block_editing.cpp
+    src/controllers/notes/notes_rich_divider_editing.cpp
     src/controllers/notes/notes_rich_serialization.cpp
     src/controllers/notes/notes_rich_list_serialization.cpp
     src/controllers/notes/notes_rich_markup.cpp
@@ -153,6 +154,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_document.cpp
         src/controllers/notes/notes_rich_spoilers.cpp
         src/controllers/notes/notes_rich_block_editing.cpp
+    src/controllers/notes/notes_rich_divider_editing.cpp
         src/controllers/notes/notes_rich_serialization.cpp
         src/controllers/notes/notes_rich_list_serialization.cpp
         src/controllers/notes/notes_rich_markup.cpp
@@ -245,6 +247,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_document.cpp
         src/controllers/notes/notes_rich_spoilers.cpp
         src/controllers/notes/notes_rich_block_editing.cpp
+    src/controllers/notes/notes_rich_divider_editing.cpp
         src/controllers/notes/notes_rich_serialization.cpp
         src/controllers/notes/notes_rich_list_serialization.cpp
         src/controllers/notes/notes_rich_markup.cpp
@@ -273,6 +276,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_document.cpp
         src/controllers/notes/notes_rich_spoilers.cpp
         src/controllers/notes/notes_rich_block_editing.cpp
+    src/controllers/notes/notes_rich_divider_editing.cpp
         src/controllers/notes/notes_rich_serialization.cpp
         src/controllers/notes/notes_rich_list_serialization.cpp
         src/controllers/notes/notes_rich_markup.cpp

@@ -11,6 +11,12 @@ QtObject {
     property bool invalid: false
     readonly property bool isInsideTable: textEditor &&
         textOperations.isRichTableCell(textEditor.textDocument, textEditor.cursorPosition)
+    readonly property bool isOnDivider: active && !invalid && textEditor &&
+        textOperations.isRichDivider(textEditor.textDocument, textEditor.cursorPosition)
+    readonly property bool canMoveDividerUp: isOnDivider &&
+        textOperations.canMoveRichDivider(textEditor.textDocument, textEditor.cursorPosition, true)
+    readonly property bool canMoveDividerDown: isOnDivider &&
+        textOperations.canMoveRichDivider(textEditor.textDocument, textEditor.cursorPosition, false)
 
     signal contentModified()
 
@@ -50,6 +56,20 @@ QtObject {
         if (!active || invalid) return false
         var position = textOperations.insertRichDivider(
                     textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)
+        if (position < 0) return false
+        textEditor.cursorPosition = position
+        return finishEdit()
+    }
+
+    function editDivider(action) {
+        if (!isOnDivider) return false
+        var position = -1
+        if (action === "moveUp")
+            position = textOperations.moveRichDivider(textEditor.textDocument, textEditor.cursorPosition, true)
+        else if (action === "moveDown")
+            position = textOperations.moveRichDivider(textEditor.textDocument, textEditor.cursorPosition, false)
+        else if (action === "addBelow")
+            position = textOperations.insertRichParagraphBelowDivider(textEditor.textDocument, textEditor.cursorPosition)
         if (position < 0) return false
         textEditor.cursorPosition = position
         return finishEdit()

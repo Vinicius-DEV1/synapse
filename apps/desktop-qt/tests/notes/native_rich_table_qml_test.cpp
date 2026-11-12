@@ -5,6 +5,8 @@
 #include <QtCore/QUrl>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QAccessible>
+#include <QtGui/QTextBlock>
+#include <QtGui/QTextFormat>
 #include <QtGui/QTextTable>
 #include <QtQuick/QQuickTextDocument>
 #include <QtQuick/QQuickItem>
@@ -109,6 +111,52 @@ private slots:
         QVERIFY(committed.toBool());
         QCOMPARE(richEditor->property("sourceHtml").toString(),
                  QStringLiteral("<p>Before</p><hr/><p>After</p>"));
+
+        QTextBlock dividerBlock = quickDocument->textDocument()->begin();
+        while (dividerBlock.isValid() &&
+               !dividerBlock.blockFormat().hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth))
+            dividerBlock = dividerBlock.next();
+        QVERIFY(dividerBlock.isValid());
+        textEdit->setProperty("cursorPosition", dividerBlock.position());
+        QCoreApplication::processEvents();
+        QVERIFY(operations.isRichDivider(quickDocument, dividerBlock.position()));
+        QObject *tableActions = richEditor->findChild<QObject *>("notesRichTableEditorActions");
+        QVERIFY(tableActions);
+        QVERIFY(tableActions->property("isOnDivider").toBool());
+        QVERIFY(toolbar->property("dividerActive").toBool());
+        QVERIFY(toolbar->property("canMoveDividerUp").toBool());
+        QVERIFY(toolbar->property("canMoveDividerDown").toBool());
+        QObject *dividerActions = root->findChild<QObject *>("notesDividerActions");
+        QVERIFY(dividerActions);
+        QVERIFY(dividerActions->property("visible").toBool());
+
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richDividerActionRequested",
+                                          Q_ARG(QString, QStringLiteral("moveUp"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(),
+                 QStringLiteral("<hr/><p>Before</p><p>After</p>"));
+
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richDividerActionRequested",
+                                          Q_ARG(QString, QStringLiteral("moveDown"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(),
+                 QStringLiteral("<p>Before</p><hr/><p>After</p>"));
+
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richDividerActionRequested",
+                                          Q_ARG(QString, QStringLiteral("moveDown"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(),
+                 QStringLiteral("<p>Before</p><p>After</p><hr/>"));
+
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richDividerActionRequested",
+                                          Q_ARG(QString, QStringLiteral("addBelow"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(),
+                 QStringLiteral("<p>Before</p><p>After</p><hr/><p><br/></p>"));
 
         richEditor->setProperty("active", false);
         richEditor->setProperty("sourceHtml", "<ul><li><p>First</p></li><li><p>Second</p></li></ul>");

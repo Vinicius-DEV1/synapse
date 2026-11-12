@@ -1,5 +1,6 @@
 #include "notes_text_operations.h"
 #include "notes_rich_document.h"
+#include "notes_rich_divider_editing.h"
 #include "notes_rich_spoilers.h"
 #include "notes_rich_table_cell_formatting.h"
 #include "notes_rich_task_markup.h"
@@ -88,6 +89,26 @@ QVariantList NotesTextOperations::richTaskCheckboxes(QQuickTextDocument *documen
 int NotesTextOperations::insertRichDivider(QQuickTextDocument *document, int start, int end) const {
     if (!document || !document->textDocument()) return -1;
     return NotesRichDocument::insertDivider(*document->textDocument(), start, end);
+}
+
+bool NotesTextOperations::isRichDivider(QQuickTextDocument *document, int position) const {
+    return document && document->textDocument() &&
+        NotesRichDividerEditing::isDividerAt(*document->textDocument(), position);
+}
+
+bool NotesTextOperations::canMoveRichDivider(QQuickTextDocument *document, int position, bool upward) const {
+    return document && document->textDocument() &&
+        NotesRichDividerEditing::canMove(*document->textDocument(), position, upward);
+}
+
+int NotesTextOperations::moveRichDivider(QQuickTextDocument *document, int position, bool upward) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichDividerEditing::move(*document->textDocument(), position, upward);
+}
+
+int NotesTextOperations::insertRichParagraphBelowDivider(QQuickTextDocument *document, int position) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichDividerEditing::insertParagraphBelow(*document->textDocument(), position);
 }
 
 int NotesTextOperations::insertRichTable(QQuickTextDocument *document, int start, int end) const {

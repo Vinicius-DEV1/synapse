@@ -29,6 +29,10 @@ public:
     Q_INVOKABLE bool toggleRichTaskItemFromCursor(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE QVariantList richTaskCheckboxes(QQuickTextDocument *document) const;
     Q_INVOKABLE int insertRichDivider(QQuickTextDocument *document, int start, int end) const;
+    Q_INVOKABLE bool isRichDivider(QQuickTextDocument *document, int position) const;
+    Q_INVOKABLE bool canMoveRichDivider(QQuickTextDocument *document, int position, bool upward) const;
+    Q_INVOKABLE int moveRichDivider(QQuickTextDocument *document, int position, bool upward) const;
+    Q_INVOKABLE int insertRichParagraphBelowDivider(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE int insertRichTable(QQuickTextDocument *document, int start, int end) const;
     Q_INVOKABLE bool isRichTableCell(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool canApplyRichTableAction(QQuickTextDocument *document, int position,

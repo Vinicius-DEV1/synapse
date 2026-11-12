@@ -16,6 +16,9 @@ Item {
         canMoveTableColumnRight: richEditor.tableActions.canEditTable("moveColumnRight")
         canDeleteTableRow: richEditor.tableActions.canEditTable("deleteRow")
         canDeleteTableColumn: richEditor.tableActions.canEditTable("deleteColumn")
+        dividerActive: richEditor.tableActions.isOnDivider
+        canMoveDividerUp: richEditor.tableActions.canMoveDividerUp
+        canMoveDividerDown: richEditor.tableActions.canMoveDividerDown
         richSpoilerActive: richEditor.spoilerAtCursor
     }
 
@@ -37,6 +40,7 @@ Item {
             richEditor.tableActions.setCellBackground(color, scope)
         }
         function onRichDividerRequested() { richEditor.tableActions.insertDivider() }
+        function onRichDividerActionRequested(action) { richEditor.tableActions.editDivider(action) }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }
     }

@@ -90,6 +90,7 @@ static bool appendBlocks(const QVector<QTextBlock> &blocks, QString &result) {
         const QString tag = headingLevel > 0 ? QStringLiteral("h%1").arg(headingLevel) : QStringLiteral("p");
         result += "<" + tag + ">";
         if (!appendBlockText(result, block)) return false;
+        if (tag == QStringLiteral("p") && block.text().isEmpty()) result += "<br/>";
         result += "</" + tag + ">";
         ++index;
     }

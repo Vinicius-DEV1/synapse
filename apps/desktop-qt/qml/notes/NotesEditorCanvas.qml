@@ -271,6 +271,9 @@ ScrollView {
                 canMoveTableColumnRight: richTextEditor.tableActions.canEditTable("moveColumnRight")
                 canDeleteTableRow: richTextEditor.tableActions.canEditTable("deleteRow")
                 canDeleteTableColumn: richTextEditor.tableActions.canEditTable("deleteColumn")
+                dividerActive: richTextEditor.tableActions.isOnDivider
+                canMoveDividerUp: richTextEditor.tableActions.canMoveDividerUp
+                canMoveDividerDown: richTextEditor.tableActions.canMoveDividerDown
                 richSpoilerActive: richTextEditor.spoilerAtCursor
                 Layout.alignment: Qt.AlignRight
                 Layout.bottomMargin: 8
@@ -285,6 +288,7 @@ ScrollView {
                     richTextEditor.tableActions.setCellBackground(color, scope)
                 }
                 onRichDividerRequested: richTextEditor.tableActions.insertDivider()
+                onRichDividerActionRequested: function(action) { richTextEditor.tableActions.editDivider(action) }
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {
                     if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()

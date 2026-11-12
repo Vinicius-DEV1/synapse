@@ -21,6 +21,7 @@ Rectangle {
     signal richTableActionRequested(string action)
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
+    signal richDividerActionRequested(string action)
     signal richMarkRequested(string mark)
     property bool richMode: false
     property bool tableCellActive: false
@@ -30,6 +31,9 @@ Rectangle {
     property bool canMoveTableColumnRight: false
     property bool canDeleteTableRow: false
     property bool canDeleteTableColumn: false
+    property bool dividerActive: false
+    property bool canMoveDividerUp: false
+    property bool canMoveDividerDown: false
     property bool richSpoilerActive: false
     readonly property var richBlocks: [
         { label: "P", title: qsTr("Paragraph"), value: "paragraph" },
@@ -186,6 +190,13 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: toolbarRoot.richDividerRequested()
             }
+        }
+
+        NotesDividerActions {
+            active: toolbarRoot.richMode && toolbarRoot.dividerActive
+            canMoveUp: toolbarRoot.canMoveDividerUp
+            canMoveDown: toolbarRoot.canMoveDividerDown
+            onActionRequested: function(action) { toolbarRoot.richDividerActionRequested(action) }
         }
 
         NotesTableStructureActions {

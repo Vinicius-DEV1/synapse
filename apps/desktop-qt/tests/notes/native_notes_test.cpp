@@ -1,5 +1,6 @@
 #include "synapse_controller.h"
 #include "controllers/notes/notes_text_operations.h"
+#include "controllers/notes/notes_rich_divider_editing.h"
 #include "controllers/notes/notes_rich_document.h"
 #include "controllers/notes/notes_rich_format.h"
 #include "controllers/notes/notes_rich_spoilers.h"
@@ -32,6 +33,54 @@ private slots:
         QVERIFY(NotesRichDocument::supportsSource(html));
         document.undo();
         QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral("<p>BeforeAfter</p>"));
+    }
+
+    void richDividerMovesAndParagraphInsertionPreserveUndo() {
+        QVERIFY(NotesRichDocument::supportsSource("<p></p>"));
+        const QString source = QStringLiteral("<p>Before <strong>bold</strong></p><hr/><h2>After</h2>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichDocument::prepareHeadingStyles(document, source));
+        const QString original = NotesRichDocument::serialize(document);
+        const int dividerPosition = document.begin().next().position();
+        QVERIFY(NotesRichDividerEditing::isDividerAt(document, dividerPosition));
+        QVERIFY(NotesRichDividerEditing::canMove(document, dividerPosition, true));
+        QVERIFY(NotesRichDividerEditing::canMove(document, dividerPosition, false));
+
+        QCOMPARE(NotesRichDividerEditing::move(document, dividerPosition, true), 0);
+        QCOMPARE(NotesRichDocument::serialize(document),
+                 QStringLiteral("<hr/><p>Before <strong>bold</strong></p><h2>After</h2>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        const int restoredDividerPosition = document.begin().next().position();
+        const int movedDownPosition = NotesRichDividerEditing::move(document, restoredDividerPosition, false);
+        QVERIFY(movedDownPosition >= 0);
+        QCOMPARE(NotesRichDocument::serialize(document),
+                 QStringLiteral("<p>Before <strong>bold</strong></p><h2>After</h2><hr/>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        const int paragraphPosition = NotesRichDividerEditing::insertParagraphBelow(document,
+                                                                                       restoredDividerPosition);
+        QVERIFY(paragraphPosition >= 0);
+        QVERIFY(NotesRichDocument::supportsSource(
+            "<p>Before <strong>bold</strong></p><hr/><p><br/></p><h2>After</h2>"));
+        QCOMPARE(NotesRichDocument::serialize(document),
+                 QStringLiteral("<p>Before <strong>bold</strong></p><hr/><p><br/></p><h2>After</h2>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        QTextDocument boundaryDocument;
+        boundaryDocument.setHtml("<hr/><p>After</p>");
+        QVERIFY(!NotesRichDividerEditing::canMove(boundaryDocument, 0, true));
+        QCOMPARE(NotesRichDividerEditing::move(boundaryDocument, 0, true), -1);
+
+        QTextDocument listDocument;
+        listDocument.setHtml("<hr/><ul><li>After</li></ul>");
+        const int listDividerPosition = listDocument.begin().position();
+        QVERIFY(!NotesRichDividerEditing::canMove(listDocument, listDividerPosition, false));
+        QVERIFY(!NotesRichDividerEditing::isDividerAt(document, 0));
     }
 
     void richDocumentAcceptsOnlyPreservableMarkup() {
