@@ -128,6 +128,12 @@ int NotesTextOperations::moveRichDivider(QQuickTextDocument *document, int posit
     return NotesRichDividerEditing::move(*document->textDocument(), position, upward);
 }
 
+int NotesTextOperations::moveRichDividerTo(QQuickTextDocument *document, int position, int targetPosition,
+                                           bool afterTarget) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichDividerEditing::moveTo(*document->textDocument(), position, targetPosition, afterTarget);
+}
+
 int NotesTextOperations::insertRichParagraphBelowDivider(QQuickTextDocument *document, int position) const {
     if (!document || !document->textDocument()) return -1;
     return NotesRichDividerEditing::insertParagraphBelow(*document->textDocument(), position);

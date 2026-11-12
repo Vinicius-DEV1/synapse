@@ -3,6 +3,7 @@
 int runNativeNotesTest(int argc, char **argv);
 int runNativeNotesRichTablesTest(int argc, char **argv);
 int runNativeNotesCalloutTest(int argc, char **argv);
+int runNativeNotesDividerDragTest(int argc, char **argv);
 int runNativeFinanceTest(int argc, char **argv);
 int runNativeQuestionsTest(int argc, char **argv);
 int runNativeCalendarTest(int argc, char **argv);
@@ -19,6 +20,7 @@ int main(int argc, char **argv) {
     result |= runNativeNotesTest(argc, argv);
     result |= runNativeNotesRichTablesTest(argc, argv);
     result |= runNativeNotesCalloutTest(argc, argv);
+    result |= runNativeNotesDividerDragTest(argc, argv);
     result |= runNativeFinanceTest(argc, argv);
     result |= runNativeQuestionsTest(argc, argv);
     result |= runNativeCalendarTest(argc, argv);

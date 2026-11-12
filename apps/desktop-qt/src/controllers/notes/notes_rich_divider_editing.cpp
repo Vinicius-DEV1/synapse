@@ -57,33 +57,14 @@ bool isMovableNeighbor(const QTextBlock &divider, const QTextBlock &neighbor) {
     }
     return true;
 }
-}
 
-bool isDividerAt(const QTextDocument &document, int position) {
-    if (position < 0 || position >= document.characterCount()) return false;
-    return isDividerBlock(document.findBlock(position));
-}
-
-bool canMove(const QTextDocument &document, int position, bool upward) {
-    if (!isDividerAt(document, position)) return false;
-    const QTextBlock divider = document.findBlock(position);
-    if (!upward && !divider.text().isEmpty()) return true;
-    const QTextBlock neighbor = upward ? divider.previous() : divider.next();
-    return isMovableNeighbor(divider, neighbor);
-}
-
-int move(QTextDocument &document, int position, bool upward) {
+int swapAdjacentBlocks(QTextDocument &document, int position, bool upward) {
     if (!canMove(document, position, upward)) return -1;
 
     QTextBlock divider = document.findBlock(position);
-    QTextCursor edit(&document);
-    edit.beginEditBlock();
     divider = splitEmbeddedDivider(document, divider);
     const QTextBlock neighbor = upward ? divider.previous() : divider.next();
-    if (!isMovableNeighbor(divider, neighbor)) {
-        edit.endEditBlock();
-        return -1;
-    }
+    if (!isMovableNeighbor(divider, neighbor)) return -1;
     const QTextBlock first = upward ? neighbor : divider;
     const QTextBlock second = upward ? divider : neighbor;
     QTextCursor firstContent = contentCursor(first);
@@ -103,8 +84,74 @@ int move(QTextDocument &document, int position, bool upward) {
     firstFormatCursor.setBlockFormat(secondFormat);
     QTextCursor secondFormatCursor(second);
     secondFormatCursor.setBlockFormat(firstFormat);
-    edit.endEditBlock();
     return upward ? first.position() : second.position();
+}
+}
+
+bool isDividerAt(const QTextDocument &document, int position) {
+    if (position < 0 || position >= document.characterCount()) return false;
+    return isDividerBlock(document.findBlock(position));
+}
+
+bool canMove(const QTextDocument &document, int position, bool upward) {
+    if (!isDividerAt(document, position)) return false;
+    const QTextBlock divider = document.findBlock(position);
+    if (!upward && !divider.text().isEmpty()) return true;
+    const QTextBlock neighbor = upward ? divider.previous() : divider.next();
+    return isMovableNeighbor(divider, neighbor);
+}
+
+int move(QTextDocument &document, int position, bool upward) {
+    if (!canMove(document, position, upward)) return -1;
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    const int movedPosition = swapAdjacentBlocks(document, position, upward);
+    edit.endEditBlock();
+    return movedPosition;
+}
+
+int moveTo(QTextDocument &document, int position, int targetPosition, bool afterTarget) {
+    if (!isDividerAt(document, position) || targetPosition < 0 ||
+        targetPosition >= document.characterCount() || !document.findBlock(targetPosition).isValid()) return -1;
+    const QTextBlock divider = document.findBlock(position);
+    const QTextBlock target = document.findBlock(targetPosition);
+    if (!divider.text().isEmpty()) return -1;
+    if (divider.position() == target.position()) return divider.position();
+    if (!isMovableNeighbor(divider, target)) return -1;
+
+    const bool upward = target.position() < divider.position();
+    int distance = 0;
+    QTextBlock path = divider;
+    while (path.isValid() && path.position() != target.position()) {
+        path = upward ? path.previous() : path.next();
+        ++distance;
+    }
+    if (!path.isValid()) return -1;
+
+    const int moveCount = upward
+        ? distance - (afterTarget ? 1 : 0)
+        : distance - (afterTarget ? 0 : 1);
+    if (moveCount <= 0) return divider.position();
+
+    QTextBlock cursor = divider;
+    for (int step = 0; step < moveCount; ++step) {
+        const QTextBlock neighbor = upward ? cursor.previous() : cursor.next();
+        if (!isMovableNeighbor(divider, neighbor)) return -1;
+        cursor = neighbor;
+    }
+
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    int movedPosition = divider.position();
+    for (int step = 0; step < moveCount; ++step) {
+        movedPosition = swapAdjacentBlocks(document, movedPosition, upward);
+        if (movedPosition < 0) {
+            edit.endEditBlock();
+            return -1;
+        }
+    }
+    edit.endEditBlock();
+    return movedPosition;
 }
 
 int insertParagraphBelow(QTextDocument &document, int position) {

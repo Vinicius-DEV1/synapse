@@ -140,6 +140,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_test.cpp
         tests/notes/native_notes_rich_tables_test.cpp
         tests/notes/native_notes_callout_test.cpp
+        tests/notes/native_notes_divider_drag_test.cpp
         tests/finance/native_finance_test.cpp
         tests/questions/native_questions_test.cpp
         tests/calendar/native_calendar_test.cpp
@@ -247,6 +248,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     add_executable(synapse-notes-rich-qml-tests
         tests/notes/native_rich_qml_test.cpp
         tests/notes/native_notes_callout_qml_test.cpp
+        tests/notes/native_notes_divider_drag_qml_test.cpp
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_document.cpp
         src/controllers/notes/notes_rich_callouts.cpp

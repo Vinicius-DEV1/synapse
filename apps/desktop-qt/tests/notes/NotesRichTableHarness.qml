@@ -19,6 +19,7 @@ Item {
         dividerActive: richEditor.tableActions.isOnDivider
         canMoveDividerUp: richEditor.tableActions.canMoveDividerUp
         canMoveDividerDown: richEditor.tableActions.canMoveDividerDown
+        dividerDropTarget: richEditor.editor
         richSpoilerActive: richEditor.spoilerAtCursor
         calloutActive: richEditor.calloutAtCursor
         calloutColor: richEditor.calloutColorAtCursor
@@ -43,6 +44,9 @@ Item {
         }
         function onRichDividerRequested() { richEditor.tableActions.insertDivider() }
         function onRichDividerActionRequested(action) { richEditor.tableActions.editDivider(action) }
+        function onRichDividerDropRequested(targetPosition, afterTarget) {
+            richEditor.dropDividerAt(targetPosition, afterTarget)
+        }
         function onRichBlockRequested(blockType) { richEditor.toggleBlock(blockType) }
         function onRichCalloutRequested(color) { richEditor.setCalloutColor(color) }
         function onRichMarkRequested(mark) { richEditor.toggleMark(mark) }

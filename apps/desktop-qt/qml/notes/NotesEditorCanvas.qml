@@ -274,6 +274,7 @@ ScrollView {
                 dividerActive: richTextEditor.tableActions.isOnDivider
                 canMoveDividerUp: richTextEditor.tableActions.canMoveDividerUp
                 canMoveDividerDown: richTextEditor.tableActions.canMoveDividerDown
+                dividerDropTarget: richTextEditor.editor
                 richSpoilerActive: richTextEditor.spoilerAtCursor
                 calloutActive: richTextEditor.calloutAtCursor
                 calloutColor: richTextEditor.calloutColorAtCursor
@@ -292,6 +293,9 @@ ScrollView {
                 }
                 onRichDividerRequested: richTextEditor.tableActions.insertDivider()
                 onRichDividerActionRequested: function(action) { richTextEditor.tableActions.editDivider(action) }
+                onRichDividerDropRequested: function(targetPosition, afterTarget) {
+                    richTextEditor.dropDividerAt(targetPosition, afterTarget)
+                }
                 onRichMarkRequested: function(mark) { canvasRoot.toggleRichMark(mark) }
                 onLinkRequested: {
                     if (canvasRoot.isRichMode) richTextEditor.openLinkDialog()

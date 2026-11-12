@@ -23,6 +23,7 @@ Rectangle {
     signal richCellBackgroundRequested(string color, string scope)
     signal richDividerRequested()
     signal richDividerActionRequested(string action)
+    signal richDividerDropRequested(int targetPosition, bool afterTarget)
     signal richMarkRequested(string mark)
     property bool richMode: false
     property bool tableCellActive: false
@@ -35,6 +36,7 @@ Rectangle {
     property bool dividerActive: false
     property bool canMoveDividerUp: false
     property bool canMoveDividerDown: false
+    property var dividerDropTarget: null
     property bool richSpoilerActive: false
     property bool calloutActive: false
     property string calloutColor: "default"
@@ -204,10 +206,15 @@ Rectangle {
         }
 
         NotesDividerActions {
+            id: dividerActions
             active: toolbarRoot.richMode && toolbarRoot.dividerActive
             canMoveUp: toolbarRoot.canMoveDividerUp
             canMoveDown: toolbarRoot.canMoveDividerDown
+            dropTarget: toolbarRoot.dividerDropTarget
             onActionRequested: function(action) { toolbarRoot.richDividerActionRequested(action) }
+            onDropRequested: function(targetPosition, afterTarget) {
+                toolbarRoot.richDividerDropRequested(targetPosition, afterTarget)
+            }
         }
 
         NotesTableStructureActions {

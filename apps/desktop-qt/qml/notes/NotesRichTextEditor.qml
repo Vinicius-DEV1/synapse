@@ -129,6 +129,18 @@ Item {
         return true
     }
 
+    function dropDividerAt(targetPosition, afterTarget) {
+        if (!active || hasInvalidContent || !tableActions.isOnDivider) return false
+        var movedPosition = textOperations.moveRichDividerTo(
+                    richEditor.textDocument, richEditor.cursorPosition, targetPosition, afterTarget)
+        if (movedPosition < 0) return false
+        richEditor.cursorPosition = movedPosition
+        hasPendingChanges = true
+        commitTimer.restart()
+        richEditor.forceActiveFocus()
+        return true
+    }
+
     function setCalloutColor(color) {
         if (!active || hasInvalidContent || !calloutAtCursor) return false
         if (!textOperations.setRichCalloutColor(
