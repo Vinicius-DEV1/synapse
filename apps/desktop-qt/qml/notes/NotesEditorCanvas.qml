@@ -280,6 +280,8 @@ ScrollView {
                 calloutColor: richTextEditor.calloutColorAtCursor
                 codeBlockActive: richTextEditor.codeBlockActive
                 codeBlockLanguage: richTextEditor.codeBlockLanguage
+                codeBlockCanMoveUp: richTextEditor.codeBlockCanMoveUp
+                codeBlockCanMoveDown: richTextEditor.codeBlockCanMoveDown
                 codeBlockCopySucceeded: richTextEditor.codeBlockCopySucceeded
                 codeBlockCopyRevision: richTextEditor.codeBlockCopyRevision
                 Layout.alignment: Qt.AlignRight
@@ -303,6 +305,7 @@ ScrollView {
                 onRichCodeLanguageRequested: function(language) {
                     richTextEditor.setCodeBlockLanguage(language)
                 }
+                onRichCodeMoveRequested: function(upward) { richTextEditor.moveCodeBlock(upward) }
                 onRichCodeCopyRequested: richTextEditor.copyCodeBlock()
                 onRichCodeParagraphBelowRequested: richTextEditor.insertParagraphBelowCodeBlock()
                 onRichCodeDeleteConfirmed: richTextEditor.deleteCodeBlock()

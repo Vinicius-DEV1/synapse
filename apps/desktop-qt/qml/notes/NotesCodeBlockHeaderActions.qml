@@ -14,7 +14,10 @@ Item {
     property bool copied: false
     property bool copySucceeded: false
     property int copyRevision: 0
+    property bool canMoveUp: false
+    property bool canMoveDown: false
     signal languageRequested(string language)
+    signal moveRequested(bool upward)
     signal copyRequested()
     signal paragraphBelowRequested()
     signal deleteRequested()
@@ -27,6 +30,48 @@ Item {
         NotesCodeLanguageSelector {
             language: actionsRoot.language
             onLanguageRequested: function(value) { actionsRoot.languageRequested(value) }
+        }
+
+        ToolButton {
+            id: moveUpButton
+            objectName: "notesCodeMoveUpButton"
+            Layout.preferredWidth: 27
+            Layout.preferredHeight: 26
+            padding: 2
+            enabled: actionsRoot.canMoveUp
+            text: "↑"
+            Accessible.name: qsTr("Move code block up")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Move code block up")
+            contentItem: Text {
+                text: "↑"
+                color: moveUpButton.enabled ? "#c4b5fd" : "#6b6b7b"
+                font.pixelSize: 12
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: actionsRoot.moveRequested(true)
+        }
+
+        ToolButton {
+            id: moveDownButton
+            objectName: "notesCodeMoveDownButton"
+            Layout.preferredWidth: 27
+            Layout.preferredHeight: 26
+            padding: 2
+            enabled: actionsRoot.canMoveDown
+            text: "↓"
+            Accessible.name: qsTr("Move code block down")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Move code block down")
+            contentItem: Text {
+                text: "↓"
+                color: moveDownButton.enabled ? "#c4b5fd" : "#6b6b7b"
+                font.pixelSize: 12
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: actionsRoot.moveRequested(false)
         }
 
         ToolButton {

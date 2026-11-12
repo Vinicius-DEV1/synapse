@@ -30,6 +30,16 @@ Item {
         return codeBlockActive
             ? textOperations.richCodeBlockLanguage(richEditor.textDocument, richEditor.cursorPosition) : "auto"
     }
+    readonly property bool codeBlockCanMoveUp: {
+        var revision = codeBlockRevision
+        return codeBlockActive && textOperations.canMoveRichCodeBlock(
+                    richEditor.textDocument, richEditor.cursorPosition, true)
+    }
+    readonly property bool codeBlockCanMoveDown: {
+        var revision = codeBlockRevision
+        return codeBlockActive && textOperations.canMoveRichCodeBlock(
+                    richEditor.textDocument, richEditor.cursorPosition, false)
+    }
     readonly property bool calloutAtCursor: {
         var revision = calloutRevision
         return textOperations.isRichCalloutAt(richEditor.textDocument, richEditor.cursorPosition)
@@ -179,6 +189,19 @@ Item {
                     richEditor.textDocument, richEditor.cursorPosition, nextLanguage)) return false
         hasPendingChanges = true
         codeBlockRevision += 1
+        commitTimer.restart()
+        richEditor.forceActiveFocus()
+        return true
+    }
+
+    function moveCodeBlock(upward) {
+        if (!active || hasInvalidContent || !codeBlockActive) return false
+        var position = textOperations.moveRichCodeBlock(
+                    richEditor.textDocument, richEditor.cursorPosition, upward)
+        if (position < 0) return false
+        richEditor.cursorPosition = position
+        codeBlockRevision += 1
+        hasPendingChanges = true
         commitTimer.restart()
         richEditor.forceActiveFocus()
         return true

@@ -18,6 +18,8 @@ public:
     Q_INVOKABLE bool prepareRichHeadings(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool prepareRichCodeBlocks(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool isRichCodeBlock(QQuickTextDocument *document, int position) const;
+    Q_INVOKABLE bool canMoveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;
+    Q_INVOKABLE int moveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;
     Q_INVOKABLE QString richCodeBlockLanguage(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool setRichCodeBlockLanguage(QQuickTextDocument *document, int position,
                                               const QString &language) const;

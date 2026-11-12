@@ -175,6 +175,71 @@ private slots:
         QCOMPARE(table->cellAt(0, 1).firstCursorPosition().block().text(), QStringLiteral("neighbor cell"));
         QVERIFY(!NotesRichCodeBlocks::isAt(document, codeCell.firstCursorPosition().position()));
     }
+
+    void verticalMovementSwapsTheWholeCodeGroupAndUndoes() {
+        const QString source = QStringLiteral(
+            "<p>Before</p><pre><code class=\"language-rust\">fn main() {\n    run();\n}</code></pre><h2>After</h2>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+        QTextBlock codeBlock;
+        for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+            if (NotesRichCodeBlocks::isAt(document, block.position())) {
+                codeBlock = block;
+                break;
+            }
+        }
+        QVERIFY(codeBlock.isValid());
+        QVERIFY(NotesRichCodeBlocks::canMove(document, codeBlock.position(), true));
+        QVERIFY(NotesRichCodeBlocks::canMove(document, codeBlock.position(), false));
+
+        int movedPosition = NotesRichCodeBlocks::move(document, codeBlock.position(), true);
+        QVERIFY(movedPosition >= 0);
+        QVERIFY(NotesRichCodeBlocks::isAt(document, movedPosition));
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
+            "<pre><code class=\"language-rust\">fn main() {\n    run();\n}</code></pre>"
+            "<p>Before</p><h2><strong>After</strong></h2>"));
+        QVERIFY(!NotesRichCodeBlocks::canMove(document, movedPosition, true));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+
+        codeBlock = {};
+        for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+            if (NotesRichCodeBlocks::isAt(document, block.position())) {
+                codeBlock = block;
+                break;
+            }
+        }
+        QVERIFY(codeBlock.isValid());
+        movedPosition = NotesRichCodeBlocks::move(document, codeBlock.position(), false);
+        QVERIFY(movedPosition >= 0);
+        QVERIFY(NotesRichCodeBlocks::isAt(document, movedPosition));
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
+            "<p>Before</p><h2><strong>After</strong></h2>"
+            "<pre><code class=\"language-rust\">fn main() {\n    run();\n}</code></pre>"));
+        QVERIFY(!NotesRichCodeBlocks::canMove(document, movedPosition, false));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
+
+    void verticalMovementRejectsStructuralAndCodeNeighbors() {
+        const QString listSource = QStringLiteral(
+            "<ul><li>Item</li></ul><pre><code>code</code></pre>");
+        QTextDocument listDocument;
+        listDocument.setHtml(listSource);
+        QVERIFY(NotesRichCodeBlocks::prepare(listDocument, listSource));
+        QVERIFY(!NotesRichCodeBlocks::canMove(listDocument, listDocument.begin().next().position(), true));
+
+        const QString adjacentSource = QStringLiteral(
+            "<pre><code>first</code></pre><pre><code>second</code></pre>");
+        QTextDocument adjacentDocument;
+        adjacentDocument.setHtml(adjacentSource);
+        QVERIFY(NotesRichCodeBlocks::prepare(adjacentDocument, adjacentSource));
+        QVERIFY(!NotesRichCodeBlocks::canMove(adjacentDocument, adjacentDocument.begin().position(), false));
+        QVERIFY(!NotesRichCodeBlocks::canMove(
+            adjacentDocument, adjacentDocument.begin().next().position(), true));
+    }
 };
 
 int runNativeNotesCodeLanguageTest(int argc, char **argv) {

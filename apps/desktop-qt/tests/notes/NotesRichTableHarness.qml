@@ -25,6 +25,8 @@ Item {
         calloutColor: richEditor.calloutColorAtCursor
         codeBlockActive: richEditor.codeBlockActive
         codeBlockLanguage: richEditor.codeBlockLanguage
+        codeBlockCanMoveUp: richEditor.codeBlockCanMoveUp
+        codeBlockCanMoveDown: richEditor.codeBlockCanMoveDown
         codeBlockCopySucceeded: richEditor.codeBlockCopySucceeded
         codeBlockCopyRevision: richEditor.codeBlockCopyRevision
     }
@@ -52,6 +54,7 @@ Item {
             richEditor.dropDividerAt(targetPosition, afterTarget)
         }
         function onRichCodeLanguageRequested(language) { richEditor.setCodeBlockLanguage(language) }
+        function onRichCodeMoveRequested(upward) { richEditor.moveCodeBlock(upward) }
         function onRichCodeCopyRequested() { richEditor.copyCodeBlock() }
         function onRichCodeParagraphBelowRequested() { richEditor.insertParagraphBelowCodeBlock() }
         function onRichCodeDeleteConfirmed() { richEditor.deleteCodeBlock() }

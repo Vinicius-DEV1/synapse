@@ -25,6 +25,7 @@ Rectangle {
     signal richDividerActionRequested(string action)
     signal richDividerDropRequested(int targetPosition, bool afterTarget)
     signal richCodeLanguageRequested(string language)
+    signal richCodeMoveRequested(bool upward)
     signal richCodeCopyRequested()
     signal richCodeParagraphBelowRequested()
     signal richCodeDeleteConfirmed()
@@ -46,6 +47,8 @@ Rectangle {
     property string calloutColor: "default"
     property bool codeBlockActive: false
     property string codeBlockLanguage: "auto"
+    property bool codeBlockCanMoveUp: false
+    property bool codeBlockCanMoveDown: false
     property bool codeBlockCopySucceeded: false
     property int codeBlockCopyRevision: 0
 
@@ -127,9 +130,12 @@ Rectangle {
         NotesCodeBlockHeaderActions {
             visible: toolbarRoot.richMode && toolbarRoot.codeBlockActive
             language: toolbarRoot.codeBlockLanguage
+            canMoveUp: toolbarRoot.codeBlockCanMoveUp
+            canMoveDown: toolbarRoot.codeBlockCanMoveDown
             copySucceeded: toolbarRoot.codeBlockCopySucceeded
             copyRevision: toolbarRoot.codeBlockCopyRevision
             onLanguageRequested: function(language) { toolbarRoot.richCodeLanguageRequested(language) }
+            onMoveRequested: function(upward) { toolbarRoot.richCodeMoveRequested(upward) }
             onCopyRequested: toolbarRoot.richCodeCopyRequested()
             onParagraphBelowRequested: toolbarRoot.richCodeParagraphBelowRequested()
             onDeleteRequested: toolbarRoot.richCodeDeleteConfirmed()

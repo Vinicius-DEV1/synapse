@@ -10,6 +10,8 @@
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
+#include <QtGui/QTextDocumentFragment>
+#include <QtGui/QTextFragment>
 #include <QtGui/QTextTable>
 #include <QtGui/QTextTableCell>
 #include <QtGui/QTextFormat>
@@ -92,6 +94,41 @@ void resetToParagraph(QTextBlock block) {
     cursor.setBlockFormat(format);
     cursor.setCharFormat(QTextCharFormat());
 }
+
+QVector<QTextBlock> codeGroupAt(const QTextDocument &document, int position) {
+    QVector<QTextBlock> result;
+    if (!isAt(document, position)) return result;
+    const QTextBlock selected = document.findBlock(position);
+    const int groupId = selected.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup);
+    if (groupId <= 0) {
+        result.append(selected);
+        return result;
+    }
+    for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+        if (block.blockFormat().intProperty(NotesRichFormat::CodeBlockGroup) == groupId)
+            result.append(block);
+    }
+    return result;
+}
+
+bool isMovableNeighbor(const QTextBlock &codeBlock, const QTextBlock &neighbor) {
+    if (!shareEditableRegion(codeBlock, neighbor) || isCodeBlock(neighbor) || neighbor.textList() ||
+        neighbor.blockFormat().intProperty(NotesRichFormat::ListItemGroup) > 0 ||
+        neighbor.blockFormat().hasProperty(NotesRichFormat::TaskItemChecked) ||
+        neighbor.blockFormat().hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth)) return false;
+    for (auto it = neighbor.begin(); !it.atEnd(); ++it) {
+        const QTextFragment fragment = it.fragment();
+        if (fragment.isValid() && fragment.charFormat().isImageFormat()) return false;
+    }
+    return true;
+}
+
+QTextDocumentFragment blockContent(const QTextBlock &block) {
+    QTextCursor cursor(block);
+    cursor.setPosition(block.position());
+    cursor.setPosition(block.position() + block.length() - 1, QTextCursor::KeepAnchor);
+    return QTextDocumentFragment(cursor);
+}
 }
 
 bool supportsLanguage(const QString &language) {
@@ -159,6 +196,60 @@ bool prepare(QTextDocument &document, const QString &source) {
 bool isAt(const QTextDocument &document, int position) {
     return position >= 0 && position < document.characterCount() &&
         isCodeBlock(document.findBlock(position));
+}
+
+bool canMove(const QTextDocument &document, int position, bool upward) {
+    const QVector<QTextBlock> group = codeGroupAt(document, position);
+    if (group.isEmpty()) return false;
+    const QTextBlock neighbor = upward ? group.first().previous() : group.last().next();
+    return isMovableNeighbor(group.first(), neighbor);
+}
+
+int move(QTextDocument &document, int position, bool upward) {
+    if (!canMove(document, position, upward)) return -1;
+    const QVector<QTextBlock> group = codeGroupAt(document, position);
+    const QTextBlock neighbor = upward ? group.first().previous() : group.last().next();
+    QVector<QTextBlock> positions;
+    if (upward) positions.append(neighbor);
+    positions += group;
+    if (!upward) positions.append(neighbor);
+
+    QVector<QTextDocumentFragment> contents;
+    QVector<QTextBlockFormat> formats;
+    contents.reserve(positions.size());
+    formats.reserve(positions.size());
+    for (const QTextBlock &block : positions) {
+        contents.append(blockContent(block));
+        formats.append(block.blockFormat());
+    }
+
+    QVector<int> sourceOrder;
+    sourceOrder.reserve(positions.size());
+    if (upward) {
+        for (int index = 1; index < positions.size(); ++index) sourceOrder.append(index);
+        sourceOrder.append(0);
+    } else {
+        sourceOrder.append(positions.size() - 1);
+        for (int index = 0; index < positions.size() - 1; ++index) sourceOrder.append(index);
+    }
+
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    for (const QTextBlock &block : positions) {
+        QTextCursor cursor(block);
+        cursor.setPosition(block.position());
+        cursor.setPosition(block.position() + block.length() - 1, QTextCursor::KeepAnchor);
+        cursor.removeSelectedText();
+    }
+    for (int index = 0; index < positions.size(); ++index) {
+        QTextCursor cursor(positions.at(index));
+        cursor.setPosition(positions.at(index).position());
+        cursor.insertFragment(contents.at(sourceOrder.at(index)));
+        cursor.setBlockFormat(formats.at(sourceOrder.at(index)));
+    }
+    const int movedPosition = upward ? positions.first().position() : positions.at(1).position();
+    edit.endEditBlock();
+    return movedPosition;
 }
 
 QString languageAt(const QTextDocument &document, int position) {
