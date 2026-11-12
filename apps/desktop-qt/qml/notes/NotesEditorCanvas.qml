@@ -306,6 +306,9 @@ ScrollView {
                     richTextEditor.setCodeBlockLanguage(language)
                 }
                 onRichCodeMoveRequested: function(upward) { richTextEditor.moveCodeBlock(upward) }
+                onRichCodeDropRequested: function(targetPosition, afterTarget) {
+                    richTextEditor.dropCodeBlockAt(targetPosition, afterTarget)
+                }
                 onRichCodeCopyRequested: richTextEditor.copyCodeBlock()
                 onRichCodeParagraphBelowRequested: richTextEditor.insertParagraphBelowCodeBlock()
                 onRichCodeDeleteConfirmed: richTextEditor.deleteCodeBlock()

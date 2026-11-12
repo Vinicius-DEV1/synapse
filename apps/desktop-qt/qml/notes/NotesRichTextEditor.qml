@@ -207,6 +207,19 @@ Item {
         return true
     }
 
+    function dropCodeBlockAt(targetPosition, afterTarget) {
+        if (!active || hasInvalidContent || !codeBlockActive) return false
+        var position = textOperations.moveRichCodeBlockTo(
+                    richEditor.textDocument, richEditor.cursorPosition, targetPosition, afterTarget)
+        if (position < 0) return false
+        richEditor.cursorPosition = position
+        codeBlockRevision += 1
+        hasPendingChanges = true
+        commitTimer.restart()
+        richEditor.forceActiveFocus()
+        return true
+    }
+
     function copyCodeBlock() {
         codeBlockCopySucceeded = active && codeBlockActive &&
             textOperations.copyRichCodeBlock(richEditor.textDocument, richEditor.cursorPosition)

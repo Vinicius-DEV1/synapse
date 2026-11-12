@@ -19,6 +19,72 @@ class NativeNotesCodeLanguageQmlTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void dragDropSignalRepositionsTheCodeGroupAndUndoes() {
+        QQmlEngine engine;
+        NotesTextOperations operations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/NotesRichTableHarness.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        QQuickWindow window;
+        window.resize(960, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *toolbar = root->findChild<QObject *>("notesFormattingToolbar");
+        QObject *richEditor = root->findChild<QObject *>("richTableEditor");
+        QObject *headerActions = root->findChild<QObject *>("notesCodeBlockHeaderActions");
+        QObject *dragButton = root->findChild<QObject *>("notesCodeDragButton");
+        QVERIFY(toolbar);
+        QVERIFY(richEditor);
+        QVERIFY(headerActions);
+        QVERIFY(dragButton);
+        const QString source = QStringLiteral(
+            "<p>Before</p><pre><code class=\"language-rust\">one\ntwo</code></pre><p>After</p>");
+        richEditor->setProperty("active", false);
+        richEditor->setProperty("sourceHtml", source);
+        richEditor->setProperty("active", true);
+        QVariant committed;
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+
+        QObject *textEdit = richEditor->findChild<QObject *>("notesRichTextEditor");
+        QVERIFY(textEdit);
+        auto *quickDocument = qobject_cast<QQuickTextDocument *>(
+            textEdit->property("textDocument").value<QObject *>());
+        QVERIFY(quickDocument);
+        int codePosition = -1;
+        int afterPosition = -1;
+        for (QTextBlock block = quickDocument->textDocument()->begin(); block.isValid(); block = block.next()) {
+            if (NotesRichCodeBlocks::isAt(*quickDocument->textDocument(), block.position()))
+                codePosition = block.position();
+            if (block.text() == QStringLiteral("After")) afterPosition = block.position();
+        }
+        QVERIFY(codePosition >= 0);
+        QVERIFY(afterPosition >= 0);
+        textEdit->setProperty("cursorPosition", codePosition);
+        QCoreApplication::processEvents();
+        QVERIFY(dragButton->property("enabled").toBool());
+
+        QVERIFY(QMetaObject::invokeMethod(headerActions, "dropRequested",
+                                          Q_ARG(int, afterPosition), Q_ARG(bool, true)));
+        QTRY_VERIFY(richEditor->property("hasPendingChanges").toBool());
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), QStringLiteral(
+            "<p>Before</p><p>After</p><pre><code class=\"language-rust\">one\ntwo</code></pre>"));
+
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
+        QVERIFY(committed.toBool());
+        QCOMPARE(richEditor->property("sourceHtml").toString(), source);
+    }
+
     void movementButtonsMoveMultilineCodeAndRespectDocumentEdges() {
         QQmlEngine engine;
         NotesTextOperations operations;

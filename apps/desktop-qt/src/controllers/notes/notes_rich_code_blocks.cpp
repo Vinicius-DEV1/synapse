@@ -205,7 +205,7 @@ bool canMove(const QTextDocument &document, int position, bool upward) {
     return isMovableNeighbor(group.first(), neighbor);
 }
 
-int move(QTextDocument &document, int position, bool upward) {
+static int moveOne(QTextDocument &document, int position, bool upward) {
     if (!canMove(document, position, upward)) return -1;
     const QVector<QTextBlock> group = codeGroupAt(document, position);
     const QTextBlock neighbor = upward ? group.first().previous() : group.last().next();
@@ -233,8 +233,6 @@ int move(QTextDocument &document, int position, bool upward) {
         for (int index = 0; index < positions.size() - 1; ++index) sourceOrder.append(index);
     }
 
-    QTextCursor edit(&document);
-    edit.beginEditBlock();
     for (const QTextBlock &block : positions) {
         QTextCursor cursor(block);
         cursor.setPosition(block.position());
@@ -248,6 +246,53 @@ int move(QTextDocument &document, int position, bool upward) {
         cursor.setBlockFormat(formats.at(sourceOrder.at(index)));
     }
     const int movedPosition = upward ? positions.first().position() : positions.at(1).position();
+    return movedPosition;
+}
+
+int move(QTextDocument &document, int position, bool upward) {
+    if (!canMove(document, position, upward)) return -1;
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    const int movedPosition = moveOne(document, position, upward);
+    edit.endEditBlock();
+    return movedPosition;
+}
+
+int moveTo(QTextDocument &document, int position, int targetPosition, bool afterTarget) {
+    const QVector<QTextBlock> group = codeGroupAt(document, position);
+    if (group.isEmpty() || targetPosition < 0 || targetPosition >= document.characterCount()) return -1;
+    const QTextBlock first = group.first();
+    const QTextBlock last = group.last();
+    const QTextBlock target = document.findBlock(targetPosition);
+    if (!target.isValid() || !shareEditableRegion(first, target)) return -1;
+    if (target.position() >= first.position() && target.position() <= last.position()) return -1;
+
+    const bool upward = target.position() < first.position();
+    int distance = 0;
+    QTextBlock path = upward ? first.previous() : last.next();
+    while (path.isValid()) {
+        if (!isMovableNeighbor(first, path)) return -1;
+        ++distance;
+        if (path.position() == target.position()) break;
+        path = upward ? path.previous() : path.next();
+    }
+    if (!path.isValid()) return -1;
+
+    const int moveCount = upward
+        ? distance - (afterTarget ? 1 : 0)
+        : distance - (afterTarget ? 0 : 1);
+    if (moveCount <= 0) return -1;
+
+    QTextCursor edit(&document);
+    edit.beginEditBlock();
+    int movedPosition = first.position();
+    for (int step = 0; step < moveCount; ++step) {
+        movedPosition = moveOne(document, movedPosition, upward);
+        if (movedPosition < 0) {
+            edit.endEditBlock();
+            return -1;
+        }
+    }
     edit.endEditBlock();
     return movedPosition;
 }

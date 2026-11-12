@@ -16,8 +16,11 @@ Item {
     property int copyRevision: 0
     property bool canMoveUp: false
     property bool canMoveDown: false
+    property var dropTarget: null
+    readonly property real dragThreshold: 8
     signal languageRequested(string language)
     signal moveRequested(bool upward)
+    signal dropRequested(int targetPosition, bool afterTarget)
     signal copyRequested()
     signal paragraphBelowRequested()
     signal deleteRequested()
@@ -72,6 +75,60 @@ Item {
                 verticalAlignment: Text.AlignVCenter
             }
             onClicked: actionsRoot.moveRequested(false)
+        }
+
+        ToolButton {
+            id: dragButton
+            objectName: "notesCodeDragButton"
+            Layout.preferredWidth: 27
+            Layout.preferredHeight: 26
+            padding: 2
+            enabled: actionsRoot.dropTarget !== null
+            text: "⋮⋮"
+            Accessible.name: qsTr("Drag code block to reposition")
+            ToolTip.visible: hovered || dragMouseArea.containsMouse
+            ToolTip.text: qsTr("Drag code block to reposition")
+            contentItem: Text {
+                text: dragButton.text
+                color: dragButton.enabled ? "#c4b5fd" : "#6b6b7b"
+                font.pixelSize: 12
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            MouseArea {
+                id: dragMouseArea
+                anchors.fill: parent
+                enabled: actionsRoot.dropTarget !== null
+                hoverEnabled: true
+                preventStealing: true
+                acceptedButtons: Qt.LeftButton
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                property real pressX: 0
+                property real pressY: 0
+                property bool dragging: false
+                onPressed: function(mouse) {
+                    pressX = mouse.x
+                    pressY = mouse.y
+                    dragging = false
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed || dragging) return
+                    var deltaX = mouse.x - pressX
+                    var deltaY = mouse.y - pressY
+                    dragging = deltaX * deltaX + deltaY * deltaY >=
+                        actionsRoot.dragThreshold * actionsRoot.dragThreshold
+                }
+                onReleased: function(mouse) {
+                    if (!dragging) return
+                    dragging = false
+                    var point = dragMouseArea.mapToItem(actionsRoot.dropTarget, mouse.x, mouse.y)
+                    var targetPosition = actionsRoot.dropTarget.positionAt(point.x, point.y)
+                    if (targetPosition < 0) return
+                    var targetRect = actionsRoot.dropTarget.positionToRectangle(targetPosition)
+                    actionsRoot.dropRequested(targetPosition,
+                                              point.y > targetRect.y + targetRect.height / 2)
+                }
+            }
         }
 
         ToolButton {

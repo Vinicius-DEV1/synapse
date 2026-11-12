@@ -26,6 +26,7 @@ Rectangle {
     signal richDividerDropRequested(int targetPosition, bool afterTarget)
     signal richCodeLanguageRequested(string language)
     signal richCodeMoveRequested(bool upward)
+    signal richCodeDropRequested(int targetPosition, bool afterTarget)
     signal richCodeCopyRequested()
     signal richCodeParagraphBelowRequested()
     signal richCodeDeleteConfirmed()
@@ -121,7 +122,6 @@ Rectangle {
                 onClicked: toolbarRoot.richMarkRequested("spoiler")
             }
         }
-
         Rectangle { visible: toolbarRoot.richMode; Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
         NotesBlockStyleActions {
             visible: toolbarRoot.richMode
@@ -132,10 +132,14 @@ Rectangle {
             language: toolbarRoot.codeBlockLanguage
             canMoveUp: toolbarRoot.codeBlockCanMoveUp
             canMoveDown: toolbarRoot.codeBlockCanMoveDown
+            dropTarget: toolbarRoot.dividerDropTarget
             copySucceeded: toolbarRoot.codeBlockCopySucceeded
             copyRevision: toolbarRoot.codeBlockCopyRevision
             onLanguageRequested: function(language) { toolbarRoot.richCodeLanguageRequested(language) }
             onMoveRequested: function(upward) { toolbarRoot.richCodeMoveRequested(upward) }
+            onDropRequested: function(targetPosition, afterTarget) {
+                toolbarRoot.richCodeDropRequested(targetPosition, afterTarget)
+            }
             onCopyRequested: toolbarRoot.richCodeCopyRequested()
             onParagraphBelowRequested: toolbarRoot.richCodeParagraphBelowRequested()
             onDeleteRequested: toolbarRoot.richCodeDeleteConfirmed()
@@ -165,7 +169,6 @@ Rectangle {
                 onClicked: toolbarRoot.richTableRequested()
             }
         }
-
         Rectangle {
             visible: toolbarRoot.richMode
             Layout.preferredWidth: 30
@@ -184,7 +187,6 @@ Rectangle {
                 onClicked: toolbarRoot.richDividerRequested()
             }
         }
-
         NotesDividerActions {
             id: dividerActions
             active: toolbarRoot.richMode && toolbarRoot.dividerActive
@@ -196,7 +198,6 @@ Rectangle {
                 toolbarRoot.richDividerDropRequested(targetPosition, afterTarget)
             }
         }
-
         NotesTableStructureActions {
             active: toolbarRoot.richMode && toolbarRoot.tableCellActive
             canMoveRowUp: toolbarRoot.canMoveTableRowUp
@@ -207,7 +208,6 @@ Rectangle {
             canDeleteColumn: toolbarRoot.canDeleteTableColumn
             onActionRequested: function(action) { toolbarRoot.richTableActionRequested(action) }
         }
-
         NotesTableCellBackgroundPalette {
             active: toolbarRoot.richMode && toolbarRoot.tableCellActive
             Layout.preferredWidth: 30

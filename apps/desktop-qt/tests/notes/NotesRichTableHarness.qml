@@ -55,6 +55,9 @@ Item {
         }
         function onRichCodeLanguageRequested(language) { richEditor.setCodeBlockLanguage(language) }
         function onRichCodeMoveRequested(upward) { richEditor.moveCodeBlock(upward) }
+        function onRichCodeDropRequested(targetPosition, afterTarget) {
+            richEditor.dropCodeBlockAt(targetPosition, afterTarget)
+        }
         function onRichCodeCopyRequested() { richEditor.copyCodeBlock() }
         function onRichCodeParagraphBelowRequested() { richEditor.insertParagraphBelowCodeBlock() }
         function onRichCodeDeleteConfirmed() { richEditor.deleteCodeBlock() }

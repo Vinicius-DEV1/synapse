@@ -20,6 +20,8 @@ public:
     Q_INVOKABLE bool isRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool canMoveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;
     Q_INVOKABLE int moveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;
+    Q_INVOKABLE int moveRichCodeBlockTo(QQuickTextDocument *document, int position, int targetPosition,
+                                        bool afterTarget) const;
     Q_INVOKABLE QString richCodeBlockLanguage(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool setRichCodeBlockLanguage(QQuickTextDocument *document, int position,
                                               const QString &language) const;

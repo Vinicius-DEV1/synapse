@@ -56,6 +56,12 @@ int NotesTextOperations::moveRichCodeBlock(QQuickTextDocument *document, int pos
     return NotesRichCodeBlocks::move(*document->textDocument(), position, upward);
 }
 
+int NotesTextOperations::moveRichCodeBlockTo(QQuickTextDocument *document, int position, int targetPosition,
+                                             bool afterTarget) const {
+    if (!document || !document->textDocument()) return -1;
+    return NotesRichCodeBlocks::moveTo(*document->textDocument(), position, targetPosition, afterTarget);
+}
+
 QString NotesTextOperations::richCodeBlockLanguage(QQuickTextDocument *document, int position) const {
     if (!document || !document->textDocument()) return {};
     return NotesRichCodeBlocks::languageAt(*document->textDocument(), position);

@@ -240,6 +240,68 @@ private slots:
         QVERIFY(!NotesRichCodeBlocks::canMove(
             adjacentDocument, adjacentDocument.begin().next().position(), true));
     }
+
+    void dragMovementRepositionsTheWholeGroupAsOneUndoStep() {
+        const QString source = QStringLiteral(
+            "<p>Before</p><p>Middle</p><pre><code class=\"language-rust\">one\ntwo</code></pre>"
+            "<p>After</p><p>Last</p>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+        int codePosition = -1;
+        int firstPosition = -1;
+        int lastPosition = -1;
+        for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+            if (block.text() == QStringLiteral("Before")) firstPosition = block.position();
+            if (block.text() == QStringLiteral("Last")) lastPosition = block.position();
+            if (NotesRichCodeBlocks::isAt(document, block.position())) codePosition = block.position();
+        }
+        QVERIFY(codePosition >= 0);
+        QVERIFY(firstPosition >= 0);
+        QVERIFY(lastPosition >= 0);
+
+        int movedPosition = NotesRichCodeBlocks::moveTo(document, codePosition, lastPosition, true);
+        QVERIFY(movedPosition >= 0);
+        QVERIFY(NotesRichCodeBlocks::isAt(document, movedPosition));
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
+            "<p>Before</p><p>Middle</p><p>After</p><p>Last</p>"
+            "<pre><code class=\"language-rust\">one\ntwo</code></pre>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+
+        movedPosition = NotesRichCodeBlocks::moveTo(document, codePosition, firstPosition, false);
+        QVERIFY(movedPosition >= 0);
+        QVERIFY(NotesRichCodeBlocks::isAt(document, movedPosition));
+        QCOMPARE(NotesRichDocument::serialize(document), QStringLiteral(
+            "<pre><code class=\"language-rust\">one\ntwo</code></pre>"
+            "<p>Before</p><p>Middle</p><p>After</p><p>Last</p>"));
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
+
+    void dragMovementRejectsUnsupportedPathsAndSelfDrops() {
+        const QString source = QStringLiteral(
+            "<p>Before</p><ul><li>List item</li></ul><pre><code>code</code></pre><p>After</p>");
+        QTextDocument document;
+        document.setHtml(source);
+        QVERIFY(NotesRichCodeBlocks::prepare(document, source));
+        const QString originalSerialized = NotesRichDocument::serialize(document);
+        int codePosition = -1;
+        int beforePosition = -1;
+        int afterPosition = -1;
+        for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+            if (block.text() == QStringLiteral("Before")) beforePosition = block.position();
+            if (block.text() == QStringLiteral("After")) afterPosition = block.position();
+            if (NotesRichCodeBlocks::isAt(document, block.position())) codePosition = block.position();
+        }
+        QVERIFY(codePosition >= 0);
+        QVERIFY(beforePosition >= 0);
+        QVERIFY(afterPosition >= 0);
+        QVERIFY(NotesRichCodeBlocks::moveTo(document, codePosition, beforePosition, false) < 0);
+        QVERIFY(NotesRichCodeBlocks::moveTo(document, codePosition, codePosition, true) < 0);
+        QCOMPARE(NotesRichDocument::serialize(document), originalSerialized);
+    }
 };
 
 int runNativeNotesCodeLanguageTest(int argc, char **argv) {
