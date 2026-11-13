@@ -298,9 +298,19 @@ public:
 
     // 10. Foco Pomodoro & Lofi
     Q_INVOKABLE QVariantList getLofis();
+    Q_INVOKABLE bool addLofiTrack(const QString &title, const QString &filePath, double duration = 0.0);
+    Q_INVOKABLE bool deleteLofi(const QString &lofiId);
+
     Q_INVOKABLE QVariantList getFocusSessions();
-    Q_INVOKABLE bool recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary = "");
+    Q_INVOKABLE bool recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary = "", const QString &description = "");
     Q_INVOKABLE bool deleteFocusSession(const QString &sessionId);
+
+    // Alarmes
+    Q_INVOKABLE QVariantList getAlarms();
+    Q_INVOKABLE bool createAlarm(const QString &time, const QString &label = "", const QString &sound = "bell", bool enabled = true, const QString &days = "[]");
+    Q_INVOKABLE bool updateAlarm(const QString &alarmId, const QString &time, const QString &label, const QString &sound, bool enabled, const QString &days);
+    Q_INVOKABLE bool toggleAlarm(const QString &alarmId);
+    Q_INVOKABLE bool deleteAlarm(const QString &alarmId);
 
     // 11. Cofre E2EE & Credenciais
     Q_INVOKABLE QVariantList getVaultGroups();

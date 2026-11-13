@@ -107,6 +107,7 @@ Rectangle {
             onCustomTimeRequested: focusRoot.isCustomTimeOpen = true
             onStartPauseRequested: focusRoot.toggleTimer()
             onResetRequested: focusRoot.resetTimer()
+            onHelpRequested: helpDialog.isOpen = true
         }
 
         // Right Area: Lofi Ambient & Session History
@@ -162,5 +163,10 @@ Rectangle {
             focusRoot.setPreset(25)
             focusRoot.toggleTimer()
         }
+    }
+
+    FocusHelpDialog {
+        id: helpDialog
+        onClosed: isOpen = false
     }
 }

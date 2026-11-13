@@ -20,6 +20,7 @@ ColumnLayout {
     signal customTimeRequested()
     signal startPauseRequested()
     signal resetRequested()
+    signal helpRequested()
 
     function formatTime(secs) {
         var m = Math.floor(secs / 60)
@@ -28,18 +29,51 @@ ColumnLayout {
     }
 
     // Header
-    ColumnLayout {
-        spacing: 4
-        Text {
-            text: "⏳ Foco Imersivo & Pomodoro"
-            color: "#fffffe"
-            font.pixelSize: 24
-            font.bold: true
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 16
+
+        ColumnLayout {
+            spacing: 4
+            Text {
+                text: "⏳ Foco Imersivo & Pomodoro"
+                color: "#fffffe"
+                font.pixelSize: 24
+                font.bold: true
+            }
+            Text {
+                text: "Técnica Pomodoro com bloqueio de distrações e registro de consistência"
+                color: "#a7a9be"
+                font.pixelSize: 13
+            }
         }
-        Text {
-            text: "Técnica Pomodoro com bloqueio de distrações e registro de consistência"
-            color: "#a7a9be"
-            font.pixelSize: 13
+
+        Item { Layout.fillWidth: true }
+
+        // Help / Guide Button
+        Rectangle {
+            width: 36
+            height: 36
+            radius: 8
+            color: helpMouse.containsMouse ? "#262438" : "#1a1924"
+            border.color: helpMouse.containsMouse ? "#808b5cf6" : "#18ffffff"
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "?"
+                color: helpMouse.containsMouse ? "#ffffff" : "#a7a9be"
+                font.pixelSize: 15
+                font.bold: true
+            }
+
+            MouseArea {
+                id: helpMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: canvasRoot.helpRequested()
+            }
         }
     }
 
