@@ -9,6 +9,7 @@ RowLayout {
     property int habitCount: 0
 
     signal createHabitRequested()
+    signal helpRequested()
 
     ColumnLayout {
         spacing: 4
@@ -27,8 +28,35 @@ RowLayout {
 
     Item { Layout.fillWidth: true }
 
+    // Ajuda Button
     Rectangle {
-        width: 144; height: 40; radius: 10
+        Layout.preferredWidth: 86
+        Layout.preferredHeight: 40
+        radius: 10
+        color: "#161524"
+        border.color: "#18ffffff"
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 6
+            Text { text: "❓"; font.pixelSize: 12 }
+            Text { text: "Ajuda"; color: "#a7a9be"; font.pixelSize: 13; font.bold: true }
+        }
+
+        MouseArea {
+            id: helpMouse
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+            onClicked: headerRoot.helpRequested()
+        }
+    }
+
+    // Novo Hábito Button
+    Rectangle {
+        Layout.preferredWidth: 144
+        Layout.preferredHeight: 40
+        radius: 10
         color: newHabitMouse.containsMouse ? "#059669" : "#10b981"
 
         RowLayout {

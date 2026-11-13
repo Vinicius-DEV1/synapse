@@ -11,6 +11,7 @@ Item {
     property var logMap: ({})
 
     signal toggleCheckin(string habitId, string dateStr)
+    signal editHabitRequested(var habit)
     signal deleteHabitRequested(string habitId)
 
     ListView {
@@ -22,6 +23,7 @@ Item {
 
         delegate: Rectangle {
             id: habitCardDelegate
+            property var habitItem: modelData
             width: habitListView.width
             height: 84
             radius: 12
@@ -39,33 +41,36 @@ Item {
 
                 // Habit Icon Badge
                 Rectangle {
-                    width: 48; height: 48; radius: 12
-                    color: modelData.color ? modelData.color + "26" : "#2610b981"
-                    border.color: modelData.color ? modelData.color + "4d" : "#4d10b981"
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 48
+                    radius: 12
+                    color: habitCardDelegate.habitItem.color ? habitCardDelegate.habitItem.color + "26" : "#2610b981"
+                    border.color: habitCardDelegate.habitItem.color ? habitCardDelegate.habitItem.color + "4d" : "#4d10b981"
                     border.width: 1
 
                     Text {
                         anchors.centerIn: parent
-                        text: modelData.icon || "⭐"
+                        text: habitCardDelegate.habitItem.icon || "⭐"
                         font.pixelSize: 22
                     }
                 }
 
                 // Habit Title & Target
                 ColumnLayout {
-                    Layout.preferredWidth: 220
+                    Layout.preferredWidth: 200
                     spacing: 3
 
                     Text {
-                        text: modelData.title
+                        text: habitCardDelegate.habitItem.title || ""
                         color: "#fffffe"
                         font.pixelSize: 15
                         font.bold: true
                         elide: Text.ElideRight
+                        Layout.maximumWidth: 190
                     }
 
                     Text {
-                        text: "Meta: " + (modelData.target_days_per_week || 7) + " dias / semana"
+                        text: "Meta: " + (habitCardDelegate.habitItem.target_days_per_week || 7) + " dias / semana"
                         color: "#a7a9be"
                         font.pixelSize: 12
                     }
@@ -82,26 +87,29 @@ Item {
 
                         delegate: ColumnLayout {
                             id: dayColDelegate
+                            property var dayItem: modelData
                             spacing: 4
-                            property bool isDone: listRoot.logMap[modelData.id + "_" + modelData.date] === true
+                            property bool isDone: listRoot.logMap[habitCardDelegate.habitItem.id + "_" + dayColDelegate.dayItem.date] === true
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: modelData.name
-                                color: modelData.isToday ? "#fffffe" : "#64748b"
+                                text: dayColDelegate.dayItem.name
+                                color: dayColDelegate.dayItem.isToday ? "#fffffe" : "#64748b"
                                 font.pixelSize: 10
-                                font.bold: modelData.isToday
+                                font.bold: dayColDelegate.dayItem.isToday
                             }
 
                             Rectangle {
-                                width: 32; height: 32; radius: 16
-                                color: dayColDelegate.isDone ? (modelData.color || "#10b981") : (modelData.isToday ? "#211f30" : "#15141b")
-                                border.color: dayColDelegate.isDone ? (modelData.color || "#10b981") : (modelData.isToday ? "#25ffffff" : "#10ffffff")
-                                border.width: modelData.isToday ? 1.5 : 1
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                radius: 16
+                                color: dayColDelegate.isDone ? (habitCardDelegate.habitItem.color || "#10b981") : (dayColDelegate.dayItem.isToday ? "#211f30" : "#15141b")
+                                border.color: dayColDelegate.isDone ? (habitCardDelegate.habitItem.color || "#10b981") : (dayColDelegate.dayItem.isToday ? "#25ffffff" : "#10ffffff")
+                                border.width: dayColDelegate.dayItem.isToday ? 1.5 : 1
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: dayColDelegate.isDone ? "✓" : (modelData.isToday ? "○" : "")
+                                    text: dayColDelegate.isDone ? "✓" : (dayColDelegate.dayItem.isToday ? "○" : "")
                                     color: dayColDelegate.isDone ? "#ffffff" : "#a7a9be"
                                     font.pixelSize: 13
                                     font.bold: true
@@ -110,25 +118,50 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: listRoot.toggleCheckin(modelData.id, modelData.date)
+                                    onClicked: listRoot.toggleCheckin(habitCardDelegate.habitItem.id, dayColDelegate.dayItem.date)
                                 }
                             }
                         }
                     }
                 }
 
-                Item { width: 12 }
+                Item { Layout.preferredWidth: 8 }
+
+                // Edit Habit Button
+                Rectangle {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    radius: 8
+                    color: editHabitMouse.containsMouse ? "#206366f1" : "transparent"
+                    border.color: editHabitMouse.containsMouse ? "#556366f1" : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✏️"
+                        font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                        id: editHabitMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: listRoot.editHabitRequested(habitCardDelegate.habitItem)
+                    }
+                }
 
                 // Delete Habit Button
                 Rectangle {
-                    width: 34; height: 34; radius: 8
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    radius: 8
                     color: delHabitMouse.containsMouse ? "#26f43f5e" : "transparent"
                     border.color: delHabitMouse.containsMouse ? "#55f43f5e" : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: "🗑️"
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                     }
 
                     MouseArea {
@@ -136,7 +169,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: listRoot.deleteHabitRequested(modelData.id)
+                        onClicked: listRoot.deleteHabitRequested(habitCardDelegate.habitItem.id)
                     }
                 }
             }
@@ -151,7 +184,7 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            visible: listRoot.habits.length === 0
+            visible: !listRoot.habits || listRoot.habits.length === 0
             text: "Nenhum hábito cadastrado ainda.\nClique em '+ Novo Hábito' para iniciar sua rotina!"
             color: "#64748b"
             font.pixelSize: 15

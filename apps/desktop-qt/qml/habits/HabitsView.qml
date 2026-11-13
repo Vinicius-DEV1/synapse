@@ -8,6 +8,7 @@ Rectangle {
     property var habits: []
     property var last7Days: []
     property var logMap: ({})
+    property bool isHabitsHelpOpen: false
 
     function computeDays() {
         var days = []
@@ -50,7 +51,8 @@ Rectangle {
         // Header and Actions
         HabitsHeaderSection {
             habitCount: habitsRoot.habits.length
-            onCreateHabitRequested: createHabitModal.openModal()
+            onCreateHabitRequested: createHabitModal.openModal(null)
+            onHelpRequested: habitsRoot.isHabitsHelpOpen = true
         }
 
         // Habits Matrix List
@@ -63,6 +65,9 @@ Rectangle {
                 dataController.toggleHabitCheckin(habitId, dateStr)
                 habitsRoot.refreshHabits()
             }
+            onEditHabitRequested: function(habit) {
+                createHabitModal.openModal(habit)
+            }
             onDeleteHabitRequested: function(habitId) {
                 dataController.deleteHabit(habitId)
                 habitsRoot.refreshHabits()
@@ -70,12 +75,22 @@ Rectangle {
         }
     }
 
-    // Modal: Novo Hábito
+    // Modal: Criar ou Editar Hábito
     CreateHabitModal {
         id: createHabitModal
         onHabitSubmitted: function(title, color, icon, targetDays) {
             dataController.createHabit(title, color, icon, targetDays)
             habitsRoot.refreshHabits()
         }
+        onHabitUpdated: function(habitId, title, color, icon, targetDays) {
+            dataController.updateHabit(habitId, title, color, icon, targetDays)
+            habitsRoot.refreshHabits()
+        }
+    }
+
+    // Modal: Guia de Hábitos
+    HabitsHelpDialog {
+        isOpen: habitsRoot.isHabitsHelpOpen
+        onClosed: habitsRoot.isHabitsHelpOpen = false
     }
 }

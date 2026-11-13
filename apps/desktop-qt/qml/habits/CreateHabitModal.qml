@@ -8,24 +8,36 @@ Rectangle {
     z: 95
     visible: false
 
+    property var editingHabit: null
+    readonly property bool isEditing: editingHabit !== null && editingHabit !== undefined
     property string selectedColor: "#10b981"
     property string selectedIcon: "⭐"
     property int selectedTargetDays: 7
 
     signal closed()
     signal habitSubmitted(string title, string color, string icon, int targetDays)
+    signal habitUpdated(string habitId, string title, string color, string icon, int targetDays)
 
-    function openModal() {
-        newHabitTitle.text = ""
-        selectedColor = "#10b981"
-        selectedIcon = "⭐"
-        selectedTargetDays = 7
+    function openModal(habit) {
+        editingHabit = habit || null
+        if (habit) {
+            newHabitTitle.text = habit.title || ""
+            selectedColor = habit.color || "#10b981"
+            selectedIcon = habit.icon || "⭐"
+            selectedTargetDays = habit.target_days_per_week || 7
+        } else {
+            newHabitTitle.text = ""
+            selectedColor = "#10b981"
+            selectedIcon = "⭐"
+            selectedTargetDays = 7
+        }
         modalRoot.visible = true
         newHabitTitle.forceActiveFocus()
     }
 
     function closeModal() {
         modalRoot.visible = false
+        editingHabit = null
         modalRoot.closed()
     }
 
@@ -52,10 +64,17 @@ Rectangle {
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "⚡ Novo Hábito Diário"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                Text {
+                    text: modalRoot.isEditing ? "✏️ Editar Hábito" : "⚡ Novo Hábito Diário"
+                    color: "#fffffe"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: "✕"; color: "#a7a9be"; font.pixelSize: 16
+                    text: "✕"
+                    color: "#a7a9be"
+                    font.pixelSize: 16
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -88,14 +107,18 @@ Rectangle {
                     Repeater {
                         model: ["⭐", "📚", "💧", "🏃", "🧘", "💻", "🎨", "🎵"]
                         delegate: Rectangle {
-                            width: 36; height: 36; radius: 8
-                            color: modalRoot.selectedIcon === modelData ? "#3310b981" : "#211f30"
-                            border.color: modalRoot.selectedIcon === modelData ? "#10b981" : "#10ffffff"
+                            id: iconRect
+                            property var iconData: modelData
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            radius: 8
+                            color: modalRoot.selectedIcon === iconRect.iconData ? "#3310b981" : "#211f30"
+                            border.color: modalRoot.selectedIcon === iconRect.iconData ? "#10b981" : "#10ffffff"
                             border.width: 1
-                            Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 18 }
+                            Text { anchors.centerIn: parent; text: iconRect.iconData; font.pixelSize: 18 }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                onClicked: modalRoot.selectedIcon = modelData
+                                onClicked: modalRoot.selectedIcon = iconRect.iconData
                             }
                         }
                     }
@@ -111,12 +134,17 @@ Rectangle {
                     Repeater {
                         model: ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#f43f5e", "#ec4899"]
                         delegate: Rectangle {
-                            width: 28; height: 28; radius: 14; color: modelData
-                            border.color: modalRoot.selectedColor === modelData ? "#ffffff" : "transparent"
+                            id: colorRect
+                            property var colorData: modelData
+                            Layout.preferredWidth: 28
+                            Layout.preferredHeight: 28
+                            radius: 14
+                            color: colorRect.colorData
+                            border.color: modalRoot.selectedColor === colorRect.colorData ? "#ffffff" : "transparent"
                             border.width: 2
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                onClicked: modalRoot.selectedColor = modelData
+                                onClicked: modalRoot.selectedColor = colorRect.colorData
                             }
                         }
                     }
@@ -132,16 +160,22 @@ Rectangle {
                     Repeater {
                         model: [3, 4, 5, 6, 7]
                         delegate: Rectangle {
-                            width: 44; height: 32; radius: 6
-                            color: modalRoot.selectedTargetDays === modelData ? "#10b981" : "#211f30"
+                            id: targetRect
+                            property var targetData: modelData
+                            Layout.preferredWidth: 44
+                            Layout.preferredHeight: 32
+                            radius: 6
+                            color: modalRoot.selectedTargetDays === targetRect.targetData ? "#10b981" : "#211f30"
                             Text {
-                                anchors.centerIn: parent; text: modelData + "d"
-                                color: modalRoot.selectedTargetDays === modelData ? "#ffffff" : "#a7a9be"
-                                font.pixelSize: 12; font.bold: true
+                                anchors.centerIn: parent
+                                text: targetRect.targetData + "d"
+                                color: modalRoot.selectedTargetDays === targetRect.targetData ? "#ffffff" : "#a7a9be"
+                                font.pixelSize: 12
+                                font.bold: true
                             }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                onClicked: modalRoot.selectedTargetDays = modelData
+                                onClicked: modalRoot.selectedTargetDays = targetRect.targetData
                             }
                         }
                     }
@@ -155,7 +189,10 @@ Rectangle {
                 Layout.fillWidth: true; spacing: 12
                 Item { Layout.fillWidth: true }
                 Rectangle {
-                    width: 90; height: 38; radius: 8; color: "#211f30"
+                    Layout.preferredWidth: 90
+                    Layout.preferredHeight: 38
+                    radius: 8
+                    color: "#211f30"
                     Text { anchors.centerIn: parent; text: "Cancelar"; color: "#a7a9be"; font.pixelSize: 12 }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -163,13 +200,27 @@ Rectangle {
                     }
                 }
                 Rectangle {
-                    width: 120; height: 38; radius: 8; color: "#10b981"
-                    Text { anchors.centerIn: parent; text: "Criar Hábito"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+                    Layout.preferredWidth: modalRoot.isEditing ? 140 : 120
+                    Layout.preferredHeight: 38
+                    radius: 8
+                    color: "#10b981"
+                    Text {
+                        anchors.centerIn: parent
+                        text: modalRoot.isEditing ? "Salvar Alterações" : "Criar Hábito"
+                        color: "#ffffff"
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (newHabitTitle.text.trim().length > 0) {
-                                modalRoot.habitSubmitted(newHabitTitle.text.trim(), modalRoot.selectedColor, modalRoot.selectedIcon, modalRoot.selectedTargetDays)
+                            var title = newHabitTitle.text.trim()
+                            if (title.length > 0) {
+                                if (modalRoot.isEditing) {
+                                    modalRoot.habitUpdated(modalRoot.editingHabit.id, title, modalRoot.selectedColor, modalRoot.selectedIcon, modalRoot.selectedTargetDays)
+                                } else {
+                                    modalRoot.habitSubmitted(title, modalRoot.selectedColor, modalRoot.selectedIcon, modalRoot.selectedTargetDays)
+                                }
                                 modalRoot.closeModal()
                             }
                         }

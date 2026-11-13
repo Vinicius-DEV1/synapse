@@ -188,6 +188,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/library/native_library_cover_test.cpp
         tests/files/native_files_test.cpp
         tests/anki/native_anki_test.cpp
+        tests/habits/native_habits_test.cpp
         src/video/mpv_track_parser.cpp
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
