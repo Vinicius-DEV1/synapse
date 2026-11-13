@@ -26,7 +26,7 @@ This page identifies the current sources of truth. Older reports and migration p
 
 ## Current Roadmap
 
-The [native ecosystem migration roadmap](./planos/2026-11-09-migracao-ecossistema-nativo-synapse.md) was refreshed on 2026-11-10. It records the accepted order of work, but acceptance and completion evidence still come from the parity matrix and security audit.
+The [native ecosystem migration roadmap](./planos/2026-11-09-migracao-ecossistema-nativo-synapse.md) was reviewed on 2026-11-13. The [native Qt migration handoff snapshot](./planos/2026-11-13-native-qt-migration-handoff.md) records the current pickup point and recent verification commands; it is operational context, not a replacement for the parity matrix or security audit. The roadmap records the accepted work order, while acceptance and completion evidence remain in those source-of-truth documents.
 
 ## Historical Reports and Proposals
 
