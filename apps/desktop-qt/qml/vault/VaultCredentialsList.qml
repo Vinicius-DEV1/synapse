@@ -15,6 +15,7 @@ ListView {
     signal toggleRevealRequested(string itemId)
     signal copyPasswordRequested(string password, string itemId)
     signal deleteRequested(string itemId)
+    signal editRequested(var item)
 
     model: items
 
@@ -128,6 +129,28 @@ ListView {
                             onClicked: vaultListView.copyPasswordRequested(modelData.password, modelData.id)
                         }
                     }
+                }
+            }
+
+            // Edit Button
+            Rectangle {
+                width: 32; height: 32; radius: 8
+                color: editCredMouse.containsMouse ? "#268b5cf6" : "#1a8b5cf6"
+                border.color: editCredMouse.containsMouse ? "#668b5cf6" : "#338b5cf6"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "✎"
+                    color: "#c4b5fd"
+                    font.pixelSize: 13
+                }
+
+                MouseArea {
+                    id: editCredMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: vaultListView.editRequested(modelData)
                 }
             }
 

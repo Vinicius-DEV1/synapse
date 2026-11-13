@@ -14,6 +14,7 @@ Rectangle {
     property var revealedPasswords: ({})
     property string copiedId: ""
     property bool isAddingItem: false
+    property var editingItem: null
     property string generatedPassword: ""
     property bool isPasswordDialogOpen: false
 
@@ -98,7 +99,11 @@ Rectangle {
                 vaultRoot.isPasswordDialogOpen = true
             }
             onLockVaultRequested: dataController.lockVault()
-            onNewItemRequested: vaultRoot.isAddingItem = true
+            onHelpRequested: vaultHelpDialog.isOpen = true
+            onNewItemRequested: {
+                vaultRoot.editingItem = null
+                vaultRoot.isAddingItem = true
+            }
             onGroupSelected: function(groupId) {
                 vaultRoot.selectedGroupId = groupId
                 vaultRoot.refreshVault()
@@ -116,6 +121,10 @@ Rectangle {
                 dataController.copyToClipboard(pass)
                 vaultRoot.copiedId = id
                 copyFeedbackTimer.restart()
+            }
+            onEditRequested: function(item) {
+                vaultRoot.editingItem = item
+                vaultRoot.isAddingItem = true
             }
             onDeleteRequested: function(id) {
                 dataController.deleteVaultItem(id)
@@ -135,14 +144,27 @@ Rectangle {
         }
     }
 
-    // Modal: Nova Credencial
+    // Modal: Nova / Editar Credencial
     CreateVaultItemModal {
         visible: vaultRoot.isAddingItem
-        onClosed: vaultRoot.isAddingItem = false
-        onItemSubmitted: function(label, username, password, url) {
-            dataController.saveVaultItem("", vaultRoot.selectedGroupId, label, username, "", password, url, "")
+        initialItem: vaultRoot.editingItem
+        onClosed: {
             vaultRoot.isAddingItem = false
+            vaultRoot.editingItem = null
+        }
+        onItemSubmitted: function(label, username, password, url) {
+            var idToSave = vaultRoot.editingItem ? vaultRoot.editingItem.id : ""
+            var grpId = vaultRoot.editingItem ? (vaultRoot.editingItem.group_id || vaultRoot.selectedGroupId) : vaultRoot.selectedGroupId
+            dataController.saveVaultItem(idToSave, grpId, label, username, "", password, url, "")
+            vaultRoot.isAddingItem = false
+            vaultRoot.editingItem = null
             vaultRoot.refreshVault()
         }
+    }
+
+    // Modal: Guia do Cofre
+    VaultHelpDialog {
+        id: vaultHelpDialog
+        onClosed: isOpen = false
     }
 }

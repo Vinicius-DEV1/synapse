@@ -237,6 +237,48 @@ private slots:
                      "SELECT password FROM vault_password_history WHERE id = 'password-history-1'")
                      .first().toObject().value("password").toString(), QString("old-private-password"));
     }
+
+    void vaultItemCrudAndEditingWithGroups() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        const QString databasePath = sandbox.filePath("vault-crud.sqlite");
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(databasePath));
+
+        // Create vault item
+        QVERIFY(controller.saveVaultItem("", "grp-work", "Work VPN", "dev@synapse.internal",
+                                         "", "SuperSecretVPNPass!", "https://vpn.internal", "VPN access"));
+
+        QVariantList items = controller.getVaultItems("grp-work");
+        QCOMPARE(items.size(), 1);
+
+        const QVariantMap item = items.first().toMap();
+        const QString itemId = item.value("id").toString();
+        QCOMPARE(item.value("label").toString(), QString("Work VPN"));
+        QCOMPARE(item.value("username").toString(), QString("dev@synapse.internal"));
+        QCOMPARE(item.value("password").toString(), QString("SuperSecretVPNPass!"));
+        QCOMPARE(item.value("url").toString(), QString("https://vpn.internal"));
+
+        // Query by empty group returns it as well
+        QCOMPARE(controller.getVaultItems("").size(), 1);
+
+        // Update vault item
+        QVERIFY(controller.saveVaultItem(itemId, "grp-work", "Work VPN (Production)", "dev@synapse.internal",
+                                         "", "NewVPNPass2026!", "https://vpn.prod.internal", "Updated notes"));
+
+        items = controller.getVaultItems("grp-work");
+        QCOMPARE(items.size(), 1);
+        const QVariantMap updated = items.first().toMap();
+        QCOMPARE(updated.value("id").toString(), itemId);
+        QCOMPARE(updated.value("label").toString(), QString("Work VPN (Production)"));
+        QCOMPARE(updated.value("password").toString(), QString("NewVPNPass2026!"));
+        QCOMPARE(updated.value("url").toString(), QString("https://vpn.prod.internal"));
+
+        // Delete vault item
+        QVERIFY(controller.deleteVaultItem(itemId));
+        QCOMPARE(controller.getVaultItems("").size(), 0);
+    }
 };
 
 int runNativeVaultCryptoTest(int argc, char **argv) {

@@ -17,6 +17,7 @@ ColumnLayout {
     signal lockVaultRequested()
     signal newItemRequested()
     signal groupSelected(string groupId)
+    signal helpRequested()
 
     // Header Top Row
     RowLayout {
@@ -117,6 +118,32 @@ ColumnLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: headerRoot.lockVaultRequested()
+            }
+        }
+
+        // Help / Guide Button
+        Rectangle {
+            width: 38
+            height: 38
+            radius: 10
+            color: helpMouse.containsMouse ? "#262438" : "#15141b"
+            border.color: helpMouse.containsMouse ? "#808b5cf6" : "#12ffffff"
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "?"
+                color: helpMouse.containsMouse ? "#ffffff" : "#a7a9be"
+                font.pixelSize: 15
+                font.bold: true
+            }
+
+            MouseArea {
+                id: helpMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.helpRequested()
             }
         }
 

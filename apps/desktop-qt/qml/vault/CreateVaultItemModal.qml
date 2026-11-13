@@ -8,8 +8,27 @@ Rectangle {
     color: "#88000000"
     z: 95
 
+    property var initialItem: null
+
     signal itemSubmitted(string label, string username, string password, string url)
     signal closed()
+
+    onVisibleChanged: {
+        if (visible) {
+            if (initialItem) {
+                vaultLabelInput.text = initialItem.label || ""
+                vaultUserInput.text = initialItem.username || initialItem.email || ""
+                vaultPassInput.text = initialItem.password || ""
+                vaultUrlInput.text = initialItem.url || ""
+            } else {
+                vaultLabelInput.text = ""
+                vaultUserInput.text = ""
+                vaultPassInput.text = ""
+                vaultUrlInput.text = ""
+            }
+            vaultLabelInput.forceActiveFocus()
+        }
+    }
 
     MouseArea { anchors.fill: parent; onClicked: modalRoot.closed() }
 
@@ -31,7 +50,12 @@ Rectangle {
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "🔑 Nova Credencial no Cofre"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                Text {
+                    text: modalRoot.initialItem ? "🔑 Editar Credencial" : "🔑 Nova Credencial no Cofre"
+                    color: "#fffffe"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: "✕"; color: "#a7a9be"; font.pixelSize: 16
@@ -105,7 +129,13 @@ Rectangle {
                 }
                 Rectangle {
                     width: 140; height: 38; radius: 8; color: "#7c3aed"
-                    Text { anchors.centerIn: parent; text: "Salvar no Cofre"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+                    Text {
+                        anchors.centerIn: parent
+                        text: modalRoot.initialItem ? "Salvar Alterações" : "Salvar no Cofre"
+                        color: "#ffffff"
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: {
