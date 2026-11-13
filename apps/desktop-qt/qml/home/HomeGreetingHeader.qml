@@ -8,27 +8,60 @@ ColumnLayout {
 
     property string greeting: "Boa noite"
     property string formattedDate: ""
+    property int dueCardsCount: 0
 
     signal actionClicked(string tabKey)
+    signal helpRequested()
 
     // Greeting Header matching Caderno Original
-    ColumnLayout {
+    RowLayout {
         Layout.fillWidth: true
-        spacing: 4
 
-        Text {
-            text: greetingRoot.greeting + "!"
-            color: "#ffffff"
-            font.pixelSize: 30
-            font.bold: true
-            font.family: theme.fontFamily
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+
+            Text {
+                text: greetingRoot.greeting + "!"
+                color: "#ffffff"
+                font.pixelSize: 30
+                font.bold: true
+                font.family: theme.fontFamily
+            }
+
+            Text {
+                text: "Hoje é " + greetingRoot.formattedDate
+                color: theme.textSubtext
+                font.pixelSize: 14
+                font.family: theme.fontFamily
+            }
         }
 
-        Text {
-            text: "Hoje é " + greetingRoot.formattedDate
-            color: theme.textSubtext
-            font.pixelSize: 14
-            font.family: theme.fontFamily
+        Item { Layout.fillWidth: true }
+
+        Rectangle {
+            width: 38
+            height: 38
+            radius: 10
+            color: helpMouse.containsMouse ? "#201e30" : "#161524"
+            border.color: helpMouse.containsMouse ? "#448b5cf6" : "#12ffffff"
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "?"
+                color: "#a7a9be"
+                font.pixelSize: 15
+                font.bold: true
+            }
+
+            MouseArea {
+                id: helpMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: greetingRoot.helpRequested()
+            }
         }
     }
 
@@ -145,6 +178,23 @@ ColumnLayout {
                     font.bold: true
                     font.family: theme.fontFamily
                     Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    visible: greetingRoot.dueCardsCount > 0
+                    Layout.preferredWidth: dueText.implicitWidth + 14
+                    height: 20
+                    radius: 10
+                    color: "#263b82f6"
+                    border.color: "#503b82f6"
+                    Text {
+                        id: dueText
+                        anchors.centerIn: parent
+                        text: greetingRoot.dueCardsCount + " a rever"
+                        color: "#93c5fd"
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
                 }
             }
 

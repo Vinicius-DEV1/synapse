@@ -11,6 +11,8 @@ Rectangle {
     property var tomorrowEvents: []
     property var pinnedPages: []
     property var recentPages: []
+    property int dueCardsCount: 0
+    property bool isHelpOpen: false
 
     signal navigateToTab(string tabKey)
     signal openPageId(string pageId)
@@ -21,6 +23,7 @@ Rectangle {
         tomorrowEvents = dashboardData.tomorrow_events || []
         pinnedPages = dashboardData.pinned_pages || []
         recentPages = dashboardData.recent_pages || []
+        dueCardsCount = dashboardData.due_cards_count || 0
     }
 
     function getGreeting() {
@@ -57,9 +60,11 @@ Rectangle {
             HomeGreetingHeader {
                 greeting: homeRoot.getGreeting()
                 formattedDate: homeRoot.formatCurrentDate()
+                dueCardsCount: homeRoot.dueCardsCount
                 onActionClicked: function(tabKey) {
                     homeRoot.navigateToTab(tabKey)
                 }
+                onHelpRequested: homeRoot.isHelpOpen = true
             }
 
             // Two-column Main Dashboard Layout (Matching Image 1)
@@ -88,5 +93,16 @@ Rectangle {
 
             Item { height: 32 } // Bottom breathing room
         }
+    }
+
+    HomeHelpDialog {
+        isOpen: homeRoot.isHelpOpen
+        onClosed: homeRoot.isHelpOpen = false
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: homeRoot.isHelpOpen
+        onActivated: homeRoot.isHelpOpen = false
     }
 }
