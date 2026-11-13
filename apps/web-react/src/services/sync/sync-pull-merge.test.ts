@@ -184,6 +184,58 @@ describe('sync-pull-merge service', () => {
 
       expect(prepared.isSkipped).toBe(true);
     });
+
+    it('archives local content to page_history when cloud wins LWW on conflicting non-CRDT page edit', async () => {
+      const mockSavePageHistory = vi.fn().mockResolvedValue({ success: true, id: 'hist-1' });
+      (window as any).api = {
+        savePageHistory: mockSavePageHistory,
+      };
+
+      const mockResult = createMockResult(
+        'page-conflict-1',
+        { updatedAt: '2026-10-25T15:00:00.000Z' }, // newer cloud
+        { title: 'Cloud Winning Page', content: '<p>Cloud newer content</p>', crdt_state: null }
+      );
+
+      const localRow = {
+        id: 'page-conflict-1',
+        title: 'Local Losing Page',
+        content: '<p>Local older edit from Qt</p>',
+        crdt_state: null,
+        updated_at: '2026-10-25T10:00:00.000Z', // older local
+      };
+
+      const prepared = await prepareRowForUpsert(mockResult, 'pages', localRow, undefined);
+
+      expect(prepared.isSkipped).toBe(false);
+      expect(mockSavePageHistory).toHaveBeenCalledWith('page-conflict-1', '<p>Local older edit from Qt</p>');
+    });
+
+    it('archives cloud content to page_history when local wins LWW on conflicting non-CRDT page edit', async () => {
+      const mockSavePageHistory = vi.fn().mockResolvedValue({ success: true, id: 'hist-2' });
+      (window as any).api = {
+        savePageHistory: mockSavePageHistory,
+      };
+
+      const mockResult = createMockResult(
+        'page-conflict-2',
+        { updatedAt: '2026-10-25T10:00:00.000Z' }, // older cloud
+        { title: 'Cloud Older Page', content: '<p>Cloud older edit</p>', crdt_state: null }
+      );
+
+      const localRow = {
+        id: 'page-conflict-2',
+        title: 'Local Winning Page',
+        content: '<p>Local newer edit from Qt</p>',
+        crdt_state: null,
+        updated_at: '2026-10-25T15:00:00.000Z', // newer local
+      };
+
+      const prepared = await prepareRowForUpsert(mockResult, 'pages', localRow, undefined);
+
+      expect(prepared.isSkipped).toBe(true);
+      expect(mockSavePageHistory).toHaveBeenCalledWith('page-conflict-2', '<p>Cloud older edit</p>');
+    });
   });
 
   describe('upsertRowWithColumnFallback (Schema Evolution & Fault Tolerance)', () => {

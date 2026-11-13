@@ -96,36 +96,47 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   }, [pageId, latestContentRef, instanceId]);
 
   // 3. Protection fallback when gaining focus / returning to visibility
-  // Checks in-memory cache first (0ms) and only queries database as fallback
+  // Validates persistent storage state to avoid applying stale in-memory CRDT snapshots over external edits
   useEffect(() => {
     const handleFocusCheck = async () => {
-      if (pageId && ydocRef.current) {
-        // First check in-memory backup cache (synchronous and immediate, 0ms latency)
-        const backup = getEditorBackupMap().get(pageId);
-        if (backup?.crdt && backup.crdt.length > 8) {
-          applyBase64StateToYDoc(ydocRef.current, backup.crdt);
-          return;
-        }
+      if (!pageId || !ydocRef.current) return;
 
-        // Check the in-memory global store before querying the database
-        const storePage = getStoreState().pages.find((p) => p.id === pageId);
-        if (storePage?.crdt_state && storePage.crdt_state.length > 8) {
-          applyBase64StateToYDoc(ydocRef.current, storePage.crdt_state);
-          return;
-        }
-
-        // Reliable fallback to database only if not already resolved in-memory
-        if (document.visibilityState === 'visible' && window.api?.getAllPages) {
-          try {
-            const pages = await window.api.getAllPages();
-            const currentPage = pages?.find((p: Page) => p.id === pageId);
-            if (currentPage?.crdt_state && currentPage.crdt_state.length > 8 && ydocRef.current) {
-              applyBase64StateToYDoc(ydocRef.current, currentPage.crdt_state);
+      if (document.visibilityState === 'visible' && window.api?.getAllPages) {
+        try {
+          const pages = await window.api.getAllPages();
+          const currentPage = pages?.find((p: Page) => p.id === pageId);
+          if (currentPage) {
+            // If the database row has no CRDT state, it was updated externally (e.g. by native Qt).
+            // Clear any stale in-memory CRDT backup so it does not overwrite the newer HTML.
+            if (!currentPage.crdt_state || currentPage.crdt_state.length <= 8) {
+              getEditorBackupMap().delete(pageId);
+              return;
             }
-          } catch (err) {
-            console.warn('[Caderno:Sync] Erro ao verificar estado da página ao focar:', err);
+
+            if (currentPage.crdt_state && currentPage.crdt_state.length > 8 && ydocRef.current) {
+              applyBase64StateToYDoc(ydocRef.current, currentPage.crdt_state);
+              getEditorBackupMap().set(pageId, {
+                html: latestContentRef.current?.html || '',
+                crdt: currentPage.crdt_state,
+              });
+              return;
+            }
           }
+        } catch (err) {
+          console.warn('[Caderno:Sync] Erro ao verificar estado da página ao focar:', err);
         }
+      }
+
+      // In-memory fallback if storage query was not performed
+      const backup = getEditorBackupMap().get(pageId);
+      if (backup?.crdt && backup.crdt.length > 8) {
+        applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+        return;
+      }
+
+      const storePage = getStoreState().pages.find((p) => p.id === pageId);
+      if (storePage?.crdt_state && storePage.crdt_state.length > 8) {
+        applyBase64StateToYDoc(ydocRef.current, storePage.crdt_state);
       }
     };
 

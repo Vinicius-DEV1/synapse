@@ -1028,6 +1028,100 @@ private slots:
         QVERIFY(!controller.setLinkEntityStatus("javascript:alert(1)", true, false).value("success").toBool());
         QVERIFY(!controller.setLinkEntityStatus(canonicalUrl, true, true).value("success").toBool());
     }
+
+    void crossClientSaveClearsCrdtAndProtectsAgainstStaleWrites() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("cross-client-notes.sqlite")));
+
+        // 1. Create a note and simulate React having saved an initial CRDT state
+        const QString pageId = controller.createSubPage("", "Cross Client Note", "📄");
+        QVERIFY(!pageId.isEmpty());
+        const QString reactHtml = "<p>React initial content</p>";
+        const QString fakeCrdt = "AQAB+7f8...base64_yjs_state_snapshot";
+        QVERIFY(controller.savePage(pageId, "Cross Client Note", reactHtml, "📄"));
+        QVERIFY(controller.executeSql(QString("UPDATE pages SET crdt_state = '%1' WHERE id = '%2'").arg(fakeCrdt).arg(pageId)));
+
+        QVariantMap loaded = controller.getPage(pageId);
+        QCOMPARE(loaded.value("crdt_state").toString(), fakeCrdt);
+        const QString baseTimestamp = loaded.value("updated_at").toString();
+        QVERIFY(!baseTimestamp.isEmpty());
+
+        // Wait to guarantee timestamp advances to a subsequent millisecond
+        QTest::qWait(20);
+
+        // 2. Sequential edit from Qt: saving updates content, advances updated_at, and clears crdt_state to NULL
+        const QString qtHtml = "<p>Qt modified content</p>";
+        QVERIFY(controller.savePage(pageId, "Cross Client Note", qtHtml, "📄", baseTimestamp));
+
+        QVariantMap afterQtSave = controller.getPage(pageId);
+        QCOMPARE(afterQtSave.value("content").toString(), qtHtml);
+        QVERIFY(afterQtSave.value("crdt_state").isNull() || afterQtSave.value("crdt_state").toString().isEmpty());
+        const QString newTimestamp = afterQtSave.value("updated_at").toString();
+        QVERIFY(!newTimestamp.isEmpty());
+        QVERIFY(newTimestamp != baseTimestamp);
+
+        // 3. Stale write protection: simulate a second in-memory session (or React client) that still has baseTimestamp
+        // If it attempts to save older/conflicting content using baseTimestamp, it must be rejected to prevent silent overwrite
+        const QString staleSessionHtml = "<p>Stale session overwritten attempt</p>";
+        QSignalSpy conflictSpy(&controller, &SynapseDataController::pageConflictDetected);
+
+        const bool staleSaveSucceeded = controller.savePage(pageId, "Cross Client Note", staleSessionHtml, "📄", baseTimestamp);
+        QVERIFY(!staleSaveSucceeded); // Stale write rejected!
+        QCOMPARE(conflictSpy.count(), 1);
+        QCOMPARE(conflictSpy.first().at(0).toString(), pageId);
+
+        // Verify the database still has the newer Qt content (not overwritten by stale session)
+        QVariantMap afterStaleAttempt = controller.getPage(pageId);
+        QCOMPARE(afterStaleAttempt.value("content").toString(), qtHtml);
+
+        // Verify the stale session's content was NOT lost: it was preserved into page_history
+        QVariantList history = controller.getPageHistory(pageId);
+        bool foundPreservedStaleEdit = false;
+        for (const QVariant &item : history) {
+            if (item.toMap().value("content").toString() == staleSessionHtml) {
+                foundPreservedStaleEdit = true;
+                break;
+            }
+        }
+        QVERIFY(foundPreservedStaleEdit);
+
+        // 4. Idempotent save: if content is identical, save succeeds even if expectedUpdatedAt is different
+        QVERIFY(controller.savePage(pageId, "Cross Client Note", qtHtml, "📄", baseTimestamp));
+
+        // 5. Encrypted note protection: vault-encrypted pages also clear crdt_state and preserve conflicting revisions
+        QVERIFY(controller.setupMasterPassword("MasterVaultPass42!"));
+        const QString encPageId = controller.createSubPage("", "Encrypted Cross Note", "🔒");
+        QVERIFY(!encPageId.isEmpty());
+        const QString encHtml1 = "<p>Encrypted secret text 1</p>";
+        QVERIFY(controller.savePage(encPageId, "Encrypted Cross Note", encHtml1, "🔒"));
+        QVERIFY(controller.executeSql(QString("UPDATE pages SET crdt_state = 'enc_crdt_token' WHERE id = '%1'").arg(encPageId)));
+
+        const QString encBaseTime = controller.getPage(encPageId).value("updated_at").toString();
+        QTest::qWait(20);
+        const QString encHtml2 = "<p>Encrypted secret text 2</p>";
+        QVERIFY(controller.savePage(encPageId, "Encrypted Cross Note", encHtml2, "🔒", encBaseTime));
+
+        QVariantMap loadedEnc = controller.getPage(encPageId);
+        QCOMPARE(loadedEnc.value("content").toString(), encHtml2);
+        QVERIFY(loadedEnc.value("crdt_state").isNull() || loadedEnc.value("crdt_state").toString().isEmpty());
+
+        // Stale attempt on encrypted note
+        const QString encStaleHtml = "<p>Encrypted stale conflict</p>";
+        QVERIFY(!controller.savePage(encPageId, "Encrypted Cross Note", encStaleHtml, "🔒", encBaseTime));
+
+        QVariantList encHistory = controller.getPageHistory(encPageId);
+        bool foundEncPreserved = false;
+        for (const QVariant &item : encHistory) {
+            if (item.toMap().value("content").toString() == encStaleHtml) {
+                foundEncPreserved = true;
+                break;
+            }
+        }
+        QVERIFY(foundEncPreserved);
+    }
 };
 
 int runNativeNotesTest(int argc, char **argv) {

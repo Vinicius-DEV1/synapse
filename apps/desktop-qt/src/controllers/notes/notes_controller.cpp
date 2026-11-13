@@ -56,7 +56,7 @@ QVariantList SynapseDataController::getPageTree(const QString &filter) {
 
 QVariantMap SynapseDataController::getPage(const QString &pageId) {
     const QJsonArray rows = executeQueryPrepared(
-        "SELECT id, title, content, encrypted_content, icon, parent_id, is_pinned, pinned_order, description, cover_image, updated_at "
+        "SELECT id, title, content, encrypted_content, icon, parent_id, is_pinned, pinned_order, description, cover_image, updated_at, crdt_state "
         "FROM pages WHERE id = ?1 AND deleted_at IS NULL", {pageId});
     if (rows.isEmpty()) return {};
     QJsonObject object = rows.first().toObject();
@@ -81,7 +81,7 @@ QVariantMap SynapseDataController::getPage(const QString &pageId) {
     return object.toVariantMap();
 }
 
-bool SynapseDataController::savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon) {
+bool SynapseDataController::savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon, const QString &expectedUpdatedAt) {
     if (m_isVaultConfigured && !m_isVaultUnlocked) return false;
     const QString timestamp = currentTimestamp();
     const bool encryptAtRest = m_isVaultConfigured;
@@ -95,23 +95,57 @@ bool SynapseDataController::savePage(const QString &pageId, const QString &title
 
     const bool inserting = pageId.isEmpty();
     const QString targetId = inserting ? generateUuid() : pageId;
+
+    if (!inserting) {
+        const QJsonArray existingRows = executeQueryPrepared(
+            "SELECT updated_at, content, encrypted_content FROM pages WHERE id = ?1 AND deleted_at IS NULL",
+            {targetId});
+        if (existingRows.isEmpty()) return false;
+
+        const QJsonObject existingRow = existingRows.first().toObject();
+        const QString currentUpdatedAt = existingRow.value("updated_at").toString();
+
+        if (!expectedUpdatedAt.isEmpty() && currentUpdatedAt != expectedUpdatedAt) {
+            QString existingContent = existingRow.value("content").toString();
+            const QString existingEncrypted = existingRow.value("encrypted_content").toString();
+            if (!existingEncrypted.isEmpty() && m_isVaultConfigured && m_isVaultUnlocked && !notesKey.isEmpty()) {
+                existingContent = decryptContent(notesKey, existingEncrypted);
+            }
+            if (existingContent != content) {
+                const QString historyId = generateUuid();
+                const QString historyTimestamp = currentTimestamp();
+                if (encryptAtRest) {
+                    executeSqlPrepared(
+                        "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) "
+                        "VALUES (?1, ?2, '', ?3, ?4)", {historyId, targetId, encrypted, historyTimestamp});
+                } else {
+                    executeSqlPrepared(
+                        "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) "
+                        "VALUES (?1, ?2, ?3, NULL, ?4)", {historyId, targetId, content, historyTimestamp});
+                }
+                emit pageConflictDetected(targetId, existingContent);
+                return false;
+            }
+        }
+    }
+
     if (!executeSql("BEGIN IMMEDIATE;")) return false;
     const int pageRows = encryptAtRest
         ? (inserting
             ? executeSqlPrepared(
                   "INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, "
-                  "sort_order, is_pinned, pinned_order) VALUES (?1, ?2, '', ?3, ?4, ?5, ?5, 0, 0, 0.0)",
+                  "sort_order, is_pinned, pinned_order, crdt_state) VALUES (?1, ?2, '', ?3, ?4, ?5, ?5, 0, 0, 0.0, NULL)",
                   {targetId, title, encrypted, icon, timestamp})
             : executeSqlPrepared(
-                  "UPDATE pages SET title = ?1, content = '', encrypted_content = ?2, icon = ?3, updated_at = ?4 "
+                  "UPDATE pages SET title = ?1, content = '', encrypted_content = ?2, crdt_state = NULL, icon = ?3, updated_at = ?4 "
                   "WHERE id = ?5 AND deleted_at IS NULL", {title, encrypted, icon, timestamp, targetId}))
         : (inserting
             ? executeSqlPrepared(
                   "INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, "
-                  "sort_order, is_pinned, pinned_order) VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?5, 0, 0, 0.0)",
+                  "sort_order, is_pinned, pinned_order, crdt_state) VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?5, 0, 0, 0.0, NULL)",
                   {targetId, title, content, icon, timestamp})
             : executeSqlPrepared(
-                  "UPDATE pages SET title = ?1, content = ?2, encrypted_content = NULL, icon = ?3, updated_at = ?4 "
+                  "UPDATE pages SET title = ?1, content = ?2, encrypted_content = NULL, crdt_state = NULL, icon = ?3, updated_at = ?4 "
                   "WHERE id = ?5 AND deleted_at IS NULL", {title, content, icon, timestamp, targetId}));
     if (pageRows != 1) {
         executeSql("ROLLBACK;");

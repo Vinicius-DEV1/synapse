@@ -113,7 +113,7 @@ public:
     Q_INVOKABLE void searchPageReferences(const QString &query, int requestId);
     Q_INVOKABLE void cancelPageReferenceSearch(int requestId);
     Q_INVOKABLE QVariantMap getPage(const QString &pageId);
-    Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon = "📄");
+    Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon = "📄", const QString &expectedUpdatedAt = QString());
     Q_INVOKABLE QVariantList getPageHistory(const QString &pageId);
     Q_INVOKABLE bool restorePageRevision(const QString &pageId, const QString &revisionId);
     Q_INVOKABLE QString createSubPage(const QString &parentId, const QString &title = "Nova Sub-página", const QString &icon = "📄");
@@ -383,6 +383,7 @@ signals:
     void libraryPdfPageReady(const QVariantMap &result);
     void libraryBookSearchReady(const QVariantMap &result);
     void pageReferenceSearchReady(const QVariantMap &result);
+    void pageConflictDetected(const QString &pageId, const QString &externalContent);
     void libraryBookMetadataSearchFinished(const QVariantMap &result);
     void filePreviewsInvalidated();
 

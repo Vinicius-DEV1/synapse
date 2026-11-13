@@ -30,6 +30,7 @@ Rectangle {
     property bool isRichMode: false
     property bool isHistoryOpen: false
     property bool isHelpOpen: false
+    property string lastLoadedUpdatedAt: ""
     Component.onCompleted: {
         loadPages()
     }
@@ -107,6 +108,7 @@ Rectangle {
         activeIcon = p.icon || "📄"
         activeCoverImage = p.cover_image || ""
         activeDate = p.updated_at ? p.updated_at.substring(0, 10) : ""
+        lastLoadedUpdatedAt = p.updated_at || ""
         descriptionDirty = false
         editorCanvas.setTitleText(activeTitle)
         editorCanvas.setDescriptionText(activeDescription)
@@ -133,9 +135,14 @@ Rectangle {
             return true
         }
 
-        if (!dataController.savePage(selectedPageId, activeTitle, activeContent, activeIcon)) {
+        if (!dataController.savePage(selectedPageId, activeTitle, activeContent, activeIcon, lastLoadedUpdatedAt)) {
             saveFailed = true
             return false
+        }
+        var refreshed = dataController.getPage(selectedPageId)
+        if (refreshed && refreshed.updated_at) {
+            lastLoadedUpdatedAt = refreshed.updated_at
+            activeDate = refreshed.updated_at.substring(0, 10)
         }
         if (descriptionDirty &&
             !dataController.updatePageDescription(selectedPageId, activeDescription)) {
@@ -238,6 +245,45 @@ Rectangle {
         onTriggered: {
             if (notesRoot.isDirty) {
                 notesRoot.saveActiveNote()
+            }
+        }
+    }
+
+    function checkExternalUpdates() {
+        if (!selectedPageId) return
+        var p = dataController.getPage(selectedPageId)
+        if (!p || !p.id) return
+        if (p.updated_at && lastLoadedUpdatedAt && p.updated_at !== lastLoadedUpdatedAt) {
+            if (!isDirty && !isRichMode) {
+                activeTitle = p.title || "Sem título"
+                activeDescription = p.description || ""
+                activeContent = p.content || ""
+                lastLoadedUpdatedAt = p.updated_at
+                activeDate = p.updated_at ? p.updated_at.substring(0, 10) : ""
+                editorCanvas.setTitleText(activeTitle)
+                editorCanvas.setDescriptionText(activeDescription)
+                editorCanvas.setEditorText(activeContent)
+            } else {
+                editorCanvas.pageActionStatus = qsTr("Note was modified externally. Save will preserve changes to history.")
+            }
+        }
+    }
+
+    Connections {
+        target: dataController
+        function onPageConflictDetected(conflictPageId, externalContent) {
+            if (conflictPageId === notesRoot.selectedPageId) {
+                notesRoot.saveFailed = true
+                editorCanvas.pageActionStatus = qsTr("External edits were detected. Your changes have been preserved in history.")
+            }
+        }
+    }
+
+    Connections {
+        target: notesRoot.Window.window ? notesRoot.Window.window : null
+        function onActiveChanged() {
+            if (notesRoot.Window.window && notesRoot.Window.window.active) {
+                notesRoot.checkExternalUpdates()
             }
         }
     }

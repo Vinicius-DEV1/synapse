@@ -106,7 +106,40 @@ export async function prepareRowForUpsert(
       Object.assign(rowToUpsert, localRow);
       rowToUpsert.deleted_at = (normalizeTime(cloudData.deletedAt) || (parsed?.deleted_at as string)) || new Date().toISOString();
     } else {
+      if (
+        table === 'pages' &&
+        parsed &&
+        parsed.content &&
+        localRow &&
+        localRow.content &&
+        parsed.content !== localRow.content &&
+        typeof window !== 'undefined' &&
+        window.api?.savePageHistory
+      ) {
+        try {
+          await window.api.savePageHistory(result.docSnap.id, String(parsed.content));
+        } catch (histErr) {
+          console.warn('[Sync] Failed to archive conflicting cloud revision to history:', histErr);
+        }
+      }
       return { rowToUpsert, isSkipped: true };
+    }
+  } else {
+    if (
+      table === 'pages' &&
+      localRow &&
+      localRow.content &&
+      parsed &&
+      parsed.content &&
+      localRow.content !== parsed.content &&
+      typeof window !== 'undefined' &&
+      window.api?.savePageHistory
+    ) {
+      try {
+        await window.api.savePageHistory(result.docSnap.id, String(localRow.content));
+      } catch (histErr) {
+        console.warn('[Sync] Failed to archive conflicting local revision to history:', histErr);
+      }
     }
   }
 

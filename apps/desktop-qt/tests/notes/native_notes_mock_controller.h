@@ -30,7 +30,7 @@ public:
         return {};
     }
 
-    Q_INVOKABLE bool savePage(const QString &id, const QString &, const QString &content, const QString &) {
+    Q_INVOKABLE bool savePage(const QString &id, const QString &, const QString &content, const QString &, const QString & = QString()) {
         ++saveCount;
         lastSavedPageId = id;
         lastSavedContent = content;

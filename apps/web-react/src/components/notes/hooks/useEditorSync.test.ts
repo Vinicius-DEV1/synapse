@@ -212,6 +212,36 @@ describe('useEditorSync Hook', () => {
     );
   });
 
+  it('clears stale in-memory backup and does not apply CRDT when DB page has null crdt_state (external native Qt edit)', async () => {
+    getEditorBackupMap().set('page_123', {
+      html: '<p>Stale React memory</p>',
+      crdt: 'stale_crdt_payload_12345678',
+    });
+
+    const mockGetAllPages = vi.fn().mockResolvedValue([
+      { id: 'page_123', crdt_state: null, updated_at: '2026-11-13T12:00:00.000Z' },
+    ]);
+    (window as unknown as { api: { getAllPages: typeof mockGetAllPages } }).api = {
+      getAllPages: mockGetAllPages,
+    };
+
+    renderHook(() =>
+      useEditorSync({
+        pageId: 'page_123',
+        initialCrdtState: null,
+        onSaveRef,
+        latestContentRef,
+      })
+    );
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(mockGetAllPages).toHaveBeenCalled();
+    expect(getEditorBackupMap().has('page_123')).toBe(false);
+  });
+
   it('flushes unsaved changes on unmount', () => {
     const { unmount } = renderHook(() =>
       useEditorSync({
