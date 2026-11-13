@@ -217,6 +217,116 @@ private slots:
         QVERIFY(!NotesRichTables::canApplyStructureAction(
             document, position, "deleteColumn", fullRange.value("start").toInt(), fullRange.value("end").toInt()));
     }
+
+    void moveRowsAcrossMergedCellsPreservesSpansBackgroundsAndUndo() {
+        QTextDocument document;
+        QVERIFY(prepareDocument(document, mergedTableSource));
+        auto *table = tableIn(document);
+        QVERIFY(table);
+        const QString original = NotesRichDocument::serialize(document);
+
+        const int verticalPos = cellPosition(table, 1, 0);
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, verticalPos, "moveRowDown"));
+        QVERIFY(NotesRichTables::applyStructureAction(document, verticalPos, "moveRowDown"));
+        table = tableIn(document);
+        QCOMPARE(table->rows(), 4);
+        QCOMPARE(table->columns(), 3);
+        QCOMPARE(table->cellAt(2, 0).rowSpan(), 2);
+        QCOMPARE(table->cellAt(2, 1).columnSpan(), 2);
+        QString edited = NotesRichDocument::serialize(document);
+        QVERIFY2(!edited.isNull(), qPrintable(edited));
+        QVERIFY(edited.indexOf("Footer A") < edited.indexOf("Vertical"));
+        QVERIFY(edited.indexOf("Vertical") < edited.indexOf("Right A"));
+        QVERIFY(edited.contains("rowspan=\"2\""));
+        QVERIFY(edited.contains("colspan=\"2\""));
+        QVERIFY(edited.contains("data-bg-color=\"rgba(34, 197, 94, 0.200)\""));
+        QVERIFY(NotesRichDocument::supportsSource(edited));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        table = tableIn(document);
+        const int headerPos = cellPosition(table, 0, 0);
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, headerPos, "moveRowDown"));
+        QVERIFY(NotesRichTables::applyStructureAction(document, headerPos, "moveRowDown"));
+        table = tableIn(document);
+        QCOMPARE(table->rows(), 4);
+        QCOMPARE(table->cellAt(0, 0).rowSpan(), 2);
+        QCOMPARE(table->cellAt(0, 1).columnSpan(), 2);
+        edited = NotesRichDocument::serialize(document);
+        QVERIFY2(!edited.isNull(), qPrintable(edited));
+        QVERIFY(edited.indexOf("Vertical") < edited.indexOf("H0"));
+        QVERIFY(edited.indexOf("H0") < edited.indexOf("Footer A"));
+        QVERIFY(edited.contains("<tr><th><p>H0</p></th><th><p>H1</p></th><th><p>H2</p></th></tr>"));
+        QVERIFY(NotesRichDocument::supportsSource(edited));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        table = tableIn(document);
+        const int footerPos = cellPosition(table, 3, 1);
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, footerPos, "moveRowUp"));
+        QVERIFY(NotesRichTables::applyStructureAction(document, footerPos, "moveRowUp"));
+        table = tableIn(document);
+        QCOMPARE(table->rows(), 4);
+        QCOMPARE(table->cellAt(2, 0).rowSpan(), 2);
+        edited = NotesRichDocument::serialize(document);
+        QVERIFY2(!edited.isNull(), qPrintable(edited));
+        QVERIFY(edited.indexOf("Footer B") < edited.indexOf("Vertical"));
+        QVERIFY(NotesRichDocument::supportsSource(edited));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+    }
+
+    void moveColumnsAcrossMergedCellsPreservesSpansBackgroundsAndUndo() {
+        QTextDocument document;
+        QVERIFY(prepareDocument(document, mergedTableSource));
+        auto *table = tableIn(document);
+        QVERIFY(table);
+        const QString original = NotesRichDocument::serialize(document);
+
+        const int verticalPos = cellPosition(table, 1, 0);
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, verticalPos, "moveColumnRight"));
+        QVERIFY(NotesRichTables::applyStructureAction(document, verticalPos, "moveColumnRight"));
+        table = tableIn(document);
+        QCOMPARE(table->rows(), 4);
+        QCOMPARE(table->columns(), 3);
+        QCOMPARE(table->cellAt(1, 0).columnSpan(), 2);
+        QCOMPARE(table->cellAt(1, 2).rowSpan(), 2);
+        QString edited = NotesRichDocument::serialize(document);
+        QVERIFY2(!edited.isNull(), qPrintable(edited));
+        QVERIFY(edited.indexOf("Horizontal") < edited.indexOf("Vertical"));
+        QVERIFY(edited.contains("colspan=\"2\""));
+        QVERIFY(edited.contains("rowspan=\"2\""));
+        QVERIFY(edited.contains("data-bg-color=\"rgba(59, 130, 246, 0.200)\""));
+        QVERIFY(NotesRichDocument::supportsSource(edited));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        table = tableIn(document);
+        const int rightPos = cellPosition(table, 2, 2);
+        QVERIFY(NotesRichTables::canApplyStructureAction(document, rightPos, "moveColumnLeft"));
+        QVERIFY(NotesRichTables::applyStructureAction(document, rightPos, "moveColumnLeft"));
+        table = tableIn(document);
+        QCOMPARE(table->columns(), 3);
+        QCOMPARE(table->cellAt(1, 0).columnSpan(), 2);
+        QCOMPARE(table->cellAt(1, 2).rowSpan(), 2);
+        edited = NotesRichDocument::serialize(document);
+        QVERIFY2(!edited.isNull(), qPrintable(edited));
+        QVERIFY(edited.indexOf("Horizontal") < edited.indexOf("Vertical"));
+        QVERIFY(NotesRichDocument::supportsSource(edited));
+
+        document.undo();
+        QCOMPARE(NotesRichDocument::serialize(document), original);
+
+        table = tableIn(document);
+        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(table, 0, 0), "moveRowUp"));
+        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(table, 0, 0), "moveColumnLeft"));
+        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(table, 3, 0), "moveRowDown"));
+        QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(table, 3, 2), "moveColumnRight"));
+    }
 };
 
 int runNativeNotesTableStructureTest(int argc, char **argv) {

@@ -109,6 +109,8 @@ bool allowsActionWithMergedCells(const QTextTable &table, const QString &action)
     return action == QStringLiteral("rowBefore") || action == QStringLiteral("rowAfter") ||
         action == QStringLiteral("deleteRow") || action == QStringLiteral("columnBefore") ||
         action == QStringLiteral("columnAfter") || action == QStringLiteral("deleteColumn") ||
+        action == QStringLiteral("moveRowUp") || action == QStringLiteral("moveRowDown") ||
+        action == QStringLiteral("moveColumnLeft") || action == QStringLiteral("moveColumnRight") ||
         action == QStringLiteral("deleteTable");
 }
 }

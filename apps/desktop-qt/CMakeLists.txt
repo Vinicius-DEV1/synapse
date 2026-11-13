@@ -61,6 +61,8 @@ add_executable(synapse-desktop
         src/controllers/notes/notes_rich_table_cell_selection.cpp
     src/controllers/notes/notes_rich_table_structure_range.cpp
     src/controllers/notes/notes_rich_table_operations.cpp
+    src/controllers/notes/notes_rich_table_movement.cpp
+    src/controllers/notes/notes_rich_table_movement.h
     src/controllers/notes/notes_rich_table_merging.cpp
     src/controllers/notes/notes_rich_table_merging.h
     src/controllers/notes/notes_rich_table_styles.cpp
@@ -223,6 +225,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_table_cell_selection.cpp
         src/controllers/notes/notes_rich_table_structure_range.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_movement.cpp
+        src/controllers/notes/notes_rich_table_movement.h
         src/controllers/notes/notes_rich_table_merging.cpp
         src/controllers/notes/notes_rich_table_merging.h
         src/controllers/notes/notes_rich_table_styles.cpp
@@ -356,6 +360,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_table_cell_selection.cpp
         src/controllers/notes/notes_rich_table_structure_range.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_movement.cpp
+        src/controllers/notes/notes_rich_table_movement.h
         src/controllers/notes/notes_rich_table_merging.cpp
         src/controllers/notes/notes_rich_table_merging.h
         src/controllers/notes/notes_rich_table_styles.cpp
@@ -412,6 +418,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_table_cell_selection.cpp
         src/controllers/notes/notes_rich_table_structure_range.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
+        src/controllers/notes/notes_rich_table_movement.cpp
+        src/controllers/notes/notes_rich_table_movement.h
         src/controllers/notes/notes_rich_table_merging.cpp
         src/controllers/notes/notes_rich_table_merging.h
         src/controllers/notes/notes_rich_table_styles.cpp

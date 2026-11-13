@@ -57,7 +57,22 @@ private slots:
         QVERIFY(result.toBool());
         QVERIFY(QMetaObject::invokeMethod(tableActions, "canEditTable", Q_RETURN_ARG(QVariant, result),
                                           Q_ARG(QVariant, QVariant(QStringLiteral("moveRowUp")))));
-        QVERIFY(!result.toBool());
+        QVERIFY(result.toBool());
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "richTableActionRequested",
+                                          Q_ARG(QString, QStringLiteral("moveRowUp"))));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        table = qobject_cast<QTextTable *>(quickDocument->textDocument()->rootFrame()->childFrames().value(0));
+        QVERIFY(table);
+        QCOMPARE(table->rows(), 4);
+        QCOMPARE(table->cellAt(0, 0).rowSpan(), 2);
+        QVERIFY(NotesRichDocument::supportsSource(richEditor->property("sourceHtml").toString()));
+        QVERIFY(QMetaObject::invokeMethod(textEdit, "undo"));
+        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));
+        QCOMPARE(richEditor->property("sourceHtml").toString(), source);
+
+        table = qobject_cast<QTextTable *>(quickDocument->textDocument()->rootFrame()->childFrames().value(0));
+        textEdit->setProperty("cursorPosition", table->cellAt(2, 1).firstCursorPosition().position());
         QVERIFY(QMetaObject::invokeMethod(toolbar, "richTableActionRequested",
                                           Q_ARG(QString, QStringLiteral("rowBefore"))));
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, result)));

@@ -1,6 +1,7 @@
 #include "notes_rich_tables.h"
 
 #include "notes_rich_format.h"
+#include "notes_rich_table_movement.h"
 #include "notes_rich_table_structure_range.h"
 #include "notes_rich_table_styles.h"
 
@@ -48,52 +49,6 @@ bool parseAction(const QString &action, TableAction &result) {
     else if (action == "deleteTable") result = TableAction::DeleteTable;
     else return false;
     return true;
-}
-
-struct CellSnapshot {
-    QTextTableCellFormat format;
-    QTextDocumentFragment content;
-};
-
-CellSnapshot snapshotCell(const QTextTableCell &cell) {
-    CellSnapshot snapshot;
-    snapshot.format.merge(cell.format());
-    QTextCursor cursor = cell.firstCursorPosition();
-    cursor.setPosition(cell.lastCursorPosition().position(), QTextCursor::KeepAnchor);
-    snapshot.content = QTextDocumentFragment(cursor);
-    return snapshot;
-}
-
-void restoreCell(QTextTableCell cell, const CellSnapshot &snapshot) {
-    cell.setFormat(snapshot.format);
-    QTextCursor cursor = cell.firstCursorPosition();
-    cursor.setPosition(cell.lastCursorPosition().position(), QTextCursor::KeepAnchor);
-    if (cursor.hasSelection()) cursor.removeSelectedText();
-    if (!snapshot.content.isEmpty()) cursor.insertFragment(snapshot.content);
-}
-
-void moveRow(QTextTable &table, int from, int to) {
-    QVector<CellSnapshot> cells;
-    cells.reserve(table.columns());
-    for (int column = 0; column < table.columns(); ++column)
-        cells.append(snapshotCell(table.cellAt(from, column)));
-    const int insertion = to < from ? to : to + 1;
-    table.insertRows(insertion, 1);
-    for (int column = 0; column < cells.size(); ++column)
-        restoreCell(table.cellAt(insertion, column), cells.at(column));
-    table.removeRows(to < from ? from + 1 : from, 1);
-}
-
-void moveColumn(QTextTable &table, int from, int to) {
-    QVector<CellSnapshot> cells;
-    cells.reserve(table.rows());
-    for (int row = 0; row < table.rows(); ++row)
-        cells.append(snapshotCell(table.cellAt(row, from)));
-    const int insertion = to < from ? to : to + 1;
-    table.insertColumns(insertion, 1);
-    for (int row = 0; row < cells.size(); ++row)
-        restoreCell(table.cellAt(row, insertion), cells.at(row));
-    table.removeColumns(to < from ? from + 1 : from, 1);
 }
 
 QTextCharFormat normalizeHeaderCharacterFormat(QTextCharFormat format, bool header, bool empty) {
@@ -149,14 +104,6 @@ void applyHeaderSemantics(QTextTable &table, int headerRow) {
     }
 }
 
-int movedRowIndex(int movedFrom, int movedTo, int rowIndex) {
-    if (rowIndex < 0) return -1;
-    if (rowIndex == movedFrom) return movedTo;
-    if (movedFrom < movedTo && rowIndex > movedFrom && rowIndex <= movedTo) return rowIndex - 1;
-    if (movedFrom > movedTo && rowIndex >= movedTo && rowIndex < movedFrom) return rowIndex + 1;
-    return rowIndex;
-}
-
 bool removeTable(QTextDocument &document, QTextTable &table) {
     const int start = table.firstPosition();
     const int end = qMin(table.lastPosition() + 1, document.characterCount() - 1);
@@ -208,10 +155,22 @@ bool canApplyStructureAction(const QTextDocument &document, int position, const 
     if (headerRow == -2) return false;
     if (parsedAction == TableAction::DeleteRow) return table->rows() > rectangle.bottom - rectangle.top;
     if (parsedAction == TableAction::DeleteColumn) return table->columns() > rectangle.right - rectangle.left;
-    if (parsedAction == TableAction::MoveRowUp) return rectangle.top > 0;
-    if (parsedAction == TableAction::MoveRowDown) return rectangle.bottom < table->rows();
-    if (parsedAction == TableAction::MoveColumnLeft) return rectangle.left > 0;
-    if (parsedAction == TableAction::MoveColumnRight) return rectangle.right < table->columns();
+    if (parsedAction == TableAction::MoveRowUp) {
+        QVector<int> map;
+        return NotesRichTableMovement::computeRowMove(*table, rectangle.top, rectangle.bottom, true, map);
+    }
+    if (parsedAction == TableAction::MoveRowDown) {
+        QVector<int> map;
+        return NotesRichTableMovement::computeRowMove(*table, rectangle.top, rectangle.bottom, false, map);
+    }
+    if (parsedAction == TableAction::MoveColumnLeft) {
+        QVector<int> map;
+        return NotesRichTableMovement::computeColumnMove(*table, rectangle.left, rectangle.right, true, map);
+    }
+    if (parsedAction == TableAction::MoveColumnRight) {
+        QVector<int> map;
+        return NotesRichTableMovement::computeColumnMove(*table, rectangle.left, rectangle.right, false, map);
+    }
     return true;
 }
 
@@ -259,16 +218,66 @@ bool applyStructureAction(QTextDocument &document, int position, const QString &
         for (int column = rectangle.right - 1; column >= rectangle.left; --column)
             table->removeColumns(column, 1);
         break;
-    case TableAction::MoveRowUp:
-        moveRow(*table, rectangle.top, rectangle.top - 1);
-        headerRow = movedRowIndex(rectangle.top, rectangle.top - 1, headerRow);
+    case TableAction::MoveRowUp: {
+        QVector<int> mapRow;
+        if (!NotesRichTableMovement::computeRowMove(*table, rectangle.top, rectangle.bottom, true, mapRow)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        QVector<int> mapCol(table->columns());
+        for (int c = 0; c < table->columns(); ++c) mapCol[c] = c;
+        if (!NotesRichTableMovement::applyTablePermutation(*table, mapRow, mapCol)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        if (headerRow >= 0 && headerRow < table->rows())
+            headerRow = mapRow.at(headerRow);
         break;
-    case TableAction::MoveRowDown:
-        moveRow(*table, rectangle.top, rectangle.bottom);
-        headerRow = movedRowIndex(rectangle.top, rectangle.bottom, headerRow);
+    }
+    case TableAction::MoveRowDown: {
+        QVector<int> mapRow;
+        if (!NotesRichTableMovement::computeRowMove(*table, rectangle.top, rectangle.bottom, false, mapRow)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        QVector<int> mapCol(table->columns());
+        for (int c = 0; c < table->columns(); ++c) mapCol[c] = c;
+        if (!NotesRichTableMovement::applyTablePermutation(*table, mapRow, mapCol)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        if (headerRow >= 0 && headerRow < table->rows())
+            headerRow = mapRow.at(headerRow);
         break;
-    case TableAction::MoveColumnLeft: moveColumn(*table, rectangle.left, rectangle.left - 1); break;
-    case TableAction::MoveColumnRight: moveColumn(*table, rectangle.left, rectangle.right); break;
+    }
+    case TableAction::MoveColumnLeft: {
+        QVector<int> mapCol;
+        if (!NotesRichTableMovement::computeColumnMove(*table, rectangle.left, rectangle.right, true, mapCol)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        QVector<int> mapRow(table->rows());
+        for (int r = 0; r < table->rows(); ++r) mapRow[r] = r;
+        if (!NotesRichTableMovement::applyTablePermutation(*table, mapRow, mapCol)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        break;
+    }
+    case TableAction::MoveColumnRight: {
+        QVector<int> mapCol;
+        if (!NotesRichTableMovement::computeColumnMove(*table, rectangle.left, rectangle.right, false, mapCol)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        QVector<int> mapRow(table->rows());
+        for (int r = 0; r < table->rows(); ++r) mapRow[r] = r;
+        if (!NotesRichTableMovement::applyTablePermutation(*table, mapRow, mapCol)) {
+            cursor.endEditBlock();
+            return false;
+        }
+        break;
+    }
     case TableAction::DeleteTable: {
         const bool removed = removeTable(document, *table);
         cursor.endEditBlock();
