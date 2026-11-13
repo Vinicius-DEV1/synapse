@@ -7,12 +7,24 @@ ListView {
     spacing: 8
 
     property var transactions: []
+    property var accounts: []
+
     signal deleteRequested(string transactionId)
     signal editRequested(var transaction)
+
+    function getAccountName(accId) {
+        if (!accId || accId.length === 0) return ""
+        for (var i = 0; i < accounts.length; i++) {
+            if (accounts[i].id === accId) return accounts[i].name
+        }
+        return ""
+    }
 
     model: transactions
 
     delegate: Rectangle {
+        id: transRowRect
+        property var txData: modelData
         width: transListView.width
         height: 60
         radius: 10
@@ -27,28 +39,54 @@ ListView {
 
             Rectangle {
                 width: 6; height: 34; radius: 3
-                color: modelData.type === "income" ? "#10b981" : (modelData.type === "expense" ? "#f43f5e" : "#f59e0b")
+                color: transRowRect.txData.type === "income" ? "#10b981"
+                    : (transRowRect.txData.type === "expense" ? "#f43f5e"
+                    : (transRowRect.txData.type === "transfer" ? "#8b5cf6" : "#f59e0b"))
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 3
                 Text {
-                    text: modelData.description
+                    text: transRowRect.txData.description || ""
                     color: "#fffffe"
                     font.pixelSize: 14
                     font.bold: true
+                    elide: Text.ElideRight
                 }
-                Text {
-                    text: (modelData.category || "Geral") + " • " + (modelData.date || "")
-                    color: "#a7a9be"
-                    font.pixelSize: 12
+                RowLayout {
+                    spacing: 6
+                    Text {
+                        text: (transRowRect.txData.category || "Geral") + " • " + (transRowRect.txData.date || "")
+                        color: "#a7a9be"
+                        font.pixelSize: 12
+                    }
+                    // Account badge
+                    Rectangle {
+                        readonly property string accName: transListView.getAccountName(transRowRect.txData.account_id)
+                        visible: accName.length > 0
+                        Layout.preferredHeight: 18
+                        Layout.preferredWidth: badgeLabel.contentWidth + 10
+                        radius: 4
+                        color: "#15ffffff"
+                        Text {
+                            id: badgeLabel
+                            anchors.centerIn: parent
+                            text: parent.accName
+                            color: "#c4b5fd"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                    }
                 }
             }
 
             Text {
-                text: (modelData.type === "income" ? "+ R$ " : "- R$ ") + Number(modelData.amount || 0).toFixed(2)
-                color: modelData.type === "income" ? "#34d399" : "#fffffe"
+                text: (transRowRect.txData.type === "income" ? "+ R$ "
+                    : (transRowRect.txData.type === "expense" ? "- R$ " : "⇄ R$ "))
+                    + Number(transRowRect.txData.amount || 0).toFixed(2)
+                color: transRowRect.txData.type === "income" ? "#34d399"
+                    : (transRowRect.txData.type === "expense" ? "#f43f5e" : "#a78bfa")
                 font.pixelSize: 16
                 font.bold: true
             }
@@ -56,8 +94,7 @@ ListView {
             Row {
                 spacing: 4
                 Rectangle {
-                    width: visible ? 28 : 0; height: 28; radius: 6
-                    visible: modelData.type === "income" || modelData.type === "expense"
+                    width: 28; height: 28; radius: 6
                     color: editTransMouse.containsMouse ? "#1a8b5cf6" : "transparent"
                     Text { anchors.centerIn: parent; text: "✎"; color: "#a7a9be"; font.pixelSize: 14 }
                     MouseArea {
@@ -65,7 +102,7 @@ ListView {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: transListView.editRequested(modelData)
+                        onClicked: transListView.editRequested(transRowRect.txData)
                     }
                 }
                 Rectangle {
@@ -77,7 +114,7 @@ ListView {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: transListView.deleteRequested(modelData.id)
+                        onClicked: transListView.deleteRequested(transRowRect.txData.id)
                     }
                 }
             }
@@ -93,7 +130,7 @@ ListView {
 
     Text {
         anchors.centerIn: parent
-        visible: transListView.transactions.length === 0
+        visible: !transListView.transactions || transListView.transactions.length === 0
         text: "Nenhuma transação registrada no banco."
         color: "#64748b"
         font.pixelSize: 15

@@ -6,37 +6,66 @@ Rectangle {
     id: modalRoot
     anchors.fill: parent
     color: "#b3000000"
+    visible: isOpen
+    z: 140
 
-    signal transactionSubmitted(string description, double amount, string type, string category)
-    signal closed()
-
+    property bool isOpen: false
+    property var accounts: []
     property var initialTransaction: null
     property string errorMessage: ""
 
+    readonly property bool isEditing: initialTransaction !== null && initialTransaction !== undefined
+    readonly property bool isTransfer: transTypeCombo.currentIndex === 2
+
+    signal transactionSubmitted(string description, double amount, string type, string category, string date, string accountId, string destinationAccountId)
+    signal closed()
+
     function loadInitialTransaction() {
         errorMessage = ""
+        var today = Qt.formatDate(new Date(), "yyyy-MM-dd")
         if (!initialTransaction) {
             transDescInput.text = ""
             transAmountInput.text = ""
             transTypeCombo.currentIndex = 0
             transCategoryInput.text = "Geral"
+            transDateInput.text = today
+            accCombo.currentIndex = 0
+            fromAccCombo.currentIndex = 0
+            toAccCombo.currentIndex = (modalRoot.accounts.length > 1) ? 1 : 0
             return
         }
         transDescInput.text = initialTransaction.description || ""
         transAmountInput.text = Number(initialTransaction.amount || 0).toString()
-        transTypeCombo.currentIndex = transTypeCombo.transactionTypes.indexOf(initialTransaction.type)
+        var typeIdx = transTypeCombo.transactionTypes.indexOf(initialTransaction.type)
+        transTypeCombo.currentIndex = typeIdx >= 0 ? typeIdx : 0
         transCategoryInput.text = initialTransaction.category || "Geral"
+        transDateInput.text = initialTransaction.date || today
+
+        // Select account in combo
+        for (var i = 0; i < modalRoot.accounts.length; i++) {
+            if (modalRoot.accounts[i].id === initialTransaction.account_id) {
+                accCombo.currentIndex = i
+                fromAccCombo.currentIndex = i
+                break
+            }
+        }
+        for (var j = 0; j < modalRoot.accounts.length; j++) {
+            if (modalRoot.accounts[j].id === initialTransaction.destination_account_id) {
+                toAccCombo.currentIndex = j
+                break
+            }
+        }
     }
 
-    onVisibleChanged: if (visible) loadInitialTransaction()
-    onInitialTransactionChanged: if (visible) loadInitialTransaction()
+    onIsOpenChanged: if (isOpen) loadInitialTransaction()
+    onInitialTransactionChanged: if (isOpen) loadInitialTransaction()
 
     MouseArea { anchors.fill: parent; onClicked: modalRoot.closed() }
 
     Rectangle {
         anchors.centerIn: parent
-        width: 440
-        height: 380
+        width: 460
+        height: modalRoot.isTransfer ? 460 : 440
         radius: 16
         color: "#1a1924"
         border.color: "#1affffff"
@@ -45,40 +74,107 @@ Rectangle {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 28
-            spacing: 16
+            anchors.margins: 24
+            spacing: 12
 
             Text {
-                text: modalRoot.initialTransaction ? qsTr("Edit transaction") : qsTr("New transaction")
+                text: modalRoot.isEditing ? qsTr("Edit transaction") : qsTr("New transaction")
                 color: "#fffffe"
                 font.pixelSize: 18
                 font.bold: true
             }
 
+            // Description
             TextField {
                 id: transDescInput
                 Layout.fillWidth: true
-                placeholderText: "Descrição da despesa ou receita..."
+                placeholderText: "Descrição da transação..."
             }
 
-            TextField {
-                id: transAmountInput
+            // Amount and Type Row
+            RowLayout {
                 Layout.fillWidth: true
-                placeholderText: "Valor (ex: 250.00)..."
+                spacing: 10
+
+                TextField {
+                    id: transAmountInput
+                    Layout.fillWidth: true
+                    placeholderText: "Valor (ex: 250.00)..."
+                }
+
+                ComboBox {
+                    id: transTypeCombo
+                    Layout.preferredWidth: 150
+                    property var transactionTypes: ["expense", "income", "transfer"]
+                    model: ["Despesa", "Receita", "Transferência"]
+                }
             }
 
-            ComboBox {
-                id: transTypeCombo
+            // Category & Date (for income/expense)
+            RowLayout {
                 Layout.fillWidth: true
-                property var transactionTypes: ["expense", "income"]
-                model: [qsTr("Expense"), qsTr("Income")]
+                spacing: 10
+                visible: !modalRoot.isTransfer
+
+                TextField {
+                    id: transCategoryInput
+                    Layout.fillWidth: true
+                    placeholderText: "Categoria (Alimentação, Salário, etc)..."
+                    text: "Geral"
+                }
+
+                TextField {
+                    id: transDateInput
+                    Layout.preferredWidth: 130
+                    placeholderText: "yyyy-MM-dd"
+                }
             }
 
-            TextField {
-                id: transCategoryInput
+            // Account Selector (for income/expense)
+            RowLayout {
                 Layout.fillWidth: true
-                placeholderText: "Categoria (Geral, Alimentação, Moradia)..."
-                text: "Geral"
+                spacing: 10
+                visible: !modalRoot.isTransfer
+
+                Text { text: "Conta:"; color: "#a7a9be"; font.pixelSize: 12 }
+
+                ComboBox {
+                    id: accCombo
+                    Layout.fillWidth: true
+                    textRole: "name"
+                    model: modalRoot.accounts
+                }
+            }
+
+            // Transfer Accounts Row (Origin & Destination)
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                visible: modalRoot.isTransfer
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Text { text: "Origem:"; color: "#f43f5e"; font.pixelSize: 12; Layout.preferredWidth: 50 }
+                    ComboBox {
+                        id: fromAccCombo
+                        Layout.fillWidth: true
+                        textRole: "name"
+                        model: modalRoot.accounts
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Text { text: "Destino:"; color: "#34d399"; font.pixelSize: 12; Layout.preferredWidth: 50 }
+                    ComboBox {
+                        id: toAccCombo
+                        Layout.fillWidth: true
+                        textRole: "name"
+                        model: modalRoot.accounts
+                    }
+                }
             }
 
             Label {
@@ -90,6 +186,8 @@ Rectangle {
                 wrapMode: Text.Wrap
             }
 
+            Item { Layout.fillHeight: true }
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 12
@@ -99,18 +197,54 @@ Rectangle {
                     onClicked: modalRoot.closed()
                 }
                 Button {
-                    text: modalRoot.initialTransaction ? qsTr("Save changes") : qsTr("Save")
+                    text: modalRoot.isEditing ? qsTr("Save changes") : qsTr("Save")
                     Layout.fillWidth: true
+                    highlighted: true
                     onClicked: {
                         var val = parseFloat(transAmountInput.text)
-                        if (transDescInput.text.trim().length === 0 || !isFinite(val) || val < 0 || transTypeCombo.currentIndex < 0) {
-                            modalRoot.errorMessage = qsTr("Enter a description and a valid amount.")
+                        var type = transTypeCombo.transactionTypes[transTypeCombo.currentIndex]
+                        if (transDescInput.text.trim().length === 0 || !isFinite(val) || val <= 0) {
+                            modalRoot.errorMessage = "Informe uma descrição e um valor positivo."
                             return
                         }
+
+                        var date = transDateInput.text.trim()
+                        if (date.length === 0) {
+                            date = Qt.formatDate(new Date(), "yyyy-MM-dd")
+                        }
+
+                        var accId = ""
+                        var destId = ""
+
+                        if (type === "transfer") {
+                            if (modalRoot.accounts.length < 2) {
+                                modalRoot.errorMessage = "Cadastre ao menos duas contas para realizar transferências."
+                                return
+                            }
+                            var fromAcc = modalRoot.accounts[fromAccCombo.currentIndex]
+                            var toAcc = modalRoot.accounts[toAccCombo.currentIndex]
+                            if (!fromAcc || !toAcc || fromAcc.id === toAcc.id) {
+                                modalRoot.errorMessage = "A conta de origem e destino devem ser diferentes."
+                                return
+                            }
+                            accId = fromAcc.id
+                            destId = toAcc.id
+                        } else {
+                            if (modalRoot.accounts.length > 0 && accCombo.currentIndex >= 0 && accCombo.currentIndex < modalRoot.accounts.length) {
+                                accId = modalRoot.accounts[accCombo.currentIndex].id
+                            }
+                        }
+
                         modalRoot.errorMessage = ""
-                        modalRoot.transactionSubmitted(transDescInput.text, val,
-                                                       transTypeCombo.transactionTypes[transTypeCombo.currentIndex],
-                                                       transCategoryInput.text)
+                        modalRoot.transactionSubmitted(
+                            transDescInput.text.trim(),
+                            val,
+                            type,
+                            type === "transfer" ? "Transferência" : transCategoryInput.text.trim(),
+                            date,
+                            accId,
+                            destId
+                        )
                     }
                 }
             }

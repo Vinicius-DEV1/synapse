@@ -208,11 +208,15 @@ public:
     Q_INVOKABLE bool recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect);
 
     // 5. Finanças & Wishlist
-    Q_INVOKABLE QVariantList getTransactions(const QString &typeFilter = "");
+    Q_INVOKABLE QVariantList getTransactions(const QString &typeFilter = "", const QString &accountIdFilter = "");
     Q_INVOKABLE QVariantList getAccounts();
     Q_INVOKABLE QVariantMap getFinancialSummary();
+    Q_INVOKABLE bool createAccount(const QString &name, const QString &color = "#10b981", const QString &icon = "wallet", double initialBalance = 0.0);
+    Q_INVOKABLE bool updateAccount(const QString &accountId, const QString &name, const QString &color = "#10b981", const QString &icon = "wallet", double initialBalance = 0.0);
+    Q_INVOKABLE bool deleteAccount(const QString &accountId);
     Q_INVOKABLE bool addTransaction(const QString &description, double amount, const QString &type, const QString &category, const QString &date, const QString &accountId = "");
-    Q_INVOKABLE bool updateTransaction(const QString &txId, const QString &description, double amount, const QString &type, const QString &category);
+    Q_INVOKABLE bool addTransfer(const QString &description, double amount, const QString &fromAccountId, const QString &toAccountId, const QString &date = "");
+    Q_INVOKABLE bool updateTransaction(const QString &txId, const QString &description, double amount, const QString &type, const QString &category, const QString &date = "", const QString &accountId = "", const QString &destinationAccountId = "");
     Q_INVOKABLE bool deleteTransaction(const QString &txId);
     Q_INVOKABLE QVariantList getWishlist();
     Q_INVOKABLE bool addWishlistItem(const QString &title, double price, const QString &priority, const QString &category, const QString &link = "");

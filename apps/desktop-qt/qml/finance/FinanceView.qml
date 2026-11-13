@@ -6,39 +6,36 @@ Rectangle {
     id: financeRoot
     color: "#0f0e17" // bg-dark-bg
 
-    property var summary: ({ income: 0, expense: 0, balance: 0 })
+    property var summary: ({ income: 0, expense: 0, balance: 0, total_balance: 0 })
+    property var accounts: []
     property var transactions: []
     property var wishlistItems: []
     property string activeSubTab: "transactions" // "transactions", "wishlist"
     property string transactionTypeFilter: "all" // "all", "income", "expense"
+    property string selectedAccountId: "all"
     property string transactionSearch: ""
     property bool isAddingTransaction: false
     property bool isAddingWishlistItem: false
+    property bool isAccountManagerOpen: false
+    property bool isFinanceHelpOpen: false
     property var editingTransaction: null
 
     function refreshData() {
         summary = dataController.getFinancialSummary()
-        transactions = dataController.getTransactions()
+        accounts = dataController.getAccounts()
+        transactions = dataController.getTransactions(transactionTypeFilter, selectedAccountId)
         wishlistItems = dataController.getWishlist()
     }
 
     function filteredTransactions() {
         var query = transactionSearch.trim().toLowerCase()
+        if (query.length === 0) return transactions
         var res = []
         for (var i = 0; i < transactions.length; i++) {
             var tx = transactions[i]
-            var matchType = true
-            if (transactionTypeFilter === "income") matchType = (tx.type === "income")
-            else if (transactionTypeFilter === "expense") matchType = (tx.type === "expense")
-
-            var matchSearch = true
-            if (query.length > 0) {
-                var desc = (tx.description || "").toLowerCase()
-                var cat = (tx.category || "").toLowerCase()
-                matchSearch = (desc.indexOf(query) !== -1 || cat.indexOf(query) !== -1)
-            }
-
-            if (matchType && matchSearch) {
+            var desc = (tx.description || "").toLowerCase()
+            var cat = (tx.category || "").toLowerCase()
+            if (desc.indexOf(query) !== -1 || cat.indexOf(query) !== -1) {
                 res.push(tx)
             }
         }
@@ -52,7 +49,7 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 32
-        spacing: 24
+        spacing: 20
 
         // Header and Action Buttons
         FinanceHeaderSection {
@@ -62,11 +59,30 @@ Rectangle {
             transactionTypeFilter: financeRoot.transactionTypeFilter
             transactionSearch: financeRoot.transactionSearch
 
-            onNewTransactionRequested: financeRoot.isAddingTransaction = true
+            onNewTransactionRequested: {
+                financeRoot.editingTransaction = null
+                financeRoot.isAddingTransaction = true
+            }
             onNewWishlistRequested: financeRoot.isAddingWishlistItem = true
+            onHelpRequested: financeRoot.isFinanceHelpOpen = true
             onSubTabSelected: function(tab) { financeRoot.activeSubTab = tab }
-            onTypeFilterSelected: function(type) { financeRoot.transactionTypeFilter = type }
+            onTypeFilterSelected: function(type) {
+                financeRoot.transactionTypeFilter = type
+                financeRoot.refreshData()
+            }
             onSearchChanged: function(search) { financeRoot.transactionSearch = search }
+        }
+
+        // Horizontal Account Strip with Balances & Manage Button
+        AccountCards {
+            accounts: financeRoot.accounts
+            selectedAccountId: financeRoot.selectedAccountId
+            totalBalance: Number(financeRoot.summary.total_balance || 0)
+            onSelectAccountRequested: function(accId) {
+                financeRoot.selectedAccountId = accId
+                financeRoot.refreshData()
+            }
+            onManageAccountsRequested: financeRoot.isAccountManagerOpen = true
         }
 
         // 3 Summary Cards (Receitas, Despesas, Saldo Líquido)
@@ -83,6 +99,7 @@ Rectangle {
             // 1. Transactions List
             TransactionsTable {
                 transactions: financeRoot.filteredTransactions()
+                accounts: financeRoot.accounts
                 onEditRequested: function(transaction) {
                     financeRoot.editingTransaction = transaction
                     financeRoot.isAddingTransaction = true
@@ -110,20 +127,35 @@ Rectangle {
         }
     }
 
-    // Modal: Adicionar Transação
+    // Modal: Adicionar / Editar Transação
     CreateTransactionModal {
         id: transactionModal
-        visible: financeRoot.isAddingTransaction
+        isOpen: financeRoot.isAddingTransaction
+        accounts: financeRoot.accounts
         initialTransaction: financeRoot.editingTransaction
         onClosed: {
             financeRoot.isAddingTransaction = false
             financeRoot.editingTransaction = null
         }
-        onTransactionSubmitted: function(desc, amount, type, cat) {
-            var today = Qt.formatDate(new Date(), "yyyy-MM-dd")
-            var saved = financeRoot.editingTransaction
-                ? dataController.updateTransaction(financeRoot.editingTransaction.id, desc, amount, type, cat)
-                : dataController.addTransaction(desc, amount, type, cat, today)
+        onTransactionSubmitted: function(desc, amount, type, cat, date, accId, destId) {
+            var saved = false
+            if (type === "transfer") {
+                saved = dataController.addTransfer(desc, amount, accId, destId, date)
+            } else if (financeRoot.editingTransaction) {
+                saved = dataController.updateTransaction(
+                    financeRoot.editingTransaction.id,
+                    desc,
+                    amount,
+                    type,
+                    cat,
+                    date,
+                    accId,
+                    destId
+                )
+            } else {
+                saved = dataController.addTransaction(desc, amount, type, cat, date, accId)
+            }
+
             if (!saved) {
                 transactionModal.errorMessage = qsTr("The transaction could not be saved. Check the fields and try again.")
                 return
@@ -143,5 +175,36 @@ Rectangle {
             financeRoot.isAddingWishlistItem = false
             financeRoot.refreshData()
         }
+    }
+
+    // Modal: Gerenciar Contas Bancárias
+    AccountManagerModal {
+        isOpen: financeRoot.isAccountManagerOpen
+        accounts: financeRoot.accounts
+        onClosed: financeRoot.isAccountManagerOpen = false
+        onAccountCreated: function(name, color, icon, initialBal) {
+            if (dataController.createAccount(name, color, icon, initialBal)) {
+                financeRoot.refreshData()
+            }
+        }
+        onAccountUpdated: function(accId, name, color, icon, initialBal) {
+            if (dataController.updateAccount(accId, name, color, icon, initialBal)) {
+                financeRoot.refreshData()
+            }
+        }
+        onAccountDeleted: function(accId) {
+            if (dataController.deleteAccount(accId)) {
+                if (financeRoot.selectedAccountId === accId) {
+                    financeRoot.selectedAccountId = "all"
+                }
+                financeRoot.refreshData()
+            }
+        }
+    }
+
+    // Modal: Guia de Finanças
+    FinanceHelpDialog {
+        isOpen: financeRoot.isFinanceHelpOpen
+        onClosed: financeRoot.isFinanceHelpOpen = false
     }
 }

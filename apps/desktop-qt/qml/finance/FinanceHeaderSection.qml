@@ -14,6 +14,7 @@ ColumnLayout {
 
     signal newTransactionRequested()
     signal newWishlistRequested()
+    signal helpRequested()
     signal subTabSelected(string tab)
     signal typeFilterSelected(string type)
     signal searchChanged(string search)
@@ -76,6 +77,26 @@ ColumnLayout {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: headerRoot.newWishlistRequested()
+            }
+        }
+
+        // Ajuda Button
+        Rectangle {
+            width: 86; height: 38; radius: 10
+            color: "#161524"
+            border.color: "#18ffffff"
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+                Text { text: "❓"; font.pixelSize: 12 }
+                Text { text: "Ajuda"; color: "#a7a9be"; font.pixelSize: 13; font.bold: true }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.helpRequested()
             }
         }
     }
