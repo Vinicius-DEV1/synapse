@@ -12,11 +12,18 @@ Rectangle {
     property string activeStatusFilter: "all" // "all", "watching", "backlog", "finished"
     property string searchQuery: ""
     property bool isCreatingItem: false
+    property var editingItem: null
     property var selectedItemForDetails: null
+    property var selectedItemForEpisodes: null
+    property var currentEpisodes: []
 
     function refreshItems() {
         allItems = dataController.getCultureItems("")
         applyFilters()
+    }
+
+    function loadEpisodes(itemId) {
+        currentEpisodes = dataController.getCultureEpisodes(itemId)
     }
 
     function applyFilters() {
@@ -69,7 +76,11 @@ Rectangle {
                 cultureRoot.searchQuery = text
                 cultureRoot.applyFilters()
             }
-            onRequestAddItem: cultureRoot.isCreatingItem = true
+            onRequestAddItem: {
+                cultureRoot.editingItem = null
+                cultureRoot.isCreatingItem = true
+            }
+            onHelpRequested: helpDialog.isOpen = true
         }
 
         // Media Grid & Filter Pills
@@ -105,12 +116,31 @@ Rectangle {
         }
     }
 
-    // Modal: Adicionar Obra
+    // Modal: Adicionar / Editar Obra
     CreateCultureModal {
         isOpen: cultureRoot.isCreatingItem
-        onClosed: cultureRoot.isCreatingItem = false
-        onItemCreated: function(title, type, synopsis, totalEpisodes, coverImage) {
-            dataController.createCultureItem(title, type, synopsis, totalEpisodes, coverImage)
+        initialItem: cultureRoot.editingItem
+        onClosed: {
+            cultureRoot.isCreatingItem = false
+            cultureRoot.editingItem = null
+        }
+        onItemSubmitted: function(title, type, synopsis, totalEpisodes, coverImage, goalNote, accessLink) {
+            if (cultureRoot.editingItem) {
+                dataController.updateCultureItem(
+                    cultureRoot.editingItem.id,
+                    title,
+                    type,
+                    synopsis,
+                    totalEpisodes,
+                    coverImage,
+                    cultureRoot.editingItem.status || "backlog",
+                    goalNote,
+                    accessLink
+                )
+            } else {
+                dataController.createCultureItem(title, type, synopsis, totalEpisodes, coverImage, goalNote, accessLink)
+            }
+            cultureRoot.editingItem = null
             cultureRoot.refreshItems()
         }
     }
@@ -120,6 +150,14 @@ Rectangle {
         isOpen: cultureRoot.selectedItemForDetails !== null
         item: cultureRoot.selectedItemForDetails
         onClosed: cultureRoot.selectedItemForDetails = null
+        onRequestEditItem: function(item) {
+            cultureRoot.editingItem = item
+            cultureRoot.isCreatingItem = true
+        }
+        onRequestManageEpisodes: function(item) {
+            cultureRoot.selectedItemForEpisodes = item
+            cultureRoot.loadEpisodes(item.id)
+        }
         onStatusChanged: function(itemId, newStatus) {
             dataController.updateCultureStatus(itemId, newStatus)
             if (cultureRoot.selectedItemForDetails) {
@@ -144,5 +182,41 @@ Rectangle {
             cultureRoot.refreshItems()
             cultureRoot.selectedItemForDetails = null
         }
+    }
+
+    // Modal: Gestão de Episódios
+    CultureEpisodesModal {
+        isOpen: cultureRoot.selectedItemForEpisodes !== null
+        item: cultureRoot.selectedItemForEpisodes
+        episodes: cultureRoot.currentEpisodes
+        onClosed: cultureRoot.selectedItemForEpisodes = null
+        onEpisodeWatchedToggled: function(episodeId, itemId) {
+            dataController.toggleEpisodeWatched(episodeId, itemId)
+            cultureRoot.loadEpisodes(itemId)
+            cultureRoot.refreshItems()
+        }
+        onEpisodeDeleted: function(episodeId) {
+            dataController.deleteCultureEpisode(episodeId)
+            if (cultureRoot.selectedItemForEpisodes) {
+                cultureRoot.loadEpisodes(cultureRoot.selectedItemForEpisodes.id)
+            }
+            cultureRoot.refreshItems()
+        }
+        onBulkEpisodesRequested: function(itemId, count) {
+            dataController.bulkCreateEpisodes(itemId, count)
+            cultureRoot.loadEpisodes(itemId)
+            cultureRoot.refreshItems()
+        }
+        onEpisodeAdded: function(itemId, episodeNumber, title) {
+            dataController.addCultureEpisode(itemId, episodeNumber, title)
+            cultureRoot.loadEpisodes(itemId)
+            cultureRoot.refreshItems()
+        }
+    }
+
+    // Modal: Guia In-App
+    CultureHelpDialog {
+        id: helpDialog
+        onClosed: isOpen = false
     }
 }

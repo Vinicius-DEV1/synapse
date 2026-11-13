@@ -11,17 +11,31 @@ Rectangle {
 
     property bool isOpen: false
     property string selectedType: "anime"
+    property var initialItem: null
 
     signal closed()
     signal itemCreated(string title, string type, string synopsis, int totalEpisodes, string coverImage)
+    signal itemSubmitted(string title, string type, string synopsis, int totalEpisodes, string coverImage, string goalNote, string accessLink)
 
     onIsOpenChanged: {
         if (isOpen) {
-            newCultureTitle.text = ""
-            newCultureSynopsis.text = ""
-            newCultureEpisodes.text = "12"
-            newCultureCover.text = ""
-            selectedType = "anime"
+            if (initialItem) {
+                newCultureTitle.text = initialItem.title || ""
+                selectedType = initialItem.type || "anime"
+                newCultureEpisodes.text = String(initialItem.total_episodes || 12)
+                newCultureCover.text = initialItem.cover_image || ""
+                newCultureSynopsis.text = initialItem.synopsis || ""
+                newCultureGoal.text = initialItem.goal_note || ""
+                newCultureLink.text = initialItem.access_link || ""
+            } else {
+                newCultureTitle.text = ""
+                newCultureSynopsis.text = ""
+                newCultureEpisodes.text = "12"
+                newCultureCover.text = ""
+                newCultureGoal.text = ""
+                newCultureLink.text = ""
+                selectedType = "anime"
+            }
             newCultureTitle.forceActiveFocus()
         }
     }
@@ -33,8 +47,8 @@ Rectangle {
 
     Rectangle {
         anchors.centerIn: parent
-        width: 460
-        height: 480
+        width: 500
+        height: 620
         radius: 16
         color: "#161524"
         border.color: "#14ffffff"
@@ -47,11 +61,16 @@ Rectangle {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 28
-            spacing: 14
+            spacing: 12
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "🎭 Adicionar Nova Obra Cultural"; color: "#fffffe"; font.pixelSize: 16; font.bold: true }
+                Text {
+                    text: createModalRoot.initialItem ? "🎭 Editar Obra Cultural" : "🎭 Adicionar Nova Obra Cultural"
+                    color: "#fffffe"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
                 Item { Layout.fillWidth: true }
                 Text {
                     text: "✕"
@@ -102,19 +121,21 @@ Rectangle {
                             { key: "filme", label: "🎬 Filme" }
                         ]
                         delegate: Rectangle {
+                            id: typeDelegate
+                            property var itemData: modelData
                             width: 100; height: 34; radius: 8
-                            color: createModalRoot.selectedType === modelData.key ? "#8b5cf6" : "#211f30"
+                            color: createModalRoot.selectedType === typeDelegate.itemData.key ? "#8b5cf6" : "#211f30"
                             Text {
                                 anchors.centerIn: parent
-                                text: modelData.label
-                                color: createModalRoot.selectedType === modelData.key ? "#ffffff" : "#a7a9be"
+                                text: typeDelegate.itemData.label
+                                color: createModalRoot.selectedType === typeDelegate.itemData.key ? "#ffffff" : "#a7a9be"
                                 font.pixelSize: 12
                                 font.bold: true
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: createModalRoot.selectedType = modelData.key
+                                onClicked: createModalRoot.selectedType = typeDelegate.itemData.key
                             }
                         }
                     }
@@ -168,6 +189,56 @@ Rectangle {
                 }
             }
 
+            // Goal Note & Access Link Row
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    Text { text: "Meta Cultural / Nota"; color: "#a7a9be"; font.pixelSize: 12 }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: 8
+                        color: "#15141b"
+                        border.color: newCultureGoal.activeFocus ? "#8b5cf6" : "#15ffffff"
+                        TextInput {
+                            id: newCultureGoal
+                            anchors.fill: parent
+                            anchors.leftMargin: 12; anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: "#fffffe"
+                            font.pixelSize: 13
+                            selectByMouse: true
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    Text { text: "Link de Acesso (URL)"; color: "#a7a9be"; font.pixelSize: 12 }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: 8
+                        color: "#15141b"
+                        border.color: newCultureLink.activeFocus ? "#8b5cf6" : "#15ffffff"
+                        TextInput {
+                            id: newCultureLink
+                            anchors.fill: parent
+                            anchors.leftMargin: 12; anchors.rightMargin: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: "#fffffe"
+                            font.pixelSize: 13
+                            selectByMouse: true
+                        }
+                    }
+                }
+            }
+
             // Synopsis Input
             ColumnLayout {
                 Layout.fillWidth: true
@@ -175,7 +246,7 @@ Rectangle {
                 Text { text: "Sinopse (opcional)"; color: "#a7a9be"; font.pixelSize: 12 }
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 52
+                    height: 48
                     radius: 8
                     color: "#15141b"
                     border.color: newCultureSynopsis.activeFocus ? "#8b5cf6" : "#15ffffff"
@@ -207,14 +278,29 @@ Rectangle {
                     }
                 }
                 Rectangle {
-                    width: 130; height: 38; radius: 8; color: "#8b5cf6"
-                    Text { anchors.centerIn: parent; text: "Adicionar Obra"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+                    width: 140; height: 38; radius: 8; color: "#8b5cf6"
+                    Text {
+                        anchors.centerIn: parent
+                        text: createModalRoot.initialItem ? "Salvar Alterações" : "Adicionar Obra"
+                        color: "#ffffff"
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (newCultureTitle.text.trim().length > 0) {
                                 var eps = parseInt(newCultureEpisodes.text) || 12
+                                createModalRoot.itemSubmitted(
+                                    newCultureTitle.text.trim(),
+                                    createModalRoot.selectedType,
+                                    newCultureSynopsis.text.trim(),
+                                    eps,
+                                    newCultureCover.text.trim(),
+                                    newCultureGoal.text.trim(),
+                                    newCultureLink.text.trim()
+                                )
                                 createModalRoot.itemCreated(
                                     newCultureTitle.text.trim(),
                                     createModalRoot.selectedType,

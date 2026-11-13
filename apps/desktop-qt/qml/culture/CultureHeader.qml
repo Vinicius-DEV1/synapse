@@ -12,6 +12,7 @@ RowLayout {
 
     signal searchTextChanged(string text)
     signal requestAddItem()
+    signal helpRequested()
 
     ColumnLayout {
         spacing: 4
@@ -63,6 +64,32 @@ RowLayout {
                     visible: !cultureSearchInput.text && !cultureSearchInput.activeFocus
                 }
             }
+        }
+    }
+
+    // Help / Guide Button
+    Rectangle {
+        width: 40
+        height: 40
+        radius: 10
+        color: helpMouse.containsMouse ? "#262438" : "#15141b"
+        border.color: helpMouse.containsMouse ? "#808b5cf6" : "#12ffffff"
+        border.width: 1
+
+        Text {
+            anchors.centerIn: parent
+            text: "?"
+            color: helpMouse.containsMouse ? "#ffffff" : "#a7a9be"
+            font.pixelSize: 15
+            font.bold: true
+        }
+
+        MouseArea {
+            id: helpMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: headerRoot.helpRequested()
         }
     }
 

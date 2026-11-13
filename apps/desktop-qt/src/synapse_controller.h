@@ -284,8 +284,17 @@ public:
     Q_INVOKABLE bool incrementCultureProgress(const QString &itemId);
     Q_INVOKABLE bool updateCultureProgress(const QString &itemId, int progress);
     Q_INVOKABLE bool updateCultureStatus(const QString &itemId, const QString &status);
-    Q_INVOKABLE bool createCultureItem(const QString &title, const QString &type, const QString &synopsis, int totalEpisodes = 12, const QString &coverImage = "");
+    Q_INVOKABLE bool createCultureItem(const QString &title, const QString &type, const QString &synopsis, int totalEpisodes = 12, const QString &coverImage = "", const QString &goalNote = "", const QString &accessLink = "");
+    Q_INVOKABLE bool updateCultureItem(const QString &itemId, const QString &title, const QString &type, const QString &synopsis, int totalEpisodes, const QString &coverImage, const QString &status, const QString &goalNote = "", const QString &accessLink = "");
+    Q_INVOKABLE bool setCultureGoal(const QString &itemId, bool isGoal, const QString &goalNote = "");
     Q_INVOKABLE bool deleteCultureItem(const QString &itemId);
+
+    // Episódios & Temporadas
+    Q_INVOKABLE QVariantList getCultureEpisodes(const QString &itemId);
+    Q_INVOKABLE bool addCultureEpisode(const QString &itemId, int episodeNumber, const QString &title, const QString &synopsis = "", int seasonNumber = 1, int episodeInSeason = 1, const QString &airedAt = "");
+    Q_INVOKABLE bool toggleEpisodeWatched(const QString &episodeId, const QString &itemId);
+    Q_INVOKABLE bool bulkCreateEpisodes(const QString &itemId, int count);
+    Q_INVOKABLE bool deleteCultureEpisode(const QString &episodeId);
 
     // 10. Foco Pomodoro & Lofi
     Q_INVOKABLE QVariantList getLofis();

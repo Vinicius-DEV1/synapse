@@ -16,6 +16,8 @@ Rectangle {
     signal statusChanged(string itemId, string newStatus)
     signal progressChanged(string itemId, int newProgress)
     signal itemCompleted(string itemId, int totalEpisodes)
+    signal requestEditItem(var item)
+    signal requestManageEpisodes(var item)
 
     MouseArea {
         anchors.fill: parent
@@ -52,6 +54,38 @@ Rectangle {
                     font.pixelSize: 18
                     font.bold: true
                     elide: Text.ElideRight
+                }
+
+                Rectangle {
+                    width: 96; height: 28; radius: 6
+                    color: "#268b5cf6"
+                    border.color: "#668b5cf6"
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Text { text: "📺"; font.pixelSize: 11 }
+                        Text { text: "Episódios"; color: "#c4b5fd"; font.pixelSize: 11; font.bold: true }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (detailsModalRoot.item) detailsModalRoot.requestManageEpisodes(detailsModalRoot.item)
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 28; height: 28; radius: 6
+                    color: "#18ffffff"
+                    Text { anchors.centerIn: parent; text: "✎"; color: "#fffffe"; font.pixelSize: 13 }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (detailsModalRoot.item) detailsModalRoot.requestEditItem(detailsModalRoot.item)
+                        }
+                    }
                 }
 
                 Rectangle {
