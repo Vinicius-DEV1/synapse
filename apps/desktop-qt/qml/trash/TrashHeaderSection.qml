@@ -9,6 +9,7 @@ RowLayout {
     property int allCount: 0
 
     signal emptyTrashRequested()
+    signal helpRequested()
 
     ColumnLayout {
         spacing: 4
@@ -26,6 +27,32 @@ RowLayout {
     }
 
     Item { Layout.fillWidth: true }
+
+    // Help Button
+    Rectangle {
+        width: 38
+        height: 38
+        radius: 10
+        color: helpMouse.containsMouse ? "#201e30" : "#161524"
+        border.color: helpMouse.containsMouse ? "#448b5cf6" : "#12ffffff"
+        border.width: 1
+
+        Text {
+            anchors.centerIn: parent
+            text: "?"
+            color: "#a7a9be"
+            font.pixelSize: 15
+            font.bold: true
+        }
+
+        MouseArea {
+            id: helpMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: headerRoot.helpRequested()
+        }
+    }
 
     // Empty Trash Button
     Rectangle {

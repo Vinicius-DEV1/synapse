@@ -9,6 +9,7 @@ Rectangle {
     property var filteredTrashItems: []
     property string activeTypeFilter: "all"
     property string searchQuery: ""
+    property bool isHelpOpen: false
 
     function refreshTrash() {
         allTrashItems = dataController.getTrashItems()
@@ -49,6 +50,7 @@ Rectangle {
         TrashHeaderSection {
             allCount: trashRoot.allTrashItems.length
             onEmptyTrashRequested: emptyConfirmModal.visible = true
+            onHelpRequested: trashRoot.isHelpOpen = true
         }
 
         // Filter Tabs & Search Bar Row
@@ -87,6 +89,20 @@ Rectangle {
         onConfirmed: {
             dataController.emptyTrash()
             trashRoot.refreshTrash()
+        }
+    }
+
+    TrashHelpDialog {
+        isOpen: trashRoot.isHelpOpen
+        onClosed: trashRoot.isHelpOpen = false
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: trashRoot.isHelpOpen || emptyConfirmModal.visible
+        onActivated: {
+            if (trashRoot.isHelpOpen) trashRoot.isHelpOpen = false
+            else if (emptyConfirmModal.visible) emptyConfirmModal.visible = false
         }
     }
 }

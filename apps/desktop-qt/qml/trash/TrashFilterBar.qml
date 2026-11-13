@@ -32,7 +32,11 @@ RowLayout {
                     { key: "anki_deck", label: "Baralhos" },
                     { key: "book", label: "Livros" },
                     { key: "vault", label: "Cofre" },
-                    { key: "finance", label: "Finanças" }
+                    { key: "finance", label: "Finanças" },
+                    { key: "file", label: "Arquivos" },
+                    { key: "habit", label: "Hábitos" },
+                    { key: "culture", label: "Cultura" },
+                    { key: "calendar", label: "Agenda" }
                 ]
                 Rectangle {
                     height: 30

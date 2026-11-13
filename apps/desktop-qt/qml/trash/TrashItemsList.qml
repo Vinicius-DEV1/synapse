@@ -20,6 +20,10 @@ Item {
         if (type === "finance") return { label: "Transação", icon: "💰", color: "#ec4899" }
         if (type === "wishlist") return { label: "Wishlist", icon: "🎁", color: "#a855f7" }
         if (type === "calendar") return { label: "Agenda", icon: "📅", color: "#06b6d4" }
+        if (type === "file") return { label: "Arquivo", icon: "📁", color: "#3b82f6" }
+        if (type === "habit") return { label: "Hábito", icon: "✨", color: "#10b981" }
+        if (type === "culture") return { label: "Cultura", icon: "🎬", color: "#f43f5e" }
+        if (type === "lofi") return { label: "Lo-Fi", icon: "🎵", color: "#8b5cf6" }
         return { label: type, icon: "🗑️", color: "#a7a9be" }
     }
 
