@@ -41,6 +41,12 @@ Rectangle {
         collection: fileCollection
         actions: fileActions
         dialogs: fileDialogs
+        onHelpRequested: fileHelpDialog.isOpen = true
+    }
+
+    FilesHelpDialog {
+        id: fileHelpDialog
+        onClosed: isOpen = false
     }
 
     Shortcut { sequence: "Escape"; context: Qt.WindowShortcut; enabled: fileActions.previewOpen; onActivated: fileActions.closePreview(false) }

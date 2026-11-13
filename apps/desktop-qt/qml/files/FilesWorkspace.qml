@@ -12,6 +12,7 @@ RowLayout {
     property var actions
     property var dialogs
     readonly property bool searchActive: fileSearchField.activeFocus
+    signal helpRequested()
 
     FilesFolderSidebar {
         Layout.preferredWidth: 218
@@ -94,6 +95,14 @@ RowLayout {
                 onClicked: workspace.dialogs.openImport()
                 background: Rectangle { color: parent.enabled ? theme.brand600 : theme.bgDarkSurface; radius: 8 }
                 contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            ToolButton {
+                text: "?"
+                ToolTip.visible: hovered
+                ToolTip.text: "Guia de arquivos"
+                onClicked: workspace.helpRequested()
+                background: Rectangle { color: parent.hovered ? theme.bgHover : theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 8 }
+                contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             }
         }
 

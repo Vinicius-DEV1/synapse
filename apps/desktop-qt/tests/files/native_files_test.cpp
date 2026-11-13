@@ -64,6 +64,47 @@ private slots:
         QVERIFY(migratedFile.open(QIODevice::ReadOnly));
         QCOMPARE(migratedFile.readAll(), content);
     }
+
+    void folderManagementAndFileOperations() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("native-files-folders.sqlite")));
+
+        // Create root folder
+        const QString rootFolderId = controller.createFileFolder("Documents", "", "#3b82f6");
+        QVERIFY(!rootFolderId.isEmpty());
+
+        // Create subfolder
+        const QString subFolderId = controller.createFileFolder("Research", rootFolderId, "#10b981");
+        QVERIFY(!subFolderId.isEmpty());
+
+        // Verify folder hierarchy
+        QVariantList rootFolders = controller.getFileFolders("");
+        QCOMPARE(rootFolders.size(), 1);
+        QCOMPARE(rootFolders.first().toMap().value("name").toString(), QString("Documents"));
+
+        QVariantList subFolders = controller.getFileFolders(rootFolderId);
+        QCOMPARE(subFolders.size(), 1);
+        QCOMPARE(subFolders.first().toMap().value("name").toString(), QString("Research"));
+
+        // Rename subfolder
+        QVERIFY(controller.renameFileFolder(subFolderId, "Deep Research"));
+        subFolders = controller.getFileFolders(rootFolderId);
+        QCOMPARE(subFolders.first().toMap().value("name").toString(), QString("Deep Research"));
+
+        // Move subfolder to root
+        QVERIFY(controller.moveFileFolder(subFolderId, ""));
+        rootFolders = controller.getFileFolders("");
+        QCOMPARE(rootFolders.size(), 2);
+
+        // Delete folder
+        QVERIFY(controller.deleteFileFolder(subFolderId));
+        rootFolders = controller.getFileFolders("");
+        QCOMPARE(rootFolders.size(), 1);
+        QCOMPARE(rootFolders.first().toMap().value("id").toString(), rootFolderId);
+    }
 };
 
 int runNativeFilesTest(int argc, char **argv) {
