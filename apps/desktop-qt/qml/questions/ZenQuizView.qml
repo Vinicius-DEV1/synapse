@@ -144,9 +144,27 @@ Rectangle {
         }
     }
 
+    function openInspectBattery(battery) {
+        if (!battery) return
+        questionOverlays.inspectBattery = battery
+        questionOverlays.batteryQuestionsList = dataController.getBatteryQuestions(battery.id)
+        questionOverlays.isBatteryQuestionsOpen = true
+    }
+
+    function refreshInspectedBatteryQuestions() {
+        if (questionOverlays.inspectBattery && questionOverlays.isBatteryQuestionsOpen) {
+            questionOverlays.batteryQuestionsList = dataController.getBatteryQuestions(questionOverlays.inspectBattery.id)
+        }
+    }
+
     function deleteBattery(batteryId) {
         if (dataController.deleteQuizBattery(batteryId)) {
             loadBatteries()
+            if (questionOverlays.inspectBattery && questionOverlays.inspectBattery.id === batteryId) {
+                questionOverlays.isBatteryQuestionsOpen = false
+                questionOverlays.inspectBattery = null
+                questionOverlays.batteryQuestionsList = []
+            }
         } else {
             showSessionNotice("Não foi possível mover a bateria para a lixeira.")
         }
@@ -171,9 +189,20 @@ Rectangle {
         onRequestOpenSimulationBuilder: questionOverlays.isSimulationBuilderOpen = true
         onRequestStartErrorNotebook: quizRoot.startErrorNotebookSession()
         onRequestStartBattery: function(battery) { quizRoot.startBatterySession(battery) }
-        onRequestCreateBattery: questionOverlays.isCreatingBattery = true
+        onRequestCreateBattery: {
+            questionOverlays.editingBattery = null
+            questionOverlays.isCreatingBattery = true
+        }
+        onRequestEditBattery: function(battery) {
+            questionOverlays.editingBattery = battery
+            questionOverlays.isCreatingBattery = true
+        }
+        onRequestInspectBattery: function(battery) {
+            quizRoot.openInspectBattery(battery)
+        }
         onRequestShowHelp: questionOverlays.isQuestionHelpOpen = true
         onRequestAddQuestion: function(battery) {
+            questionOverlays.editingQuestion = null
             questionOverlays.targetBatteryForQuestion = battery
             questionOverlays.isCreatingQuestion = true
         }
@@ -249,14 +278,33 @@ Rectangle {
         }
         onBatteryCreationRequested: function(title, description) {
             questionOverlays.isCreatingBattery = false
+            questionOverlays.editingBattery = null
             if (dataController.createQuizBattery(title, description)) {
                 quizRoot.loadBatteries()
             } else {
                 quizRoot.showSessionNotice("Não foi possível criar a bateria.")
             }
         }
-        onCreateBatteryModalClosed: questionOverlays.isCreatingBattery = false
+        onBatteryUpdateRequested: function(batteryId, title, description) {
+            questionOverlays.isCreatingBattery = false
+            questionOverlays.editingBattery = null
+            if (dataController.updateQuizBattery(batteryId, title, description)) {
+                quizRoot.loadBatteries()
+                if (questionOverlays.inspectBattery && questionOverlays.inspectBattery.id === batteryId) {
+                    questionOverlays.inspectBattery.title = title
+                    questionOverlays.inspectBattery.description = description
+                }
+            } else {
+                quizRoot.showSessionNotice("Não foi possível atualizar a bateria.")
+            }
+        }
+        onCreateBatteryModalClosed: {
+            questionOverlays.isCreatingBattery = false
+            questionOverlays.editingBattery = null
+        }
         onQuestionCreationRequested: function(batteryId, prompt, options, correctIndex, explanation, tags) {
+            questionOverlays.isCreatingQuestion = false
+            questionOverlays.editingQuestion = null
             if (dataController.createQuizQuestion(
                 batteryId,
                 prompt,
@@ -266,11 +314,40 @@ Rectangle {
                 JSON.stringify(tags)
             )) {
                 quizRoot.loadBatteries()
+                quizRoot.refreshInspectedBatteryQuestions()
             } else {
                 quizRoot.showSessionNotice("Não foi possível salvar a questão. Confira as alternativas e o gabarito.")
             }
         }
-        onCreateQuestionModalClosed: questionOverlays.isCreatingQuestion = false
+        onQuestionUpdateRequested: function(questionId, batteryId, prompt, options, correctIndex, explanation, tags) {
+            questionOverlays.isCreatingQuestion = false
+            questionOverlays.editingQuestion = null
+            if (dataController.updateQuizQuestion(
+                questionId,
+                prompt,
+                JSON.stringify(options),
+                correctIndex,
+                explanation,
+                JSON.stringify(tags)
+            )) {
+                quizRoot.loadBatteries()
+                quizRoot.refreshInspectedBatteryQuestions()
+            } else {
+                quizRoot.showSessionNotice("Não foi possível atualizar a questão. Confira os dados informados.")
+            }
+        }
+        onQuestionDeleteRequested: function(questionId) {
+            if (dataController.deleteQuizQuestion(questionId)) {
+                quizRoot.loadBatteries()
+                quizRoot.refreshInspectedBatteryQuestions()
+            } else {
+                quizRoot.showSessionNotice("Não foi possível excluir a questão.")
+            }
+        }
+        onCreateQuestionModalClosed: {
+            questionOverlays.isCreatingQuestion = false
+            questionOverlays.editingQuestion = null
+        }
     }
 
     Keys.onPressed: function(event) {

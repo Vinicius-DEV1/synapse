@@ -200,8 +200,11 @@ public:
     Q_INVOKABLE QVariantList getRandomSimulationQuestions(int limit = 10);
     Q_INVOKABLE QVariantList getFilteredQuizQuestions(const QVariantList &tags, const QString &status, int limit, bool shuffle);
     Q_INVOKABLE bool createQuizBattery(const QString &title, const QString &description);
+    Q_INVOKABLE bool updateQuizBattery(const QString &batteryId, const QString &title, const QString &description);
     Q_INVOKABLE bool deleteQuizBattery(const QString &batteryId);
     Q_INVOKABLE bool createQuizQuestion(const QString &batteryId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation = "", const QString &tagsJson = "[]");
+    Q_INVOKABLE bool updateQuizQuestion(const QString &questionId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation = "", const QString &tagsJson = "[]");
+    Q_INVOKABLE bool deleteQuizQuestion(const QString &questionId);
     Q_INVOKABLE bool recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect);
 
     // 5. Finanças & Wishlist

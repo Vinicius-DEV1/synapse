@@ -217,6 +217,15 @@ bool SynapseDataController::createQuizBattery(const QString &title, const QStrin
     return ok;
 }
 
+bool SynapseDataController::updateQuizBattery(const QString &batteryId, const QString &title, const QString &description) {
+    if (batteryId.trimmed().isEmpty() || title.trimmed().isEmpty()) return false;
+    const QString ts = currentTimestamp();
+    const QString sql = "UPDATE quiz_batteries SET title = ?, description = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL";
+    const bool ok = executeSqlPrepared(sql, {title.trimmed(), description.trimmed(), ts, batteryId}) == 1;
+    if (ok) refreshStats();
+    return ok;
+}
+
 bool SynapseDataController::deleteQuizBattery(const QString &batteryId) {
     QString ts = currentTimestamp();
     QString sql = QString("UPDATE quiz_batteries SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(batteryId));
@@ -263,6 +272,55 @@ bool SynapseDataController::createQuizQuestion(const QString &batteryId, const Q
         batteryId, ts, ts}) == 1;
     if (saved) refreshStats();
     return saved;
+}
+
+bool SynapseDataController::updateQuizQuestion(const QString &questionId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation, const QString &tagsJson) {
+    const QJsonDocument optionsDocument = QJsonDocument::fromJson(optionsJson.toUtf8());
+    const QJsonDocument tagsDocument = QJsonDocument::fromJson(tagsJson.toUtf8());
+    if (questionId.trimmed().isEmpty() || question.trimmed().isEmpty()
+            || !optionsDocument.isArray() || !tagsDocument.isArray()) return false;
+    const QJsonArray options = optionsDocument.array();
+    QJsonArray normalizedTags;
+    QSet<QString> seenTags;
+    for (const QJsonValue &tagValue : tagsDocument.array()) {
+        if (!tagValue.isString()) return false;
+        const QString tag = tagValue.toString().trimmed();
+        const QString normalized = tag.toCaseFolded();
+        if (!tag.isEmpty() && !seenTags.contains(normalized)) {
+            seenTags.insert(normalized);
+            normalizedTags.append(tag);
+        }
+    }
+    if (options.size() < 2 || correctIndex < 0 || correctIndex >= options.size()) return false;
+    for (const QJsonValue &option : options) {
+        if (!option.isString() || option.toString().trimmed().isEmpty()) return false;
+    }
+
+    const QString ts = currentTimestamp();
+    const QString correctAnswer = options.at(correctIndex).toString();
+    const QString sql = "UPDATE quiz_questions SET question = ?, options = ?, correct_answer = ?, correct_index = ?, "
+                        "explanation = ?, tags = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL";
+    const bool ok = executeSqlPrepared(sql, {
+        question.trimmed(),
+        QString::fromUtf8(QJsonDocument(options).toJson(QJsonDocument::Compact)),
+        correctAnswer,
+        correctIndex,
+        explanation.trimmed(),
+        QString::fromUtf8(QJsonDocument(normalizedTags).toJson(QJsonDocument::Compact)),
+        ts,
+        questionId
+    }) == 1;
+    if (ok) refreshStats();
+    return ok;
+}
+
+bool SynapseDataController::deleteQuizQuestion(const QString &questionId) {
+    if (questionId.trimmed().isEmpty()) return false;
+    const QString ts = currentTimestamp();
+    const QString sql = "UPDATE quiz_questions SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL";
+    const bool ok = executeSqlPrepared(sql, {ts, questionId}) == 1;
+    if (ok) refreshStats();
+    return ok;
 }
 
 bool SynapseDataController::recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect) {

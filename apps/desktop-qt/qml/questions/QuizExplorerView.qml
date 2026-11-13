@@ -14,6 +14,8 @@ Item {
     signal requestStartErrorNotebook()
     signal requestStartBattery(var battery)
     signal requestCreateBattery()
+    signal requestEditBattery(var battery)
+    signal requestInspectBattery(var battery)
     signal requestShowHelp()
     signal requestAddQuestion(var battery)
     signal requestDeleteBattery(string batteryId)
@@ -127,6 +129,8 @@ Item {
                 batteries: explorerRoot.batteries
                 onStartBatteryRequested: function(bat) { explorerRoot.requestStartBattery(bat) }
                 onAddQuestionRequested: function(bat) { explorerRoot.requestAddQuestion(bat) }
+                onEditBatteryRequested: function(bat) { explorerRoot.requestEditBattery(bat) }
+                onInspectBatteryRequested: function(bat) { explorerRoot.requestInspectBattery(bat) }
                 onDeleteBatteryRequested: function(batId) { explorerRoot.requestDeleteBattery(batId) }
                 onStartGeneralPracticeRequested: explorerRoot.requestStartGeneralPractice()
                 onCreateBatteryRequested: explorerRoot.requestCreateBattery()

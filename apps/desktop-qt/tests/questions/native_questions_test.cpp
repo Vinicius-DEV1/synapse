@@ -56,6 +56,64 @@ private slots:
         QVERIFY(!controller.recordQuizAttempt(batteryId, questionId, 4, false));
         QVERIFY(!controller.createQuizQuestion(batteryId, "Invalid", "not-json", 0, ""));
     }
+
+    void batteryAndQuestionLifecycleWithUpdatesAndDeletion() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("native-questions-edit.sqlite")));
+        QVERIFY(controller.createQuizBattery("Initial Battery", "Initial Description"));
+
+        QVariantList batteries = controller.getQuizBatteries();
+        QCOMPARE(batteries.size(), 1);
+        const QString batteryId = batteries.first().toMap().value("id").toString();
+        QVERIFY(!batteryId.isEmpty());
+
+        // Test updating battery
+        QVERIFY(controller.updateQuizBattery(batteryId, "Updated Battery", "Updated Description"));
+        batteries = controller.getQuizBatteries();
+        QCOMPARE(batteries.size(), 1);
+        QCOMPARE(batteries.first().toMap().value("title").toString(), QString("Updated Battery"));
+        QCOMPARE(batteries.first().toMap().value("description").toString(), QString("Updated Description"));
+
+        // Create question
+        QVERIFY(controller.createQuizQuestion(
+            batteryId, "Original prompt?", "[\"Opt1\",\"Opt2\",\"Opt3\",\"Opt4\"]", 0, "Original expl", "[\"tag1\"]"));
+
+        QVariantList questions = controller.getBatteryQuestions(batteryId);
+        QCOMPARE(questions.size(), 1);
+        const QString questionId = questions.first().toMap().value("id").toString();
+        QVERIFY(!questionId.isEmpty());
+
+        // Test updating question
+        QVERIFY(controller.updateQuizQuestion(
+            questionId, "Edited prompt?", "[\"A\",\"B\",\"C\",\"D\"]", 2, "Edited explanation", "[\"tag2\",\"tag3\"]"));
+
+        questions = controller.getBatteryQuestions(batteryId);
+        QCOMPARE(questions.size(), 1);
+        const QVariantMap updatedQ = questions.first().toMap();
+        QCOMPARE(updatedQ.value("question").toString(), QString("Edited prompt?"));
+        QCOMPARE(updatedQ.value("options").toString(), QString("[\"A\",\"B\",\"C\",\"D\"]"));
+        QCOMPARE(updatedQ.value("correct_index").toInt(), 2);
+        QCOMPARE(updatedQ.value("explanation").toString(), QString("Edited explanation"));
+        QCOMPARE(updatedQ.value("tags").toString(), QString("[\"tag2\",\"tag3\"]"));
+
+        // Test invalid updates
+        QVERIFY(!controller.updateQuizBattery("", "Title", "Desc"));
+        QVERIFY(!controller.updateQuizQuestion("", "Prompt", "[\"A\",\"B\"]", 0, "", "[]"));
+        QVERIFY(!controller.updateQuizQuestion(questionId, "Prompt", "invalid-json", 0, "", "[]"));
+        QVERIFY(!controller.updateQuizQuestion(questionId, "Prompt", "[\"A\",\"B\"]", 3, "", "[]")); // index out of bounds
+
+        // Test deleting question
+        QVERIFY(controller.deleteQuizQuestion(questionId));
+        questions = controller.getBatteryQuestions(batteryId);
+        QCOMPARE(questions.size(), 0);
+        QCOMPARE(controller.getAllQuizQuestions().size(), 0);
+
+        // Deleting non-existent question returns false
+        QVERIFY(!controller.deleteQuizQuestion("non-existent-id"));
+    }
 };
 
 int runNativeQuestionsTest(int argc, char **argv) {

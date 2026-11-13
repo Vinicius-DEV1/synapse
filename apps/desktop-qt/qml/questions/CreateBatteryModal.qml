@@ -10,14 +10,22 @@ Rectangle {
     z: 120
 
     property bool isOpen: false
+    property var editingBattery: null
+    readonly property bool isEditing: editingBattery !== null && editingBattery !== undefined
 
     signal closed()
     signal batteryCreated(string title, string description)
+    signal batteryUpdated(string batteryId, string title, string description)
 
     onIsOpenChanged: {
         if (isOpen) {
-            batteryTitleInput.text = ""
-            batteryDescInput.text = ""
+            if (isEditing) {
+                batteryTitleInput.text = editingBattery.title || ""
+                batteryDescInput.text = editingBattery.description || ""
+            } else {
+                batteryTitleInput.text = ""
+                batteryDescInput.text = ""
+            }
             batteryTitleInput.forceActiveFocus()
         }
     }
@@ -39,7 +47,7 @@ Rectangle {
             spacing: 14
 
             Text {
-                text: "Nova Bateria de Questões"
+                text: createBatteryRoot.isEditing ? "Editar Bateria de Questões" : "Nova Bateria de Questões"
                 color: "#fffffe"
                 font.pixelSize: 17
                 font.bold: true
@@ -74,11 +82,17 @@ Rectangle {
                 }
 
                 Button {
-                    text: "Criar Bateria"
+                    text: createBatteryRoot.isEditing ? "Salvar Alterações" : "Criar Bateria"
                     Layout.fillWidth: true
                     onClicked: {
-                        if (batteryTitleInput.text.trim().length > 0) {
-                            createBatteryRoot.batteryCreated(batteryTitleInput.text.trim(), batteryDescInput.text.trim())
+                        var title = batteryTitleInput.text.trim()
+                        var desc = batteryDescInput.text.trim()
+                        if (title.length > 0) {
+                            if (createBatteryRoot.isEditing) {
+                                createBatteryRoot.batteryUpdated(createBatteryRoot.editingBattery.id, title, desc)
+                            } else {
+                                createBatteryRoot.batteryCreated(title, desc)
+                            }
                             createBatteryRoot.closed()
                         }
                     }

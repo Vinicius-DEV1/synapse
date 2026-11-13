@@ -10,6 +10,8 @@ ColumnLayout {
 
     signal startBatteryRequested(var battery)
     signal addQuestionRequested(var battery)
+    signal editBatteryRequested(var battery)
+    signal inspectBatteryRequested(var battery)
     signal deleteBatteryRequested(string batteryId)
     signal startGeneralPracticeRequested()
     signal createBatteryRequested()
@@ -119,6 +121,36 @@ ColumnLayout {
                         radius: 8
                         color: "#0affffff"
 
+                        Text { anchors.centerIn: parent; text: "📋"; font.pixelSize: 11 }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: gridRoot.inspectBatteryRequested(modelData)
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 8
+                        color: "#0affffff"
+
+                        Text { anchors.centerIn: parent; text: "✏️"; font.pixelSize: 11 }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: gridRoot.editBatteryRequested(modelData)
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 8
+                        color: "#0affffff"
+
                         Text { anchors.centerIn: parent; text: "+"; color: "#a7a9be"; font.pixelSize: 16; font.bold: true }
 
                         MouseArea {
@@ -150,6 +182,8 @@ ColumnLayout {
                 anchors.fill: parent
                 z: -1
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: gridRoot.inspectBatteryRequested(modelData)
             }
         }
     }

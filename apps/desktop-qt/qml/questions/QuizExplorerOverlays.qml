@@ -18,8 +18,13 @@ Item {
     property bool isDeleteConfirmationOpen: false
     property string pendingDeleteBatteryId: ""
     property bool isCreatingBattery: false
+    property var editingBattery: null
     property bool isCreatingQuestion: false
+    property var editingQuestion: null
     property var targetBatteryForQuestion: null
+    property bool isBatteryQuestionsOpen: false
+    property var inspectBattery: null
+    property var batteryQuestionsList: []
 
     signal sessionNoticeDismissed()
     signal startSimulationRequested(var tags, string status, int limit, bool shuffle)
@@ -29,8 +34,11 @@ Item {
     signal questionHelpClosed()
     signal deleteBatteryConfirmed(string batteryId)
     signal batteryCreationRequested(string title, string description)
+    signal batteryUpdateRequested(string batteryId, string title, string description)
     signal createBatteryModalClosed()
     signal questionCreationRequested(string batteryId, string prompt, var options, int correctIndex, string explanation, var tags)
+    signal questionUpdateRequested(string questionId, string batteryId, string prompt, var options, int correctIndex, string explanation, var tags)
+    signal questionDeleteRequested(string questionId)
     signal createQuestionModalClosed()
 
     QuizResultsModal {
@@ -89,18 +97,46 @@ Item {
 
     CreateBatteryModal {
         isOpen: overlaysRoot.isCreatingBattery
+        editingBattery: overlaysRoot.editingBattery
         onClosed: overlaysRoot.createBatteryModalClosed()
         onBatteryCreated: function(title, description) {
             overlaysRoot.batteryCreationRequested(title, description)
+        }
+        onBatteryUpdated: function(batteryId, title, description) {
+            overlaysRoot.batteryUpdateRequested(batteryId, title, description)
         }
     }
 
     CreateQuestionModal {
         isOpen: overlaysRoot.isCreatingQuestion
         targetBattery: overlaysRoot.targetBatteryForQuestion
+        editingQuestion: overlaysRoot.editingQuestion
         onClosed: overlaysRoot.createQuestionModalClosed()
         onQuestionCreated: function(batteryId, prompt, options, correctIndex, explanation, tags) {
             overlaysRoot.questionCreationRequested(batteryId, prompt, options, correctIndex, explanation, tags)
+        }
+        onQuestionUpdated: function(questionId, batteryId, prompt, options, correctIndex, explanation, tags) {
+            overlaysRoot.questionUpdateRequested(questionId, batteryId, prompt, options, correctIndex, explanation, tags)
+        }
+    }
+
+    BatteryQuestionsModal {
+        isOpen: overlaysRoot.isBatteryQuestionsOpen
+        battery: overlaysRoot.inspectBattery
+        questions: overlaysRoot.batteryQuestionsList
+        onClosed: overlaysRoot.isBatteryQuestionsOpen = false
+        onRequestAddQuestion: function(bat) {
+            overlaysRoot.targetBatteryForQuestion = bat
+            overlaysRoot.editingQuestion = null
+            overlaysRoot.isCreatingQuestion = true
+        }
+        onRequestEditQuestion: function(q) {
+            overlaysRoot.editingQuestion = q
+            overlaysRoot.targetBatteryForQuestion = overlaysRoot.inspectBattery
+            overlaysRoot.isCreatingQuestion = true
+        }
+        onRequestDeleteQuestion: function(qId) {
+            overlaysRoot.questionDeleteRequested(qId)
         }
     }
 }

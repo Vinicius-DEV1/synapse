@@ -83,7 +83,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     text: helpRoot.activeSection === "batteries"
-                        ? "Use Nova Bateria para criar um conjunto de questões. Abra o botão + de uma bateria para adicionar uma questão. O editor aceita quatro alternativas, permite escolher o gabarito e salva explicação e tags no banco local. O ícone de lixeira move uma bateria para a lixeira após confirmação."
+                        ? "Use Nova Bateria para criar um conjunto de questões ou o ícone ✏️ para renomear e editar título e descrição. Clique no cartão ou no ícone 📋 para inspecionar todas as questões da bateria em um modal detalhado, onde é possível conferir alternativas, gabarito, tags, editar enunciados (✏️) ou excluir questões (🗑️). Abra o botão + para cadastrar novas questões com quatro alternativas, gabarito, explicação e tags no banco local."
                         : helpRoot.activeSection === "simulation"
                         ? "Abra Configurar no cartão Simulado Dinâmico. Selecione uma ou mais tags para restringir a sessão; sem tags, todas as questões compatíveis ficam elegíveis. Filtre por todas, sem resposta ou erros, escolha 5, 10, 20, 30 ou 50 questões e ative ou desative o embaralhamento. A sessão usa somente questões salvas."
                         : helpRoot.activeSection === "review"

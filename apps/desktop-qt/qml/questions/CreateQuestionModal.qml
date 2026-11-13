@@ -11,20 +11,50 @@ Rectangle {
 
     property bool isOpen: false
     property var targetBattery: null
+    property var editingQuestion: null
+    readonly property bool isEditing: editingQuestion !== null && editingQuestion !== undefined
 
     signal closed()
     signal questionCreated(string batteryId, string prompt, var options, int correctIndex, string explanation, var tags)
+    signal questionUpdated(string questionId, string batteryId, string prompt, var options, int correctIndex, string explanation, var tags)
 
     onIsOpenChanged: {
         if (isOpen) {
-            qPromptInput.text = ""
-            optA.text = ""
-            optB.text = ""
-            optC.text = ""
-            optD.text = ""
-            correctOptionSelector.currentIndex = 0
-            qExplInput.text = ""
-            qTagsInput.text = ""
+            if (isEditing) {
+                qPromptInput.text = editingQuestion.question || ""
+                var opts = []
+                try {
+                    opts = JSON.parse(editingQuestion.options)
+                } catch (e) {
+                    opts = []
+                }
+                optA.text = opts.length > 0 ? opts[0] : ""
+                optB.text = opts.length > 1 ? opts[1] : ""
+                optC.text = opts.length > 2 ? opts[2] : ""
+                optD.text = opts.length > 3 ? opts[3] : ""
+
+                var cIndex = editingQuestion.correct_index !== undefined ? editingQuestion.correct_index : 0
+                correctOptionSelector.currentIndex = (cIndex >= 0 && cIndex < 4) ? cIndex : 0
+
+                qExplInput.text = editingQuestion.explanation || ""
+
+                var tagsList = []
+                try {
+                    tagsList = JSON.parse(editingQuestion.tags)
+                } catch (e) {
+                    tagsList = []
+                }
+                qTagsInput.text = Array.isArray(tagsList) ? tagsList.join(", ") : (editingQuestion.tags || "")
+            } else {
+                qPromptInput.text = ""
+                optA.text = ""
+                optB.text = ""
+                optC.text = ""
+                optD.text = ""
+                correctOptionSelector.currentIndex = 0
+                qExplInput.text = ""
+                qTagsInput.text = ""
+            }
             qPromptInput.forceActiveFocus()
         }
     }
@@ -32,7 +62,7 @@ Rectangle {
     MouseArea { anchors.fill: parent }
 
     function isFormValid() {
-        return Boolean(targetBattery)
+        return (Boolean(targetBattery) || isEditing)
             && qPromptInput.text.trim().length > 0
             && optA.text.trim().length > 0
             && optB.text.trim().length > 0
@@ -55,10 +85,14 @@ Rectangle {
             spacing: 12
 
             Text {
-                text: "Adicionar Questão em " + (createQuestionRoot.targetBattery ? createQuestionRoot.targetBattery.title : "Bateria")
+                text: createQuestionRoot.isEditing
+                    ? ("Editar Questão em " + (createQuestionRoot.targetBattery ? createQuestionRoot.targetBattery.title : "Bateria"))
+                    : ("Adicionar Questão em " + (createQuestionRoot.targetBattery ? createQuestionRoot.targetBattery.title : "Bateria"))
                 color: "#fffffe"
                 font.pixelSize: 16
                 font.bold: true
+                elide: Text.ElideRight
+                Layout.fillWidth: true
             }
 
             TextField {
@@ -69,7 +103,7 @@ Rectangle {
                 background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 }
             }
 
-            TextField { id: optA; Layout.fillWidth: true; placeholderText: "Alternativa A (Correta)..."; color: "#ffffff"; background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 } }
+            TextField { id: optA; Layout.fillWidth: true; placeholderText: "Alternativa A..."; color: "#ffffff"; background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 } }
             TextField { id: optB; Layout.fillWidth: true; placeholderText: "Alternativa B..."; color: "#ffffff"; background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 } }
             TextField { id: optC; Layout.fillWidth: true; placeholderText: "Alternativa C..."; color: "#ffffff"; background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 } }
             TextField { id: optD; Layout.fillWidth: true; placeholderText: "Alternativa D..."; color: "#ffffff"; background: Rectangle { color: "#0f0e17"; border.color: "#1affffff"; radius: 8 } }
@@ -108,7 +142,7 @@ Rectangle {
                 }
 
                 Button {
-                    text: "Salvar Questão"
+                    text: createQuestionRoot.isEditing ? "Salvar Alterações" : "Salvar Questão"
                     Layout.fillWidth: true
                     enabled: createQuestionRoot.isFormValid()
                     onClicked: {
@@ -117,14 +151,28 @@ Rectangle {
                             var tags = qTagsInput.text.split(",")
                             for (var i = 0; i < tags.length; ++i) tags[i] = tags[i].trim()
                             tags = tags.filter(function(tag) { return tag.length > 0 })
-                            createQuestionRoot.questionCreated(
-                                createQuestionRoot.targetBattery.id,
-                                qPromptInput.text.trim(),
-                                opts,
-                                correctOptionSelector.currentIndex,
-                                qExplInput.text.trim(),
-                                tags
-                            )
+
+                            if (createQuestionRoot.isEditing) {
+                                var batteryId = createQuestionRoot.targetBattery ? createQuestionRoot.targetBattery.id : createQuestionRoot.editingQuestion.battery_id
+                                createQuestionRoot.questionUpdated(
+                                    createQuestionRoot.editingQuestion.id,
+                                    batteryId,
+                                    qPromptInput.text.trim(),
+                                    opts,
+                                    correctOptionSelector.currentIndex,
+                                    qExplInput.text.trim(),
+                                    tags
+                                )
+                            } else {
+                                createQuestionRoot.questionCreated(
+                                    createQuestionRoot.targetBattery.id,
+                                    qPromptInput.text.trim(),
+                                    opts,
+                                    correctOptionSelector.currentIndex,
+                                    qExplInput.text.trim(),
+                                    tags
+                                )
+                            }
                             createQuestionRoot.closed()
                         }
                     }
