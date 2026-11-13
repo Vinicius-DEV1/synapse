@@ -14,6 +14,7 @@ ColumnLayout {
     signal backupRequested()
     signal optimizeRequested()
     signal clearFeedbackRequested()
+    signal helpRequested()
 
     function formatBytes(bytes) {
         if (!bytes || bytes <= 0) return "0 B"
@@ -42,6 +43,31 @@ ColumnLayout {
         }
 
         Item { Layout.fillWidth: true }
+
+        Rectangle {
+            width: 38
+            height: 38
+            radius: 10
+            color: helpMouse.containsMouse ? "#201e30" : "#161524"
+            border.color: helpMouse.containsMouse ? "#448b5cf6" : "#12ffffff"
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "?"
+                color: "#a7a9be"
+                font.pixelSize: 15
+                font.bold: true
+            }
+
+            MouseArea {
+                id: helpMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.helpRequested()
+            }
+        }
 
         Rectangle {
             width: 154

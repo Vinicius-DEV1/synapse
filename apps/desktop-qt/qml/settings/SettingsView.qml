@@ -10,6 +10,7 @@ Rectangle {
     property string backupFeedback: ""
     property string activeAccentColor: "#8b5cf6"
     property int autoLockMinutes: 15
+    property bool isHelpOpen: false
 
     function updateDiagnostics() {
         diagnostics = dataController.getSystemDiagnostics()
@@ -54,6 +55,7 @@ Rectangle {
                     settingsRoot.updateDiagnostics()
                 }
                 onClearFeedbackRequested: settingsRoot.backupFeedback = ""
+                onHelpRequested: settingsRoot.isHelpOpen = true
             }
 
             // Volumetry Grid
@@ -102,6 +104,20 @@ Rectangle {
         onSuccess: {
             settingsRoot.backupFeedback = "Senha mestra e segurança do cofre atualizadas com sucesso!"
             dataController.refreshStats()
+        }
+    }
+
+    SettingsHelpDialog {
+        isOpen: settingsRoot.isHelpOpen
+        onClosed: settingsRoot.isHelpOpen = false
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: settingsRoot.isHelpOpen || masterPassModal.visible
+        onActivated: {
+            if (settingsRoot.isHelpOpen) settingsRoot.isHelpOpen = false
+            else if (masterPassModal.visible) masterPassModal.visible = false
         }
     }
 }
