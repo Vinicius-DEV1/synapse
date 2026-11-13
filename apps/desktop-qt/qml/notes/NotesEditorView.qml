@@ -396,6 +396,12 @@ Rectangle {
         onExpandRequested: function(pageId) {
             if (notesRoot.selectPage(pageId)) referencePreview.close()
         }
+        onPageSaved: function(savedPageId, newTitle) {
+            notesRoot.loadPages()
+            if (notesRoot.selectedPageId === savedPageId) {
+                notesRoot.activeTitle = newTitle
+            }
+        }
     }
 
     NotesHelpDialog {

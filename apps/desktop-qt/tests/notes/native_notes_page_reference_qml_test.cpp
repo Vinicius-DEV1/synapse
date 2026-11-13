@@ -24,6 +24,19 @@ public:
     int createCount = 0;
     bool shouldFail = false;
 
+    QString lastSavedPageId;
+    QString lastSavedTitle;
+    QString lastSavedContent;
+    QString lastSavedIcon;
+    QString lastSavedExpectedUpdatedAt;
+    QString lastSavedDescription;
+    int savePageCount = 0;
+    bool saveShouldFail = false;
+    QString currentTitle = QStringLiteral("Stored target");
+    QString currentDescription = QStringLiteral("Target description");
+    QString currentContent = QStringLiteral("<p>Target body</p>");
+    QString currentUpdatedAt = QStringLiteral("2026-11-13T12:00:00Z");
+
     Q_INVOKABLE QString createSubPage(const QString &parentId, const QString &title, const QString &icon) {
         ++createCount;
         lastParentId = parentId;
@@ -32,10 +45,32 @@ public:
         return shouldFail ? QString() : createdPageId;
     }
 
+    Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content,
+                              const QString &icon, const QString &expectedUpdatedAt = QString()) {
+        if (saveShouldFail) return false;
+        ++savePageCount;
+        lastSavedPageId = pageId;
+        lastSavedTitle = title;
+        lastSavedContent = content;
+        lastSavedIcon = icon;
+        lastSavedExpectedUpdatedAt = expectedUpdatedAt;
+        currentTitle = title;
+        currentContent = content;
+        currentUpdatedAt = QStringLiteral("2026-11-13T12:05:00Z");
+        return true;
+    }
+
+    Q_INVOKABLE bool updatePageDescription(const QString &pageId, const QString &description) {
+        lastSavedDescription = description;
+        currentDescription = description;
+        return true;
+    }
+
     Q_INVOKABLE QVariantMap getPage(const QString &pageId) {
         if (pageId != QStringLiteral("page-one")) return {};
-        return {{"id", pageId}, {"title", "Stored target"}, {"icon", "📄"},
-                {"description", "Target description"}, {"content", "<p>Target body</p>"}};
+        return {{"id", pageId}, {"title", currentTitle}, {"icon", "📄"},
+                {"description", currentDescription}, {"content", currentContent},
+                {"updated_at", currentUpdatedAt}};
     }
 };
 
@@ -73,6 +108,74 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(preview.data(), "requestExpand", Q_RETURN_ARG(QVariant, expandedResult)));
         QVERIFY(!expandedResult.toBool());
         QCOMPARE(expanded.count(), 0);
+    }
+
+    void floatingPagePreviewEditsTitleDescriptionAndContentWithPersistence() {
+        QQmlEngine engine;
+        MockPageCreationController controller;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesPageReferencePreview.qml")));
+        QScopedPointer<QObject> preview(component.create());
+        QVERIFY2(preview, qPrintable(component.errorString()));
+        preview->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        preview->setProperty("pageId", "page-one");
+
+        QVariant loaded;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "loadPage", Q_RETURN_ARG(QVariant, loaded)));
+        QVERIFY(loaded.toBool());
+        QVERIFY(!preview->property("isEditing").toBool());
+        QVERIFY(!preview->property("isDirty").toBool());
+        QCOMPARE(preview->property("editTitle").toString(), QString("Stored target"));
+        QCOMPARE(preview->property("editDescription").toString(), QString("Target description"));
+        QCOMPARE(preview->property("editContent").toString(), QString("<p>Target body</p>"));
+
+        QVariant startResult;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "startEditing", Q_RETURN_ARG(QVariant, startResult)));
+        QVERIFY(startResult.toBool());
+        QVERIFY(preview->property("isEditing").toBool());
+
+        preview->setProperty("editTitle", "Modified title");
+        preview->setProperty("editDescription", "Modified description");
+        preview->setProperty("editContent", "<p>Modified content</p>");
+        QVERIFY(preview->property("isDirty").toBool());
+
+        QSignalSpy savedSpy(preview.data(), SIGNAL(pageSaved(QString, QString)));
+        QVariant saveResult;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "saveEdits", Q_RETURN_ARG(QVariant, saveResult)));
+        QVERIFY(saveResult.toBool());
+        QCOMPARE(controller.savePageCount, 1);
+        QCOMPARE(controller.lastSavedTitle, QString("Modified title"));
+        QCOMPARE(controller.lastSavedContent, QString("<p>Modified content</p>"));
+        QCOMPARE(controller.lastSavedDescription, QString("Modified description"));
+        QCOMPARE(controller.lastSavedExpectedUpdatedAt, QString("2026-11-13T12:00:00Z"));
+        QVERIFY(!preview->property("isEditing").toBool());
+        QVERIFY(!preview->property("isDirty").toBool());
+        QVERIFY(preview->property("statusMessage").toString().contains("Saved"));
+        QCOMPARE(savedSpy.count(), 1);
+        QCOMPARE(savedSpy.at(0).at(0).toString(), QString("page-one"));
+        QCOMPARE(savedSpy.at(0).at(1).toString(), QString("Modified title"));
+
+        // Test cancel
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "startEditing", Q_RETURN_ARG(QVariant, startResult)));
+        QVERIFY(startResult.toBool());
+        preview->setProperty("editTitle", "Discarded title");
+        QVERIFY(preview->property("isDirty").toBool());
+        QVariant cancelResult;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "cancelEditing", Q_RETURN_ARG(QVariant, cancelResult)));
+        QVERIFY(cancelResult.toBool());
+        QVERIFY(!preview->property("isEditing").toBool());
+        QCOMPARE(preview->property("editTitle").toString(), QString("Modified title"));
+        QCOMPARE(controller.savePageCount, 1);
+
+        // Test save failure
+        controller.saveShouldFail = true;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "startEditing", Q_RETURN_ARG(QVariant, startResult)));
+        preview->setProperty("editTitle", "Failing title");
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "saveEdits", Q_RETURN_ARG(QVariant, saveResult)));
+        QVERIFY(!saveResult.toBool());
+        QVERIFY(preview->property("isEditing").toBool());
+        QVERIFY(preview->property("statusMessage").toString().contains("Failed"));
     }
 
     void reactPageReferenceMarkupRoundTripsAndRejectsUnsafeIds() {
