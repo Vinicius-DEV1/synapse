@@ -9,11 +9,12 @@ Rectangle {
     z: 95
 
     property string selectedColor: "#3b82f6"
+    property string selectedType: "event"
     property string initialDateStr: ""
     property var initialEvent: null
     property string errorMessage: ""
 
-    signal eventSubmitted(string title, string desc, string dateTime, string color)
+    signal eventSubmitted(string title, string desc, string dateTime, string color, string type, string pageId)
     signal closed()
 
     function loadInitialEvent() {
@@ -23,6 +24,7 @@ Rectangle {
             eventDescInput.text = initialEvent.description || ""
             eventDateInput.text = initialEvent.start_date || initialEvent.start_time || ""
             selectedColor = initialEvent.color || "#3b82f6"
+            selectedType = initialEvent.type || initialEvent.type_ || "event"
             return
         }
         resetFields()
@@ -42,6 +44,7 @@ Rectangle {
         eventDescInput.text = ""
         eventDateInput.text = Qt.formatDateTime(new Date(), "yyyy-MM-ddThh:mm:ss")
         selectedColor = "#3b82f6"
+        selectedType = "event"
     }
 
     MouseArea {
@@ -51,8 +54,8 @@ Rectangle {
 
     Rectangle {
         anchors.centerIn: parent
-        width: 460
-        height: 420
+        width: 480
+        height: 500
         radius: 16
         color: "#161524"
         border.color: "#14ffffff"
@@ -90,6 +93,44 @@ Rectangle {
                 color: "#fda4af"
                 font.pixelSize: 11
                 wrapMode: Text.Wrap
+            }
+
+            // Type Selector
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Repeater {
+                    model: [
+                        { id: "event", label: "📅 Evento" },
+                        { id: "task", label: "✓ Tarefa" },
+                        { id: "reminder", label: "🔔 Lembrete" }
+                    ]
+                    delegate: Rectangle {
+                        id: typeChip
+                        property var itemData: modelData
+                        Layout.fillWidth: true
+                        height: 34
+                        radius: 8
+                        color: modalRoot.selectedType === typeChip.itemData.id ? "#263b82f6" : "#15141b"
+                        border.color: modalRoot.selectedType === typeChip.itemData.id ? "#3b82f6" : "#15ffffff"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: typeChip.itemData.label
+                            color: modalRoot.selectedType === typeChip.itemData.id ? "#ffffff" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: modalRoot.selectedType === typeChip.itemData.id
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: modalRoot.selectedType = typeChip.itemData.id
+                        }
+                    }
+                }
             }
 
             // Title Input
@@ -214,7 +255,7 @@ Rectangle {
                                 return
                             }
                             modalRoot.errorMessage = ""
-                            modalRoot.eventSubmitted(eventTitleInput.text, eventDescInput.text, eventDateInput.text, modalRoot.selectedColor)
+                            modalRoot.eventSubmitted(eventTitleInput.text, eventDescInput.text, eventDateInput.text, modalRoot.selectedColor, modalRoot.selectedType, "")
                         }
                     }
                 }

@@ -233,8 +233,8 @@ public:
 
     // 7. Calendário & Agenda
     Q_INVOKABLE QVariantList getCalendarEvents();
-    Q_INVOKABLE bool createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type = "event", const QString &color = "#3b82f6");
-    Q_INVOKABLE bool updateCalendarEvent(const QString &eventId, const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &color);
+    Q_INVOKABLE bool createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type = "event", const QString &color = "#3b82f6", const QString &pageId = "");
+    Q_INVOKABLE bool updateCalendarEvent(const QString &eventId, const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &color, const QString &type = "", const QString &pageId = "");
     Q_INVOKABLE bool toggleEventStatus(const QString &eventId);
     Q_INVOKABLE bool deleteCalendarEvent(const QString &eventId);
 

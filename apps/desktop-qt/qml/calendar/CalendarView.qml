@@ -192,6 +192,7 @@ Rectangle {
                 calendarRoot.applyFilters()
             }
             onCreateEventRequested: calendarRoot.openCreateModal("")
+            onHelpRequested: helpDialog.isOpen = true
         }
 
         // Main View: Month Calendar Grid OR Events List
@@ -240,10 +241,10 @@ Rectangle {
             calendarRoot.isCreatingEvent = false
             calendarRoot.editingEvent = null
         }
-        onEventSubmitted: function(title, desc, dateTime, color) {
+        onEventSubmitted: function(title, desc, dateTime, color, type, pageId) {
             var saved = calendarRoot.editingEvent
-                ? dataController.updateCalendarEvent(calendarRoot.editingEvent.id, title, desc, dateTime, dateTime, color)
-                : dataController.createCalendarEvent(title, desc, dateTime, dateTime, "event", color)
+                ? dataController.updateCalendarEvent(calendarRoot.editingEvent.id, title, desc, dateTime, dateTime, color, type, pageId)
+                : dataController.createCalendarEvent(title, desc, dateTime, dateTime, type, color, pageId)
             if (!saved) {
                 createModal.errorMessage = qsTr("The event could not be saved. Check the title and date.")
                 return
@@ -252,5 +253,10 @@ Rectangle {
             calendarRoot.editingEvent = null
             calendarRoot.refreshEvents()
         }
+    }
+
+    CalendarHelpDialog {
+        id: helpDialog
+        onClosed: isOpen = false
     }
 }

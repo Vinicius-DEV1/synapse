@@ -47,13 +47,40 @@ ListView {
                 Layout.fillWidth: true
                 spacing: 4
 
-                Text {
-                    text: modelData.title
-                    color: modelData.status === "completed" ? "#64748b" : "#fffffe"
-                    font.pixelSize: 15
-                    font.bold: true
-                    font.strikeout: modelData.status === "completed"
-                    elide: Text.ElideRight
+                RowLayout {
+                    spacing: 8
+                    Layout.fillWidth: true
+
+                    Text {
+                        text: modelData.title
+                        color: modelData.status === "completed" ? "#64748b" : "#fffffe"
+                        font.pixelSize: 15
+                        font.bold: true
+                        font.strikeout: modelData.status === "completed"
+                        elide: Text.ElideRight
+                    }
+
+                    Rectangle {
+                        id: typeBadge
+                        property string evType: modelData.type || modelData.type_ || "event"
+                        visible: evType !== ""
+                        height: 20
+                        width: typeBadgeText.implicitWidth + 12
+                        radius: 4
+                        color: evType === "task" ? "#1a10b981" : evType === "reminder" ? "#1af59e0b" : "#1a3b82f6"
+                        border.color: evType === "task" ? "#3310b981" : evType === "reminder" ? "#33f59e0b" : "#333b82f6"
+
+                        Text {
+                            id: typeBadgeText
+                            anchors.centerIn: parent
+                            text: typeBadge.evType === "task" ? "✓ Tarefa" : typeBadge.evType === "reminder" ? "🔔 Lembrete" : "📅 Evento"
+                            color: typeBadge.evType === "task" ? "#34d399" : typeBadge.evType === "reminder" ? "#fbbf24" : "#60a5fa"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
                 }
 
                 RowLayout {
