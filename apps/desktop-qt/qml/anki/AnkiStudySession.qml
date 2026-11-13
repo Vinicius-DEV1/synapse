@@ -24,6 +24,17 @@ Rectangle {
 
     readonly property var currentCard: (cards.length > 0 && currentCardIndex < cards.length) ? cards[currentCardIndex] : null
 
+    function isClozeCard(card) {
+        if (!card || !card.front) return false;
+        return card.front.indexOf("{{c") !== -1 || card.card_type === "cloze";
+    }
+
+    function getTargetClozeAnswer(card) {
+        if (!card || !card.front) return "";
+        var match = card.front.match(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/);
+        return match ? match[1].trim() : "";
+    }
+
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 760)

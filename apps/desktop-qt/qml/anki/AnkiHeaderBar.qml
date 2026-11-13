@@ -10,6 +10,7 @@ RowLayout {
 
     signal toggleStatsRequested()
     signal createRootDeckRequested()
+    signal helpRequested()
 
     ColumnLayout {
         spacing: 4
@@ -29,9 +30,41 @@ RowLayout {
 
     Item { Layout.fillWidth: true }
 
+    // "Ajuda / Guia" Button
+    Rectangle {
+        Layout.preferredWidth: 92
+        Layout.preferredHeight: 40
+        radius: 10
+        color: helpMouse.containsMouse ? "#20ffffff" : "#1a1924"
+        border.color: "#15ffffff"
+        border.width: 1
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 6
+            Text { text: "💡"; font.pixelSize: 13 }
+            Text {
+                text: "Guia"
+                color: "#e4e4e7"
+                font.pixelSize: 13
+                font.bold: true
+            }
+        }
+
+        MouseArea {
+            id: helpMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: headerRoot.helpRequested()
+        }
+    }
+
     // "Estatísticas" Button
     Rectangle {
-        width: 130; height: 40; radius: 10
+        Layout.preferredWidth: 130
+        Layout.preferredHeight: 40
+        radius: 10
         color: headerRoot.isShowingStats ? "#266366f1" : "#1a1924"
         border.color: headerRoot.isShowingStats ? "#818cf8" : "#15ffffff"
         border.width: 1
@@ -57,7 +90,9 @@ RowLayout {
 
     // "+ Criar Baralho" Button
     Rectangle {
-        width: 144; height: 40; radius: 10
+        Layout.preferredWidth: 144
+        Layout.preferredHeight: 40
+        radius: 10
         color: createDeckMouse.containsMouse ? "#4f46e5" : "#6366f1"
 
         RowLayout {

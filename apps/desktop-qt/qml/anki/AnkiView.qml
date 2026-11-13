@@ -27,8 +27,10 @@ Rectangle {
     property var browserCards: []
     property string browserSearchQuery: ""
     property bool isCreatingCard: false
+    property var editingCard: null
     property bool isDeckSettingsOpen: false
     property bool isShowingStats: false
+    property bool isHelpDialogOpen: false
     property var globalStats: ({})
 
     Component.onCompleted: {
@@ -162,6 +164,7 @@ Rectangle {
                         ankiRoot.isShowingStats = !ankiRoot.isShowingStats
                     }
                     onCreateRootDeckRequested: ankiRoot.openCreateRootDeck()
+                    onHelpRequested: ankiRoot.isHelpDialogOpen = true
                 }
 
                 // Decks List Section (When not in Stats mode)
@@ -221,7 +224,14 @@ Rectangle {
         deck: ankiRoot.browserDeck
         cards: ankiRoot.browserCards
         onClosed: ankiRoot.isDeckBrowserOpen = false
-        onRequestAddCard: ankiRoot.isCreatingCard = true
+        onRequestAddCard: {
+            ankiRoot.editingCard = null
+            ankiRoot.isCreatingCard = true
+        }
+        onRequestEditCard: function(card) {
+            ankiRoot.editingCard = card
+            ankiRoot.isCreatingCard = true
+        }
         onRequestOpenSettings: ankiRoot.isDeckSettingsOpen = true
         onRequestDeleteCard: function(cardId) {
             dataController.deleteCard(cardId)
@@ -246,16 +256,25 @@ Rectangle {
     }
 
     // ===================================================================
-    // 5. Create Card Modal
+    // 5. Create / Edit Card Modal
     // ===================================================================
     AnkiCreateCardModal {
         id: createCardModal
         isOpen: ankiRoot.isCreatingCard
         deck: ankiRoot.browserDeck
-        onClosed: ankiRoot.isCreatingCard = false
-        onCardCreated: function(deckId, front, back, extraNote) {
-            dataController.createCard(deckId, front, back, extraNote)
+        editingCard: ankiRoot.editingCard
+        onClosed: {
+            ankiRoot.isCreatingCard = false
+            ankiRoot.editingCard = null
+        }
+        onCardCreated: function(deckId, front, back, tags, cardType, extraNote) {
+            dataController.createCard(deckId, front, back, tags, cardType, extraNote)
             ankiRoot.loadBrowserCards(deckId)
+            ankiRoot.reloadDecks()
+        }
+        onCardUpdated: function(cardId, deckId, front, back, tags, cardType, extraNote) {
+            dataController.updateCard(cardId, front, back, tags, cardType, extraNote)
+            if (deckId) ankiRoot.loadBrowserCards(deckId)
             ankiRoot.reloadDecks()
         }
     }
@@ -282,5 +301,14 @@ Rectangle {
             ankiRoot.loadBrowserCards(deckId)
             ankiRoot.reloadDecks()
         }
+    }
+
+    // ===================================================================
+    // 7. Flashcards In-App Guide Dialog
+    // ===================================================================
+    AnkiHelpDialog {
+        id: ankiHelpDialog
+        isOpen: ankiRoot.isHelpDialogOpen
+        onDismissRequested: ankiRoot.isHelpDialogOpen = false
     }
 }

@@ -23,6 +23,7 @@ int runNativeLibraryTest(int argc, char **argv);
 int runNativeLibraryCoverTest(int argc, char **argv);
 int runNativeFilesTest(int argc, char **argv);
 int runNativeVaultCryptoTest(int argc, char **argv);
+int runNativeAnkiTest(int argc, char **argv);
 
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
@@ -50,5 +51,6 @@ int main(int argc, char **argv) {
     result |= runNativeLibraryCoverTest(argc, argv);
     result |= runNativeFilesTest(argc, argv);
     result |= runNativeVaultCryptoTest(argc, argv);
+    result |= runNativeAnkiTest(argc, argv);
     return result;
 }

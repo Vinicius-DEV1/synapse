@@ -13,8 +13,12 @@
 // Native Anki card scheduling and review persistence.
 
 QVariantList SynapseDataController::getDeckCards(const QString &deckId) {
-    QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
-                          "c.validation_mode, c.extra_note, c.media_url, "
+    QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, "
+                          "COALESCE(c.tags, '') as tags, "
+                          "COALESCE(c.card_type, 'reading') as card_type, "
+                          "COALESCE(c.validation_mode, 'default') as validation_mode, "
+                          "COALESCE(c.extra_note, '') as extra_note, "
+                          "c.media_url, "
                           "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
                           "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
                           "COALESCE(s.state, 'new') as state, s.due_date "
@@ -50,8 +54,12 @@ QVariantList SynapseDataController::getDueCards(const QString &deckId) {
     }
 
     QString sql = QString(
-        "SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
-        "c.validation_mode, c.extra_note, c.media_url, "
+        "SELECT c.id, c.deck_id, c.front, c.back, "
+        "COALESCE(c.tags, '') as tags, "
+        "COALESCE(c.card_type, 'reading') as card_type, "
+        "COALESCE(c.validation_mode, 'default') as validation_mode, "
+        "COALESCE(c.extra_note, '') as extra_note, "
+        "c.media_url, "
         "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
         "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
         "COALESCE(s.state, 'new') as state, s.due_date "
@@ -68,8 +76,12 @@ QVariantList SynapseDataController::getDueCards(const QString &deckId) {
     QVariantList list = executeQuery(sql).toVariantList();
     // If no due cards in current schedule, provide all cards in the deck for practice study
     if (list.isEmpty()) {
-        QString fallbackSql = QString("SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, "
-                                      "c.validation_mode, c.extra_note, c.media_url, "
+        QString fallbackSql = QString("SELECT c.id, c.deck_id, c.front, c.back, "
+                                      "COALESCE(c.tags, '') as tags, "
+                                      "COALESCE(c.card_type, 'reading') as card_type, "
+                                      "COALESCE(c.validation_mode, 'default') as validation_mode, "
+                                      "COALESCE(c.extra_note, '') as extra_note, "
+                                      "c.media_url, "
                                       "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
                                       "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
                                       "COALESCE(s.state, 'new') as state, s.due_date "
@@ -81,12 +93,16 @@ QVariantList SynapseDataController::getDueCards(const QString &deckId) {
     return list;
 }
 
-bool SynapseDataController::createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags) {
+bool SynapseDataController::createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags, const QString &cardType, const QString &extraNote) {
+    if (deckId.trimmed().isEmpty() || front.trimmed().isEmpty()) {
+        return false;
+    }
     QString id = generateUuid();
     QString ts = currentTimestamp();
-    QString cardSql = QString("INSERT INTO anki_cards (id, deck_id, front, back, tags, card_type, validation_mode, created_at, updated_at) "
-                              "VALUES ('%1', '%2', '%3', '%4', '%5', 'basic', 'default', '%6', '%7');")
-        .arg(id, escapeSql(deckId), escapeSql(front), escapeSql(back), escapeSql(tags), ts, ts);
+    QString resolvedType = cardType.trimmed().isEmpty() ? QStringLiteral("reading") : cardType.trimmed();
+    QString cardSql = QString("INSERT INTO anki_cards (id, deck_id, front, back, tags, card_type, validation_mode, extra_note, created_at, updated_at) "
+                              "VALUES ('%1', '%2', '%3', '%4', '%5', '%6', 'default', '%7', '%8', '%9');")
+        .arg(id, escapeSql(deckId), escapeSql(front), escapeSql(back), escapeSql(tags), escapeSql(resolvedType), escapeSql(extraNote), ts, ts);
     
     QString srsSql = QString("INSERT INTO anki_srs_state (id, due_date, stability, difficulty, elapsed_days, reps, lapses, state, scheduled_days, created_at, updated_at) "
                              "VALUES ('%1', '%2', 0.0, 0.0, 0, 0, 0, 'new', 0, '%3', '%4');")
@@ -97,10 +113,15 @@ bool SynapseDataController::createCard(const QString &deckId, const QString &fro
     return ok;
 }
 
-bool SynapseDataController::updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags) {
+bool SynapseDataController::updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags, const QString &cardType, const QString &extraNote) {
+    if (cardId.trimmed().isEmpty() || front.trimmed().isEmpty()) {
+        return false;
+    }
     QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_cards SET front = '%1', back = '%2', tags = '%3', updated_at = '%4' WHERE id = '%5'")
-        .arg(escapeSql(front), escapeSql(back), escapeSql(tags), ts, escapeSql(cardId));
+    QString resolvedType = cardType.trimmed().isEmpty() ? QStringLiteral("reading") : cardType.trimmed();
+    QString sql = QString("UPDATE anki_cards SET front = '%1', back = '%2', tags = '%3', card_type = '%4', extra_note = '%5', updated_at = '%6' "
+                          "WHERE id = '%7' AND deleted_at IS NULL")
+        .arg(escapeSql(front), escapeSql(back), escapeSql(tags), escapeSql(resolvedType), escapeSql(extraNote), ts, escapeSql(cardId));
     return executeSql(sql);
 }
 

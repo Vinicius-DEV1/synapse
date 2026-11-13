@@ -12,18 +12,47 @@ Rectangle {
     property bool isOpen: false
     property var deck: null
     property var cards: []
+    property string searchQuery: ""
+    property string typeFilter: "all"
 
     signal closed()
     signal requestAddCard()
+    signal requestEditCard(var card)
     signal requestOpenSettings()
     signal requestDeleteCard(string cardId)
+
+    readonly property var filteredCards: {
+        var query = searchQuery.trim().toLowerCase()
+        var filter = typeFilter
+        var list = cards || []
+        return list.filter(function(card) {
+            if (filter !== "all") {
+                var ctype = card.card_type || "reading"
+                if (ctype !== filter) return false
+            }
+            if (!query) return true
+            var front = (card.front || "").toLowerCase()
+            var back = (card.back || "").toLowerCase()
+            var tags = (card.tags || "").toLowerCase()
+            var extra = (card.extra_note || "").toLowerCase()
+            return front.indexOf(query) !== -1 || back.indexOf(query) !== -1 ||
+                   tags.indexOf(query) !== -1 || extra.indexOf(query) !== -1
+        })
+    }
+
+    onIsOpenChanged: {
+        if (isOpen) {
+            searchQuery = ""
+            typeFilter = "all"
+        }
+    }
 
     MouseArea { anchors.fill: parent }
 
     Rectangle {
         anchors.centerIn: parent
-        width: Math.min(parent.width - 64, 860)
-        height: Math.min(parent.height - 64, 600)
+        width: Math.min(parent.width - 48, 880)
+        height: Math.min(parent.height - 48, 620)
         radius: 16
         color: "#161524"
         border.color: "#18ffffff"
@@ -31,8 +60,8 @@ Rectangle {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 24
-            spacing: 16
+            anchors.margins: 20
+            spacing: 12
 
             // Browser Header
             RowLayout {
@@ -48,7 +77,7 @@ Rectangle {
                         font.bold: true
                     }
                     Text {
-                        text: browserRoot.cards.length + " cartão(ões) cadastrado(s)"
+                        text: browserRoot.filteredCards.length + " de " + (browserRoot.cards ? browserRoot.cards.length : 0) + " cartão(ões)"
                         color: "#a7a9be"
                         font.pixelSize: 12
                     }
@@ -59,7 +88,7 @@ Rectangle {
                 // "+ Novo Cartão" Button
                 Rectangle {
                     width: 130; height: 36; radius: 8
-                    color: "#6366f1"
+                    color: newCardMouse.containsMouse ? "#4f46e5" : "#6366f1"
 
                     RowLayout {
                         anchors.centerIn: parent; spacing: 6
@@ -68,7 +97,9 @@ Rectangle {
                     }
 
                     MouseArea {
+                        id: newCardMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: browserRoot.requestAddCard()
                     }
@@ -77,7 +108,7 @@ Rectangle {
                 // "⚙ Ajustes" Button
                 Rectangle {
                     width: 96; height: 36; radius: 8
-                    color: "#211f30"
+                    color: settingsMouse.containsMouse ? "#2d2a40" : "#211f30"
                     border.color: "#15ffffff"
 
                     RowLayout {
@@ -87,7 +118,9 @@ Rectangle {
                     }
 
                     MouseArea {
+                        id: settingsMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: browserRoot.requestOpenSettings()
                     }
@@ -96,14 +129,104 @@ Rectangle {
                 // Close Button
                 Rectangle {
                     width: 32; height: 32; radius: 8
-                    color: "#10ffffff"
-
+                    color: closeMouse.containsMouse ? "#20ffffff" : "#10ffffff"
                     Text { anchors.centerIn: parent; text: "✕"; color: "#a7a9be"; font.pixelSize: 14 }
-
                     MouseArea {
+                        id: closeMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: browserRoot.closed()
+                    }
+                }
+            }
+
+            // Search Bar & Type Filter Chips
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                // Search Input
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                    radius: 8
+                    color: "#0f0e17"
+                    border.color: "#1affffff"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 8
+
+                        Text { text: "🔍"; font.pixelSize: 12; color: "#71717a" }
+
+                        TextField {
+                            id: searchInput
+                            Layout.fillWidth: true
+                            placeholderText: "Buscar cartões por frente, verso ou tags..."
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            background: null
+                            text: browserRoot.searchQuery
+                            onTextChanged: browserRoot.searchQuery = text
+                        }
+
+                        Text {
+                            visible: browserRoot.searchQuery.length > 0
+                            text: "✕"
+                            color: "#a7a9be"
+                            font.pixelSize: 11
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    browserRoot.searchQuery = ""
+                                    searchInput.text = ""
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Type Filter Chips
+                RowLayout {
+                    spacing: 6
+
+                    Repeater {
+                        model: [
+                            { key: "all", label: "Todos" },
+                            { key: "reading", label: "Leitura" },
+                            { key: "cloze", label: "Cloze" },
+                            { key: "typing", label: "Digitação" },
+                            { key: "listening", label: "Escuta" }
+                        ]
+
+                        delegate: Rectangle {
+                            readonly property bool isSelected: browserRoot.typeFilter === modelData.key
+                            Layout.preferredHeight: 32
+                            Layout.preferredWidth: chipText.contentWidth + 16
+                            radius: 6
+                            color: isSelected ? "#312e81" : "#1a1928"
+                            border.color: isSelected ? "#818cf8" : "#14ffffff"
+                            border.width: 1
+
+                            Text {
+                                id: chipText
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: parent.isSelected ? "#ffffff" : "#a7a9be"
+                                font.pixelSize: 11
+                                font.bold: parent.isSelected
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: browserRoot.typeFilter = modelData.key
+                            }
+                        }
                     }
                 }
             }
@@ -122,23 +245,59 @@ Rectangle {
                     anchors.fill: parent
                     anchors.margins: 8
                     spacing: 6
-                    model: browserRoot.cards
+                    model: browserRoot.filteredCards
 
                     delegate: Rectangle {
+                        id: cardItemRect
                         width: browserCardsList.width
-                        height: 60
+                        height: 68
                         radius: 8
-                        color: "#1a1924"
-                        border.color: "#0affffff"
+                        color: cardMouse.containsMouse ? "#212030" : "#1a1924"
+                        border.color: cardMouse.containsMouse ? "#20818cf8" : "#0affffff"
+
+                        readonly property string cardType: modelData.card_type || "reading"
+                        readonly property color typeColor: {
+                            if (cardType === "cloze") return "#a855f7"
+                            if (cardType === "typing") return "#10b981"
+                            if (cardType === "listening") return "#f59e0b"
+                            return "#6366f1"
+                        }
+
+                        MouseArea {
+                            id: cardMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: browserRoot.requestEditCard(modelData)
+                        }
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 16
+                            anchors.margins: 10
+                            spacing: 12
+
+                            // Type Badge
+                            Rectangle {
+                                Layout.preferredWidth: typeBadgeLabel.contentWidth + 10
+                                Layout.preferredHeight: 20
+                                radius: 4
+                                color: Qt.rgba(cardItemRect.typeColor.r, cardItemRect.typeColor.g, cardItemRect.typeColor.b, 0.15)
+                                border.color: Qt.rgba(cardItemRect.typeColor.r, cardItemRect.typeColor.g, cardItemRect.typeColor.b, 0.4)
+                                border.width: 1
+
+                                Text {
+                                    id: typeBadgeLabel
+                                    anchors.centerIn: parent
+                                    text: cardItemRect.cardType.toUpperCase()
+                                    color: cardItemRect.typeColor
+                                    font.pixelSize: 9
+                                    font.bold: true
+                                }
+                            }
 
                             // Question Front Preview
                             ColumnLayout {
-                                Layout.preferredWidth: 300
+                                Layout.preferredWidth: 260
                                 spacing: 2
                                 Text { text: "FRENTE"; color: "#818cf8"; font.pixelSize: 9; font.bold: true }
                                 Text {
@@ -165,23 +324,60 @@ Rectangle {
                                 }
                             }
 
-                            // Reps Count
+                            // Tags / Extra preview if present
                             Text {
-                                Layout.preferredWidth: 70
-                                text: (modelData.reps || 0) + " reps"
-                                color: "#64748b"
-                                font.pixelSize: 11
+                                Layout.preferredWidth: 90
+                                text: modelData.tags ? ("#" + modelData.tags) : ""
+                                color: "#818cf8"
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
+                                visible: modelData.tags && modelData.tags.length > 0
+                            }
+
+                            // Reps Count & SRS State
+                            ColumnLayout {
+                                Layout.preferredWidth: 65
+                                spacing: 2
+                                Text {
+                                    text: (modelData.reps || 0) + " reps"
+                                    color: "#64748b"
+                                    font.pixelSize: 11
+                                }
+                                Text {
+                                    text: (modelData.state === "review") ? "Revisão" : ((modelData.state === "learning") ? "Aprender" : "Novo")
+                                    color: (modelData.state === "review") ? "#10b981" : ((modelData.state === "learning") ? "#f59e0b" : "#60a5fa")
+                                    font.pixelSize: 9
+                                    font.bold: true
+                                }
+                            }
+
+                            // Edit Button
+                            Rectangle {
+                                width: 28; height: 28; radius: 6
+                                color: editMouse.containsMouse ? "#206366f1" : "#106366f1"
+
+                                Text { anchors.centerIn: parent; text: "✏️"; font.pixelSize: 12 }
+
+                                MouseArea {
+                                    id: editMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: browserRoot.requestEditCard(modelData)
+                                }
                             }
 
                             // Delete Card Button
                             Rectangle {
                                 width: 28; height: 28; radius: 6
-                                color: "#1af43f5e"
+                                color: deleteMouse.containsMouse ? "#30f43f5e" : "#1af43f5e"
 
                                 Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 12 }
 
                                 MouseArea {
+                                    id: deleteMouse
                                     anchors.fill: parent
+                                    hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: browserRoot.requestDeleteCard(modelData.id)
                                 }
@@ -189,11 +385,13 @@ Rectangle {
                         }
                     }
 
-                    // Empty Cards Placeholder
+                    // Empty Placeholder
                     Text {
                         anchors.centerIn: parent
-                        visible: browserRoot.cards.length === 0
-                        text: "Nenhum cartão cadastrado neste baralho.\nClique em '+ Novo Cartão' acima para começar."
+                        visible: browserRoot.filteredCards.length === 0
+                        text: (browserRoot.cards && browserRoot.cards.length > 0)
+                            ? "Nenhum cartão encontrado para o filtro atual."
+                            : "Nenhum cartão cadastrado neste baralho.\nClique em '+ Novo Cartão' acima para começar."
                         color: "#64748b"
                         font.pixelSize: 13
                         horizontalAlignment: Text.AlignHCenter

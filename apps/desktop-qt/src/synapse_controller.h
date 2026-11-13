@@ -185,8 +185,8 @@ public:
     Q_INVOKABLE bool resetDeckProgress(const QString &deckId);
     Q_INVOKABLE QVariantList getDeckCards(const QString &deckId);
     Q_INVOKABLE QVariantList getDueCards(const QString &deckId);
-    Q_INVOKABLE bool createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags = "");
-    Q_INVOKABLE bool updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags = "");
+    Q_INVOKABLE bool createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags = "", const QString &cardType = "reading", const QString &extraNote = "");
+    Q_INVOKABLE bool updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags = "", const QString &cardType = "reading", const QString &extraNote = "");
     Q_INVOKABLE bool deleteCard(const QString &cardId);
     Q_INVOKABLE bool recordCardReview(const QString &cardId, int rating);
 
