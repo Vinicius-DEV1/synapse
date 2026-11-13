@@ -27,6 +27,7 @@ int runNativeAnkiTest(int argc, char **argv);
 int runNativeHabitsTest(int argc, char **argv);
 int runNativeCultureTest(int argc, char **argv);
 int runNativeFocusTest(int argc, char **argv);
+int runNativeNotificationsTest(int argc, char **argv);
 
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
@@ -58,5 +59,6 @@ int main(int argc, char **argv) {
     result |= runNativeHabitsTest(argc, argv);
     result |= runNativeCultureTest(argc, argv);
     result |= runNativeFocusTest(argc, argv);
+    result |= runNativeNotificationsTest(argc, argv);
     return result;
 }

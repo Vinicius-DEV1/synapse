@@ -355,6 +355,7 @@ public:
     Q_INVOKABLE QVariantList getNotifications();
     Q_INVOKABLE bool markNotificationRead(const QString &notificationId = "");
     Q_INVOKABLE bool deleteNotification(const QString &notificationId);
+    Q_INVOKABLE bool clearAllNotifications();
     Q_INVOKABLE bool addNotification(const QString &title, const QString &message,
                                      const QString &type = "system",
                                      const QString &targetPageId = "",

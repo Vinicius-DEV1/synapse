@@ -20,18 +20,31 @@ QVariantList SynapseDataController::getNotifications() {
 }
 
 bool SynapseDataController::markNotificationRead(const QString &notificationId) {
-    const QString where = notificationId.isEmpty()
-        ? "is_read = 0 AND deleted_at IS NULL"
-        : QString("id = '%1' AND deleted_at IS NULL").arg(escapeSql(notificationId));
-    const bool ok = executeSql(QString("UPDATE notifications SET is_read = 1, updated_at = '%1' WHERE %2")
-                               .arg(currentTimestamp(), where));
+    const QString now = currentTimestamp();
+    bool ok = false;
+    if (notificationId.isEmpty()) {
+        ok = executeSqlPrepared("UPDATE notifications SET is_read = 1, updated_at = ? WHERE is_read = 0 AND deleted_at IS NULL",
+                                {now});
+    } else {
+        ok = executeSqlPrepared("UPDATE notifications SET is_read = 1, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+                                {now, notificationId});
+    }
     if (ok) refreshStats();
     return ok;
 }
 
 bool SynapseDataController::deleteNotification(const QString &notificationId) {
-    const bool ok = executeSql(QString("UPDATE notifications SET deleted_at = '%1', updated_at = '%1' WHERE id = '%2'")
-                               .arg(currentTimestamp(), escapeSql(notificationId)));
+    const QString now = currentTimestamp();
+    const bool ok = executeSqlPrepared("UPDATE notifications SET deleted_at = ?, updated_at = ? WHERE id = ?",
+                                       {now, now, notificationId});
+    if (ok) refreshStats();
+    return ok;
+}
+
+bool SynapseDataController::clearAllNotifications() {
+    const QString now = currentTimestamp();
+    const bool ok = executeSqlPrepared("UPDATE notifications SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL",
+                                       {now, now});
     if (ok) refreshStats();
     return ok;
 }
@@ -41,14 +54,15 @@ bool SynapseDataController::addNotification(const QString &title, const QString 
                                             const QString &eventId, const QString &scheduledFor) {
     const QString id = generateUuid();
     const QString now = currentTimestamp();
-    const QString pageIdSql = targetPageId.isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(targetPageId));
-    const QString eventIdSql = eventId.isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(eventId));
-    const QString scheduledSql = scheduledFor.isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(scheduledFor));
-    const QString sql = QString("INSERT INTO notifications (id, title, message, type, target_page_id, event_id, scheduled_for, fired_at, is_read, created_at) "
-                                "VALUES ('%1', '%2', '%3', '%4', %5, %6, %7, '%8', 0, '%8')")
-                            .arg(id, escapeSql(title), escapeSql(message), escapeSql(type),
-                                 pageIdSql, eventIdSql, scheduledSql, now);
-    const bool ok = executeSql(sql);
+    const QVariant pageIdVal = targetPageId.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(targetPageId);
+    const QVariant eventIdVal = eventId.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(eventId);
+    const QVariant scheduledVal = scheduledFor.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(scheduledFor);
+
+    const bool ok = executeSqlPrepared(
+        "INSERT INTO notifications (id, title, message, type, target_page_id, event_id, scheduled_for, fired_at, is_read, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
+        {id, title, message, type, pageIdVal, eventIdVal, scheduledVal, now, now}
+    );
     if (ok) refreshStats();
     return ok;
 }

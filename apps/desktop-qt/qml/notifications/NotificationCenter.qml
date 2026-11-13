@@ -11,8 +11,35 @@ Item {
 
     property bool isOpen: false
     property var notifications: []
+    property string currentFilter: "all"
+    property bool isHelpOpen: false
+
     signal closed()
     signal openPage(string pageId)
+
+    readonly property var filteredNotifications: {
+        if (!notifications || notifications.length === 0) return []
+        if (currentFilter === "all") return notifications
+        if (currentFilter === "unread") {
+            return notifications.filter(function(n) { return !n.is_read })
+        }
+        return notifications.filter(function(n) { return n.type === currentFilter })
+    }
+
+    function formatTimeAgo(dateStr) {
+        if (!dateStr) return ""
+        try {
+            var d = new Date(dateStr)
+            var diffMin = Math.floor((Date.now() - d.getTime()) / 60000)
+            if (diffMin < 1) return "Agora"
+            if (diffMin < 60) return "Há " + diffMin + " min"
+            var diffHours = Math.floor(diffMin / 60)
+            if (diffHours < 24) return "Há " + diffHours + " h"
+            return d.toLocaleDateString()
+        } catch (e) {
+            return ""
+        }
+    }
 
     function refresh() {
         notifications = dataController.getNotifications()
@@ -28,6 +55,11 @@ Item {
         refresh()
     }
 
+    function clearAll() {
+        dataController.clearAllNotifications()
+        refresh()
+    }
+
     onIsOpenChanged: {
         visible = isOpen
         if (isOpen) refresh()
@@ -36,7 +68,13 @@ Item {
     Shortcut {
         sequence: "Escape"
         enabled: centerRoot.isOpen
-        onActivated: centerRoot.closed()
+        onActivated: {
+            if (centerRoot.isHelpOpen) {
+                centerRoot.isHelpOpen = false
+            } else {
+                centerRoot.closed()
+            }
+        }
     }
 
     Rectangle {
@@ -51,7 +89,7 @@ Item {
 
     Rectangle {
         id: panel
-        width: Math.min(430, centerRoot.width - 32)
+        width: Math.min(460, centerRoot.width - 32)
         height: Math.min(680, centerRoot.height - 40)
         anchors.top: parent.top
         anchors.right: parent.right
@@ -69,6 +107,7 @@ Item {
             anchors.fill: parent
             spacing: 0
 
+            // Header Row
             RowLayout {
                 Layout.fillWidth: true
                 Layout.margins: 16
@@ -106,6 +145,14 @@ Item {
                     contentItem: Text { text: parent.text; color: theme.brand400; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
                 }
                 Button {
+                    text: "?"
+                    onClicked: centerRoot.isHelpOpen = true
+                    background: Rectangle { color: parent.hovered ? theme.bgHover : "transparent"; radius: 7 }
+                    contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                }
+                Button {
                     text: "×"
                     onClicked: centerRoot.closed()
                     background: Rectangle { color: parent.hovered ? theme.bgHover : "transparent"; radius: 7 }
@@ -115,8 +162,61 @@ Item {
                 }
             }
 
+            // Filter Tabs Row
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                Layout.bottomMargin: 8
+                spacing: 6
+
+                Repeater {
+                    model: [
+                        { id: "all", label: "Todas" },
+                        { id: "unread", label: "Não lidas" },
+                        { id: "calendar_event", label: "Eventos" },
+                        { id: "alarm", label: "Alarmes" }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        height: 26
+                        radius: 6
+                        color: centerRoot.currentFilter === modelData.id ? theme.activePillBg : "transparent"
+                        border.color: centerRoot.currentFilter === modelData.id ? theme.borderBrand : theme.borderSubtle
+                        Layout.preferredWidth: filterLabel.implicitWidth + 14
+
+                        Text {
+                            id: filterLabel
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: centerRoot.currentFilter === modelData.id ? theme.brand300 : theme.textSubtext
+                            font.pixelSize: 11
+                            font.bold: centerRoot.currentFilter === modelData.id
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: centerRoot.currentFilter = modelData.id
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    visible: centerRoot.notifications.length > 0
+                    text: "Limpar tudo"
+                    onClicked: centerRoot.clearAll()
+                    background: Rectangle { color: parent.hovered ? theme.bgHover : "transparent"; radius: 6 }
+                    contentItem: Text { text: parent.text; color: theme.textMuted; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter }
+                    Layout.preferredHeight: 24
+                }
+            }
+
             Rectangle { Layout.fillWidth: true; height: 1; color: theme.borderSubtle }
 
+            // Notifications List
             ListView {
                 id: notificationList
                 Layout.fillWidth: true
@@ -124,7 +224,7 @@ Item {
                 Layout.margins: 10
                 clip: true
                 spacing: 8
-                model: centerRoot.notifications
+                model: centerRoot.filteredNotifications
 
                 delegate: Rectangle {
                     required property var modelData
@@ -157,9 +257,9 @@ Item {
                                 elide: Text.ElideRight
                             }
                             Text {
-                                text: modelData.fired_at || modelData.created_at || ""
+                                text: centerRoot.formatTimeAgo(modelData.fired_at || modelData.created_at)
                                 color: theme.textMuted
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                             }
                         }
 
@@ -234,17 +334,33 @@ Item {
 
                 footer: Item {
                     width: notificationList.width
-                    height: centerRoot.notifications.length === 0 ? 180 : 0
-                    visible: centerRoot.notifications.length === 0
+                    height: centerRoot.filteredNotifications.length === 0 ? 180 : 0
+                    visible: centerRoot.filteredNotifications.length === 0
                     Column {
                         anchors.centerIn: parent
                         spacing: 8
                         AppIcon { anchors.horizontalCenter: parent.horizontalCenter; width: 28; height: 28; name: "bell"; color: theme.textMuted }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Tudo em dia"; color: theme.textDark; font.pixelSize: 13; font.bold: true }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Suas notificações aparecerão aqui."; color: theme.textMuted; font.pixelSize: 11 }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: centerRoot.notifications.length === 0 ? "Tudo em dia" : "Nenhuma notificação encontrada"
+                            color: theme.textDark
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: centerRoot.notifications.length === 0 ? "Suas notificações aparecerão aqui." : "Nenhum item corresponde ao filtro selecionado."
+                            color: theme.textMuted
+                            font.pixelSize: 11
+                        }
                     }
                 }
             }
         }
+    }
+
+    NotificationHelpDialog {
+        isOpen: centerRoot.isHelpOpen
+        onClosed: centerRoot.isHelpOpen = false
     }
 }

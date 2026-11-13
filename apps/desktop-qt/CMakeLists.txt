@@ -191,6 +191,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/habits/native_habits_test.cpp
         tests/culture/native_culture_test.cpp
         tests/focus/native_focus_test.cpp
+        tests/notifications/native_notifications_test.cpp
         src/video/mpv_track_parser.cpp
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
