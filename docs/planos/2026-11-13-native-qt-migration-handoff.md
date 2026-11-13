@@ -19,6 +19,7 @@ This is an operational handoff, not a completion report. The [native desktop par
 - Use real application data and persistence. Do not add demo, sample, or mock content to user flows.
 - Use `SYNAPSE_DATABASE_PATH` with a disposable database for UI validation. Never validate UI flows against a personal database.
 - Do not claim complete parity, total encryption, or performance parity without comparable evidence. Keep unsupported structures and unverified visual comparisons explicit.
+- Both React and Qt must support sequential and simultaneous editing without silent lost updates. Treat cross-client Notes consistency as a data-integrity release blocker; prove it with reproducible tests rather than promising a bug-free system without evidence.
 
 ## Sources to Read Before Product Changes
 
@@ -51,28 +52,38 @@ Complete and document the active module's concrete work item, then continue to t
 
 The earlier request to validate signal wiring and the summary/review cycle after extracting `QuizExplorerOverlays.qml` is recorded in the [parity matrix](../native-desktop-parity.md) and covered by `apps/desktop-qt/tests/questions/qml/tst_quiz_session.qml`. The documented `qmltestrunner` check exercises signal forwarding, review navigation, restart, and return to the battery explorer with a controller test double. It does not establish real SQLite persistence or visual parity; keep the remaining Questions gaps in the matrix open.
 
-## Next Concrete Work Item: Move Rows and Columns Across Merged Cells
+## Highest-Priority Notes Work Item: Cross-Client Save and Sync Safety
 
-The open item is recorded in the [parity matrix](../native-desktop-parity.md) as **“Notes work item: move rows and columns across merged cells.”** Keep that entry updated with verified behavior and commands.
+The release blocker is recorded in the [parity matrix](../native-desktop-parity.md) as **“Notes work item: cross-client save, sync, and conflict safety.”** Keep that item and the authentication/cloud-sync row synchronized with code and reproducible evidence.
 
-### React behavior to compare
+### Current data paths and concrete risk
 
-- `apps/web-react/src/components/notes/components/TableToolbar.tsx` exposes adjacent row and column movement and disables the action at the table edges.
-- `apps/web-react/src/components/notes/components/table/tableSelectionUtils.ts` derives the active cell-selection rectangle and dispatches ProseMirror `moveTableRow` and `moveTableColumn`.
-- Read the installed ProseMirror implementation and relevant tests before porting span-intersection semantics. Do not infer the behavior from button names alone.
+- React sync includes `pages` and `page_history`, encrypts serialized database rows before Firestore writes, and merges Yjs state on pull. It does not merge arbitrary native HTML edits into a Yjs document.
+- `apps/desktop-qt/src/controllers/notes/notes_controller.cpp::savePage` updates HTML/encrypted HTML and `updated_at`, but does not update `crdt_state`.
+- React initializes a Yjs document from meaningful `crdt_state`; it seeds from HTML only when CRDT state is absent. A React save writes both HTML and CRDT state. Thus a Qt-edited page with stale nonempty CRDT can reopen as old content in React and later overwrite the Qt HTML.
+- Qt has no direct Firebase sync. On Linux it may select the canonical Tauri SQLite file, but a shared file does not synchronize an editor already open in memory. Browser IndexedDB, portable Tauri mode, and other platform data paths can be separate stores.
 
-### Native starting point and constraints
+### Required behavior and investigation
 
-- Inspect `apps/desktop-qt/src/controllers/notes/notes_rich_table_operations.cpp`, `notes_rich_table_structure_range.cpp`, their headers, and the corresponding native model/QML tests.
-- `NotesRichTableStructureRange::allowsActionWithMergedCells` currently refuses movement for any table containing merged cells. This is intentional protection: the current movement helper snapshots and replaces unit cells and is not safe for spans.
-- Implement the React behavior only where the native table map can be preserved. Keep malformed spans, cross-section selections, resized tables, and custom metadata on the existing safe fallback path unless their semantics are explicitly implemented and tested.
+- Compare React `apps/web-react/src/components/notes/hooks/useEditorSync.ts`, `useEditorSave.ts`, `Editor.tsx`, `apps/web-react/src/services/sync/sync-pull-merge.ts`, `sync-push.ts`, and `sync-utils.ts` with Qt's `notes_controller.cpp`, database selection in `synapse_controller.cpp`, and the `pages`/`page_history` schema.
+- Define and implement a lossless contract for HTML, Yjs state, history, encryption, dirty timestamps, and stale-write detection. Integrate Qt with the shared CRDT/sync mechanism or implement a proven, versioned, lossless reconciliation strategy; do not merely leave stale `crdt_state` alongside newer HTML.
+- Cover both clients sharing one SQLite database and clients with separate local databases that converge through Firebase. Include offline/reconnect, CRDT-backed and non-CRDT notes, supported rich formatting, encrypted notes, history, two open editors, simultaneous edits to separate regions, and concurrent edits to the same region.
+- Preserve both clients' accepted edits deterministically. Prevent stale saves from silently overwriting newer content. Define how incompatible edits resolve and retain enough revision history to recover them.
+- Use independent client instances and a reproducible persistence/sync integration environment. A mocked merge unit test alone is not acceptance evidence. Do not claim conflict-free operation until same-note sequential and concurrent flows pass.
 
-### Acceptance evidence
+### Acceptance evidence and fallback
 
-- Test row and column movement on both sides of intersecting row/column spans, including header movement, merged content, cell formatting and supported backgrounds.
-- Verify edge disabling, selection after movement, supported markup serialization and reload, and a single undo/redo step. Verify unsupported structures remain unchanged and report a clear failure/fallback.
-- Cover the model operation and toolbar/QML routing. Update `NotesHelpDialog.qml` if the user-visible behavior or supported-range explanation changes.
-- Record actual commands and outcomes in the parity matrix. A failed or incomplete case remains explicitly Open/Partial.
+- Record actual commands and outcomes in the matrix and relevant guides. The item remains a release blocker until it is demonstrated across both local shared-database and separate-database Firebase paths.
+- If a scenario cannot yet be made safe, explicitly prevent or warn about the unsafe edit path and document the limitation. Do not present it as supported or silently discard either version.
+
+## Next Notes Editor Work After the Data-Integrity Gate: Merged-Cell Movement
+
+The next visual editor item is recorded in the [parity matrix](../native-desktop-parity.md) as **“Notes work item: move rows and columns across merged cells.”**
+
+- React reference: `apps/web-react/src/components/notes/components/TableToolbar.tsx` and `apps/web-react/src/components/notes/components/table/tableSelectionUtils.ts` derive selection bounds and dispatch ProseMirror `moveTableRow` / `moveTableColumn`.
+- Qt starting point: `apps/desktop-qt/src/controllers/notes/notes_rich_table_operations.cpp`, `notes_rich_table_structure_range.cpp`, headers, and native model/QML tests. Current policy refuses movement in tables with merged spans because unit-cell snapshot/replacement is unsafe for spans.
+- Before changing code, inspect the installed ProseMirror implementation and tests. Preserve content, formatting, spans, backgrounds, header semantics, selection, serialization, bounds, and one-step undo. Keep malformed, resized, cross-section, and custom-metadata structures safely disabled unless fully supported.
+- Verify row/column moves around intersecting spans, header movement, boundaries, reload, undo/redo, and QML routing. Update `NotesHelpDialog.qml` if behavior changes; record commands and remaining gaps in the matrix.
 
 ## Current Notes Gaps Beyond the Next Item
 

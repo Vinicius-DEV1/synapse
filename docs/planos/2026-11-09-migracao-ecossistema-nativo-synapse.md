@@ -29,7 +29,7 @@ The Rust core does not yet own every module's business logic or persistence. App
 | 5 | Diagrams and AI practice | Last, per the accepted priority order | Complete remaining parity only after the higher-priority modules |
 | Separate review | Native Android | Not certified by the Qt matrix | Build and compare each Compose module against the same functional acceptance gates |
 
-Notes/editor remains Partial. The current Qt status is itemized in the [native parity matrix](../native-desktop-parity.md): merged-cell row/column insertion and deletion now preserve spans; movement across merged spans is the next focused structural gap. Same-viewport React comparison remains open.
+Notes/editor remains Partial. The current Qt status is itemized in the [native parity matrix](../native-desktop-parity.md). Cross-client data integrity is the highest-priority Notes issue: Qt saves HTML without updating React's Yjs `crdt_state`, and native Qt does not sync directly with Firebase. Resolve or safely guard concurrent and sequential Qt/React editing before claiming Notes safe across clients; no client may silently overwrite another client's saved edits. After that gate, continue the remaining editor gaps, including row/column movement across merged spans. Same-viewport React comparison remains open.
 
 ## Security Work
 
