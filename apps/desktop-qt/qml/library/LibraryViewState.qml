@@ -8,8 +8,49 @@ QtObject {
     property var collections: []
     property string filterText: ""
     property string statusFilter: "all"
+    property string formatFilter: "all" // "all", "pdf", "epub"
+    property string selectedAuthor: ""
     property string selectedCollectionId: ""
     property bool isViewingArchived: false
+    property string sortBy: "last_read" // "last_read", "title", "created", "author"
+    property string sortOrder: "desc" // "asc", "desc"
+
+    readonly property var authors: {
+        var map = ({})
+        var list = []
+        for (var i = 0; i < books.length; ++i) {
+            var b = books[i]
+            if (Boolean(b.is_archived) !== isViewingArchived) continue
+            var auth = String(b.author || "").trim()
+            if (auth.length > 0 && !map[auth]) {
+                map[auth] = true
+                list.push(auth)
+            }
+        }
+        list.sort(function(a, b) { return a.localeCompare(b) })
+        return list
+    }
+
+    readonly property bool hasActiveFilters: Boolean(
+        filterText.trim().length > 0 ||
+        statusFilter !== "all" ||
+        formatFilter !== "all" ||
+        selectedAuthor.length > 0 ||
+        selectedCollectionId.length > 0
+    )
+
+    function clearAllFilters() {
+        filterText = ""
+        statusFilter = "all"
+        formatFilter = "all"
+        selectedAuthor = ""
+        selectedCollectionId = ""
+    }
+
+    function isBookEpub(book) {
+        var path = String(book ? book.original_name || book.file_path || "" : "").toLowerCase()
+        return path.endsWith(".epub")
+    }
 
     function collectionsFor(book) {
         var values = book ? book.collections || [] : []
@@ -56,8 +97,38 @@ QtObject {
             for (var collectionIndex = 0; !matchesCollection && collectionIndex < bookCollections.length; ++collectionIndex) {
                 matchesCollection = bookCollections[collectionIndex].id === selectedCollectionId
             }
-            if (matchesSearch && matchesArchive && matchesStatus && matchesCollection) filtered.push(book)
+            var epub = isBookEpub(book)
+            var matchesFormat = formatFilter === "all"
+                || (formatFilter === "epub" && epub)
+                || (formatFilter === "pdf" && !epub)
+            var matchesAuthor = selectedAuthor.length === 0 || String(book.author || "") === selectedAuthor
+
+            if (matchesSearch && matchesArchive && matchesStatus && matchesCollection && matchesFormat && matchesAuthor) {
+                filtered.push(book)
+            }
         }
+
+        filtered.sort(function(a, b) {
+            var cmp = 0
+            if (sortBy === "title") {
+                cmp = String(a.title || "").localeCompare(String(b.title || ""))
+            } else if (sortBy === "author") {
+                cmp = String(a.author || "").localeCompare(String(b.author || ""))
+            } else if (sortBy === "created") {
+                var aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
+                var bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
+                cmp = aCreated - bCreated
+            } else { // "last_read"
+                var aTime = a.last_read_at ? new Date(a.last_read_at).getTime() : 0
+                var bTime = b.last_read_at ? new Date(b.last_read_at).getTime() : 0
+                cmp = aTime - bTime
+            }
+            if (cmp === 0) {
+                cmp = String(a.title || "").localeCompare(String(b.title || ""))
+            }
+            return sortOrder === "asc" ? cmp : -cmp
+        })
+
         return filtered
     }
 

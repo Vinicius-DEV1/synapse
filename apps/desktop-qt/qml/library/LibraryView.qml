@@ -157,9 +157,32 @@ Rectangle {
             books: viewState.filteredBooks()
             collections: libraryRoot.collections
             selectedBookIds: bulkSelection.selectedBookIds
-            activeStatusFilter: libraryRoot.activeStatusFilter
+            activeStatusFilter: viewState.statusFilter
+            activeFormatFilter: viewState.formatFilter
+            authors: viewState.authors
+            selectedAuthor: viewState.selectedAuthor
+            sortBy: viewState.sortBy
+            sortOrder: viewState.sortOrder
+            hasActiveFilters: viewState.hasActiveFilters
+            filterText: viewState.filterText
+            selectedCollectionName: viewState.selectedCollectionName()
+            totalBooksCount: viewState.archiveFilteredBooks().length
             onSelectionToggleRequested: function(bookId) { bulkSelection.toggle(bookId) }
-            onStatusFilterChanged: function(filter) { libraryRoot.activeStatusFilter = filter }
+            onStatusFilterChanged: function(filter) { viewState.statusFilter = filter; libraryRoot.activeStatusFilter = filter }
+            onFormatFilterChanged: function(format) { viewState.formatFilter = format }
+            onAuthorChanged: function(author) { viewState.selectedAuthor = author }
+            onSortChanged: function(key, order) { viewState.sortBy = key; viewState.sortOrder = order }
+            onClearSearchRequested: { libraryRoot.filterText = ""; viewState.filterText = "" }
+            onClearStatusRequested: { viewState.statusFilter = "all"; libraryRoot.activeStatusFilter = "all" }
+            onClearFormatRequested: { viewState.formatFilter = "all" }
+            onClearAuthorRequested: { viewState.selectedAuthor = "" }
+            onClearCollectionRequested: { viewState.selectedCollectionId = ""; libraryRoot.selectedCollectionId = "" }
+            onClearAllFiltersRequested: {
+                viewState.clearAllFilters()
+                libraryRoot.filterText = ""
+                libraryRoot.activeStatusFilter = "all"
+                libraryRoot.selectedCollectionId = ""
+            }
             onBookSelected: function(book) {
                 libraryRoot.selectedBook = book
                 libraryRoot.isEditingProgress = true

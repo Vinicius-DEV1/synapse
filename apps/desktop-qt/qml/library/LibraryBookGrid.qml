@@ -11,6 +11,15 @@ ColumnLayout {
     property var collections: []
     property var selectedBookIds: []
     property string activeStatusFilter: "all"
+    property string activeFormatFilter: "all"
+    property var authors: []
+    property string selectedAuthor: ""
+    property string sortBy: "last_read"
+    property string sortOrder: "desc"
+    property bool hasActiveFilters: false
+    property string filterText: ""
+    property string selectedCollectionName: ""
+    property int totalBooksCount: 0
     property int viewportWidth: 1366
     readonly property int columnCount: viewportWidth >= 1280 ? 6
                                    : viewportWidth >= 1024 ? 5
@@ -19,6 +28,15 @@ ColumnLayout {
     readonly property int gridGap: viewportWidth >= 640 ? 24 : 12
 
     signal statusFilterChanged(string filter)
+    signal formatFilterChanged(string format)
+    signal authorChanged(string author)
+    signal sortChanged(string key, string order)
+    signal clearSearchRequested()
+    signal clearStatusRequested()
+    signal clearFormatRequested()
+    signal clearAuthorRequested()
+    signal clearCollectionRequested()
+    signal clearAllFiltersRequested()
     signal bookSelected(var book)
     signal selectionToggleRequested(string bookId)
     signal bookEditRequested(var book)
@@ -42,7 +60,32 @@ ColumnLayout {
 
     LibraryStatusFilterBar {
         activeStatusFilter: gridRoot.activeStatusFilter
+        activeFormatFilter: gridRoot.activeFormatFilter
+        authors: gridRoot.authors
+        selectedAuthor: gridRoot.selectedAuthor
+        sortBy: gridRoot.sortBy
+        sortOrder: gridRoot.sortOrder
         onFilterSelected: function(filter) { gridRoot.statusFilterChanged(filter) }
+        onFormatSelected: function(format) { gridRoot.formatFilterChanged(format) }
+        onAuthorSelected: function(author) { gridRoot.authorChanged(author) }
+        onSortChanged: function(key, order) { gridRoot.sortChanged(key, order) }
+    }
+
+    LibraryActiveFiltersBar {
+        hasActiveFilters: gridRoot.hasActiveFilters
+        filterText: gridRoot.filterText
+        statusFilter: gridRoot.activeStatusFilter
+        formatFilter: gridRoot.activeFormatFilter
+        selectedAuthor: gridRoot.selectedAuthor
+        selectedCollectionName: gridRoot.selectedCollectionName
+        filteredCount: gridRoot.books.length
+        totalCount: gridRoot.totalBooksCount
+        onClearSearchRequested: gridRoot.clearSearchRequested()
+        onClearStatusRequested: gridRoot.clearStatusRequested()
+        onClearFormatRequested: gridRoot.clearFormatRequested()
+        onClearAuthorRequested: gridRoot.clearAuthorRequested()
+        onClearCollectionRequested: gridRoot.clearCollectionRequested()
+        onClearAllRequested: gridRoot.clearAllFiltersRequested()
     }
 
     GridView {

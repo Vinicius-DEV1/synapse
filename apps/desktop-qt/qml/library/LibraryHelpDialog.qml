@@ -44,9 +44,13 @@ Dialog {
         },
         {
             id: "search", label: "Search and status", title: "Find books quickly",
-            summary: "Search by title or author, then narrow the shelf by reading status or collection.",
+            summary: "Search by title or author, then narrow the shelf by reading status, format, author, or collection.",
             tips: [
                 "The status filters show all books, books in progress, finished books, or books in the queue.",
+                "Use the format filter tabs to view all formats, only PDF documents, or only EPUB titles.",
+                "Filter by author using the author dropdown menu, which lists all unique authors across your books.",
+                "Sort by last read, title A-Z, date added, or author; click the active sort option to toggle between ascending and descending order.",
+                "Active search terms, status, format, author, and collection filters appear as badges with quick-remove buttons, or select Clear filters to reset all active filters at once.",
                 "Use the collection view to browse groups, then choose All collections to return to the groups.",
                 "Search updates the visible shelf as you type.",
                 "Use the Archive button to switch between active and archived books; the book actions menu can change reading status or archive state.",

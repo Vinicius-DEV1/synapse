@@ -12,6 +12,8 @@
 #include <QtGui/QColor>
 #include <QtGui/QImage>
 #include <QtCore/QStandardPaths>
+#include <QtQml/QQmlComponent>
+#include <QtQml/QQmlEngine>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 static bool writeEpubEntry(struct archive *writer, const QByteArray &name, const QByteArray &content) {
@@ -407,6 +409,117 @@ private slots:
         QCOMPARE(remainingBooks.size(), 1);
         QCOMPARE(remainingBooks.first().toMap().value("id").toString(), pdfBookId);
         QVERIFY(QFile::exists(storedPath));
+    }
+
+    void nativeLibraryMultiFieldFilteringAndSorting() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/library/LibraryViewState.qml")));
+        QScopedPointer<QObject> state(component.create());
+        QVERIFY2(state, qPrintable(component.errorString()));
+
+        QVariantMap b1{
+            {"id", "b1"}, {"title", "Bleak House"}, {"author", "Charles Dickens"},
+            {"original_name", "bleak.epub"}, {"file_path", "managed/bleak.epub"},
+            {"reading_status", "reading"}, {"last_read_at", "2026-11-10T12:00:00Z"},
+            {"created_at", "2026-01-01T00:00:00Z"}, {"is_archived", false}
+        };
+        QVariantMap b2{
+            {"id", "b2"}, {"title", "Pride and Prejudice"}, {"author", "Jane Austen"},
+            {"original_name", "pride.pdf"}, {"file_path", "managed/pride.pdf"},
+            {"reading_status", "finished"}, {"last_read_at", "2026-11-12T12:00:00Z"},
+            {"created_at", "2026-02-01T00:00:00Z"}, {"is_archived", false}
+        };
+        QVariantMap b3{
+            {"id", "b3"}, {"title", "Analytical Engines"}, {"author", "Ada Lovelace"},
+            {"original_name", "engines.epub"}, {"file_path", "managed/engines.epub"},
+            {"reading_status", "not_started"}, {"last_read_at", ""},
+            {"created_at", "2026-03-01T00:00:00Z"}, {"is_archived", false}
+        };
+        QVariantMap b4{
+            {"id", "b4"}, {"title", "A Tale of Two Cities"}, {"author", "Charles Dickens"},
+            {"original_name", "cities.pdf"}, {"file_path", "managed/cities.pdf"},
+            {"reading_status", "reading"}, {"last_read_at", "2026-11-08T12:00:00Z"},
+            {"created_at", "2026-04-01T00:00:00Z"}, {"is_archived", true}
+        };
+        const QVariantList allBooks{b1, b2, b3, b4};
+        state->setProperty("books", allBooks);
+
+        // 1. Authors derivation (should only include active books, sorted alphabetically)
+        const QVariantList authors = state->property("authors").toList();
+        QCOMPARE(authors.size(), 3);
+        QCOMPARE(authors.at(0).toString(), QString("Ada Lovelace"));
+        QCOMPARE(authors.at(1).toString(), QString("Charles Dickens"));
+        QCOMPARE(authors.at(2).toString(), QString("Jane Austen"));
+
+        // When switching to viewing archived, authors updates to archived book authors
+        state->setProperty("isViewingArchived", true);
+        const QVariantList archivedAuthors = state->property("authors").toList();
+        QCOMPARE(archivedAuthors.size(), 1);
+        QCOMPARE(archivedAuthors.first().toString(), QString("Charles Dickens"));
+        state->setProperty("isViewingArchived", false);
+
+        // 2. Default sorting: sortBy = "last_read", sortOrder = "desc"
+        // Expected order: b2 (Nov 12), b1 (Nov 10), b3 (none)
+        QVariant filteredVar;
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "filteredBooks", Q_RETURN_ARG(QVariant, filteredVar)));
+        QVariantList filtered = filteredVar.toList();
+        QCOMPARE(filtered.size(), 3);
+        QCOMPARE(filtered.at(0).toMap().value("id").toString(), QString("b2"));
+        QCOMPARE(filtered.at(1).toMap().value("id").toString(), QString("b1"));
+        QCOMPARE(filtered.at(2).toMap().value("id").toString(), QString("b3"));
+
+        // Sort by title ascending: "Analytical Engines" (b3), "Bleak House" (b1), "Pride and Prejudice" (b2)
+        state->setProperty("sortBy", "title");
+        state->setProperty("sortOrder", "asc");
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "filteredBooks", Q_RETURN_ARG(QVariant, filteredVar)));
+        filtered = filteredVar.toList();
+        QCOMPARE(filtered.at(0).toMap().value("id").toString(), QString("b3"));
+        QCOMPARE(filtered.at(1).toMap().value("id").toString(), QString("b1"));
+        QCOMPARE(filtered.at(2).toMap().value("id").toString(), QString("b2"));
+
+        // Sort by created descending: b3 (March), b2 (February), b1 (January)
+        state->setProperty("sortBy", "created");
+        state->setProperty("sortOrder", "desc");
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "filteredBooks", Q_RETURN_ARG(QVariant, filteredVar)));
+        filtered = filteredVar.toList();
+        QCOMPARE(filtered.at(0).toMap().value("id").toString(), QString("b3"));
+        QCOMPARE(filtered.at(1).toMap().value("id").toString(), QString("b2"));
+        QCOMPARE(filtered.at(2).toMap().value("id").toString(), QString("b1"));
+
+        // 3. Format filtering:
+        // formatFilter = "epub" -> b1, b3 (sorted by created desc: b3, b1)
+        state->setProperty("formatFilter", "epub");
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "filteredBooks", Q_RETURN_ARG(QVariant, filteredVar)));
+        filtered = filteredVar.toList();
+        QCOMPARE(filtered.size(), 2);
+        QCOMPARE(filtered.at(0).toMap().value("id").toString(), QString("b3"));
+        QCOMPARE(filtered.at(1).toMap().value("id").toString(), QString("b1"));
+
+        // formatFilter = "pdf" -> b2
+        state->setProperty("formatFilter", "pdf");
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "filteredBooks", Q_RETURN_ARG(QVariant, filteredVar)));
+        filtered = filteredVar.toList();
+        QCOMPARE(filtered.size(), 1);
+        QCOMPARE(filtered.at(0).toMap().value("id").toString(), QString("b2"));
+        state->setProperty("formatFilter", "all");
+
+        // 4. Author filtering:
+        state->setProperty("selectedAuthor", "Charles Dickens");
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "filteredBooks", Q_RETURN_ARG(QVariant, filteredVar)));
+        filtered = filteredVar.toList();
+        QCOMPARE(filtered.size(), 1);
+        QCOMPARE(filtered.at(0).toMap().value("id").toString(), QString("b1"));
+
+        // 5. Active filters detection and clearing:
+        QVERIFY(state->property("hasActiveFilters").toBool());
+        QVERIFY(QMetaObject::invokeMethod(state.data(), "clearAllFilters"));
+        QVERIFY(!state->property("hasActiveFilters").toBool());
+        QCOMPARE(state->property("formatFilter").toString(), QString("all"));
+        QCOMPARE(state->property("selectedAuthor").toString(), QString(""));
+        QCOMPARE(state->property("statusFilter").toString(), QString("all"));
+        QCOMPARE(state->property("filterText").toString(), QString(""));
     }
 };
 
