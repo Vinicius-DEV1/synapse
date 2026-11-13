@@ -164,3 +164,26 @@ function replacePreviewAttributes(source, url, start, changes, provider) {
     }
     return {success: false}
 }
+
+function removePreviewBlock(source, url, start) {
+    var expectedUrl = safeHttpUrl(url)
+    var blockStart = Number(start)
+    if (!expectedUrl || !isFinite(blockStart) || blockStart < 0 || Math.floor(blockStart) !== blockStart) {
+        return {success: false}
+    }
+    var blocks = previewBlocks(source)
+    for (var index = 0; index < blocks.length; index++) {
+        var block = blocks[index]
+        if (block.start !== blockStart || safeHttpUrl(attributesFromTag(block.markup).url) !== expectedUrl) continue
+        var removeStart = block.start
+        var removeEnd = block.end
+        var html = String(source || "")
+        if (removeEnd < html.length && html.charAt(removeEnd) === "\n") {
+            removeEnd += 1
+        } else if (removeStart > 0 && html.charAt(removeStart - 1) === "\n") {
+            removeStart -= 1
+        }
+        return {success: true, start: removeStart, end: removeEnd, replacement: ""}
+    }
+    return {success: false}
+}

@@ -1,7 +1,7 @@
 .pragma library
 
 function parseAction(link) {
-    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes|color)\?(.+)$/i)
+    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes|color|delete)\?(.+)$/i)
     if (!match) return null
     var actionType = String(match[1]).toLowerCase()
     var values = ({})
@@ -28,6 +28,13 @@ function parseAction(link) {
             return { handled: true, success: false }
         }
         return { handled: true, type: actionType, url: values.url, start: blockStart }
+    }
+    if (actionType === "delete") {
+        var deleteBlockStart = Number(values.start)
+        if (!isFinite(deleteBlockStart) || deleteBlockStart < 0 || Math.floor(deleteBlockStart) !== deleteBlockStart) {
+            return { handled: true, success: false }
+        }
+        return { handled: true, type: actionType, url: values.url, start: deleteBlockStart }
     }
     if (actionType === "color") {
         var colorBlockStart = Number(values.start)
@@ -72,6 +79,9 @@ function activate(link, source, controller, renderer) {
         if (!replacement.success) return { handled: true, success: false }
         return { handled: true, success: true, type: "convert", start: replacement.start,
                  end: replacement.end, replacement: replacement.replacement }
+    }
+    if (action.type === "delete") {
+        return { handled: true, success: true, type: "delete", url: action.url, start: action.start }
     }
     if (action.type === "color") {
         if (!renderer || typeof renderer.linkPreviewData !== "function") {

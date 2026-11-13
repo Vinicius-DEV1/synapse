@@ -112,6 +112,9 @@ ScrollView {
                     pageActionFailed(qsTr("Could not convert this preview to a link."))
                 }
             }
+            else if (action.type === "delete") {
+                previewSurface.openLinkDeleteConfirm(action.url, action.start)
+            }
             else contentModified(action.content)
             return
         }

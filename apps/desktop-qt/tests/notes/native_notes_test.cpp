@@ -1005,7 +1005,7 @@ private slots:
         QVERIFY(rendered.contains("Status: Watching"));
         QVERIFY(rendered.contains("Mark as completed"));
         QVERIFY(rendered.contains("Copy URL"));
-        QCOMPARE(preview->property("previewActionCount").toInt(), 7);
+        QCOMPARE(preview->property("previewActionCount").toInt(), 8);
         QCOMPARE(preview->property("firstPreviewAction").toString(), "Open link: Saved title");
         QVERIFY(preview->property("actionSucceeded").toBool());
         QVERIFY(preview->property("copySucceeded").toBool());

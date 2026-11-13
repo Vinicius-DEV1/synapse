@@ -81,10 +81,10 @@ private slots:
         QVERIFY(dialog);
 
         QVariantList actions = actionMenu->property("actions").toList();
-        QCOMPARE(actions.size(), 14);
-        QCOMPARE(actions.at(12).toMap().value("label").toString(), QString("Change link color: Color card"));
+        QCOMPARE(actions.size(), 16);
+        QCOMPARE(actions.at(13).toMap().value("label").toString(), QString("Change link color: Color card"));
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
-                                          Q_ARG(QString, actions.at(12).toMap().value("url").toString())));
+                                          Q_ARG(QString, actions.at(13).toMap().value("url").toString())));
         QTRY_VERIFY(dialog->property("visible").toBool());
         auto *dialogContent = dialog->property("contentItem").value<QQuickItem *>();
         const QList<QPair<QString, QString>> expectedSwatches = {
@@ -112,7 +112,7 @@ private slots:
 
         actions = actionMenu->property("actions").toList();
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
-                                          Q_ARG(QString, actions.at(12).toMap().value("url").toString())));
+                                          Q_ARG(QString, actions.at(13).toMap().value("url").toString())));
         QTRY_VERIFY(dialog->property("visible").toBool());
         QQuickItem *defaultSwatch = findVisualItem(dialogContent, "notesLinkColorSwatchDefault");
         QVERIFY(defaultSwatch);

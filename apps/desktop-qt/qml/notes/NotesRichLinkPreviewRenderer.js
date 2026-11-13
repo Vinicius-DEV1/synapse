@@ -216,6 +216,8 @@ function actionItems(source, provider, copiedUrl) {
                       url: "synapse-link://color?url=" + encodeURIComponent(url) + "&start=" + block.start})
         actions.push({label: "Convert to text: " + title,
                       url: "synapse-link://convert?url=" + encodeURIComponent(url) + "&start=" + block.start})
+        actions.push({label: "Delete link card: " + title,
+                      url: "synapse-link://delete?url=" + encodeURIComponent(url) + "&start=" + block.start})
     }
     return actions
 }

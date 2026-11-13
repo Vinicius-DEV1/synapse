@@ -106,12 +106,12 @@ private slots:
         QVERIFY(editor);
         QVERIFY(actionMenu);
         const QVariantList actions = actionMenu->property("actions").toList();
-        QCOMPARE(actions.size(), 14);
-        QCOMPARE(actions.at(13).toMap().value("label").toString(), QString("Convert to text: Saved"));
+        QCOMPARE(actions.size(), 16);
+        QCOMPARE(actions.at(14).toMap().value("label").toString(), QString("Convert to text: Saved"));
 
         QSignalSpy contentChanged(canvas.data(), SIGNAL(contentModified(QString)));
         QVERIFY(contentChanged.isValid());
-        const QString conversionAction = actions.at(13).toMap().value("url").toString();
+        const QString conversionAction = actions.at(14).toMap().value("url").toString();
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated", Q_ARG(QString, conversionAction)));
 
         const QString converted = QStringLiteral(
@@ -165,7 +165,7 @@ private slots:
         QVERIFY(dialog);
 
         QVariantList actions = actionMenu->property("actions").toList();
-        QCOMPARE(actions.size(), 7);
+        QCOMPARE(actions.size(), 8);
         QCOMPARE(actions.at(4).toMap().value("label").toString(), QString("Show link notes: Saved"));
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
                                           Q_ARG(QString, actions.at(4).toMap().value("url").toString())));
@@ -175,7 +175,7 @@ private slots:
         QTRY_VERIFY(previewText->property("text").toString().contains("Saved from Link Vault"));
 
         actions = actionMenu->property("actions").toList();
-        QTRY_COMPARE(actionMenu->property("actions").toList().size(), 8);
+        QTRY_COMPARE(actionMenu->property("actions").toList().size(), 9);
         actions = actionMenu->property("actions").toList();
         QCOMPARE(actions.at(5).toMap().value("label").toString(), QString("Edit link notes: Saved"));
         QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated",
@@ -227,6 +227,77 @@ private slots:
         QVERIFY(!previewText->property("text").toString().contains("No link notes yet."));
         QVERIFY(editor->property("text").toString().startsWith("<p>before</p>"));
         QVERIFY(editor->property("text").toString().endsWith("<p><strong>after</strong></p>"));
+    }
+
+    void linkCardConfirmedDeletionRemovesBlockAndUndoRestoresIt() {
+        QQmlEngine engine;
+        NotesTextOperations textOperations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &textOperations);
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorCanvas.qml")));
+        QScopedPointer<QObject> canvas(component.create());
+        QVERIFY2(canvas, qPrintable(component.errorString()));
+
+        const QString source = QStringLiteral(
+            "<p>before</p><div class=\"link-preview-block\" url=\"https://example.com/docs?a=1&amp;b=2\"></div>\n"
+            "<p>middle</p><div class=\"link-preview-block\" url=\"https://example.com/docs?a=1&amp;b=2\" title=\"Saved\"></div>\n"
+            "<p><strong>after</strong></p>");
+        canvas->setProperty("activeContent", source);
+        canvas->setProperty("isPreviewMode", true);
+
+        QQuickWindow window;
+        window.resize(1000, 700);
+        auto *canvasItem = qobject_cast<QQuickItem *>(canvas.data());
+        QVERIFY(canvasItem);
+        canvasItem->setParentItem(window.contentItem());
+        canvasItem->setWidth(1000);
+        canvasItem->setHeight(700);
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *editor = canvas->findChild<QObject *>("notesSourceEditor");
+        QObject *actionMenu = canvas->findChild<QObject *>("notesLinkPreviewActionMenu");
+        QObject *deleteDialog = canvas->findChild<QObject *>("notesLinkDeleteDialog");
+        QVERIFY(editor);
+        QVERIFY(actionMenu);
+        QVERIFY(deleteDialog);
+
+        const QVariantList actions = actionMenu->property("actions").toList();
+        QCOMPARE(actions.size(), 16);
+        QCOMPARE(actions.at(15).toMap().value("label").toString(), QString("Delete link card: Saved"));
+
+        QSignalSpy contentChanged(canvas.data(), SIGNAL(contentModified(QString)));
+        QVERIFY(contentChanged.isValid());
+
+        const QString deleteAction = actions.at(15).toMap().value("url").toString();
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated", Q_ARG(QString, deleteAction)));
+        QTRY_VERIFY(deleteDialog->property("visible").toBool());
+        QVERIFY(canvas->property("isDialogOpen").toBool());
+
+        QObject *cancelButton = deleteDialog->findChild<QObject *>("notesLinkDeleteCancelButton");
+        QObject *confirmButton = deleteDialog->findChild<QObject *>("notesLinkDeleteConfirmButton");
+        QVERIFY(cancelButton);
+        QVERIFY(confirmButton);
+
+        QVERIFY(QMetaObject::invokeMethod(cancelButton, "click"));
+        QTRY_VERIFY(!deleteDialog->property("visible").toBool());
+        QCOMPARE(editor->property("text").toString(), source);
+        QCOMPARE(contentChanged.size(), 0);
+
+        QVERIFY(QMetaObject::invokeMethod(actionMenu, "actionActivated", Q_ARG(QString, deleteAction)));
+        QTRY_VERIFY(deleteDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(confirmButton, "click"));
+        QTRY_VERIFY(!deleteDialog->property("visible").toBool());
+
+        const QString expectedAfterDelete = QStringLiteral(
+            "<p>before</p><div class=\"link-preview-block\" url=\"https://example.com/docs?a=1&amp;b=2\"></div>\n"
+            "<p>middle</p><p><strong>after</strong></p>");
+        QTRY_COMPARE(editor->property("text").toString(), expectedAfterDelete);
+        QTRY_VERIFY(contentChanged.size() > 0);
+
+        QVERIFY(QMetaObject::invokeMethod(editor, "undo"));
+        QTRY_COMPARE(editor->property("text").toString(), source);
     }
 };
 
