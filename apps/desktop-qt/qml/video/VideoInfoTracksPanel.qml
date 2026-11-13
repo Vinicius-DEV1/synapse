@@ -22,6 +22,9 @@ Rectangle {
     signal videoUpdated(string videoId)
 
     function audioTracks() {
+        if (mediaPlayer && mediaPlayer.audioTracks && mediaPlayer.audioTracks.length > 0) {
+            return mediaPlayer.audioTracks
+        }
         if (!video || !video.audio_tracks_json) return []
         try {
             var parsed = JSON.parse(video.audio_tracks_json)

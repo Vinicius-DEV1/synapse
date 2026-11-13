@@ -15,6 +15,21 @@ ColumnLayout {
         }
         if (track.lang) details.push(String(track.lang).toUpperCase())
         if (track.codec) details.push(track.codec)
+        if (track.channels) {
+            details.push(track.channels)
+        } else if (track.channel_layout) {
+            details.push(track.channel_layout)
+        } else if (track.channel_count && Number(track.channel_count) > 0) {
+            details.push(track.channel_count + " ch")
+        }
+        if (track.samplerate && Number(track.samplerate) > 0) {
+            details.push(Math.round(Number(track.samplerate) / 1000) + " kHz")
+        } else if (track.sample_rate && Number(track.sample_rate) > 0) {
+            details.push(Math.round(Number(track.sample_rate) / 1000) + " kHz")
+        }
+        if (track.bitrate && Number(track.bitrate) > 0) {
+            details.push(Math.round(Number(track.bitrate) / 1000) + " kbps")
+        }
         if (track.local_path) details.push(String(track.local_path).split(/[\\/]/).pop())
         return details.join(" · ")
     }

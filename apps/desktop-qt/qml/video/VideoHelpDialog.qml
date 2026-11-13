@@ -37,7 +37,8 @@ Dialog {
                 { action: "Adiantar legenda em 100 ms", keys: "]" },
                 { action: "Atrasar legenda em 100 ms", keys: "[" },
                 { action: "Selecionar faixas disponíveis", keys: "Controles do player" },
-                { action: "Adicionar legenda local", keys: "Informações  ›  Áudios e legendas" }
+                { action: "Adicionar legenda local", keys: "Informações  ›  Áudios e legendas" },
+                { action: "Ver detalhes de áudio e codec", keys: "Informações  ›  Áudios e legendas" }
             ]
         },
         {

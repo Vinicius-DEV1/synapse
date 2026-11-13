@@ -150,13 +150,15 @@ private slots:
         char *audioKeys[] = {
             const_cast<char *>("id"), const_cast<char *>("type"), const_cast<char *>("title"),
             const_cast<char *>("lang"), const_cast<char *>("selected"), const_cast<char *>("default"),
-            const_cast<char *>("external")
+            const_cast<char *>("external"), const_cast<char *>("codec"), const_cast<char *>("demux-channels"),
+            const_cast<char *>("demux-channel-count"), const_cast<char *>("demux-samplerate")
         };
         mpv_node audioValues[] = {
             integerNode(4), stringNode("audio"), stringNode("English commentary"), stringNode("en"),
-            flagNode(true), flagNode(false), flagNode(false)
+            flagNode(true), flagNode(false), flagNode(false), stringNode("aac"), stringNode("stereo"),
+            integerNode(2), integerNode(48000)
         };
-        mpv_node_list audioMapList{7, audioValues, audioKeys};
+        mpv_node_list audioMapList{11, audioValues, audioKeys};
         mpv_node audioMap{};
         audioMap.format = MPV_FORMAT_NODE_MAP;
         audioMap.u.list = &audioMapList;
@@ -187,6 +189,10 @@ private slots:
         QCOMPARE(subtitleTracks.size(), 1);
         QCOMPARE(audioTracks.first().toMap().value("id").toLongLong(), qint64(4));
         QCOMPARE(audioTracks.first().toMap().value("title").toString(), QString("English commentary"));
+        QCOMPARE(audioTracks.first().toMap().value("codec").toString(), QString("aac"));
+        QCOMPARE(audioTracks.first().toMap().value("channels").toString(), QString("stereo"));
+        QCOMPARE(audioTracks.first().toMap().value("channel_count").toLongLong(), qint64(2));
+        QCOMPARE(audioTracks.first().toMap().value("samplerate").toLongLong(), qint64(48000));
         QVERIFY(audioTracks.first().toMap().value("selected").toBool());
         QVERIFY(!audioTracks.first().toMap().value("external").toBool());
         QCOMPARE(subtitleTracks.first().toMap().value("lang").toString(), QString("pt"));

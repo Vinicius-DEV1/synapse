@@ -26,6 +26,18 @@ bool boolValue(const mpv_node &map, const char *key) {
     return false;
 }
 
+qint64 int64Value(const mpv_node &map, const char *key, qint64 defaultValue = 0) {
+    const mpv_node *value = findValue(map, key);
+    if (!value) return defaultValue;
+    if (value->format == MPV_FORMAT_INT64) return value->u.int64;
+    if (value->format == MPV_FORMAT_STRING && value->u.string) {
+        bool ok = false;
+        const qint64 parsed = QString::fromUtf8(value->u.string).toLongLong(&ok);
+        if (ok) return parsed;
+    }
+    return defaultValue;
+}
+
 bool trackId(const mpv_node &map, qint64 *id) {
     const mpv_node *value = findValue(map, "id");
     if (!value) return false;
@@ -55,6 +67,23 @@ QVariantMap parseTrack(const mpv_node &track) {
     result.insert(QStringLiteral("selected"), boolValue(track, "selected"));
     result.insert(QStringLiteral("default"), boolValue(track, "default"));
     result.insert(QStringLiteral("external"), boolValue(track, "external"));
+
+    const QString channels = stringValue(track, "demux-channels");
+    if (!channels.isEmpty()) {
+        result.insert(QStringLiteral("channels"), channels);
+    }
+    const qint64 channelCount = int64Value(track, "demux-channel-count", int64Value(track, "audio-channels", 0));
+    if (channelCount > 0) {
+        result.insert(QStringLiteral("channel_count"), channelCount);
+    }
+    const qint64 samplerate = int64Value(track, "demux-samplerate", 0);
+    if (samplerate > 0) {
+        result.insert(QStringLiteral("samplerate"), samplerate);
+    }
+    const qint64 bitrate = int64Value(track, "demux-bitrate", 0);
+    if (bitrate > 0) {
+        result.insert(QStringLiteral("bitrate"), bitrate);
+    }
     return result;
 }
 
