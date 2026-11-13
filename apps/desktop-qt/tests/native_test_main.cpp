@@ -31,6 +31,7 @@ int runNativeNotificationsTest(int argc, char **argv);
 int runNativeTrashTest(int argc, char **argv);
 int runNativeSettingsTest(int argc, char **argv);
 int runNativeHomeTest(int argc, char **argv);
+int runNativeDiagramsTest(int argc, char **argv);
 
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
@@ -66,5 +67,6 @@ int main(int argc, char **argv) {
     result |= runNativeTrashTest(argc, argv);
     result |= runNativeSettingsTest(argc, argv);
     result |= runNativeHomeTest(argc, argv);
+    result |= runNativeDiagramsTest(argc, argv);
     return result;
 }

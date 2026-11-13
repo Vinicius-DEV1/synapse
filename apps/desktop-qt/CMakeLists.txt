@@ -195,6 +195,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/trash/native_trash_test.cpp
         tests/settings/native_settings_test.cpp
         tests/home/native_home_test.cpp
+        tests/diagrams/native_diagrams_test.cpp
         src/video/mpv_track_parser.cpp
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp

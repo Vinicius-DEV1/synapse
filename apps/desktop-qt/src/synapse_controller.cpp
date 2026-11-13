@@ -382,7 +382,10 @@ QString SynapseDataController::createDiagram(const QString &title, const QString
 }
 
 bool SynapseDataController::deleteDiagram(const QString &diagramId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE diagrams SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(diagramId));
-    return executeSql(sql);
+    if (diagramId.trimmed().isEmpty()) return false;
+    const QString ts = currentTimestamp();
+    return executeSqlPrepared(
+        "UPDATE diagrams SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+        {ts, ts, diagramId.trimmed()}
+    ) == 1;
 }

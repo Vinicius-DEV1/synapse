@@ -10,6 +10,7 @@ Rectangle {
     property var activeDiagram: null
     property bool isEditing: false
     property bool isCreatingModal: false
+    property bool isHelpOpen: false
     property string activeTool: "pen" // "pen", "rect", "circle", "sticky"
     property string activeDrawColor: "#8b5cf6"
     property var shapes: []
@@ -61,6 +62,7 @@ Rectangle {
             diagramsRoot.loadDiagrams()
         }
         onCreateRequested: diagramsRoot.isCreatingModal = true
+        onHelpRequested: diagramsRoot.isHelpOpen = true
     }
 
     // View 2: Whiteboard / Canvas Editor
@@ -109,6 +111,21 @@ Rectangle {
             if (newId) {
                 diagramsRoot.openDiagram({ id: newId, title: title, icon: "🎨" })
             }
+        }
+    }
+
+    DiagramsHelpDialog {
+        isOpen: diagramsRoot.isHelpOpen
+        onClosed: diagramsRoot.isHelpOpen = false
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: diagramsRoot.isHelpOpen || diagramsRoot.isCreatingModal || diagramsRoot.isEditing
+        onActivated: {
+            if (diagramsRoot.isHelpOpen) diagramsRoot.isHelpOpen = false
+            else if (diagramsRoot.isCreatingModal) diagramsRoot.isCreatingModal = false
+            else if (diagramsRoot.isEditing) diagramsRoot.exitEditor()
         }
     }
 }
