@@ -20,6 +20,7 @@ int runNativeNotesTableMergeQmlTest(int argc, char **argv);
 int runNativeNotesTableBackgroundSelectionQmlTest(int argc, char **argv);
 int runNativeNotesTableClearFormattingQmlTest(int argc, char **argv);
 int runNativeNotesTableCellSelectionQmlTest(int argc, char **argv);
+int runNativeNotesTableStructureQmlTest(int argc, char **argv);
 int runNativeNotesSpoilerGeometryQmlTest(int argc, char **argv);
 
 class NativeRichTableQmlTest final : public QObject {
@@ -712,7 +713,9 @@ int main(int argc, char **argv) {
     const int clearFormattingResult = runNativeNotesTableClearFormattingQmlTest(argc, argv);
     if (clearFormattingResult != 0) return clearFormattingResult;
     const int cellSelectionResult = runNativeNotesTableCellSelectionQmlTest(argc, argv);
-    return cellSelectionResult == 0 ? runNativeNotesSpoilerGeometryQmlTest(argc, argv) : cellSelectionResult;
+    if (cellSelectionResult != 0) return cellSelectionResult;
+    const int structureResult = runNativeNotesTableStructureQmlTest(argc, argv);
+    return structureResult == 0 ? runNativeNotesSpoilerGeometryQmlTest(argc, argv) : structureResult;
 }
 
 #include "native_rich_table_qml_test.moc"

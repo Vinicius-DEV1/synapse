@@ -10,6 +10,7 @@ int runNativeNotesTableMergeTest(int argc, char **argv);
 int runNativeNotesTableBackgroundSelectionTest(int argc, char **argv);
 int runNativeNotesTableClearFormattingTest(int argc, char **argv);
 int runNativeNotesTableCellSelectionTest(int argc, char **argv);
+int runNativeNotesTableStructureTest(int argc, char **argv);
 int runNativeNotesCalloutTest(int argc, char **argv);
 int runNativeNotesCodeLanguageTest(int argc, char **argv);
 int runNativeNotesDividerDragTest(int argc, char **argv);
@@ -36,6 +37,7 @@ int main(int argc, char **argv) {
     result |= runNativeNotesTableBackgroundSelectionTest(argc, argv);
     result |= runNativeNotesTableClearFormattingTest(argc, argv);
     result |= runNativeNotesTableCellSelectionTest(argc, argv);
+    result |= runNativeNotesTableStructureTest(argc, argv);
     result |= runNativeNotesCalloutTest(argc, argv);
     result |= runNativeNotesCodeLanguageTest(argc, argv);
     result |= runNativeNotesDividerDragTest(argc, argv);

@@ -19,15 +19,19 @@ bool NotesTextOperations::isRichTableCell(QQuickTextDocument *document, int posi
 }
 
 bool NotesTextOperations::canApplyRichTableAction(QQuickTextDocument *document, int position,
-                                                   const QString &action) const {
+                                                   const QString &action, int selectionStart,
+                                                   int selectionEnd) const {
     return document && document->textDocument() &&
-        NotesRichTables::canApplyStructureAction(*document->textDocument(), position, action);
+        NotesRichTables::canApplyStructureAction(*document->textDocument(), position, action,
+                                                  selectionStart, selectionEnd);
 }
 
 bool NotesTextOperations::applyRichTableAction(QQuickTextDocument *document, int position,
-                                                const QString &action) const {
+                                                const QString &action, int selectionStart,
+                                                int selectionEnd) const {
     return document && document->textDocument() &&
-        NotesRichTables::applyStructureAction(*document->textDocument(), position, action);
+        NotesRichTables::applyStructureAction(*document->textDocument(), position, action,
+                                               selectionStart, selectionEnd);
 }
 
 bool NotesTextOperations::canMergeOrSplitRichTable(QQuickTextDocument *document, int cursorPosition,

@@ -102,8 +102,9 @@ public:
     Q_INVOKABLE int insertRichTable(QQuickTextDocument *document, int start, int end) const;
     Q_INVOKABLE bool isRichTableCell(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool canApplyRichTableAction(QQuickTextDocument *document, int position,
-                                             const QString &action) const;
-    Q_INVOKABLE bool applyRichTableAction(QQuickTextDocument *document, int position, const QString &action) const;
+                                             const QString &action, int selectionStart, int selectionEnd) const;
+    Q_INVOKABLE bool applyRichTableAction(QQuickTextDocument *document, int position, const QString &action,
+                                          int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool canMergeOrSplitRichTable(QQuickTextDocument *document, int cursorPosition,
                                               int selectionStart, int selectionEnd) const;
     Q_INVOKABLE bool mergeOrSplitRichTable(QQuickTextDocument *document, int cursorPosition,

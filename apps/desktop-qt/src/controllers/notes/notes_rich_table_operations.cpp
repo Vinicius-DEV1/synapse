@@ -1,6 +1,7 @@
 #include "notes_rich_tables.h"
 
 #include "notes_rich_format.h"
+#include "notes_rich_table_structure_range.h"
 #include "notes_rich_table_styles.h"
 
 #include <QtCore/QString>
@@ -186,84 +187,88 @@ bool isCellAt(const QTextDocument &document, int position) {
     return cursor.currentTable() != nullptr;
 }
 
-bool canApplyStructureAction(const QTextDocument &document, int position, const QString &action) {
+bool canApplyStructureAction(const QTextDocument &document, int position, const QString &action,
+                             int selectionStart, int selectionEnd) {
     if (position < 0 || position > document.characterCount() - 1) return false;
     TableAction parsedAction;
     if (!parseAction(action, parsedAction)) return false;
+    QTextTable *table = nullptr;
+    NotesRichTableStructureRange::Rectangle rectangle;
+    if (!NotesRichTableStructureRange::forSelection(document, position, selectionStart, selectionEnd,
+                                                     table, rectangle) || !table) return false;
     QTextCursor cursor(const_cast<QTextDocument *>(&document));
     cursor.setPosition(position);
-    QTextTable *table = cursor.currentTable();
-    if (!table) return false;
     const QTextTableCell cell = table->cellAt(cursor);
-    if (!cell.isValid()) return false;
-    for (int row = 0; row < table->rows(); ++row) {
-        for (int column = 0; column < table->columns(); ++column) {
-            const QTextTableCell current = table->cellAt(row, column);
-            if ((current.rowSpan() != 1 || current.columnSpan() != 1) &&
-                parsedAction != TableAction::DeleteTable) return false;
-        }
-    }
+    if (!cell.isValid() ||
+        !NotesRichTableStructureRange::allowsActionWithMergedCells(*table, action)) return false;
     for (const QTextLength &width : table->format().columnWidthConstraints())
         if (width.type() != QTextLength::VariableLength) return false;
 
-    const int row = cell.row();
-    const int column = cell.column();
     const int headerRow = NotesRichTableStyles::headerRowIndex(*table);
     if (headerRow == -2) return false;
-    if (parsedAction == TableAction::DeleteRow) return table->rows() > 1;
-    if (parsedAction == TableAction::DeleteColumn) return table->columns() > 1;
-    if (parsedAction == TableAction::MoveRowUp) return row > 0;
-    if (parsedAction == TableAction::MoveRowDown) return row + 1 < table->rows();
-    if (parsedAction == TableAction::MoveColumnLeft) return column > 0;
-    if (parsedAction == TableAction::MoveColumnRight) return column + 1 < table->columns();
+    if (parsedAction == TableAction::DeleteRow) return table->rows() > rectangle.bottom - rectangle.top;
+    if (parsedAction == TableAction::DeleteColumn) return table->columns() > rectangle.right - rectangle.left;
+    if (parsedAction == TableAction::MoveRowUp) return rectangle.top > 0;
+    if (parsedAction == TableAction::MoveRowDown) return rectangle.bottom < table->rows();
+    if (parsedAction == TableAction::MoveColumnLeft) return rectangle.left > 0;
+    if (parsedAction == TableAction::MoveColumnRight) return rectangle.right < table->columns();
     return true;
 }
 
-bool applyStructureAction(QTextDocument &document, int position, const QString &action) {
+bool applyStructureAction(QTextDocument &document, int position, const QString &action,
+                          int selectionStart, int selectionEnd) {
     if (position < 0 || position > document.characterCount() - 1) return false;
     TableAction parsedAction;
     if (!parseAction(action, parsedAction)) return false;
-    if (!canApplyStructureAction(document, position, action)) return false;
-
+    if (!canApplyStructureAction(document, position, action, selectionStart, selectionEnd)) return false;
+    QTextTable *table = nullptr;
+    NotesRichTableStructureRange::Rectangle rectangle;
+    if (!NotesRichTableStructureRange::forSelection(document, position, selectionStart, selectionEnd,
+                                                     table, rectangle) || !table) return false;
     QTextCursor cursor(&document);
     cursor.setPosition(position);
-    QTextTable *table = cursor.currentTable();
-    if (!table) return false;
     const QTextTableCell cell = table->cellAt(cursor);
     if (!cell.isValid()) return false;
-    const int row = cell.row();
-    const int column = cell.column();
     int headerRow = NotesRichTableStyles::headerRowIndex(*table);
     if (headerRow == -2) return false;
 
     cursor.beginEditBlock();
     switch (parsedAction) {
     case TableAction::RowBefore:
-        table->insertRows(row, 1);
-        if (headerRow >= row) ++headerRow;
+        table->insertRows(rectangle.top, 1);
+        if (headerRow >= rectangle.top) ++headerRow;
         break;
-    case TableAction::RowAfter:
-        table->insertRows(row + 1, 1);
-        if (headerRow > row) ++headerRow;
+    case TableAction::RowAfter: {
+        const int insertionRow = rectangle.bottom;
+        table->insertRows(insertionRow, 1);
+        if (headerRow >= insertionRow) ++headerRow;
         break;
-    case TableAction::DeleteRow:
-        table->removeRows(row, 1);
-        if (headerRow > row) --headerRow;
-        else if (headerRow == row) headerRow = table->rows() > 0 ? qMin(row, table->rows() - 1) : -1;
+    }
+    case TableAction::DeleteRow: {
+        const int removedRows = rectangle.bottom - rectangle.top;
+        for (int row = rectangle.bottom - 1; row >= rectangle.top; --row)
+            table->removeRows(row, 1);
+        if (headerRow >= rectangle.bottom) headerRow -= removedRows;
+        else if (headerRow >= rectangle.top)
+            headerRow = table->rows() > 0 ? qMin(rectangle.top, table->rows() - 1) : -1;
         break;
-    case TableAction::ColumnBefore: table->insertColumns(column, 1); break;
-    case TableAction::ColumnAfter: table->insertColumns(column + 1, 1); break;
-    case TableAction::DeleteColumn: table->removeColumns(column, 1); break;
+    }
+    case TableAction::ColumnBefore: table->insertColumns(rectangle.left, 1); break;
+    case TableAction::ColumnAfter: table->insertColumns(rectangle.right, 1); break;
+    case TableAction::DeleteColumn:
+        for (int column = rectangle.right - 1; column >= rectangle.left; --column)
+            table->removeColumns(column, 1);
+        break;
     case TableAction::MoveRowUp:
-        moveRow(*table, row, row - 1);
-        headerRow = movedRowIndex(row, row - 1, headerRow);
+        moveRow(*table, rectangle.top, rectangle.top - 1);
+        headerRow = movedRowIndex(rectangle.top, rectangle.top - 1, headerRow);
         break;
     case TableAction::MoveRowDown:
-        moveRow(*table, row, row + 1);
-        headerRow = movedRowIndex(row, row + 1, headerRow);
+        moveRow(*table, rectangle.top, rectangle.bottom);
+        headerRow = movedRowIndex(rectangle.top, rectangle.bottom, headerRow);
         break;
-    case TableAction::MoveColumnLeft: moveColumn(*table, column, column - 1); break;
-    case TableAction::MoveColumnRight: moveColumn(*table, column, column + 1); break;
+    case TableAction::MoveColumnLeft: moveColumn(*table, rectangle.left, rectangle.left - 1); break;
+    case TableAction::MoveColumnRight: moveColumn(*table, rectangle.left, rectangle.right); break;
     case TableAction::DeleteTable: {
         const bool removed = removeTable(document, *table);
         cursor.endEditBlock();

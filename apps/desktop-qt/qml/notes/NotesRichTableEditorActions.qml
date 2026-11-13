@@ -53,7 +53,8 @@ QtObject {
             return finishEdit()
         }
         if (!active || invalid || !textOperations.applyRichTableAction(
-                textEditor.textDocument, textEditor.cursorPosition, action)) return false
+                textEditor.textDocument, textEditor.cursorPosition, action,
+                textEditor.selectionStart, textEditor.selectionEnd)) return false
         return finishEdit()
     }
 
@@ -85,7 +86,8 @@ QtObject {
 
     function canEditTable(action) {
         return active && !invalid && textOperations.canApplyRichTableAction(
-                    textEditor.textDocument, textEditor.cursorPosition, action)
+                    textEditor.textDocument, textEditor.cursorPosition, action,
+                    textEditor.selectionStart, textEditor.selectionEnd)
     }
 
     function insertDivider() {

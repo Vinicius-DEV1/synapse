@@ -1,6 +1,6 @@
 # Native Ecosystem Migration Roadmap
 
-**Last reviewed:** 2026-11-10
+**Last reviewed:** 2026-11-13
 **Status:** Active work; no blanket feature-parity, security, or performance completion is claimed.
 
 This roadmap replaces the original checked-off plan as the current work sequence. Current verified status lives in the [documentation status index](../documentation-status.md), [native desktop parity matrix](../native-desktop-parity.md), and [native encryption audit](../security/native-encryption-audit.md).
@@ -28,6 +28,8 @@ The Rust core does not yet own every module's business logic or persistence. App
 | 4 | Anki, questions, finance, habits, calendar, culture, focus, files, vault, notifications, trash, settings, home | Partial by module | Use the live matrix for individual React-to-Qt comparisons |
 | 5 | Diagrams and AI practice | Last, per the accepted priority order | Complete remaining parity only after the higher-priority modules |
 | Separate review | Native Android | Not certified by the Qt matrix | Build and compare each Compose module against the same functional acceptance gates |
+
+Notes/editor remains Partial. The current Qt status is itemized in the [native parity matrix](../native-desktop-parity.md): merged-cell row/column insertion and deletion now preserve spans; movement across merged spans is the next focused structural gap. Same-viewport React comparison remains open.
 
 ## Security Work
 

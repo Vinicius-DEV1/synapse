@@ -59,6 +59,7 @@ add_executable(synapse-desktop
     src/controllers/notes/notes_rich_tables.cpp
     src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_cell_selection.cpp
+    src/controllers/notes/notes_rich_table_structure_range.cpp
     src/controllers/notes/notes_rich_table_operations.cpp
     src/controllers/notes/notes_rich_table_merging.cpp
     src/controllers/notes/notes_rich_table_merging.h
@@ -168,6 +169,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_rich_image_clipboard_test.cpp
         tests/notes/native_notes_reference_search_test.cpp
         tests/notes/native_notes_rich_tables_test.cpp
+        tests/notes/native_notes_table_structure_test.cpp
         tests/notes/native_notes_table_merge_test.cpp
         tests/notes/native_notes_table_background_selection_test.cpp
         tests/notes/native_notes_table_clear_formatting_test.cpp
@@ -219,6 +221,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_tables.cpp
         src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_cell_selection.cpp
+        src/controllers/notes/notes_rich_table_structure_range.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
         src/controllers/notes/notes_rich_table_merging.cpp
         src/controllers/notes/notes_rich_table_merging.h
@@ -351,6 +354,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_tables.cpp
         src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_cell_selection.cpp
+        src/controllers/notes/notes_rich_table_structure_range.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
         src/controllers/notes/notes_rich_table_merging.cpp
         src/controllers/notes/notes_rich_table_merging.h
@@ -378,6 +382,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_table_background_selection_qml_test.cpp
         tests/notes/native_notes_table_clear_formatting_qml_test.cpp
         tests/notes/native_notes_table_cell_selection_qml_test.cpp
+        tests/notes/native_notes_table_structure_qml_test.cpp
         tests/notes/native_notes_spoiler_geometry_qml_test.cpp
         src/controllers/notes/notes_code_syntax_highlighter.cpp
         src/controllers/notes/notes_code_syntax_highlighter.h
@@ -405,6 +410,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_tables.cpp
         src/controllers/notes/notes_rich_table_cell_formatting.cpp
         src/controllers/notes/notes_rich_table_cell_selection.cpp
+        src/controllers/notes/notes_rich_table_structure_range.cpp
         src/controllers/notes/notes_rich_table_operations.cpp
         src/controllers/notes/notes_rich_table_merging.cpp
         src/controllers/notes/notes_rich_table_merging.h
