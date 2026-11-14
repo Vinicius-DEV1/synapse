@@ -121,11 +121,13 @@ void SynapseDataController::exportLocalFile(const QString &fileId, const QString
     if (m_isVaultConfigured && (!m_isVaultUnlocked || m_unlockedKeys.value("files").isEmpty())) {
         return fail("Unlock the vault before exporting encrypted files.");
     }
-    const QString escapedId = escapeSql(fileId);
-    const QJsonArray rows = executeQuery(QString("SELECT name, local_path FROM files WHERE id = '%1' AND deleted_at IS NULL").arg(escapedId));
-    if (rows.isEmpty()) return fail("The selected file is no longer available.");
+    char *raw = synapse_files_get_file(m_db, fileId.trimmed().toUtf8().constData());
+    if (!raw) return fail("The selected file is no longer available.");
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    if (!doc.isObject()) return fail("The selected file is no longer available.");
 
-    const QJsonObject record = rows[0].toObject();
+    const QJsonObject record = doc.object();
     const QString name = record.value("name").toString();
     const QString storedLocalPath = record.value("local_path").toString();
     const QString storedPath = m_isVaultConfigured

@@ -1,38 +1,38 @@
 #include "synapse_controller.h"
 
-#include <QtCore/QDateTime>
-#include <QtCore/QDir>
-#include <QtCore/QFileInfo>
-#include <QtCore/QStandardPaths>
-#include <QtCore/QSysInfo>
+#include <QtCore/QDate>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
 
-// Native dashboard aggregation.
+// Native dashboard aggregation delegated to shared core domain APIs.
+
+namespace {
+QVariantList parseBridgeArray(char *jsonStr) {
+    if (!jsonStr) return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+    return doc.array().toVariantList();
+}
+}
 
 QVariantMap SynapseDataController::getHomeDashboardData() {
     QVariantMap res;
+    if (!m_db) return res;
+
     const QString today = QDate::currentDate().toString("yyyy-MM-dd");
     const QString tomorrow = QDate::currentDate().addDays(1).toString("yyyy-MM-dd");
 
     // Today's events
-    const QString todayPattern = today + "%";
-    const QString todaySql =
-        "SELECT id, title, description, start_date, color, status, type "
-        "FROM calendar_events WHERE deleted_at IS NULL AND (start_date LIKE ? OR start_date IS NULL) "
-        "ORDER BY start_date ASC LIMIT 10";
-    res["today_events"] = executeQueryPrepared(todaySql, {todayPattern}).toVariantList();
+    char *todayRaw = synapse_calendar_get_events_for_date(m_db, today.toUtf8().constData(), 1, 10);
+    res["today_events"] = parseBridgeArray(todayRaw);
 
     // Tomorrow's events
-    const QString tomorrowPattern = tomorrow + "%";
-    const QString tomorrowSql =
-        "SELECT id, title, description, start_date, color, status, type "
-        "FROM calendar_events WHERE deleted_at IS NULL AND start_date LIKE ? "
-        "ORDER BY start_date ASC LIMIT 10";
-    res["tomorrow_events"] = executeQueryPrepared(tomorrowSql, {tomorrowPattern}).toVariantList();
+    char *tomorrowRaw = synapse_calendar_get_events_for_date(m_db, tomorrow.toUtf8().constData(), 0, 10);
+    res["tomorrow_events"] = parseBridgeArray(tomorrowRaw);
 
     // Recent pages (last 5 edited)
-    const QString pagesSql = "SELECT id, title, icon, updated_at FROM pages "
-                             "WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 5";
-    res["recent_pages"] = executeQuery(pagesSql).toVariantList();
+    char *pagesRaw = synapse_notes_get_recent_pages(m_db, 5);
+    res["recent_pages"] = parseBridgeArray(pagesRaw);
 
     // Pinned pages
     res["pinned_pages"] = getPinnedPages();
@@ -44,13 +44,7 @@ QVariantMap SynapseDataController::getHomeDashboardData() {
     res["habits"] = getHabits();
 
     // Due flashcards count
-    const QString dueSql =
-        "SELECT count(*) as count FROM anki_cards c "
-        "LEFT JOIN anki_srs_state s ON c.id = s.id "
-        "WHERE c.deleted_at IS NULL AND (s.due_date IS NULL OR s.due_date <= datetime('now'))";
-    const QJsonArray dueArr = executeQuery(dueSql);
-    res["due_cards_count"] = (!dueArr.isEmpty()) ? dueArr[0].toObject().value("count").toInt() : 0;
+    res["due_cards_count"] = static_cast<int>(synapse_anki_get_due_cards_count(m_db));
 
     return res;
 }
-

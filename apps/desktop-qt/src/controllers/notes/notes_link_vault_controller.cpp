@@ -87,10 +87,6 @@ QString canonicalLinkUrl(const QString &rawUrl) {
     return canonical.toString(QUrl::FullyEncoded);
 }
 
-QString entityConfigKey(const QString &canonicalUrl) {
-    return "link_entity:" + canonicalUrl;
-}
-
 QString nowIsoUtc() {
     return QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
 }
@@ -109,36 +105,47 @@ QJsonObject defaultLinkEntity(const QString &canonicalUrl, const QString &origin
             {"firstSeenAt", now}, {"lastReferencedAt", now}, {"orphanedAt", QJsonValue::Null}};
 }
 
-bool readEntityObject(const QJsonObject &row, QJsonObject *entity) {
+bool loadOrInitEntity(Database *db, const QString &canonicalUrl, const QString &url, QJsonObject *entity) {
     if (!entity) return false;
-    const QStringList payloads = {row.value("data").toString(), row.value("value").toString()};
-    for (const QString &payload : payloads) {
-        if (payload.isEmpty()) continue;
+    *entity = defaultLinkEntity(canonicalUrl, url);
+    if (!db) return true;
+    char *raw = synapse_notes_get_link_entity(db, canonicalUrl.toUtf8().constData());
+    if (raw) {
         QJsonParseError parseError;
-        const QJsonDocument document = QJsonDocument::fromJson(payload.toUtf8(), &parseError);
+        const QJsonDocument document = QJsonDocument::fromJson(QByteArray(raw), &parseError);
+        synapse_free_string(raw);
         if (parseError.error == QJsonParseError::NoError && document.isObject()) {
             *entity = document.object();
             return true;
         }
+        qWarning() << "[NotesLinkVault] Preserving malformed config row for" << canonicalUrl;
+        return false;
     }
-    return payloads.first().isEmpty() && payloads.last().isEmpty();
+    return true;
+}
+
+bool persistEntity(Database *db, const QString &canonicalUrl, const QJsonObject &entity) {
+    if (!db) return false;
+    const QString payload = QString::fromUtf8(QJsonDocument(entity).toJson(QJsonDocument::Compact));
+    return synapse_notes_save_link_entity(db, canonicalUrl.toUtf8().constData(), payload.toUtf8().constData()) >= 1;
 }
 
 }
 
 QVariantMap SynapseDataController::getLinkEntity(const QString &url) {
     const QString canonicalUrl = canonicalLinkUrl(url);
-    if (canonicalUrl.isEmpty()) return {};
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT data, value FROM config WHERE id = ?1 LIMIT 1", {entityConfigKey(canonicalUrl)});
-    if (rows.isEmpty()) return {};
+    if (canonicalUrl.isEmpty() || !m_db) return {};
+    char *raw = synapse_notes_get_link_entity(m_db, canonicalUrl.toUtf8().constData());
+    if (!raw) return {};
 
-    QJsonObject entity;
-    if (!readEntityObject(rows.first().toObject(), &entity)) {
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(QByteArray(raw), &parseError);
+    synapse_free_string(raw);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
         qWarning() << "[NotesLinkVault] Invalid link entity payload for" << canonicalUrl;
         return {};
     }
-    return entity.toVariantMap();
+    return document.object().toVariantMap();
 }
 
 QVariantMap SynapseDataController::setLinkEntityStatus(const QString &url, bool watched, bool watching) {
@@ -148,17 +155,9 @@ QVariantMap SynapseDataController::setLinkEntityStatus(const QString &url, bool 
         return {{"success", false}};
     }
 
-    const QString configKey = entityConfigKey(canonicalUrl);
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT data, value FROM config WHERE id = ?1 LIMIT 1", {configKey});
-    QJsonObject entity = defaultLinkEntity(canonicalUrl, url);
-    if (!rows.isEmpty()) {
-        QJsonObject storedEntity;
-        if (!readEntityObject(rows.first().toObject(), &storedEntity)) {
-            qWarning() << "[NotesLinkVault] Preserving malformed config row for" << canonicalUrl;
-            return {{"success", false}};
-        }
-        entity = storedEntity;
+    QJsonObject entity;
+    if (!loadOrInitEntity(m_db, canonicalUrl, url, &entity)) {
+        return {{"success", false}};
     }
 
     const QString now = nowIsoUtc();
@@ -172,13 +171,7 @@ QVariantMap SynapseDataController::setLinkEntityStatus(const QString &url, bool 
     entity.insert("watched", watched);
     entity.insert("watching", watching);
 
-    const QString payload = QString::fromUtf8(QJsonDocument(entity).toJson(QJsonDocument::Compact));
-    const int changedRows = executeSqlPrepared(
-        "INSERT INTO config (id, data, value, updated_at) VALUES (?1, ?2, ?2, ?3) "
-        "ON CONFLICT(id) DO UPDATE SET data = excluded.data, value = excluded.value, "
-        "updated_at = excluded.updated_at",
-        {configKey, payload, now});
-    if (changedRows < 1) return {{"success", false}};
+    if (!persistEntity(m_db, canonicalUrl, entity)) return {{"success", false}};
 
     QVariantMap result = entity.toVariantMap();
     result.insert("success", true);
@@ -192,17 +185,9 @@ QVariantMap SynapseDataController::setLinkEntityNotes(const QString &url, const 
         return {{"success", false}};
     }
 
-    const QString configKey = entityConfigKey(canonicalUrl);
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT data, value FROM config WHERE id = ?1 LIMIT 1", {configKey});
-    QJsonObject entity = defaultLinkEntity(canonicalUrl, url);
-    if (!rows.isEmpty()) {
-        QJsonObject storedEntity;
-        if (!readEntityObject(rows.first().toObject(), &storedEntity)) {
-            qWarning() << "[NotesLinkVault] Preserving malformed config row for" << canonicalUrl;
-            return {{"success", false}};
-        }
-        entity = storedEntity;
+    QJsonObject entity;
+    if (!loadOrInitEntity(m_db, canonicalUrl, url, &entity)) {
+        return {{"success", false}};
     }
 
     const QString now = nowIsoUtc();
@@ -215,13 +200,7 @@ QVariantMap SynapseDataController::setLinkEntityNotes(const QString &url, const 
     entity.insert("orphanedAt", QJsonValue::Null);
     entity.insert("notes", notes);
 
-    const QString payload = QString::fromUtf8(QJsonDocument(entity).toJson(QJsonDocument::Compact));
-    const int changedRows = executeSqlPrepared(
-        "INSERT INTO config (id, data, value, updated_at) VALUES (?1, ?2, ?2, ?3) "
-        "ON CONFLICT(id) DO UPDATE SET data = excluded.data, value = excluded.value, "
-        "updated_at = excluded.updated_at",
-        {configKey, payload, now});
-    if (changedRows < 1) return {{"success", false}};
+    if (!persistEntity(m_db, canonicalUrl, entity)) return {{"success", false}};
 
     QVariantMap result = entity.toVariantMap();
     result.insert("success", true);
@@ -236,17 +215,9 @@ QVariantMap SynapseDataController::setLinkEntityColor(const QString &url, const 
         return {{"success", false}};
     }
 
-    const QString configKey = entityConfigKey(canonicalUrl);
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT data, value FROM config WHERE id = ?1 LIMIT 1", {configKey});
-    QJsonObject entity = defaultLinkEntity(canonicalUrl, url);
-    if (!rows.isEmpty()) {
-        QJsonObject storedEntity;
-        if (!readEntityObject(rows.first().toObject(), &storedEntity)) {
-            qWarning() << "[NotesLinkVault] Preserving malformed config row for" << canonicalUrl;
-            return {{"success", false}};
-        }
-        entity = storedEntity;
+    QJsonObject entity;
+    if (!loadOrInitEntity(m_db, canonicalUrl, url, &entity)) {
+        return {{"success", false}};
     }
 
     const QString now = nowIsoUtc();
@@ -259,13 +230,7 @@ QVariantMap SynapseDataController::setLinkEntityColor(const QString &url, const 
     entity.insert("orphanedAt", QJsonValue::Null);
     entity.insert("color", color == "default" ? color : color.toUpper());
 
-    const QString payload = QString::fromUtf8(QJsonDocument(entity).toJson(QJsonDocument::Compact));
-    const int changedRows = executeSqlPrepared(
-        "INSERT INTO config (id, data, value, updated_at) VALUES (?1, ?2, ?2, ?3) "
-        "ON CONFLICT(id) DO UPDATE SET data = excluded.data, value = excluded.value, "
-        "updated_at = excluded.updated_at",
-        {configKey, payload, now});
-    if (changedRows < 1) return {{"success", false}};
+    if (!persistEntity(m_db, canonicalUrl, entity)) return {{"success", false}};
 
     QVariantMap result = entity.toVariantMap();
     result.insert("success", true);

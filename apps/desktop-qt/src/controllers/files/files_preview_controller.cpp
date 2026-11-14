@@ -23,13 +23,13 @@ void SynapseDataController::previewLocalFile(const QString &fileId) {
         return fail("Unlock the vault before previewing encrypted files.");
     }
 
-    const QString escapedId = escapeSql(fileId);
-    const QJsonArray rows = executeQuery(QString("SELECT name, local_path, file_type, mime_type, file_size "
-                                                 "FROM files WHERE id = '%1' AND deleted_at IS NULL")
-                                         .arg(escapedId));
-    if (rows.isEmpty()) return fail("The selected file is no longer available.");
+    char *raw = synapse_files_get_file(m_db, fileId.trimmed().toUtf8().constData());
+    if (!raw) return fail("The selected file is no longer available.");
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    if (!doc.isObject()) return fail("The selected file is no longer available.");
 
-    const QJsonObject record = rows.first().toObject();
+    const QJsonObject record = doc.object();
     const QString name = record.value("name").toString();
     const QString fileType = record.value("file_type").toString();
     const QString mimeType = record.value("mime_type").toString();

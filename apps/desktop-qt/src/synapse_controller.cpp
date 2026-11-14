@@ -304,17 +304,24 @@ QString SynapseDataController::decryptContent(const QString &keyHex, const QStri
 }
 
 QVariantList SynapseDataController::getDiagrams() {
-    QString sql = "SELECT id, title, icon, updated_at, created_at FROM diagrams "
-                  "WHERE deleted_at IS NULL ORDER BY updated_at DESC";
-    return executeQuery(sql).toVariantList();
+    if (!m_db) return {};
+    char *raw = synapse_diagrams_get_all(m_db);
+    if (!raw) return {};
+    const auto doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    return doc.array().toVariantList();
 }
 
 QVariantMap SynapseDataController::getDiagram(const QString &diagramId) {
-    const QJsonArray arr = executeQueryPrepared(
-        "SELECT id, title, icon, content, encrypted_content, updated_at FROM diagrams "
-        "WHERE id = ?1 AND deleted_at IS NULL", {diagramId});
-    if (arr.isEmpty()) return QVariantMap();
-    QJsonObject obj = arr[0].toObject();
+    if (!m_db || diagramId.trimmed().isEmpty()) return {};
+    const QByteArray did = diagramId.trimmed().toUtf8();
+    char *raw = synapse_diagrams_get(m_db, did.constData());
+    if (!raw) return {};
+    const auto doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    if (!doc.isObject()) return {};
+
+    QJsonObject obj = doc.object();
     QString enc = obj.value("encrypted_content").toString();
     if (!enc.isEmpty()) {
         const QString notesKey = m_unlockedKeys.value("notes");
@@ -337,54 +344,55 @@ QVariantMap SynapseDataController::getDiagram(const QString &diagramId) {
 }
 
 bool SynapseDataController::saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon) {
+    if (!m_db || diagramId.trimmed().isEmpty()) return false;
     if (m_isVaultConfigured && !m_isVaultUnlocked) return false;
-    QString ts = currentTimestamp();
+
     QString enc;
+    QString plainContent = content;
     if (m_isVaultConfigured) {
         const QString notesKey = m_unlockedKeys.value("notes");
         if (notesKey.isEmpty()) return false;
         enc = encryptContent(notesKey, content);
         if (enc.isNull()) return false;
+        plainContent = QStringLiteral("[]");
     }
-    if (m_isVaultConfigured) {
-        return executeSqlPrepared(
-            "UPDATE diagrams SET title = ?1, content = '', encrypted_content = ?2, icon = ?3, updated_at = ?4 "
-            "WHERE id = ?5", {title, enc, icon, ts, diagramId}) == 1;
-    }
-    return executeSqlPrepared(
-        "UPDATE diagrams SET title = ?1, content = ?2, encrypted_content = NULL, icon = ?3, updated_at = ?4 "
-        "WHERE id = ?5", {title, content, icon, ts, diagramId}) == 1;
+
+    const QByteArray did = diagramId.trimmed().toUtf8();
+    const QByteArray t = title.trimmed().toUtf8();
+    const QByteArray c = plainContent.toUtf8();
+    const QByteArray e = enc.toUtf8();
+    const QByteArray ic = icon.trimmed().toUtf8();
+
+    return synapse_diagrams_save(
+        m_db,
+        did.constData(),
+        t.constData(),
+        c.constData(),
+        enc.isEmpty() ? nullptr : e.constData(),
+        ic.constData()
+    ) == 1;
 }
 
 QString SynapseDataController::createDiagram(const QString &title, const QString &icon) {
-    if (m_isVaultConfigured && !m_isVaultUnlocked) return QString();
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString content = QStringLiteral("[]");
-    QString encrypted;
+    if (!m_db) return {};
+    if (m_isVaultConfigured && !m_isVaultUnlocked) return {};
+
+    const QByteArray t = title.trimmed().toUtf8();
+    const QByteArray ic = icon.trimmed().toUtf8();
+    char *raw = synapse_diagrams_create(m_db, t.constData(), ic.constData());
+    if (!raw) return {};
+    const QString id = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    if (id.isEmpty()) return {};
+
     if (m_isVaultConfigured) {
-        const QString notesKey = m_unlockedKeys.value("notes");
-        if (notesKey.isEmpty()) return QString();
-        encrypted = encryptContent(notesKey, content);
-        if (encrypted.isNull()) return QString();
-        content.clear();
+        saveDiagram(id, title, QStringLiteral("[]"), icon);
     }
-    const int inserted = m_isVaultConfigured
-        ? executeSqlPrepared(
-              "INSERT INTO diagrams (id, title, content, encrypted_content, icon, created_at, updated_at) "
-              "VALUES (?1, ?2, '', ?3, ?4, ?5, ?5)", {id, title, encrypted, icon, ts})
-        : executeSqlPrepared(
-              "INSERT INTO diagrams (id, title, content, encrypted_content, icon, created_at, updated_at) "
-              "VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?5)", {id, title, content, icon, ts});
-    if (inserted == 1) return id;
-    return "";
+    return id;
 }
 
 bool SynapseDataController::deleteDiagram(const QString &diagramId) {
-    if (diagramId.trimmed().isEmpty()) return false;
-    const QString ts = currentTimestamp();
-    return executeSqlPrepared(
-        "UPDATE diagrams SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-        {ts, ts, diagramId.trimmed()}
-    ) == 1;
+    if (!m_db || diagramId.trimmed().isEmpty()) return false;
+    const QByteArray did = diagramId.trimmed().toUtf8();
+    return synapse_diagrams_delete(m_db, did.constData()) == 1;
 }
