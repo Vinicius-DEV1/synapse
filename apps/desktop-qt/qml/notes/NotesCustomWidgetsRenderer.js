@@ -82,7 +82,7 @@ function renderQuestionBlocks(html) {
 
 // 2. Focus / Pomodoro Timer Widgets
 function renderFocusWidgets(html) {
-    var pattern = /<span\b(?=[^>]*\bdata-type="focus-widget")([^>]*)>([\s\S]*?)<\/span>/gi
+    var pattern = /<span\b(?=[^>]*\b(?:data-type="focus-widget"|class="[^"]*focus-widget[^"]*"))([^>]*)>([\s\S]*?)<\/span>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<span " + tagAttrs + ">")
         var duration = attrs["data-duration"] || "25"
@@ -102,7 +102,7 @@ function renderFocusWidgets(html) {
 
 // 3. Alarm Widgets
 function renderAlarmWidgets(html) {
-    var pattern = /<span\b(?=[^>]*\bdata-type="alarm-widget")([^>]*)>([\s\S]*?)<\/span>/gi
+    var pattern = /<span\b(?=[^>]*\b(?:data-type="alarm-widget"|class="[^"]*alarm-widget[^"]*"))([^>]*)>([\s\S]*?)<\/span>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<span " + tagAttrs + ">")
         var time = attrs["data-time"] || "08:00"
@@ -119,7 +119,7 @@ function renderAlarmWidgets(html) {
 
 // 4. Calendar Event Widgets
 function renderCalendarEventWidgets(html) {
-    var pattern = /<span\b(?=[^>]*\bdata-type="calendar-event-widget")([^>]*)>([\s\S]*?)<\/span>/gi
+    var pattern = /<span\b(?=[^>]*\b(?:data-type="calendar-event-widget"|class="[^"]*calendar-event-widget[^"]*"))([^>]*)>([\s\S]*?)<\/span>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<span " + tagAttrs + ">")
         var title = attrs["data-title"] || "Evento"
@@ -138,7 +138,7 @@ function renderCalendarEventWidgets(html) {
 
 // 5. Habit Widgets
 function renderHabitWidgets(html) {
-    var pattern = /<span\b(?=[^>]*\bdata-type="habit-widget")([^>]*)>([\s\S]*?)<\/span>/gi
+    var pattern = /<span\b(?=[^>]*\b(?:data-type="habit-widget"|class="[^"]*habit-widget[^"]*"))([^>]*)>([\s\S]*?)<\/span>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<span " + tagAttrs + ">")
         var title = attrs["data-title"] || "Hábito Diário"
@@ -154,7 +154,7 @@ function renderHabitWidgets(html) {
 
 // 6. Attached File Widgets
 function renderFileWidgets(html) {
-    var pattern = /<(?:div|span)\b(?=[^>]*\bdata-type="file-widget")([^>]*)>([\s\S]*?)<\/(?:div|span)>/gi
+    var pattern = /<(?:div|span)\b(?=[^>]*\b(?:data-type="file-widget"|class="[^"]*file-widget[^"]*"))([^>]*)>([\s\S]*?)<\/(?:div|span)>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<div " + tagAttrs + ">")
         var name = attrs["data-name"] || "Arquivo"
@@ -310,7 +310,7 @@ function renderScrapWidgets(html) {
 
 // 11. Document Bundles
 function renderDocumentBundles(html) {
-    var pattern = /<div\b(?=[^>]*\bdata-type="document-bundle")([^>]*)>([\s\S]*?)<\/div>/gi
+    var pattern = /<div\b(?=[^>]*\b(?:data-type="document-bundle"|class="[^"]*document-bundle[^"]*"))([^>]*)>([\s\S]*?)<\/div>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<div " + tagAttrs + ">")
         var title = attrs["data-title"] || "Pacote de Documentos"
@@ -345,8 +345,8 @@ function renderSpoilers(html, revealedMap) {
 
 // 13. Media Widgets (Linked Videos & Library Books)
 function renderMediaWidgets(html) {
-    if (!html || html.indexOf("data-type=\"media-widget\"") === -1) return html
-    var pattern = /<(?:span|div)\b(?=[^>]*\bdata-type="media-widget")([^>]*)>([\s\S]*?)<\/(?:span|div)>/gi
+    if (!html || (html.indexOf("media-widget") === -1 && html.indexOf("data-type=\"media-widget\"") === -1)) return html
+    var pattern = /<(?:span|div)\b(?=[^>]*\b(?:data-type="media-widget"|class="[^"]*media-widget[^"]*"))([^>]*)>([\s\S]*?)<\/(?:span|div)>/gi
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<div " + tagAttrs + ">")
         var mediaId = attrs["data-media-id"] || ""

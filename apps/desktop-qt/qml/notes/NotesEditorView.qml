@@ -103,8 +103,9 @@ Rectangle {
         activeTitle = p.title || "Sem título"
         activeDescription = p.description || ""
         activeContent = p.content || ""
-        isPreviewMode = false
-        isRichMode = notesTextOperations.supportsRichSource(activeContent)
+        var canRich = notesTextOperations.supportsRichSource(activeContent)
+        isRichMode = canRich
+        isPreviewMode = !canRich
         activeIcon = p.icon || "📄"
         activeCoverImage = p.cover_image || ""
         activeDate = p.updated_at ? p.updated_at.substring(0, 10) : ""
