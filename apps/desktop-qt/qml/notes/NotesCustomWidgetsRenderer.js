@@ -125,13 +125,15 @@ function renderCalendarEventWidgets(html) {
         var title = attrs["data-title"] || "Evento"
         var date = attrs["data-date"] || ""
         var status = attrs["data-status"] || "pending"
-        var statusText = status === "completed" ? "Concluído ✓" : "Pendente"
+        var isCompleted = status === "completed"
+        var statusText = isCompleted ? "Concluído ✓" : "Pendente"
+        var statusColor = isCompleted ? "#34d399" : "#fbbf24"
 
-        return "<table width=\"100%\" border=\"1\" bordercolor=\"#0369a1\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#0c2338\">" +
+        return "<table width=\"100%\" border=\"1\" bordercolor=\"#2e2a3e\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"#13121c\" style=\"border-collapse: collapse; margin: 6px 0;\">" +
                "<tr><td>" +
-               "<p><font color=\"#38bdf8\" size=\"2\"><b>📅 EVENTO DA AGENDA: " + escapeHtml(title) + "</b></font></p>" +
-               "<p><font color=\"#e0f2fe\" size=\"2\">" + (date ? "Data: " + escapeHtml(date) + " &nbsp;|&nbsp; " : "") +
-               "<b>Status:</b> " + statusText + "</font></p>" +
+               "<p style=\"margin: 0;\"><font color=\"#a78bfa\" size=\"2\"><b>📅 EVENTO DA AGENDA: " + escapeHtml(title) + "</b></font></p>" +
+               "<p style=\"margin: 4px 0 0 0;\"><font color=\"#e4e4e7\" size=\"2\">" + (date ? "Data: " + escapeHtml(date) + " &nbsp;|&nbsp; " : "") +
+               "<b>Status:</b> <font color=\"" + statusColor + "\">" + statusText + "</font></font></p>" +
                "</td></tr></table>"
     })
 }
@@ -495,6 +497,118 @@ function renderPageReferences(html) {
     return html
 }
 
+function formatTableCellContent(content, isHeader) {
+    var trimmed = String(content || "").trim()
+    if (!trimmed || trimmed === "<p></p>" || trimmed === "<p><br></p>" || trimmed === "<p><br/></p>" || trimmed === "<br>" || trimmed === "<br/>") {
+        return "<p style=\"margin:0;\">&nbsp;</p>"
+    }
+    var color = isHeader ? "#f4f4f5" : "#d4d4d8"
+    if (/<p\b/i.test(trimmed)) {
+        trimmed = trimmed.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, function(_, pContent) {
+            var inner = pContent.trim()
+            if (!inner || inner === "<br>" || inner === "<br/>") inner = "&nbsp;"
+            if (isHeader && inner.indexOf("<b>") === -1 && inner.indexOf("<strong>") === -1 && inner !== "&nbsp;") {
+                inner = "<b>" + inner + "</b>"
+            }
+            return "<p style=\"margin:0 0 2px 0;\"><font color=\"" + color + "\" size=\"2\">" + inner + "</font></p>"
+        })
+    } else {
+        var innerText = trimmed
+        if (isHeader && innerText.indexOf("<b>") === -1 && innerText.indexOf("<strong>") === -1) {
+            innerText = "<b>" + innerText + "</b>"
+        }
+        trimmed = "<p style=\"margin:0;\"><font color=\"" + color + "\" size=\"2\">" + innerText + "</font></p>"
+    }
+    trimmed = trimmed.replace(/<a\b([^>]*)>/gi, function(aMatch, aAttrs) {
+        if (/style=/i.test(aAttrs)) return aMatch
+        return "<a " + aAttrs + " style=\"color: #a78bfa; text-decoration: none;\">"
+    })
+    return trimmed
+}
+
+// 17. Content Tables (TipTap / ProseMirror HTML tables styled for QTextDocument)
+function renderRichTables(html) {
+    if (!html || html.indexOf("<table") === -1) return html
+    var tablePattern = /<table\b([^>]*)>([\s\S]*?)<\/table>/gi
+    return html.replace(tablePattern, function(fullMatch, tagAttrs, innerContent) {
+        if (/bordercolor\s*=/i.test(tagAttrs) || /border\s*=\s*["']?0["']?/i.test(tagAttrs) || /data-widget/i.test(tagAttrs)) {
+            return fullMatch
+        }
+        var cleanInner = innerContent.replace(/<colgroup\b[^>]*>[\s\S]*?<\/colgroup>/gi, "")
+        cleanInner = cleanInner.replace(/<th\b([^>]*)>([\s\S]*?)<\/th>/gi, function(_, thAttrs, content) {
+            var spanAttrs = ""
+            var colSpanMatch = thAttrs.match(/colspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (colSpanMatch) {
+                var cs = colSpanMatch[1] || colSpanMatch[2] || colSpanMatch[3]
+                if (cs && cs !== "1") spanAttrs += " colspan=\"" + cs + "\""
+            }
+            var rowSpanMatch = thAttrs.match(/rowspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (rowSpanMatch) {
+                var rs = rowSpanMatch[1] || rowSpanMatch[2] || rowSpanMatch[3]
+                if (rs && rs !== "1") spanAttrs += " rowspan=\"" + rs + "\""
+            }
+            var widthAttr = ""
+            var widthMatch = thAttrs.match(/width\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (widthMatch) {
+                widthAttr = " width=\"" + (widthMatch[1] || widthMatch[2] || widthMatch[3]) + "\""
+            } else {
+                var colWidthMatch = thAttrs.match(/colwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (colWidthMatch) {
+                    var cw = colWidthMatch[1] || colWidthMatch[2] || colWidthMatch[3]
+                    if (cw && parseInt(cw, 10) > 0) widthAttr = " width=\"" + parseInt(cw, 10) + "\""
+                }
+            }
+            var formatted = formatTableCellContent(content, true)
+            return "<th" + spanAttrs + widthAttr + " bgcolor=\"#191724\" align=\"left\" style=\"border: 1px solid #36324a; padding: 8px 12px;\">" + formatted + "</th>"
+        })
+        cleanInner = cleanInner.replace(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi, function(_, tdAttrs, content) {
+            var spanAttrs = ""
+            var colSpanMatch = tdAttrs.match(/colspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (colSpanMatch) {
+                var cs = colSpanMatch[1] || colSpanMatch[2] || colSpanMatch[3]
+                if (cs && cs !== "1") spanAttrs += " colspan=\"" + cs + "\""
+            }
+            var rowSpanMatch = tdAttrs.match(/rowspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (rowSpanMatch) {
+                var rs = rowSpanMatch[1] || rowSpanMatch[2] || rowSpanMatch[3]
+                if (rs && rs !== "1") spanAttrs += " rowspan=\"" + rs + "\""
+            }
+            var widthAttr = ""
+            var widthMatch = tdAttrs.match(/width\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (widthMatch) {
+                widthAttr = " width=\"" + (widthMatch[1] || widthMatch[2] || widthMatch[3]) + "\""
+            } else {
+                var colWidthMatch = tdAttrs.match(/colwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (colWidthMatch) {
+                    var cw = colWidthMatch[1] || colWidthMatch[2] || colWidthMatch[3]
+                    if (cw && parseInt(cw, 10) > 0) widthAttr = " width=\"" + parseInt(cw, 10) + "\""
+                }
+            }
+            var customBg = ""
+            var bgMatch = tdAttrs.match(/bgcolor\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+            if (bgMatch) {
+                customBg = bgMatch[1] || bgMatch[2] || bgMatch[3]
+            } else {
+                var styleMatch = tdAttrs.match(/background(?:-color)?\s*:\s*([^;"]+)/i)
+                if (styleMatch) {
+                    customBg = styleMatch[1].trim()
+                } else {
+                    var dataColorMatch = tdAttrs.match(/data-color\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                    if (dataColorMatch) {
+                        customBg = dataColorMatch[1] || dataColorMatch[2] || dataColorMatch[3]
+                    }
+                }
+            }
+            var bgAttr = customBg ? " bgcolor=\"" + customBg + "\"" : " bgcolor=\"#0f0e17\""
+            var formatted = formatTableCellContent(content, false)
+            return "<td" + spanAttrs + widthAttr + bgAttr + " align=\"left\" style=\"border: 1px solid #2d293d; padding: 8px 12px;\">" + formatted + "</td>"
+        })
+        return "<table width=\"100%\" border=\"1\" bordercolor=\"#2d293d\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"#0f0e17\" style=\"border-collapse: collapse; margin: 12px 0;\">" +
+               cleanInner +
+               "</table>"
+    })
+}
+
 // Master rendering pipeline
 function renderCustomWidgets(source, options) {
     if (!source || source.length === 0) return ""
@@ -517,5 +631,6 @@ function renderCustomWidgets(source, options) {
     html = renderGroupCollections(html, toggleStates)
     html = renderLinkGroups(html)
     html = renderPageReferences(html)
+    html = renderRichTables(html)
     return html
 }

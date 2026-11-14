@@ -140,26 +140,46 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
     var host = hostForUrl(url)
     var title = String(attributes.title || metadata.title || "").trim() || host
     var channel = String(attributes.channel || metadata.channel || "").trim()
-    var details = channel.length > 0
-        ? "<p><font color=\"#a7a9be\" size=\"2\">" + escapeHtml(channel) + "</font></p>" : ""
-    var duration = durationText(attributes.duration || metadata.duration)
-    if (duration.length > 0) details += "<p><font color=\"#a7a9be\" size=\"2\">" + duration + "</font></p>"
+
+    var isYouTube = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(url)
+    var isPlaylist = attributes.isPlaylist === "true" || metadata.isPlaylist || metadata.is_playlist
     var playlistCount = Number(attributes.playlistCount || metadata.playlistCount || metadata.playlist_count)
-    if ((attributes.isPlaylist === "true" || metadata.isPlaylist || metadata.is_playlist) &&
-            isFinite(playlistCount) && playlistCount > 0) {
-        details += "<p><font color=\"#a7a9be\" size=\"2\">" +
-            Math.floor(playlistCount) + " videos</font></p>"
-    }
+
     var watched = entity.watched !== undefined ? entity.watched === true : attributes.watched === "true"
     var watching = entity.watching !== undefined ? entity.watching === true : attributes.watching === "true"
-    var status = watched ? "Completed" : watching ? "Watching" : "Not started"
-    var watchedLabel = watched ? "Mark as not completed" : "Mark as completed"
-    var watchingLabel = watching ? "Stop watching" : "Mark as watching"
-    details += "<p><font color=\"#a7a9be\" size=\"2\">Status: " + status + "</font></p>" +
-        "<p><a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watched")) + "\">" +
-        watchedLabel + "</a> &nbsp; <a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watching")) + "\">" +
-        watchingLabel + "</a> &nbsp; <a href=\"synapse-link://copy?url=" +
-        escapeHtml(encodeURIComponent(url)) + "\">" + (copiedUrl === url ? "Copied" : "Copy URL") + "</a></p>"
+
+    var iconChar = isYouTube ? (isPlaylist ? "📑" : "▶") : "🌐"
+    var iconBg = isYouTube ? "#25141c" : "#191724"
+    var iconBorder = isYouTube ? "#4c1d2e" : "#2f2b42"
+    var iconColor = isYouTube ? "#fb7185" : "#a78bfa"
+
+    var hostLine = "<a href=\"" + escapeHtml(url) + "\" style=\"color: #a855f7; text-decoration: none;\"><font color=\"#a855f7\" size=\"2\"><b>" + escapeHtml(host) + "</b></font></a>"
+    if (channel.length > 0) {
+        hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#94a3b8\" size=\"2\">" + escapeHtml(channel) + "</font>"
+    }
+    var duration = durationText(attributes.duration || metadata.duration)
+    if (duration.length > 0) {
+        hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#94a3b8\" size=\"2\">" + duration + "</font>"
+    }
+    if (isPlaylist && isFinite(playlistCount) && playlistCount > 0) {
+        hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#c4b5fd\" size=\"2\">" + Math.floor(playlistCount) + " videos</font>"
+    }
+    if (watched) {
+        hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#34d399\" size=\"2\"><b>✓ Concluído</b></font>"
+    } else if (watching) {
+        hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#fbbf24\" size=\"2\"><b>⏳ Status: Watching</b></font>"
+    }
+
+    var actionsLine = ""
+    if (watching || watched) {
+        var watchedLabel = watched ? "Mark as not completed" : "Mark as completed"
+        var watchingLabel = watching ? "Stop watching" : "Mark as watching"
+        actionsLine = "<p style=\"margin: 4px 0 0 0;\"><font color=\"#71717a\" size=\"1\">" +
+            "<a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watched")) + "\" style=\"color: #71717a; text-decoration: none;\">" + watchedLabel + "</a> &nbsp;•&nbsp; " +
+            "<a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watching")) + "\" style=\"color: #71717a; text-decoration: none;\">" + watchingLabel + "</a> &nbsp;•&nbsp; " +
+            "<a href=\"synapse-link://copy?url=" + escapeHtml(encodeURIComponent(url)) + "\" style=\"color: #71717a; text-decoration: none;\">" + (copiedUrl === url ? "Copied" : "Copy URL") + "</a>" +
+            "</font></p>"
+    }
 
     var notesSection = ""
     if (attributes.shownotes === "true") {
@@ -167,17 +187,25 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
         var noteContent = notes.length > 0
             ? escapeHtml(notes).replace(/\r\n|\r|\n/g, "<br/>")
             : "<font color=\"#71717a\">No link notes yet. Choose Edit link notes to add one.</font>"
-        notesSection = "<p><font color=\"#a7a9be\" size=\"2\"><b>Link notes</b></font></p>" +
-            "<p><font color=\"#f4f4f5\">" + noteContent + "</font></p>"
+        notesSection = "<tr><td colspan=\"2\" bgcolor=\"#12111a\" style=\"border-top: 1px solid " + cardBorder + "; padding: 8px 12px;\">" +
+            "<p style=\"margin: 0;\"><font color=\"#a7a9be\" size=\"2\"><b>Link notes</b></font></p>" +
+            "<p style=\"margin: 4px 0 0 0;\"><font color=\"#f4f4f5\" size=\"2\">" + noteContent + "</font></p>" +
+            "</td></tr>"
     }
 
-    return "<table width=\"100%\" border=\"1\" bordercolor=\"" + cardBorder + "\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"" + cardBackground + "\"><tr><td>" +
-        "<p><font color=\"#a7a9be\" size=\"2\">↗ " + escapeHtml(host) + "</font></p>" +
-        "<p><font color=\"#f4f4f5\" size=\"4\"><b>" + escapeHtml(title) + "</b></font></p>" +
-        details +
+    return "<table width=\"100%\" border=\"1\" bordercolor=\"" + cardBorder + "\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"" + cardBackground + "\" style=\"border-collapse: collapse; margin: 8px 0;\">" +
+        "<tr>" +
+        "<td width=\"36\" valign=\"middle\" align=\"center\" bgcolor=\"" + iconBg + "\" style=\"border: 1px solid " + iconBorder + "; padding: 8px;\">" +
+        "<a href=\"" + escapeHtml(url) + "\" style=\"text-decoration:none;\"><font size=\"4\" color=\"" + iconColor + "\"><b>" + iconChar + "</b></font></a>" +
+        "</td>" +
+        "<td valign=\"middle\" style=\"padding: 8px 12px;\">" +
+        "<p style=\"margin: 0;\"><a href=\"" + escapeHtml(url) + "\" style=\"color: #ffffff; text-decoration: none;\"><font color=\"#ffffff\" size=\"3\"><b>" + escapeHtml(title) + "</b></font></a></p>" +
+        "<p style=\"margin: 2px 0 0 0;\">" + hostLine + "</p>" +
+        actionsLine +
+        "</td>" +
+        "</tr>" +
         notesSection +
-        "<p><a href=\"" + escapeHtml(url) + "\">" + escapeHtml(url) + "</a></p>" +
-        "</td></tr></table>"
+        "</table>"
 }
 
 function actionItems(source, provider, copiedUrl) {
