@@ -14,6 +14,12 @@ ApplicationWindow {
     color: "#0f0e17"
     flags: Qt.Window | Qt.FramelessWindowHint
 
+    onClosing: function(close) {
+        if (authenticatedShell.item && typeof authenticatedShell.item.flushActiveNotes === "function") {
+            authenticatedShell.item.flushActiveNotes()
+        }
+    }
+
     WindowResizeHandles {
         targetWindow: appWindow
     }

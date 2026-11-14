@@ -272,12 +272,11 @@ Rectangle {
                 editorCanvas.setTitleText(activeTitle)
                 editorCanvas.setDescriptionText(activeDescription)
                 editorCanvas.setEditorText(activeContent)
-                if (isRichMode) {
-                    if (notesTextOperations.supportsRichSource(activeContent)) {
-                        editorCanvas.flushRichEditor()
-                    } else {
-                        isRichMode = false
-                    }
+                if (notesTextOperations.supportsRichSource(activeContent)) {
+                    isRichMode = true
+                    editorCanvas.reloadRichEditor()
+                } else {
+                    isRichMode = false
                 }
                 editorCanvas.pageActionStatus = ""
                 loadPages()

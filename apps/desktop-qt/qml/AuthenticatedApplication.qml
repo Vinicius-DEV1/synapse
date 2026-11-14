@@ -36,7 +36,14 @@ Item {
     ]
     property string currentTabId: "tab-home"
 
+    function flushActiveNotes() {
+        if (notesView && (notesView.isDirty || notesView.isRichMode)) {
+            notesView.saveActiveNote()
+        }
+    }
+
     function openOrSwitchTab(moduleKey, title, icon) {
+        flushActiveNotes()
         for (var i = 0; i < tabsList.length; i++) {
             if (tabsList[i].module === moduleKey) {
                 currentTabId = tabsList[i].id
@@ -54,6 +61,7 @@ Item {
 
     function closeTab(tabId) {
         if (tabsList.length <= 1) return
+        flushActiveNotes()
         var idx = -1
         for (var i = 0; i < tabsList.length; i++) {
             if (tabsList[i].id === tabId) {
@@ -149,6 +157,7 @@ Item {
                 else rootWindow.windowRoot.showMaximized()
             }
             onCloseAppRequested: {
+                rootWindow.flushActiveNotes()
                 if (rootWindow.windowRoot) rootWindow.windowRoot.close()
                 else Qt.quit()
             }

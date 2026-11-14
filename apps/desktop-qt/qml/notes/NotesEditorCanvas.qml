@@ -72,6 +72,13 @@ ScrollView {
         plainTextContent = sourceEditorSurface.plainTextFromSource(txt)
     }
 
+    function reloadRichEditor() {
+        if (isRichMode) {
+            return richTextEditor.reloadSource()
+        }
+        return true
+    }
+
     function setTitleText(txt) {
         pageHeader.setTitleText(txt)
     }

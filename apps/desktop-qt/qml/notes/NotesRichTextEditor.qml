@@ -55,6 +55,12 @@ Item {
         return String(pageId)
     }
 
+    function reloadSource() {
+        hasPendingChanges = false
+        commitTimer.stop()
+        return loadSource()
+    }
+
     function loadSource() {
         if (active && hasPendingChanges) return false
         canEditSource = textOperations.supportsRichSource(sourceHtml)
