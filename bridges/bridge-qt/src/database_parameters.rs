@@ -29,6 +29,7 @@ fn c_string(value: String) -> *mut c_char {
 }
 
 #[no_mangle]
+#[deprecated(since = "0.2.0", note = "Direct SQL queries are deprecated. Use typed domain APIs instead.")]
 pub unsafe extern "C" fn synapse_db_query_json_params(
     db: *mut Database,
     sql: *const c_char,
@@ -102,6 +103,7 @@ pub unsafe extern "C" fn synapse_db_query_json_params(
 }
 
 #[no_mangle]
+#[deprecated(since = "0.2.0", note = "Direct SQL execution is deprecated. Use typed domain APIs instead.")]
 pub unsafe extern "C" fn synapse_db_execute_params(
     db: *mut Database,
     sql: *const c_char,

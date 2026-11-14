@@ -7,7 +7,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use synapse_core::{Card, Database, EncryptedVideoReader, FsrsEngine, FsrsState, Rating};
 use zeroize::{Zeroize, Zeroizing};
 mod database_parameters;
+#[allow(deprecated)]
 pub use database_parameters::{synapse_db_execute_params, synapse_db_query_json_params};
+pub mod domain;
+pub use domain::*;
 
 // ---------------------------------------------------------------------------
 // Database API
@@ -41,12 +44,15 @@ pub unsafe extern "C" fn synapse_db_close(db: *mut Database) {
 }
 
 #[no_mangle]
+#[deprecated(since = "0.2.0", note = "Direct SQL queries are deprecated. Use typed domain APIs instead.")]
 pub unsafe extern "C" fn synapse_db_query_json(db: *mut Database, sql: *const c_char) -> *mut c_char {
     let empty_parameters = CString::new("[]").expect("empty JSON parameter list is valid");
+    #[allow(deprecated)]
     synapse_db_query_json_params(db, sql, empty_parameters.as_ptr())
 }
 
 #[no_mangle]
+#[deprecated(since = "0.2.0", note = "Direct SQL queries are deprecated. Use typed domain APIs instead.")]
 pub unsafe extern "C" fn synapse_db_execute(db: *mut Database, sql: *const c_char) -> c_int {
     if db.is_null() || sql.is_null() {
         return -1;
