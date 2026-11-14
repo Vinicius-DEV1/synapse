@@ -183,4 +183,22 @@ impl FilesRepository {
     pub fn get_file_linked_pages_conn(conn: &rusqlite::Connection, file_id: &str) -> Result<Vec<String>> {
         items::get_file_linked_pages(conn, file_id)
     }
+
+    pub fn get_file(db: &Database, file_id: &str) -> Result<Option<FileRecord>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        items::get_file(&conn, file_id)
+    }
+
+    pub fn get_file_conn(conn: &rusqlite::Connection, file_id: &str) -> Result<Option<FileRecord>> {
+        items::get_file(conn, file_id)
+    }
+
+    pub fn update_file_local_path(db: &Database, file_id: &str, local_path: &str) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        items::update_file_local_path(&conn, file_id, local_path)
+    }
+
+    pub fn update_file_local_path_conn(conn: &rusqlite::Connection, file_id: &str, local_path: &str) -> Result<bool> {
+        items::update_file_local_path(conn, file_id, local_path)
+    }
 }

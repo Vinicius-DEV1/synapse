@@ -58,6 +58,23 @@ pub fn get_pinned_pages(conn: &Connection) -> Result<Vec<PageRecord>> {
     Ok(pages)
 }
 
+/// Retrieves recent pages ordered by updated_at DESC with a limit.
+pub fn get_recent_pages(conn: &Connection, limit: usize) -> Result<Vec<PageRecord>> {
+    let sql = "SELECT id, parent_id, title, content, icon, sort_order, created_at, updated_at, \
+               deleted_at, cover_image, description, password_salt, crdt_state, encrypted_content, \
+               is_pinned, pinned_order, is_locked \
+               FROM pages WHERE deleted_at IS NULL \
+               ORDER BY updated_at DESC LIMIT ?1";
+    let mut stmt = conn.prepare(sql)?;
+    let mut rows = stmt.query(params![limit as i64])?;
+
+    let mut pages = Vec::new();
+    while let Some(row) = rows.next()? {
+        pages.push(map_page_row(row)?);
+    }
+    Ok(pages)
+}
+
 /// Retrieves a single page by ID.
 pub fn get_page(conn: &Connection, page_id: &str) -> Result<Option<PageRecord>> {
     let sql = "SELECT id, parent_id, title, content, icon, sort_order, created_at, updated_at, \

@@ -21,6 +21,25 @@ impl CalendarRepository {
         events::get_calendar_events(conn)
     }
 
+    pub fn get_events_for_date(
+        db: &Database,
+        date_prefix: &str,
+        include_null: bool,
+        limit: usize,
+    ) -> Result<Vec<CalendarEvent>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        events::get_events_for_date(&conn, date_prefix, include_null, limit)
+    }
+
+    pub fn get_events_for_date_conn(
+        conn: &rusqlite::Connection,
+        date_prefix: &str,
+        include_null: bool,
+        limit: usize,
+    ) -> Result<Vec<CalendarEvent>> {
+        events::get_events_for_date(conn, date_prefix, include_null, limit)
+    }
+
     pub fn get_event(db: &Database, id: &str) -> Result<Option<CalendarEvent>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         events::get_calendar_event(&conn, id)

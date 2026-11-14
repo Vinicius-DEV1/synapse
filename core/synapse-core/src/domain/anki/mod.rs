@@ -135,6 +135,15 @@ impl AnkiRepository {
         cards::get_due_cards(conn, deck_id)
     }
 
+    pub fn get_due_cards_count(db: &Database) -> Result<i64> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        cards::get_due_cards_count(&conn)
+    }
+
+    pub fn get_due_cards_count_conn(conn: &rusqlite::Connection) -> Result<i64> {
+        cards::get_due_cards_count(conn)
+    }
+
     pub fn create_card(
         db: &Database,
         deck_id: &str,

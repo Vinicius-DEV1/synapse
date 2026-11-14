@@ -29,6 +29,11 @@ impl NotesRepository {
         pages::get_pinned_pages(&conn)
     }
 
+    pub fn get_recent_pages(db: &Database, limit: usize) -> Result<Vec<PageRecord>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        pages::get_recent_pages(&conn, limit)
+    }
+
     pub fn get_page(db: &Database, page_id: &str) -> Result<Option<PageRecord>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         pages::get_page(&conn, page_id)
@@ -171,5 +176,15 @@ impl NotesRepository {
     pub fn delete_link_metadata(db: &Database, url: &str) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         links::delete_link_metadata(&conn, url)
+    }
+
+    pub fn get_link_entity(db: &Database, canonical_url: &str) -> Result<Option<String>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        links::get_link_entity(&conn, canonical_url)
+    }
+
+    pub fn save_link_entity(db: &Database, canonical_url: &str, entity_json: &str) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        links::save_link_entity(&conn, canonical_url, entity_json)
     }
 }

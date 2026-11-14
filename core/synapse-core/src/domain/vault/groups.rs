@@ -106,10 +106,25 @@ pub fn delete_vault_group(conn: &rusqlite::Connection, id: &str) -> Result<bool>
     )?;
     if rows > 0 {
         let _ = conn.execute(
+            "UPDATE vault_password_history SET deleted_at = CURRENT_TIMESTAMP \
+             WHERE item_id IN (SELECT id FROM vault_items WHERE group_id = ?1) AND deleted_at IS NULL",
+            params![id.trim()],
+        );
+        let _ = conn.execute(
             "UPDATE vault_items SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP \
              WHERE group_id = ?1 AND deleted_at IS NULL",
             params![id.trim()],
         );
     }
     Ok(rows > 0)
+}
+
+pub fn reorder_vault_groups(conn: &rusqlite::Connection, updates: &[(&str, i32)]) -> Result<bool> {
+    for (id, pos) in updates {
+        conn.execute(
+            "UPDATE vault_groups SET position = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![pos, id.trim()],
+        )?;
+    }
+    Ok(true)
 }

@@ -1,11 +1,13 @@
 pub mod groups;
 pub mod items;
+pub mod migrations;
 pub mod models;
 #[cfg(test)]
 mod tests;
 
 pub use groups::*;
 pub use items::*;
+pub use migrations::*;
 pub use models::*;
 
 use crate::db::Database;

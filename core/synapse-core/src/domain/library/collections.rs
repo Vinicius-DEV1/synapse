@@ -154,3 +154,26 @@ pub fn set_book_collections(conn: &Connection, book_id: &str, collection_ids: &[
 
     Ok(true)
 }
+
+/// Adds a single book to a collection if not already assigned.
+pub fn add_book_to_collection(conn: &Connection, book_id: &str, collection_id: &str) -> Result<bool> {
+    let now = Utc::now().to_rfc3339();
+    let rel_id = Uuid::new_v4().to_string();
+    let rows = conn.execute(
+        "INSERT INTO library_book_collections (id, book_id, collection_id, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?4)",
+        params![rel_id, book_id.trim(), collection_id.trim(), now],
+    )?;
+    Ok(rows > 0)
+}
+
+/// Removes a book from a collection.
+pub fn remove_book_from_collection(conn: &Connection, book_id: &str, collection_id: &str) -> Result<bool> {
+    let now = Utc::now().to_rfc3339();
+    let rows = conn.execute(
+        "UPDATE library_book_collections SET deleted_at = ?1, updated_at = ?1 \
+         WHERE book_id = ?2 AND collection_id = ?3 AND deleted_at IS NULL",
+        params![now, book_id.trim(), collection_id.trim()],
+    )?;
+    Ok(rows > 0)
+}

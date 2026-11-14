@@ -1,6 +1,7 @@
 pub mod anki;
 pub mod calendar;
 pub mod culture;
+pub mod diagrams;
 pub mod files;
 pub mod finance;
 pub mod focus;
@@ -8,6 +9,7 @@ pub mod habits;
 pub mod library;
 pub mod notes;
 pub mod notifications;
+pub mod practice;
 pub mod questions;
 pub mod trash;
 pub mod vault;

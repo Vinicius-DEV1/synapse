@@ -62,6 +62,8 @@ pub struct Highlight {
     pub page_number: i32,
     pub text_content: String,
     pub color: Option<String>,
+    pub rects: Option<String>,
+    pub highlight_type: Option<String>,
     pub note: Option<String>,
     pub created_at: Option<String>,
 }

@@ -216,3 +216,43 @@ pub fn get_file_linked_pages(conn: &rusqlite::Connection, file_id: &str) -> Resu
     }
     Ok(list)
 }
+
+pub fn get_file(conn: &rusqlite::Connection, file_id: &str) -> Result<Option<FileRecord>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, file_type, file_size, local_path, drive_file_id, \
+         CASE WHEN drive_file_id IS NOT NULL AND drive_file_id != '' THEN 1 ELSE 0 END AS has_drive_copy, \
+         folder_id, mime_type, created_at, updated_at \
+         FROM files WHERE id = ?1 AND deleted_at IS NULL",
+    )?;
+    let mut rows = stmt.query(params![file_id.trim()])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(FileRecord {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            file_type: row.get(2)?,
+            file_size: row.get(3).unwrap_or(0),
+            local_path: row.get(4)?,
+            drive_file_id: row.get(5)?,
+            has_drive_copy: row.get(6).unwrap_or(0),
+            folder_id: row.get(7)?,
+            mime_type: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn update_file_local_path(
+    conn: &rusqlite::Connection,
+    file_id: &str,
+    local_path: &str,
+) -> Result<bool> {
+    let rows = conn.execute(
+        "UPDATE files SET local_path = ?1, updated_at = CURRENT_TIMESTAMP \
+         WHERE id = ?2 AND deleted_at IS NULL",
+        params![local_path.trim(), file_id.trim()],
+    )?;
+    Ok(rows > 0)
+}

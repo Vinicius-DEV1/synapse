@@ -74,3 +74,30 @@ pub fn delete_link_metadata(conn: &Connection, url: &str) -> Result<bool> {
     )?;
     Ok(rows > 0)
 }
+
+/// Retrieves a stored link entity JSON from config by canonical URL.
+pub fn get_link_entity(conn: &Connection, canonical_url: &str) -> Result<Option<String>> {
+    let key1 = format!("link_entity:{}", canonical_url);
+    let key2 = format!("linkEntity:{}", canonical_url);
+    let sql = "SELECT data, value FROM config WHERE id = ?1 OR id = ?2 ORDER BY id ASC LIMIT 1";
+    let opt = conn
+        .query_row(sql, params![key1, key2], |row| {
+            let data: Option<String> = row.get(0)?;
+            let value: Option<String> = row.get(1)?;
+            Ok(data.or(value).unwrap_or_default())
+        })
+        .optional()?;
+    Ok(opt)
+}
+
+/// Upserts a link entity JSON into config by canonical URL.
+pub fn save_link_entity(conn: &Connection, canonical_url: &str, entity_json: &str) -> Result<bool> {
+    let key = format!("link_entity:{}", canonical_url);
+    let now = Utc::now().to_rfc3339();
+    let rows = conn.execute(
+        "INSERT INTO config (id, data, value, updated_at) VALUES (?1, ?2, ?2, ?3) \
+         ON CONFLICT(id) DO UPDATE SET data = excluded.data, value = excluded.value, updated_at = excluded.updated_at",
+        params![key, entity_json, now],
+    )?;
+    Ok(rows > 0)
+}

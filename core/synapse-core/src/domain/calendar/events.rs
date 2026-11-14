@@ -252,3 +252,53 @@ pub fn delete_calendar_event(conn: &rusqlite::Connection, id: &str) -> Result<bo
     )?;
     Ok(rows > 0)
 }
+
+pub fn get_events_for_date(
+    conn: &rusqlite::Connection,
+    date_prefix: &str,
+    include_null: bool,
+    limit: usize,
+) -> Result<Vec<CalendarEvent>> {
+    let sql = if include_null {
+        "SELECT id, title, description, start_date, end_date, type, status, color, \
+         page_id, reminders, notified_reminders, created_at, updated_at \
+         FROM calendar_events WHERE deleted_at IS NULL AND (start_date LIKE ?1 OR start_date IS NULL) \
+         ORDER BY start_date ASC LIMIT ?2"
+    } else {
+        "SELECT id, title, description, start_date, end_date, type, status, color, \
+         page_id, reminders, notified_reminders, created_at, updated_at \
+         FROM calendar_events WHERE deleted_at IS NULL AND start_date LIKE ?1 \
+         ORDER BY start_date ASC LIMIT ?2"
+    };
+
+    let mut stmt = conn.prepare(sql)?;
+    let pattern = format!("{}%", date_prefix.trim());
+    let iter = stmt.query_map(params![pattern, limit as i64], |row| {
+        let reminders_raw: Option<String> = row.get(9).unwrap_or(None);
+        let reminders_val = reminders_raw.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
+        let notified_raw: Option<String> = row.get(10).unwrap_or(None);
+        let notified_val = notified_raw.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
+
+        Ok(CalendarEvent {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            description: row.get(2)?,
+            start_date: row.get(3)?,
+            end_date: row.get(4)?,
+            type_: row.get(5)?,
+            status: row.get(6)?,
+            color: row.get(7)?,
+            page_id: row.get(8).unwrap_or(None),
+            reminders: reminders_val.or(Some(serde_json::json!([]))),
+            notified_reminders: notified_val.or(Some(serde_json::json!([]))),
+            created_at: row.get(11)?,
+            updated_at: row.get(12)?,
+        })
+    })?;
+
+    let mut list = Vec::new();
+    for ev in iter.flatten() {
+        list.push(ev);
+    }
+    Ok(list)
+}

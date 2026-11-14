@@ -259,3 +259,13 @@ pub fn delete_card(conn: &rusqlite::Connection, card_id: &str) -> Result<bool> {
 
     Ok(count > 0)
 }
+
+pub fn get_due_cards_count(conn: &rusqlite::Connection) -> Result<i64> {
+    let mut stmt = conn.prepare(
+        "SELECT count(*) FROM anki_cards c \
+         LEFT JOIN anki_srs_state s ON c.id = s.id \
+         WHERE c.deleted_at IS NULL AND (s.due_date IS NULL OR s.due_date <= datetime('now'))",
+    )?;
+    let count: i64 = stmt.query_row([], |row| row.get(0))?;
+    Ok(count)
+}
