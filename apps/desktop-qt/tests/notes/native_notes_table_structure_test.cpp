@@ -327,6 +327,63 @@ private slots:
         QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(table, 3, 0), "moveRowDown"));
         QVERIFY(!NotesRichTables::canApplyStructureAction(document, cellPosition(table, 3, 2), "moveColumnRight"));
     }
+
+    void tableTemplatesInsertionAndStructure() {
+        // 1. Weekly table template (4 rows, 7 cols)
+        {
+            QTextDocument doc;
+            doc.setHtml("<p></p>");
+            const int pos = NotesRichTables::insertTemplateTable(doc, 0, 0, "table-week");
+            QVERIFY(pos >= 0);
+            auto *table = tableIn(doc);
+            QVERIFY(table);
+            QCOMPARE(table->rows(), 4);
+            QCOMPARE(table->columns(), 7);
+            const QString serialized = NotesRichDocument::serialize(doc);
+            QVERIFY(!serialized.isNull());
+            QVERIFY(serialized.contains("<th><p>Seg</p></th>"));
+            QVERIFY(serialized.contains("<th><p>Dom</p></th>"));
+            QVERIFY(NotesRichDocument::supportsSource(serialized));
+
+            doc.undo();
+            QVERIFY(tableIn(doc) == nullptr);
+        }
+
+        // 2. Daily schedule table template (8 rows, 2 cols)
+        {
+            QTextDocument doc;
+            doc.setHtml("<p></p>");
+            const int pos = NotesRichTables::insertTemplateTable(doc, 0, 0, "table-day");
+            QVERIFY(pos >= 0);
+            auto *table = tableIn(doc);
+            QVERIFY(table);
+            QCOMPARE(table->rows(), 8);
+            QCOMPARE(table->columns(), 2);
+            const QString serialized = NotesRichDocument::serialize(doc);
+            QVERIFY(!serialized.isNull());
+            QVERIFY(serialized.contains("<th><p>Horário</p></th>"));
+            QVERIFY(serialized.contains("<th><p>Atividade</p></th>"));
+            QVERIFY(NotesRichDocument::supportsSource(serialized));
+        }
+
+        // 3. Habit matrix table template (5 rows, 8 cols)
+        {
+            QTextDocument doc;
+            doc.setHtml("<p></p>");
+            const int pos = NotesRichTables::insertTemplateTable(doc, 0, 0, "table-habit");
+            QVERIFY(pos >= 0);
+            auto *table = tableIn(doc);
+            QVERIFY(table);
+            QCOMPARE(table->rows(), 5);
+            QCOMPARE(table->columns(), 8);
+            const QString serialized = NotesRichDocument::serialize(doc);
+            QVERIFY(!serialized.isNull());
+            QVERIFY(serialized.contains("<th><p>Hábito</p></th>"));
+            QVERIFY(serialized.contains("<th><p>Seg</p></th>"));
+            QVERIFY(serialized.contains("<th><p>Dom</p></th>"));
+            QVERIFY(NotesRichDocument::supportsSource(serialized));
+        }
+    }
 };
 
 int runNativeNotesTableStructureTest(int argc, char **argv) {

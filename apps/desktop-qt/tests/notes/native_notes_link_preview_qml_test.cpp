@@ -360,7 +360,66 @@ int runNativeNotesLinkPreviewQmlTest() {
     NativeNotesLinkPreviewActionMenuTest test;
     const int menuResult = QTest::qExec(&test);
     NativeNotesLinkPreviewConversionTest conversionTest;
-    return menuResult | QTest::qExec(&conversionTest);
+    const int conversionResult = QTest::qExec(&conversionTest);
+
+    QQmlEngine widgetEngine;
+    QQmlComponent widgetComponent(&widgetEngine);
+    widgetComponent.setData(R"(
+        import QtQuick
+        import "../../qml/notes/NotesCustomWidgetsRenderer.js" as WidgetsRenderer
+        Item {
+            property string sourceHtml: ""
+            property string renderedHtml: WidgetsRenderer.renderCustomWidgets(sourceHtml)
+        }
+    )", QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/WidgetsRendererTest.qml")));
+    QScopedPointer<QObject> widgetRenderer(widgetComponent.create());
+    if (!widgetRenderer) {
+        qCritical() << "Native Notes custom widgets renderer failed to load:" << widgetComponent.errors();
+        return 1;
+    }
+
+    const QString testCasesHtml = QStringLiteral(
+        "<div data-type=\"question-block\" data-title=\"Biologia\" data-questions=\"%5B%7B%22prompt%22%3A%22Mitoc%C3%B4ndria%3F%22%2C%22options%22%3A%5B%22Energia%22%2C%22Proteina%22%5D%2C%22correctIndex%22%3A0%2C%22explanation%22%3A%22ATP%22%7D%5D\"></div>"
+        "<span data-type=\"focus-widget\" data-duration=\"50\" data-tag=\"Foco\" data-description=\"Deep Work\" data-status=\"running\"></span>"
+        "<span data-type=\"alarm-widget\" data-time=\"07:30\" data-label=\"Acordar\" data-status=\"pending\"></span>"
+        "<span data-type=\"calendar-event-widget\" data-title=\"Reuniao\" data-date=\"2026-11-15\" data-status=\"pending\"></span>"
+        "<span data-type=\"habit-widget\" data-title=\"Exercicios\" data-streak=\"12\"></span>"
+        "<div data-type=\"file-widget\" data-name=\"Relatorio.pdf\" data-file-type=\"pdf\"></div>"
+        "<div class=\"toggle-block\" data-title=\"Topico Oculto\"><p>Conteudo revelado</p></div>"
+        "<div class=\"blockquote-toggle\" data-title=\"Atencao\"><p>Nota importante</p></div>"
+        "<div data-type=\"columnGroup\"><div data-type=\"columnBlock\"><p>Esq</p></div><div data-type=\"columnBlock\"><p>Dir</p></div></div>"
+        "<div class=\"scrap-widget-block\" data-url=\"https://example.com\" data-title=\"Captura\"></div>"
+        "<div data-type=\"document-bundle\" data-title=\"Arquivos\"></div>"
+    );
+
+    widgetRenderer->setProperty("sourceHtml", testCasesHtml);
+    const QString widgetRendered = widgetRenderer->property("renderedHtml").toString();
+
+    const bool allWidgetsTransformed =
+        widgetRendered.contains("BATERIA DE EXERCÍCIOS / QUIZ: Biologia") &&
+        widgetRendered.contains("Gabarito") &&
+        widgetRendered.contains("FOCO POMODORO: 50 MINUTOS") &&
+        widgetRendered.contains("ALARME AGENDADO: 07:30") &&
+        widgetRendered.contains("EVENTO DA AGENDA: Reuniao") &&
+        widgetRendered.contains("Exercicios") &&
+        widgetRendered.contains("DOCUMENTO ANEXO") &&
+        widgetRendered.contains("Relatorio.pdf") &&
+        widgetRendered.contains("Topico Oculto") &&
+        widgetRendered.contains("Atencao") &&
+        widgetRendered.contains("width=\"50%\"") &&
+        widgetRendered.contains("Esq") &&
+        widgetRendered.contains("Dir") &&
+        widgetRendered.contains("SNAPSHOT WEB OFFLINE") &&
+        widgetRendered.contains("Captura") &&
+        widgetRendered.contains("PACOTE DE DOCUMENTOS: Arquivos");
+
+    if (!allWidgetsTransformed) {
+        qCritical() << "Native Notes custom widgets renderer did not transform all 11 widget blocks correctly:" << widgetRendered;
+        return 1;
+    }
+
+    qInfo() << "Native Notes custom widgets rendering passed.";
+    return menuResult | conversionResult;
 }
 
 #include "native_notes_link_preview_qml_test.moc"

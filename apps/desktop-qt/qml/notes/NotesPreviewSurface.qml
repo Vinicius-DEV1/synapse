@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesRichLinkPreviewRenderer.js" as NotesLinkPreviewRenderer
 import "NotesRichLinkPreviewBlockEdits.js" as NotesLinkPreviewBlockEdits
+import "NotesCustomWidgetsRenderer.js" as NotesCustomWidgetsRenderer
 
 Rectangle {
     id: previewSurface
@@ -138,8 +139,8 @@ Rectangle {
             id: markdownDisplayArea
             objectName: "notesPageContentPreview"
             Layout.fillWidth: true
-            text: NotesLinkPreviewRenderer.render(
-                      previewSurface.sourceHtml, previewSurface.controller, previewSurface.copiedLinkUrl)
+            text: NotesCustomWidgetsRenderer.renderCustomWidgets(NotesLinkPreviewRenderer.render(
+                      previewSurface.sourceHtml, previewSurface.controller, previewSurface.copiedLinkUrl))
             textFormat: /<[a-z][^>]*>/i.test(previewSurface.sourceHtml || "") ? Text.RichText : Text.MarkdownText
             color: "#fffffe"
             font.pixelSize: 15

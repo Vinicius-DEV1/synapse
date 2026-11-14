@@ -197,6 +197,62 @@ private slots:
         QAccessible::setActive(false);
     }
 
+    void slashCommandTemplatesAndCustomWidgetsProduceExpectedMarkup() {
+        QQmlEngine engine;
+        NotesTextOperations operations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            TextEdit {
+                textFormat: TextEdit.RichText
+                text: "<p>/cmd</p>"
+            }
+        )", QUrl());
+        QScopedPointer<QObject> editor(component.create());
+        QVERIFY2(editor, qPrintable(component.errorString()));
+        auto *quickDocument = qobject_cast<QQuickTextDocument *>(
+            editor->property("textDocument").value<QObject *>());
+        QVERIFY(quickDocument);
+
+        const QList<QPair<QString, QString>> tableTemplates = {
+            {"table-week", "Seg"},
+            {"table-day", "Horário"},
+            {"table-habit", "Hábito"},
+            {"cols2", "Coluna 1"},
+            {"cols3", "Coluna 3"}
+        };
+
+        for (const auto &testCase : tableTemplates) {
+            editor->setProperty("text", "<p>/cmd</p>");
+            const int cursorPosition = operations.executeRichSlashCommand(
+                quickDocument, 0, 4, testCase.first);
+            QVERIFY2(cursorPosition >= 0, qPrintable(testCase.first));
+            const QVariantMap saved = operations.serializeRich(quickDocument);
+            QVERIFY2(saved.value("ok").toBool(), qPrintable(testCase.first));
+            QVERIFY2(saved.value("html").toString().contains(testCase.second),
+                     qPrintable(testCase.first + ": " + saved.value("html").toString()));
+            QVERIFY(!operations.richPlainText(quickDocument).contains("/cmd"));
+
+            QVERIFY(QMetaObject::invokeMethod(editor.data(), "undo"));
+            const QVariantMap undone = operations.serializeRich(quickDocument);
+            QVERIFY2(undone.value("ok").toBool(), qPrintable(testCase.first));
+            QCOMPARE(undone.value("html").toString(), QString("<p>/cmd</p>"));
+        }
+
+        const QStringList customWidgetCommands = {
+            "question", "foco", "alarme", "evento", "habito",
+            "documento", "agrupar", "scrap", "toggle", "blockquoteToggle"
+        };
+        for (const auto &commandId : customWidgetCommands) {
+            editor->setProperty("text", "<p>/cmd</p>");
+            const int cursorPosition = operations.executeRichSlashCommand(
+                quickDocument, 0, 4, commandId);
+            QCOMPARE(cursorPosition, -1);
+            QCOMPARE(operations.richPlainText(quickDocument), QString("/cmd"));
+        }
+    }
+
 };
 
 int runNativeNotesSlashMenuQmlTest(int argc, char **argv) {

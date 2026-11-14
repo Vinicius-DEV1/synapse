@@ -15,6 +15,9 @@ int execute(QQuickTextDocument *document, int start, int end, const QString &com
     if (start < 0 || end <= start || end > richDocument->characterCount() - 1) return -1;
 
     QString blockType;
+    const bool isTableCommand = (commandId == "table" || commandId == "table-week" ||
+                                 commandId == "table-day" || commandId == "table-habit" ||
+                                 commandId == "cols2" || commandId == "cols3");
     if (commandId == "text") blockType = "paragraph";
     else if (commandId == "h1") blockType = "heading1";
     else if (commandId == "h2") blockType = "heading2";
@@ -23,7 +26,7 @@ int execute(QQuickTextDocument *document, int start, int end, const QString &com
     else if (commandId == "bullet") blockType = "bulletList";
     else if (commandId == "callout") blockType = "quote";
     else if (commandId == "code") blockType = "codeBlock";
-    else if (commandId != "divider" && commandId != "table" && commandId != "page") return -1;
+    else if (commandId != "divider" && !isTableCommand && commandId != "page") return -1;
 
     QTextCursor queryCursor(richDocument);
     queryCursor.setPosition(start);
@@ -32,7 +35,8 @@ int execute(QQuickTextDocument *document, int start, int end, const QString &com
     if (!queryText.startsWith(QLatin1Char('/')) || queryText.contains(QChar::ParagraphSeparator) ||
         queryText.contains(QChar::LineSeparator)) return -1;
     if (commandId == "divider") return NotesRichDocument::insertDivider(*richDocument, start, end);
-    if (commandId == "table") return NotesRichTables::insertSimpleTable(*richDocument, start, end);
+    if (isTableCommand) return NotesRichTables::insertTemplateTable(*richDocument, start, end, commandId);
+
     const QTextDocumentFragment originalQuery = queryCursor.selection();
 
     if (commandId == "page") {

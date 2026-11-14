@@ -251,17 +251,49 @@ bool serialize(const QTextTable &table, QString &html) {
     return true;
 }
 
-int insertSimpleTable(QTextDocument &document, int start, int end) {
+int insertTemplateTable(QTextDocument &document, int start, int end, const QString &templateId) {
     if (start < 0 || end < start || end > document.characterCount() - 1) return -1;
-    QString table = "<table><tbody><tr>";
-    for (int column = 0; column < 3; ++column) table += "<th><p></p></th>";
-    table += "</tr>";
-    for (int row = 0; row < 2; ++row) {
-        table += "<tr>";
-        for (int column = 0; column < 3; ++column) table += "<td><p></p></td>";
-        table += "</tr>";
+    int rows = 3;
+    int columns = 3;
+    QStringList headers;
+    if (templateId == QStringLiteral("table-week")) {
+        rows = 4;
+        columns = 7;
+        headers = {QStringLiteral("Seg"), QStringLiteral("Ter"), QStringLiteral("Qua"),
+                   QStringLiteral("Qui"), QStringLiteral("Sex"), QStringLiteral("Sáb"), QStringLiteral("Dom")};
+    } else if (templateId == QStringLiteral("table-day")) {
+        rows = 8;
+        columns = 2;
+        headers = {QStringLiteral("Horário"), QStringLiteral("Atividade")};
+    } else if (templateId == QStringLiteral("table-habit")) {
+        rows = 5;
+        columns = 8;
+        headers = {QStringLiteral("Hábito"), QStringLiteral("Seg"), QStringLiteral("Ter"), QStringLiteral("Qua"),
+                   QStringLiteral("Qui"), QStringLiteral("Sex"), QStringLiteral("Sáb"), QStringLiteral("Dom")};
+    } else if (templateId == QStringLiteral("cols2")) {
+        rows = 2;
+        columns = 2;
+        headers = {QStringLiteral("Coluna 1"), QStringLiteral("Coluna 2")};
+    } else if (templateId == QStringLiteral("cols3")) {
+        rows = 2;
+        columns = 3;
+        headers = {QStringLiteral("Coluna 1"), QStringLiteral("Coluna 2"), QStringLiteral("Coluna 3")};
     }
-    table += "</tbody></table>";
+
+    QString table = QStringLiteral("<table><tbody><tr>");
+    for (int column = 0; column < columns; ++column) {
+        const QString headerText = column < headers.size() ? headers.at(column) : QString();
+        table += QStringLiteral("<th><p>%1</p></th>").arg(headerText);
+    }
+    table += QStringLiteral("</tr>");
+    for (int row = 0; row < rows - 1; ++row) {
+        table += QStringLiteral("<tr>");
+        for (int column = 0; column < columns; ++column) {
+            table += QStringLiteral("<td><p></p></td>");
+        }
+        table += QStringLiteral("</tr>");
+    }
+    table += QStringLiteral("</tbody></table>");
     QSet<int> existingTablePositions;
     for (QTextFrame *frame : document.rootFrame()->childFrames()) {
         if (auto *tableFrame = qobject_cast<QTextTable *>(frame))
@@ -288,6 +320,10 @@ int insertSimpleTable(QTextDocument &document, int start, int end) {
     const int result = cursor.position();
     cursor.endEditBlock();
     return result;
+}
+
+int insertSimpleTable(QTextDocument &document, int start, int end) {
+    return insertTemplateTable(document, start, end, QStringLiteral("table"));
 }
 
 void prepareVisualStyles(QTextDocument &document) {
