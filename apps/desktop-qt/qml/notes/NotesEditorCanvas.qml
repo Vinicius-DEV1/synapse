@@ -128,6 +128,13 @@ ScrollView {
             }
             return
         }
+        if (link.indexOf("synapse-page:") === 0) {
+            var pageMatch = link.match(/^synapse-page:\/([^?]+)(?:\?.*)?$/)
+            if (pageMatch && pageMatch[1]) {
+                pageReferencePreviewRequested(decodeURIComponent(pageMatch[1]))
+                return
+            }
+        }
         if (/^(https?:\/\/|mailto:)/i.test(link || "")) Qt.openUrlExternally(link)
     }
 

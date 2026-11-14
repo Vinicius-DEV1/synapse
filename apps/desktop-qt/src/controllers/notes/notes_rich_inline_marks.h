@@ -12,4 +12,5 @@ bool clearInsertionMarks(QTextDocument &document);
 bool applyMark(QTextDocument &document, int start, int end, const QString &mark,
                bool enabled, bool joinPreviousEditBlock = false);
 bool applyPendingMarks(QTextDocument &document, int start, int end);
+bool isMarkActive(const QTextDocument &document, int start, int end, const QString &mark);
 }

@@ -51,6 +51,10 @@ bool applyPendingInlineMarks(QTextDocument &document, int start, int end) {
     return NotesRichInlineMarks::applyPendingMarks(document, start, end);
 }
 
+bool isMarkActive(const QTextDocument &document, int start, int end, const QString &mark) {
+    return NotesRichInlineMarks::isMarkActive(document, start, end, mark);
+}
+
 bool prepareSpoilerStyles(QTextDocument &document) {
     return NotesRichSpoilers::prepare(document);
 }

@@ -163,8 +163,15 @@ private slots:
         QCOMPARE(NotesRichDocument::serialize(document), deepHeadings);
         document.setHtml("<p>Hello <strong>world</strong></p>");
         QCOMPARE(NotesRichDocument::serialize(document), QString("<p>Hello <strong>world</strong></p>"));
+        QVERIFY(!NotesRichDocument::isMarkActive(document, 0, 5, "bold"));
+        QVERIFY(NotesRichDocument::isMarkActive(document, 6, 11, "bold"));
+        QVERIFY(!NotesRichDocument::isMarkActive(document, 0, 11, "bold"));
+        QVERIFY(!NotesRichDocument::isMarkActive(document, 6, 11, "italic"));
+        QVERIFY(NotesRichDocument::isMarkActive(document, 7, 7, "bold"));
+        QVERIFY(!NotesRichDocument::isMarkActive(document, 2, 2, "bold"));
         QVERIFY(NotesRichDocument::toggleInline(document, 0, 5, "italic"));
         QCOMPARE(NotesRichDocument::serialize(document), QString("<p><em>Hello</em> <strong>world</strong></p>"));
+        QVERIFY(NotesRichDocument::isMarkActive(document, 0, 5, "italic"));
         document.undo();
         QCOMPARE(NotesRichDocument::serialize(document), QString("<p>Hello <strong>world</strong></p>"));
         QVERIFY(!NotesRichDocument::toggleInline(document, 0, 100, "bold"));
@@ -174,6 +181,7 @@ private slots:
         insertionDocument.setHtml("<p>abc</p>");
         const QString insertionOriginal = NotesRichDocument::serialize(insertionDocument);
         QVERIFY(NotesRichDocument::toggleInlineAtCursor(insertionDocument, 3, "bold"));
+        QVERIFY(NotesRichDocument::isMarkActive(insertionDocument, 3, 3, "bold"));
         QCOMPARE(NotesRichDocument::serialize(insertionDocument), insertionOriginal);
         QTextCursor insertionCursor(&insertionDocument);
         insertionCursor.setPosition(3);

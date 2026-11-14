@@ -191,6 +191,11 @@ bool NotesTextOperations::toggleRichAtCursor(QQuickTextDocument *document, int p
         NotesRichDocument::toggleInlineAtCursor(*document->textDocument(), position, mark);
 }
 
+bool NotesTextOperations::isRichMarkActive(QQuickTextDocument *document, int start, int end, const QString &mark) const {
+    return document && document->textDocument() &&
+        NotesRichDocument::isMarkActive(*document->textDocument(), start, end, mark);
+}
+
 bool NotesTextOperations::clearRichPendingMarks(QQuickTextDocument *document) const {
     return document && document->textDocument() &&
         NotesRichDocument::clearInlineInsertionMarks(*document->textDocument());

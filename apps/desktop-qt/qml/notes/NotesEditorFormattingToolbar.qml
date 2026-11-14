@@ -40,6 +40,11 @@ Item {
         canMoveDividerDown: toolbarBinding.richEditor.tableActions.canMoveDividerDown
         dividerDropTarget: toolbarBinding.richEditor.editor
         richSpoilerActive: toolbarBinding.richEditor.spoilerAtCursor
+        boldActive: toolbarBinding.richEditor.boldAtCursor
+        italicActive: toolbarBinding.richEditor.italicAtCursor
+        underlineActive: toolbarBinding.richEditor.underlineAtCursor
+        strikeActive: toolbarBinding.richEditor.strikeAtCursor
+        codeActive: toolbarBinding.richEditor.codeAtCursor
         calloutActive: toolbarBinding.richEditor.calloutAtCursor
         calloutColor: toolbarBinding.richEditor.calloutColorAtCursor
         codeBlockActive: toolbarBinding.richEditor.codeBlockActive

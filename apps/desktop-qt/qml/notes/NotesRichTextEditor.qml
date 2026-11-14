@@ -28,6 +28,11 @@ Item {
     readonly property alias calloutAtCursor: richCommands.calloutAtCursor
     readonly property alias calloutColorAtCursor: richCommands.calloutColorAtCursor
     readonly property alias spoilerAtCursor: richCommands.spoilerAtCursor
+    readonly property alias boldAtCursor: richCommands.boldAtCursor
+    readonly property alias italicAtCursor: richCommands.italicAtCursor
+    readonly property alias underlineAtCursor: richCommands.underlineAtCursor
+    readonly property alias strikeAtCursor: richCommands.strikeAtCursor
+    readonly property alias codeAtCursor: richCommands.codeAtCursor
     readonly property bool richImageSelected: richImageActions.imageState.valid
     readonly property string richImageAlignment: richImageActions.imageState.alignment || "center"
     readonly property bool richImageCanMoveUp: richImageActions.canMoveUp

@@ -59,6 +59,11 @@ Rectangle {
     property bool canMoveDividerDown: false
     property var dividerDropTarget: null
     property bool richSpoilerActive: false
+    property bool boldActive: false
+    property bool italicActive: false
+    property bool underlineActive: false
+    property bool strikeActive: false
+    property bool codeActive: false
     property bool calloutActive: false
     property string calloutColor: "default"
     property bool codeBlockActive: false
@@ -80,11 +85,28 @@ Rectangle {
         anchors.rightMargin: 8
         spacing: 4
 
-        Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 4; color: "#08ffffff"
-            Accessible.name: "Insert link"
-            Text { anchors.centerIn: parent; text: "↗"; color: "#c4b5fd"; font.pixelSize: 14 }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: toolbarRoot.linkRequested() }
+        ToolButton {
+            id: linkButton
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 26
+            padding: 2
+            Accessible.name: qsTr("Insert link")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Insert link")
+            background: Rectangle {
+                radius: 4
+                color: linkButton.hovered ? "#1affffff" : "#08ffffff"
+                border.color: linkButton.hovered ? "#20ffffff" : "transparent"
+            }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "↗"
+                color: linkButton.hovered ? "#ffffff" : "#c4b5fd"
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: toolbarRoot.linkRequested()
         }
 
         NotesRichColorPalette {
@@ -99,6 +121,11 @@ Rectangle {
 
         NotesInlineMarkToolbar {
             richMode: toolbarRoot.richMode
+            boldActive: toolbarRoot.boldActive
+            italicActive: toolbarRoot.italicActive
+            underlineActive: toolbarRoot.underlineActive
+            strikeActive: toolbarRoot.strikeActive
+            codeActive: toolbarRoot.codeActive
             spoilerActive: toolbarRoot.richSpoilerActive
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
@@ -159,41 +186,53 @@ Rectangle {
             Layout.preferredHeight: 30
             onColorSelected: function(color) { toolbarRoot.richCalloutRequested(color) }
         }
-        Rectangle {
+        ToolButton {
+            id: tableButton
             visible: toolbarRoot.richMode
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
             Accessible.name: qsTr("Insert 3 by 3 table")
-            ToolTip.visible: tableButtonMouse.containsMouse
+            ToolTip.visible: hovered
             ToolTip.text: qsTr("Insert 3 by 3 table")
-            Text { anchors.centerIn: parent; text: "▦"; color: "#ffffff"; font.pixelSize: 16 }
-            MouseArea {
-                id: tableButtonMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: toolbarRoot.richTableRequested()
+            background: Rectangle {
+                radius: 4
+                color: tableButton.hovered ? "#1affffff" : "#08ffffff"
+                border.color: tableButton.hovered ? "#20ffffff" : "transparent"
             }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "▦"
+                color: tableButton.hovered ? "#c4b5fd" : "#ffffff"
+                font.pixelSize: 16
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: toolbarRoot.richTableRequested()
         }
-        Rectangle {
+        ToolButton {
+            id: dividerButton
             visible: toolbarRoot.richMode
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
             Accessible.name: qsTr("Insert divider")
-            ToolTip.visible: dividerButtonMouse.containsMouse
+            ToolTip.visible: hovered
             ToolTip.text: qsTr("Insert divider")
-            Text { anchors.centerIn: parent; text: "—"; color: "#ffffff"; font.pixelSize: 16 }
-            MouseArea {
-                id: dividerButtonMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: toolbarRoot.richDividerRequested()
+            background: Rectangle {
+                radius: 4
+                color: dividerButton.hovered ? "#1affffff" : "#08ffffff"
+                border.color: dividerButton.hovered ? "#20ffffff" : "transparent"
             }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "—"
+                color: dividerButton.hovered ? "#c4b5fd" : "#ffffff"
+                font.pixelSize: 16
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: toolbarRoot.richDividerRequested()
         }
         NotesDividerActions {
             id: dividerActions

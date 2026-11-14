@@ -81,6 +81,7 @@ public:
                                              const QString &dataUrl) const;
     Q_INVOKABLE bool toggleRich(QQuickTextDocument *document, int start, int end, const QString &mark) const;
     Q_INVOKABLE bool toggleRichAtCursor(QQuickTextDocument *document, int position, const QString &mark) const;
+    Q_INVOKABLE bool isRichMarkActive(QQuickTextDocument *document, int start, int end, const QString &mark) const;
     Q_INVOKABLE bool clearRichPendingMarks(QQuickTextDocument *document) const;
     Q_INVOKABLE bool applyRichPendingMarks(QQuickTextDocument *document, const QString &previousText,
                                            const QString &currentText, int cursorPosition) const;

@@ -10,6 +10,7 @@ Item {
     property int calloutRevision: 0
     property int codeBlockRevision: 0
     property int codeBlockCopyRevision: 0
+    property int markRevision: 0
     property bool codeBlockCopySucceeded: false
     property int linkSelectionStart: 0
     property int linkSelectionEnd: 0
@@ -43,6 +44,41 @@ Item {
     }
     readonly property bool spoilerAtCursor: textOperations.isRichSpoilerAt(
                                                 textEditor.textDocument, textEditor.cursorPosition)
+    readonly property bool boldAtCursor: {
+        var revision = markRevision
+        return textOperations && typeof textOperations.isRichMarkActive === "function"
+            ? textOperations.isRichMarkActive(
+                textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, "bold")
+            : false
+    }
+    readonly property bool italicAtCursor: {
+        var revision = markRevision
+        return textOperations && typeof textOperations.isRichMarkActive === "function"
+            ? textOperations.isRichMarkActive(
+                textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, "italic")
+            : false
+    }
+    readonly property bool underlineAtCursor: {
+        var revision = markRevision
+        return textOperations && typeof textOperations.isRichMarkActive === "function"
+            ? textOperations.isRichMarkActive(
+                textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, "underline")
+            : false
+    }
+    readonly property bool strikeAtCursor: {
+        var revision = markRevision
+        return textOperations && typeof textOperations.isRichMarkActive === "function"
+            ? textOperations.isRichMarkActive(
+                textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, "strike")
+            : false
+    }
+    readonly property bool codeAtCursor: {
+        var revision = markRevision
+        return textOperations && typeof textOperations.isRichMarkActive === "function"
+            ? textOperations.isRichMarkActive(
+                textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, "code")
+            : false
+    }
 
     signal contentModified()
 
@@ -57,11 +93,15 @@ Item {
         if (textEditor.selectionStart === textEditor.selectionEnd) {
             var appliedAtCursor = textOperations.toggleRichAtCursor(
                         textEditor.textDocument, textEditor.cursorPosition, mark)
-            if (appliedAtCursor) textEditor.forceActiveFocus()
+            if (appliedAtCursor) {
+                markRevision += 1
+                textEditor.forceActiveFocus()
+            }
             return appliedAtCursor
         }
         if (!textOperations.toggleRich(
                 textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, mark)) return false
+        markRevision += 1
         contentModified()
         textEditor.forceActiveFocus()
         return true
@@ -218,5 +258,12 @@ Item {
 
     function refreshCodeSyntaxHighlighting() {
         textOperations.refreshRichCodeSyntaxHighlighting(codeSyntaxHighlighter)
+    }
+
+    Connections {
+        target: commands.textEditor
+        function onCursorPositionChanged() { commands.markRevision += 1 }
+        function onSelectionStartChanged() { commands.markRevision += 1 }
+        function onSelectionEndChanged() { commands.markRevision += 1 }
     }
 }

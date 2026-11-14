@@ -200,5 +200,39 @@ bool applyPendingMarks(QTextDocument &document, int start, int end) {
     return true;
 }
 
+bool isMarkActive(const QTextDocument &document, int start, int end, const QString &mark) {
+    if (start < 0 || end < start) return false;
+    if (mark != "bold" && mark != "italic" && mark != "underline" &&
+        mark != "strike" && mark != "code" && mark != "spoiler") return false;
+    if (start == end) {
+        if (mark == "spoiler") return NotesRichSpoilers::isAt(document, start);
+        if (insertionMarks().contains(const_cast<QTextDocument *>(&document))) {
+            const auto &marks = insertionMarks().value(const_cast<QTextDocument *>(&document));
+            if (marks.contains(mark)) return marks.value(mark);
+        }
+        if (start >= document.characterCount()) return false;
+        QTextCursor cursor(const_cast<QTextDocument *>(&document));
+        cursor.setPosition(start);
+        const QTextBlock block = document.findBlock(start);
+        if (!block.isValid()) return false;
+        return formatHasMark(cursor.charFormat(), block.blockFormat().headingLevel(), mark);
+    }
+    if (mark == "spoiler") return NotesRichSpoilers::isAt(document, start);
+    const int effectiveEnd = qMin(end, document.characterCount() - 1);
+    if (start >= effectiveEnd) return false;
+    bool foundFragment = false;
+    for (QTextBlock block = document.findBlock(start); block.isValid() && block.position() < effectiveEnd; block = block.next()) {
+        for (auto it = block.begin(); !it.atEnd(); ++it) {
+            const QTextFragment fragment = it.fragment();
+            if (!fragment.isValid() || fragment.position() >= effectiveEnd || fragment.position() + fragment.length() <= start)
+                continue;
+            foundFragment = true;
+            if (!formatHasMark(fragment.charFormat(), block.blockFormat().headingLevel(), mark)) {
+                return false;
+            }
+        }
+    }
+    return foundFragment;
+}
 
 }

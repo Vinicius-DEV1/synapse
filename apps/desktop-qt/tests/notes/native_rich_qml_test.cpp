@@ -152,6 +152,11 @@ private slots:
         QCOMPARE(root->property("sourceHtml").toString(), QString("<p>Restored</p>"));
         QCOMPARE(published.count(), 2);
 
+        editor->setProperty("text", "<p><strong>Bold text</strong></p>");
+        QVERIFY(QMetaObject::invokeMethod(editor, "select", Q_ARG(int, 0), Q_ARG(int, 9)));
+        QVERIFY(root->property("boldAtCursor").toBool());
+        QVERIFY(!root->property("italicAtCursor").toBool());
+
         editor->setProperty("text", "<p>Heading</p>");
         QVERIFY(QMetaObject::invokeMethod(editor, "select", Q_ARG(int, 0), Q_ARG(int, 7)));
         QVariant formatted;

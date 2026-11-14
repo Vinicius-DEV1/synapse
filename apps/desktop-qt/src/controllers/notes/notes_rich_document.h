@@ -16,6 +16,7 @@ bool clearInlineInsertionMarks(QTextDocument &document);
 bool applyInlineMark(QTextDocument &document, int start, int end, const QString &mark,
                      bool enabled, bool joinPreviousEditBlock = false);
 bool applyPendingInlineMarks(QTextDocument &document, int start, int end);
+bool isMarkActive(const QTextDocument &document, int start, int end, const QString &mark);
 bool toggleBlock(QTextDocument &document, int start, int end, const QString &blockType);
 bool setCalloutColor(QTextDocument &document, int start, int end, const QString &color);
 bool isCalloutAt(const QTextDocument &document, int position);

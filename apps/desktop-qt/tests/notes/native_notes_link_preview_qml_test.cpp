@@ -397,6 +397,7 @@ int runNativeNotesLinkPreviewQmlTest() {
         "<span data-type=\"media-widget\" data-media-id=\"book-456\" data-media-type=\"book\" data-title=\"Clean Code\"></span>"
         "<div class=\"group-collection\" data-title=\"Minhas Paginas\"><p>Subpagina A</p></div>"
         "<div data-type=\"linkGroup\"><div class=\"link-preview-block\">Link 1</div><div class=\"link-preview-block\">Link 2</div></div>"
+        "<span data-page-id=\"page-ref-123\" title=\"Introducao ao Rust\"></span>"
     );
 
     widgetRenderer->setProperty("sourceHtml", testCasesHtml);
@@ -428,7 +429,9 @@ int runNativeNotesLinkPreviewQmlTest() {
         widgetRendered.contains("Minhas Paginas") &&
         widgetRendered.contains("Subpagina A") &&
         widgetRendered.contains("Link 1") &&
-        widgetRendered.contains("Link 2");
+        widgetRendered.contains("Link 2") &&
+        widgetRendered.contains("synapse-page:/page-ref-123") &&
+        widgetRendered.contains("Introducao ao Rust");
 
     if (!allWidgetsTransformed) {
         qCritical() << "Native Notes custom widgets renderer did not transform all widget blocks correctly:" << widgetRendered;

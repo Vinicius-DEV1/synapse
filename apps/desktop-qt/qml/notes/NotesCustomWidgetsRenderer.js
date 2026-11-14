@@ -476,6 +476,25 @@ function renderLinkGroups(html) {
     return result
 }
 
+// 16. Page References (<span data-page-id="..." ...> or <page-reference ...>)
+function renderPageReferences(html) {
+    var spanPattern = /<span\b(?=[^>]*\bdata-page-id="([^"]+)")([^>]*)>([\s\S]*?)<\/span>/gi
+    html = html.replace(spanPattern, function(match, pageId, attrs, innerText) {
+        var parsedAttrs = attributesFromTag("<span " + attrs + ">")
+        var title = String(parsedAttrs["title"] || innerText || pageId).trim()
+        var safeHref = "synapse-page:/" + encodeURIComponent(pageId) + "?title=" + encodeURIComponent(title)
+        return "<a href=\"" + safeHref + "\" style=\"color:rgba(255,255,255,0.75);background-color:rgba(255,255,255,0.04);text-decoration:none;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);font-weight:500;\">↗ " + escapeHtml(title) + "</a>"
+    })
+    var customTagPattern = /<page-reference\b(?=[^>]*\bpage-id="([^"]+)")([^>]*)><\/page-reference>/gi
+    html = html.replace(customTagPattern, function(match, pageId, attrs) {
+        var parsedAttrs = attributesFromTag("<page-reference " + attrs + ">")
+        var title = String(parsedAttrs["title"] || pageId).trim()
+        var safeHref = "synapse-page:/" + encodeURIComponent(pageId) + "?title=" + encodeURIComponent(title)
+        return "<a href=\"" + safeHref + "\" style=\"color:rgba(255,255,255,0.75);background-color:rgba(255,255,255,0.04);text-decoration:none;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);font-weight:500;\">↗ " + escapeHtml(title) + "</a>"
+    })
+    return html
+}
+
 // Master rendering pipeline
 function renderCustomWidgets(source, options) {
     if (!source || source.length === 0) return ""
@@ -497,5 +516,6 @@ function renderCustomWidgets(source, options) {
     html = renderMediaWidgets(html)
     html = renderGroupCollections(html, toggleStates)
     html = renderLinkGroups(html)
+    html = renderPageReferences(html)
     return html
 }

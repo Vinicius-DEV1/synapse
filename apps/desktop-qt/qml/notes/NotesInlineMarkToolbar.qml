@@ -5,8 +5,13 @@ import QtQuick.Layouts 1.15
 Item {
     id: markToolbar
     property bool richMode: false
+    property bool boldActive: false
+    property bool italicActive: false
+    property bool underlineActive: false
+    property bool strikeActive: false
+    property bool codeActive: false
     property bool spoilerActive: false
-    implicitWidth: 156 + (richMode ? 34 : 0)
+    implicitWidth: 168 + (richMode ? 34 : 0)
     implicitHeight: 30
 
     signal formatRequested(string prefix, string suffix)
@@ -16,95 +21,182 @@ Item {
         anchors.fill: parent
         spacing: 4
 
-        Rectangle {
+        ToolButton {
+            id: boldBtn
             Layout.preferredWidth: 28
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
+            checkable: true
+            checked: markToolbar.boldActive
             Accessible.name: qsTr("Bold")
-            Text { anchors.centerIn: parent; text: "B"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: markToolbar.formatRequested("<strong>", "</strong>")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Bold (Ctrl+B)")
+            background: Rectangle {
+                radius: 4
+                color: boldBtn.checked ? "#268b5cf6" : (boldBtn.hovered ? "#1affffff" : "#08ffffff")
+                border.color: boldBtn.checked ? "#408b5cf6" : (boldBtn.hovered ? "#20ffffff" : "transparent")
+            }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "B"
+                color: boldBtn.checked ? "#c4b5fd" : (boldBtn.hovered ? "#fffffe" : "#a7a9be")
+                font.pixelSize: 12
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: {
+                if (markToolbar.richMode) markToolbar.richMarkRequested("bold")
+                else markToolbar.formatRequested("<strong>", "</strong>")
             }
         }
-        Rectangle {
+
+        ToolButton {
+            id: italicBtn
             Layout.preferredWidth: 28
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
+            checkable: true
+            checked: markToolbar.italicActive
             Accessible.name: qsTr("Italic")
-            Text { anchors.centerIn: parent; text: "I"; color: "#ffffff"; font.pixelSize: 12; font.italic: true }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: markToolbar.formatRequested("<em>", "</em>")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Italic (Ctrl+I)")
+            background: Rectangle {
+                radius: 4
+                color: italicBtn.checked ? "#268b5cf6" : (italicBtn.hovered ? "#1affffff" : "#08ffffff")
+                border.color: italicBtn.checked ? "#408b5cf6" : (italicBtn.hovered ? "#20ffffff" : "transparent")
+            }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "I"
+                color: italicBtn.checked ? "#c4b5fd" : (italicBtn.hovered ? "#fffffe" : "#a7a9be")
+                font.pixelSize: 12
+                font.italic: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: {
+                if (markToolbar.richMode) markToolbar.richMarkRequested("italic")
+                else markToolbar.formatRequested("<em>", "</em>")
             }
         }
-        Rectangle {
+
+        ToolButton {
+            id: underlineBtn
             Layout.preferredWidth: 28
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
+            checkable: true
+            checked: markToolbar.underlineActive
             Accessible.name: qsTr("Underline")
-            Text { anchors.centerIn: parent; text: "U"; color: "#ffffff"; font.pixelSize: 12; font.underline: true }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: markToolbar.formatRequested("<u>", "</u>")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Underline (Ctrl+U)")
+            background: Rectangle {
+                radius: 4
+                color: underlineBtn.checked ? "#268b5cf6" : (underlineBtn.hovered ? "#1affffff" : "#08ffffff")
+                border.color: underlineBtn.checked ? "#408b5cf6" : (underlineBtn.hovered ? "#20ffffff" : "transparent")
+            }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "U"
+                color: underlineBtn.checked ? "#c4b5fd" : (underlineBtn.hovered ? "#fffffe" : "#a7a9be")
+                font.pixelSize: 12
+                font.underline: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: {
+                if (markToolbar.richMode) markToolbar.richMarkRequested("underline")
+                else markToolbar.formatRequested("<u>", "</u>")
             }
         }
-        Rectangle {
+
+        ToolButton {
+            id: strikeBtn
             Layout.preferredWidth: 28
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
+            checkable: true
+            checked: markToolbar.strikeActive
             Accessible.name: qsTr("Strikethrough")
-            Text { anchors.centerIn: parent; text: "S"; color: "#ffffff"; font.pixelSize: 12; font.strikeout: true }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: markToolbar.formatRequested("<s>", "</s>")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Strikethrough")
+            background: Rectangle {
+                radius: 4
+                color: strikeBtn.checked ? "#268b5cf6" : (strikeBtn.hovered ? "#1affffff" : "#08ffffff")
+                border.color: strikeBtn.checked ? "#408b5cf6" : (strikeBtn.hovered ? "#20ffffff" : "transparent")
+            }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "S"
+                color: strikeBtn.checked ? "#c4b5fd" : (strikeBtn.hovered ? "#fffffe" : "#a7a9be")
+                font.pixelSize: 12
+                font.strikeout: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: {
+                if (markToolbar.richMode) markToolbar.richMarkRequested("strike")
+                else markToolbar.formatRequested("<s>", "</s>")
             }
         }
-        Rectangle {
+
+        ToolButton {
+            id: codeBtn
             Layout.preferredWidth: 28
             Layout.preferredHeight: 26
-            radius: 4
-            color: "#08ffffff"
+            padding: 2
+            checkable: true
+            checked: markToolbar.codeActive
             Accessible.name: qsTr("Inline code")
-            Text { anchors.centerIn: parent; text: "</>"; color: "#c4b5fd"; font.pixelSize: 10 }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: markToolbar.formatRequested("<code>", "</code>")
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Inline code")
+            background: Rectangle {
+                radius: 4
+                color: codeBtn.checked ? "#268b5cf6" : (codeBtn.hovered ? "#1affffff" : "#08ffffff")
+                border.color: codeBtn.checked ? "#408b5cf6" : (codeBtn.hovered ? "#20ffffff" : "transparent")
+            }
+            contentItem: Text {
+                anchors.centerIn: parent
+                text: "</>"
+                color: codeBtn.checked ? "#c4b5fd" : (codeBtn.hovered ? "#fffffe" : "#a7a9be")
+                font.pixelSize: 10
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: {
+                if (markToolbar.richMode) markToolbar.richMarkRequested("code")
+                else markToolbar.formatRequested("<code>", "</code>")
             }
         }
-        Rectangle {
+
+        ToolButton {
+            id: spoilerBtn
             visible: markToolbar.richMode
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
-            radius: 4
-            color: markToolbar.spoilerActive ? "#1b8b5cf6" : "#08ffffff"
+            padding: 2
+            checkable: true
+            checked: markToolbar.spoilerActive
             Accessible.name: qsTr("Spoiler")
-            ToolTip.visible: spoilerMouse.containsMouse
-            ToolTip.text: qsTr("Spoiler")
-            Text {
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Spoiler (Alt+R to toggle)")
+            background: Rectangle {
+                radius: 4
+                color: spoilerBtn.checked ? "#268b5cf6" : (spoilerBtn.hovered ? "#1affffff" : "#08ffffff")
+                border.color: spoilerBtn.checked ? "#408b5cf6" : (spoilerBtn.hovered ? "#20ffffff" : "transparent")
+            }
+            contentItem: Text {
                 anchors.centerIn: parent
                 text: "S"
-                color: "#c4b5fd"
+                color: spoilerBtn.checked ? "#c4b5fd" : (spoilerBtn.hovered ? "#fffffe" : "#a7a9be")
                 font.pixelSize: 12
                 font.bold: true
                 font.strikeout: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
-            MouseArea {
-                id: spoilerMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: markToolbar.richMarkRequested("spoiler")
-            }
+            onClicked: markToolbar.richMarkRequested("spoiler")
         }
     }
 }
