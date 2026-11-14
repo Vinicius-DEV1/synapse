@@ -1,10 +1,8 @@
 use crate::db::DbState;
-use chrono::Utc;
-use rusqlite::params;
-use serde::{Deserialize, Serialize};
+use synapse_core::domain::anki::{AnkiDeckSettings, AnkiRepository, Card};
 use tauri::State;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 #[serde(default)]
 pub struct AnkiDeck {
     pub id: String,
@@ -13,7 +11,7 @@ pub struct AnkiDeck {
     pub parent_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 #[serde(default)]
 pub struct AnkiCard {
     pub id: String,
@@ -39,38 +37,47 @@ pub struct AnkiCard {
     pub created_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(default)]
-pub struct AnkiDeckSettings {
-    pub new_limit: i32,
-    pub review_limit: i32,
-    pub learning_steps: String,
-    pub relearning_steps: String,
-    pub fsrs_weights: Option<String>,
+fn map_card_to_anki_card(c: Card) -> AnkiCard {
+    let parsed_tags = c.tags.as_ref().and_then(|t| serde_json::from_str::<Vec<String>>(t).ok());
+    AnkiCard {
+        id: c.id,
+        deck_id: c.deck_id,
+        front: c.front,
+        back: c.back,
+        extra_note: c.extra_note,
+        source_module: None,
+        source_id: None,
+        media_url: c.media_url,
+        card_type: c.card_type.unwrap_or_else(|| "reading".to_string()),
+        validation_mode: c.validation_mode.unwrap_or_else(|| "default".to_string()),
+        tags: parsed_tags,
+        due_date: c.due_date,
+        state: c.state,
+        stability: c.stability,
+        difficulty: c.difficulty,
+        elapsed_days: None,
+        scheduled_days: None,
+        reps: c.reps,
+        lapses: c.lapses,
+        last_review: None,
+        created_at: c.created_at,
+    }
 }
 
 #[tauri::command]
 pub fn anki_get_decks(db_state: State<'_, DbState>) -> Result<Vec<AnkiDeck>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let mut stmt = conn.prepare("SELECT id, name, description, parent_id FROM anki_decks WHERE deleted_at IS NULL ORDER BY created_at DESC").map_err(|e| e.to_string())?;
-    let iter = stmt
-        .query_map([], |row| {
-            Ok(AnkiDeck {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                parent_id: row.get(3)?,
-            })
+    let decks = AnkiRepository::get_decks_conn(conn).map_err(|e| e.to_string())?;
+    Ok(decks
+        .into_iter()
+        .map(|d| AnkiDeck {
+            id: d.id,
+            name: d.name,
+            description: d.description,
+            parent_id: d.parent_id,
         })
-        .map_err(|e| e.to_string())?;
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
+        .collect())
 }
 
 #[tauri::command]
@@ -82,29 +89,11 @@ pub fn anki_create_deck(
 ) -> Result<String, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let id = uuid::Uuid::new_v4().to_string();
-
-    conn.execute("BEGIN TRANSACTION", [])
+    let id = AnkiRepository::create_deck_conn(conn, &name, description.as_deref(), None, parent_id.as_deref())
         .map_err(|e| e.to_string())?;
 
-    if let Err(e) = conn.execute(
-        "INSERT INTO anki_decks (id, name, description, parent_id) VALUES (?, ?, ?, ?)",
-        params![id, name, description.unwrap_or_default(), parent_id],
-    ) {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(e.to_string());
-    }
-
-    let settings_id = uuid::Uuid::new_v4().to_string();
-    if let Err(e) = conn.execute(
-        "INSERT INTO anki_deck_settings (id, deck_id) VALUES (?, ?)",
-        params![settings_id, id],
-    ) {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(e.to_string());
-    }
-
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+    // Default settings
+    let _ = AnkiRepository::update_deck_settings_conn(conn, &id, AnkiDeckSettings::default());
     Ok(id)
 }
 
@@ -115,81 +104,39 @@ pub fn anki_get_deck_settings(
 ) -> Result<AnkiDeckSettings, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    let mut stmt = conn.prepare("SELECT new_limit, review_limit, learning_steps, relearning_steps, fsrs_weights FROM anki_deck_settings WHERE deck_id = ?").map_err(|e| e.to_string())?;
-    let row = stmt
-        .query_row([&deck_id], |row| {
-            Ok(AnkiDeckSettings {
-                new_limit: row.get(0)?,
-                review_limit: row.get(1)?,
-                learning_steps: row.get(2)?,
-                relearning_steps: row.get(3)?,
-                fsrs_weights: row.get(4)?,
-            })
-        })
-        .unwrap_or_else(|_| AnkiDeckSettings {
-            new_limit: 20,
-            review_limit: 200,
-            learning_steps: "1m,10m".to_string(),
-            relearning_steps: "10m".to_string(),
-            fsrs_weights: None,
-        });
-
-    Ok(row)
+    AnkiRepository::get_deck_settings_conn(conn, &deck_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<String, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let tags_json = card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
 
-    let id = if card.id.is_empty() {
-        uuid::Uuid::new_v4().to_string()
+    if card.id.is_empty() {
+        AnkiRepository::create_card_conn(
+            conn,
+            &card.deck_id,
+            &card.front,
+            &card.back,
+            tags_json.as_deref(),
+            Some(&card.card_type),
+            card.extra_note.as_deref(),
+        )
+        .map_err(|e| e.to_string())
     } else {
-        card.id.clone()
-    };
-
-    conn.execute("BEGIN TRANSACTION", [])
+        AnkiRepository::update_card_conn(
+            conn,
+            &card.id,
+            &card.front,
+            &card.back,
+            tags_json.as_deref(),
+            Some(&card.card_type),
+            card.extra_note.as_deref(),
+        )
         .map_err(|e| e.to_string())?;
-
-    let tags_json = card
-        .tags
-        .as_ref()
-        .and_then(|t| serde_json::to_string(t).ok())
-        .unwrap_or_else(|| "[]".to_string());
-
-    if let Err(e) = conn.execute(
-        "INSERT INTO anki_cards (id, deck_id, front, back, extra_note, source_module, source_id, media_url, card_type, validation_mode, tags, updated_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(id) DO UPDATE SET
-            deck_id = excluded.deck_id,
-            front = excluded.front,
-            back = excluded.back,
-            extra_note = excluded.extra_note,
-            source_module = excluded.source_module,
-            source_id = excluded.source_id,
-            media_url = excluded.media_url,
-            card_type = excluded.card_type,
-            validation_mode = excluded.validation_mode,
-            tags = excluded.tags,
-            updated_at = CURRENT_TIMESTAMP",
-        params![id, card.deck_id, card.front, card.back, card.extra_note, card.source_module, card.source_id, card.media_url, card.card_type, card.validation_mode, tags_json]
-    ) {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(e.to_string());
+        Ok(card.id)
     }
-
-    let now = Utc::now().to_rfc3339();
-    if let Err(e) = conn.execute(
-        "INSERT OR IGNORE INTO anki_srs_state (id, due_date, stability, difficulty, state) VALUES (?, ?, ?, ?, ?)",
-        params![id, now, 0.0, 0.0, "0"]
-    ) {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(e.to_string());
-    }
-
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
-    Ok(id)
 }
 
 #[tauri::command]
@@ -199,131 +146,53 @@ pub fn anki_get_all_cards(
 ) -> Result<Vec<AnkiCard>, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    let mut query = "
-        SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-               st.due_date, st.state, st.stability, st.difficulty, st.elapsed_days, st.scheduled_days, st.reps, st.lapses, st.last_review, c.created_at, c.tags
-        FROM anki_cards c 
-        LEFT JOIN anki_srs_state st ON c.id = st.id 
-        WHERE c.deleted_at IS NULL".to_string();
-
-    let mut p: Vec<String> = Vec::new();
-
-    if let Some(did) = deck_id {
-        query = "WITH RECURSIVE subdecks(id) AS (
-            SELECT id FROM anki_decks WHERE id = ? AND deleted_at IS NULL
-            UNION ALL
-            SELECT d.id FROM anki_decks d
-            JOIN subdecks sd ON d.parent_id = sd.id
-            WHERE d.deleted_at IS NULL
-         )
-         SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-                st.due_date, st.state, st.stability, st.difficulty, st.elapsed_days, st.scheduled_days, st.reps, st.lapses, st.last_review, c.created_at, c.tags
-         FROM anki_cards c 
-         LEFT JOIN anki_srs_state st ON c.id = st.id 
-         WHERE c.deleted_at IS NULL AND c.deck_id IN (SELECT id FROM subdecks)".to_string();
-        p.push(did);
-    }
-
-    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
-    let params_iter = rusqlite::params_from_iter(p.iter());
-
-    let iter = stmt
-        .query_map(params_iter, |row| {
-            Ok(AnkiCard {
-                id: row.get(0)?,
-                deck_id: row.get(1)?,
-                front: row.get(2)?,
-                back: row.get(3)?,
-                extra_note: row.get(4)?,
-                source_module: row.get(5)?,
-                source_id: row.get(6)?,
-                media_url: row.get(7)?,
-                card_type: row.get(8)?,
-                validation_mode: row.get(9)?,
-                due_date: row.get(10)?,
-                state: row.get(11)?,
-                stability: row.get(12)?,
-                difficulty: row.get(13)?,
-                elapsed_days: row.get(14)?,
-                scheduled_days: row.get(15)?,
-                reps: row.get(16)?,
-                lapses: row.get(17)?,
-                last_review: row.get(18)?,
-                created_at: row.get(19)?,
-                tags: row
-                    .get::<_, Option<String>>(20)?
-                    .and_then(|s| serde_json::from_str(&s).ok()),
-            })
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
+    let cards = match deck_id {
+        Some(did) => AnkiRepository::get_due_cards_conn(conn, &did).map_err(|e| e.to_string())?,
+        None => AnkiRepository::get_due_cards_conn(conn, "").map_err(|e| e.to_string())?,
+    };
+    Ok(cards.into_iter().map(map_card_to_anki_card).collect())
 }
 
 #[tauri::command]
 pub fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Result<AnkiCard, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let mut stmt = conn
+        .prepare("SELECT id, deck_id, front, back, tags, card_type, validation_mode, extra_note, media_url, created_at FROM anki_cards WHERE id = ? AND deleted_at IS NULL")
+        .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn.prepare("
-        SELECT c.id, c.deck_id, c.front, c.back, c.extra_note, c.source_module, c.source_id, c.media_url, c.card_type, c.validation_mode,
-               st.due_date, st.state, st.stability, st.difficulty, st.elapsed_days, st.scheduled_days, st.reps, st.lapses, st.last_review, c.created_at, c.tags
-        FROM anki_cards c 
-        LEFT JOIN anki_srs_state st ON c.id = st.id 
-        WHERE c.id = ? AND c.deleted_at IS NULL
-    ").map_err(|e| e.to_string())?;
-
-    stmt.query_row([&card_id], |row| {
-        Ok(AnkiCard {
-            id: row.get(0)?,
-            deck_id: row.get(1)?,
-            front: row.get(2)?,
-            back: row.get(3)?,
-            extra_note: row.get(4)?,
-            source_module: row.get(5)?,
-            source_id: row.get(6)?,
-            media_url: row.get(7)?,
-            card_type: row.get(8)?,
-            validation_mode: row.get(9)?,
-            due_date: row.get(10)?,
-            state: row.get(11)?,
-            stability: row.get(12)?,
-            difficulty: row.get(13)?,
-            elapsed_days: row.get(14)?,
-            scheduled_days: row.get(15)?,
-            reps: row.get(16)?,
-            lapses: row.get(17)?,
-            last_review: row.get(18)?,
-            created_at: row.get(19)?,
-            tags: row
-                .get::<_, Option<String>>(20)?
-                .and_then(|s| serde_json::from_str(&s).ok()),
+    let card = stmt
+        .query_row([&card_id], |row| {
+            Ok(Card {
+                id: row.get(0)?,
+                deck_id: row.get(1)?,
+                front: row.get(2)?,
+                back: row.get(3)?,
+                tags: row.get(4)?,
+                card_type: row.get(5)?,
+                validation_mode: row.get(6)?,
+                extra_note: row.get(7)?,
+                media_url: row.get(8)?,
+                stability: None,
+                difficulty: None,
+                reps: None,
+                lapses: None,
+                state: None,
+                due_date: None,
+                created_at: row.get(9)?,
+                updated_at: None,
+            })
         })
-    })
-    .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    Ok(map_card_to_anki_card(card))
 }
 
 #[tauri::command]
 pub fn anki_delete_card(card_id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    conn.execute("BEGIN TRANSACTION", [])
-        .map_err(|e| e.to_string())?;
-    let _ = conn.execute("UPDATE anki_reviews SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE card_id = ?", [&card_id]);
-    let _ = conn.execute("UPDATE anki_srs_state SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&card_id]);
-    if let Err(e) = conn.execute("UPDATE anki_cards SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&card_id]) {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(e.to_string());
-    }
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
-    Ok(true)
+    AnkiRepository::delete_card_conn(conn, &card_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -334,11 +203,17 @@ pub fn anki_update_card(
 ) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    conn.execute(
-        "UPDATE anki_cards SET front = ?, back = ?, extra_note = ?, media_url = ?, validation_mode = ?, card_type = ?, tags = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![card.front, card.back, card.extra_note, card.media_url, card.validation_mode, card.card_type, card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok()).unwrap_or_else(|| "[]".to_string()), card_id]
-    ).map_err(|e| e.to_string())?;
-    Ok(true)
+    let tags_json = card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
+    AnkiRepository::update_card_conn(
+        conn,
+        &card_id,
+        &card.front,
+        &card.back,
+        tags_json.as_deref(),
+        Some(&card.card_type),
+        card.extra_note.as_deref(),
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -350,26 +225,15 @@ pub fn anki_update_deck(
 ) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    conn.execute(
-        "UPDATE anki_decks SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![name, description, deck_id]
-    ).map_err(|e| e.to_string())?;
-    Ok(true)
+    AnkiRepository::update_deck_conn(conn, &deck_id, &name, description.as_deref(), None)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn anki_delete_deck(deck_id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    conn.execute("BEGIN TRANSACTION", [])
-        .map_err(|e| e.to_string())?;
-    let _ = conn.execute("UPDATE anki_decks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&deck_id]);
-    let _ = conn.execute("UPDATE anki_cards SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE deck_id = ?", [&deck_id]);
-    let _ = conn.execute("UPDATE anki_deck_settings SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE deck_id = ?", [&deck_id]);
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
-
-    Ok(true)
+    AnkiRepository::delete_deck_conn(conn, &deck_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -380,88 +244,12 @@ pub fn anki_update_deck_settings(
 ) -> Result<bool, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    // Check if exists
-    let mut exists = false;
-    if let Ok(mut stmt) = conn.prepare("SELECT id FROM anki_deck_settings WHERE deck_id = ?") {
-        if stmt.exists([&deck_id]).unwrap_or(false) {
-            exists = true;
-        }
-    }
-
-    if exists {
-        conn.execute(
-            "UPDATE anki_deck_settings SET new_limit = ?, review_limit = ?, learning_steps = ?, relearning_steps = ?, fsrs_weights = ?, updated_at = CURRENT_TIMESTAMP WHERE deck_id = ?",
-            params![settings.new_limit, settings.review_limit, settings.learning_steps, settings.relearning_steps, settings.fsrs_weights, deck_id]
-        ).map_err(|e| e.to_string())?;
-    } else {
-        let id = uuid::Uuid::new_v4().to_string();
-        conn.execute(
-            "INSERT INTO anki_deck_settings (id, deck_id, new_limit, review_limit, learning_steps, relearning_steps, fsrs_weights) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            params![id, deck_id, settings.new_limit, settings.review_limit, settings.learning_steps, settings.relearning_steps, settings.fsrs_weights]
-        ).map_err(|e| e.to_string())?;
-    }
-
-    Ok(true)
+    AnkiRepository::update_deck_settings_conn(conn, &deck_id, settings).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn anki_get_total_due_count(db_state: State<'_, DbState>) -> Result<i64, String> {
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    let now = Utc::now().to_rfc3339();
-
-    let mut stmt = conn.prepare("
-        SELECT c.deck_id,
-               COALESCE(st.state, '0'),
-               st.due_date,
-               COALESCE(ds.new_limit, 20),
-               COALESCE(ds.review_limit, 200)
-        FROM anki_cards c
-        LEFT JOIN anki_srs_state st ON c.id = st.id
-        LEFT JOIN anki_deck_settings ds ON c.deck_id = ds.deck_id
-        WHERE c.deleted_at IS NULL
-    ").map_err(|e| e.to_string())?;
-
-    let mut deck_counts: std::collections::HashMap<String, (i64, i64, i64, i64, i64)> = std::collections::HashMap::new();
-
-    let rows = stmt.query_map([], |row| {
-        let deck_id: String = row.get(0)?;
-        let state: String = row.get(1)?;
-        let due_date: Option<String> = row.get(2)?;
-        let new_limit: i64 = row.get(3)?;
-        let review_limit: i64 = row.get(4)?;
-        Ok((deck_id, state, due_date, new_limit, review_limit))
-    }).map_err(|e| e.to_string())?;
-
-    for r in rows.flatten() {
-        let (deck_id, state_str, due_date, new_limit, review_limit) = r;
-        let entry = deck_counts.entry(deck_id).or_insert((0, 0, 0, new_limit, review_limit));
-        let state: i32 = state_str.parse().unwrap_or(0);
-        if state == 0 {
-            entry.0 += 1;
-        } else if state == 1 || state == 3 {
-            if let Some(ref d) = due_date {
-                if d.as_str() <= now.as_str() {
-                    entry.1 += 1;
-                }
-            }
-        } else if state == 2 {
-            if let Some(ref d) = due_date {
-                if d.as_str() <= now.as_str() {
-                    entry.2 += 1;
-                }
-            }
-        }
-    }
-
-    let mut total: i64 = 0;
-    for (_deck, (news, learning, reviews, new_lim, rev_lim)) in deck_counts {
-        let capped_new = news.min(new_lim);
-        let capped_review = reviews.min(rev_lim);
-        total += learning + capped_review + capped_new;
-    }
-
-    Ok(total)
+    AnkiRepository::get_total_due_count_conn(conn).map_err(|e| e.to_string())
 }

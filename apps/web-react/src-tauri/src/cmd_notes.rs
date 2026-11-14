@@ -3,6 +3,9 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
+use synapse_core::domain::notes::models::PageRecord;
+use synapse_core::domain::notes::pages;
+use synapse_core::domain::notes::NotesRepository;
 use tauri::State;
 
 fn get_page_history_cache() -> &'static Mutex<HashMap<String, i64>> {
@@ -55,6 +58,25 @@ pub struct PageMeta {
     pub description: Option<String>,
 }
 
+fn map_record_to_meta(r: PageRecord) -> PageMeta {
+    PageMeta {
+        id: r.id,
+        parent_id: r.parent_id,
+        title: r.title,
+        icon: r.icon,
+        sort_order: r.sort_order as f64,
+        crdt_state: r.crdt_state,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        deleted_at: r.deleted_at,
+        is_locked: r.is_locked,
+        is_pinned: r.is_pinned,
+        pinned_order: r.pinned_order,
+        cover_image: r.cover_image,
+        description: r.description,
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct PageContent {
     pub content: String,
@@ -66,38 +88,10 @@ pub fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order, cover_image, description FROM pages WHERE deleted_at IS NULL")
+    let records = NotesRepository::get_pages_conn(conn, None)
         .map_err(|e| e.to_string())?;
 
-    let page_iter = stmt
-        .query_map([], |row| {
-            Ok(PageMeta {
-                id: row.get(0)?,
-                parent_id: row.get(1)?,
-                title: row.get(2)?,
-                icon: row.get(3)?,
-                sort_order: row.get(4)?,
-                crdt_state: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
-                deleted_at: row.get(8)?,
-                is_locked: row.get(9)?,
-                is_pinned: row.get(10)?,
-                pinned_order: row.get(11)?,
-                cover_image: row.get(12)?,
-                description: row.get(13)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut pages = Vec::new();
-    for page in page_iter {
-        if let Ok(p) = page {
-            pages.push(p);
-        }
-    }
-
-    Ok(pages)
+    Ok(records.into_iter().map(map_record_to_meta).collect())
 }
 
 #[tauri::command]
@@ -108,18 +102,16 @@ pub fn notes_get_page_content(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let mut stmt = conn
-        .prepare("SELECT content, encrypted_content FROM pages WHERE id = ?")
+    let page_opt = NotesRepository::get_page_conn(conn, &id)
         .map_err(|e| e.to_string())?;
 
-    let mut content = stmt
-        .query_row([&id], |row| {
-            Ok(PageContent {
-                content: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
-                encrypted_content: row.get(1)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
+    let mut content = match page_opt {
+        Some(p) => PageContent {
+            content: p.content,
+            encrypted_content: p.encrypted_content,
+        },
+        None => return Err("Page not found".to_string()),
+    };
 
     // Descriptografar on-the-fly
     if let Some(enc) = &content.encrypted_content {
@@ -153,33 +145,13 @@ pub fn notes_create_page(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let id = uuid::Uuid::new_v4().to_string();
     let title = page.title.unwrap_or_else(|| "Nova Página".into());
     let icon = page.icon.unwrap_or_else(|| "📄".into());
-    let now = chrono::Utc::now().to_rfc3339();
 
-    conn.execute(
-        "INSERT INTO pages (id, parent_id, title, icon, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        params![id, page.parent_id, title, icon, 0.0, &now, &now],
-    )
-    .map_err(|e| e.to_string())?;
+    let record = pages::create_page(conn, page.parent_id.as_deref(), &title, Some(&icon))
+        .map_err(|e| e.to_string())?;
 
-    Ok(PageMeta {
-        id,
-        parent_id: page.parent_id,
-        title,
-        icon,
-        sort_order: 0.0,
-        crdt_state: None,
-        created_at: Some(now.clone()),
-        updated_at: Some(now),
-        deleted_at: None,
-        is_locked: 0,
-        is_pinned: 0,
-        pinned_order: 0.0,
-        cover_image: None,
-        description: None,
-    })
+    Ok(map_record_to_meta(record))
 }
 
 #[derive(Deserialize, Default)]
@@ -354,11 +326,7 @@ pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<boo
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let now = chrono::Utc::now().to_rfc3339();
-    conn.execute("UPDATE pages SET deleted_at = ?, updated_at = ? WHERE id = ?", [&now, &now, &id])
-        .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    pages::soft_delete_page_subtree(conn, &id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -438,12 +406,5 @@ pub fn notes_restore_page(id: String, db_state: State<'_, DbState>) -> Result<bo
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let now = chrono::Utc::now().to_rfc3339();
-    conn.execute(
-        "UPDATE pages SET deleted_at = NULL, updated_at = ? WHERE id = ?",
-        [&now, &id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    pages::restore_page(conn, &id).map_err(|e| e.to_string())
 }

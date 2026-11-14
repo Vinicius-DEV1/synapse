@@ -1,6 +1,6 @@
 use crate::db::DbState;
-use rusqlite::params;
 use serde::{Deserialize, Serialize};
+pub use synapse_core::domain::files::FilesRepository;
 use tauri::State;
 use uuid::Uuid;
 
@@ -20,32 +20,20 @@ pub struct FileFolder {
 pub fn file_folders_get_all(db_state: State<'_, DbState>) -> Result<Vec<FileFolder>, String> {
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let list = FilesRepository::get_all_folders_conn(conn).map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare("SELECT id, name, parent_id, color, created_at, updated_at, deleted_at FROM file_folders WHERE deleted_at IS NULL")
-        .map_err(|e| e.to_string())?;
-
-    let iter = stmt
-        .query_map([], |row| {
-            Ok(FileFolder {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                parent_id: row.get(2)?,
-                color: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                deleted_at: row.get(6)?,
-            })
+    Ok(list
+        .into_iter()
+        .map(|f| FileFolder {
+            id: f.id,
+            name: f.name,
+            parent_id: f.parent_id,
+            color: Some(f.color),
+            created_at: f.created_at,
+            updated_at: f.updated_at,
+            deleted_at: None,
         })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
+        .collect())
 }
 
 #[tauri::command]
@@ -60,19 +48,17 @@ pub fn file_folders_create(
         folder.id = Uuid::new_v4().to_string();
     }
 
-    conn.execute(
-        "INSERT INTO file_folders (id, name, parent_id, color) 
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            parent_id = excluded.parent_id,
-            color = excluded.color,
-            deleted_at = NULL,
-            updated_at = CURRENT_TIMESTAMP",
-        params![folder.id, folder.name, folder.parent_id, folder.color],
+    let created = FilesRepository::create_folder_conn(
+        conn,
+        &folder.name,
+        folder.parent_id.as_deref(),
+        folder.color.as_deref(),
     )
     .map_err(|e| e.to_string())?;
 
+    if let Some(c) = created {
+        folder.id = c.id;
+    }
     Ok(folder)
 }
 
@@ -84,36 +70,15 @@ pub fn file_folders_update(
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let count = conn.execute(
-        "UPDATE file_folders SET name = ?, parent_id = ?, color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![folder.name, folder.parent_id, folder.color, folder.id]
-    ).map_err(|e| e.to_string())?;
+    let renamed = FilesRepository::rename_folder_conn(conn, &folder.id, &folder.name).map_err(|e| e.to_string())?;
+    let moved = FilesRepository::move_folder_conn(conn, &folder.id, folder.parent_id.as_deref()).map_err(|e| e.to_string())?;
 
-    Ok(count as i32)
+    Ok(if renamed || moved { 1 } else { 0 })
 }
 
 #[tauri::command]
 pub fn file_folders_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
-    // soft delete folder
-    conn.execute("UPDATE file_folders SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
-        .map_err(|e| e.to_string())?;
-
-    // move files to root (folder_id = NULL)
-    conn.execute(
-        "UPDATE files SET folder_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE folder_id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    // move subfolders to root (parent_id = NULL)
-    conn.execute(
-        "UPDATE file_folders SET parent_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE parent_id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    FilesRepository::delete_folder_conn(conn, &id).map_err(|e| e.to_string())
 }
