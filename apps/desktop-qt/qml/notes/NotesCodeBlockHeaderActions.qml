@@ -28,7 +28,15 @@ Item {
     RowLayout {
         id: actionsRow
         anchors.fill: parent
-        spacing: 5
+        spacing: 6
+
+        RowLayout {
+            spacing: 5
+            Rectangle { Layout.preferredWidth: 9; Layout.preferredHeight: 9; radius: 4.5; color: "#ff5f56" }
+            Rectangle { Layout.preferredWidth: 9; Layout.preferredHeight: 9; radius: 4.5; color: "#ffbd2e" }
+            Rectangle { Layout.preferredWidth: 9; Layout.preferredHeight: 9; radius: 4.5; color: "#27c93f" }
+            Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 12; color: "#20ffffff" }
+        }
 
         NotesCodeLanguageSelector {
             language: actionsRoot.language
