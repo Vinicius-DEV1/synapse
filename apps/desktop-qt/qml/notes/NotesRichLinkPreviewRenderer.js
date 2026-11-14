@@ -125,7 +125,7 @@ function previewBlocks(source) {
     return blocks
 }
 
-function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
+function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl, blockStart) {
     var attributes = attributesFromTag(tag)
     var url = safeHttpUrl(attributes.url)
     if (!url) {
@@ -147,6 +147,10 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
 
     var watched = entity.watched !== undefined ? entity.watched === true : attributes.watched === "true"
     var watching = entity.watching !== undefined ? entity.watching === true : attributes.watching === "true"
+    var showNotes = attributes.shownotes === "true"
+    var notes = String(attributes.notes || entity.notes || "")
+    var hasNotes = notes.length > 0
+    var startVal = isFinite(blockStart) ? blockStart : 0
 
     var iconChar = isYouTube ? (isPlaylist ? "📑" : "▶") : "💠"
     var iconBg = isYouTube ? "#25141c" : "#191724"
@@ -169,6 +173,9 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
     } else if (watching) {
         hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#fbbf24\" size=\"2\"><b>⏳ Status: Watching</b></font>"
     }
+    if (hasNotes && !showNotes) {
+        hostLine += " &nbsp;<font color=\"#52525b\">•</font>&nbsp; <font color=\"#a78bfa\" size=\"2\"><b>📝 Anotações</b></font>"
+    }
 
     var actionsLine = ""
     if (watching || watched) {
@@ -182,14 +189,46 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
             "</font></p>"
     }
 
+    var toggleNotesUrl = "synapse-link://toggle-notes?url=" + encodeURIComponent(url) +
+        "&start=" + startVal + "&show=" + String(!showNotes)
+    var menuUrl = "synapse-link://menu?url=" + encodeURIComponent(url) +
+        "&start=" + startVal + "&title=" + encodeURIComponent(title)
+
+    var noteBtnBg = showNotes ? "#2e1a47" : (hasNotes ? "#231f3d" : "#1e1d28")
+    var noteBtnBorder = showNotes ? "#8b5cf6" : (hasNotes ? "#6366f1" : "#2f2d3d")
+    var noteBtnText = showNotes ? "#c4b5fd" : (hasNotes ? "#a5b4fc" : "#94a3b8")
+    var noteIndicator = hasNotes && !showNotes ? " <font color=\"#818cf8\">•</font>" : ""
+
+    var buttonsCell = "<td width=\"68\" align=\"right\" valign=\"middle\" style=\"padding: 6px 12px 6px 0;\">" +
+        "<table border=\"0\" cellpadding=\"0\" cellspacing=\"4\" align=\"right\">" +
+        "<tr>" +
+        "<td bgcolor=\"" + noteBtnBg + "\" style=\"border: 1px solid " + noteBtnBorder + "; padding: 4px 6px; border-radius: 6px;\">" +
+        "<a href=\"" + escapeHtml(toggleNotesUrl) + "\" style=\"text-decoration:none;\"><font color=\"" + noteBtnText + "\" size=\"2\"><b>📄" + noteIndicator + "</b></font></a>" +
+        "</td>" +
+        "<td bgcolor=\"#1e1d28\" style=\"border: 1px solid #2f2d3d; padding: 4px 6px; border-radius: 6px;\">" +
+        "<a href=\"" + escapeHtml(menuUrl) + "\" style=\"text-decoration:none;\"><font color=\"#94a3b8\" size=\"2\"><b>•••</b></font></a>" +
+        "</td>" +
+        "</tr>" +
+        "</table>" +
+        "</td>"
+
     var notesSection = ""
-    if (attributes.shownotes === "true") {
-        var notes = String(attributes.notes || entity.notes || "")
+    if (showNotes) {
         var noteContent = notes.length > 0
             ? escapeHtml(notes).replace(/\r\n|\r|\n/g, "<br/>")
             : "<font color=\"#71717a\">No link notes yet. Choose Edit link notes to add one.</font>"
-        notesSection = "<tr><td colspan=\"2\" bgcolor=\"#12111a\" style=\"border-top: 1px solid " + cardBorder + "; padding: 8px 12px;\">" +
-            "<p style=\"margin: 0;\"><font color=\"#a7a9be\" size=\"2\"><b>Link notes</b></font></p>" +
+        var editNotesUrl = "synapse-link://edit-notes?url=" + encodeURIComponent(url) + "&start=" + startVal
+        notesSection = "<tr><td colspan=\"3\" bgcolor=\"#12111a\" style=\"border-top: 1px solid " + cardBorder + "; padding: 8px 12px;\">" +
+            "<table width=\"100%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">" +
+            "<tr>" +
+            "<td valign=\"middle\"><p style=\"margin: 0;\"><font color=\"#a7a9be\" size=\"2\"><b>Link notes</b></font></p></td>" +
+            "<td align=\"right\" valign=\"middle\">" +
+            "<a href=\"" + escapeHtml(editNotesUrl) + "\" style=\"color: #818cf8; text-decoration: none;\"><font color=\"#818cf8\" size=\"2\"><b>Editar</b></font></a>" +
+            "&nbsp;&nbsp;" +
+            "<a href=\"" + escapeHtml(toggleNotesUrl) + "\" style=\"color: #71717a; text-decoration: none;\"><font color=\"#71717a\" size=\"2\">Recolher</font></a>" +
+            "</td>" +
+            "</tr>" +
+            "</table>" +
             "<p style=\"margin: 4px 0 0 0;\"><font color=\"#f4f4f5\" size=\"2\">" + noteContent + "</font></p>" +
             "</td></tr>"
     }
@@ -204,6 +243,7 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
         "<p style=\"margin: 2px 0 0 0;\">" + hostLine + "</p>" +
         actionsLine +
         "</td>" +
+        buttonsCell +
         "</tr>" +
         notesSection +
         "</table>"
@@ -267,14 +307,14 @@ function render(source, metadataProvider, copiedUrl) {
     var html = String(source || "")
     var metadataCache = ({})
     var entityCache = ({})
-    var blockPattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^\"]*"|'[^']*\blink-preview-block[^']*'))[^>]*>\s*<\/div\s*>/gi
-    var selfClosingPattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\blink-preview-block[^\"]*"|'[^']*\blink-preview-block[^']*'))[^>]*\/\s*>/gi
-    html = html.replace(blockPattern, function(tag) {
-        return cardForTag(tag, metadataProvider, metadataCache, entityCache, copiedUrl)
-    })
-    return html.replace(selfClosingPattern, function(tag) {
-        return cardForTag(tag, metadataProvider, metadataCache, entityCache, copiedUrl)
-    })
+    var blocks = previewBlocks(html)
+    if (blocks.length === 0) return html
+    for (var i = blocks.length - 1; i >= 0; i--) {
+        var block = blocks[i]
+        var renderedCard = cardForTag(block.markup, metadataProvider, metadataCache, entityCache, copiedUrl, block.start)
+        html = html.substring(0, block.start) + renderedCard + html.substring(block.start + block.markup.length)
+    }
+    return html
 }
 
 function replaceStatusAttributes(source, url, watched, watching) {

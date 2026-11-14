@@ -299,6 +299,75 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(editor, "undo"));
         QTRY_COMPARE(editor->property("text").toString(), source);
     }
+
+    void linkCardButtonsAndConfirmDialogTest() {
+        QQmlEngine engine;
+        NotesTextOperations textOperations;
+        engine.rootContext()->setContextProperty("notesTextOperations", &textOperations);
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorCanvas.qml")));
+        QScopedPointer<QObject> canvas(component.create());
+        QVERIFY2(canvas, qPrintable(component.errorString()));
+
+        const QString source = QStringLiteral(
+            "<p>before</p><div class=\"link-preview-block\" url=\"https://capacitabrasil.irede.org.br/\" title=\"Capacita iRede\"></div><p>after</p>");
+        canvas->setProperty("activeContent", source);
+        canvas->setProperty("isPreviewMode", true);
+
+        QQuickWindow window;
+        window.resize(1000, 700);
+        auto *canvasItem = qobject_cast<QQuickItem *>(canvas.data());
+        QVERIFY(canvasItem);
+        canvasItem->setParentItem(window.contentItem());
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QObject *confirmDialog = canvas->findChild<QObject *>("notesLinkConfirmDialog");
+        QObject *optionsMenu = canvas->findChild<QObject *>("notesLinkOptionsMenu");
+        QObject *infoDialog = canvas->findChild<QObject *>("notesLinkInfoDialog");
+        QObject *previewText = canvas->findChild<QObject *>("notesPageContentPreview");
+
+        QVERIFY(confirmDialog);
+        QVERIFY(optionsMenu);
+        QVERIFY(infoDialog);
+        QVERIFY(previewText);
+
+        const QString rendered = previewText->property("text").toString();
+        // Verify in-card buttons exist in rendered HTML
+        QVERIFY(rendered.contains("synapse-link://toggle-notes"));
+        QVERIFY(rendered.contains("synapse-link://menu"));
+        QVERIFY(rendered.contains("•••"));
+
+        // Test clicking link opens confirmation dialog
+        QVERIFY(QMetaObject::invokeMethod(canvas.data(), "openExternalLink",
+                                          Q_ARG(QVariant, QString("https://capacitabrasil.irede.org.br/"))));
+        QTRY_VERIFY(confirmDialog->property("visible").toBool());
+        QCOMPARE(confirmDialog->property("linkUrl").toString(), QString("https://capacitabrasil.irede.org.br/"));
+
+        QObject *copyBtn = confirmDialog->findChild<QObject *>("notesLinkConfirmCopyButton");
+        QObject *cancelBtn = confirmDialog->findChild<QObject *>("notesLinkConfirmCancelButton");
+        QObject *openBtn = confirmDialog->findChild<QObject *>("notesLinkConfirmOpenButton");
+        QVERIFY(copyBtn);
+        QVERIFY(cancelBtn);
+        QVERIFY(openBtn);
+
+        QVERIFY(QMetaObject::invokeMethod(cancelBtn, "click"));
+        QTRY_VERIFY(!confirmDialog->property("visible").toBool());
+
+        // Test clicking menu opens options menu
+        const QString menuAction = QStringLiteral("synapse-link://menu?url=https%3A%2F%2Fcapacitabrasil.irede.org.br%2F&start=12&title=Capacita%20iRede");
+        QVERIFY(QMetaObject::invokeMethod(canvas.data(), "openExternalLink", Q_ARG(QVariant, menuAction)));
+        QTRY_VERIFY(optionsMenu->property("visible").toBool());
+        optionsMenu->setProperty("visible", false);
+
+        // Test clicking info opens info dialog
+        const QString infoAction = QStringLiteral("synapse-link://info?url=https%3A%2F%2Fcapacitabrasil.irede.org.br%2F&start=12&title=Capacita%20iRede");
+        QVERIFY(QMetaObject::invokeMethod(canvas.data(), "openExternalLink", Q_ARG(QVariant, infoAction)));
+        QTRY_VERIFY(infoDialog->property("visible").toBool());
+        QCOMPARE(infoDialog->property("linkTitle").toString(), QString("Capacita iRede"));
+        infoDialog->setProperty("visible", false);
+    }
 };
 
 int runNativeNotesLinkPreviewQmlTest() {

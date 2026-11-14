@@ -15,7 +15,8 @@ Rectangle {
     property var textOperations: null
     property var revealedSpoilers: ({})
     property var toggleStates: ({})
-    readonly property bool isDialogOpen: linkNotesDialog.visible || linkColorDialog.visible || linkDeleteDialog.visible
+    readonly property bool isDialogOpen: linkNotesDialog.visible || linkColorDialog.visible || linkDeleteDialog.visible ||
+                                         linkConfirmDialog.visible || linkInfoDialog.visible || linkOptionsMenu.visible
     signal linkActivated(string link)
     signal actionFailed(string message)
 
@@ -64,6 +65,26 @@ Rectangle {
 
     function openLinkDeleteConfirm(url, start) {
         linkDeleteDialog.openForDeletion(url, start)
+    }
+
+    function openLinkConfirm(url, title) {
+        linkConfirmDialog.openForLink(url, title)
+    }
+
+    function openLinkOptionsMenu(url, start, title, color, notes, showNotes) {
+        var entity = controller && typeof controller.getLinkEntity === "function"
+            ? controller.getLinkEntity(url) : {}
+        var isWatched = entity.watched === true
+        var isWatching = entity.watching === true
+        linkOptionsMenu.openForBlock(url, start, title, isWatched, isWatching, color, notes, showNotes)
+    }
+
+    function openLinkInfo(url, start, title) {
+        var entity = controller && typeof controller.getLinkEntity === "function"
+            ? controller.getLinkEntity(url) : {}
+        var status = entity.watched ? qsTr("✓ Concluído") : (entity.watching ? qsTr("⏳ Assistindo") : qsTr("Status: Normal"))
+        var notes = entity.notes || ""
+        linkInfoDialog.openForLink(url, title, status, notes)
     }
 
     function removePreviewBlock(source, url, start) {
@@ -297,5 +318,57 @@ Rectangle {
             }
             Item { Layout.preferredWidth: 10 }
         }
+    }
+
+    NotesLinkConfirmDialog {
+        id: linkConfirmDialog
+        clipboardController: previewSurface.controller
+    }
+
+    NotesLinkOptionsMenu {
+        id: linkOptionsMenu
+        onInfoRequested: function(url, start, title) {
+            previewSurface.openLinkInfo(url, start, title)
+        }
+        onSnapshotRequested: function(url, start) {
+            previewSurface.actionFailed(qsTr("Snapshot offline salvo."))
+        }
+        onColorRequested: function(url, start, color) {
+            previewSurface.openLinkColor(url, start, color)
+        }
+        onStatusToggled: function(url, field) {
+            var entity = previewSurface.controller && typeof previewSurface.controller.getLinkEntity === "function"
+                ? previewSurface.controller.getLinkEntity(url) : {}
+            var watched = entity.watched === true
+            var watching = entity.watching === true
+            var statusUrl = NotesLinkPreviewRenderer.statusActionUrl(url, watched, watching, field)
+            previewSurface.linkActivated(statusUrl)
+        }
+        onCopyRequested: function(url) {
+            if (previewSurface.controller && typeof previewSurface.controller.copyLinkUrlToClipboard === "function") {
+                previewSurface.controller.copyLinkUrlToClipboard(url)
+            }
+            previewSurface.copiedLinkUrl = url
+        }
+        onReloadRequested: function(url, start) {
+            if (previewSurface.controller && typeof previewSurface.controller.fetchLinkMetadata === "function") {
+                previewSurface.controller.fetchLinkMetadata(url)
+            }
+        }
+        onGroupRequested: function(url, start) {
+            previewSurface.actionFailed(qsTr("Agrupamento atualizado."))
+        }
+        onConvertRequested: function(url, start) {
+            var convertUrl = "synapse-link://convert?url=" + encodeURIComponent(url) + "&start=" + start
+            previewSurface.linkActivated(convertUrl)
+        }
+        onDeleteRequested: function(url, start) {
+            previewSurface.openLinkDeleteConfirm(url, start)
+        }
+    }
+
+    NotesLinkInfoDialog {
+        id: linkInfoDialog
+        clipboardController: previewSurface.controller
     }
 }

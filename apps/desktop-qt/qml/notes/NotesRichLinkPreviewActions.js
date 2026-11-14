@@ -1,7 +1,7 @@
 .pragma library
 
 function parseAction(link) {
-    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes|color|delete)\?(.+)$/i)
+    var match = String(link || "").match(/^synapse-link:\/\/(status|copy|convert|toggle-notes|edit-notes|color|delete|open-confirm|menu|info)\?(.+)$/i)
     if (!match) return null
     var actionType = String(match[1]).toLowerCase()
     var values = ({})
@@ -20,6 +20,9 @@ function parseAction(link) {
     }
     if (!values.url) {
         return { handled: true, success: false }
+    }
+    if (actionType === "open-confirm") {
+        return { handled: true, type: actionType, url: values.url, title: values.title || "" }
     }
     if (actionType === "copy") return { handled: true, type: actionType, url: values.url }
     if (actionType === "convert") {
@@ -42,6 +45,16 @@ function parseAction(link) {
             return { handled: true, success: false }
         }
         return { handled: true, type: actionType, url: values.url, start: colorBlockStart }
+    }
+    if (actionType === "menu" || actionType === "info") {
+        var menuStart = Number(values.start)
+        return {
+            handled: true,
+            type: actionType,
+            url: values.url,
+            start: isFinite(menuStart) ? menuStart : -1,
+            title: values.title || ""
+        }
     }
     if (actionType === "toggle-notes" || actionType === "edit-notes") {
         var notesBlockStart = Number(values.start)
@@ -66,6 +79,39 @@ function activate(link, source, controller, renderer) {
     var action = parseAction(link)
     if (!action) return { handled: false }
     if (action.success === false) return action
+    if (action.type === "open-confirm") {
+        return { handled: true, success: true, type: "open-confirm", url: action.url, title: action.title }
+    }
+    if (action.type === "menu") {
+        var menuData = renderer && typeof renderer.linkPreviewData === "function"
+            ? renderer.linkPreviewData(source, action.url, action.start, controller)
+            : {}
+        return {
+            handled: true,
+            success: true,
+            type: "menu",
+            url: action.url,
+            start: action.start,
+            title: action.title,
+            color: menuData.color || "default",
+            notes: menuData.notes || "",
+            showNotes: menuData.showNotes === true
+        }
+    }
+    if (action.type === "info") {
+        var infoData = renderer && typeof renderer.linkPreviewData === "function"
+            ? renderer.linkPreviewData(source, action.url, action.start, controller)
+            : {}
+        return {
+            handled: true,
+            success: true,
+            type: "info",
+            url: action.url,
+            start: action.start,
+            title: action.title,
+            notes: infoData.notes || ""
+        }
+    }
     if (action.type === "copy") {
         if (!controller || typeof controller.copyLinkUrlToClipboard !== "function" ||
                 !controller.copyLinkUrlToClipboard(action.url)) return { handled: true, success: false }

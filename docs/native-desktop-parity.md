@@ -607,7 +607,19 @@ Qt vault setup now encrypts referenced, readable media in the managed `files/`, 
     - Updated `cardForTag` to render a sleek 2-row table container with `#13111c` background and `#2e2b44` subtle border.
     - Set left badge to 34x34 with rounded corners, elevated dark surface (`#191724`), and diamond (`💠`) or video icon.
     - Styled title in bold white (`#ffffff`, font-size 3) and host subtitle in soft purple (`#a855f7`, font-size 2).
+    - Added dedicated in-card action buttons column matching React `LinkCardActions.tsx`: Note toggle button (`📄`) with indicator dot when notes exist, and More options button (`•••`).
+    - Added integrated notes drawer inside the card table when `showNotes` is active, with "Editar" and "Recolher" links.
     - Removed raw text action links from the default card body, preserving them strictly in a discrete footer row when `watching || watched` for keyboard/menu access and regression test compatibility.
+  - In `apps/desktop-qt/qml/notes/NotesLinkConfirmDialog.qml`:
+    - Implemented external link confirmation modal matching React `LinkPreviewNodeView.tsx` (`showLinkConfirm`): displays header "Abrir Link Externo", monospace URL container with one-click "Copiar" / "Copiado! ✓" button, and "Cancelar" / "Abrir no Navegador" buttons.
+  - In `apps/desktop-qt/qml/notes/NotesLinkOptionsMenu.qml`:
+    - Implemented full 10-item dropdown menu matching React `LinkMoreOptionsMenu.tsx`: Informações & Resumo IA, Salvar Snapshot Offline, Personalizar Cor, Assistindo toggle, Marcar como concluído toggle, Copiar Link Original, Recarregar Metadados, Agrupar Lado a Lado, Converter para Texto Simples, and Remover Link in rose red.
+  - In `apps/desktop-qt/qml/notes/NotesLinkInfoDialog.qml`:
+    - Implemented detailed link info modal matching React `LinkInfoModal.tsx`: displays title, URL, domain badge, status badge, associated notes, and one-click copy button.
+  - In `apps/desktop-qt/qml/notes/NotesRichLinkPreviewActions.js`:
+    - Extended action router to handle `open-confirm`, `menu`, and `info` action schemes seamlessly.
+  - In `apps/desktop-qt/qml/notes/NotesPreviewSurface.qml` and `NotesEditorCanvas.qml`:
+    - Wired `linkConfirmDialog`, `linkOptionsMenu`, and `linkInfoDialog` into the canvas event lifecycle, routing all HTTP/HTTPS link clicks through `openLinkConfirm`.
   - In `apps/desktop-qt/qml/notes/NotesCustomWidgetsRenderer.js`:
     - In `renderRichTables`: parsed `<colgroup>` `<col style="width: ...px">` tags and first-row `colwidth` attributes to compute proportional column percentage widths (`width="X%"`), ensuring every column stays aligned and open.
     - Set table border to crisp `#45405e` and `cellpadding="8"` with `bgcolor="#0f0e17"`.

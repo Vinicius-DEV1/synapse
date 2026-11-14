@@ -104,6 +104,15 @@ ScrollView {
                 return
             }
             if (action.type === "copy") copiedLinkUrl = action.copiedUrl
+            else if (action.type === "open-confirm") {
+                previewSurface.openLinkConfirm(action.url, action.title)
+            }
+            else if (action.type === "menu") {
+                previewSurface.openLinkOptionsMenu(action.url, action.start, action.title, action.color, action.notes, action.showNotes)
+            }
+            else if (action.type === "info") {
+                previewSurface.openLinkInfo(action.url, action.start, action.title)
+            }
             else if (action.type === "toggle-notes") {
                 if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement))
                     pageActionFailed(qsTr("Could not update link note visibility."))
@@ -142,7 +151,11 @@ ScrollView {
                 return
             }
         }
-        if (/^(https?:\/\/|mailto:)/i.test(link || "")) Qt.openUrlExternally(link)
+        if (/^https?:\/\//i.test(link || "")) {
+            previewSurface.openLinkConfirm(link, "")
+            return
+        }
+        if (/^mailto:/i.test(link || "")) Qt.openUrlExternally(link)
     }
 
     function insertFormatting(prefix, suffix) {
