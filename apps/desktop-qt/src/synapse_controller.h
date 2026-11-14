@@ -362,6 +362,17 @@ public:
                                      const QString &eventId = "",
                                      const QString &scheduledFor = "");
 
+    // 17. Practice & AI Tutor
+    Q_INVOKABLE QVariantList getPracticeSessions();
+    Q_INVOKABLE QVariantMap getPracticeSession(const QString &sessionId);
+    Q_INVOKABLE QString createPracticeSession(const QString &title, const QString &customPrompt = "");
+    Q_INVOKABLE bool deletePracticeSession(const QString &sessionId);
+    Q_INVOKABLE QVariantList getPracticeMessages(const QString &sessionId);
+    Q_INVOKABLE QString createPracticeMessage(const QString &sessionId, const QString &role, const QString &textContent);
+    Q_INVOKABLE QVariantList getPracticeMemories();
+    Q_INVOKABLE QString createPracticeMemory(const QString &fact, const QString &category = "general");
+    Q_INVOKABLE bool deletePracticeMemory(const QString &memoryId);
+
     // 17. Native local file manager
     Q_INVOKABLE QVariantList getFiles(const QString &folderId = "");
     Q_INVOKABLE QVariantList getFilesForSection(const QString &section, const QString &folderId = "");

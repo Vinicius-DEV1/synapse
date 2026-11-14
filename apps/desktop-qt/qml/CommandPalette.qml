@@ -44,6 +44,7 @@ Rectangle {
         { label: "Ir para Biblioteca & Livros", icon: "library", category: "Navegação", tab: "library" },
         { label: "Ir para Cultura & Mídia", icon: "culture", category: "Navegação", tab: "culture" },
         { label: "Ir para Foco & Lo-Fi Pomodoro", icon: "focus", category: "Navegação", tab: "focus" },
+        { label: "Ir para Prática & Tutor de IA", icon: "focus", category: "Navegação", tab: "practice" },
         { label: "Ir para Cofre E2EE & Credenciais", icon: "vault", category: "Navegação", tab: "vault" },
         { label: "Ir para Lixeira do Sistema", icon: "trash", category: "Navegação", tab: "trash" },
         { label: "Ir para Configurações & Diagnóstico", icon: "settings", category: "Navegação", tab: "settings" },

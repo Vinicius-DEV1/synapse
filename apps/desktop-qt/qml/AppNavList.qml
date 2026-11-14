@@ -29,6 +29,7 @@ Item {
             { key: "habits", name: "Hábitos", icon: "habits", count: dataController.habitCount },
             { key: "files", name: "Arquivos", icon: "folder", count: 0 },
             { key: "diagrams", name: "Diagramas", icon: "diagrams", count: 0 },
+            { key: "practice", name: "Prática", icon: "focus", count: 0 },
             { key: "vault", name: "Cofre", icon: "vault", count: dataController.vaultItemCount },
             { key: "trash", name: "Lixeira", icon: "trash", count: 0 },
             { key: "settings", name: "Configurações", icon: "settings", count: 0 }

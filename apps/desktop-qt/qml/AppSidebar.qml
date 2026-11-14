@@ -38,6 +38,7 @@ Rectangle {
         "files": { title: "Arquivos", icon: "folder" },
         "diagrams": { title: "Diagramas", icon: "diagrams" },
         "focus": { title: "Foco", icon: "focus" },
+        "practice": { title: "Prática", icon: "focus" },
         "vault": { title: "Cofre", icon: "vault" },
         "trash": { title: "Lixeira", icon: "trash" },
         "settings": { title: "Configurações", icon: "settings" }
@@ -59,6 +60,7 @@ Rectangle {
             "video": "Your videos with interactive subtitles for studying.",
             "anki": "Review your cards with spaced repetition.",
             "focus": "Manage your focus sessions and timers.",
+            "practice": "AI tutor practice sessions, transcript history, and memory context.",
             "calendar": "Manage your appointments and daily tasks.",
             "files": "Manage your files, PDFs and documents.",
             "vault": "Protect your credentials and passwords with maximum security.",

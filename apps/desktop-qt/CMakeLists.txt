@@ -84,6 +84,7 @@ add_executable(synapse-desktop
     src/controllers/calendar/calendar_controller.cpp
     src/controllers/culture/culture_controller.cpp
     src/controllers/focus/focus_controller.cpp
+    src/controllers/practice/practice_controller.cpp
     src/controllers/vault/vault_items_controller.cpp
     src/controllers/files/files_browser_controller.cpp
     src/controllers/files/files_items_controller.cpp
@@ -196,6 +197,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/settings/native_settings_test.cpp
         tests/home/native_home_test.cpp
         tests/diagrams/native_diagrams_test.cpp
+        tests/practice/native_practice_test.cpp
         src/video/mpv_track_parser.cpp
         src/synapse_controller.cpp
         src/controllers/platform/database_prepared_controller.cpp
@@ -257,6 +259,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/calendar/calendar_controller.cpp
         src/controllers/culture/culture_controller.cpp
         src/controllers/focus/focus_controller.cpp
+        src/controllers/practice/practice_controller.cpp
         src/controllers/vault/vault_items_controller.cpp
         src/controllers/files/files_browser_controller.cpp
         src/controllers/files/files_items_controller.cpp

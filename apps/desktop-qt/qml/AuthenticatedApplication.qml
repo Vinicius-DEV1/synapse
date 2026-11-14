@@ -18,6 +18,7 @@ import "trash"
 import "settings"
 import "notifications"
 import "files"
+import "practice"
 
 Item {
     id: rootWindow
@@ -86,6 +87,7 @@ Item {
         if (key === "files") return { title: "Arquivos", icon: "folder" }
         if (key === "diagrams") return { title: "Diagramas", icon: "diagrams" }
         if (key === "focus") return { title: "Foco", icon: "focus" }
+        if (key === "practice") return { title: "Prática", icon: "focus" }
         if (key === "vault") return { title: "Cofre", icon: "vault" }
         if (key === "trash") return { title: "Lixeira", icon: "trash" }
         if (key === "settings") return { title: "Configurações", icon: "settings" }
@@ -203,6 +205,7 @@ Item {
                         if (rootWindow.activeTab === "trash") return 13;
                         if (rootWindow.activeTab === "settings") return 14;
                         if (rootWindow.activeTab === "files") return 15;
+                        if (rootWindow.activeTab === "practice") return 16;
                         return 0;
                     }
 
@@ -242,6 +245,7 @@ Item {
                     TrashView { id: trashView }
                     SettingsView { id: settingsView }
                     FilesView { id: filesView }
+                    PracticeView { id: practiceView }
                 }
             }
         }
