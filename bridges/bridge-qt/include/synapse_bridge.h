@@ -125,6 +125,7 @@ char* synapse_anki_create_card(Database* db, const char* deck_id, const char* fr
 int synapse_anki_update_card(Database* db, const char* card_id, const char* front, const char* back, const char* tags, const char* card_type, const char* extra_note);
 int synapse_anki_delete_card(Database* db, const char* card_id);
 int synapse_anki_record_review(Database* db, const char* card_id, int rating);
+long long synapse_anki_get_due_cards_count(Database* db);
 
 // Domain APIs: Culture & Entertainment
 char* synapse_culture_get_items(Database* db, const char* status_filter);
@@ -143,6 +144,7 @@ int synapse_culture_delete_episode(Database* db, const char* episode_id);
 
 // Domain APIs: Calendar
 char* synapse_calendar_get_events(Database* db);
+char* synapse_calendar_get_events_for_date(Database* db, const char* date_prefix, int include_null, int limit);
 int synapse_calendar_create_event(Database* db, const char* title, const char* description, const char* start_date, const char* end_date, const char* event_type, const char* color, const char* page_id);
 int synapse_calendar_update_event(Database* db, const char* event_id, const char* title, const char* description, const char* start_date, const char* end_date, const char* color, const char* event_type, const char* page_id);
 int synapse_calendar_toggle_status(Database* db, const char* event_id);
@@ -200,6 +202,8 @@ int synapse_files_delete_file(Database* db, const char* file_id);
 int synapse_files_link_to_page(Database* db, const char* file_id, const char* page_id);
 int synapse_files_unlink_from_page(Database* db, const char* file_id, const char* page_id);
 char* synapse_files_get_linked_pages(Database* db, const char* file_id);
+char* synapse_files_get_file(Database* db, const char* file_id);
+int synapse_files_update_local_path(Database* db, const char* file_id, const char* local_path);
 
 // Domain APIs: Video & Media
 char* synapse_video_get_all(Database* db, const char* filter);
@@ -254,6 +258,7 @@ char* synapse_library_get_reading_stats(Database* db);
 // Domain APIs: Notes & Pages
 char* synapse_notes_get_pages(Database* db, const char* filter);
 char* synapse_notes_get_pinned_pages(Database* db);
+char* synapse_notes_get_recent_pages(Database* db, int limit);
 char* synapse_notes_get_page_tree(Database* db, const char* filter);
 char* synapse_notes_get_page(Database* db, const char* page_id);
 char* synapse_notes_create_subpage(Database* db, const char* parent_id, const char* title, const char* icon);
@@ -272,6 +277,26 @@ char* synapse_notes_get_history(Database* db, const char* page_id);
 int synapse_notes_restore_revision(Database* db, const char* page_id, const char* revision_id);
 char* synapse_notes_get_link_metadata(Database* db, const char* url);
 int synapse_notes_save_link_metadata(Database* db, const char* metadata_json);
+char* synapse_notes_get_link_entity(Database* db, const char* canonical_url);
+int synapse_notes_save_link_entity(Database* db, const char* canonical_url, const char* entity_json);
+
+// Domain APIs: Practice & AI Tutor
+char* synapse_practice_get_sessions(Database* db);
+char* synapse_practice_get_session(Database* db, const char* session_id);
+char* synapse_practice_create_session(Database* db, const char* title, const char* custom_prompt);
+int synapse_practice_delete_session(Database* db, const char* session_id);
+char* synapse_practice_get_messages(Database* db, const char* session_id);
+char* synapse_practice_create_message(Database* db, const char* session_id, const char* role, const char* text_content);
+char* synapse_practice_get_memories(Database* db);
+char* synapse_practice_create_memory(Database* db, const char* category, const char* fact);
+int synapse_practice_delete_memory(Database* db, const char* memory_id);
+
+// Domain APIs: Whiteboard Diagrams
+char* synapse_diagrams_get_all(Database* db);
+char* synapse_diagrams_get(Database* db, const char* id);
+char* synapse_diagrams_create(Database* db, const char* title, const char* icon);
+int synapse_diagrams_save(Database* db, const char* id, const char* title, const char* content, const char* encrypted_content, const char* icon);
+int synapse_diagrams_delete(Database* db, const char* id);
 
 #ifdef __cplusplus
 }

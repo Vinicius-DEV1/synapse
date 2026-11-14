@@ -150,3 +150,26 @@ pub unsafe extern "C" fn synapse_calendar_delete_event(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_calendar_get_events_for_date(
+    db: *mut Database,
+    date_prefix: *const c_char,
+    include_null: c_int,
+    limit: usize,
+) -> *mut c_char {
+    if db.is_null() || date_prefix.is_null() {
+        return std::ptr::null_mut();
+    }
+    let prefix = match to_opt_str(date_prefix) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    match CalendarRepository::get_events_for_date(&*db, prefix, include_null != 0, limit) {
+        Ok(events) => json_to_c_char(&events),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_events_for_date failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}

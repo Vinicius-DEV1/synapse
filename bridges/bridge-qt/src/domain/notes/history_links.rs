@@ -132,3 +132,55 @@ pub unsafe extern "C" fn synapse_notes_save_link_metadata(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_get_link_entity(
+    db: *mut Database,
+    canonical_url: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || canonical_url.is_null() {
+        return std::ptr::null_mut();
+    }
+    let u = match to_opt_str(canonical_url) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    match NotesRepository::get_link_entity(&*db, u) {
+        Ok(Some(entity)) => match CString::new(entity) {
+            Ok(cstr) => cstr.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Ok(None) => std::ptr::null_mut(),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_link_entity failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_save_link_entity(
+    db: *mut Database,
+    canonical_url: *const c_char,
+    entity_json: *const c_char,
+) -> c_int {
+    if db.is_null() || canonical_url.is_null() || entity_json.is_null() {
+        return -1;
+    }
+    let u = match to_opt_str(canonical_url) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let json = match to_opt_str(entity_json) {
+        Some(s) => s,
+        None => return -1,
+    };
+    match NotesRepository::save_link_entity(&*db, u, json) {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] save_link_entity failed: {}", e);
+            -1
+        }
+    }
+}

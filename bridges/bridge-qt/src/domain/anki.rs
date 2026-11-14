@@ -344,3 +344,17 @@ pub unsafe extern "C" fn synapse_anki_record_review(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_anki_get_due_cards_count(db: *mut Database) -> i64 {
+    if db.is_null() {
+        return 0;
+    }
+    match AnkiRepository::get_due_cards_count(&*db) {
+        Ok(count) => count,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_due_cards_count failed: {}", e);
+            0
+        }
+    }
+}

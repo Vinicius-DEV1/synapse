@@ -348,3 +348,52 @@ pub unsafe extern "C" fn synapse_files_get_linked_pages(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_files_get_file(
+    db: *mut Database,
+    file_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || file_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let fid = match to_opt_str(file_id) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    match FilesRepository::get_file(&*db, fid) {
+        Ok(Some(file)) => json_to_c_char(&file),
+        Ok(None) => std::ptr::null_mut(),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_file failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_files_update_local_path(
+    db: *mut Database,
+    file_id: *const c_char,
+    local_path: *const c_char,
+) -> c_int {
+    if db.is_null() || file_id.is_null() || local_path.is_null() {
+        return -1;
+    }
+    let fid = match to_opt_str(file_id) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let path = match to_opt_str(local_path) {
+        Some(s) => s,
+        None => return -1,
+    };
+    match FilesRepository::update_file_local_path(&*db, fid, path) {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] update_local_path failed: {}", e);
+            -1
+        }
+    }
+}

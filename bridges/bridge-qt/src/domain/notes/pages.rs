@@ -355,3 +355,20 @@ pub unsafe extern "C" fn synapse_notes_reorder_pages(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_get_recent_pages(
+    db: *mut Database,
+    limit: usize,
+) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    match NotesRepository::get_recent_pages(&*db, limit) {
+        Ok(pages) => json_to_c_char(&pages),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_recent_pages failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
