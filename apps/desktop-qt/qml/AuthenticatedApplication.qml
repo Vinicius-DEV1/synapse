@@ -133,6 +133,8 @@ Item {
         // ===================================================================
         AppTopTabBar {
             id: topTabBar
+            visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen)
+            Layout.preferredHeight: visible ? -1 : 0
             openTabs: rootWindow.tabsList
             activeTabId: rootWindow.currentTabId
             windowRoot: rootWindow.windowRoot
@@ -173,6 +175,7 @@ Item {
             // ===================================================================
             AppSidebar {
                 id: appSidebar
+                visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen)
                 sidebarExpanded: rootWindow.sidebarExpanded
                 activeTab: rootWindow.activeTab
                 notePinnedPages: notesView.pinnedPages
@@ -246,6 +249,14 @@ Item {
                     VideoPlayerView {
                         id: videoView
                         viewportWidth: rootWindow.width
+                        onFullscreenToggled: {
+                            if (!rootWindow.windowRoot) return
+                            if (videoView.isPlayerFullscreen) {
+                                rootWindow.windowRoot.showFullScreen()
+                            } else {
+                                rootWindow.windowRoot.showNormal()
+                            }
+                        }
                     }
                     AnkiView { id: ankiView }
                     CalendarView { id: calendarView }

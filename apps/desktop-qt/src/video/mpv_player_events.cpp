@@ -40,6 +40,14 @@ void MpvPlayerItem::onMpvEvents() {
                     m_paused = paused;
                     emit pausedChanged();
                 }
+            } else if (event->reply_userdata == SubTextObserverId &&
+                       property->format == MPV_FORMAT_STRING) {
+                const char *rawText = property->data ? *static_cast<const char **>(property->data) : nullptr;
+                const QString subText = rawText ? QString::fromUtf8(rawText).trimmed() : QString();
+                if (m_currentSubtitle != subText) {
+                    m_currentSubtitle = subText;
+                    emit currentSubtitleChanged();
+                }
             }
         } else if (event->event_id == MPV_EVENT_FILE_LOADED) {
             refreshTrackLists();

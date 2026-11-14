@@ -96,6 +96,9 @@ MpvPlayerItem::MpvPlayerItem(QQuickItem *parent)
     mpv_set_option_string(m_mpv, "hwdec", "auto-safe");
     mpv_set_option_string(m_mpv, "vo", "libmpv");
     mpv_set_option_string(m_mpv, "keep-open", "yes");
+    mpv_set_option_string(m_mpv, "sub-margin-y", "100");
+    mpv_set_option_string(m_mpv, "sub-font-size", "40");
+    mpv_set_option_string(m_mpv, "sub-visibility", "no");
 
     if (!registerEncryptedVideoStream(m_mpv, this)) {
         qFatal("[MpvPlayerItem] Cannot register encrypted video stream protocol");
@@ -119,6 +122,9 @@ MpvPlayerItem::MpvPlayerItem(QQuickItem *parent)
     }
     if (mpv_observe_property(m_mpv, PauseObserverId, "pause", MPV_FORMAT_FLAG) < 0) {
         qWarning() << "[MpvPlayerItem] Cannot observe pause state.";
+    }
+    if (mpv_observe_property(m_mpv, SubTextObserverId, "sub-text", MPV_FORMAT_STRING) < 0) {
+        qWarning() << "[MpvPlayerItem] Cannot observe subtitle text.";
     }
 
     mpv_set_wakeup_callback(m_mpv, onMpvWakeup, this);
@@ -150,11 +156,13 @@ void MpvPlayerItem::setSource(const QString &source) {
     m_activeEncryptedToken.clear();
     m_source = source;
     clearTrackLists();
+    m_currentSubtitle.clear();
     m_position = 0.0;
     m_duration = 0.0;
     emit sourceChanged();
     emit positionChanged();
     emit durationChanged();
+    emit currentSubtitleChanged();
 
     if (m_source.isEmpty()) return;
 
@@ -250,6 +258,15 @@ void MpvPlayerItem::seekRelative(double seconds) {
     QByteArray secStr = QByteArray::number(seconds);
     const char *cmd[] = {"seek", secStr.constData(), "relative", nullptr};
     mpv_command_async(m_mpv, 0, cmd);
+}
+
+void MpvPlayerItem::setInteractiveSubtitles(bool enabled) {
+    if (m_interactiveSubtitles == enabled) return;
+    m_interactiveSubtitles = enabled;
+    if (m_mpv) {
+        mpv_set_option_string(m_mpv, "sub-visibility", enabled ? "no" : "yes");
+    }
+    emit interactiveSubtitlesChanged();
 }
 
 void MpvPlayerItem::command(const QVariantList &args) {

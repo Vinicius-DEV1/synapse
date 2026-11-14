@@ -18,6 +18,9 @@ Item {
     property bool shortcutsBlocked: false
     property var mediaPlayer: null
     property var controller: null
+    property bool isPlayerFullscreen: false
+    property bool showControls: true
+    property bool isHoveringControls: false
 
     signal exitRequested()
     signal speedChanged(double speed)
@@ -26,6 +29,7 @@ Item {
     signal seekRelativeRequested(int seconds)
     signal seekAbsoluteRequested(double seconds)
     signal volumeChanged(double volume)
+    signal fullscreenToggled()
 
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) return "00:00"
@@ -41,7 +45,35 @@ Item {
                (remainder < 10 ? "0" : "") + remainder
     }
 
+    Timer {
+        id: autoHideTimer
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            if (controlsRoot.isPlaying && !controlsRoot.isHoveringControls) {
+                controlsRoot.showControls = false
+            }
+        }
+    }
+
+    function resetControls() {
+        controlsRoot.showControls = true
+        if (controlsRoot.isPlaying && !controlsRoot.isHoveringControls) {
+            autoHideTimer.restart()
+        }
+    }
+
+    onIsPlayingChanged: {
+        if (isPlaying) {
+            autoHideTimer.restart()
+        } else {
+            showControls = true
+            autoHideTimer.stop()
+        }
+    }
+
     VideoPlayerToolbar {
+        id: topToolbar
         activeVideo: controlsRoot.activeVideo
         currentSpeed: controlsRoot.currentSpeed
         bookmarksCount: controlsRoot.bookmarksCount
@@ -49,19 +81,49 @@ Item {
         shortcutsBlocked: controlsRoot.shortcutsBlocked
         mediaPlayer: controlsRoot.mediaPlayer
         controller: controlsRoot.controller
+        opacity: controlsRoot.showControls ? 1.0 : 0.0
+        visible: opacity > 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+        }
+
         onExitRequested: controlsRoot.exitRequested()
         onSpeedRequested: function(speed) { controlsRoot.speedChanged(speed) }
         onVocabDrawerRequested: controlsRoot.vocabDrawerToggled()
         onPlayPauseRequested: controlsRoot.playPauseToggled()
         onSeekRelativeRequested: function(seconds) { controlsRoot.seekRelativeRequested(seconds) }
+        onFullscreenRequested: controlsRoot.fullscreenToggled()
     }
 
     Rectangle {
+        id: bottomControlsBar
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         height: 80
         color: "#cc0f0e17"
+        opacity: controlsRoot.showControls ? 1.0 : 0.0
+        visible: opacity > 0
+
+        Behavior on opacity {
+            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onEntered: {
+                controlsRoot.isHoveringControls = true
+                controlsRoot.showControls = true
+                autoHideTimer.stop()
+            }
+            onExited: {
+                controlsRoot.isHoveringControls = false
+                if (controlsRoot.isPlaying) autoHideTimer.restart()
+            }
+            propagateComposedEvents: true
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -74,7 +136,10 @@ Item {
                 from: 0
                 to: controlsRoot.videoDuration > 0 ? controlsRoot.videoDuration : 100
                 value: controlsRoot.currentPos
-                onMoved: controlsRoot.seekAbsoluteRequested(value)
+                onMoved: {
+                    controlsRoot.resetControls()
+                    controlsRoot.seekAbsoluteRequested(value)
+                }
             }
 
             RowLayout {
@@ -95,7 +160,10 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: controlsRoot.playPauseToggled()
+                        onClicked: {
+                            controlsRoot.resetControls()
+                            controlsRoot.playPauseToggled()
+                        }
                     }
                 }
 
@@ -106,7 +174,10 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: controlsRoot.seekRelativeRequested(-5)
+                        onClicked: {
+                            controlsRoot.resetControls()
+                            controlsRoot.seekRelativeRequested(-5)
+                        }
                     }
                 }
 
@@ -117,7 +188,10 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: controlsRoot.seekRelativeRequested(5)
+                        onClicked: {
+                            controlsRoot.resetControls()
+                            controlsRoot.seekRelativeRequested(5)
+                        }
                     }
                 }
 
@@ -135,6 +209,7 @@ Item {
                         text: controlsRoot.muted || controlsRoot.currentVolume <= 0 ? "◖" : "◖♪"
                         Accessible.name: controlsRoot.muted ? "Unmute video" : "Mute video"
                         onClicked: {
+                            controlsRoot.resetControls()
                             if (controlsRoot.mediaPlayer) controlsRoot.mediaPlayer.toggleMute()
                         }
                         contentItem: Text {
@@ -152,6 +227,7 @@ Item {
                         value: controlsRoot.muted ? 0 : controlsRoot.currentVolume
                         Accessible.name: "Playback volume"
                         onMoved: {
+                            controlsRoot.resetControls()
                             controlsRoot.volumeChanged(value)
                             if (controlsRoot.muted && value > 0 && controlsRoot.mediaPlayer) {
                                 controlsRoot.mediaPlayer.toggleMute()
@@ -163,9 +239,33 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Text {
-                    text: "[J/L] ±5s • [A/S] Tracks • [I/O/P] Loop • [Shift+>/<] Speed"
+                    text: "[J/L] ±5s • [F] Tela Cheia • [Shift+>/<] Speed"
                     color: "#64748b"
                     font.pixelSize: 11
+                }
+
+                // Dedicated Fullscreen Toggle Button in bottom controls bar
+                ToolButton {
+                    id: bottomFullscreenBtn
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    text: controlsRoot.isPlayerFullscreen ? "⤢" : "⛶"
+                    Accessible.name: controlsRoot.isPlayerFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"
+                    onClicked: {
+                        controlsRoot.resetControls()
+                        controlsRoot.fullscreenToggled()
+                    }
+                    contentItem: Text {
+                        text: bottomFullscreenBtn.text
+                        color: "#e4e4e7"
+                        font.pixelSize: 16
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        radius: 6
+                        color: bottomFullscreenBtn.down ? "#33ffffff" : (bottomFullscreenBtn.hovered ? "#15ffffff" : "transparent")
+                    }
                 }
             }
         }

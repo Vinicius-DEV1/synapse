@@ -23,6 +23,7 @@ Item {
     signal vocabDrawerRequested()
     signal playPauseRequested()
     signal seekRelativeRequested(int seconds)
+    signal fullscreenRequested()
 
     VideoPlayerShortcuts {
         id: keyboardShortcuts
@@ -35,6 +36,7 @@ Item {
         onSeekRelativeRequested: function(seconds) { toolbarRoot.seekRelativeRequested(seconds) }
         onVocabDrawerRequested: toolbarRoot.vocabDrawerRequested()
         onSpeedRequested: function(speed) { toolbarRoot.speedRequested(speed) }
+        onFullscreenRequested: toolbarRoot.fullscreenRequested()
     }
 
     Rectangle {
@@ -137,7 +139,7 @@ Item {
                 padding: 0
                 Accessible.name: toolbarRoot.Window.window && toolbarRoot.Window.window.visibility === Window.FullScreen
                     ? "Restore window" : "Enter full screen"
-                onClicked: keyboardShortcuts.toggleFullscreen()
+                onClicked: toolbarRoot.fullscreenRequested()
                 contentItem: Text {
                     text: fullscreenButton.text
                     color: "#e4e4e7"

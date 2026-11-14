@@ -16,6 +16,7 @@ Item {
     signal seekRelativeRequested(int seconds)
     signal vocabDrawerRequested()
     signal speedRequested(double speed)
+    signal fullscreenRequested()
 
     function textEntryHasFocus() {
         var window = shortcutRoot.Window.window
@@ -28,9 +29,7 @@ Item {
     }
 
     function toggleFullscreen() {
-        if (!hostWindow) return
-        if (hostWindow.visibility === Window.FullScreen) hostWindow.showNormal()
-        else hostWindow.showFullScreen()
+        fullscreenRequested()
     }
 
     function stepPlaybackRate(delta) {
@@ -93,7 +92,7 @@ Item {
         sequence: "Esc"
         enabled: shortcutRoot.canUsePlaybackShortcuts() && shortcutRoot.hostWindow &&
                  shortcutRoot.hostWindow.visibility === Window.FullScreen
-        onActivated: shortcutRoot.hostWindow.showNormal()
+        onActivated: shortcutRoot.fullscreenRequested()
     }
     Shortcut {
         sequence: "F"

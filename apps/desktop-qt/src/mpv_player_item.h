@@ -27,6 +27,8 @@ class MpvPlayerItem : public QQuickFramebufferObject {
     Q_PROPERTY(QVariantList audioTracks READ audioTracks NOTIFY tracksChanged)
     Q_PROPERTY(QVariantList subtitleTracks READ subtitleTracks NOTIFY tracksChanged)
     Q_PROPERTY(qint64 audioTrackSelectionId READ audioTrackSelectionId NOTIFY audioTrackSelectionChanged)
+    Q_PROPERTY(QString currentSubtitle READ currentSubtitle NOTIFY currentSubtitleChanged)
+    Q_PROPERTY(bool interactiveSubtitles READ interactiveSubtitles WRITE setInteractiveSubtitles NOTIFY interactiveSubtitlesChanged)
 
 public:
     explicit MpvPlayerItem(QQuickItem *parent = nullptr);
@@ -55,6 +57,9 @@ public:
     QVariantList audioTracks() const { return m_audioTracks; }
     QVariantList subtitleTracks() const { return m_subtitleTracks; }
     qint64 audioTrackSelectionId() const { return m_audioTrackSelectionId; }
+    QString currentSubtitle() const { return m_currentSubtitle; }
+    bool interactiveSubtitles() const { return m_interactiveSubtitles; }
+    void setInteractiveSubtitles(bool enabled);
 
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
@@ -82,6 +87,8 @@ signals:
     void volumeChanged();
     void tracksChanged();
     void audioTrackSelectionChanged();
+    void currentSubtitleChanged();
+    void interactiveSubtitlesChanged();
     void endOfFile();
     void playbackError(const QString &message);
 
@@ -109,6 +116,8 @@ private:
     QVariantList m_subtitleTracks;
     qint64 m_audioTrackSelectionId;
     std::optional<qint64> m_subtitleTrackSelectionId;
+    QString m_currentSubtitle;
+    bool m_interactiveSubtitles{true};
 
     QTimer m_pollTimer;
 
@@ -117,6 +126,7 @@ private:
     static constexpr uint64_t PositionObserverId = 3;
     static constexpr uint64_t DurationObserverId = 4;
     static constexpr uint64_t PauseObserverId = 5;
+    static constexpr uint64_t SubTextObserverId = 6;
 
     static void onMpvWakeup(void *ctx);
     void refreshTrackLists();

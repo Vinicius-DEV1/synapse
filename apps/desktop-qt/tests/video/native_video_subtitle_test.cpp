@@ -167,6 +167,37 @@ private slots:
         QVERIFY(controller.deleteVideo(videoId));
         QVERIFY(!QFile::exists(storedSubtitlePath));
     }
+
+    void videoVocabularyWordsLifecycle() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("vocab-parity.sqlite")));
+        const QString videoId = "test-video-vocab-123";
+
+        // Initially empty
+        QVERIFY(controller.getVideoWords(videoId).isEmpty());
+
+        // Add a vocabulary word from interactive subtitles
+        QVERIFY(controller.addVideoWord(videoId, "apologize", "I apologize for my man's interference.", 173.5));
+        QVERIFY(controller.addVideoWord(videoId, "interference", "I apologize for my man's interference.", 174.0));
+
+        const QVariantList words = controller.getVideoWords(videoId);
+        QCOMPARE(words.size(), 2);
+        const QVariantMap word1 = words.first().toMap();
+        QCOMPARE(word1.value("word").toString(), QString("apologize"));
+        QCOMPARE(word1.value("context").toString(), QString("I apologize for my man's interference."));
+        QCOMPARE(word1.value("timestamp").toDouble(), 173.5);
+        const QString word1Id = word1.value("id").toString();
+        QVERIFY(!word1Id.isEmpty());
+
+        // Delete word1
+        QVERIFY(controller.deleteVideoWord(word1Id));
+        const QVariantList remaining = controller.getVideoWords(videoId);
+        QCOMPARE(remaining.size(), 1);
+        QCOMPARE(remaining.first().toMap().value("word").toString(), QString("interference"));
+    }
 };
 
 int runNativeVideoSubtitleTest(int argc, char **argv) {

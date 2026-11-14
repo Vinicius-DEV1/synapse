@@ -19,6 +19,7 @@ Item {
     property bool shortcutsBlocked: false
     property bool showResumePrompt: false
     property string playerError: ""
+    property bool isPlayerFullscreen: false
 
     signal positionObserved(double position)
     signal durationObserved(double duration)
@@ -38,16 +39,55 @@ Item {
     signal bookmarkDeleted(string bookmarkId)
     signal resumeRestartRequested()
     signal resumeContinueRequested()
+    signal fullscreenToggled()
 
     MpvVideoPlayer {
         id: mpvPlayer
         anchors.fill: parent
+        interactiveSubtitles: true
 
         onPositionChanged: surfaceRoot.positionObserved(mpvPlayer.position)
         onDurationChanged: surfaceRoot.durationObserved(mpvPlayer.duration)
         onPausedChanged: surfaceRoot.playingObserved(!mpvPlayer.paused)
         onPlaybackError: function(message) { surfaceRoot.playbackErrorObserved(message) }
         onEndOfFile: surfaceRoot.endOfFileObserved()
+    }
+
+    // Mouse area over the video surface for play/pause, double click fullscreen, and cursor auto-hide
+    MouseArea {
+        id: surfaceMouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: (controls.showControls || !surfaceRoot.isPlaying || dictDialog.visible || surfaceRoot.isVocabDrawerOpen)
+                     ? Qt.ArrowCursor : Qt.BlankCursor
+
+        onPositionChanged: controls.resetControls()
+        onClicked: {
+            controls.resetControls()
+            surfaceRoot.playPauseToggled()
+        }
+        onDoubleClicked: {
+            controls.resetControls()
+            surfaceRoot.fullscreenToggled()
+        }
+    }
+
+    // Interactive Clickable Subtitles
+    VideoInteractiveSubtitles {
+        id: interactiveSubtitles
+        anchors.fill: parent
+        subtitleText: mpvPlayer.currentSubtitle
+        bookmarks: surfaceRoot.bookmarks
+        controlsVisible: controls.showControls
+        visible: !dictDialog.visible
+
+        onWordClicked: function(word, context) {
+            if (surfaceRoot.isPlaying) {
+                surfaceRoot.playPauseToggled()
+            }
+            var saved = interactiveSubtitles.isWordSaved(word)
+            dictDialog.openForWord(word, context, surfaceRoot.currentPos, saved)
+        }
     }
 
     Rectangle {
@@ -70,6 +110,7 @@ Item {
     }
 
     VideoPlayerControls {
+        id: controls
         activeVideo: surfaceRoot.activeVideo
         mediaPlayer: mpvPlayer
         controller: surfaceRoot.controller
@@ -81,6 +122,7 @@ Item {
         shortcutsBlocked: surfaceRoot.shortcutsBlocked
         bookmarksCount: surfaceRoot.bookmarksCount
         isVocabDrawerOpen: surfaceRoot.isVocabDrawerOpen
+        isPlayerFullscreen: surfaceRoot.isPlayerFullscreen
 
         onExitRequested: surfaceRoot.exitRequested()
         onSpeedChanged: function(speed) { surfaceRoot.speedRequested(speed) }
@@ -89,6 +131,7 @@ Item {
         onSeekRelativeRequested: function(seconds) { surfaceRoot.seekRelativeRequested(seconds) }
         onSeekAbsoluteRequested: function(seconds) { surfaceRoot.seekAbsoluteRequested(seconds) }
         onVolumeChanged: function(volume) { surfaceRoot.volumeRequested(volume) }
+        onFullscreenToggled: surfaceRoot.fullscreenToggled()
     }
 
     VideoMomentsDrawer {
@@ -107,5 +150,17 @@ Item {
         savedProgress: surfaceRoot.currentPos
         onRestartRequested: surfaceRoot.resumeRestartRequested()
         onResumeRequested: surfaceRoot.resumeContinueRequested()
+    }
+
+    // Modal Dictionary Dialog
+    VideoDictionaryDialog {
+        id: dictDialog
+        anchors.fill: parent
+        onBookmarkSaved: function(word, note, color) {
+            surfaceRoot.bookmarkSaved(word, note)
+        }
+        onClosed: {
+            controls.resetControls()
+        }
     }
 }

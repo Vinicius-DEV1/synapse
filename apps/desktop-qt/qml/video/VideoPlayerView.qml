@@ -23,6 +23,14 @@ Rectangle {
     property double lastSavedProgressBucket: -1
     property bool durationPersisted: false
     property bool showResumePrompt: false
+    property bool isPlayerFullscreen: false
+
+    signal fullscreenToggled()
+
+    function toggleFullscreen() {
+        isPlayerFullscreen = !isPlayerFullscreen
+        fullscreenToggled()
+    }
 
     function loadVideos() {
         videos = galleryCollections.loadVideos(selectedCollection)
@@ -82,6 +90,10 @@ Rectangle {
     }
 
     function exitPlayer() {
+        if (isPlayerFullscreen) {
+            isPlayerFullscreen = false
+            fullscreenToggled()
+        }
         if (activeVideo && currentPos > 0) {
             dataController.updateVideoProgress(activeVideo.id, currentPos)
         }
@@ -247,6 +259,7 @@ Rectangle {
         isPlaying: videoRoot.isPlaying
         bookmarksCount: videoRoot.videoBookmarks.length
         isVocabDrawerOpen: videoRoot.isVocabDrawerOpen
+        isPlayerFullscreen: videoRoot.isPlayerFullscreen
         shortcutsBlocked: videoRoot.showResumePrompt
         showResumePrompt: videoRoot.showResumePrompt
         playerError: videoRoot.playerError
@@ -279,6 +292,7 @@ Rectangle {
         onSeekRelativeRequested: function(seconds) { videoRoot.seekRelative(seconds) }
         onSeekAbsoluteRequested: function(seconds) { videoRoot.seekAbsolute(seconds) }
         onVolumeRequested: function(volume) { playerSurface.mediaPlayer.volume = volume }
+        onFullscreenToggled: videoRoot.toggleFullscreen()
         onDrawerCloseRequested: videoRoot.isVocabDrawerOpen = false
         onTimestampRequested: function(timestamp) { videoRoot.jumpToTimestamp(timestamp) }
         onBookmarkSaved: function(word, note) { videoRoot.saveBookmark(word, note) }
