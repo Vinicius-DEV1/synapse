@@ -343,6 +343,139 @@ function renderSpoilers(html, revealedMap) {
     })
 }
 
+// 13. Media Widgets (Linked Videos & Library Books)
+function renderMediaWidgets(html) {
+    if (!html || html.indexOf("data-type=\"media-widget\"") === -1) return html
+    var pattern = /<(?:span|div)\b(?=[^>]*\bdata-type="media-widget")([^>]*)>([\s\S]*?)<\/(?:span|div)>/gi
+    return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
+        var attrs = attributesFromTag("<div " + tagAttrs + ">")
+        var mediaId = attrs["data-media-id"] || ""
+        var mediaType = String(attrs["data-media-type"] || "video").toLowerCase()
+        var title = attrs["data-title"] || (mediaType === "video" ? "Vídeo Vinculado" : "Livro da Biblioteca")
+        var isVideo = mediaType === "video"
+        var borderColor = isVideo ? "#6366f1" : "#0284c7"
+        var bgColor = isVideo ? "#0f1026" : "#081e30"
+        var icon = isVideo ? "🎬" : "📖"
+        var typeLabel = isVideo ? "VÍDEO VINCULADO" : "LIVRO DA BIBLIOTECA"
+        var accentColor = isVideo ? "#a5b4fc" : "#38bdf8"
+        var actionLabel = isVideo ? "▶ Abrir no Reprodutor de Vídeo" : "📖 Abrir no Leitor de Livros"
+
+        return "<table width=\"100%\" border=\"1\" bordercolor=\"" + borderColor + "\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"" + bgColor + "\">" +
+               "<tr><td>" +
+               "<p><font color=\"" + accentColor + "\" size=\"2\"><b>" + icon + " " + typeLabel + "</b></font></p>" +
+               "<p><font color=\"#ffffff\" size=\"3\"><b>" + escapeHtml(title) + "</b></font></p>" +
+               "<p><a href=\"synapse-media://open?id=" + encodeURIComponent(mediaId) + "&type=" + encodeURIComponent(mediaType) + "\" style=\"text-decoration:none;\">" +
+               "<font color=\"" + accentColor + "\" size=\"2\"><b>" + actionLabel + "</b></font></a></p>" +
+               "</td></tr></table>"
+    })
+}
+
+// 14. Group Collections (Expandable / Collapsible Page & Block Group)
+function renderGroupCollections(html, toggleStates) {
+    if (!html || (html.indexOf("group-collection") === -1 && html.indexOf("data-type=\"groupBlock\"") === -1)) return html
+    var groupTag = /<div\b(?=[^>]*\b(?:class\s*=\s*(?:"[^"]*\bgroup-collection[^"]*"|'[^']*\bgroup-collection[^']*')|data-type="groupBlock"))([^>]*)>/gi
+    var result = ""
+    var currentPos = 0
+    var match
+    var index = 0
+
+    while ((match = groupTag.exec(html)) !== null) {
+        var startPos = match.index
+        var openTag = match[0]
+        var contentStart = startPos + openTag.length
+        var attrs = attributesFromTag(openTag)
+        var collectionId = "collection_" + (index++)
+        var isCollapsed = toggleStates && (toggleStates[collectionId] === false)
+
+        var depth = 1
+        var tagPattern = /<\/?div\b[^>]*>/gi
+        tagPattern.lastIndex = contentStart
+        var subMatch
+        while ((subMatch = tagPattern.exec(html)) !== null) {
+            if (subMatch[0].charAt(1) === '/') {
+                depth--
+                if (depth === 0) break
+            } else {
+                depth++
+            }
+        }
+
+        var endPos = subMatch ? subMatch.index + subMatch[0].length : html.length
+        result += html.substring(currentPos, startPos)
+        var innerContent = html.substring(contentStart, subMatch ? subMatch.index : endPos)
+        currentPos = endPos
+        groupTag.lastIndex = currentPos
+
+        var title = attrs["data-title"] || ""
+        if (!title) {
+            var titleMatch = innerContent.match(/class="[^"]*group-title[^"]*"[^>]*value="([^"]*)"/i)
+            if (titleMatch) title = titleMatch[1]
+        }
+        if (!title) {
+            var phMatch = innerContent.match(/placeholder="Nome da Coleção\.\.\."/i)
+            title = "Coleção"
+        }
+
+        var arrow = isCollapsed ? "▶" : "▼"
+        var statusHint = isCollapsed ? " <font color=\"#71717a\" size=\"2\">(recolhida)</font>" : ""
+
+        var headerHtml = "<p><a href=\"synapse-collection://toggle?id=" + collectionId + "\" style=\"text-decoration:none;\">" +
+                         "<font color=\"#c084fc\" size=\"3\"><b>📁 " + arrow + " " + escapeHtml(title) + "</b></font>" + statusHint + "</a></p>"
+
+        if (isCollapsed) {
+            result += "<table width=\"100%\" border=\"1\" bordercolor=\"#3f3f46\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"#12111a\">" +
+                      "<tr><td>" + headerHtml + "</td></tr></table>"
+        } else {
+            var cleanedContent = innerContent.replace(/<div\b[^>]*class="[^"]*group-header[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "")
+            result += "<table width=\"100%\" border=\"1\" bordercolor=\"#4c1d95\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#12111a\">" +
+                      "<tr><td>" + headerHtml +
+                      "<div style=\"margin-left: 16px; border-left: 2px solid #6d28d9; padding-left: 12px;\">" +
+                      cleanedContent +
+                      "</div></td></tr></table>"
+        }
+    }
+    result += html.substring(currentPos)
+    return result
+}
+
+// 15. Link Groups (Side-by-side Link Previews)
+function renderLinkGroups(html) {
+    if (!html || (html.indexOf("data-type=\"linkGroup\"") === -1 && html.indexOf("link-group-block") === -1)) return html
+    var groupTag = /<div\b(?=[^>]*\b(?:data-type="linkGroup"|class\s*=\s*(?:"[^"]*\blink-group-block[^"]*"|'[^']*\blink-group-block[^']*')))([^>]*)>/gi
+    var result = ""
+    var currentPos = 0
+    var match
+
+    while ((match = groupTag.exec(html)) !== null) {
+        var startPos = match.index
+        var openTag = match[0]
+        var contentStart = startPos + openTag.length
+
+        var depth = 1
+        var tagPattern = /<\/?div\b[^>]*>/gi
+        tagPattern.lastIndex = contentStart
+        var subMatch
+        while ((subMatch = tagPattern.exec(html)) !== null) {
+            if (subMatch[0].charAt(1) === '/') {
+                depth--
+                if (depth === 0) break
+            } else {
+                depth++
+            }
+        }
+
+        var endPos = subMatch ? subMatch.index + subMatch[0].length : html.length
+        result += html.substring(currentPos, startPos)
+        var innerContent = html.substring(contentStart, subMatch ? subMatch.index : endPos)
+        currentPos = endPos
+        groupTag.lastIndex = currentPos
+
+        result += "<div style=\"margin: 8px 0;\">" + innerContent + "</div>"
+    }
+    result += html.substring(currentPos)
+    return result
+}
+
 // Master rendering pipeline
 function renderCustomWidgets(source, options) {
     if (!source || source.length === 0) return ""
@@ -361,5 +494,8 @@ function renderCustomWidgets(source, options) {
     html = renderColumnGroups(html)
     html = renderScrapWidgets(html)
     html = renderDocumentBundles(html)
+    html = renderMediaWidgets(html)
+    html = renderGroupCollections(html, toggleStates)
+    html = renderLinkGroups(html)
     return html
 }

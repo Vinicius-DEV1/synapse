@@ -242,7 +242,8 @@ private slots:
 
         const QStringList customWidgetCommands = {
             "question", "foco", "alarme", "evento", "habito",
-            "documento", "agrupar", "scrap", "toggle", "blockquoteToggle"
+            "documento", "agrupar", "scrap", "toggle", "blockquoteToggle",
+            "group", "video", "livro", "ia"
         };
         for (const auto &commandId : customWidgetCommands) {
             editor->setProperty("text", "<p>/cmd</p>");
@@ -251,6 +252,40 @@ private slots:
             QCOMPARE(cursorPosition, -1);
             QCOMPARE(operations.richPlainText(quickDocument), QString("/cmd"));
         }
+    }
+
+    void allThirtyOneSlashCommandsArePresentAndSearchable() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesRichSlashCommandMenu.qml")));
+        QScopedPointer<QObject> menu(component.create());
+        QVERIFY2(menu, qPrintable(component.errorString()));
+        const QVariantList commands = menu->property("commands").toList();
+        QCOMPARE(commands.size(), 31);
+        menu->setProperty("query", "video");
+        QVariantList filtered = menu->property("filteredCommands").toList();
+        QVERIFY(!filtered.isEmpty());
+        QCOMPARE(filtered.first().toMap().value("id").toString(), QString("video"));
+        menu->setProperty("query", "livro");
+        filtered = menu->property("filteredCommands").toList();
+        QVERIFY(!filtered.isEmpty());
+        QCOMPARE(filtered.first().toMap().value("id").toString(), QString("livro"));
+        menu->setProperty("query", "colecao");
+        filtered = menu->property("filteredCommands").toList();
+        QVERIFY(!filtered.isEmpty());
+        QCOMPARE(filtered.first().toMap().value("id").toString(), QString("group"));
+        menu->setProperty("query", "assistente");
+        filtered = menu->property("filteredCommands").toList();
+        QVERIFY(!filtered.isEmpty());
+        QCOMPARE(filtered.first().toMap().value("id").toString(), QString("ia"));
+        menu->setProperty("query", "ia");
+        filtered = menu->property("filteredCommands").toList();
+        bool hasIa = false;
+        for (const auto &item : filtered) {
+            if (item.toMap().value("id").toString() == "ia") hasIa = true;
+        }
+        QVERIFY(hasIa);
     }
 
 };

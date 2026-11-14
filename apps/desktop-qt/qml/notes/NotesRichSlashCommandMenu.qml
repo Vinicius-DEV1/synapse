@@ -66,7 +66,15 @@ Item {
         { id: "agrupar", title: qsTr("Document Bundle"), subtitle: qsTr("Group bundled documents into a card."), icon: "📦",
             keywords: ["agrupar", "bundle", "grupo", "pacote"] },
         { id: "scrap", title: qsTr("Web Snapshot"), subtitle: qsTr("Offline captured web page snapshot."), icon: "🌐",
-            keywords: ["scrap", "snapshot", "web", "capturar"] }
+            keywords: ["scrap", "snapshot", "web", "capturar"] },
+        { id: "group", title: qsTr("Collection"), subtitle: qsTr("Collapsible group for pages or blocks."), icon: "📁",
+            keywords: ["colecao", "grupo", "pasta", "collection", "group"] },
+        { id: "video", title: qsTr("Link Video"), subtitle: qsTr("Link a video from your gallery."), icon: "🎬",
+            keywords: ["video", "midia", "filme", "media"] },
+        { id: "livro", title: qsTr("Link Book"), subtitle: qsTr("Link a book from your library."), icon: "📖",
+            keywords: ["livro", "epub", "pdf", "book", "library"] },
+        { id: "ia", title: qsTr("Ask AI"), subtitle: qsTr("Request AI assistance or generation."), icon: "✨",
+            keywords: ["ia", "ai", "prompt", "assistente", "gerar"] }
     ]
     readonly property var filteredCommands: {
         var normalizedQuery = query.toLowerCase().trim()
@@ -78,7 +86,7 @@ Item {
             return command.keywords.some(function(keyword) {
                 var normalizedKeyword = keyword.toLowerCase()
                 return normalizedKeyword.indexOf(normalizedQuery) >= 0 ||
-                    normalizedQuery.indexOf(normalizedKeyword) >= 0
+                    (normalizedKeyword.length > 2 && normalizedQuery.indexOf(normalizedKeyword) >= 0)
             })
         })
     }

@@ -46,6 +46,11 @@ Rectangle {
             toggleBlock(toggleId)
             return true
         }
+        if (link.indexOf("synapse-collection://toggle?id=") === 0) {
+            var collId = link.substring("synapse-collection://toggle?id=".length)
+            toggleBlock(collId)
+            return true
+        }
         return false
     }
 

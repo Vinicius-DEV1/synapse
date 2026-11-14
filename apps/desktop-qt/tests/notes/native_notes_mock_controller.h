@@ -13,6 +13,7 @@ public:
 
 signals:
     void fileOperationFinished(const QVariantMap &result);
+    void pageConflictDetected(const QString &pageId, const QString &externalContent);
 
 public:
     Q_INVOKABLE QVariantList getPinnedPages() const {

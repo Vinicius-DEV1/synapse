@@ -393,6 +393,10 @@ int runNativeNotesLinkPreviewQmlTest() {
         "<div data-type=\"columnGroup\"><div data-type=\"columnBlock\"><p>Esq</p></div><div data-type=\"columnBlock\"><p>Dir</p></div></div>"
         "<div class=\"scrap-widget-block\" data-url=\"https://example.com\" data-title=\"Captura\"></div>"
         "<div data-type=\"document-bundle\" data-title=\"Arquivos\"></div>"
+        "<span data-type=\"media-widget\" data-media-id=\"vid-123\" data-media-type=\"video\" data-title=\"Curso Rust\"></span>"
+        "<span data-type=\"media-widget\" data-media-id=\"book-456\" data-media-type=\"book\" data-title=\"Clean Code\"></span>"
+        "<div class=\"group-collection\" data-title=\"Minhas Paginas\"><p>Subpagina A</p></div>"
+        "<div data-type=\"linkGroup\"><div class=\"link-preview-block\">Link 1</div><div class=\"link-preview-block\">Link 2</div></div>"
     );
 
     widgetRenderer->setProperty("sourceHtml", testCasesHtml);
@@ -416,7 +420,15 @@ int runNativeNotesLinkPreviewQmlTest() {
         widgetRendered.contains("Dir") &&
         widgetRendered.contains("SNAPSHOT WEB OFFLINE") &&
         widgetRendered.contains("Captura") &&
-        widgetRendered.contains("PACOTE DE DOCUMENTOS: Arquivos");
+        widgetRendered.contains("PACOTE DE DOCUMENTOS: Arquivos") &&
+        widgetRendered.contains("VÍDEO VINCULADO") &&
+        widgetRendered.contains("Curso Rust") &&
+        widgetRendered.contains("LIVRO DA BIBLIOTECA") &&
+        widgetRendered.contains("Clean Code") &&
+        widgetRendered.contains("Minhas Paginas") &&
+        widgetRendered.contains("Subpagina A") &&
+        widgetRendered.contains("Link 1") &&
+        widgetRendered.contains("Link 2");
 
     if (!allWidgetsTransformed) {
         qCritical() << "Native Notes custom widgets renderer did not transform all widget blocks correctly:" << widgetRendered;
@@ -433,13 +445,17 @@ int runNativeNotesLinkPreviewQmlTest() {
         return 1;
     }
 
-    // Verify toggle block collapsed state
+    // Verify toggle block and collection collapsed state
     QVariantMap toggleCollapsedOptions;
-    toggleCollapsedOptions.insert("toggleStates", QVariantMap{{"toggle_0", false}});
+    toggleCollapsedOptions.insert("toggleStates", QVariantMap{{"toggle_0", false}, {"collection_0", false}});
     widgetRenderer->setProperty("options", toggleCollapsedOptions);
     const QString collapsedRendered = widgetRenderer->property("renderedHtml").toString();
     if (!collapsedRendered.contains("clique para expandir") || collapsedRendered.contains("Conteudo revelado")) {
         qCritical() << "Toggle block collapse did not hide inner content correctly:" << collapsedRendered;
+        return 1;
+    }
+    if (!collapsedRendered.contains("(recolhida)") || collapsedRendered.contains("Subpagina A")) {
+        qCritical() << "Collection group collapse did not hide inner content correctly:" << collapsedRendered;
         return 1;
     }
 

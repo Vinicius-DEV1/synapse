@@ -328,6 +328,36 @@ private slots:
                  QString("<p><span style=\"color:#a855f7\">Color</span> <mark style=\"background-color:#eab308\">me</mark></p>"));
     }
 
+    void externalPageConflictDisplaysStatusBannerAndSetsSaveFailed() {
+        QQmlEngine engine;
+        NotesTextOperations operations;
+        MockNotesController controller;
+        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("theme", QVariantMap{
+            {"bgDarkBg", "#0f0e17"}, {"fontFamily", "Inter, -apple-system, sans-serif"},
+            {"textSubtext", "#a7a9be"}, {"textDark", "#fffffe"}, {"brand600", "#7c3aed"},
+            {"textMuted", "#71717a"}, {"fontMono", "monospace"}
+        });
+        QQmlComponent component(&engine);
+        const QUrl viewUrl = QUrl::fromLocalFile(
+            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorView.qml"));
+        component.loadUrl(viewUrl);
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        QTRY_COMPARE(root->property("selectedPageId").toString(), QString("page-one"));
+        QCOMPARE(root->property("saveFailed").toBool(), false);
+
+        QObject *canvas = root->findChild<QObject *>("notesEditorCanvas");
+        QVERIFY(canvas);
+        QCOMPARE(canvas->property("pageActionStatus").toString(), QString());
+
+        emit controller.pageConflictDetected("page-one", "<p>External concurrent change</p>");
+
+        QTRY_COMPARE(root->property("saveFailed").toBool(), true);
+        QVERIFY(canvas->property("pageActionStatus").toString().contains("External edits were detected"));
+    }
+
 };
 
 int main(int argc, char **argv) {

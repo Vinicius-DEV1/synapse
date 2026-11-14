@@ -118,6 +118,16 @@ ScrollView {
             else contentModified(action.content)
             return
         }
+        if (link.indexOf("synapse-media://open?") === 0) {
+            var typeMatch = link.match(/type=([^&]+)/)
+            var idMatch = link.match(/id=([^&]+)/)
+            var mType = typeMatch ? decodeURIComponent(typeMatch[1]) : "video"
+            var mId = idMatch ? decodeURIComponent(idMatch[1]) : ""
+            if (mType === "video" && controller && typeof controller.openVideoInFolder === "function") {
+                controller.openVideoInFolder(mId)
+            }
+            return
+        }
         if (/^(https?:\/\/|mailto:)/i.test(link || "")) Qt.openUrlExternally(link)
     }
 
@@ -220,6 +230,70 @@ ScrollView {
                 onRichModeRequested: function(enabled) { canvasRoot.richModeRequested(enabled) }
                 onMoveRequested: function(pageId) { movePageDialog.openForPage(pageId) }
                 onPreviewToggled: function(preview) { canvasRoot.previewToggled(preview) }
+            }
+
+            Rectangle {
+                id: statusBanner
+                visible: canvasRoot.pageActionStatus.length > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: statusText.implicitHeight + 20
+                Layout.topMargin: 8
+                Layout.bottomMargin: 12
+                radius: 8
+                color: canvasRoot.saveFailed ? "#26151a" : "#1f1d2b"
+                border.color: canvasRoot.saveFailed ? "#66f43f5e" : "#338b5cf6"
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+
+                    Text {
+                        text: canvasRoot.saveFailed ? "⚠" : "ℹ"
+                        color: canvasRoot.saveFailed ? "#fb7185" : "#a78bfa"
+                        font.pixelSize: 14
+                    }
+
+                    Text {
+                        id: statusText
+                        Layout.fillWidth: true
+                        text: canvasRoot.pageActionStatus
+                        color: canvasRoot.saveFailed ? "#fecdd3" : "#e0e7ff"
+                        font.pixelSize: 13
+                        wrapMode: Text.Wrap
+                    }
+
+                    Button {
+                        id: historyBtn
+                        visible: canvasRoot.saveFailed
+                        text: qsTr("History")
+                        flat: true
+                        contentItem: Text {
+                            text: qsTr("History")
+                            color: "#fb7185"
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+                        background: Rectangle {
+                            color: historyBtn.hovered ? "#33f43f5e" : "#1af43f5e"
+                            radius: 4
+                        }
+                        onClicked: canvasRoot.historyRequested()
+                    }
+
+                    ToolButton {
+                        text: "✕"
+                        flat: true
+                        contentItem: Text {
+                            text: "✕"
+                            color: "#a7a9be"
+                            font.pixelSize: 12
+                        }
+                        onClicked: canvasRoot.pageActionStatus = ""
+                    }
+                }
             }
 
             NotesEditorFormattingToolbar {
