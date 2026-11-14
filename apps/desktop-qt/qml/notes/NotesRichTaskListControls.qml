@@ -17,7 +17,8 @@ Item {
     signal contentModified()
 
     function refreshCheckboxes() {
-        if (!textEditor || !textEditor.textDocument || !textOperations) {
+        if (!textEditor || !textEditor.textDocument || !textOperations ||
+            typeof textOperations.richTaskCheckboxes !== "function") {
             taskItems = []
             return
         }
@@ -33,7 +34,8 @@ Item {
     }
 
     function toggleItem(position, retainCheckboxFocus) {
-        if (!active || invalid ||
+        if (!active || invalid || !textOperations || !textEditor || !textEditor.textDocument ||
+                typeof textOperations.toggleRichTaskItem !== "function" ||
                 !textOperations.toggleRichTaskItem(textEditor.textDocument, position)) return false
         refreshCheckboxes()
         contentModified()
@@ -42,15 +44,19 @@ Item {
     }
 
     function toggleFromCursor() {
-        if (!active || invalid || !textOperations.toggleRichTaskItemFromCursor(
-                textEditor.textDocument, textEditor.cursorPosition)) return false
+        if (!active || invalid || !textOperations || !textEditor || !textEditor.textDocument ||
+                typeof textOperations.toggleRichTaskItemFromCursor !== "function" ||
+                !textOperations.toggleRichTaskItemFromCursor(
+                    textEditor.textDocument, textEditor.cursorPosition)) return false
         refreshCheckboxes()
         contentModified()
         return true
     }
 
     function changeListIndent(outdent) {
-        if (!active || invalid || textEditor.selectionStart !== textEditor.selectionEnd ||
+        if (!active || invalid || !textOperations || !textEditor || !textEditor.textDocument ||
+                textEditor.selectionStart !== textEditor.selectionEnd ||
+                typeof textOperations.changeRichListIndent !== "function" ||
                 !textOperations.changeRichListIndent(textEditor.textDocument, textEditor.cursorPosition, outdent))
             return false
         contentModified()

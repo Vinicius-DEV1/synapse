@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 Item {
     id: inputRoot
@@ -43,7 +44,11 @@ Item {
             .arg(current + 1).arg(matches.length).arg(matches[current].title)
     }
 
-    Component.onCompleted: previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
+    Component.onCompleted: {
+        if (editorRoot && editorRoot.textOperations && typeof editorRoot.textOperations.richPlainText === "function" && richEditor.textDocument) {
+            previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
+        }
+    }
     function closeSlashMenu() {
         slashMenuOpen = false
         slashStart = -1
@@ -233,7 +238,9 @@ Item {
             referenceActions.activateLink(link)
         }
         onTextChanged: {
-            if (!inputRoot.editorRoot || !inputRoot.editorRoot.textOperations || !richEditor.textDocument) return
+            if (!inputRoot.editorRoot || !inputRoot.editorRoot.textOperations ||
+                typeof inputRoot.editorRoot.textOperations.richPlainText !== "function" ||
+                !richEditor.textDocument) return
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
             if (inputRoot.editorRoot.isLoading) {
                 inputRoot.previousPlainText = currentPlainText
@@ -288,6 +295,236 @@ Item {
         commitTimer: inputRoot.commitTimer
         onReferenceInserted: inputRoot.previousPlainText =
             inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
+    }
+
+    // Floating bubble toolbar on text selection (TipTap BubbleMenu equivalent)
+    Rectangle {
+        id: selectionBubble
+        objectName: "notesSelectionBubbleToolbar"
+        visible: richEditor.activeFocus &&
+                 richEditor.selectionStart !== richEditor.selectionEnd &&
+                 !inputRoot.slashMenuOpen &&
+                 !inputRoot.pageReferenceMenuOpen &&
+                 inputRoot.editorRoot.active &&
+                 !inputRoot.editorRoot.hasInvalidContent
+        x: Math.max(8, Math.min(inputRoot.width - width - 8, richEditor.cursorRectangle.x - width / 2))
+        y: Math.max(0, richEditor.cursorRectangle.y - height - 8)
+        width: bubbleRow.implicitWidth + 12
+        height: 32
+        radius: 8
+        color: "#181726"
+        border.color: "#33ffffff"
+        border.width: 1
+        z: 99
+
+        RowLayout {
+            id: bubbleRow
+            anchors.centerIn: parent
+            spacing: 2
+
+            ToolButton {
+                id: bubbleBold
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                checkable: true
+                checked: inputRoot.richCommands ? inputRoot.richCommands.boldAtCursor : false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Bold (Ctrl+B)")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleBold.checked ? "#268b5cf6" : (bubbleBold.hovered ? "#1affffff" : "transparent")
+                    border.color: bubbleBold.checked ? "#408b5cf6" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "B"
+                    color: bubbleBold.checked ? "#c4b5fd" : (bubbleBold.hovered ? "#fffffe" : "#a7a9be")
+                    font.pixelSize: 12
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("bold")
+                }
+            }
+
+            ToolButton {
+                id: bubbleItalic
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                checkable: true
+                checked: inputRoot.richCommands ? inputRoot.richCommands.italicAtCursor : false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Italic (Ctrl+I)")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleItalic.checked ? "#268b5cf6" : (bubbleItalic.hovered ? "#1affffff" : "transparent")
+                    border.color: bubbleItalic.checked ? "#408b5cf6" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "I"
+                    color: bubbleItalic.checked ? "#c4b5fd" : (bubbleItalic.hovered ? "#fffffe" : "#a7a9be")
+                    font.pixelSize: 12
+                    font.italic: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("italic")
+                }
+            }
+
+            ToolButton {
+                id: bubbleUnderline
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                checkable: true
+                checked: inputRoot.richCommands ? inputRoot.richCommands.underlineAtCursor : false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Underline (Ctrl+U)")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleUnderline.checked ? "#268b5cf6" : (bubbleUnderline.hovered ? "#1affffff" : "transparent")
+                    border.color: bubbleUnderline.checked ? "#408b5cf6" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "U"
+                    color: bubbleUnderline.checked ? "#c4b5fd" : (bubbleUnderline.hovered ? "#fffffe" : "#a7a9be")
+                    font.pixelSize: 12
+                    font.underline: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("underline")
+                }
+            }
+
+            ToolButton {
+                id: bubbleStrike
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                checkable: true
+                checked: inputRoot.richCommands ? inputRoot.richCommands.strikeAtCursor : false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Strikethrough")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleStrike.checked ? "#268b5cf6" : (bubbleStrike.hovered ? "#1affffff" : "transparent")
+                    border.color: bubbleStrike.checked ? "#408b5cf6" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "S"
+                    color: bubbleStrike.checked ? "#c4b5fd" : (bubbleStrike.hovered ? "#fffffe" : "#a7a9be")
+                    font.pixelSize: 12
+                    font.strikeout: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("strike")
+                }
+            }
+
+            ToolButton {
+                id: bubbleCode
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                checkable: true
+                checked: inputRoot.richCommands ? inputRoot.richCommands.codeAtCursor : false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Inline code")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleCode.checked ? "#268b5cf6" : (bubbleCode.hovered ? "#1affffff" : "transparent")
+                    border.color: bubbleCode.checked ? "#408b5cf6" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "</>"
+                    color: bubbleCode.checked ? "#c4b5fd" : (bubbleCode.hovered ? "#fffffe" : "#a7a9be")
+                    font.pixelSize: 10
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("code")
+                }
+            }
+
+            ToolButton {
+                id: bubbleSpoiler
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                checkable: true
+                checked: inputRoot.richCommands ? inputRoot.richCommands.spoilerAtCursor : false
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Spoiler (Alt+R to reveal)")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleSpoiler.checked ? "#268b5cf6" : (bubbleSpoiler.hovered ? "#1affffff" : "transparent")
+                    border.color: bubbleSpoiler.checked ? "#408b5cf6" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "👁"
+                    color: bubbleSpoiler.checked ? "#c4b5fd" : (bubbleSpoiler.hovered ? "#fffffe" : "#a7a9be")
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("spoiler")
+                }
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 14
+                color: "#18ffffff"
+            }
+
+            ToolButton {
+                id: bubbleLink
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Insert link")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleLink.hovered ? "#1affffff" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "↗"
+                    color: bubbleLink.hovered ? "#ffffff" : "#c4b5fd"
+                    font.pixelSize: 12
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    if (inputRoot.richCommands) inputRoot.richCommands.openLinkDialog()
+                }
+            }
+        }
     }
 
     Connections {

@@ -91,10 +91,11 @@ RowLayout {
         Layout.preferredHeight: 30
         Accessible.name: headerRoot.saveFailed ? qsTr("Retry saving note") : qsTr("Save note")
         onClicked: headerRoot.saveRequested()
+        readonly property int readingTimeMinutes: Math.max(1, Math.ceil(headerRoot.wordCount / 200))
         ToolTip.visible: hovered
         ToolTip.text: headerRoot.saveFailed
                        ? qsTr("The note is still unsaved. Check that the vault is unlocked, then retry.")
-                       : qsTr("%1 · %2 words · %3 characters").arg(headerRoot.pageDate).arg(headerRoot.wordCount).arg(headerRoot.characterCount)
+                       : qsTr("%1 · %2 words · %3 characters · %4 min read").arg(headerRoot.pageDate).arg(headerRoot.wordCount).arg(headerRoot.characterCount).arg(readingTimeMinutes)
         background: Rectangle {
             color: headerRoot.saveFailed ? "#24f43f5e" : headerRoot.isDirty ? "#8b5cf6" : "#0d10b981"
             border.color: headerRoot.saveFailed ? "#66f43f5e" : headerRoot.isDirty ? "#668b5cf6" : "#3310b981"

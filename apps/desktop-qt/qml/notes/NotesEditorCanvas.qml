@@ -328,6 +328,7 @@ ScrollView {
                 pageList: canvasRoot.allPages
                 controller: canvasRoot.controller
                 parentPageId: canvasRoot.activePageId
+                textOperations: canvasRoot.textOperations
                 active: visible
                 onContentModified: function(html) { canvasRoot.richContentModified(html) }
                 onPagePreviewRequested: function(pageId) { canvasRoot.pageReferencePreviewRequested(pageId) }
