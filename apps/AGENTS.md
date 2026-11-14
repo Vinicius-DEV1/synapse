@@ -1,13 +1,15 @@
 # Application Workspace Guidance
 
-The repository has four separately owned application targets. Keep application code, assets, manifests, and app-specific build output inside the owning directory. Shared Rust domain logic belongs in `../core/synapse-core/`; platform-specific bindings belong in `../bridges/`.
+The repository has four separately owned application targets anchored by a unified Rust core. Keep application code, assets, manifests, and app-specific build output inside the owning directory. Shared domain logic, data models, repository queries, and persistence belong in `../core/synapse-core/`; platform-specific bindings belong in `../bridges/`.
 
 | App | Stack | Owns |
 | --- | --- | --- |
-| `web-react/` | React, TypeScript, Vite, Tauri | The original web app and its hybrid Tauri shell |
-| `desktop-qt/` | Qt 6, QML, C++17, Rust FFI | The fully native desktop app |
-| `mobile-android/` | Kotlin, Jetpack Compose, UniFFI | The fully native Android app |
+| `web-react/` | React, TypeScript, Vite, Tauri | The original web app and its hybrid Tauri shell; delegates persistence/domain to `synapse-core` |
+| `desktop-qt/` | Qt 6, QML, C++17, Rust FFI | The fully native desktop app; delegates persistence/domain to `bridge-qt` -> `synapse-core` |
+| `mobile-android/` | Kotlin, Jetpack Compose, UniFFI | The fully native Android app; delegates persistence/domain to `bridge-uniffi` -> `synapse-core` |
 | `mobile-webview/` | Expo, React Native, WebView | The Android shell that hosts the React web app |
+
+Applications own only UI presentation, local view state, and thin orchestration. Applications must not assemble raw SQL strings or reimplement cross-client domain logic (balances, streaks, quiz stats, review scheduling) locally.
 
 Use the nearest app manifest and build system. The root `package.json` is an npm workspace command facade for `web-react`; the Expo shell has an independent `package.json` and lockfile. The root `Cargo.toml` owns the shared Rust workspace.
 

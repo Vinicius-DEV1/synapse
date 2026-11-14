@@ -14,6 +14,7 @@ The Rust function signatures and ownership rules in the headers and bridge sourc
 
 ## Boundary Rules
 
+- Prefer high-level domain functions (`synapse_<module>_*`) over low-level raw SQL execution (`synapse_db_query_json`). Expose typed domain payloads so C++ controllers act strictly as UI adapters without embedded SQL or duplicate domain algorithms.
 - Validate all external strings, paths, sizes, and enum values at the bridge boundary.
 - Keep ownership rules explicit: identify who allocates and frees each returned buffer.
 - Use the bridge's secret-buffer cleanup functions for sensitive key and plaintext buffers where available.

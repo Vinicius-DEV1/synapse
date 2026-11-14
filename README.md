@@ -75,26 +75,58 @@ Synapse is architected with a unified codebase capable of running across desktop
 
 ## 🏛️ System Architecture Overview
 
-Synapse contains four app targets with platform-specific presentation and storage adapters. Shared Rust capabilities are exposed through platform bridges where implemented:
+Synapse is anchored by a **Unified Rust Core (`core/synapse-core`)** serving as the Single Source of Truth (SSOT) for domain logic, SQLite repositories, and encryption across all four application targets:
 
 ```mermaid
 flowchart TB
-  subgraph Apps[Application targets]
+  subgraph Apps[Application Presentation Targets]
     Web[React Web]
-    Tauri[React and Tauri]
-    Qt[Qt Quick and QML]
-    Android[Kotlin and Compose]
-    Shell[Expo WebView shell]
+    Tauri[React and Tauri Shell]
+    Qt[Qt Quick and QML Desktop]
+    Android[Kotlin and Compose Native]
+    Shell[Expo WebView Shell]
   end
-  Web --> WebAdapters[IndexedDB and web adapters]
-  Tauri --> TauriBackend[Tauri Rust backend]
-  Qt --> QtBridge[bridge-qt C ABI]
-  Android --> AndroidBridge[bridge-uniffi]
+
+  subgraph Orchestration[Thin Presentation Adapters]
+    TauriBackend[Tauri Rust Commands]
+    QtControllers[Qt C++ Controllers]
+    AndroidVM[Android ViewModels]
+    WebAdapters[IndexedDB & Web Storage]
+  end
+
+  subgraph Bridges[Typed Platform Bridges]
+    QtBridge[bridge-qt C ABI]
+    AndroidBridge[bridge-uniffi]
+    WasmBridge[bridge-wasm]
+  end
+
+  subgraph Core[Unified Rust Core: synapse-core]
+    DomainServices[Domain Logic & Calculations]
+    Repo[SQLite Repositories & WAL Persistence]
+    Crypto[Vault Cryptography & ENC1 Streaming]
+    FSRS[FSRS Spaced Repetition Engine]
+  end
+
+  Web --> WebAdapters
+  WebAdapters --> WasmBridge
+  WasmBridge --> Core
+
   Shell --> Web
-  TauriBackend --> Core[synapse-core]
+
+  Tauri --> TauriBackend
+  TauriBackend -->|Direct Linkage| Core
+
+  Qt --> QtControllers
+  QtControllers --> QtBridge
   QtBridge --> Core
+
+  Android --> AndroidVM
+  AndroidVM --> AndroidBridge
   AndroidBridge --> Core
-  Web --> WasmBridge[bridge-wasm where enabled]
+
+  DomainServices --> Repo
+  DomainServices --> Crypto
+  DomainServices --> FSRS
 ```
 
 For the comprehensive architectural blueprint and runtime boundary specifications, consult [**`docs/architecture/overview.md`**](./docs/architecture/overview.md).

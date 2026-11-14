@@ -3,7 +3,7 @@
 This app owns the original React 19 web client, Vite configuration, static assets, and its Tauri v2 Rust shell. Follow the root [engineering rules](../../AGENTS.md) and [application workspace boundaries](../AGENTS.md).
 
 - Frontend source: `src/`; static assets: `public/`.
-- Tauri commands and backend: `src-tauri/`; shared Rust logic: `../../core/synapse-core/`.
+- Tauri commands and backend: `src-tauri/`; shared Rust logic: `../../core/synapse-core/`. Tauri IPC commands in `src-tauri/` must act as thin pass-through adapters delegating database persistence and domain calculations directly to `../../core/synapse-core/` rather than maintaining duplicate `rusqlite` queries or domain algorithms.
 - Run frontend scripts from the repository root so npm uses the root lockfile: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run test -- src/...`, and `npm run lint`.
 - Do not add an app-local npm lockfile. The root workspace owns dependencies for this app.
 - The separate Expo/WebView client is `../mobile-webview/` and has its own package manifest and lockfile.

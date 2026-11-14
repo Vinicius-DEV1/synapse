@@ -17,20 +17,33 @@ This document defines the mandatory architectural, code quality, design integrit
 
 ## 2. Architecture & Tech Stack
 
-Caderno is a multi-target application engineered for desktop, web, and high-performance native environments:
-- **Hybrid Web & Desktop (Tauri)**: React 19, TypeScript, Vite, TailwindCSS, Lucide Icons, Radix UI / Floating UI, Tauri v2 (Rust).
-- **Native Desktop High-Performance (Qt 6 / C++ / Rust FFI)**: Qt 6 Quick/QML, C++17 (`SynapseDataController`), Rust FFI bridge (`bridges/bridge-qt/`), native MPV hardware-accelerated media rendering (`MpvPlayerItem`), and direct SQLite WAL persistence.
+Caderno is a multi-target application engineered for desktop, web, and high-performance native environments, centered around a unified Rust domain core:
+- **Unified Domain Core (`core/synapse-core/`)**: Single Source of Truth (SSOT) in Rust for all canonical domain entities, business logic (balance aggregations, habit streaks, quiz scoring, FSRS spaced repetition), SQLite database schema/migrations, and repository persistence.
+- **Hybrid Web & Desktop (Tauri)**: React 19, TypeScript, Vite, TailwindCSS, Lucide Icons, Radix UI / Floating UI, Tauri v2 (Rust). Tauri commands in `apps/web-react/src-tauri/` act as thin delegators directly calling `synapse-core`.
+- **Native Desktop High-Performance (Qt 6 / C++ / Rust FFI)**: Qt 6 Quick/QML, thin C++17 controllers (`apps/desktop-qt/src/controllers/`) exposing `Q_PROPERTY` and signals, linked to `core/synapse-core/` via high-level typed domain APIs in `bridges/bridge-qt/`, native MPV hardware-accelerated media rendering (`MpvPlayerItem`), and direct SQLite WAL persistence.
 - **Editor**: TipTap (ProseMirror) with rich custom extensions and real-time collaboration via **Yjs / y-prosemirror**.
-- **Persistence / Offline**: Direct SQLite WAL on desktop; IndexedDB (`idb`) and Firebase/Firestore for web synchronization.
+- **Persistence / Offline**: Direct SQLite WAL on desktop via `core/synapse-core/src/db/`; IndexedDB (`idb`) and Firebase/Firestore for web synchronization.
 - **Media & Utilities**: libmpv, FFmpeg, PDF.js, EpubJS, Tesseract OCR, Tldraw, Canvas Confetti.
 - **End-to-End Cryptography**: PBKDF2-HMAC-SHA256 (600,000 iterations), AES-256-GCM Two-Tier Keychain envelopes, selected field protection, and encrypted media flows. Coverage differs by client and data entity; consult [`docs/security/native-encryption-audit.md`](./docs/security/native-encryption-audit.md) before claiming full local at-rest encryption.
 
-### Layered Architecture Boundaries
-Code must adhere to a strict 4-tier layer separation:
-1. **Presentation Layer (`apps/web-react/src/components/`)**: Pure UI rendering, event dispatching, and styling. Avoid embedding raw business calculations, storage I/O, or direct IPC calls directly inside UI views.
-2. **Orchestration Layer (`apps/web-react/src/hooks/`, `apps/web-react/src/store/`)**: State management, lifecycle binding, memoization, and coordination between UI and services.
-3. **Domain & Business Layer (`apps/web-react/src/services/`, `apps/web-react/src/utils/`)**: Pure domain logic, algorithms (e.g., FSRS spacing, text diffing, OCR extraction, audio/video transformation), decoupled from React UI.
-4. **Infrastructure & Platform Layer (`apps/web-react/src/api/`, `apps/web-react/src/services/storage/`)**: Multiplatform abstraction (Tauri IPC vs Web Browser / IndexedDB / Firestore), network clients, and persistent drivers.
+### 2.1. Unified Domain Core SSOT & Zero Cross-Client Duplication
+
+> [!IMPORTANT]
+> **ZERO DOMAIN DUPLICATION & UNIFIED CORE SSOT**
+> All canonical domain entities, business algorithms (balance deltas, habit streaks, quiz scoring, FSRS spaced repetition), database schemas, SQLite migrations, and persistence operations MUST reside strictly in `core/synapse-core/` as the Single Source of Truth (SSOT).
+>
+> - **Desktop Qt (`apps/desktop-qt/`)**: C++ controllers are thin presentation orchestrators exposing `Q_PROPERTY` and Qt signals. They MUST NOT assemble raw SQL query strings or implement business calculations in C++; they delegate to `bridges/bridge-qt/`.
+> - **Desktop & Web React (`apps/web-react/`)**: Tauri IPC commands in `src-tauri/` are thin delegators calling `synapse-core` directly; presentation components consume abstract service interfaces.
+> - **Mobile Android (`apps/mobile-android/`)**: Kotlin / Jetpack Compose ViewModels and data layers MUST NOT write custom Room/SQLite schemas or reimplement domain algorithms (FSRS, habit streaks, financial balances) in Kotlin; they delegate to `bridges/bridge-uniffi/` which exposes typed UniFFI bindings from `synapse-core`.
+> - **Mobile WebView (`apps/mobile-webview/`)**: The Expo shell hosts the web application and must not grow duplicate product domains.
+>
+> **Anti-Monolith Rule for Core & Bridges**:
+> Files in `core/synapse-core/` and `bridges/` MUST NOT become monoliths. Every domain module MUST be decomposed into atomic, cohesive sub-files (`models.rs`, `calculations.rs` / `logic.rs`, focused repository files, `mod.rs`, and `tests.rs`), with each file strictly targeted below 250–300 lines. Monolithic single-file domains (> 300 lines) are strictly prohibited.
+Code must adhere to a strict 4-tier layer separation anchored by the shared core:
+1. **Presentation Layer (`apps/web-react/src/components/`, `apps/desktop-qt/qml/`, `apps/mobile-android/.../ui/`)**: Pure UI rendering, event dispatching, and styling. Avoid embedding raw business calculations, storage I/O, or direct IPC calls directly inside UI views.
+2. **Orchestration Layer (`apps/web-react/src/hooks/`, `apps/desktop-qt/src/controllers/`, `apps/web-react/src/store/`)**: State management, lifecycle binding, memoization, and coordination between UI and services. Controllers and hooks are thin adapters and must not reimplement business calculations or manual SQL queries.
+3. **Domain & Business Layer (Unified Core SSOT - `core/synapse-core/`)**: Pure domain entities, algorithms (e.g., FSRS spacing, habit streaks, financial summary deltas, quiz scoring, text diffing), completely decoupled from frontend UI frameworks. Web-exclusive helpers remain in `apps/web-react/src/services/` and `src/utils/` only when unshared.
+4. **Infrastructure & Platform Layer (`core/synapse-core/src/db/`, `bridges/`, `apps/web-react/src/api/`)**: SQLite WAL persistence, database migrations, typed platform bridges (`bridge-qt`, `bridge-uniffi`, `bridge-wasm`), and multiplatform web storage abstractions.
 
 ---
 
@@ -95,6 +108,8 @@ Every module, class, hook, and function must embody the **SOLID** software engin
    - All embedded `<iframe>` elements (document previews, video frames, external media) must include explicit `sandbox` attributes (e.g., `sandbox="allow-scripts allow-forms"` or `sandbox="allow-scripts allow-presentation allow-same-origin"`) and descriptive `title` attributes for defense-in-depth against XSS and context escalation.
 9. **Unprotected Double-Submissions**:
    - Asynchronous mutation actions (vault credential saving, page renaming, uploads) must track processing state (`isSaving` / `isSubmitting`), disable trigger buttons while running, and render spinners to prevent duplicate records or race conditions.
+10. **Raw SQL Construction & Domain Duplication in UI/Controllers**:
+    - Assembling raw SQL strings, executing unstructured database queries, or calculating business metrics (e.g. account balances, habit streaks, quiz scoring, flashcard queues) directly in C++ controllers, Tauri commands, or React hooks is strictly prohibited. All queries and domain logic must be housed in `core/synapse-core/` and consumed via typed bridge functions.
 
 ---
 

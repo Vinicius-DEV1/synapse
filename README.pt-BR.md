@@ -75,19 +75,58 @@ O Synapse foi arquitetado com uma base de código unificada capaz de rodar em si
 
 ## 🏛️ Visão Geral da Arquitetura
 
-O Synapse contém quatro alvos de aplicativo com apresentações e adaptadores de armazenamento específicos. Recursos Rust são compartilhados onde os contratos entre plataformas já foram implementados:
+O Synapse é estruturado ao redor de um **Núcleo Rust Unificado (`core/synapse-core`)** como Fonte Única de Verdade (SSOT) para lógica de domínio, persistência SQLite e criptografia entre os quatro alvos de aplicativo:
 
 ```mermaid
 flowchart TB
-  Web[React Web] --> WebAdapters[IndexedDB e adaptadores Web]
-  Web --> Tauri[Backend Tauri em Rust]
-  Tauri --> Core[synapse-core]
-  Qt[Qt Quick/QML] --> QtBridge[bridge-qt C ABI]
+  subgraph Apps[Apresentação das Aplicações]
+    Web[React Web]
+    Tauri[Shell React e Tauri]
+    Qt[Desktop Nativo Qt Quick e QML]
+    Android[Android Nativo Kotlin e Compose]
+    Shell[Shell Expo WebView]
+  end
+
+  subgraph Orchestration[Adaptadores Finos de Apresentação]
+    TauriBackend[Comandos Tauri em Rust]
+    QtControllers[Controllers C++ no Qt]
+    AndroidVM[ViewModels no Android]
+    WebAdapters[IndexedDB e Armazenamento Web]
+  end
+
+  subgraph Bridges[Pontes Tipadas de Plataforma]
+    QtBridge[bridge-qt C ABI]
+    AndroidBridge[bridge-uniffi]
+    WasmBridge[bridge-wasm]
+  end
+
+  subgraph Core[Núcleo Rust Unificado: synapse-core]
+    DomainServices[Serviços e Cálculos de Domínio]
+    Repo[Repositórios SQLite e WAL]
+    Crypto[Criptografia do Cofre e Streaming ENC1]
+    FSRS[Motor de Repetição Espaçada FSRS]
+  end
+
+  Web --> WebAdapters
+  WebAdapters --> WasmBridge
+  WasmBridge --> Core
+
+  Shell --> Web
+
+  Tauri --> TauriBackend
+  TauriBackend -->|Vínculo Direto em Rust| Core
+
+  Qt --> QtControllers
+  QtControllers --> QtBridge
   QtBridge --> Core
-  Android[Kotlin/Compose] --> UniFFI[bridge-uniffi]
-  UniFFI --> Core
-  Shell[Shell Expo WebView] --> Web
-  Wasm[bridge-wasm] --> Core
+
+  Android --> AndroidVM
+  AndroidVM --> AndroidBridge
+  AndroidBridge --> Core
+
+  DomainServices --> Repo
+  DomainServices --> Crypto
+  DomainServices --> FSRS
 ```
 
 Para o blueprint arquitetural completo, consulte [**`docs/architecture/overview.md`**](./docs/architecture/overview.md).

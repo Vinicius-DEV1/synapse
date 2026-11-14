@@ -67,13 +67,13 @@ React `Tab.module`, `ViewFactory`, and the sidebar module registry do not includ
 | --- | --- | --- | --- | --- |
 | Module presentation | `apps/web-react/src/components/<module>/` | `apps/desktop-qt/qml/<module>/` | `apps/mobile-android/app/src/main/java/com/synapse/features/<module>/ui/` | No product modules; embeds the React app |
 | Module orchestration | Shared hooks in `apps/web-react/src/hooks/`, or focused hooks colocated under a module | Feature controllers in `apps/desktop-qt/src/controllers/<module>/` | Add ViewModels under the same `features/<module>/` package when a screen needs state orchestration | Shell lifecycle in `App.tsx` |
-| Domain and persistence | `apps/web-react/src/services/<module>/` and `src/utils/` | Controller-owned SQLite operations; shared Rust domain logic in `core/synapse-core/` | Add domain and data packages under that module when native behavior is implemented; shared Rust logic stays in `core/synapse-core/` | No domain or product persistence layer |
+| Domain and persistence | Canonical domain logic and SQLite repositories in `core/synapse-core/` (Tauri commands delegate directly); Web browser uses `src/services/<module>/` with `bridge-wasm` | Thin C++ controllers delegate persistence and domain calculations to `core/synapse-core/` via `bridges/bridge-qt/` | ViewModels delegate domain and persistence to `core/synapse-core/` via `bridges/bridge-uniffi/` | No domain or product persistence layer |
 | Platform boundaries | `apps/web-react/src/api/{contracts,web,tauri}/` | `bridges/bridge-qt/` | `bridges/bridge-uniffi/` | `src/config/` and `src/utils/` for shell-to-web bridge behavior |
 | Module tests | Beside the implementation as `*.test.ts(x)` | `apps/desktop-qt/tests/<module>/` | `app/src/test/` or `app/src/androidTest/`, grouped by module | Beside shell logic when tests are introduced |
 
 The React app intentionally keeps its top-level `components/`, `hooks/`, `store/`, `services/`, and `api/` layers. Match a module's name across those layer directories instead of putting platform I/O inside a view. Shared UI belongs in `components/ui/`; shared platform code belongs in `api/` or `services/`.
 
-Qt keeps QML in a feature-first tree and groups C++ controllers under the same module ID. `src/synapse_controller.*`, `src/main.cpp`, media integration, and platform helpers remain at the shared app level because they compose or serve multiple modules.
+Qt keeps QML in a feature-first tree and groups thin C++ controllers under the same module ID. Controllers expose `Q_PROPERTY` and signals to QML while delegating SQLite queries and domain calculations to `core/synapse-core/` via `bridges/bridge-qt/`. `src/synapse_controller.*`, `src/main.cpp`, media integration, and platform helpers remain at the shared app level because they compose or serve multiple modules.
 
 Android Compose groups feature screens under `features/<module>/ui/`. Add `domain/`, `data/`, or `viewmodel/` only when the module owns that responsibility; do not create empty placeholder packages. Theme, core bindings, and media primitives stay shared.
 

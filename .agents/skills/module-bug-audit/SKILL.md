@@ -33,8 +33,9 @@ Perform a thorough, multi-stage inspection to:
   listeners/timers/Yjs observers, infinite re-render loops, stale closures.
 - **Validate Type Safety** — Detect `any`, `as any`, unvalidated assertions,
   missing return type contracts.
-- **Audit Rust Backend** — Unchecked `.unwrap()`, unhandled `Result` propagation,
-  SQL injection via string formatting, panic paths in IPC handlers.
+- **Audit Rust Backend & Core Architecture** — Unchecked `.unwrap()`, unhandled `Result` propagation,
+  SQL injection via string formatting, raw SQL or business logic implemented outside `core/synapse-core`,
+  panic paths in IPC handlers.
 - **Design Diagnostic Logging** — High-resolution contextual log checkpoints to
   trace async flows and confirm bug mitigation at runtime.
 
@@ -80,8 +81,10 @@ Perform a thorough, multi-stage inspection to:
    - `.unwrap()`, `.expect()`, or `vec[i]` on potentially invalid data in IPC handlers?
    - All `Result<T, E>` values properly propagated?
 
-7. **SQL Safety**:
+7. **SQL Safety & Core Centralization**:
    - 100% parameterized queries (`params![]`, `?`)? Any `format!()` in SQL?
+   - Are queries, migrations, and domain calculations encapsulated in `core/synapse-core` as the Single Source of Truth (SSOT), or improperly duplicated inside C++ controllers, Tauri commands, or Android Kotlin ViewModels?
+   - **Core & Bridge Anti-Monolith Check**: Are any files in `core/synapse-core/` or `bridges/` exceeding 250–300 lines? Any monolithic single-file domain that must be split into atomic submodules (`models.rs`, `calculations.rs`/`logic.rs`, repository files, `mod.rs`, `tests.rs`)?
 
 8. **IPC Serialization**:
    - Return types properly `#[derive(Serialize)]`?

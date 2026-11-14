@@ -27,12 +27,12 @@ These playbooks apply across the four app targets: React Web/Tauri (`apps/web-re
 ### 1. Strict Functional & Visual Parity
 Refactoring, bug fixes, and internal optimizations must maintain **100% functional and visual parity**. Performance enhancements and structural cleanups preserve all user interactions, keyboard shortcuts, animations, and edge-case handling.
 
-### 2. Multi-App Architecture
-- **React Web + Tauri (`apps/web-react/`)**: The original React app runs in browsers and in the Tauri v2 shell; the Tauri backend provides Rust IPC and SQLite.
-- **Native Qt Desktop (`apps/desktop-qt/`)**: Qt Quick/QML and C++ use the Rust C-ABI bridge and native media rendering.
-- **Native Android (`apps/mobile-android/`)**: Kotlin/Compose connects to shared Rust capabilities through UniFFI.
+### 2. Multi-App Architecture & Unified Rust Core
+- **Unified Rust Core (`core/synapse-core/`)**: Single Source of Truth (SSOT) for all canonical domain entities, business logic (balances, streaks, quiz stats, FSRS), SQLite schema/migrations, and repository persistence.
+- **React Web + Tauri (`apps/web-react/`)**: React app runs in browsers and the Tauri v2 shell; Tauri commands in `src-tauri/` act as thin pass-through wrappers calling `synapse-core`. Pure domain algorithms in the browser run via WebAssembly (`bridges/bridge-wasm/`).
+- **Native Qt Desktop (`apps/desktop-qt/`)**: Qt Quick/QML with thin C++ controllers exposing `Q_PROPERTY` and signals. Controllers delegate all SQL queries and domain calculations to `core/synapse-core/` via high-level typed domain functions in `bridges/bridge-qt/`.
+- **Native Android (`apps/mobile-android/`)**: Kotlin/Compose connects ViewModels to `core/synapse-core/` through UniFFI (`bridges/bridge-uniffi/`).
 - **Expo/WebView Shell (`apps/mobile-webview/`)**: A separate React Native package hosts the React web app and integrates Android system APIs.
-- **Shared Code**: Platform-neutral domain logic belongs in `core/synapse-core/`; `bridges/` adapts it to Qt, Android, and WebAssembly.
 
 ### 3. Big Tech Performance Engineering
 - **0ms Perceived Latency**: Optimistic UI transitions and Stale-While-Revalidate (RFC 5861) caching.

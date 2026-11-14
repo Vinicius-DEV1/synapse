@@ -51,6 +51,8 @@ description: >-
 - SRP violations: God components (> 300 lines), mixed presentation/orchestration/I/O
 - OCP violations: Hardcoded switch/case instead of registries/strategies
 - DIP violations: UI components importing platform drivers directly
+- Unified Core violations: Raw SQL query assembly, unparameterized database access, or duplicate business logic (balances, streaks, quiz stats, card queues) inside C++ controllers, Tauri commands, or Android Kotlin ViewModels instead of delegating to `core/synapse-core` (SSOT)
+- Core & Bridge Anti-Monolith violations: Files in `core/synapse-core/` or `bridges/` exceeding 250–300 lines without being decomposed into modular sub-files (`models.rs`, `calculations.rs`/`logic.rs`, repository files, `mod.rs`, `tests.rs`)
 - Prop drilling depth (> 2 levels)
 
 ### 🔒 Dimension 3: Type Safety

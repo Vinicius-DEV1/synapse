@@ -6,14 +6,14 @@ Synapse keeps each distributable app in `apps/`, shared Rust logic in `core/`, a
 
 | Path | Product and responsibility | Build/dependency owner |
 | --- | --- | --- |
-| `apps/web-react/` | Original React web app and Tauri v2 hybrid desktop app | Root npm workspace and `apps/web-react/src-tauri/` Cargo package |
-| `apps/desktop-qt/` | Fully native Qt 6 desktop app | CMake/Qt, linked to `bridges/bridge-qt/` |
+| `apps/web-react/` | Original React web app and Tauri v2 hybrid desktop app (Tauri commands delegate directly to `synapse-core`) | Root npm workspace and `apps/web-react/src-tauri/` Cargo package |
+| `apps/desktop-qt/` | Fully native Qt 6 desktop app with thin C++ controllers | CMake/Qt, linked to high-level domain APIs in `bridges/bridge-qt/` |
 | `apps/mobile-android/` | Fully native Kotlin/Compose Android app | Gradle, linked to UniFFI output from `bridges/bridge-uniffi/` |
 | `apps/mobile-webview/` | Expo shell that embeds the React web app in Android WebView | Independent npm lockfile and Expo CLI |
-| `core/synapse-core/` | Shared Rust domain, data, and cryptographic logic | Root Cargo workspace |
-| `bridges/` | Qt C ABI, UniFFI, and WebAssembly adapters | Root Cargo workspace |
+| `core/synapse-core/` | Unified Rust core: domain entities, business calculations, SQLite schema/migrations, and repository persistence (Single Source of Truth) | Root Cargo workspace |
+| `bridges/` | Qt C ABI / typed domain adapters, UniFFI, and WebAssembly adapters | Root Cargo workspace |
 
-Do not move product code into the repository root. Keep cross-product logic platform-neutral in `core/` and expose platform APIs through the appropriate bridge. The React app owns its web and Tauri source trees together because the Tauri shell bundles that frontend.
+Do not move product code into the repository root. Keep cross-product domain logic and persistence platform-neutral in `core/` and expose platform APIs through the appropriate bridge. The React app owns its web and Tauri source trees together because the Tauri shell bundles that frontend.
 
 ## Root commands
 

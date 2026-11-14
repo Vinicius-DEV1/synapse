@@ -15,34 +15,71 @@ Synapse is a multi-app knowledge and study platform. The React client is the fun
 
 The root npm workspace delegates to `apps/web-react/`. The Expo shell and native Android app use their own build systems. Shared Rust code and its bindings live in `core/synapse-core/` and `bridges/`. See [repository layout](./repository-layout.md) and [module structure](./module-structure.md) for ownership details.
 
-## 2. Shared-Code Boundaries
+## 2. Shared-Code Boundaries & Unified Core Architecture
 
 ```mermaid
 flowchart TB
-  React[React Web] --> WebAdapters[IndexedDB and web adapters]
-  React --> Tauri[Tauri Rust backend]
-  Tauri --> Core[synapse-core]
-  Qt[Qt Quick/QML] --> QtBridge[bridge-qt C ABI]
-  QtBridge --> Core
-  Android[Kotlin/Compose] --> UniFFI[bridge-uniffi]
-  UniFFI --> Core
-  WebView[Expo WebView shell] --> React
-  Wasm[bridge-wasm] --> Core
+  subgraph Presentation [Presentation & View Layer]
+    React[React Web / TSX]
+    Qt[Qt Quick / QML]
+    Android[Kotlin / Compose]
+    WebView[Expo WebView shell]
+  end
+
+  subgraph Orchestration [Thin Orchestration Layer]
+    ReactHooks[React Hooks & Store]
+    Tauri[Tauri Commands / Thin Wrappers]
+    QtControllers[Qt C++ Controllers / Q_OBJECT]
+  end
+
+  subgraph Bridges [Typed Platform Bridges]
+    Wasm[bridge-wasm / WASM]
+    QtBridge[bridge-qt / High-Level C ABI]
+    UniFFI[bridge-uniffi / Kotlin Bindings]
+  end
+
+  subgraph Core [Unified Rust Core: synapse-core (SSOT)]
+    DomainServices[Domain Services & Business Calculations]
+    Repo[Database Repositories & SQL Queries]
+    Migrations[Database Migrations & SQLite WAL]
+    Crypto[Vault Cryptography & ENC1 Streaming]
+    FSRS[FSRS Spaced Repetition Engine]
+  end
+
+  WebView --> React
+  React --> ReactHooks
+  ReactHooks -->|Web Storage / IndexedDB| Wasm
+  ReactHooks -->|Tauri IPC| Tauri
+  Tauri -->|Direct Rust Linkage| DomainServices
+  Qt --> QtControllers
+  QtControllers -->|Typed FFI| QtBridge
+  QtBridge --> DomainServices
+  Android --> UniFFI
+  UniFFI --> DomainServices
+  Wasm --> DomainServices
+
+  DomainServices --> Repo
+  Repo --> Migrations
+  DomainServices --> Crypto
+  DomainServices --> FSRS
 ```
 
-The shared Rust crate currently contains database migrations and connection code, cryptographic primitives and ENC1 streaming, FSRS helpers, and video-reading support. Product modules still have platform-specific orchestration and persistence code. Do not assume every business rule or module CRUD path has been moved into Rust.
+The unified architecture establishes `core/synapse-core/` as the **Single Source of Truth (SSOT)** for:
+1. **Canonical Domain Entities**: Typed domain models (`Account`, `Transaction`, `QuizBattery`, `Habit`, `Deck`, `Card`, `CalendarEvent`, etc.).
+2. **Persistence Repositories**: All SQLite CRUD operations, queries, transactions, soft-deletes, and migrations in Rust.
+3. **Domain Business Logic**: Algorithmic rules (account balance aggregations, habit streak tracking, quiz grading, spaced repetition queueing, trash cascade purging) calculated exclusively in Rust.
 
 ### React and Tauri
 
-React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend owns native commands and uses its database and platform adapters. Shared Rust utilities are called through `core/synapse-core/` where integrated.
+React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands and acts as a thin wrapper delegating persistence and domain calculations directly to `core/synapse-core/`. Web browser flows consume pure domain logic compiled via `bridges/bridge-wasm/` and store local data in `IndexedDB`.
 
 ### Qt Desktop
 
-QML owns native presentation. Feature controllers under `apps/desktop-qt/src/controllers/<module>/` coordinate SQLite access, crypto operations, and platform behavior. The Rust C ABI is exposed by `bridges/bridge-qt/`. Some controller responsibilities remain in C++; do not describe the entire Qt application as Rust-core-driven.
+QML owns native presentation. Feature controllers under `apps/desktop-qt/src/controllers/<module>/` are thin presentation orchestrators that expose `Q_PROPERTY` and signals (`emit ...Changed()`) to QML. They delegate database persistence and business calculations to `core/synapse-core/` through high-level typed domain APIs in `bridges/bridge-qt/`. Controllers must not construct raw SQL strings or reimplement business calculations in C++.
 
 ### Android
 
-The Compose application owns Android presentation and lifecycle behavior. The UniFFI bridge exposes shared Rust capabilities. Native Android feature coverage must be checked against its own implementation and build/test evidence; the Qt parity matrix does not certify Android parity.
+The Compose application owns Android presentation and lifecycle behavior. The UniFFI bridge (`bridges/bridge-uniffi/`) exposes shared Rust capabilities. Native Android feature coverage must be checked against its own implementation and build/test evidence; the Qt parity matrix does not certify Android parity.
 
 ### WebView Shell
 

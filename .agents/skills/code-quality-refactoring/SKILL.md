@@ -77,17 +77,28 @@ description: >-
 | Repeated `.includes()` checks on large arrays | Convert to `Set` for `O(1)` `.has()` |
 | String concatenation in tight loop | Use `Array.join()` or template literals |
 
+### 2.6. When to Consolidate into Unified Core (`core/synapse-core`)
+
+| Signal | Action |
+| :----- | :----- |
+| Controller (C++), Tauri command, or Android ViewModel writes raw SQL (`SELECT ... FROM ...`) | Move repository query and schema types into `core/synapse-core/` |
+| Client computes business metrics (balances, streaks, quiz stats, card queues) | Move calculation into `core/synapse-core/` domain submodules; expose via bridges |
+| Same persistence or business logic duplicated between Qt, Tauri, Web, and Mobile | Consolidate in `core/synapse-core` as Single Source of Truth (SSOT) |
+| C++ controller exceeds 300 lines due to JSON serialization and query assembly | Refactor into thin presentation controller using high-level bridge functions |
+| Domain file in `core/synapse-core/` exceeds 250 lines (Monolith Risk) | Decompose into folder: `models.rs`, `calculations.rs` / `logic.rs`, sub-repositories, `mod.rs`, `tests.rs` |
+| Bridge file in `bridges/` exceeds 250 lines | Decompose into domain-specific sub-files (`domain/<feature>.rs`) under `mod.rs` |
+
 ---
 
 ## 3. Cross-Application Module Boundaries
 
 Keep each module discoverable under the same canonical ID across app targets. Follow each app's layer boundaries instead of copying one framework's folder layout into every client:
 
-| App | Presentation | Orchestration | Domain and platform |
+| App | Presentation | Orchestration | Domain and persistence |
 | :--- | :--- | :--- | :--- |
-| React/Tauri | `apps/web-react/src/components/<module>/` | `src/hooks/`, `src/store/`, or a focused module hook directory | `src/services/<module>/`, `src/utils/`, and `src/api/` |
-| Qt desktop | `apps/desktop-qt/qml/<module>/` | `src/controllers/<module>/` | Native controller persistence, `core/synapse-core/`, and `bridges/bridge-qt/` |
-| Android Compose | `app/src/main/java/com/synapse/features/<module>/ui/` | A module `viewmodel/` package when needed | A module `domain/`/`data/` package and `bridges/bridge-uniffi/` |
+| React/Tauri | `apps/web-react/src/components/<module>/` | `src/hooks/`, `src/store/`, or a focused module hook directory | `core/synapse-core/` (Tauri commands delegate directly); `src/services/<module>/` for Web |
+| Qt desktop | `apps/desktop-qt/qml/<module>/` | `src/controllers/<module>/` (thin adapters exposing `Q_PROPERTY`) | `core/synapse-core/` via `bridges/bridge-qt/` high-level domain APIs |
+| Android Compose | `app/src/main/java/com/synapse/features/<module>/ui/` | A module `viewmodel/` package when needed | `core/synapse-core/` via `bridges/bridge-uniffi/` |
 | Expo WebView | Host shell only | Shell lifecycle | No duplicate product domain; delegate to the React app |
 
 Keep shared app-level composition and platform adapters out of feature folders. Use the canonical names in `docs/architecture/module-structure.md`; preserve public route keys and persisted IDs when renaming source directories.

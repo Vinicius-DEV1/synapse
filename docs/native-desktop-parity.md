@@ -12,6 +12,13 @@ A module is complete only when all of the following are checked against the Reac
 - Large collections, keyboard navigation, cancellation, and error recovery have been reviewed.
 - The Qt application builds and the native flows have focused automated or manual verification.
 
+## System Architecture & Unified Domain Core Parity
+
+Persistence and domain logic across all 13 core modules (`finance`, `habits`, `questions`, `anki`, `culture`, `calendar`, `focus`, `notifications`, `trash`, `vault`, `files`, `video`, `library`, and `notes`) are 100% centralized into `core/synapse-core/` (Single Source of Truth in Rust):
+- **Presentation Orchestrators Only**: Desktop Qt C++ controllers (`apps/desktop-qt/src/controllers/`) and Tauri commands (`apps/web-react/src-tauri/src/`) no longer assemble raw SQL queries or implement duplicate business algorithms. They invoke typed domain functions exposed by `bridges/bridge-qt/` (`synapse_<module>_*`) and `synapse-core` directly.
+- **FFI Hardening**: Generic SQL execution functions (`synapse_db_query_json`, `synapse_db_execute`, `synapse_db_query_json_params`, `synapse_db_execute_params`) in `bridges/bridge-qt/` are deprecated (`#[deprecated(since = "0.2.0")]`).
+- **Target Parity**: All 36 Rust core tests, 3 CTest Qt test suites (`native-priority-modules`, `native-notes-rich-qml`, `native-notes-table-qml`), Tauri build, and 19 Web API test suites pass with 0 errors.
+
 Encryption status is tracked separately in [the native encryption audit](./security/native-encryption-audit.md). A configured keychain or an encrypted media import does not mean every SQLite table, metadata field, or pre-existing local file is encrypted.
 
 Qt vault setup now encrypts referenced, readable media in the managed `files/`, `library/`, and `videos/` directories using a persistent recovery journal. Setup stops if a referenced file is outside its managed directory. This closes only the managed-media setup gap; the encryption audit records remaining plaintext database fields, metadata, and cross-client recovery work.
