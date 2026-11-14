@@ -1,0 +1,61 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizBattery {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub title: String,
+    pub description: Option<String>,
+    #[serde(default)]
+    pub question_count: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizQuestion {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub battery_id: String,
+    #[serde(rename = "type", default)]
+    pub type_: String,
+    #[serde(default)]
+    pub question: String,
+    #[serde(default)]
+    pub options: String, // JSON array string
+    pub correct_index: Option<i32>,
+    pub expected_answer: Option<String>,
+    pub explanation: Option<String>,
+    pub tags: Option<String>, // JSON array string
+    #[serde(default)]
+    pub sort_order: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizAttempt {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub question_id: String,
+    #[serde(default)]
+    pub battery_id: String,
+    #[serde(rename = "type", default)]
+    pub type_: String,
+    pub selected_index: Option<i32>,
+    pub user_answer: Option<String>,
+    pub is_correct: i32,
+    pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizStats {
+    pub total_batteries: i64,
+    pub total_questions: i64,
+    pub total_attempts: i64,
+    pub answered_questions: i64,
+    pub correct_attempts: i64,
+    pub incorrect_attempts: i64,
+    pub incorrect_questions: i64,
+    pub reviewable_incorrect_questions: i64,
+    pub accuracy_rate: i64,
+}
