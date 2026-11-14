@@ -213,6 +213,8 @@ pub fn run_migrations(conn: &Connection) {
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN drive_file_id TEXT", []);
     let _ = conn.execute("ALTER TABLE videos ADD COLUMN last_watched_at DATETIME", []);
     let _ = conn.execute("ALTER TABLE lofis ADD COLUMN drive_file_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE lofis ADD COLUMN is_local INTEGER DEFAULT 1", []);
+    let _ = conn.execute("ALTER TABLE lofis ADD COLUMN [order] INTEGER DEFAULT 0", []);
 
     // Migration for anki_decks parent_id
     let _ = conn.execute("ALTER TABLE anki_decks ADD COLUMN parent_id TEXT", []);

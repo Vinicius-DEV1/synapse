@@ -19,6 +19,19 @@ Rectangle {
     signal lofiSelected(var lofi)
     signal deleteSessionRequested(string sessionId)
 
+    function formatDuration(sec) {
+        if (!sec || isNaN(sec) || sec <= 0) return "--:--"
+        var s = Math.floor(sec)
+        var m = Math.floor(s / 60)
+        var h = Math.floor(m / 60)
+        s = s % 60
+        m = m % 60
+        if (h > 0) {
+            return h + "h " + (m > 0 ? m + "m" : "")
+        }
+        return m + ":" + (s < 10 ? "0" + s : s)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
@@ -55,30 +68,50 @@ Rectangle {
                 width: lofiList.width
                 height: 44
                 radius: 8
-                color: historyRoot.activeLofi === modelData ? "#268b5cf6" : (lofiRowMouse.containsMouse ? "#211f30" : "#15141b")
-                border.color: historyRoot.activeLofi === modelData ? "#808b5cf6" : "#0affffff"
+                readonly property bool isCurrent: historyRoot.activeLofi && historyRoot.activeLofi.id === modelData.id
+                readonly property bool isLocal: modelData.is_local === 1 || (modelData.file_path && String(modelData.file_path).length > 0)
+                color: isCurrent ? "#268b5cf6" : (lofiRowMouse.containsMouse ? "#211f30" : "#15141b")
+                border.color: isCurrent ? "#808b5cf6" : "#0affffff"
                 border.width: 1
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
+                    anchors.margins: 10
+                    spacing: 8
 
                     Text {
-                        text: historyRoot.activeLofi === modelData && historyRoot.isLofiPlaying ? "🔊" : "🎧"
+                        text: lofiRowDelegate.isCurrent && historyRoot.isLofiPlaying ? "🔊" : "🎧"
                         font.pixelSize: 14
                     }
 
                     Text {
                         Layout.fillWidth: true
                         text: modelData.title || modelData.original_name || "Trilha Lofi"
-                        color: historyRoot.activeLofi === modelData ? "#c4b5fd" : "#fffffe"
-                        font.pixelSize: 13
+                        color: lofiRowDelegate.isCurrent ? "#c4b5fd" : "#fffffe"
+                        font.pixelSize: 12
                         elide: Text.ElideRight
                     }
 
+                    Rectangle {
+                        height: 18
+                        radius: 4
+                        color: lofiRowDelegate.isLocal ? "#1a10b981" : "#1a3b82f6"
+                        border.color: lofiRowDelegate.isLocal ? "#3310b981" : "#333b82f6"
+                        border.width: 1
+                        implicitWidth: badgeText.implicitWidth + 8
+
+                        Text {
+                            id: badgeText
+                            anchors.centerIn: parent
+                            text: lofiRowDelegate.isLocal ? "Local" : "☁️ Nuvem"
+                            color: lofiRowDelegate.isLocal ? "#34d399" : "#60a5fa"
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+                    }
+
                     Text {
-                        text: (modelData.duration || 0) + "s"
+                        text: historyRoot.formatDuration(modelData.duration)
                         color: "#a7a9be"
                         font.pixelSize: 11
                     }
@@ -99,6 +132,35 @@ Rectangle {
                 text: "Nenhuma trilha de áudio catalogada."
                 color: "#64748b"
                 font.pixelSize: 12
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 32
+            radius: 6
+            color: "#1af59e0b"
+            border.color: "#33f59e0b"
+            border.width: 1
+            visible: typeof globalLofiPlayer !== "undefined" && globalLofiPlayer && globalLofiPlayer.playError !== ""
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 6
+                spacing: 6
+
+                Text {
+                    text: "⚠️"
+                    font.pixelSize: 12
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: (typeof globalLofiPlayer !== "undefined" && globalLofiPlayer) ? globalLofiPlayer.playError : ""
+                    color: "#fcd34d"
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
             }
         }
 

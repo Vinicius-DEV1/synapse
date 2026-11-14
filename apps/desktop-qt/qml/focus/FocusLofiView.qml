@@ -12,8 +12,8 @@ Rectangle {
     property string activeTag: "Estudo"
     property var lofis: []
     property var focusSessions: []
-    property var activeLofi: null
-    property bool isLofiPlaying: false
+    property var activeLofi: (typeof globalLofiPlayer !== "undefined" && globalLofiPlayer) ? globalLofiPlayer.activeTrack : null
+    property bool isLofiPlaying: (typeof globalLofiPlayer !== "undefined" && globalLofiPlayer) ? globalLofiPlayer.isPlaying : false
     property bool isCustomTimeOpen: false
     property bool isSessionCompletedModalOpen: false
 
@@ -118,14 +118,13 @@ Rectangle {
             isLofiPlaying: focusRoot.isLofiPlaying
 
             onLofiSelected: function(modelData) {
-                if (focusRoot.activeLofi === modelData) {
-                    focusRoot.isLofiPlaying = !focusRoot.isLofiPlaying
-                    if (typeof globalLofiPlayer !== "undefined") {
+                if (typeof globalLofiPlayer !== "undefined" && globalLofiPlayer) {
+                    if (globalLofiPlayer.activeTrack && globalLofiPlayer.activeTrack.id === modelData.id) {
                         globalLofiPlayer.togglePlay()
+                    } else {
+                        globalLofiPlayer.playTrack(modelData)
                     }
                 } else {
-                    focusRoot.activeLofi = modelData
-                    focusRoot.isLofiPlaying = true
                     focusRoot.requestPlayLofi(modelData)
                 }
             }

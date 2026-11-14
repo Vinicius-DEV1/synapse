@@ -3,6 +3,17 @@
 #include <QtCore/QTemporaryDir>
 #include <QtTest/QtTest>
 
+class MockLofiPlayer : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString source MEMBER m_source)
+    Q_PROPERTY(QString keyHex MEMBER m_keyHex)
+    Q_PROPERTY(bool paused MEMBER m_paused)
+public:
+    QString m_source;
+    QString m_keyHex;
+    bool m_paused = true;
+};
+
 class NativeFocusTest final : public QObject {
     Q_OBJECT
 
@@ -62,6 +73,52 @@ private slots:
         lofis = controller.getLofis();
         QCOMPARE(lofis.size(), 1);
         QCOMPARE(lofis.first().toMap().value("title").toString(), QString("Rain Ambient"));
+    }
+
+    void lofiPlaybackResolution() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("native-focus-play.sqlite")));
+
+        MockLofiPlayer player;
+
+        // Null checks
+        QVERIFY(!controller.playLofiTrack(nullptr, "non-existent"));
+        QVERIFY(!controller.playLofiTrack(&player, ""));
+        QVERIFY(!controller.playLofiTrack(&player, "non-existent"));
+
+        // Track without valid file path
+        QVERIFY(controller.addLofiTrack("Missing Track", "/invalid/nonexistent.mp3", 120.0));
+        QVariantList lofis = controller.getLofis();
+        QCOMPARE(lofis.size(), 1);
+        const QString missingId = lofis.first().toMap().value("id").toString();
+        QVERIFY(!controller.playLofiTrack(&player, missingId));
+
+        // Local unencrypted audio file
+        const QString localAudioPath = sandbox.filePath("ambient.mp3");
+        QFile localFile(localAudioPath);
+        QVERIFY(localFile.open(QIODevice::WriteOnly));
+        localFile.write("RIFF....WAVEfmt ....data....");
+        localFile.close();
+
+        QVERIFY(controller.addLofiTrack("Local Track", localAudioPath, 60.0));
+        lofis = controller.getLofis();
+        QCOMPARE(lofis.size(), 2);
+        QString localTrackId;
+        for (const QVariant &item : lofis) {
+            const QVariantMap map = item.toMap();
+            if (map.value("title").toString() == "Local Track") {
+                localTrackId = map.value("id").toString();
+                break;
+            }
+        }
+        QVERIFY(!localTrackId.isEmpty());
+
+        QVERIFY(controller.playLofiTrack(&player, localTrackId));
+        QCOMPARE(player.m_source, localAudioPath);
+        QCOMPARE(player.m_paused, false);
     }
 
     void alarmLifecycle() {

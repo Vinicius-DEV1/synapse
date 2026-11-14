@@ -13,31 +13,50 @@ Item {
     property double currentTime: 0
     property double trackDuration: 0
     property double playerVolume: 0.75
+    property string playError: ""
 
     function playTrack(track) {
         if (!track) return
-        activeTrack = track
-        isPlaying = true
-        isExpanded = true
-        if (track.file_path) {
-            audioBackend.command(["loadfile", track.file_path])
+        playError = ""
+        var success = dataController.playLofiTrack(audioBackend, track.id)
+        if (success) {
+            activeTrack = track
+            isPlaying = true
+            isExpanded = true
             audioBackend.volume = playerVolume * 100
+            audioBackend.command(["set", "loop-file", "inf"])
+        } else {
+            audioBackend.source = ""
+            audioBackend.keyHex = ""
+            activeTrack = null
+            isPlaying = false
+            isExpanded = false
+            currentTime = 0
+            trackDuration = 0
+            if (track.is_local === 0 || !track.file_path) {
+                playError = "A faixa está no Google Drive e ainda não foi sincronizada localmente."
+            } else {
+                playError = "Não foi possível reproduzir a faixa de áudio local."
+            }
         }
     }
 
     function togglePlay() {
         if (!activeTrack) return
-        isPlaying = !isPlaying
         audioBackend.togglePlay()
+        isPlaying = !audioBackend.paused
     }
 
     function stopTrack() {
+        audioBackend.source = ""
+        audioBackend.keyHex = ""
         audioBackend.command(["stop"])
         activeTrack = null
         isPlaying = false
         isExpanded = false
         currentTime = 0
         trackDuration = 0
+        playError = ""
     }
 
     // Headless MPV engine instance dedicated to audio & ambient lofi playback
@@ -51,17 +70,15 @@ Item {
             globalLofiRoot.currentTime = audioBackend.position
         }
 
+        onPausedChanged: {
+            globalLofiRoot.isPlaying = !audioBackend.paused
+        }
+
         onDurationChanged: {
             if (audioBackend.duration > 0) {
                 globalLofiRoot.trackDuration = audioBackend.duration
             } else if (globalLofiRoot.activeTrack && globalLofiRoot.activeTrack.duration > 0) {
                 globalLofiRoot.trackDuration = globalLofiRoot.activeTrack.duration
-            }
-        }
-
-        onEndOfFile: {
-            if (globalLofiRoot.activeTrack && globalLofiRoot.activeTrack.file_path) {
-                audioBackend.command(["loadfile", globalLofiRoot.activeTrack.file_path])
             }
         }
     }

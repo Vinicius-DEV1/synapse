@@ -1,16 +1,19 @@
 #include "synapse_controller.h"
 
 #include <QtCore/QDateTime>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QMetaObject>
 
 // Native focus session, ambient audio, and alarm persistence using prepared statements.
 
 QVariantList SynapseDataController::getLofis() {
     return executeQueryPrepared(
-        "SELECT id, title, original_name, duration, file_path "
+        "SELECT id, title, original_name, duration, file_path, is_local, drive_file_id "
         "FROM lofis WHERE deleted_at IS NULL ORDER BY title ASC",
         {}
     ).toVariantList();
@@ -42,6 +45,113 @@ bool SynapseDataController::deleteLofi(const QString &lofiId) {
         {ts, ts, lofiId.trimmed()}
     );
     return rows == 1;
+}
+
+bool SynapseDataController::playLofiTrack(QObject *player, const QString &lofiId) {
+    if (!player || lofiId.trimmed().isEmpty()) return false;
+
+    const QJsonArray rows = executeQueryPrepared(
+        "SELECT id, title, original_name, duration, file_path, drive_file_id, is_local "
+        "FROM lofis WHERE id = ? AND deleted_at IS NULL",
+        {lofiId.trimmed()}
+    );
+    if (rows.isEmpty()) return false;
+
+    const QJsonObject track = rows.first().toObject();
+    QString filePath = track.value(QStringLiteral("file_path")).toString();
+    if (filePath.startsWith(QLatin1String("file://"))) {
+        filePath = filePath.mid(7);
+    }
+    const QString origName = track.value(QStringLiteral("original_name")).toString();
+    const QString appDirectory = QFileInfo(m_dbPath).absolutePath();
+    const QString lofiDirectory = appDirectory + QStringLiteral("/lofi");
+
+    QStringList candidates;
+    auto addCand = [&candidates](const QString &p) {
+        if (!p.isEmpty() && !candidates.contains(p)) {
+            candidates.append(p);
+        }
+    };
+
+    if (!filePath.isEmpty()) {
+        addCand(filePath);
+        addCand(filePath + QStringLiteral(".enc"));
+        if (!QDir::isAbsolutePath(filePath)) {
+            addCand(QDir(appDirectory).filePath(filePath));
+            addCand(QDir(lofiDirectory).filePath(filePath));
+        }
+    }
+    if (!origName.isEmpty()) {
+        addCand(lofiDirectory + QStringLiteral("/") + origName);
+        addCand(lofiDirectory + QStringLiteral("/") + origName + QStringLiteral(".enc"));
+        addCand(appDirectory + QStringLiteral("/") + origName);
+        addCand(appDirectory + QStringLiteral("/") + origName + QStringLiteral(".enc"));
+        addCand(QDir::homePath() + QStringLiteral("/Downloads/") + origName);
+    }
+
+    QString resolvedPath;
+    for (const QString &cand : candidates) {
+        QFileInfo fi(cand);
+        if (fi.exists() && fi.isFile() && fi.isReadable()) {
+            resolvedPath = fi.canonicalFilePath();
+            if (!resolvedPath.isEmpty()) break;
+        }
+    }
+
+    if (resolvedPath.isEmpty()) {
+        const int isLocal = track.value(QStringLiteral("is_local")).toInt();
+        const QString driveId = track.value(QStringLiteral("drive_file_id")).toString();
+        if (isLocal == 0 || !driveId.isEmpty()) {
+            qWarning() << "[SynapseDataController] Lofi track" << lofiId
+                       << "is stored on Google Drive and has not been downloaded locally yet.";
+        } else {
+            qWarning() << "[SynapseDataController] Local audio file not found for lofi track:" << lofiId;
+        }
+        return false;
+    }
+
+    QFile file(resolvedPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "[SynapseDataController] Cannot open lofi audio file:" << resolvedPath;
+        return false;
+    }
+    const bool encryptedAtRest = file.read(4) == QByteArrayLiteral("ENC1");
+    file.close();
+
+    QString focusKey;
+    if (encryptedAtRest) {
+        if (m_isVaultConfigured && !m_isVaultUnlocked) {
+            qWarning() << "[SynapseDataController] Vault is locked. Cannot play encrypted lofi audio.";
+            return false;
+        }
+        focusKey = m_unlockedKeys.value(QStringLiteral("focus"));
+        if (focusKey.isEmpty()) focusKey = m_unlockedKeys.value(QStringLiteral("core"));
+        if (focusKey.isEmpty()) focusKey = m_unlockedKeys.value(QStringLiteral("culture"));
+        if (focusKey.isEmpty()) focusKey = m_unlockedKeys.value(QStringLiteral("files"));
+        if (focusKey.isEmpty()) {
+            qWarning() << "[SynapseDataController] Focus decryption key is unavailable.";
+            return false;
+        }
+    }
+
+    const QMetaObject *meta = player->metaObject();
+    if (meta->indexOfProperty("keyHex") < 0 || meta->indexOfProperty("source") < 0) {
+        focusKey.fill(QChar(0));
+        qWarning() << "[SynapseDataController] Player item does not support keyHex or source property.";
+        return false;
+    }
+
+    player->setProperty("keyHex", focusKey);
+    const bool sourceAccepted = player->setProperty("source", resolvedPath);
+    focusKey.fill(QChar(0));
+
+    if (!sourceAccepted) {
+        player->setProperty("keyHex", QString());
+        return false;
+    }
+
+    player->setProperty("paused", false);
+    return true;
 }
 
 QVariantList SynapseDataController::getFocusSessions() {

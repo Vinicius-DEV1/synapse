@@ -300,6 +300,7 @@ public:
     Q_INVOKABLE QVariantList getLofis();
     Q_INVOKABLE bool addLofiTrack(const QString &title, const QString &filePath, double duration = 0.0);
     Q_INVOKABLE bool deleteLofi(const QString &lofiId);
+    Q_INVOKABLE bool playLofiTrack(QObject *player, const QString &lofiId);
 
     Q_INVOKABLE QVariantList getFocusSessions();
     Q_INVOKABLE bool recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary = "", const QString &description = "");
