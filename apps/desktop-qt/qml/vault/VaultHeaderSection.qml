@@ -19,7 +19,7 @@ ColumnLayout {
     signal groupSelected(string groupId)
     signal helpRequested()
 
-    // Header Top Row
+    // Header Top Row: Title & Action Buttons
     RowLayout {
         Layout.fillWidth: true
         spacing: 16
@@ -41,44 +41,11 @@ ColumnLayout {
 
         Item { Layout.fillWidth: true }
 
-        // Search Bar
-        Rectangle {
-            Layout.preferredWidth: 220
-            height: 38
-            radius: 10
-            color: "#15141b"
-            border.color: vaultSearchInput.activeFocus ? "#808b5cf6" : "#12ffffff"
-            border.width: 1
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                spacing: 8
-
-                Text { text: "🔍"; color: "#a7a9be"; font.pixelSize: 12 }
-
-                TextInput {
-                    id: vaultSearchInput
-                    Layout.fillWidth: true
-                    color: "#fffffe"
-                    font.pixelSize: 13
-                    selectByMouse: true
-                    onTextChanged: headerRoot.searchChanged(text)
-
-                    Text {
-                        text: "Buscar credencial..."
-                        color: "#64748b"
-                        font.pixelSize: 13
-                        visible: !vaultSearchInput.text && !vaultSearchInput.activeFocus
-                    }
-                }
-            }
-        }
-
         // Gerar Senha Segura Button
         Rectangle {
-            width: 150; height: 38; radius: 10
+            Layout.preferredWidth: 132
+            Layout.preferredHeight: 38
+            radius: 10
             color: genPassMouse.containsMouse ? "#337c3aed" : "#267c3aed"
             border.color: "#4d8b5cf6"
 
@@ -101,7 +68,9 @@ ColumnLayout {
         // Bloquear Cofre Button
         Rectangle {
             visible: dataController.isVaultConfigured && dataController.isVaultUnlocked
-            width: 104; height: 38; radius: 10
+            Layout.preferredWidth: 100
+            Layout.preferredHeight: 38
+            radius: 10
             color: lockMouse.containsMouse ? "#26ef4444" : "#15ef4444"
             border.color: "#40ef4444"
 
@@ -123,8 +92,8 @@ ColumnLayout {
 
         // Help / Guide Button
         Rectangle {
-            width: 38
-            height: 38
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
             radius: 10
             color: helpMouse.containsMouse ? "#262438" : "#15141b"
             border.color: helpMouse.containsMouse ? "#808b5cf6" : "#12ffffff"
@@ -149,7 +118,9 @@ ColumnLayout {
 
         // + Nova Credencial Button
         Rectangle {
-            width: 150; height: 38; radius: 10
+            Layout.preferredWidth: 154
+            Layout.preferredHeight: 38
+            radius: 10
             color: newCredMouse.containsMouse ? "#8b5cf6" : "#7c3aed"
 
             RowLayout {
@@ -169,59 +140,120 @@ ColumnLayout {
         }
     }
 
-    // Groups Filter Pills
+    // Secondary Row: Search Bar & Group Filter Pills
     RowLayout {
         Layout.fillWidth: true
-        spacing: 8
-        visible: headerRoot.groups.length > 0
+        spacing: 12
 
+        // Search Bar
         Rectangle {
-            id: allGroupRect
-            property bool isSelected: headerRoot.selectedGroupId === ""
-            height: 32
-            width: allGroupText.contentWidth + 24
-            radius: 16
-            color: allGroupRect.isSelected ? "#6366f1" : "#1a1924"
-            border.color: allGroupRect.isSelected ? "#818cf8" : "#0fffffff"
-            Text {
-                id: allGroupText
-                anchors.centerIn: parent
-                text: "Todos (" + headerRoot.allCount + ")"
-                color: allGroupRect.isSelected ? "#ffffff" : "#a7a9be"
-                font.pixelSize: 12
-                font.bold: allGroupRect.isSelected
-            }
-            MouseArea {
+            Layout.preferredWidth: 260
+            Layout.preferredHeight: 34
+            radius: 8
+            color: "#15141b"
+            border.color: vaultSearchInput.activeFocus ? "#808b5cf6" : "#12ffffff"
+            border.width: 1
+
+            RowLayout {
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: headerRoot.groupSelected("")
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: 8
+
+                Text { text: "🔍"; color: "#a7a9be"; font.pixelSize: 12 }
+
+                TextInput {
+                    id: vaultSearchInput
+                    Layout.fillWidth: true
+                    color: "#fffffe"
+                    font.pixelSize: 13
+                    selectByMouse: true
+                    onTextChanged: headerRoot.searchChanged(text)
+
+                    Text {
+                        text: "Buscar credencial..."
+                        color: "#64748b"
+                        font.pixelSize: 13
+                        visible: !vaultSearchInput.text && !vaultSearchInput.activeFocus
+                    }
+                }
             }
         }
 
-        Repeater {
-            model: headerRoot.groups
-            delegate: Rectangle {
-                id: grpDelegate
-                property bool isSelected: headerRoot.selectedGroupId === modelData.id
-                height: 32
-                width: grpText.contentWidth + 24
-                radius: 16
-                color: grpDelegate.isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#12ffffff" : "#1a1924")
-                border.color: grpDelegate.isSelected ? "#818cf8" : "#0fffffff"
-                Text {
-                    id: grpText
-                    anchors.centerIn: parent
-                    text: "📁 " + modelData.name
-                    color: grpDelegate.isSelected ? "#ffffff" : "#a7a9be"
-                    font.pixelSize: 12
-                    font.bold: grpDelegate.isSelected
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 20
+            color: "#18ffffff"
+            visible: headerRoot.groups.length > 0
+        }
+
+        // Groups Filter Pills
+        Flickable {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 34
+            contentWidth: groupRow.width
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Row {
+                id: groupRow
+                spacing: 8
+
+                Rectangle {
+                    id: allGroupRect
+                    property bool isSelected: headerRoot.selectedGroupId === ""
+                    height: 32
+                    width: allGroupText.contentWidth + 24
+                    radius: 16
+                    color: allGroupRect.isSelected ? "#6366f1" : (allGroupMouse.containsMouse ? "#206366f1" : "#1a1924")
+                    border.color: allGroupRect.isSelected ? "#818cf8" : "#0fffffff"
+
+                    Text {
+                        id: allGroupText
+                        anchors.centerIn: parent
+                        text: "Todos (" + headerRoot.allCount + ")"
+                        color: allGroupRect.isSelected ? "#ffffff" : "#a7a9be"
+                        font.pixelSize: 12
+                        font.bold: allGroupRect.isSelected
+                    }
+
+                    MouseArea {
+                        id: allGroupMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: headerRoot.groupSelected("")
+                    }
                 }
-                MouseArea {
-                    id: grpMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: headerRoot.groupSelected(modelData.id)
+
+                Repeater {
+                    model: headerRoot.groups
+                    delegate: Rectangle {
+                        id: grpDelegate
+                        property bool isSelected: headerRoot.selectedGroupId === modelData.id
+                        height: 32
+                        width: grpText.contentWidth + 24
+                        radius: 16
+                        color: grpDelegate.isSelected ? "#6366f1" : (grpMouse.containsMouse ? "#206366f1" : "#1a1924")
+                        border.color: grpDelegate.isSelected ? "#818cf8" : "#0fffffff"
+
+                        Text {
+                            id: grpText
+                            anchors.centerIn: parent
+                            text: "📁 " + (modelData.name && modelData.name.length > 0 ? modelData.name : "Geral")
+                            color: grpDelegate.isSelected ? "#ffffff" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: grpDelegate.isSelected
+                        }
+
+                        MouseArea {
+                            id: grpMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: headerRoot.groupSelected(modelData.id)
+                        }
+                    }
                 }
             }
         }

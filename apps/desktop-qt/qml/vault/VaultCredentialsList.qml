@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 ListView {
@@ -17,6 +18,11 @@ ListView {
     signal deleteRequested(string itemId)
     signal editRequested(var item)
 
+    ScrollBar.vertical: ScrollBar {
+        policy: ScrollBar.AsNeeded
+        active: vaultListView.moving || vaultListView.flicking
+    }
+
     model: items
 
     delegate: Rectangle {
@@ -33,11 +39,16 @@ ListView {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 16
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            anchors.topMargin: 12
+            anchors.bottomMargin: 12
+            spacing: 14
 
             Rectangle {
-                width: 44; height: 44; radius: 10
+                Layout.preferredWidth: 42
+                Layout.preferredHeight: 42
+                radius: 10
                 color: "#1a8b5cf6"
                 border.color: "#338b5cf6"
 
@@ -50,16 +61,20 @@ ListView {
 
             ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 120
                 spacing: 3
 
                 Text {
-                    text: modelData.label
+                    Layout.fillWidth: true
+                    text: modelData.label || "Sem título"
                     color: vaultCardMouse.containsMouse ? "#c4b5fd" : "#fffffe"
                     font.pixelSize: 15
                     font.bold: true
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    Layout.fillWidth: true
                     text: (modelData.username || modelData.email || "Sem usuário") + (modelData.url ? " • " + modelData.url : "")
                     color: "#a7a9be"
                     font.pixelSize: 12
@@ -69,8 +84,8 @@ ListView {
 
             // Password Box with Reveal and Copy Buttons
             Rectangle {
-                width: 270
-                height: 38
+                Layout.preferredWidth: 260
+                Layout.preferredHeight: 38
                 radius: 8
                 color: "#15141b"
                 border.color: "#12ffffff"
@@ -83,7 +98,7 @@ ListView {
 
                     Text {
                         Layout.fillWidth: true
-                        text: vaultListView.revealedPasswords[modelData.id] ? modelData.password : "••••••••••••"
+                        text: vaultListView.revealedPasswords[modelData.id] ? (modelData.password || "") : "••••••••••••"
                         color: "#fffffe"
                         font.pixelSize: 13
                         font.family: "Monospace"
@@ -92,7 +107,9 @@ ListView {
 
                     // Ver / Ocultar
                     Rectangle {
-                        width: 50; height: 26; radius: 6
+                        Layout.preferredWidth: 50
+                        Layout.preferredHeight: 26
+                        radius: 6
                         color: "#0affffff"
 
                         Text {
@@ -111,7 +128,9 @@ ListView {
 
                     // Copiar Senha
                     Rectangle {
-                        width: 56; height: 26; radius: 6
+                        Layout.preferredWidth: 56
+                        Layout.preferredHeight: 26
+                        radius: 6
                         color: vaultListView.copiedId === modelData.id ? "#2610b981" : "#0affffff"
                         border.color: vaultListView.copiedId === modelData.id ? "#10b981" : "transparent"
 
@@ -126,7 +145,7 @@ ListView {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: vaultListView.copyPasswordRequested(modelData.password, modelData.id)
+                            onClicked: vaultListView.copyPasswordRequested(modelData.password || "", modelData.id)
                         }
                     }
                 }
@@ -134,7 +153,9 @@ ListView {
 
             // Edit Button
             Rectangle {
-                width: 32; height: 32; radius: 8
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                radius: 8
                 color: editCredMouse.containsMouse ? "#268b5cf6" : "#1a8b5cf6"
                 border.color: editCredMouse.containsMouse ? "#668b5cf6" : "#338b5cf6"
 
@@ -156,7 +177,9 @@ ListView {
 
             // Delete Button
             Rectangle {
-                width: 68; height: 32; radius: 8
+                Layout.preferredWidth: 68
+                Layout.preferredHeight: 32
+                radius: 8
                 color: delCredMouse.containsMouse ? "#26f43f5e" : "#1af43f5e"
                 border.color: delCredMouse.containsMouse ? "#66f43f5e" : "#33f43f5e"
 

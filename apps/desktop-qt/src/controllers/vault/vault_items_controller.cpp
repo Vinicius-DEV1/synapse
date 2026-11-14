@@ -24,14 +24,16 @@ QVariantList SynapseDataController::getVaultGroups() {
             if (!m_isVaultUnlocked || vaultKey.isEmpty()) continue;
             bool failed = false;
             for (const QString &field : {QStringLiteral("name"), QStringLiteral("icon"), QStringLiteral("color")}) {
-                const QString encrypted = group.value(field).toString();
-                if (encrypted.isEmpty()) continue;
-                const QString decrypted = decryptContent(vaultKey, encrypted);
-                if (decrypted.isNull()) {
-                    group[field] = QString();
-                    failed = true;
-                } else {
-                    group[field] = decrypted;
+                const QString val = group.value(field).toString();
+                if (val.isEmpty()) continue;
+                // An AES-GCM encrypted envelope consists of 3 hex parts separated by colons (IV:Ciphertext:Tag)
+                if (val.count(':') == 2) {
+                    const QString decrypted = decryptContent(vaultKey, val);
+                    if (!decrypted.isNull()) {
+                        group[field] = decrypted;
+                    } else {
+                        failed = true;
+                    }
                 }
             }
             if (failed) group["decryption_error"] = true;
@@ -59,14 +61,15 @@ QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
         if (!vKey.isEmpty()) {
             bool decryptionFailed = false;
             auto tryDec = [&](const QString &key) {
-                QString enc = item.value(key).toString();
-                if (!enc.isEmpty()) {
-                    QString dec = decryptContent(vKey, enc);
-                    if (dec.isNull()) {
-                        item[key] = QString();
-                        decryptionFailed = true;
-                    } else {
-                        item[key] = dec;
+                const QString val = item.value(key).toString();
+                if (!val.isEmpty()) {
+                    if (val.count(':') == 2) {
+                        const QString dec = decryptContent(vKey, val);
+                        if (dec.isNull()) {
+                            decryptionFailed = true;
+                        } else {
+                            item[key] = dec;
+                        }
                     }
                 }
             };
