@@ -369,7 +369,8 @@ int runNativeNotesLinkPreviewQmlTest() {
         import "../../qml/notes/NotesCustomWidgetsRenderer.js" as WidgetsRenderer
         Item {
             property string sourceHtml: ""
-            property string renderedHtml: WidgetsRenderer.renderCustomWidgets(sourceHtml)
+            property var options: null
+            property string renderedHtml: WidgetsRenderer.renderCustomWidgets(sourceHtml, options)
         }
     )", QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/WidgetsRendererTest.qml")));
     QScopedPointer<QObject> widgetRenderer(widgetComponent.create());
@@ -379,6 +380,8 @@ int runNativeNotesLinkPreviewQmlTest() {
     }
 
     const QString testCasesHtml = QStringLiteral(
+        "<p>Inicio</p>"
+        "<span data-type=\"spoiler\" class=\"caderno-spoiler\">segredo-oculto</span>"
         "<div data-type=\"question-block\" data-title=\"Biologia\" data-questions=\"%5B%7B%22prompt%22%3A%22Mitoc%C3%B4ndria%3F%22%2C%22options%22%3A%5B%22Energia%22%2C%22Proteina%22%5D%2C%22correctIndex%22%3A0%2C%22explanation%22%3A%22ATP%22%7D%5D\"></div>"
         "<span data-type=\"focus-widget\" data-duration=\"50\" data-tag=\"Foco\" data-description=\"Deep Work\" data-status=\"running\"></span>"
         "<span data-type=\"alarm-widget\" data-time=\"07:30\" data-label=\"Acordar\" data-status=\"pending\"></span>"
@@ -396,6 +399,8 @@ int runNativeNotesLinkPreviewQmlTest() {
     const QString widgetRendered = widgetRenderer->property("renderedHtml").toString();
 
     const bool allWidgetsTransformed =
+        widgetRendered.contains("SPOILER OCULTO") &&
+        !widgetRendered.contains("segredo-oculto") &&
         widgetRendered.contains("BATERIA DE EXERCÍCIOS / QUIZ: Biologia") &&
         widgetRendered.contains("Gabarito") &&
         widgetRendered.contains("FOCO POMODORO: 50 MINUTOS") &&
@@ -414,7 +419,27 @@ int runNativeNotesLinkPreviewQmlTest() {
         widgetRendered.contains("PACOTE DE DOCUMENTOS: Arquivos");
 
     if (!allWidgetsTransformed) {
-        qCritical() << "Native Notes custom widgets renderer did not transform all 11 widget blocks correctly:" << widgetRendered;
+        qCritical() << "Native Notes custom widgets renderer did not transform all widget blocks correctly:" << widgetRendered;
+        return 1;
+    }
+
+    // Verify spoiler revealed state
+    QVariantMap spoilerOptions;
+    spoilerOptions.insert("revealedSpoilers", QVariantMap{{"spoiler_0", true}});
+    widgetRenderer->setProperty("options", spoilerOptions);
+    const QString revealedRendered = widgetRenderer->property("renderedHtml").toString();
+    if (!revealedRendered.contains("segredo-oculto") || revealedRendered.contains("SPOILER OCULTO")) {
+        qCritical() << "Spoiler reveal toggle did not show the hidden text correctly:" << revealedRendered;
+        return 1;
+    }
+
+    // Verify toggle block collapsed state
+    QVariantMap toggleCollapsedOptions;
+    toggleCollapsedOptions.insert("toggleStates", QVariantMap{{"toggle_0", false}});
+    widgetRenderer->setProperty("options", toggleCollapsedOptions);
+    const QString collapsedRendered = widgetRenderer->property("renderedHtml").toString();
+    if (!collapsedRendered.contains("clique para expandir") || collapsedRendered.contains("Conteudo revelado")) {
+        qCritical() << "Toggle block collapse did not hide inner content correctly:" << collapsedRendered;
         return 1;
     }
 

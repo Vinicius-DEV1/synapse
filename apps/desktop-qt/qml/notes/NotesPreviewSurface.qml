@@ -13,6 +13,8 @@ Rectangle {
     property var controller: null
     property var sourceEditor: null
     property var textOperations: null
+    property var revealedSpoilers: ({})
+    property var toggleStates: ({})
     readonly property bool isDialogOpen: linkNotesDialog.visible || linkColorDialog.visible || linkDeleteDialog.visible
     signal linkActivated(string link)
     signal actionFailed(string message)
@@ -20,6 +22,32 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: Math.max(300, previewContentColumn.implicitHeight + 60)
     color: "transparent"
+
+    function toggleSpoiler(spoilerId) {
+        var copy = Object.assign({}, revealedSpoilers)
+        copy[spoilerId] = !copy[spoilerId]
+        revealedSpoilers = copy
+    }
+
+    function toggleBlock(toggleId) {
+        var copy = Object.assign({}, toggleStates)
+        copy[toggleId] = (copy[toggleId] !== undefined) ? !copy[toggleId] : false
+        toggleStates = copy
+    }
+
+    function handleCustomWidgetLink(link) {
+        if (link.indexOf("synapse-spoiler://toggle?id=") === 0) {
+            var spoilerId = link.substring("synapse-spoiler://toggle?id=".length)
+            toggleSpoiler(spoilerId)
+            return true
+        }
+        if (link.indexOf("synapse-toggle://toggle?id=") === 0) {
+            var toggleId = link.substring("synapse-toggle://toggle?id=".length)
+            toggleBlock(toggleId)
+            return true
+        }
+        return false
+    }
 
     function openLinkNotes(url, start, notes) {
         linkNotesDialog.openForLink(url, start, notes)
@@ -139,15 +167,21 @@ Rectangle {
             id: markdownDisplayArea
             objectName: "notesPageContentPreview"
             Layout.fillWidth: true
-            text: NotesCustomWidgetsRenderer.renderCustomWidgets(NotesLinkPreviewRenderer.render(
-                      previewSurface.sourceHtml, previewSurface.controller, previewSurface.copiedLinkUrl))
+            text: NotesCustomWidgetsRenderer.renderCustomWidgets(
+                      NotesLinkPreviewRenderer.render(
+                          previewSurface.sourceHtml, previewSurface.controller, previewSurface.copiedLinkUrl),
+                      { revealedSpoilers: previewSurface.revealedSpoilers, toggleStates: previewSurface.toggleStates })
             textFormat: /<[a-z][^>]*>/i.test(previewSurface.sourceHtml || "") ? Text.RichText : Text.MarkdownText
             color: "#fffffe"
             font.pixelSize: 15
             font.family: "Inter, -apple-system, sans-serif"
             wrapMode: Text.Wrap
             lineHeight: 1.45
-            onLinkActivated: function(link) { previewSurface.linkActivated(link) }
+            onLinkActivated: function(link) {
+                if (!previewSurface.handleCustomWidgetLink(link)) {
+                    previewSurface.linkActivated(link)
+                }
+            }
         }
         NotesLinkPreviewActionMenu {
             actions: NotesLinkPreviewRenderer.actionItems(

@@ -170,31 +170,51 @@ function renderFileWidgets(html) {
 }
 
 // 7. Toggle Collapsible Blocks
-function renderToggleBlocks(html) {
+function renderToggleBlocks(html, toggleStates) {
     var pattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\btoggle-block[^"]*"|'[^']*\btoggle-block[^']*'))([^>]*)>([\s\S]*?)<\/div>/gi
+    var index = 0
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<div " + tagAttrs + ">")
         var title = attrs["data-title"] || "Lista Oculta"
+        var toggleId = "toggle_" + (index++)
+        var initialOpen = attrs["data-is-open"] !== "false"
+        var isOpen = toggleStates && toggleStates[toggleId] !== undefined
+            ? Boolean(toggleStates[toggleId])
+            : initialOpen
+
+        var headerHtml = isOpen
+            ? "<p><a href=\"synapse-toggle://toggle?id=" + toggleId + "\" style=\"text-decoration:none;\"><font color=\"#c4b5fd\" size=\"2\"><b>▼ " + escapeHtml(title) + "</b></font></a></p>"
+            : "<p><a href=\"synapse-toggle://toggle?id=" + toggleId + "\" style=\"text-decoration:none;\"><font color=\"#a1a1aa\" size=\"2\"><b>▶ " + escapeHtml(title) + "</b></font> <font color=\"#71717a\" size=\"1\">(clique para expandir)</font></a></p>"
 
         return "<table width=\"100%\" border=\"1\" bordercolor=\"#27272a\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#14141e\">" +
                "<tr><td>" +
-               "<p><font color=\"#c4b5fd\" size=\"2\"><b>▼ " + escapeHtml(title) + "</b></font></p>" +
-               "<div style=\"margin-left: 14px;\">" + innerContent + "</div>" +
+               headerHtml +
+               (isOpen ? "<div style=\"margin-left: 14px;\">" + innerContent + "</div>" : "") +
                "</td></tr></table>"
     })
 }
 
 // 8. Blockquote Toggle (Callouts with Dropdown)
-function renderBlockquoteToggles(html) {
+function renderBlockquoteToggles(html, toggleStates) {
     var pattern = /<div\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\bblockquote-toggle[^"]*"|'[^']*\bblockquote-toggle[^']*'))([^>]*)>([\s\S]*?)<\/div>/gi
+    var index = 0
     return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
         var attrs = attributesFromTag("<div " + tagAttrs + ">")
         var title = attrs["data-title"] || "Destaque"
+        var toggleId = "bktoggle_" + (index++)
+        var initialOpen = attrs["data-is-open"] !== "false"
+        var isOpen = toggleStates && toggleStates[toggleId] !== undefined
+            ? Boolean(toggleStates[toggleId])
+            : initialOpen
+
+        var headerHtml = isOpen
+            ? "<p><a href=\"synapse-toggle://toggle?id=" + toggleId + "\" style=\"text-decoration:none;\"><font color=\"#ddd6fe\" size=\"2\"><b>▼ " + escapeHtml(title) + "</b></font></a></p>"
+            : "<p><a href=\"synapse-toggle://toggle?id=" + toggleId + "\" style=\"text-decoration:none;\"><font color=\"#a1a1aa\" size=\"2\"><b>▶ " + escapeHtml(title) + "</b></font> <font color=\"#71717a\" size=\"1\">(clique para expandir)</font></a></p>"
 
         return "<table width=\"100%\" border=\"1\" bordercolor=\"#7c3aed\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#1a1528\">" +
                "<tr><td>" +
-               "<p><font color=\"#ddd6fe\" size=\"2\"><b>▼ " + escapeHtml(title) + "</b></font></p>" +
-               "<div style=\"margin-left: 14px;\">" + innerContent + "</div>" +
+               headerHtml +
+               (isOpen ? "<div style=\"margin-left: 14px;\">" + innerContent + "</div>" : "") +
                "</td></tr></table>"
     })
 }
@@ -303,18 +323,41 @@ function renderDocumentBundles(html) {
     })
 }
 
+// 12. Spoilers (Hidden Text with Click-to-Reveal)
+function renderSpoilers(html, revealedMap) {
+    if (!html || (html.indexOf("data-type=\"spoiler\"") === -1 && html.indexOf("caderno-spoiler") === -1)) return html
+
+    var pattern = /<span\b(?=[^>]*\b(?:data-type="spoiler"|class="[^"]*caderno-spoiler[^"]*"))([^>]*)>([\s\S]*?)<\/span>/gi
+    var index = 0
+    return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
+        var spoilerId = "spoiler_" + (index++)
+        var isRevealed = revealedMap && Boolean(revealedMap[spoilerId])
+
+        if (isRevealed) {
+            return "<a href=\"synapse-spoiler://toggle?id=" + spoilerId + "\" style=\"text-decoration:none;\">" +
+                   "<font color=\"#f3e8ff\" bgcolor=\"#3b0764\">&nbsp;👁️ <b>" + innerContent + "</b>&nbsp;</font></a>"
+        } else {
+            return "<a href=\"synapse-spoiler://toggle?id=" + spoilerId + "\" style=\"text-decoration:none;\">" +
+                   "<font color=\"#c084fc\" bgcolor=\"#1e1430\">&nbsp;🌫️ <b>[ SPOILER OCULTO ]</b>&nbsp;</font></a>"
+        }
+    })
+}
+
 // Master rendering pipeline
-function renderCustomWidgets(source) {
+function renderCustomWidgets(source, options) {
     if (!source || source.length === 0) return ""
+    var revealedMap = (options && options.revealedSpoilers) ? options.revealedSpoilers : ({})
+    var toggleStates = (options && options.toggleStates) ? options.toggleStates : ({})
     var html = String(source)
+    html = renderSpoilers(html, revealedMap)
     html = renderQuestionBlocks(html)
     html = renderFocusWidgets(html)
     html = renderAlarmWidgets(html)
     html = renderCalendarEventWidgets(html)
     html = renderHabitWidgets(html)
     html = renderFileWidgets(html)
-    html = renderToggleBlocks(html)
-    html = renderBlockquoteToggles(html)
+    html = renderToggleBlocks(html, toggleStates)
+    html = renderBlockquoteToggles(html, toggleStates)
     html = renderColumnGroups(html)
     html = renderScrapWidgets(html)
     html = renderDocumentBundles(html)
