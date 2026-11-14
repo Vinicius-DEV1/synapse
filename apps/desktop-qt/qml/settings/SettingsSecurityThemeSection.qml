@@ -24,7 +24,8 @@ ColumnLayout {
         // Vault Security Settings
         Rectangle {
             Layout.fillWidth: true
-            height: 195
+            Layout.preferredHeight: 195
+            implicitHeight: 195
             radius: 12
             color: "#1a1924"
             border.color: "#0fffffff"
@@ -177,7 +178,8 @@ ColumnLayout {
         // Appearance & Theme Accent
         Rectangle {
             Layout.fillWidth: true
-            height: 195
+            Layout.preferredHeight: 195
+            implicitHeight: 195
             radius: 12
             color: "#1a1924"
             border.color: "#0fffffff"

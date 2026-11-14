@@ -233,6 +233,7 @@ Item {
             referenceActions.activateLink(link)
         }
         onTextChanged: {
+            if (!inputRoot.editorRoot || !inputRoot.editorRoot.textOperations || !richEditor.textDocument) return
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
             if (inputRoot.editorRoot.isLoading) {
                 inputRoot.previousPlainText = currentPlainText

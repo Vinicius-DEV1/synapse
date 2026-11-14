@@ -33,11 +33,6 @@ Popup {
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
 
-    Keys.onEscapePressed: function(event) {
-        if (isEditing) { cancelEditing(); event.accepted = true; }
-        else { close(); event.accepted = true; }
-    }
-
     function openForPage(targetPageId) {
         pageId = String(targetPageId || "").trim()
         isEditing = false
@@ -144,6 +139,12 @@ Popup {
 
     contentItem: ColumnLayout {
         spacing: 0
+        focus: true
+
+        Keys.onEscapePressed: function(event) {
+            if (previewRoot.isEditing) { previewRoot.cancelEditing(); event.accepted = true; }
+            else { previewRoot.close(); event.accepted = true; }
+        }
 
         Rectangle {
             Layout.fillWidth: true

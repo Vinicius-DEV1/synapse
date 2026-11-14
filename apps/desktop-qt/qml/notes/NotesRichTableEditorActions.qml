@@ -9,24 +9,24 @@ QtObject {
     property var textOperations
     property bool active: false
     property bool invalid: false
-    readonly property bool isInsideTable: textEditor &&
-        textOperations.isRichTableCell(textEditor.textDocument, textEditor.cursorPosition)
-    readonly property bool canMergeOrSplit: active && !invalid && textEditor &&
+    readonly property bool isInsideTable: Boolean(textOperations && textEditor && textEditor.textDocument &&
+        textOperations.isRichTableCell(textEditor.textDocument, textEditor.cursorPosition))
+    readonly property bool canMergeOrSplit: Boolean(active && !invalid && textOperations && textEditor && textEditor.textDocument &&
         textOperations.canMergeOrSplitRichTable(textEditor.textDocument, textEditor.cursorPosition,
-                                                textEditor.selectionStart, textEditor.selectionEnd)
-    readonly property bool canColorSelectedCells: active && !invalid && textEditor &&
+                                                textEditor.selectionStart, textEditor.selectionEnd))
+    readonly property bool canColorSelectedCells: Boolean(active && !invalid && textOperations && textEditor && textEditor.textDocument &&
         textOperations.canSetRichTableBackgroundOnSelection(
-            textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)
-    readonly property string selectionScope: active && !invalid && textEditor
+            textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd))
+    readonly property string selectionScope: active && !invalid && textOperations && textEditor && textEditor.textDocument
         ? textOperations.richTableSelectionScope(textEditor.textDocument, textEditor.cursorPosition,
                                                   textEditor.selectionStart, textEditor.selectionEnd)
         : "none"
-    readonly property bool isOnDivider: active && !invalid && textEditor &&
-        textOperations.isRichDivider(textEditor.textDocument, textEditor.cursorPosition)
-    readonly property bool canMoveDividerUp: isOnDivider &&
-        textOperations.canMoveRichDivider(textEditor.textDocument, textEditor.cursorPosition, true)
-    readonly property bool canMoveDividerDown: isOnDivider &&
-        textOperations.canMoveRichDivider(textEditor.textDocument, textEditor.cursorPosition, false)
+    readonly property bool isOnDivider: Boolean(active && !invalid && textOperations && textEditor && textEditor.textDocument &&
+        textOperations.isRichDivider(textEditor.textDocument, textEditor.cursorPosition))
+    readonly property bool canMoveDividerUp: Boolean(isOnDivider && textOperations && textEditor && textEditor.textDocument &&
+        textOperations.canMoveRichDivider(textEditor.textDocument, textEditor.cursorPosition, true))
+    readonly property bool canMoveDividerDown: Boolean(isOnDivider && textOperations && textEditor && textEditor.textDocument &&
+        textOperations.canMoveRichDivider(textEditor.textDocument, textEditor.cursorPosition, false))
 
     signal contentModified()
 

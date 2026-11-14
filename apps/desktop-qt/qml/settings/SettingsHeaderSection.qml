@@ -96,7 +96,8 @@ ColumnLayout {
     Rectangle {
         visible: headerRoot.backupFeedback.length > 0
         Layout.fillWidth: true
-        height: 44
+        Layout.preferredHeight: visible ? 44 : 0
+        implicitHeight: visible ? 44 : 0
         radius: 10
         color: "#1f10b981"
         border.color: "#4410b981"
@@ -131,12 +132,15 @@ ColumnLayout {
     // Database Path & Maintenance Action Card
     Rectangle {
         Layout.fillWidth: true
+        implicitHeight: dbCardLayout.implicitHeight + 40
+        Layout.preferredHeight: implicitHeight
         radius: 12
         color: "#1a1924"
         border.color: "#0fffffff"
         border.width: 1
 
         ColumnLayout {
+            id: dbCardLayout
             anchors.fill: parent
             anchors.margins: 20
             spacing: 14

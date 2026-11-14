@@ -105,14 +105,16 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
-        cellWidth: 360
+        readonly property int columnCount: Math.max(1, Math.floor(width / 340))
+        cellWidth: Math.max(300, Math.floor(width / columnCount))
         cellHeight: 170
         model: mediaGridRoot.filteredItems
 
         delegate: Rectangle {
             id: cultureCardDelegate
-            width: 340
+            width: Math.max(280, cultureGridView.cellWidth - 16)
             height: 154
+            x: Math.max(0, Math.round((cultureGridView.cellWidth - width) / 2))
             radius: 12
             color: cardMouse.containsMouse ? "#211f30" : "#1a1924"
             border.color: cardMouse.containsMouse ? "#668b5cf6" : "#0fffffff"

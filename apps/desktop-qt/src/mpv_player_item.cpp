@@ -56,7 +56,7 @@ public:
             0
         };
 
-        int flip_y = 1;
+        int flip_y = 0;
         mpv_render_param params[]{
             {MPV_RENDER_PARAM_OPENGL_FBO, &mpv_fbo},
             {MPV_RENDER_PARAM_FLIP_Y, &flip_y},

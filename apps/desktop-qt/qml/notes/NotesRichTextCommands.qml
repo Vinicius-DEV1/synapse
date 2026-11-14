@@ -17,33 +17,36 @@ Item {
     property var codeSyntaxHighlighter: null
     readonly property bool codeBlockActive: {
         var revision = codeBlockRevision
-        return textOperations.isRichCodeBlock(textEditor.textDocument, textEditor.cursorPosition)
+        return Boolean(textOperations && textEditor && textEditor.textDocument &&
+            textOperations.isRichCodeBlock(textEditor.textDocument, textEditor.cursorPosition))
     }
     readonly property string codeBlockLanguage: {
         var revision = codeBlockRevision
-        return codeBlockActive
+        return (codeBlockActive && textOperations && textEditor && textEditor.textDocument)
             ? textOperations.richCodeBlockLanguage(textEditor.textDocument, textEditor.cursorPosition) : "auto"
     }
     readonly property bool codeBlockCanMoveUp: {
         var revision = codeBlockRevision
-        return codeBlockActive && textOperations.canMoveRichCodeBlock(
-                    textEditor.textDocument, textEditor.cursorPosition, true)
+        return Boolean(codeBlockActive && textOperations && textEditor && textEditor.textDocument &&
+            textOperations.canMoveRichCodeBlock(textEditor.textDocument, textEditor.cursorPosition, true))
     }
     readonly property bool codeBlockCanMoveDown: {
         var revision = codeBlockRevision
-        return codeBlockActive && textOperations.canMoveRichCodeBlock(
-                    textEditor.textDocument, textEditor.cursorPosition, false)
+        return Boolean(codeBlockActive && textOperations && textEditor && textEditor.textDocument &&
+            textOperations.canMoveRichCodeBlock(textEditor.textDocument, textEditor.cursorPosition, false))
     }
     readonly property bool calloutAtCursor: {
         var revision = calloutRevision
-        return textOperations.isRichCalloutAt(textEditor.textDocument, textEditor.cursorPosition)
+        return Boolean(textOperations && textEditor && textEditor.textDocument &&
+            textOperations.isRichCalloutAt(textEditor.textDocument, textEditor.cursorPosition))
     }
     readonly property string calloutColorAtCursor: {
         var revision = calloutRevision
-        return textOperations.richCalloutColorAt(textEditor.textDocument, textEditor.cursorPosition)
+        return (textOperations && textEditor && textEditor.textDocument)
+            ? textOperations.richCalloutColorAt(textEditor.textDocument, textEditor.cursorPosition) : ""
     }
-    readonly property bool spoilerAtCursor: textOperations.isRichSpoilerAt(
-                                                textEditor.textDocument, textEditor.cursorPosition)
+    readonly property bool spoilerAtCursor: Boolean(textOperations && textEditor && textEditor.textDocument &&
+        textOperations.isRichSpoilerAt(textEditor.textDocument, textEditor.cursorPosition))
     readonly property bool boldAtCursor: {
         var revision = markRevision
         return textOperations && typeof textOperations.isRichMarkActive === "function"

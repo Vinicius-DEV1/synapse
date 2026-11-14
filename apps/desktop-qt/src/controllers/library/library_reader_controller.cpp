@@ -25,23 +25,79 @@ void SynapseDataController::openLibraryBook(const QString &bookId) {
     if (rows.isEmpty()) return fail("The selected book is no longer available.");
     const QJsonObject book = rows.first().toObject();
     QString recordedPath = book.value("file_path").toString();
-    recordedPath.remove("file://");
+    if (recordedPath.startsWith("file://", Qt::CaseInsensitive)) {
+        recordedPath.remove(0, 7);
+    } else if (recordedPath.startsWith("indexeddb://", Qt::CaseInsensitive)) {
+        recordedPath.remove(0, 12);
+    }
+    const QString originalName = book.value("original_name").toString();
     const QString appDirectory = QFileInfo(m_dbPath).absolutePath();
-    const QString libraryDirectory = QFileInfo(appDirectory + "/library").canonicalFilePath();
-    const QString candidatePath = QDir::isAbsolutePath(recordedPath)
-        ? recordedPath : QDir(appDirectory).filePath(recordedPath);
-    const QFileInfo sourceInfo(candidatePath);
-    const QString sourcePath = sourceInfo.canonicalFilePath();
-    if (libraryDirectory.isEmpty() || sourcePath.isEmpty() || !sourceInfo.isFile() ||
-        !sourcePath.startsWith(libraryDirectory + QDir::separator())) {
-        return fail("The local book path is missing or outside the managed library directory.");
+    const QString libraryDirectory = QDir(appDirectory + "/library").canonicalPath();
+
+    QStringList candidatePaths;
+    auto addCandidate = [&candidatePaths](const QString &path) {
+        if (!path.isEmpty() && !candidatePaths.contains(path)) {
+            candidatePaths.append(path);
+        }
+    };
+
+    if (QDir::isAbsolutePath(recordedPath)) {
+        addCandidate(recordedPath);
+        addCandidate(recordedPath + ".enc");
+    } else {
+        addCandidate(QDir(appDirectory).filePath(recordedPath));
+        addCandidate(QDir(appDirectory).filePath(recordedPath + ".enc"));
     }
 
-    QString format = QFileInfo(book.value("original_name").toString()).suffix().toLower();
+    if (!libraryDirectory.isEmpty()) {
+        const QDir libDir(libraryDirectory);
+        addCandidate(libDir.filePath(recordedPath));
+        addCandidate(libDir.filePath(recordedPath + ".enc"));
+        addCandidate(libDir.filePath(bookId + ".epub"));
+        addCandidate(libDir.filePath(bookId + ".epub.enc"));
+        addCandidate(libDir.filePath(bookId + ".pdf"));
+        addCandidate(libDir.filePath(bookId + ".pdf.enc"));
+        if (!originalName.isEmpty()) {
+            addCandidate(libDir.filePath(originalName));
+            addCandidate(libDir.filePath(originalName + ".enc"));
+        }
+    }
+
+    if (!originalName.isEmpty()) {
+        addCandidate(QDir::homePath() + "/Downloads/epub-pdf/" + originalName);
+        addCandidate(QDir::homePath() + "/Downloads/epub-pdf/pdf/" + originalName);
+        addCandidate(QDir::homePath() + "/Downloads/" + originalName);
+        addCandidate(QDir::homePath() + "/Documents/" + originalName);
+    }
+    addCandidate(QDir::homePath() + "/Downloads/epub-pdf/" + recordedPath);
+
+    QString sourcePath;
+    for (const QString &cand : candidatePaths) {
+        if (cand.isEmpty()) continue;
+        QFileInfo fi(cand);
+        if (fi.exists() && fi.isFile() && fi.isReadable()) {
+            sourcePath = fi.canonicalFilePath();
+            if (!sourcePath.isEmpty()) break;
+        }
+    }
+
+    if (sourcePath.isEmpty()) {
+        return fail("The local book path is missing or could not be found on disk.");
+    }
+
+    QString format = QFileInfo(originalName).suffix().toLower();
+    if (format != "pdf" && format != "epub") {
+        QString base = recordedPath;
+        if (base.endsWith(".enc", Qt::CaseInsensitive)) base.chop(4);
+        QString suff = QFileInfo(base).suffix().toLower();
+        if (suff == "pdf" || suff == "epub") format = suff;
+    }
     if (format != "pdf" && format != "epub") {
         QString baseName = QFileInfo(sourcePath).completeBaseName();
         if (baseName.endsWith(".pdf", Qt::CaseInsensitive)) format = "pdf";
         else if (baseName.endsWith(".epub", Qt::CaseInsensitive)) format = "epub";
+        else if (QFileInfo(sourcePath).suffix().toLower() == "pdf") format = "pdf";
+        else if (QFileInfo(sourcePath).suffix().toLower() == "epub") format = "epub";
     }
     if (format != "pdf" && format != "epub") return fail("This book format is not supported by the native reader.");
 

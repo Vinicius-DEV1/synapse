@@ -17,7 +17,7 @@ Item {
     signal contentModified()
 
     function refreshCheckboxes() {
-        if (!textEditor || !textEditor.textDocument) {
+        if (!textEditor || !textEditor.textDocument || !textOperations) {
             taskItems = []
             return
         }
