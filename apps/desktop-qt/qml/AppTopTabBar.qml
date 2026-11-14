@@ -15,6 +15,8 @@ Rectangle {
         { id: "tab-notes", module: "notes", title: "Caderno", icon: "notes" }
     ]
     property string activeTabId: "tab-home"
+    property var windowRoot: null
+    readonly property bool isMaximized: windowRoot ? (windowRoot.visibility === Window.Maximized) : false
 
     signal tabSelected(string tabId, string moduleKey)
     signal tabClosed(string tabId)
@@ -141,7 +143,23 @@ Rectangle {
             }
         }
 
-        Item { Layout.fillWidth: true } // Window dragging spacer
+        // Window dragging spacer
+        Item {
+            id: dragSpacer
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onPressed: {
+                    if (tabBarRoot.windowRoot && typeof tabBarRoot.windowRoot.startSystemMove === "function") {
+                        tabBarRoot.windowRoot.startSystemMove()
+                    }
+                }
+                onDoubleClicked: tabBarRoot.maximizeRequested()
+            }
+        }
 
         // Right Utility Icons: AI Sparkles & Notifications
         RowLayout {
@@ -151,6 +169,9 @@ Rectangle {
             Rectangle {
                 width: 28; height: 28; radius: 6
                 color: dataController.unreadNotificationCount > 0 ? theme.activePillBg : (notifMouse.containsMouse ? theme.bgHover : "transparent")
+                ToolTip.text: qsTr("Notificações")
+                ToolTip.visible: notifMouse.containsMouse
+                ToolTip.delay: 400
                 AppIcon { anchors.centerIn: parent; width: 16; height: 16; name: "bell"; color: dataController.unreadNotificationCount > 0 ? theme.brand400 : theme.textSubtext }
                 Rectangle {
                     visible: dataController.unreadNotificationCount > 0
@@ -172,6 +193,9 @@ Rectangle {
             Rectangle {
                 width: 28; height: 28; radius: 6
                 color: aiMouse.containsMouse ? "#10ffffff" : "transparent"
+                ToolTip.text: qsTr("Assistente IA")
+                ToolTip.visible: aiMouse.containsMouse
+                ToolTip.delay: 400
                 Text { anchors.centerIn: parent; text: "✨"; font.pixelSize: 13 }
                 MouseArea {
                     id: aiMouse
@@ -184,8 +208,16 @@ Rectangle {
             // Window Controls (Min, Max, Close)
             Rectangle {
                 width: 28; height: 28; radius: 6
-                color: minMouse.containsMouse ? "#10ffffff" : "transparent"
-                Text { anchors.centerIn: parent; text: "─"; color: theme.textSubtext; font.pixelSize: 11 }
+                color: minMouse.containsMouse ? "#1affffff" : "transparent"
+                ToolTip.text: qsTr("Minimizar")
+                ToolTip.visible: minMouse.containsMouse
+                ToolTip.delay: 400
+                Text {
+                    anchors.centerIn: parent
+                    text: "─"
+                    color: minMouse.containsMouse ? "#ffffff" : theme.textSubtext
+                    font.pixelSize: 11
+                }
                 MouseArea {
                     id: minMouse
                     anchors.fill: parent
@@ -197,8 +229,16 @@ Rectangle {
 
             Rectangle {
                 width: 28; height: 28; radius: 6
-                color: maxMouse.containsMouse ? "#10ffffff" : "transparent"
-                Text { anchors.centerIn: parent; text: "□"; color: theme.textSubtext; font.pixelSize: 11 }
+                color: maxMouse.containsMouse ? "#1affffff" : "transparent"
+                ToolTip.text: tabBarRoot.isMaximized ? qsTr("Restaurar") : qsTr("Maximizar")
+                ToolTip.visible: maxMouse.containsMouse
+                ToolTip.delay: 400
+                Text {
+                    anchors.centerIn: parent
+                    text: tabBarRoot.isMaximized ? "❐" : "□"
+                    color: maxMouse.containsMouse ? "#ffffff" : theme.textSubtext
+                    font.pixelSize: 11
+                }
                 MouseArea {
                     id: maxMouse
                     anchors.fill: parent
@@ -210,8 +250,16 @@ Rectangle {
 
             Rectangle {
                 width: 28; height: 28; radius: 6
-                color: closeAppMouse.containsMouse ? "#f43f5e" : "transparent"
-                Text { anchors.centerIn: parent; text: "✕"; color: closeAppMouse.containsMouse ? "#ffffff" : theme.textSubtext; font.pixelSize: 11 }
+                color: closeAppMouse.containsMouse ? "#e11d48" : "transparent"
+                ToolTip.text: qsTr("Fechar")
+                ToolTip.visible: closeAppMouse.containsMouse
+                ToolTip.delay: 400
+                Text {
+                    anchors.centerIn: parent
+                    text: "✕"
+                    color: closeAppMouse.containsMouse ? "#ffffff" : theme.textSubtext
+                    font.pixelSize: 11
+                }
                 MouseArea {
                     id: closeAppMouse
                     anchors.fill: parent

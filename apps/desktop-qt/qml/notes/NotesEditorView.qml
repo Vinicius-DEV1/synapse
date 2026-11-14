@@ -26,8 +26,8 @@ Rectangle {
     property bool isDirty: false
     property bool descriptionDirty: false
     property bool saveFailed: false
-    property bool isPreviewMode: true
-    property bool isRichMode: false
+    property bool isPreviewMode: false
+    property bool isRichMode: true
     property bool isHistoryOpen: false
     property bool isHelpOpen: false
     property string lastLoadedUpdatedAt: ""
@@ -99,12 +99,12 @@ Rectangle {
         var p = dataController.getPage(pageId)
         if (!p || !p.id) return false
 
-        isRichMode = false
         selectedPageId = pageId
         activeTitle = p.title || "Sem título"
         activeDescription = p.description || ""
         activeContent = p.content || ""
-        isPreviewMode = activeContent.trim().length > 0 && activeContent.trim() !== "<p></p>"
+        isPreviewMode = false
+        isRichMode = notesTextOperations.supportsRichSource(activeContent)
         activeIcon = p.icon || "📄"
         activeCoverImage = p.cover_image || ""
         activeDate = p.updated_at ? p.updated_at.substring(0, 10) : ""
@@ -249,12 +249,21 @@ Rectangle {
         }
     }
 
+    // Periodic check for external updates from web/other processes
+    Timer {
+        id: externalSyncTimer
+        interval: 3000
+        repeat: true
+        running: notesRoot.visible && notesRoot.selectedPageId.length > 0 && !notesRoot.isDirty
+        onTriggered: notesRoot.checkExternalUpdates()
+    }
+
     function checkExternalUpdates() {
         if (!selectedPageId) return
         var p = dataController.getPage(selectedPageId)
         if (!p || !p.id) return
         if (p.updated_at && lastLoadedUpdatedAt && p.updated_at !== lastLoadedUpdatedAt) {
-            if (!isDirty && !isRichMode) {
+            if (!isDirty) {
                 activeTitle = p.title || "Sem título"
                 activeDescription = p.description || ""
                 activeContent = p.content || ""
@@ -263,6 +272,15 @@ Rectangle {
                 editorCanvas.setTitleText(activeTitle)
                 editorCanvas.setDescriptionText(activeDescription)
                 editorCanvas.setEditorText(activeContent)
+                if (isRichMode) {
+                    if (notesTextOperations.supportsRichSource(activeContent)) {
+                        editorCanvas.flushRichEditor()
+                    } else {
+                        isRichMode = false
+                    }
+                }
+                editorCanvas.pageActionStatus = ""
+                loadPages()
             } else {
                 editorCanvas.pageActionStatus = qsTr("Note was modified externally. Save will preserve changes to history.")
             }

@@ -12,6 +12,11 @@ ApplicationWindow {
     minimumHeight: 680
     title: "Caderno"
     color: "#0f0e17"
+    flags: Qt.Window | Qt.FramelessWindowHint
+
+    WindowResizeHandles {
+        targetWindow: appWindow
+    }
 
     Loader {
         id: authenticatedShell

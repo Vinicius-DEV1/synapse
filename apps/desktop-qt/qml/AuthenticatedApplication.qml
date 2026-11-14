@@ -127,6 +127,7 @@ Item {
             id: topTabBar
             openTabs: rootWindow.tabsList
             activeTabId: rootWindow.currentTabId
+            windowRoot: rootWindow.windowRoot
             onTabSelected: function(tId, modKey) {
                 rootWindow.currentTabId = tId
                 rootWindow.activeTab = modKey
@@ -139,12 +140,18 @@ Item {
                 var info = rootWindow.getModuleInfo("notes")
                 rootWindow.openOrSwitchTab("notes", info.title, info.icon)
             }
-            onMinimizeRequested: rootWindow.windowRoot.showMinimized()
+            onMinimizeRequested: {
+                if (rootWindow.windowRoot) rootWindow.windowRoot.showMinimized()
+            }
             onMaximizeRequested: {
+                if (!rootWindow.windowRoot) return
                 if (rootWindow.windowRoot.visibility === Window.Maximized) rootWindow.windowRoot.showNormal()
                 else rootWindow.windowRoot.showMaximized()
             }
-            onCloseAppRequested: Qt.quit()
+            onCloseAppRequested: {
+                if (rootWindow.windowRoot) rootWindow.windowRoot.close()
+                else Qt.quit()
+            }
         }
 
         RowLayout {
