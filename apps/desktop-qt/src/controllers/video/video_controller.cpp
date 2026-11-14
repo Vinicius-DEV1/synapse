@@ -1,4 +1,5 @@
 #include "synapse_controller.h"
+#include "synapse_bridge.h"
 #include "native_video_metadata.h"
 
 #include <QtCore/QDebug>
@@ -97,16 +98,18 @@ void SynapseDataController::importVideo(const QString &sourcePath, const QString
             error = "Could not finalize encrypted video storage.";
         }
         if (success) {
-            const QString now = currentTimestamp();
-            const QVariant normalizedCollection = collection.isEmpty() ? QVariant() : QVariant(collection);
-            const QVariant normalizedCollectionId = collectionId.trimmed().isEmpty()
-                ? QVariant() : QVariant(collectionId.trimmed());
-            success = executeSqlPrepared(
-                "INSERT INTO videos (id, title, original_name, file_path, progress, is_local, collection_id, "
-                "collection_name, audio_tracks_json, created_at, updated_at) "
-                "VALUES (?1, ?2, ?3, ?4, 0, 1, ?5, ?6, ?7, ?8, ?8)",
-                {id, title, originalName, destination, normalizedCollectionId, normalizedCollection,
-                 audioTracksJson, now}) == 1;
+            QJsonObject videoObj;
+            videoObj["id"] = id;
+            videoObj["title"] = title;
+            videoObj["original_name"] = originalName;
+            videoObj["file_path"] = destination;
+            videoObj["progress"] = 0.0;
+            videoObj["is_local"] = 1;
+            if (!collectionId.trimmed().isEmpty()) videoObj["collection_id"] = collectionId.trimmed();
+            if (!collection.trimmed().isEmpty()) videoObj["collection_name"] = collection.trimmed();
+            if (!audioTracksJson.trimmed().isEmpty()) videoObj["audio_tracks_json"] = audioTracksJson;
+            const QByteArray jsonBytes = QJsonDocument(videoObj).toJson(QJsonDocument::Compact);
+            success = m_db && synapse_video_insert(m_db, jsonBytes.constData()) == 1;
             if (!success) {
                 QFile::remove(destination);
                 error = "Could not save the video record in the database.";
@@ -155,11 +158,12 @@ QVariantMap SynapseDataController::configureVideoPlayback(QObject *player, const
         return fail("Unlock the vault before playing local media.");
     }
     if (!player) return fail("The native player is not available.");
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT title, file_path, duration, progress, subtitles_json, local_subtitle_path "
-        "FROM videos WHERE id = ?1 AND deleted_at IS NULL", {videoId});
-    if (rows.isEmpty()) return fail("The selected video is no longer available.");
-    const QJsonObject video = rows.first().toObject();
+    if (!m_db) return fail("The database is not available.");
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_one(m_db, vidBytes.constData());
+    if (!raw) return fail("The selected video is no longer available.");
+    const QJsonObject video = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
     const QString recordedPath = video.value("file_path").toString();
     if (recordedPath.trimmed().isEmpty()) return fail("This video has no local copy available.");
 
@@ -220,30 +224,30 @@ QVariantMap SynapseDataController::configureVideoPlayback(QObject *player, const
 }
 
 bool SynapseDataController::updateVideoProgress(const QString &videoId, double progress) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE videos SET progress = %1, updated_at = '%2' WHERE id = '%3'")
-        .arg(progress).arg(ts, escapeSql(videoId));
-    return executeSql(sql);
+    if (!m_db) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    return synapse_video_update_progress(m_db, vidBytes.constData(), progress) == 1;
 }
 
 bool SynapseDataController::updateVideoDuration(const QString &videoId, double duration) {
-    if (videoId.isEmpty() || !std::isfinite(duration) || duration <= 0.0) return false;
-    const QString sql = QString("UPDATE videos SET duration = %1, updated_at = '%2' "
-                                "WHERE id = '%3' AND deleted_at IS NULL AND (duration IS NULL OR duration <= 0)")
-                            .arg(QString::number(duration, 'f', 3), currentTimestamp(), escapeSql(videoId));
-    return executeSql(sql);
+    if (!m_db || videoId.isEmpty() || !std::isfinite(duration) || duration <= 0.0) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    return synapse_video_update_duration(m_db, vidBytes.constData(), duration) == 1;
 }
 
 bool SynapseDataController::deleteVideo(const QString &videoId) {
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT file_path FROM videos WHERE id = ?1 AND deleted_at IS NULL", {videoId});
-    if (rows.isEmpty()) return false;
+    if (!m_db) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_one(m_db, vidBytes.constData());
+    if (!raw) return false;
+    const QJsonObject video = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
 
     const QString appDirectory = QFileInfo(m_dbPath).absolutePath();
     const QString videosDirectory = QFileInfo(appDirectory + "/videos").canonicalFilePath();
     QVector<QPair<QString, QString>> stagedSubtitleFiles;
     if (!stageVideoSubtitleFiles(videoId, videosDirectory, stagedSubtitleFiles)) return false;
-    const QString recordedPath = rows.first().toObject().value("file_path").toString();
+    const QString recordedPath = video.value("file_path").toString();
     const QString candidatePath = recordedPath.isEmpty() ? QString()
         : (QDir::isAbsolutePath(recordedPath) ? recordedPath : QDir(appDirectory).filePath(recordedPath));
     const QFileInfo candidateInfo(candidatePath);
@@ -256,21 +260,8 @@ bool SynapseDataController::deleteVideo(const QString &videoId) {
         return false;
     }
 
-    const QString timestamp = currentTimestamp();
-    if (!executeSql("BEGIN IMMEDIATE;")) {
-        if (managedFile) QFile::rename(stagedPath, canonicalPath);
-        restoreStagedVideoSubtitleFiles(stagedSubtitleFiles);
-        return false;
-    }
-    const bool rowUpdated = executeSqlPrepared(
-        "UPDATE videos SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-        {timestamp, videoId}) == 1;
-    const bool wordsUpdated = rowUpdated && executeSqlPrepared(
-        "UPDATE video_words SET deleted_at = ?1, updated_at = ?1 "
-        "WHERE video_id = ?2 AND deleted_at IS NULL", {timestamp, videoId}) >= 0;
-    const bool committed = wordsUpdated && executeSql("COMMIT;");
-    if (!committed) {
-        executeSql("ROLLBACK;");
+    const bool rowUpdated = synapse_video_delete(m_db, vidBytes.constData()) == 1;
+    if (!rowUpdated) {
         if (managedFile) QFile::rename(stagedPath, canonicalPath);
         restoreStagedVideoSubtitleFiles(stagedSubtitleFiles);
         return false;
@@ -283,26 +274,28 @@ bool SynapseDataController::deleteVideo(const QString &videoId) {
 }
 
 QVariantList SynapseDataController::getVideoWords(const QString &videoId) {
-    QString sql = QString("SELECT id, video_id, word, context, timestamp "
-                          "FROM video_words WHERE video_id = '%1' AND deleted_at IS NULL "
-                          "ORDER BY timestamp ASC").arg(escapeSql(videoId));
-    return executeQuery(sql).toVariantList();
+    if (!m_db) return {};
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_words(m_db, vidBytes.constData());
+    if (!raw) return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    return doc.array().toVariantList();
 }
 
 bool SynapseDataController::addVideoWord(const QString &videoId, const QString &word, const QString &context, double timestamp) {
-    QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    QString ts = currentTimestamp();
-    QString sql = QString("INSERT INTO video_words (id, video_id, word, context, timestamp, created_at, updated_at) "
-                          "VALUES ('%1', '%2', '%3', '%4', %5, '%6', '%6')")
-        .arg(id, escapeSql(videoId), escapeSql(word), escapeSql(context))
-        .arg(timestamp).arg(ts);
-    return executeSql(sql);
+    if (!m_db) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    const QByteArray wordBytes = word.trimmed().toUtf8();
+    const QByteArray ctxBytes = context.trimmed().toUtf8();
+    return synapse_video_add_word(
+        m_db, vidBytes.constData(), wordBytes.constData(),
+        ctxBytes.isEmpty() ? nullptr : ctxBytes.constData(), timestamp) == 1;
 }
 
 bool SynapseDataController::deleteVideoWord(const QString &wordId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE video_words SET deleted_at = '%1' WHERE id = '%2'")
-        .arg(ts, escapeSql(wordId));
-    return executeSql(sql);
+    if (!m_db) return false;
+    const QByteArray widBytes = wordId.trimmed().toUtf8();
+    return synapse_video_delete_word(m_db, widBytes.constData()) == 1;
 }
 

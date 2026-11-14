@@ -1,69 +1,79 @@
 #include "synapse_controller.h"
 
-#include <QtCore/QDateTime>
-#include <QtCore/QDir>
-#include <QtCore/QFileInfo>
-#include <QtCore/QStandardPaths>
-#include <QtCore/QSysInfo>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 
-// Native notification persistence and actions.
-
-// ---------------------------------------------------------------------------
-// 16. Native notification center
-// ---------------------------------------------------------------------------
+// Native notification persistence and actions delegated to synapse_notifications_* domain APIs.
 
 QVariantList SynapseDataController::getNotifications() {
-    const QString sql = "SELECT id, title, message, type, target_page_id, event_id, scheduled_for, "
-                        "fired_at, is_read, created_at FROM notifications "
-                        "WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 100";
-    return executeQuery(sql).toVariantList();
+    if (!m_db) return {};
+    char *jsonStr = synapse_notifications_get(m_db);
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+    return doc.array().toVariantList();
 }
 
 bool SynapseDataController::markNotificationRead(const QString &notificationId) {
-    const QString now = currentTimestamp();
-    bool ok = false;
-    if (notificationId.isEmpty()) {
-        ok = executeSqlPrepared("UPDATE notifications SET is_read = 1, updated_at = ? WHERE is_read = 0 AND deleted_at IS NULL",
-                                {now});
-    } else {
-        ok = executeSqlPrepared("UPDATE notifications SET is_read = 1, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-                                {now, notificationId});
+    if (!m_db) return false;
+    const QByteArray idBytes = notificationId.trimmed().toUtf8();
+    const char *idPtr = idBytes.isEmpty() ? nullptr : idBytes.constData();
+
+    const int ret = synapse_notifications_mark_read(m_db, idPtr);
+    if (ret == 1) {
+        refreshStats();
+        return true;
     }
-    if (ok) refreshStats();
-    return ok;
+    return false;
 }
 
 bool SynapseDataController::deleteNotification(const QString &notificationId) {
-    const QString now = currentTimestamp();
-    const bool ok = executeSqlPrepared("UPDATE notifications SET deleted_at = ?, updated_at = ? WHERE id = ?",
-                                       {now, now, notificationId});
-    if (ok) refreshStats();
-    return ok;
+    if (!m_db || notificationId.trimmed().isEmpty()) return false;
+    const int ret = synapse_notifications_delete(m_db, notificationId.trimmed().toUtf8().constData());
+    if (ret == 1) {
+        refreshStats();
+        return true;
+    }
+    return false;
 }
 
 bool SynapseDataController::clearAllNotifications() {
-    const QString now = currentTimestamp();
-    const bool ok = executeSqlPrepared("UPDATE notifications SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL",
-                                       {now, now});
-    if (ok) refreshStats();
-    return ok;
+    if (!m_db) return false;
+    const int ret = synapse_notifications_clear_all(m_db);
+    if (ret == 1) {
+        refreshStats();
+        return true;
+    }
+    return false;
 }
 
 bool SynapseDataController::addNotification(const QString &title, const QString &message,
                                             const QString &type, const QString &targetPageId,
                                             const QString &eventId, const QString &scheduledFor) {
-    const QString id = generateUuid();
-    const QString now = currentTimestamp();
-    const QVariant pageIdVal = targetPageId.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(targetPageId);
-    const QVariant eventIdVal = eventId.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(eventId);
-    const QVariant scheduledVal = scheduledFor.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(scheduledFor);
+    if (!m_db || title.trimmed().isEmpty()) return false;
 
-    const bool ok = executeSqlPrepared(
-        "INSERT INTO notifications (id, title, message, type, target_page_id, event_id, scheduled_for, fired_at, is_read, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
-        {id, title, message, type, pageIdVal, eventIdVal, scheduledVal, now, now}
+    const QByteArray titleBytes = title.trimmed().toUtf8();
+    const QByteArray msgBytes = message.trimmed().toUtf8();
+    const QByteArray typeBytes = type.trimmed().toUtf8();
+    const QByteArray pageBytes = targetPageId.trimmed().toUtf8();
+    const QByteArray eventBytes = eventId.trimmed().toUtf8();
+    const QByteArray schedBytes = scheduledFor.trimmed().toUtf8();
+
+    const int ret = synapse_notifications_add(
+        m_db,
+        titleBytes.constData(),
+        msgBytes.isEmpty() ? nullptr : msgBytes.constData(),
+        typeBytes.isEmpty() ? nullptr : typeBytes.constData(),
+        pageBytes.isEmpty() ? nullptr : pageBytes.constData(),
+        eventBytes.isEmpty() ? nullptr : eventBytes.constData(),
+        schedBytes.isEmpty() ? nullptr : schedBytes.constData()
     );
-    if (ok) refreshStats();
-    return ok;
-}
 
+    if (ret == 1) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}

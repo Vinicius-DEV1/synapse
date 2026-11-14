@@ -1,47 +1,47 @@
 #include "synapse_controller.h"
 
-#include <QtCore/QDateTime>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
-#include <QtCore/QRegularExpression>
-#include <QtCore/QSet>
 
-// Native calendar event persistence using prepared statements.
+// Native calendar event persistence delegated to synapse_calendar_* domain APIs.
 
 QVariantList SynapseDataController::getCalendarEvents() {
-    return executeQuery(
-        "SELECT id, title, description, start_date, end_date, type, status, color, page_id "
-        "FROM calendar_events WHERE deleted_at IS NULL ORDER BY start_date ASC LIMIT 300"
-    ).toVariantList();
+    if (!m_db) return {};
+    char *jsonStr = synapse_calendar_get_events(m_db);
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+    return doc.array().toVariantList();
 }
 
 bool SynapseDataController::createCalendarEvent(const QString &title, const QString &description,
                                                 const QString &startDate, const QString &endDate,
                                                 const QString &type, const QString &color,
                                                 const QString &pageId) {
-    static const QRegularExpression safeColor(QStringLiteral("^#[0-9A-Fa-f]{6}$"));
-    static const QSet<QString> validTypes = {"event", "task", "reminder"};
+    if (!m_db || title.trimmed().isEmpty()) return false;
 
-    if (title.trimmed().isEmpty()) return false;
+    const QByteArray titleBytes = title.trimmed().toUtf8();
+    const QByteArray descBytes = description.trimmed().toUtf8();
+    const QByteArray startBytes = startDate.trimmed().toUtf8();
+    const QByteArray endBytes = endDate.trimmed().toUtf8();
+    const QByteArray typeBytes = type.trimmed().toUtf8();
+    const QByteArray colorBytes = color.trimmed().toUtf8();
+    const QByteArray pageBytes = pageId.trimmed().toUtf8();
 
-    const bool validStart = QDateTime::fromString(startDate, Qt::ISODate).isValid() ||
-                            QDate::fromString(startDate, Qt::ISODate).isValid();
-    const bool validEnd = QDateTime::fromString(endDate, Qt::ISODate).isValid() ||
-                          QDate::fromString(endDate, Qt::ISODate).isValid();
-    if (!validStart || !validEnd) return false;
+    const int ret = synapse_calendar_create_event(
+        m_db,
+        titleBytes.constData(),
+        descBytes.isEmpty() ? nullptr : descBytes.constData(),
+        startBytes.constData(),
+        endBytes.constData(),
+        typeBytes.isEmpty() ? nullptr : typeBytes.constData(),
+        colorBytes.isEmpty() ? nullptr : colorBytes.constData(),
+        pageBytes.isEmpty() ? nullptr : pageBytes.constData()
+    );
 
-    const QString resolvedColor = safeColor.match(color).hasMatch() ? color : QStringLiteral("#3b82f6");
-    const QString resolvedType = validTypes.contains(type) ? type : QStringLiteral("event");
-    const QString id = generateUuid();
-    const QString ts = currentTimestamp();
-
-    const int rows = executeSqlPrepared(
-        "INSERT INTO calendar_events (id, title, description, start_date, end_date, type, type_, status, color, page_id, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
-        {id, title.trimmed(), description.trimmed(), startDate, endDate, resolvedType, resolvedType,
-         resolvedColor, pageId.trimmed().isEmpty() ? QVariant() : pageId.trimmed(), ts, ts});
-    if (rows == 1) {
+    if (ret == 1) {
         refreshStats();
         return true;
     }
@@ -52,77 +52,46 @@ bool SynapseDataController::updateCalendarEvent(const QString &eventId, const QS
                                                 const QString &description, const QString &startDate,
                                                 const QString &endDate, const QString &color,
                                                 const QString &type, const QString &pageId) {
-    static const QRegularExpression safeColor(QStringLiteral("^#[0-9A-Fa-f]{6}$"));
-    static const QSet<QString> validTypes = {"event", "task", "reminder"};
+    if (!m_db || eventId.trimmed().isEmpty() || title.trimmed().isEmpty()) return false;
 
-    const bool validStart = QDateTime::fromString(startDate, Qt::ISODate).isValid() ||
-                            QDate::fromString(startDate, Qt::ISODate).isValid();
-    const bool validEnd = QDateTime::fromString(endDate, Qt::ISODate).isValid() ||
-                          QDate::fromString(endDate, Qt::ISODate).isValid();
-    if (eventId.trimmed().isEmpty() || title.trimmed().isEmpty() ||
-        !validStart || !validEnd ||
-        !safeColor.match(color).hasMatch()) {
-        return false;
+    const QByteArray idBytes = eventId.trimmed().toUtf8();
+    const QByteArray titleBytes = title.trimmed().toUtf8();
+    const QByteArray descBytes = description.trimmed().toUtf8();
+    const QByteArray startBytes = startDate.trimmed().toUtf8();
+    const QByteArray endBytes = endDate.trimmed().toUtf8();
+    const QByteArray colorBytes = color.trimmed().toUtf8();
+    const QByteArray typeBytes = type.trimmed().toUtf8();
+    const QByteArray pageBytes = pageId.trimmed().toUtf8();
+
+    const int ret = synapse_calendar_update_event(
+        m_db,
+        idBytes.constData(),
+        titleBytes.constData(),
+        descBytes.isEmpty() ? nullptr : descBytes.constData(),
+        startBytes.constData(),
+        endBytes.constData(),
+        colorBytes.constData(),
+        typeBytes.isEmpty() ? nullptr : typeBytes.constData(),
+        pageBytes.isEmpty() ? nullptr : pageBytes.constData()
+    );
+
+    if (ret == 1) {
+        refreshStats();
+        return true;
     }
-
-    const QString ts = currentTimestamp();
-    int updatedRows = 0;
-
-    if (type.trimmed().isEmpty()) {
-        if (pageId.isEmpty()) {
-            updatedRows = executeSqlPrepared(
-                "UPDATE calendar_events SET title = ?1, description = ?2, start_date = ?3, end_date = ?4, "
-                "color = ?5, updated_at = ?6 WHERE id = ?7 AND deleted_at IS NULL",
-                {title.trimmed(), description, startDate, endDate, color, ts, eventId});
-        } else {
-            updatedRows = executeSqlPrepared(
-                "UPDATE calendar_events SET title = ?1, description = ?2, start_date = ?3, end_date = ?4, "
-                "color = ?5, page_id = ?6, updated_at = ?7 WHERE id = ?8 AND deleted_at IS NULL",
-                {title.trimmed(), description, startDate, endDate, color, pageId.trimmed(), ts, eventId});
-        }
-    } else {
-        const QString resolvedType = validTypes.contains(type) ? type : QStringLiteral("event");
-        if (pageId.isEmpty()) {
-            updatedRows = executeSqlPrepared(
-                "UPDATE calendar_events SET title = ?1, description = ?2, start_date = ?3, end_date = ?4, "
-                "color = ?5, type = ?6, type_ = ?7, updated_at = ?8 WHERE id = ?9 AND deleted_at IS NULL",
-                {title.trimmed(), description, startDate, endDate, color, resolvedType, resolvedType, ts, eventId});
-        } else {
-            updatedRows = executeSqlPrepared(
-                "UPDATE calendar_events SET title = ?1, description = ?2, start_date = ?3, end_date = ?4, "
-                "color = ?5, type = ?6, type_ = ?7, page_id = ?8, updated_at = ?9 WHERE id = ?10 AND deleted_at IS NULL",
-                {title.trimmed(), description, startDate, endDate, color, resolvedType, resolvedType, pageId.trimmed(), ts, eventId});
-        }
-    }
-
-    if (updatedRows != 1) return false;
-    refreshStats();
-    return true;
+    return false;
 }
 
 bool SynapseDataController::toggleEventStatus(const QString &eventId) {
-    if (eventId.trimmed().isEmpty()) return false;
-    const QJsonArray arr = executeQueryPrepared(
-        "SELECT status FROM calendar_events WHERE id = ? AND deleted_at IS NULL", {eventId});
-    if (arr.isEmpty()) return false;
-
-    const QString curStatus = arr[0].toObject().value("status").toString();
-    const QString newStatus = (curStatus == "completed") ? "pending" : "completed";
-    const QString ts = currentTimestamp();
-
-    const int rows = executeSqlPrepared(
-        "UPDATE calendar_events SET status = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-        {newStatus, ts, eventId});
-    return rows == 1;
+    if (!m_db || eventId.trimmed().isEmpty()) return false;
+    const int ret = synapse_calendar_toggle_status(m_db, eventId.trimmed().toUtf8().constData());
+    return ret == 1;
 }
 
 bool SynapseDataController::deleteCalendarEvent(const QString &eventId) {
-    if (eventId.trimmed().isEmpty()) return false;
-    const QString ts = currentTimestamp();
-    const int rows = executeSqlPrepared(
-        "UPDATE calendar_events SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-        {ts, ts, eventId});
-    if (rows == 1) {
+    if (!m_db || eventId.trimmed().isEmpty()) return false;
+    const int ret = synapse_calendar_delete_event(m_db, eventId.trimmed().toUtf8().constData());
+    if (ret == 1) {
         refreshStats();
         return true;
     }

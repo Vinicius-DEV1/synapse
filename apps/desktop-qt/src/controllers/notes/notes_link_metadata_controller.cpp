@@ -1,7 +1,7 @@
 #include "synapse_controller.h"
 
 #include <cmath>
-#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QUrl>
 
@@ -33,16 +33,18 @@ bool optionalNonNegativeNumber(const QVariant &value, double maximum, bool integ
 }
 
 QVariantMap SynapseDataController::getLinkMetadata(const QString &url) {
-    if (!isHttpUrl(url)) return {};
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT url, title, channel, duration, is_playlist AS isPlaylist, "
-        "playlist_count AS playlistCount, upload_date AS uploadDate, image_url AS imageUrl "
-        "FROM link_metadata_cache WHERE url = ?1 AND deleted_at IS NULL LIMIT 1",
-        {url});
-    return rows.isEmpty() ? QVariantMap() : rows.first().toObject().toVariantMap();
+    if (!m_db || !isHttpUrl(url)) return {};
+    const QByteArray urlBytes = url.trimmed().toUtf8();
+    char *raw = synapse_notes_get_link_metadata(m_db, urlBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isObject() ? doc.object().toVariantMap() : QVariantMap();
 }
 
 bool SynapseDataController::saveLinkMetadata(const QVariantMap &entry) {
+    if (!m_db) return false;
     const QString url = entry.value("url").toString();
     const QVariant duration = entry.value("duration");
     const QVariant playlistCount = firstValue(entry, "playlistCount", "playlist_count");
@@ -64,17 +66,16 @@ bool SynapseDataController::saveLinkMetadata(const QVariantMap &entry) {
         return false;
     }
 
-    const int changedRows = executeSqlPrepared(
-        "INSERT INTO link_metadata_cache "
-        "(url, title, channel, duration, is_playlist, playlist_count, upload_date, image_url, updated_at, deleted_at) "
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL) "
-        "ON CONFLICT(url) DO UPDATE SET title = excluded.title, channel = excluded.channel, "
-        "duration = excluded.duration, is_playlist = excluded.is_playlist, "
-        "playlist_count = excluded.playlist_count, upload_date = excluded.upload_date, "
-        "image_url = excluded.image_url, updated_at = excluded.updated_at, deleted_at = NULL",
-        {url, title.isEmpty() ? QVariant() : QVariant(title), channel.isEmpty() ? QVariant() : QVariant(channel),
-         duration, playlist.isNull() ? QVariant(false) : playlist,
-         playlistCount, uploadDateText.isEmpty() ? QVariant() : QVariant(uploadDateText),
-         imageUrlText.isEmpty() ? QVariant() : QVariant(imageUrlText), currentTimestamp()});
-    return changedRows == 1;
+    QJsonObject obj;
+    obj["url"] = url;
+    if (!title.isEmpty()) obj["title"] = title;
+    if (!channel.isEmpty()) obj["channel"] = channel;
+    if (duration.isValid() && !duration.isNull()) obj["duration"] = duration.toDouble();
+    if (playlist.isValid() && !playlist.isNull()) obj["isPlaylist"] = playlist.toBool();
+    if (playlistCount.isValid() && !playlistCount.isNull()) obj["playlistCount"] = playlistCount.toInt();
+    if (!uploadDateText.isEmpty()) obj["uploadDate"] = uploadDateText;
+    if (!imageUrlText.isEmpty()) obj["imageUrl"] = imageUrlText;
+
+    const QByteArray jsonBytes = QJsonDocument(obj).toJson(QJsonDocument::Compact);
+    return synapse_notes_save_link_metadata(m_db, jsonBytes.constData()) == 1;
 }

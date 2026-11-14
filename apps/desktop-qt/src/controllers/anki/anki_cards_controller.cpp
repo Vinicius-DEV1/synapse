@@ -1,189 +1,95 @@
 #include "synapse_controller.h"
+#include "synapse_bridge.h"
 
-#include <QtCore/QDateTime>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
-#include <QtCore/QRandomGenerator>
-#include <QtCore/QRegularExpression>
-#include <QtCore/QSet>
-#include <cmath>
-#include <functional>
 
-// Native Anki card scheduling and review persistence.
+namespace {
+QJsonArray parseJsonArray(char* raw) {
+    if (!raw) return QJsonArray();
+    QByteArray bytes(raw);
+    synapse_free_string(raw);
+    QJsonDocument doc = QJsonDocument::fromJson(bytes);
+    return doc.isArray() ? doc.array() : QJsonArray();
+}
+} // namespace
+
+// Native Anki card scheduling and review persistence delegated to synapse-core.
 
 QVariantList SynapseDataController::getDeckCards(const QString &deckId) {
-    QString sql = QString("SELECT c.id, c.deck_id, c.front, c.back, "
-                          "COALESCE(c.tags, '') as tags, "
-                          "COALESCE(c.card_type, 'reading') as card_type, "
-                          "COALESCE(c.validation_mode, 'default') as validation_mode, "
-                          "COALESCE(c.extra_note, '') as extra_note, "
-                          "c.media_url, "
-                          "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-                          "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
-                          "COALESCE(s.state, 'new') as state, s.due_date "
-                          "FROM anki_cards c LEFT JOIN anki_srs_state s ON c.id = s.id "
-                          "WHERE c.deck_id = '%1' AND c.deleted_at IS NULL ORDER BY c.created_at ASC")
-        .arg(escapeSql(deckId));
-    return executeQuery(sql).toVariantList();
+    if (!m_db || deckId.trimmed().isEmpty()) return QVariantList();
+    QByteArray idUtf8 = deckId.trimmed().toUtf8();
+    char* raw = synapse_anki_get_deck_cards(m_db, idUtf8.constData());
+    return parseJsonArray(raw).toVariantList();
 }
 
 QVariantList SynapseDataController::getDueCards(const QString &deckId) {
-    QString allDecksSql = "SELECT id, parent_id FROM anki_decks WHERE deleted_at IS NULL";
-    QJsonArray deckRows = executeQuery(allDecksSql);
-    QMap<QString, QStringList> childrenMap;
-    for (int i = 0; i < deckRows.size(); ++i) {
-        QJsonObject o = deckRows[i].toObject();
-        QString pid = o["parent_id"].toString();
-        if (!pid.isEmpty()) childrenMap[pid].append(o["id"].toString());
-    }
-
-    QStringList targetDeckIds;
-    std::function<void(const QString&)> collectDecks = [&](const QString &did) {
-        targetDeckIds.append(did);
-        for (const QString &cid : childrenMap.value(did)) {
-            collectDecks(cid);
-        }
-    };
-    collectDecks(deckId);
-
-    QString idList;
-    for (int i = 0; i < targetDeckIds.size(); ++i) {
-        if (i > 0) idList += ",";
-        idList += QString("'%1'").arg(escapeSql(targetDeckIds[i]));
-    }
-
-    QString sql = QString(
-        "SELECT c.id, c.deck_id, c.front, c.back, "
-        "COALESCE(c.tags, '') as tags, "
-        "COALESCE(c.card_type, 'reading') as card_type, "
-        "COALESCE(c.validation_mode, 'default') as validation_mode, "
-        "COALESCE(c.extra_note, '') as extra_note, "
-        "c.media_url, "
-        "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-        "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
-        "COALESCE(s.state, 'new') as state, s.due_date "
-        "FROM anki_cards c "
-        "LEFT JOIN anki_srs_state s ON c.id = s.id "
-        "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL "
-        "ORDER BY CASE "
-        "  WHEN s.state IN ('learning', 'relearning') THEN 1 "
-        "  WHEN s.state = 'review' AND datetime(s.due_date) <= datetime('now') THEN 2 "
-        "  WHEN COALESCE(s.state, 'new') = 'new' OR COALESCE(s.reps, 0) = 0 THEN 3 "
-        "  ELSE 4 END ASC, c.created_at ASC"
-    ).arg(idList.isEmpty() ? "''" : idList);
-
-    QVariantList list = executeQuery(sql).toVariantList();
-    // If no due cards in current schedule, provide all cards in the deck for practice study
-    if (list.isEmpty()) {
-        QString fallbackSql = QString("SELECT c.id, c.deck_id, c.front, c.back, "
-                                      "COALESCE(c.tags, '') as tags, "
-                                      "COALESCE(c.card_type, 'reading') as card_type, "
-                                      "COALESCE(c.validation_mode, 'default') as validation_mode, "
-                                      "COALESCE(c.extra_note, '') as extra_note, "
-                                      "c.media_url, "
-                                      "COALESCE(s.stability, 0) as stability, COALESCE(s.difficulty, 0) as difficulty, "
-                                      "COALESCE(s.reps, 0) as reps, COALESCE(s.lapses, 0) as lapses, "
-                                      "COALESCE(s.state, 'new') as state, s.due_date "
-                                      "FROM anki_cards c LEFT JOIN anki_srs_state s ON c.id = s.id "
-                                      "WHERE c.deck_id IN (%1) AND c.deleted_at IS NULL ORDER BY c.created_at ASC")
-            .arg(idList.isEmpty() ? "''" : idList);
-        list = executeQuery(fallbackSql).toVariantList();
-    }
-    return list;
+    if (!m_db || deckId.trimmed().isEmpty()) return QVariantList();
+    QByteArray idUtf8 = deckId.trimmed().toUtf8();
+    char* raw = synapse_anki_get_due_cards(m_db, idUtf8.constData());
+    return parseJsonArray(raw).toVariantList();
 }
 
 bool SynapseDataController::createCard(const QString &deckId, const QString &front, const QString &back, const QString &tags, const QString &cardType, const QString &extraNote) {
-    if (deckId.trimmed().isEmpty() || front.trimmed().isEmpty()) {
+    if (!m_db || deckId.trimmed().isEmpty() || front.trimmed().isEmpty()) {
         return false;
     }
-    QString id = generateUuid();
-    QString ts = currentTimestamp();
-    QString resolvedType = cardType.trimmed().isEmpty() ? QStringLiteral("reading") : cardType.trimmed();
-    QString cardSql = QString("INSERT INTO anki_cards (id, deck_id, front, back, tags, card_type, validation_mode, extra_note, created_at, updated_at) "
-                              "VALUES ('%1', '%2', '%3', '%4', '%5', '%6', 'default', '%7', '%8', '%9');")
-        .arg(id, escapeSql(deckId), escapeSql(front), escapeSql(back), escapeSql(tags), escapeSql(resolvedType), escapeSql(extraNote), ts, ts);
-    
-    QString srsSql = QString("INSERT INTO anki_srs_state (id, due_date, stability, difficulty, elapsed_days, reps, lapses, state, scheduled_days, created_at, updated_at) "
-                             "VALUES ('%1', '%2', 0.0, 0.0, 0, 0, 0, 'new', 0, '%3', '%4');")
-        .arg(id, ts, ts, ts);
+    QByteArray deckUtf8 = deckId.trimmed().toUtf8();
+    QByteArray frontUtf8 = front.trimmed().toUtf8();
+    QByteArray backUtf8 = back.toUtf8();
+    QByteArray tagsUtf8 = tags.trimmed().toUtf8();
+    QByteArray typeUtf8 = cardType.trimmed().toUtf8();
+    QByteArray noteUtf8 = extraNote.trimmed().toUtf8();
 
-    bool ok = executeSql(cardSql + srsSql);
-    if (ok) refreshStats();
-    return ok;
+    char* idRaw = synapse_anki_create_card(
+        m_db,
+        deckUtf8.constData(),
+        frontUtf8.constData(),
+        backUtf8.constData(),
+        tagsUtf8.isEmpty() ? nullptr : tagsUtf8.constData(),
+        typeUtf8.isEmpty() ? nullptr : typeUtf8.constData(),
+        noteUtf8.isEmpty() ? nullptr : noteUtf8.constData()
+    );
+
+    if (!idRaw) return false;
+    synapse_free_string(idRaw);
+    refreshStats();
+    return true;
 }
 
 bool SynapseDataController::updateCard(const QString &cardId, const QString &front, const QString &back, const QString &tags, const QString &cardType, const QString &extraNote) {
-    if (cardId.trimmed().isEmpty() || front.trimmed().isEmpty()) {
+    if (!m_db || cardId.trimmed().isEmpty() || front.trimmed().isEmpty()) {
         return false;
     }
-    QString ts = currentTimestamp();
-    QString resolvedType = cardType.trimmed().isEmpty() ? QStringLiteral("reading") : cardType.trimmed();
-    QString sql = QString("UPDATE anki_cards SET front = '%1', back = '%2', tags = '%3', card_type = '%4', extra_note = '%5', updated_at = '%6' "
-                          "WHERE id = '%7' AND deleted_at IS NULL")
-        .arg(escapeSql(front), escapeSql(back), escapeSql(tags), escapeSql(resolvedType), escapeSql(extraNote), ts, escapeSql(cardId));
-    return executeSql(sql);
+    QByteArray idUtf8 = cardId.trimmed().toUtf8();
+    QByteArray frontUtf8 = front.trimmed().toUtf8();
+    QByteArray backUtf8 = back.toUtf8();
+    QByteArray tagsUtf8 = tags.trimmed().toUtf8();
+    QByteArray typeUtf8 = cardType.trimmed().toUtf8();
+    QByteArray noteUtf8 = extraNote.trimmed().toUtf8();
+
+    return synapse_anki_update_card(
+        m_db,
+        idUtf8.constData(),
+        frontUtf8.constData(),
+        backUtf8.constData(),
+        tagsUtf8.isEmpty() ? nullptr : tagsUtf8.constData(),
+        typeUtf8.isEmpty() ? nullptr : typeUtf8.constData(),
+        noteUtf8.isEmpty() ? nullptr : noteUtf8.constData()
+    ) == 1;
 }
 
 bool SynapseDataController::deleteCard(const QString &cardId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE anki_cards SET deleted_at = '%1' WHERE id = '%2'; "
-                          "UPDATE anki_srs_state SET deleted_at = '%1' WHERE id = '%2';")
-        .arg(ts, escapeSql(cardId));
-    bool ok = executeSql(sql);
+    if (!m_db || cardId.trimmed().isEmpty()) return false;
+    QByteArray idUtf8 = cardId.trimmed().toUtf8();
+    bool ok = synapse_anki_delete_card(m_db, idUtf8.constData()) == 1;
     if (ok) refreshStats();
     return ok;
 }
 
 bool SynapseDataController::recordCardReview(const QString &cardId, int rating) {
-    // 1. Fetch current SRS state
-    QString fetchSql = QString("SELECT stability, difficulty, reps, lapses, elapsed_days FROM anki_srs_state WHERE id = '%1'").arg(escapeSql(cardId));
-    QJsonArray arr = executeQuery(fetchSql);
-
-    double curStability = 0.0;
-    double curDifficulty = 0.0;
-    int curReps = 0;
-    int curLapses = 0;
-    int elapsedDays = 0;
-
-    if (!arr.isEmpty()) {
-        QJsonObject obj = arr[0].toObject();
-        curStability = obj.value("stability").toDouble();
-        curDifficulty = obj.value("difficulty").toDouble();
-        curReps = obj.value("reps").toInt();
-        curLapses = obj.value("lapses").toInt();
-        elapsedDays = obj.value("elapsed_days").toInt();
-    }
-
-    double outStability = 0.0;
-    double outDifficulty = 0.0;
-    int outScheduledDays = 0;
-
-    int res = synapse_fsrs_calculate(
-        curStability, curDifficulty, curReps, curLapses, rating, elapsedDays,
-        &outStability, &outDifficulty, &outScheduledDays
-    );
-
-    if (res != 0) return false;
-
-    QString ts = currentTimestamp();
-    QDateTime dueDate = QDateTime::currentDateTimeUtc().addDays(outScheduledDays > 0 ? outScheduledDays : 1);
-    QString dueDateStr = dueDate.toString(Qt::ISODateWithMs);
-
-    int newReps = (rating == 1) ? 0 : (curReps + 1);
-    int newLapses = (rating == 1) ? (curLapses + 1) : curLapses;
-    QString state = (curReps == 0) ? "learning" : "review";
-
-    QString updateSrsSql = QString("UPDATE anki_srs_state SET stability = %1, difficulty = %2, reps = %3, lapses = %4, "
-                                   "scheduled_days = %5, state = '%6', due_date = '%7', last_review = '%8', updated_at = '%9' WHERE id = '%10';")
-        .arg(outStability).arg(outDifficulty).arg(newReps).arg(newLapses).arg(outScheduledDays)
-        .arg(state, dueDateStr, ts, ts, escapeSql(cardId));
-
-    QString reviewId = generateUuid();
-    QString insertReviewSql = QString("INSERT INTO anki_reviews (id, card_id, rating, duration, review_time, created_at) "
-                                      "VALUES ('%1', '%2', %3, 5000, '%4', '%5');")
-        .arg(reviewId, escapeSql(cardId)).arg(rating).arg(ts, ts);
-
-    return executeSql(updateSrsSql + insertReviewSql);
+    if (!m_db || cardId.trimmed().isEmpty()) return false;
+    QByteArray idUtf8 = cardId.trimmed().toUtf8();
+    return synapse_anki_record_review(m_db, idUtf8.constData(), rating) == 1;
 }
-

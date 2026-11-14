@@ -195,8 +195,7 @@ void SynapseDataController::refreshStats() {
     m_habitCount = getCount("habits");
     m_quizBatteryCount = getCount("quiz_batteries");
     m_focusSessionCount = getCount("focus_sessions");
-    QJsonArray unread = executeQuery("SELECT count(*) as count FROM notifications WHERE deleted_at IS NULL AND is_read = 0");
-    m_unreadNotificationCount = unread.isEmpty() ? 0 : unread[0].toObject().value("count").toInt();
+    m_unreadNotificationCount = m_db ? synapse_notifications_get_unread_count(m_db) : 0;
 
     qInfo() << "[SynapseDataController] Stats updated -> Pages:" << m_pageCount
             << "| Videos:" << m_videoCount

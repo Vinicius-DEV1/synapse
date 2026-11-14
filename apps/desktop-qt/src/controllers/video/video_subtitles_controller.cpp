@@ -1,4 +1,5 @@
 #include "synapse_controller.h"
+#include "synapse_bridge.h"
 #include "video_subtitle_helpers.h"
 
 #include <QtCore/QDebug>
@@ -10,11 +11,12 @@
 #include <QtCore/QSet>
 
 bool SynapseDataController::loadVideoSubtitles(QObject *player, const QString &videoId) {
-    if (!player || videoId.isEmpty()) return false;
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT subtitles_json, local_subtitle_path FROM videos WHERE id = ?1 AND deleted_at IS NULL",
-        {videoId});
-    if (rows.isEmpty()) return false;
+    if (!player || videoId.isEmpty() || !m_db) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_subtitles(m_db, vidBytes.constData());
+    if (!raw) return false;
+    const QJsonObject video = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
 
     const QString appDirectory = QFileInfo(m_dbPath).absolutePath();
     const QString managedVideosDirectory = QFileInfo(appDirectory + "/videos").canonicalFilePath();
@@ -24,7 +26,7 @@ bool SynapseDataController::loadVideoSubtitles(QObject *player, const QString &v
     const auto clearKey = [&key]() { key.fill(QChar(0)); };
 
     QJsonArray tracks;
-    const QString serialized = rows.first().toObject().value("subtitles_json").toString();
+    const QString serialized = video.value("subtitles_json").toString();
     if (!serialized.trimmed().isEmpty()) {
         QJsonParseError parseError;
         const QJsonDocument document = QJsonDocument::fromJson(serialized.toUtf8(), &parseError);
@@ -36,7 +38,7 @@ bool SynapseDataController::loadVideoSubtitles(QObject *player, const QString &v
         tracks = document.array();
     }
 
-    const QString legacyPath = rows.first().toObject().value("local_subtitle_path").toString();
+    const QString legacyPath = video.value("local_subtitle_path").toString();
     if (!legacyPath.isEmpty()) tracks.append(QJsonObject{{"label", "Subtitle"}, {"local_path", legacyPath}});
 
     QSet<QString> loadedPaths;
@@ -81,13 +83,13 @@ bool SynapseDataController::loadVideoSubtitles(QObject *player, const QString &v
 bool SynapseDataController::stageVideoSubtitleFiles(
     const QString &videoId, const QString &managedVideosDirectory,
     QVector<QPair<QString, QString>> &stagedFiles) {
-    if (managedVideosDirectory.isEmpty()) return false;
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT subtitles_json, local_subtitle_path FROM videos WHERE id = ?1 AND deleted_at IS NULL",
-        {videoId});
-    if (rows.isEmpty()) return false;
+    if (managedVideosDirectory.isEmpty() || !m_db) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_subtitles(m_db, vidBytes.constData());
+    if (!raw) return false;
     const QString appDirectory = QFileInfo(m_dbPath).absolutePath();
-    const QJsonObject video = rows.first().toObject();
+    const QJsonObject video = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
     QJsonArray tracks;
     const QString serialized = video.value("subtitles_json").toString();
     if (!serialized.trimmed().isEmpty()) {

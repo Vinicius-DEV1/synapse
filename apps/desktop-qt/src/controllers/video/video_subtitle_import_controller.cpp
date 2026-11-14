@@ -1,4 +1,5 @@
 #include "synapse_controller.h"
+#include "synapse_bridge.h"
 #include "video_subtitle_format.h"
 #include "video_subtitle_helpers.h"
 
@@ -53,14 +54,17 @@ void SynapseDataController::importVideoSubtitle(QObject *player, const QString &
         return fail("Choose a readable .srt or .vtt subtitle file smaller than 20 MB.");
     }
 
-    const QJsonArray videoRows = executeQueryPrepared(
-        "SELECT file_path FROM videos WHERE id = ?1 AND deleted_at IS NULL", {videoId});
-    if (videoId.isEmpty() || videoRows.isEmpty()) return fail("The selected video is no longer available.");
+    if (videoId.isEmpty() || !m_db) return fail("The selected video is no longer available.");
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *rawVideo = synapse_video_get_one(m_db, vidBytes.constData());
+    if (!rawVideo) return fail("The selected video is no longer available.");
+    const QJsonObject videoObj = QJsonDocument::fromJson(QByteArray(rawVideo)).object();
+    synapse_free_string(rawVideo);
 
     const QString appDirectory = QFileInfo(m_dbPath).absolutePath();
     const QString managedVideosDirectory = QFileInfo(appDirectory + "/videos").canonicalFilePath();
     const QString videoPath = VideoSubtitleHelpers::canonicalManagedPath(
-        videoRows.first().toObject().value("file_path").toString(), appDirectory, managedVideosDirectory);
+        videoObj.value("file_path").toString(), appDirectory, managedVideosDirectory);
     if (videoPath.isEmpty()) return fail("The selected video path is outside managed media storage.");
 
     const QString subtitleDirectory = QDir(managedVideosDirectory).filePath("subtitles");
@@ -101,20 +105,23 @@ void SynapseDataController::importVideoSubtitle(QObject *player, const QString &
         }
 
         if (success) {
-            const QJsonArray rows = executeQueryPrepared(
-                "SELECT subtitles_json FROM videos WHERE id = ?1 AND deleted_at IS NULL", {videoId});
-            const QString existingJson = rows.isEmpty()
-                ? QString() : rows.first().toObject().value("subtitles_json").toString();
+            const QByteArray vidBytes = videoId.trimmed().toUtf8();
+            char *subRaw = synapse_video_get_subtitles(m_db, vidBytes.constData());
             QJsonArray tracks;
-            if (!existingJson.trimmed().isEmpty()) {
-                QJsonParseError parseError;
-                const QJsonDocument document = QJsonDocument::fromJson(existingJson.toUtf8(), &parseError);
-                if (parseError.error == QJsonParseError::NoError && document.isArray()) tracks = document.array();
-                else {
-                    success = false;
-                    error = "The video's subtitle list is invalid; no metadata was changed.";
+            if (subRaw) {
+                const QJsonObject subObj = QJsonDocument::fromJson(QByteArray(subRaw)).object();
+                synapse_free_string(subRaw);
+                const QString existingJson = subObj.value("subtitles_json").toString();
+                if (!existingJson.trimmed().isEmpty()) {
+                    QJsonParseError parseError;
+                    const QJsonDocument document = QJsonDocument::fromJson(existingJson.toUtf8(), &parseError);
+                    if (parseError.error == QJsonParseError::NoError && document.isArray()) tracks = document.array();
+                    else {
+                        success = false;
+                        error = "The video's subtitle list is invalid; no metadata was changed.";
+                    }
                 }
-            } else if (rows.isEmpty()) {
+            } else {
                 success = false;
                 error = "The selected video was removed before the subtitle could be saved.";
             }
@@ -126,22 +133,12 @@ void SynapseDataController::importVideoSubtitle(QObject *player, const QString &
                 track.insert(QStringLiteral("local_path"), destination);
                 tracks.append(track);
 
-                const QString timestamp = currentTimestamp();
-                if (!executeSql("BEGIN IMMEDIATE;")) {
+                const QByteArray updatedJson = QJsonDocument(tracks).toJson(QJsonDocument::Compact);
+                const bool committed = synapse_video_update_subtitles(
+                    m_db, vidBytes.constData(), updatedJson.constData(), nullptr) == 1;
+                if (!committed) {
                     success = false;
-                    error = "Could not start the subtitle metadata transaction.";
-                } else {
-                    const int updatedRows = executeSqlPrepared(
-                        "UPDATE videos SET subtitles_json = ?1, updated_at = ?2 "
-                        "WHERE id = ?3 AND deleted_at IS NULL",
-                        {QString::fromUtf8(QJsonDocument(tracks).toJson(QJsonDocument::Compact)),
-                         timestamp, videoId});
-                    const bool committed = updatedRows == 1 && executeSql("COMMIT;");
-                    if (!committed) {
-                        executeSql("ROLLBACK;");
-                        success = false;
-                        error = "Could not save the subtitle metadata.";
-                    }
+                    error = "Could not save the subtitle metadata.";
                 }
             }
         }

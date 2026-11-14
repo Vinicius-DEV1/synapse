@@ -5,17 +5,18 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QRandomGenerator>
-#include <QtCore/QRegularExpression>
-#include <QtCore/QSet>
-#include <cmath>
-#include <functional>
 
-// Native encrypted credential and group persistence.
-
+// Native encrypted credential and group persistence delegated to synapse_vault_* domain APIs.
 
 QVariantList SynapseDataController::getVaultGroups() {
-    const QJsonArray rows = executeQuery(
-        "SELECT id, name, icon, color, position FROM vault_groups WHERE deleted_at IS NULL ORDER BY position ASC, name ASC");
+    if (!m_db) return {};
+    char *jsonStr = synapse_vault_get_groups(m_db);
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+
+    const QJsonArray rows = doc.array();
     QVariantList groups;
     const QString vaultKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
     for (const QJsonValue &value : rows) {
@@ -44,32 +45,35 @@ QVariantList SynapseDataController::getVaultGroups() {
 }
 
 QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
-    if (m_isVaultConfigured && !m_isVaultUnlocked) {
-        return QVariantList();
+    if (!m_db || (m_isVaultConfigured && !m_isVaultUnlocked)) {
+        return {};
     }
 
-    const QString sql = groupId.isEmpty()
-        ? "SELECT id, group_id, label, username, email, password, url, notes, is_favorite FROM vault_items WHERE deleted_at IS NULL ORDER BY label ASC LIMIT 100"
-        : "SELECT id, group_id, label, username, email, password, url, notes, is_favorite FROM vault_items WHERE deleted_at IS NULL AND group_id = ?1 ORDER BY label ASC LIMIT 100";
-    QJsonArray arr = groupId.isEmpty() ? executeQuery(sql) : executeQueryPrepared(sql, {groupId});
-    QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
+    const QByteArray groupBytes = groupId.trimmed().toUtf8();
+    const char *groupPtr = groupBytes.isEmpty() ? nullptr : groupBytes.constData();
+
+    char *jsonStr = synapse_vault_get_items(m_db, groupPtr);
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+
+    const QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
     if (m_isVaultConfigured && vKey.isEmpty()) return {};
 
     QVariantList list;
-    for (const QJsonValue &val : arr) {
+    for (const QJsonValue &val : doc.array()) {
         QJsonObject item = val.toObject();
         if (!vKey.isEmpty()) {
             bool decryptionFailed = false;
             auto tryDec = [&](const QString &key) {
-                const QString val = item.value(key).toString();
-                if (!val.isEmpty()) {
-                    if (val.count(':') == 2) {
-                        const QString dec = decryptContent(vKey, val);
-                        if (dec.isNull()) {
-                            decryptionFailed = true;
-                        } else {
-                            item[key] = dec;
-                        }
+                const QString valStr = item.value(key).toString();
+                if (!valStr.isEmpty() && valStr.count(':') == 2) {
+                    const QString dec = decryptContent(vKey, valStr);
+                    if (dec.isNull()) {
+                        decryptionFailed = true;
+                    } else {
+                        item[key] = dec;
                     }
                 }
             };
@@ -86,10 +90,11 @@ QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
     return list;
 }
 
-bool SynapseDataController::saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes) {
-    if (m_isVaultConfigured && !m_isVaultUnlocked) return false;
-    QString ts = currentTimestamp();
-    QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
+bool SynapseDataController::saveVaultItem(const QString &id, const QString &groupId, const QString &label,
+                                         const QString &username, const QString &email, const QString &password,
+                                         const QString &url, const QString &notes) {
+    if (!m_db || (m_isVaultConfigured && !m_isVaultUnlocked)) return false;
+    const QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
     if (m_isVaultConfigured && vKey.isEmpty()) return false;
 
     QString sLabel = label;
@@ -109,30 +114,43 @@ bool SynapseDataController::saveVaultItem(const QString &id, const QString &grou
         if (!notes.isEmpty()) { sNotes = encryptContent(vKey, notes); if (sNotes.isNull()) return false; }
     }
 
-    if (id.isEmpty()) {
-        const QString newId = generateUuid();
-        const int inserted = executeSqlPrepared(
-            "INSERT INTO vault_items (id, group_id, label, username, email, password, url, notes, is_favorite, created_at, updated_at) "
-            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?9)",
-            {newId, groupId, sLabel, sUser, sEmail, sPass, sUrl, sNotes, ts});
-        if (inserted != 1) return false;
-    } else {
-        const int updated = executeSqlPrepared(
-            "UPDATE vault_items SET group_id = ?1, label = ?2, username = ?3, email = ?4, password = ?5, "
-            "url = ?6, notes = ?7, updated_at = ?8 WHERE id = ?9 AND deleted_at IS NULL",
-            {groupId, sLabel, sUser, sEmail, sPass, sUrl, sNotes, ts, id});
-        if (updated != 1) return false;
+    const QByteArray idBytes = id.trimmed().toUtf8();
+    const QByteArray groupBytes = groupId.trimmed().toUtf8();
+    const QByteArray labelBytes = sLabel.trimmed().toUtf8();
+    const QByteArray userBytes = sUser.trimmed().toUtf8();
+    const QByteArray emailBytes = sEmail.trimmed().toUtf8();
+    const QByteArray passBytes = sPass.trimmed().toUtf8();
+    const QByteArray urlBytes = sUrl.trimmed().toUtf8();
+    const QByteArray notesBytes = sNotes.trimmed().toUtf8();
+
+    const int ret = synapse_vault_save_item(
+        m_db,
+        idBytes.isEmpty() ? nullptr : idBytes.constData(),
+        groupBytes.isEmpty() ? nullptr : groupBytes.constData(),
+        labelBytes.constData(),
+        userBytes.isEmpty() ? nullptr : userBytes.constData(),
+        emailBytes.isEmpty() ? nullptr : emailBytes.constData(),
+        passBytes.isEmpty() ? nullptr : passBytes.constData(),
+        urlBytes.isEmpty() ? nullptr : urlBytes.constData(),
+        notesBytes.isEmpty() ? nullptr : notesBytes.constData(),
+        0
+    );
+
+    if (ret == 1) {
+        refreshStats();
+        return true;
     }
-    refreshStats();
-    return true;
+    return false;
 }
 
 bool SynapseDataController::deleteVaultItem(const QString &itemId) {
-    QString ts = currentTimestamp();
-    QString sql = QString("UPDATE vault_items SET deleted_at = '%1' WHERE id = '%2'").arg(ts, escapeSql(itemId));
-    bool ok = executeSql(sql);
-    if (ok) refreshStats();
-    return ok;
+    if (!m_db || itemId.trimmed().isEmpty()) return false;
+    const int ret = synapse_vault_delete_item(m_db, itemId.trimmed().toUtf8().constData());
+    if (ret == 1) {
+        refreshStats();
+        return true;
+    }
+    return false;
 }
 
 QString SynapseDataController::generateSecurePassword(int length, bool uppercase, bool lowercase, bool numbers, bool symbols) {
@@ -152,4 +170,3 @@ QString SynapseDataController::generateSecurePassword(int length, bool uppercase
     }
     return result;
 }
-

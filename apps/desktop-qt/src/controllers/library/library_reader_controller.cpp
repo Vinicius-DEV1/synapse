@@ -1,4 +1,5 @@
 #include "synapse_controller.h"
+#include "synapse_bridge.h"
 #include "native_book_reader.h"
 
 #include <QtConcurrent/QtConcurrentRun>
@@ -19,11 +20,12 @@ void SynapseDataController::openLibraryBook(const QString &bookId) {
         return fail("Unlock the vault before opening local books.");
     }
 
-    const QJsonArray rows = executeQuery(QString("SELECT file_path, original_name, current_page, total_pages "
-                                                 "FROM library_books WHERE id = '%1' AND deleted_at IS NULL")
-                                         .arg(escapeSql(bookId)));
-    if (rows.isEmpty()) return fail("The selected book is no longer available.");
-    const QJsonObject book = rows.first().toObject();
+    if (!m_db) return fail("Database is not available.");
+    const QByteArray bidBytes = bookId.trimmed().toUtf8();
+    char *raw = synapse_library_get_book(m_db, bidBytes.constData());
+    if (!raw) return fail("The selected book is no longer available.");
+    const QJsonObject book = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
     QString recordedPath = book.value("file_path").toString();
     if (recordedPath.startsWith("file://", Qt::CaseInsensitive)) {
         recordedPath.remove(0, 7);
@@ -262,94 +264,97 @@ void SynapseDataController::renderLibraryPdfPage(const QString &temporaryPath, i
 }
 
 QVariantList SynapseDataController::getLibraryBookmarks(const QString &bookId) {
-    return executeQuery(QString("SELECT id, book_id, page_number, label, created_at FROM library_bookmarks "
-                                "WHERE book_id = '%1' AND deleted_at IS NULL ORDER BY page_number ASC, created_at ASC")
-                            .arg(escapeSql(bookId))).toVariantList();
+    if (!m_db) return {};
+    const QByteArray bidBytes = bookId.trimmed().toUtf8();
+    char *raw = synapse_library_get_bookmarks(m_db, bidBytes.constData());
+    if (!raw) return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    return doc.array().toVariantList();
 }
 
 bool SynapseDataController::createLibraryBookmark(const QString &bookId, int pageNumber, const QString &label) {
-    if (bookId.trimmed().isEmpty() || pageNumber < 1) return false;
-    const QString id = generateUuid();
-    const QString timestamp = currentTimestamp();
-    const QString safeLabel = label.trimmed();
-    const QString sql = QString("INSERT INTO library_bookmarks (id, book_id, page_number, label, created_at, updated_at) "
-                                "VALUES ('%1', '%2', %3, '%4', '%5', '%5')")
-                            .arg(escapeSql(id), escapeSql(bookId)).arg(pageNumber)
-                            .arg(escapeSql(safeLabel), timestamp);
-    return executeSql(sql);
+    if (!m_db || bookId.trimmed().isEmpty() || pageNumber < 1) return false;
+    const QByteArray bidBytes = bookId.trimmed().toUtf8();
+    const QByteArray lblBytes = label.trimmed().toUtf8();
+    char *raw = synapse_library_add_bookmark(
+        m_db, bidBytes.constData(), pageNumber, lblBytes.isEmpty() ? nullptr : lblBytes.constData());
+    if (!raw) return false;
+    synapse_free_string(raw);
+    return true;
 }
 
 bool SynapseDataController::updateLibraryBookmark(const QString &bookmarkId, const QString &label) {
-    const QString id = bookmarkId.trimmed();
-    if (id.isEmpty()) return false;
-    const QString timestamp = currentTimestamp();
-    const QString sql = QString("UPDATE library_bookmarks SET label = '%1', updated_at = '%2' "
-                                "WHERE id = '%3' AND deleted_at IS NULL")
-                            .arg(escapeSql(label), timestamp, escapeSql(id));
-    return executeSql(sql);
+    if (!m_db || bookmarkId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = bookmarkId.trimmed().toUtf8();
+    const QByteArray lblBytes = label.trimmed().toUtf8();
+    return synapse_library_update_bookmark(m_db, idBytes.constData(), lblBytes.constData()) == 1;
 }
 
 bool SynapseDataController::deleteLibraryBookmark(const QString &bookmarkId) {
-    const QString id = bookmarkId.trimmed();
-    if (id.isEmpty()) return false;
-    const QString timestamp = currentTimestamp();
-    const QString sql = QString("UPDATE library_bookmarks SET deleted_at = '%1', updated_at = '%1' "
-                                "WHERE id = '%2' AND deleted_at IS NULL")
-                            .arg(timestamp, escapeSql(id));
-    return executeSql(sql);
+    if (!m_db || bookmarkId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = bookmarkId.trimmed().toUtf8();
+    return synapse_library_delete_bookmark(m_db, idBytes.constData()) == 1;
 }
 
 QVariantList SynapseDataController::getLibraryHighlights(const QString &bookId) {
-    return executeQuery(QString("SELECT id, book_id, page_number, text_content, color, note, created_at "
-                                "FROM library_highlights WHERE book_id = '%1' AND deleted_at IS NULL "
-                                "ORDER BY page_number ASC, created_at ASC")
-                            .arg(escapeSql(bookId))).toVariantList();
+    if (!m_db) return {};
+    const QByteArray bidBytes = bookId.trimmed().toUtf8();
+    char *raw = synapse_library_get_highlights(m_db, bidBytes.constData());
+    if (!raw) return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(raw));
+    synapse_free_string(raw);
+    return doc.array().toVariantList();
 }
 
 bool SynapseDataController::createLibraryHighlight(const QString &bookId, int pageNumber, const QString &text,
                                                    const QString &color, const QString &note) {
     const QString cleanText = text.trimmed();
-    if (bookId.trimmed().isEmpty() || pageNumber < 1 || cleanText.isEmpty()) return false;
+    if (!m_db || bookId.trimmed().isEmpty() || pageNumber < 1 || cleanText.isEmpty()) return false;
     const QStringList allowedColors{"yellow", "green", "blue", "pink", "orange"};
     const QString safeColor = allowedColors.contains(color) ? color : "yellow";
-    const QString id = generateUuid();
-    const QString timestamp = currentTimestamp();
-    const QString sql = QString("INSERT INTO library_highlights (id, book_id, page_number, text_content, color, note, "
-                                "created_at, updated_at) VALUES ('%1', '%2', %3, '%4', '%5', '%6', '%7', '%7')")
-                            .arg(escapeSql(id), escapeSql(bookId)).arg(pageNumber)
-                            .arg(escapeSql(cleanText), escapeSql(safeColor), escapeSql(note.trimmed()), timestamp);
-    return executeSql(sql);
+    const QByteArray bidBytes = bookId.trimmed().toUtf8();
+    const QByteArray txtBytes = cleanText.toUtf8();
+    const QByteArray colBytes = safeColor.toUtf8();
+    const QByteArray noteBytes = note.trimmed().toUtf8();
+    char *raw = synapse_library_add_highlight(
+        m_db, bidBytes.constData(), pageNumber, txtBytes.constData(), colBytes.constData(),
+        noteBytes.isEmpty() ? nullptr : noteBytes.constData());
+    if (!raw) return false;
+    synapse_free_string(raw);
+    return true;
 }
 
 bool SynapseDataController::updateLibraryHighlight(const QString &highlightId, const QString &note,
                                                    const QString &color) {
-    const QString id = highlightId.trimmed();
-    if (id.isEmpty()) return false;
+    if (!m_db || highlightId.trimmed().isEmpty()) return false;
     const QStringList allowedColors{"yellow", "green", "blue", "pink", "orange"};
     const QString safeColor = allowedColors.contains(color) ? color : "yellow";
-    const QString timestamp = currentTimestamp();
-    const QString sql = QString("UPDATE library_highlights SET note = '%1', color = '%2', updated_at = '%3' "
-                                "WHERE id = '%4' AND deleted_at IS NULL")
-                            .arg(escapeSql(note), escapeSql(safeColor), timestamp, escapeSql(id));
-    return executeSql(sql);
+    const QByteArray idBytes = highlightId.trimmed().toUtf8();
+    const QByteArray colBytes = safeColor.toUtf8();
+    const QByteArray noteBytes = note.trimmed().toUtf8();
+    return synapse_library_update_highlight(
+        m_db, idBytes.constData(), colBytes.constData(), noteBytes.isEmpty() ? nullptr : noteBytes.constData()) == 1;
 }
 
 bool SynapseDataController::deleteLibraryHighlight(const QString &highlightId) {
-    const QString id = highlightId.trimmed();
-    if (id.isEmpty()) return false;
-    const QString timestamp = currentTimestamp();
-    const QString sql = QString("UPDATE library_highlights SET deleted_at = '%1', updated_at = '%1' "
-                                "WHERE id = '%2' AND deleted_at IS NULL")
-                            .arg(timestamp, escapeSql(id));
-    return executeSql(sql);
+    if (!m_db || highlightId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = highlightId.trimmed().toUtf8();
+    return synapse_library_delete_highlight(m_db, idBytes.constData()) == 1;
 }
 
 bool SynapseDataController::deleteLibraryHighlightsForBook(const QString &bookId) {
-    const QString id = bookId.trimmed();
-    if (id.isEmpty()) return false;
-    const QString timestamp = currentTimestamp();
-    const QString sql = QString("UPDATE library_highlights SET deleted_at = '%1', updated_at = '%1' "
-                                "WHERE book_id = '%2' AND deleted_at IS NULL")
-                            .arg(timestamp, escapeSql(id));
-    return executeSql(sql);
+    if (!m_db || bookId.trimmed().isEmpty()) return false;
+    const QByteArray bidBytes = bookId.trimmed().toUtf8();
+    char *raw = synapse_library_get_highlights(m_db, bidBytes.constData());
+    if (!raw) return true;
+    const QJsonArray array = QJsonDocument::fromJson(QByteArray(raw)).array();
+    synapse_free_string(raw);
+    for (const QJsonValue &val : array) {
+        const QString hId = val.toObject().value("id").toString();
+        if (!hId.isEmpty()) {
+            synapse_library_delete_highlight(m_db, hId.toUtf8().constData());
+        }
+    }
+    return true;
 }

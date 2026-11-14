@@ -1,34 +1,41 @@
 #include "synapse_controller.h"
 
-#include <QtCore/QDateTime>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
-#include <QtCore/QRegularExpression>
-#include <QtCore/QSet>
 
-// Native habit and check-in persistence using prepared statements.
+// Native habit and check-in presentation controller.
+// Delegates persistence and habit logs to core/synapse-core via bridge-qt.
+
+static QVariantList parseJsonArrayAndFree(char *rawJson) {
+    if (!rawJson) return QVariantList();
+    const QByteArray bytes(rawJson);
+    synapse_free_string(rawJson);
+    const QJsonDocument doc = QJsonDocument::fromJson(bytes);
+    if (!doc.isArray()) return QVariantList();
+    return doc.array().toVariantList();
+}
 
 QVariantList SynapseDataController::getHabits() {
-    return executeQuery(
-        "SELECT id, title, color, icon, target_days_per_week, created_at "
-        "FROM habits WHERE deleted_at IS NULL ORDER BY created_at ASC"
-    ).toVariantList();
+    if (!m_db) return QVariantList();
+    char *raw = synapse_habits_get_habits(m_db);
+    return parseJsonArrayAndFree(raw);
 }
 
 bool SynapseDataController::createHabit(const QString &title, const QString &color, const QString &icon, int targetDays) {
-    if (title.trimmed().isEmpty()) return false;
-    const QString id = generateUuid();
-    const QString ts = currentTimestamp();
-    const QString resolvedColor = color.trimmed().isEmpty() ? QStringLiteral("#10b981") : color.trimmed();
-    const QString resolvedIcon = icon.trimmed().isEmpty() ? QStringLiteral("⭐") : icon.trimmed();
-    const int resolvedTarget = (targetDays >= 1 && targetDays <= 7) ? targetDays : 7;
+    if (!m_db || title.trimmed().isEmpty()) return false;
+    const QByteArray titleBytes = title.toUtf8();
+    const QByteArray colorBytes = color.toUtf8();
+    const QByteArray iconBytes = icon.toUtf8();
 
-    const int rows = executeSqlPrepared(
-        "INSERT INTO habits (id, title, color, icon, target_days_per_week, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        {id, title.trimmed(), resolvedColor, resolvedIcon, resolvedTarget, ts, ts});
-    if (rows == 1) {
+    const int res = synapse_habits_create_habit(
+        m_db,
+        titleBytes.constData(),
+        color.trimmed().isEmpty() ? nullptr : colorBytes.constData(),
+        icon.trimmed().isEmpty() ? nullptr : iconBytes.constData(),
+        targetDays
+    );
+    if (res == 0) {
         refreshStats();
         return true;
     }
@@ -36,17 +43,21 @@ bool SynapseDataController::createHabit(const QString &title, const QString &col
 }
 
 bool SynapseDataController::updateHabit(const QString &habitId, const QString &title, const QString &color, const QString &icon, int targetDays) {
-    if (habitId.trimmed().isEmpty() || title.trimmed().isEmpty()) return false;
-    const QString ts = currentTimestamp();
-    const QString resolvedColor = color.trimmed().isEmpty() ? QStringLiteral("#10b981") : color.trimmed();
-    const QString resolvedIcon = icon.trimmed().isEmpty() ? QStringLiteral("⭐") : icon.trimmed();
-    const int resolvedTarget = (targetDays >= 1 && targetDays <= 7) ? targetDays : 7;
+    if (!m_db || habitId.trimmed().isEmpty() || title.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = habitId.toUtf8();
+    const QByteArray titleBytes = title.toUtf8();
+    const QByteArray colorBytes = color.toUtf8();
+    const QByteArray iconBytes = icon.toUtf8();
 
-    const int rows = executeSqlPrepared(
-        "UPDATE habits SET title = ?, color = ?, icon = ?, target_days_per_week = ?, updated_at = ? "
-        "WHERE id = ? AND deleted_at IS NULL",
-        {title.trimmed(), resolvedColor, resolvedIcon, resolvedTarget, ts, habitId});
-    if (rows == 1) {
+    const int res = synapse_habits_update_habit(
+        m_db,
+        idBytes.constData(),
+        titleBytes.constData(),
+        color.trimmed().isEmpty() ? nullptr : colorBytes.constData(),
+        icon.trimmed().isEmpty() ? nullptr : iconBytes.constData(),
+        targetDays
+    );
+    if (res == 0) {
         refreshStats();
         return true;
     }
@@ -54,55 +65,35 @@ bool SynapseDataController::updateHabit(const QString &habitId, const QString &t
 }
 
 QVariantList SynapseDataController::getHabitLogs(const QString &dateStr) {
-    if (dateStr.trimmed().isEmpty()) return QVariantList();
-    return executeQueryPrepared(
-        "SELECT habit_id, date, completed_at FROM habit_logs WHERE date = ? AND deleted_at IS NULL",
-        {dateStr.trimmed()}
-    ).toVariantList();
+    if (!m_db || dateStr.trimmed().isEmpty()) return QVariantList();
+    const QByteArray dateBytes = dateStr.toUtf8();
+    char *raw = synapse_habits_get_logs(m_db, dateBytes.constData());
+    return parseJsonArrayAndFree(raw);
 }
 
 QVariantList SynapseDataController::getHabitLogsRange(const QString &startDate, const QString &endDate) {
-    if (startDate.trimmed().isEmpty() || endDate.trimmed().isEmpty()) return QVariantList();
-    return executeQueryPrepared(
-        "SELECT habit_id, date, completed_at FROM habit_logs "
-        "WHERE date >= ? AND date <= ? AND deleted_at IS NULL",
-        {startDate.trimmed(), endDate.trimmed()}
-    ).toVariantList();
+    if (!m_db || startDate.trimmed().isEmpty() || endDate.trimmed().isEmpty()) return QVariantList();
+    const QByteArray startBytes = startDate.toUtf8();
+    const QByteArray endBytes = endDate.toUtf8();
+    char *raw = synapse_habits_get_logs_range(m_db, startBytes.constData(), endBytes.constData());
+    return parseJsonArrayAndFree(raw);
 }
 
 bool SynapseDataController::toggleHabitCheckin(const QString &habitId, const QString &dateStr) {
-    if (habitId.trimmed().isEmpty() || dateStr.trimmed().isEmpty()) return false;
+    if (!m_db || habitId.trimmed().isEmpty() || dateStr.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = habitId.toUtf8();
+    const QByteArray dateBytes = dateStr.toUtf8();
 
-    const QJsonArray arr = executeQueryPrepared(
-        "SELECT id FROM habit_logs WHERE habit_id = ? AND date = ? AND deleted_at IS NULL",
-        {habitId, dateStr});
-    const QString ts = currentTimestamp();
-
-    if (!arr.isEmpty()) {
-        // Toggle OFF (soft delete)
-        const QString logId = arr[0].toObject().value("id").toString();
-        const int rows = executeSqlPrepared(
-            "UPDATE habit_logs SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-            {ts, ts, logId});
-        return rows == 1;
-    } else {
-        // Toggle ON (insert)
-        const QString newId = generateUuid();
-        const int rows = executeSqlPrepared(
-            "INSERT INTO habit_logs (id, habit_id, date, completed_at, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            {newId, habitId, dateStr, ts, ts, ts});
-        return rows == 1;
-    }
+    int outChecked = 0;
+    const int res = synapse_habits_toggle_checkin(m_db, idBytes.constData(), dateBytes.constData(), &outChecked);
+    return res == 0;
 }
 
 bool SynapseDataController::deleteHabit(const QString &habitId) {
-    if (habitId.trimmed().isEmpty()) return false;
-    const QString ts = currentTimestamp();
-    const int rows = executeSqlPrepared(
-        "UPDATE habits SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
-        {ts, ts, habitId});
-    if (rows == 1) {
+    if (!m_db || habitId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = habitId.toUtf8();
+    const int res = synapse_habits_delete_habit(m_db, idBytes.constData());
+    if (res == 0) {
         refreshStats();
         return true;
     }

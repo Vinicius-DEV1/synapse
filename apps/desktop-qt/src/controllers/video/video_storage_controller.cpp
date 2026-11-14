@@ -1,4 +1,5 @@
 #include "synapse_controller.h"
+#include "synapse_bridge.h"
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
@@ -32,12 +33,14 @@ QVariantMap trackStorageSizes(const QString &serializedTracks, const QString &ap
 }
 
 QVariantMap SynapseDataController::getVideoStorageStats(const QString &videoId) {
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT file_path, original_name, is_local, audio_tracks_json, subtitles_json "
-        "FROM videos WHERE id = ?1 AND deleted_at IS NULL", {videoId});
-    if (rows.isEmpty()) return {};
+    if (!m_db) return {};
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_one(m_db, vidBytes.constData());
+    if (!raw) return {};
 
-    const QJsonObject video = rows.first().toObject();
+    const QJsonObject video = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
+
     const QString videoPath = video.value("file_path").toString();
     QFileInfo videoInfo(videoPath);
     if (videoInfo.isRelative()) videoInfo.setFile(QDir(QFileInfo(m_dbPath).absolutePath()).filePath(videoPath));
@@ -63,11 +66,14 @@ QVariantMap SynapseDataController::getVideoStorageStats(const QString &videoId) 
 }
 
 bool SynapseDataController::openVideoInFolder(const QString &videoId) {
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT file_path, is_local FROM videos WHERE id = ?1 AND deleted_at IS NULL", {videoId});
-    if (rows.isEmpty()) return false;
+    if (!m_db) return false;
+    const QByteArray vidBytes = videoId.trimmed().toUtf8();
+    char *raw = synapse_video_get_one(m_db, vidBytes.constData());
+    if (!raw) return false;
 
-    const QJsonObject video = rows.first().toObject();
+    const QJsonObject video = QJsonDocument::fromJson(QByteArray(raw)).object();
+    synapse_free_string(raw);
+
     if (video.value("is_local").toInt() == 0) return false;
     const QString path = video.value("file_path").toString();
     if (path.trimmed().isEmpty()) return false;

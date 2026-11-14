@@ -35,9 +35,9 @@ QVariantMap searchFailure(const QString &message) {
     return {{"success", false}, {"pages", QVariantList{}}, {"error", message}};
 }
 
-bool queryRows(Database *database, const QByteArray &sql, QJsonArray &rows) {
+bool queryRows(Database *database, QJsonArray &rows) {
     if (!database) return false;
-    char *raw = synapse_db_query_json(database, sql.constData());
+    char *raw = synapse_notes_get_page_tree(database, nullptr);
     if (!raw) return false;
     QByteArray json(raw);
     ByteArrayWiper jsonWiper{json};
@@ -50,22 +50,17 @@ bool queryRows(Database *database, const QByteArray &sql, QJsonArray &rows) {
 }
 
 bool queryPageBody(Database *database, const QString &pageId, QString &content, QString &encryptedContent) {
-    QJsonArray parameters;
-    parameters.append(pageId);
-    const QByteArray parameterJson = QJsonDocument(parameters).toJson(QJsonDocument::Compact);
-    const QByteArray sql = QByteArrayLiteral(
-        "SELECT content, encrypted_content FROM pages WHERE id = ?1 AND deleted_at IS NULL");
-    char *raw = synapse_db_query_json_params(database, sql.constData(), parameterJson.constData());
+    if (!database) return false;
+    const QByteArray pidBytes = pageId.trimmed().toUtf8();
+    char *raw = synapse_notes_get_page(database, pidBytes.constData());
     if (!raw) return false;
     QByteArray json(raw);
     ByteArrayWiper jsonWiper{json};
     const QJsonDocument document = QJsonDocument::fromJson(json);
     synapse_crypto_wipe_memory(reinterpret_cast<uint8_t *>(raw), std::strlen(raw));
     synapse_free_string(raw);
-    if (!document.isArray()) return false;
-    const QJsonArray rows = document.array();
-    if (rows.isEmpty()) return true;
-    const QJsonObject page = rows.first().toObject();
+    if (!document.isObject()) return false;
+    const QJsonObject page = document.object();
     content = page.value(QStringLiteral("content")).toString();
     encryptedContent = page.value(QStringLiteral("encrypted_content")).toString();
     return true;
@@ -96,9 +91,7 @@ QVariantMap searchPageReferencesInDatabase(Database *database, const QString &qu
                                            std::atomic_bool *cancelled) {
     if (!database) return searchFailure(QStringLiteral("The page database is unavailable."));
     QJsonArray pages;
-    if (!queryRows(database,
-                   QByteArrayLiteral("SELECT id, title, icon FROM pages WHERE deleted_at IS NULL "
-                                     "ORDER BY sort_order ASC, updated_at DESC"), pages)) {
+    if (!queryRows(database, pages)) {
         return searchFailure(QStringLiteral("Page search could not read the active page list."));
     }
 

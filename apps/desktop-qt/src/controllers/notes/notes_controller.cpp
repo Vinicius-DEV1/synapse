@@ -1,65 +1,56 @@
 #include "synapse_controller.h"
 
 #include <QtCore/QDateTime>
-#include <QtCore/QSet>
-#include <functional>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 
 // ---------------------------------------------------------------------------
 // 1. Notes and hierarchical pages
 // ---------------------------------------------------------------------------
 
 QVariantList SynapseDataController::getPages(const QString &filter) {
-    QString sql = "SELECT id, title, icon, parent_id, updated_at, sort_order, is_pinned, pinned_order FROM pages WHERE deleted_at IS NULL ";
-    if (!filter.trimmed().isEmpty()) sql += QString("AND title LIKE '%%1%' ").arg(escapeSql(filter));
-    sql += "ORDER BY updated_at DESC LIMIT 150";
-    return executeQuery(sql).toVariantList();
+    if (!m_db) return {};
+    const QByteArray fBytes = filter.trimmed().toUtf8();
+    char *raw = synapse_notes_get_pages(m_db, filter.trimmed().isEmpty() ? nullptr : fBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
 }
 
 QVariantList SynapseDataController::getPinnedPages() {
-    const QString sql = "SELECT id, parent_id, title, icon, is_pinned, pinned_order, updated_at FROM pages "
-                        "WHERE deleted_at IS NULL AND is_pinned = 1 ORDER BY pinned_order ASC, updated_at DESC";
-    return executeQuery(sql).toVariantList();
+    if (!m_db) return {};
+    char *raw = synapse_notes_get_pinned_pages(m_db);
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
 }
 
 QVariantList SynapseDataController::getPageTree(const QString &filter) {
-    QString sql = "SELECT id, parent_id, title, icon, is_pinned, pinned_order, sort_order, updated_at FROM pages WHERE deleted_at IS NULL ";
-    if (!filter.trimmed().isEmpty()) sql += QString("AND title LIKE '%%1%' ").arg(escapeSql(filter));
-    sql += "ORDER BY sort_order ASC, updated_at DESC";
-    const QJsonArray rows = executeQuery(sql);
-
-    QMap<QString, QList<QJsonObject>> parentToChildren;
-    QList<QJsonObject> rootItems;
-    QSet<QString> allIds;
-    for (const QJsonValue &row : rows) allIds.insert(row.toObject().value("id").toString());
-
-    for (const QJsonValue &row : rows) {
-        const QJsonObject object = row.toObject();
-        const QString parentId = object.value("parent_id").toString();
-        if (parentId.isEmpty() || parentId == "null" || !allIds.contains(parentId)) rootItems.append(object);
-        else parentToChildren[parentId].append(object);
-    }
-
-    QVariantList result;
-    std::function<void(const QJsonObject &, int)> addNode = [&](const QJsonObject &node, int depth) {
-        QJsonObject enriched = node;
-        const QString nodeId = node.value("id").toString();
-        const QList<QJsonObject> children = parentToChildren.value(nodeId);
-        enriched["depth"] = depth;
-        enriched["has_children"] = !children.isEmpty();
-        enriched["children_count"] = children.size();
-        result.append(enriched.toVariantMap());
-        for (const QJsonObject &child : children) addNode(child, depth + 1);
-    };
-    for (const QJsonObject &root : rootItems) addNode(root, 0);
-    return result;
+    if (!m_db) return {};
+    const QByteArray fBytes = filter.trimmed().toUtf8();
+    char *raw = synapse_notes_get_page_tree(m_db, filter.trimmed().isEmpty() ? nullptr : fBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
 }
 
 QVariantMap SynapseDataController::getPage(const QString &pageId) {
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT id, title, content, encrypted_content, icon, parent_id, is_pinned, pinned_order, description, cover_image, updated_at, crdt_state "
-        "FROM pages WHERE id = ?1 AND deleted_at IS NULL", {pageId});
-    if (rows.isEmpty()) return {};
-    QJsonObject object = rows.first().toObject();
+    if (!m_db || pageId.trimmed().isEmpty()) return {};
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    char *raw = synapse_notes_get_page(m_db, idBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    if (!doc.isObject()) return {};
+    QJsonObject object = doc.object();
     const QString encryptedContent = object.value("encrypted_content").toString();
     if (!encryptedContent.isEmpty()) {
         const QString notesKey = m_unlockedKeys.value("notes");
@@ -82,8 +73,8 @@ QVariantMap SynapseDataController::getPage(const QString &pageId) {
 }
 
 bool SynapseDataController::savePage(const QString &pageId, const QString &title, const QString &content, const QString &icon, const QString &expectedUpdatedAt) {
+    if (!m_db) return false;
     if (m_isVaultConfigured && !m_isVaultUnlocked) return false;
-    const QString timestamp = currentTimestamp();
     const bool encryptAtRest = m_isVaultConfigured;
     const QString notesKey = m_unlockedKeys.value("notes");
     if (encryptAtRest && notesKey.isEmpty()) return false;
@@ -97,96 +88,79 @@ bool SynapseDataController::savePage(const QString &pageId, const QString &title
     const QString targetId = inserting ? generateUuid() : pageId;
 
     if (!inserting) {
-        const QJsonArray existingRows = executeQueryPrepared(
-            "SELECT updated_at, content, encrypted_content FROM pages WHERE id = ?1 AND deleted_at IS NULL",
-            {targetId});
-        if (existingRows.isEmpty()) return false;
-
-        const QJsonObject existingRow = existingRows.first().toObject();
-        const QString currentUpdatedAt = existingRow.value("updated_at").toString();
+        const QVariantMap existing = getPage(targetId);
+        if (existing.isEmpty()) return false;
+        const QString currentUpdatedAt = existing.value("updated_at").toString();
 
         if (!expectedUpdatedAt.isEmpty() && currentUpdatedAt != expectedUpdatedAt) {
-            QString existingContent = existingRow.value("content").toString();
-            const QString existingEncrypted = existingRow.value("encrypted_content").toString();
-            if (!existingEncrypted.isEmpty() && m_isVaultConfigured && m_isVaultUnlocked && !notesKey.isEmpty()) {
-                existingContent = decryptContent(notesKey, existingEncrypted);
-            }
+            QString existingContent = existing.value("content").toString();
             if (existingContent != content) {
-                const QString historyId = generateUuid();
-                const QString historyTimestamp = currentTimestamp();
-                if (encryptAtRest) {
-                    executeSqlPrepared(
-                        "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) "
-                        "VALUES (?1, ?2, '', ?3, ?4)", {historyId, targetId, encrypted, historyTimestamp});
-                } else {
-                    executeSqlPrepared(
-                        "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) "
-                        "VALUES (?1, ?2, ?3, NULL, ?4)", {historyId, targetId, content, historyTimestamp});
-                }
+                const QByteArray pidBytes = targetId.toUtf8();
+                const QByteArray cBytes = encryptAtRest ? QByteArray() : content.toUtf8();
+                const QByteArray encBytes = encryptAtRest ? encrypted.toUtf8() : QByteArray();
+                char *hid = synapse_notes_record_history(
+                    m_db,
+                    pidBytes.constData(),
+                    cBytes.constData(),
+                    encBytes.isEmpty() ? nullptr : encBytes.constData()
+                );
+                if (hid) synapse_free_string(hid);
                 emit pageConflictDetected(targetId, existingContent);
                 return false;
             }
         }
     }
 
-    if (!executeSql("BEGIN IMMEDIATE;")) return false;
-    const int pageRows = encryptAtRest
-        ? (inserting
-            ? executeSqlPrepared(
-                  "INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, "
-                  "sort_order, is_pinned, pinned_order, crdt_state) VALUES (?1, ?2, '', ?3, ?4, ?5, ?5, 0, 0, 0.0, NULL)",
-                  {targetId, title, encrypted, icon, timestamp})
-            : executeSqlPrepared(
-                  "UPDATE pages SET title = ?1, content = '', encrypted_content = ?2, crdt_state = NULL, icon = ?3, updated_at = ?4 "
-                  "WHERE id = ?5 AND deleted_at IS NULL", {title, encrypted, icon, timestamp, targetId}))
-        : (inserting
-            ? executeSqlPrepared(
-                  "INSERT INTO pages (id, title, content, encrypted_content, icon, created_at, updated_at, "
-                  "sort_order, is_pinned, pinned_order, crdt_state) VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?5, 0, 0, 0.0, NULL)",
-                  {targetId, title, content, icon, timestamp})
-            : executeSqlPrepared(
-                  "UPDATE pages SET title = ?1, content = ?2, encrypted_content = NULL, crdt_state = NULL, icon = ?3, updated_at = ?4 "
-                  "WHERE id = ?5 AND deleted_at IS NULL", {title, content, icon, timestamp, targetId}));
-    if (pageRows != 1) {
-        executeSql("ROLLBACK;");
-        return false;
-    }
+    const QByteArray targetBytes = targetId.toUtf8();
+    const QByteArray titleBytes = title.toUtf8();
+    const QByteArray contentBytes = encryptAtRest ? QByteArray() : content.toUtf8();
+    const QByteArray encBytes = encryptAtRest ? encrypted.toUtf8() : QByteArray();
+    const QByteArray iconBytes = icon.toUtf8();
+
+    const bool saved = synapse_notes_save_page(
+        m_db,
+        targetBytes.constData(),
+        titleBytes.constData(),
+        contentBytes.constData(),
+        encBytes.isEmpty() ? nullptr : encBytes.constData(),
+        iconBytes.constData()
+    ) == 1;
+
+    if (!saved) return false;
 
     qint64 nextHistoryTime = 0;
     if (!pageId.isEmpty()) {
         const qint64 now = QDateTime::currentSecsSinceEpoch();
         if (!m_pageHistoryCooldown.contains(pageId) || now - m_pageHistoryCooldown.value(pageId) >= 60) {
             nextHistoryTime = now;
-            const QString historyId = generateUuid();
-            const int historyRows = encryptAtRest
-                ? executeSqlPrepared(
-                      "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) "
-                      "VALUES (?1, ?2, '', ?3, ?4)", {historyId, pageId, encrypted, timestamp})
-                : executeSqlPrepared(
-                      "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) "
-                      "VALUES (?1, ?2, ?3, NULL, ?4)", {historyId, pageId, content, timestamp});
-            if (historyRows != 1) {
-                executeSql("ROLLBACK;");
-                return false;
-            }
+            char *hid = synapse_notes_record_history(
+                m_db,
+                targetBytes.constData(),
+                contentBytes.constData(),
+                encBytes.isEmpty() ? nullptr : encBytes.constData()
+            );
+            if (!hid) return false;
+            synapse_free_string(hid);
         }
     }
-    if (!executeSql("COMMIT;")) {
-        executeSql("ROLLBACK;");
-        return false;
-    }
+
     if (nextHistoryTime > 0) m_pageHistoryCooldown[pageId] = nextHistoryTime;
     refreshStats();
     return true;
 }
 
 QVariantList SynapseDataController::getPageHistory(const QString &pageId) {
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT id, page_id, content, encrypted_content, created_at FROM page_history "
-        "WHERE page_id = ?1 ORDER BY created_at DESC", {pageId});
+    if (!m_db || pageId.trimmed().isEmpty()) return {};
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    char *raw = synapse_notes_get_history(m_db, idBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    if (!doc.isArray()) return {};
     QVariantList history;
     const QString notesKey = m_isVaultConfigured && m_isVaultUnlocked ? m_unlockedKeys.value("notes") : QString();
-    for (const QJsonValue &row : rows) {
+    for (const QJsonValue &row : doc.array()) {
         QJsonObject revision = row.toObject();
         const QString encrypted = revision.value("encrypted_content").toString();
         if (!encrypted.isEmpty()) {
@@ -204,108 +178,86 @@ QVariantList SynapseDataController::getPageHistory(const QString &pageId) {
 }
 
 bool SynapseDataController::restorePageRevision(const QString &pageId, const QString &revisionId) {
-    const QJsonArray rows = executeQueryPrepared(
-        "SELECT content, encrypted_content FROM page_history WHERE id = ?1 AND page_id = ?2",
-        {revisionId, pageId});
-    if (rows.isEmpty()) return false;
-    const QJsonObject revision = rows.first().toObject();
-    const QString encrypted = revision.value("encrypted_content").toString();
-    QString content = revision.value("content").toString();
-    if (!encrypted.isEmpty()) {
-        if (!m_isVaultConfigured || !m_isVaultUnlocked || !m_unlockedKeys.contains("notes")) return false;
-        content = decryptContent(m_unlockedKeys.value("notes"), encrypted);
-        if (content.isNull()) return false;
+    if (!m_db || pageId.trimmed().isEmpty() || revisionId.trimmed().isEmpty()) return false;
+    const QVariantList history = getPageHistory(pageId);
+    QString content;
+    bool found = false;
+    for (const QVariant &item : history) {
+        const QVariantMap rev = item.toMap();
+        if (rev.value("id").toString() == revisionId) {
+            if (rev.value("decryption_error").toBool()) return false;
+            content = rev.value("content").toString();
+            found = true;
+            break;
+        }
     }
+    if (!found) return false;
     const QVariantMap page = getPage(pageId);
     return savePage(pageId, page.value("title").toString(), content, page.value("icon").toString());
 }
 
 QString SynapseDataController::createSubPage(const QString &parentId, const QString &title, const QString &icon) {
-    const QString id = generateUuid();
-    const QString timestamp = currentTimestamp();
-    const QString parentValue = parentId.trimmed().isEmpty() ? "NULL" : QString("'%1'").arg(escapeSql(parentId));
-    const QString sql = QString("INSERT INTO pages (id, parent_id, title, content, icon, created_at, updated_at, sort_order, is_pinned, pinned_order) "
-                                "VALUES ('%1', %2, '%3', '', '%4', '%5', '%6', 0, 0, 0.0)")
-                            .arg(id, parentValue, escapeSql(title), escapeSql(icon), timestamp, timestamp);
-    const bool saved = executeSql(sql);
-    if (saved) refreshStats();
-    return saved ? id : QString();
+    if (!m_db) return {};
+    const QByteArray pBytes = parentId.trimmed().toUtf8();
+    const QByteArray tBytes = title.trimmed().toUtf8();
+    const QByteArray iBytes = icon.trimmed().toUtf8();
+    char *rawId = synapse_notes_create_subpage(
+        m_db,
+        parentId.trimmed().isEmpty() ? nullptr : pBytes.constData(),
+        tBytes.constData(),
+        icon.trimmed().isEmpty() ? nullptr : iBytes.constData()
+    );
+    if (!rawId) return {};
+    const QString id = QString::fromUtf8(rawId);
+    synapse_free_string(rawId);
+    refreshStats();
+    return id;
 }
 
 bool SynapseDataController::deletePage(const QString &pageId) {
-    const QString timestamp = currentTimestamp();
-    const QString subtreeCte =
-        "WITH RECURSIVE note_subtree(id) AS ("
-        "SELECT id FROM pages WHERE id = ?1 AND deleted_at IS NULL "
-        "UNION "
-        "SELECT child.id FROM pages AS child "
-        "JOIN note_subtree AS parent ON child.parent_id = parent.id "
-        "WHERE child.deleted_at IS NULL) ";
-
-    if (!executeSql("BEGIN IMMEDIATE;")) return false;
-
-    const QString updateEvents = subtreeCte +
-        "UPDATE calendar_events SET deleted_at = ?2, updated_at = ?2 "
-        "WHERE page_id IN (SELECT id FROM note_subtree)";
-    if (executeSqlPrepared(updateEvents, {pageId, timestamp}) < 0) {
-        executeSql("ROLLBACK;");
-        return false;
-    }
-
-    const QString updatePages = subtreeCte +
-        "UPDATE pages SET deleted_at = ?2, updated_at = ?2 "
-        "WHERE id IN (SELECT id FROM note_subtree)";
-    if (executeSqlPrepared(updatePages, {pageId, timestamp}) <= 0) {
-        executeSql("ROLLBACK;");
-        return false;
-    }
-
-    if (!executeSql("COMMIT;")) {
-        executeSql("ROLLBACK;");
-        return false;
-    }
-
-    refreshStats();
-    return true;
+    if (!m_db || pageId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    const bool deleted = synapse_notes_delete_page(m_db, idBytes.constData()) == 1;
+    if (deleted) refreshStats();
+    return deleted;
 }
 
 bool SynapseDataController::togglePinPage(const QString &pageId) {
-    const QJsonArray rows = executeQuery(QString("SELECT is_pinned FROM pages WHERE id = '%1'").arg(escapeSql(pageId)));
-    if (rows.isEmpty()) return false;
-    const int isPinned = rows.first().toObject().value("is_pinned").toInt();
-    const int nextPinned = isPinned == 1 ? 0 : 1;
-    const QString sql = QString("UPDATE pages SET is_pinned = %1, updated_at = '%2' WHERE id = '%3'")
-                            .arg(nextPinned).arg(currentTimestamp(), escapeSql(pageId));
-    return executeSql(sql);
+    if (!m_db || pageId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    return synapse_notes_toggle_pin(m_db, idBytes.constData()) == 1;
 }
 
 bool SynapseDataController::renamePage(const QString &pageId, const QString &newTitle) {
-    const QString sql = QString("UPDATE pages SET title = '%1', updated_at = '%2' WHERE id = '%3'")
-                            .arg(escapeSql(newTitle), currentTimestamp(), escapeSql(pageId));
-    return executeSql(sql);
+    if (!m_db || pageId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    const QByteArray tBytes = newTitle.trimmed().toUtf8();
+    return synapse_notes_rename_page(m_db, idBytes.constData(), tBytes.constData()) == 1;
 }
 
 bool SynapseDataController::updatePageIcon(const QString &pageId, const QString &newIcon) {
-    const QString sql = QString("UPDATE pages SET icon = '%1', updated_at = '%2' WHERE id = '%3'")
-                            .arg(escapeSql(newIcon), currentTimestamp(), escapeSql(pageId));
-    return executeSql(sql);
+    if (!m_db || pageId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    const QByteArray iBytes = newIcon.trimmed().toUtf8();
+    return synapse_notes_update_icon(m_db, idBytes.constData(), iBytes.constData()) == 1;
 }
 
 bool SynapseDataController::updatePageDescription(const QString &pageId, const QString &description) {
-    return executeSqlPrepared(
-        "UPDATE pages SET description = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
-        {description, currentTimestamp(), pageId}) == 1;
+    if (!m_db || pageId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    const QByteArray dBytes = description.trimmed().toUtf8();
+    return synapse_notes_update_description(m_db, idBytes.constData(), dBytes.constData()) == 1;
 }
 
 bool SynapseDataController::updatePageCover(const QString &pageId, const QString &coverImage) {
-    if (coverImage.trimmed().isEmpty()) {
-        return executeSqlPrepared(
-            "UPDATE pages SET cover_image = NULL, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-            {currentTimestamp(), pageId}) == 1;
-    }
-    return executeSqlPrepared(
-        "UPDATE pages SET cover_image = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
-        {coverImage, currentTimestamp(), pageId}) == 1;
+    if (!m_db || pageId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = pageId.trimmed().toUtf8();
+    const QByteArray cBytes = coverImage.trimmed().toUtf8();
+    return synapse_notes_update_cover(
+        m_db,
+        idBytes.constData(),
+        coverImage.trimmed().isEmpty() ? nullptr : cBytes.constData()
+    ) == 1;
 }
 
 QString SynapseDataController::createRandomPageCoverUrl() const {
