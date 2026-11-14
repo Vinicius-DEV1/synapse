@@ -148,7 +148,7 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
     var watched = entity.watched !== undefined ? entity.watched === true : attributes.watched === "true"
     var watching = entity.watching !== undefined ? entity.watching === true : attributes.watching === "true"
 
-    var iconChar = isYouTube ? (isPlaylist ? "📑" : "▶") : "🌐"
+    var iconChar = isYouTube ? (isPlaylist ? "📑" : "▶") : "💠"
     var iconBg = isYouTube ? "#25141c" : "#191724"
     var iconBorder = isYouTube ? "#4c1d2e" : "#2f2b42"
     var iconColor = isYouTube ? "#fb7185" : "#a78bfa"
@@ -175,6 +175,7 @@ function cardForTag(tag, provider, metadataCache, entityCache, copiedUrl) {
         var watchedLabel = watched ? "Mark as not completed" : "Mark as completed"
         var watchingLabel = watching ? "Stop watching" : "Mark as watching"
         actionsLine = "<p style=\"margin: 4px 0 0 0;\"><font color=\"#71717a\" size=\"1\">" +
+            (watching ? "Status: Watching &nbsp;•&nbsp; " : "") +
             "<a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watched")) + "\" style=\"color: #71717a; text-decoration: none;\">" + watchedLabel + "</a> &nbsp;•&nbsp; " +
             "<a href=\"" + escapeHtml(statusActionUrl(url, watched, watching, "watching")) + "\" style=\"color: #71717a; text-decoration: none;\">" + watchingLabel + "</a> &nbsp;•&nbsp; " +
             "<a href=\"synapse-link://copy?url=" + escapeHtml(encodeURIComponent(url)) + "\" style=\"color: #71717a; text-decoration: none;\">" + (copiedUrl === url ? "Copied" : "Copy URL") + "</a>" +

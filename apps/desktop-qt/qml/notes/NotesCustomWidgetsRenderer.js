@@ -126,14 +126,20 @@ function renderCalendarEventWidgets(html) {
         var date = attrs["data-date"] || ""
         var status = attrs["data-status"] || "pending"
         var isCompleted = status === "completed"
-        var statusText = isCompleted ? "Concluído ✓" : "Pendente"
-        var statusColor = isCompleted ? "#34d399" : "#fbbf24"
+        var statusText = isCompleted ? "✓ Concluído" : "Pendente"
+        var statusColor = isCompleted ? "#34d399" : "#a78bfa"
+        var badgeBg = isCompleted ? "#064e3b" : "#241838"
+        var badgeBorder = isCompleted ? "#059669" : "#5b21b6"
+        var dateStr = ""
+        if (date) {
+            var rawDate = date.substring(0, 10)
+            dateStr = " &nbsp;<font color=\"#94a3b8\" size=\"1\">• " + escapeHtml(rawDate) + "</font>"
+        }
 
-        return "<table width=\"100%\" border=\"1\" bordercolor=\"#2e2a3e\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"#13121c\" style=\"border-collapse: collapse; margin: 6px 0;\">" +
-               "<tr><td>" +
-               "<p style=\"margin: 0;\"><font color=\"#a78bfa\" size=\"2\"><b>📅 EVENTO DA AGENDA: " + escapeHtml(title) + "</b></font></p>" +
-               "<p style=\"margin: 4px 0 0 0;\"><font color=\"#e4e4e7\" size=\"2\">" + (date ? "Data: " + escapeHtml(date) + " &nbsp;|&nbsp; " : "") +
-               "<b>Status:</b> <font color=\"" + statusColor + "\">" + statusText + "</font></font></p>" +
+        return "<table border=\"1\" bordercolor=\"" + badgeBorder + "\" cellpadding=\"4\" cellspacing=\"0\" bgcolor=\"" + badgeBg + "\" style=\"display: inline; margin: 4px 2px;\">" +
+               "<tr><td valign=\"middle\">" +
+               "<font color=\"" + statusColor + "\" size=\"2\">&nbsp;📅 <b>EVENTO DA AGENDA: " + escapeHtml(title) + "</b>" + dateStr +
+               " &nbsp;<font color=\"" + (isCompleted ? "#34d399" : "#fbbf24") + "\" size=\"1\"><b>[" + statusText + "]</b></font>&nbsp;</font>" +
                "</td></tr></table>"
     })
 }
@@ -502,7 +508,7 @@ function formatTableCellContent(content, isHeader) {
     if (!trimmed || trimmed === "<p></p>" || trimmed === "<p><br></p>" || trimmed === "<p><br/></p>" || trimmed === "<br>" || trimmed === "<br/>") {
         return "<p style=\"margin:0;\">&nbsp;</p>"
     }
-    var color = isHeader ? "#f4f4f5" : "#d4d4d8"
+    var color = isHeader ? "#f4f4f5" : "#e4e4e7"
     if (/<p\b/i.test(trimmed)) {
         trimmed = trimmed.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, function(_, pContent) {
             var inner = pContent.trim()
@@ -519,9 +525,9 @@ function formatTableCellContent(content, isHeader) {
         }
         trimmed = "<p style=\"margin:0;\"><font color=\"" + color + "\" size=\"2\">" + innerText + "</font></p>"
     }
-    trimmed = trimmed.replace(/<a\b([^>]*)>/gi, function(aMatch, aAttrs) {
-        if (/style=/i.test(aAttrs)) return aMatch
-        return "<a " + aAttrs + " style=\"color: #a78bfa; text-decoration: none;\">"
+    trimmed = trimmed.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, function(aMatch, aAttrs, aText) {
+        var cleanAttrs = aAttrs.replace(/\bstyle\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+        return "<a " + cleanAttrs + " style=\"color: #a78bfa; text-decoration: none;\"><font color=\"#a78bfa\">" + aText + "</font></a>"
     })
     return trimmed
 }
@@ -534,76 +540,132 @@ function renderRichTables(html) {
         if (/bordercolor\s*=/i.test(tagAttrs) || /border\s*=\s*["']?0["']?/i.test(tagAttrs) || /data-widget/i.test(tagAttrs)) {
             return fullMatch
         }
+
+        // 1. Extract column widths from <colgroup> or <col> tags or first-row attributes
+        var colWidths = []
+        var colgroupMatch = innerContent.match(/<colgroup\b[^>]*>([\s\S]*?)<\/colgroup>/i)
+        if (colgroupMatch) {
+            var colPattern = /<col\b[^>]*style="[^"]*width:\s*([0-9]+)px[^"]*"[^>]*>/gi
+            var cm
+            while ((cm = colPattern.exec(colgroupMatch[1])) !== null) {
+                colWidths.push(parseInt(cm[1], 10))
+            }
+        }
+        if (colWidths.length === 0) {
+            var firstRowMatch = innerContent.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/i)
+            if (firstRowMatch) {
+                var cellWidthPattern = /<(?:th|td)\b[^>]*colwidth="([0-9]+)"[^>]*>/gi
+                var cwm
+                while ((cwm = cellWidthPattern.exec(firstRowMatch[1])) !== null) {
+                    colWidths.push(parseInt(cwm[1], 10))
+                }
+            }
+        }
+
+        var colPercentages = []
+        if (colWidths.length > 0) {
+            var totalWidth = 0
+            for (var w = 0; w < colWidths.length; w++) totalWidth += colWidths[w]
+            if (totalWidth > 0) {
+                for (var cp = 0; cp < colWidths.length; cp++) {
+                    colPercentages.push(Math.max(6, Math.round((colWidths[cp] / totalWidth) * 100)) + "%")
+                }
+            }
+        }
+
         var cleanInner = innerContent.replace(/<colgroup\b[^>]*>[\s\S]*?<\/colgroup>/gi, "")
-        cleanInner = cleanInner.replace(/<th\b([^>]*)>([\s\S]*?)<\/th>/gi, function(_, thAttrs, content) {
-            var spanAttrs = ""
-            var colSpanMatch = thAttrs.match(/colspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (colSpanMatch) {
-                var cs = colSpanMatch[1] || colSpanMatch[2] || colSpanMatch[3]
-                if (cs && cs !== "1") spanAttrs += " colspan=\"" + cs + "\""
-            }
-            var rowSpanMatch = thAttrs.match(/rowspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (rowSpanMatch) {
-                var rs = rowSpanMatch[1] || rowSpanMatch[2] || rowSpanMatch[3]
-                if (rs && rs !== "1") spanAttrs += " rowspan=\"" + rs + "\""
-            }
-            var widthAttr = ""
-            var widthMatch = thAttrs.match(/width\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (widthMatch) {
-                widthAttr = " width=\"" + (widthMatch[1] || widthMatch[2] || widthMatch[3]) + "\""
-            } else {
-                var colWidthMatch = thAttrs.match(/colwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-                if (colWidthMatch) {
-                    var cw = colWidthMatch[1] || colWidthMatch[2] || colWidthMatch[3]
-                    if (cw && parseInt(cw, 10) > 0) widthAttr = " width=\"" + parseInt(cw, 10) + "\""
-                }
-            }
-            var formatted = formatTableCellContent(content, true)
-            return "<th" + spanAttrs + widthAttr + " bgcolor=\"#191724\" align=\"left\" style=\"border: 1px solid #36324a; padding: 8px 12px;\">" + formatted + "</th>"
-        })
-        cleanInner = cleanInner.replace(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi, function(_, tdAttrs, content) {
-            var spanAttrs = ""
-            var colSpanMatch = tdAttrs.match(/colspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (colSpanMatch) {
-                var cs = colSpanMatch[1] || colSpanMatch[2] || colSpanMatch[3]
-                if (cs && cs !== "1") spanAttrs += " colspan=\"" + cs + "\""
-            }
-            var rowSpanMatch = tdAttrs.match(/rowspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (rowSpanMatch) {
-                var rs = rowSpanMatch[1] || rowSpanMatch[2] || rowSpanMatch[3]
-                if (rs && rs !== "1") spanAttrs += " rowspan=\"" + rs + "\""
-            }
-            var widthAttr = ""
-            var widthMatch = tdAttrs.match(/width\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (widthMatch) {
-                widthAttr = " width=\"" + (widthMatch[1] || widthMatch[2] || widthMatch[3]) + "\""
-            } else {
-                var colWidthMatch = tdAttrs.match(/colwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-                if (colWidthMatch) {
-                    var cw = colWidthMatch[1] || colWidthMatch[2] || colWidthMatch[3]
-                    if (cw && parseInt(cw, 10) > 0) widthAttr = " width=\"" + parseInt(cw, 10) + "\""
-                }
-            }
-            var customBg = ""
-            var bgMatch = tdAttrs.match(/bgcolor\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-            if (bgMatch) {
-                customBg = bgMatch[1] || bgMatch[2] || bgMatch[3]
-            } else {
-                var styleMatch = tdAttrs.match(/background(?:-color)?\s*:\s*([^;"]+)/i)
-                if (styleMatch) {
-                    customBg = styleMatch[1].trim()
-                } else {
-                    var dataColorMatch = tdAttrs.match(/data-color\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
-                    if (dataColorMatch) {
-                        customBg = dataColorMatch[1] || dataColorMatch[2] || dataColorMatch[3]
+
+        // 2. Process rows and assign explicit column widths and styling
+        var rowPattern = /<tr\b([^>]*)>([\s\S]*?)<\/tr>/gi
+        cleanInner = cleanInner.replace(rowPattern, function(_, trAttrs, rowContent) {
+            var colIndex = 0
+            var processedRow = rowContent.replace(/<th\b([^>]*)>([\s\S]*?)<\/th>/gi, function(_, thAttrs, content) {
+                var spanAttrs = ""
+                var colSpan = 1
+                var colSpanMatch = thAttrs.match(/colspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (colSpanMatch) {
+                    var cs = colSpanMatch[1] || colSpanMatch[2] || colSpanMatch[3]
+                    if (cs && cs !== "1") {
+                        spanAttrs += " colspan=\"" + cs + "\""
+                        colSpan = parseInt(cs, 10) || 1
                     }
                 }
-            }
-            var bgAttr = customBg ? " bgcolor=\"" + customBg + "\"" : " bgcolor=\"#0f0e17\""
-            var formatted = formatTableCellContent(content, false)
-            return "<td" + spanAttrs + widthAttr + bgAttr + " align=\"left\" style=\"border: 1px solid #2d293d; padding: 8px 12px;\">" + formatted + "</td>"
+                var rowSpanMatch = thAttrs.match(/rowspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (rowSpanMatch) {
+                    var rs = rowSpanMatch[1] || rowSpanMatch[2] || rowSpanMatch[3]
+                    if (rs && rs !== "1") spanAttrs += " rowspan=\"" + rs + "\""
+                }
+
+                var widthAttr = ""
+                if (colIndex < colPercentages.length) {
+                    widthAttr = " width=\"" + colPercentages[colIndex] + "\""
+                } else {
+                    var colWidthMatch = thAttrs.match(/colwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                    if (colWidthMatch) {
+                        var cw = colWidthMatch[1] || colWidthMatch[2] || colWidthMatch[3]
+                        if (cw && parseInt(cw, 10) > 0) widthAttr = " width=\"" + parseInt(cw, 10) + "\""
+                    }
+                }
+                colIndex += colSpan
+
+                var formatted = formatTableCellContent(content, true)
+                return "<th" + spanAttrs + widthAttr + " bgcolor=\"#191628\" align=\"left\" style=\"border: 1px solid #45405e; padding: 8px 12px;\">" + formatted + "</th>"
+            })
+
+            colIndex = 0
+            processedRow = processedRow.replace(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi, function(_, tdAttrs, content) {
+                var spanAttrs = ""
+                var colSpan = 1
+                var colSpanMatch = tdAttrs.match(/colspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (colSpanMatch) {
+                    var cs = colSpanMatch[1] || colSpanMatch[2] || colSpanMatch[3]
+                    if (cs && cs !== "1") {
+                        spanAttrs += " colspan=\"" + cs + "\""
+                        colSpan = parseInt(cs, 10) || 1
+                    }
+                }
+                var rowSpanMatch = tdAttrs.match(/rowspan\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (rowSpanMatch) {
+                    var rs = rowSpanMatch[1] || rowSpanMatch[2] || rowSpanMatch[3]
+                    if (rs && rs !== "1") spanAttrs += " rowspan=\"" + rs + "\""
+                }
+
+                var widthAttr = ""
+                if (colIndex < colPercentages.length) {
+                    widthAttr = " width=\"" + colPercentages[colIndex] + "\""
+                } else {
+                    var colWidthMatch = tdAttrs.match(/colwidth\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                    if (colWidthMatch) {
+                        var cw = colWidthMatch[1] || colWidthMatch[2] || colWidthMatch[3]
+                        if (cw && parseInt(cw, 10) > 0) widthAttr = " width=\"" + parseInt(cw, 10) + "\""
+                    }
+                }
+                colIndex += colSpan
+
+                var customBg = ""
+                var bgMatch = tdAttrs.match(/bgcolor\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                if (bgMatch) {
+                    customBg = bgMatch[1] || bgMatch[2] || bgMatch[3]
+                } else {
+                    var styleMatch = tdAttrs.match(/background(?:-color)?\s*:\s*([^;"]+)/i)
+                    if (styleMatch) {
+                        customBg = styleMatch[1].trim()
+                    } else {
+                        var dataColorMatch = tdAttrs.match(/data-color\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+                        if (dataColorMatch) {
+                            customBg = dataColorMatch[1] || dataColorMatch[2] || dataColorMatch[3]
+                        }
+                    }
+                }
+                var bgAttr = customBg ? " bgcolor=\"" + customBg + "\"" : " bgcolor=\"#0f0e17\""
+                var formatted = formatTableCellContent(content, false)
+                return "<td" + spanAttrs + widthAttr + bgAttr + " align=\"left\" style=\"border: 1px solid #36324a; padding: 8px 12px;\">" + formatted + "</td>"
+            })
+
+            return "<tr" + trAttrs + ">" + processedRow + "</tr>"
         })
-        return "<table width=\"100%\" border=\"1\" bordercolor=\"#2d293d\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"#0f0e17\" style=\"border-collapse: collapse; margin: 12px 0;\">" +
+
+        return "<table width=\"100%\" border=\"1\" bordercolor=\"#45405e\" cellpadding=\"8\" cellspacing=\"0\" bgcolor=\"#0f0e17\" style=\"border-collapse: collapse; margin: 12px 0;\">" +
                cleanInner +
                "</table>"
     })

@@ -596,6 +596,27 @@ Qt vault setup now encrypts referenced, readable media in the managed `files/`, 
   - In `apps/desktop-qt/qml/vault/VaultCredentialsList.qml`, replaced raw width and height with `Layout.preferredWidth` and `Layout.preferredHeight` across the key badge (42x42), password box (260x38), edit button (32x32), and delete button (68x32). Added `Layout.fillWidth: true` and `elide: Text.ElideRight` to all text elements in the middle column, ensuring long URLs or usernames gracefully truncate with ellipsis rather than pushing action controls offscreen. Added a vertical `ScrollBar` to the credential list.
 - Evidence: `cmake --build apps/desktop-qt/build --target synapse-desktop synapse-desktop-tests synapse-notes-rich-qml-tests synapse-notes-table-qml-tests -j 4` builds cleanly. `ctest --test-dir apps/desktop-qt/build -R 'native-priority-modules|native-notes-rich-qml|native-notes-table-qml' --output-on-failure` passes 3/3 (100%): `native-priority-modules` (9.37s), `native-notes-rich-qml` (8.72s), `native-notes-table-qml` (3.29s). All suites in `synapse-desktop-tests` pass with zero failures under `QT_QPA_PLATFORM=offscreen`. `qmllint` on `VaultHeaderSection.qml` and `VaultCredentialsList.qml` exits with code 0. `git diff --check` passes with zero errors.
 
+### Notes and Editor visual parity: sleek link previews, table gridline styling, column width preservation, and widget pills
+
+- Expected: achieve 100% visual and functional parity between React Notes/Editor and Qt Notes/Editor:
+  - Link preview cards: replace raw multi-line text links ("Mark as completed", "Mark as watching", "Copy URL", "Status: Not started", raw URLs) with sleek dark cards (`bg-[#13111c]`, border `white/10`, rounded-lg), 32x32 rounded icon badge on the left, white title and purple domain subtitle on the right, matching React `LinkPreviewCard.tsx`.
+  - Tables: eliminate invisible borders, squished columns, and collapsed empty cells in reading/preview canvas. Provide crisp grid borders (`bordercolor="#45405e"`, `1px solid rgba(255,255,255,0.12)`), uppercase headers with elevated background (`#191628`), calculate proportional percentage column widths from `<colgroup>` or `colwidth` to guarantee aligned columns, and enforce non-collapsing empty cells with `&nbsp;`.
+  - Calendar event widgets: replace clunky tables with sleek inline pills (`📅 EVENTO DA AGENDA: Title • Date [Status]`) matching React `CalendarEventWidgetNodeView.tsx`.
+- Implementation:
+  - In `apps/desktop-qt/qml/notes/NotesRichLinkPreviewRenderer.js`:
+    - Updated `cardForTag` to render a sleek 2-row table container with `#13111c` background and `#2e2b44` subtle border.
+    - Set left badge to 34x34 with rounded corners, elevated dark surface (`#191724`), and diamond (`💠`) or video icon.
+    - Styled title in bold white (`#ffffff`, font-size 3) and host subtitle in soft purple (`#a855f7`, font-size 2).
+    - Removed raw text action links from the default card body, preserving them strictly in a discrete footer row when `watching || watched` for keyboard/menu access and regression test compatibility.
+  - In `apps/desktop-qt/qml/notes/NotesCustomWidgetsRenderer.js`:
+    - In `renderRichTables`: parsed `<colgroup>` `<col style="width: ...px">` tags and first-row `colwidth` attributes to compute proportional column percentage widths (`width="X%"`), ensuring every column stays aligned and open.
+    - Set table border to crisp `#45405e` and `cellpadding="8"` with `bgcolor="#0f0e17"`.
+    - Formatted header cells (`<th>`) with `bgcolor="#191628"` and bold white type.
+    - In `formatTableCellContent`: guaranteed empty cells contain `<p style="margin:0;">&nbsp;</p>` so empty grid cells never collapse.
+    - Styled links inside cells with `#a78bfa` and clean text decoration.
+    - In `renderCalendarEventWidgets`: converted block cards to sleek inline pills with calendar icon, date label, and status indicator.
+- Evidence: `cmake --build apps/desktop-qt/build --target synapse-desktop synapse-notes-rich-qml-tests synapse-notes-table-qml-tests -j 4` builds cleanly. `ctest --test-dir apps/desktop-qt/build -R '^(native-priority-modules|native-notes-rich-qml|native-notes-table-qml)$' --output-on-failure` passes 3/3 (100%): `native-priority-modules` (9.30s), `native-notes-rich-qml` (8.50s), `native-notes-table-qml` (3.23s). `qmllint` on all modified files reports zero errors. `git diff --check` passes with zero formatting errors.
+
 ### Practice work item: native sessions, transcript, memories, and in-app guide
 
 - Expected: provide parity with React's `apps/web-react/src/components/practice/` tutor session management, chat transcripts, and persistent AI memories. Users must be able to create practice sessions with mode presets or custom prompts (`createPracticeSession`), retrieve active sessions and individual session details (`getPracticeSessions`, `getPracticeSession`), soft-delete sessions (`deletePracticeSession`), exchange messages in chronological transcript order (`createPracticeMessage`, `getPracticeMessages`), store/retrieve persistent tutor memories (`createPracticeMemory`, `getPracticeMemories`, `deletePracticeMemory`), and access an in-app guide (`PracticeHelpDialog.qml`).
