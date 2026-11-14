@@ -1,7 +1,7 @@
-use rusqlite::params;
 use tauri::State;
 use crate::cmd_library::types::Highlight;
 use crate::db::DbState;
+use synapse_core::domain::library::reader as core_reader;
 
 /// Retrieves all active highlights for a specific book.
 #[tauri::command]
@@ -12,37 +12,24 @@ pub fn library_get_highlights(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, book_id, page_number, text_content, color, rects, highlight_type, note, created_at, updated_at, deleted_at FROM library_highlights WHERE book_id = ? AND deleted_at IS NULL",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let iter = stmt
-        .query_map([&book_id], |row| {
-            Ok(Highlight {
-                id: row.get(0)?,
-                book_id: row.get(1)?,
-                page_number: row.get(2)?,
-                text_content: row.get(3)?,
-                color: row.get(4)?,
-                rects: row.get(5)?,
-                highlight_type: row.get(6)?,
-                note: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-                deleted_at: row.get(10)?,
-            })
+    let list = core_reader::get_highlights(conn, &book_id)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|h| Highlight {
+            id: Some(h.id),
+            book_id: h.book_id,
+            page_number: h.page_number,
+            text_content: Some(h.text_content),
+            color: h.color,
+            rects: h.rects,
+            highlight_type: h.highlight_type,
+            note: h.note,
+            created_at: h.created_at,
+            updated_at: None,
+            deleted_at: None,
         })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
+        .collect();
+    Ok(list)
 }
 
 /// Creates a new text or area highlight for a book.
@@ -54,29 +41,32 @@ pub fn library_create_highlight(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let id = highlight
-        .id
-        .clone()
-        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-
-    conn.execute(
-        "INSERT INTO library_highlights (id, book_id, page_number, text_content, color, rects, highlight_type, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        params![
-            id,
-            highlight.book_id,
-            highlight.page_number,
-            highlight.text_content,
-            highlight.color.as_deref().unwrap_or("yellow"),
-            highlight.rects,
-            highlight.highlight_type.as_deref().unwrap_or("text"),
-            highlight.note
-        ],
+    let text = highlight.text_content.unwrap_or_default();
+    let created = core_reader::add_highlight_full(
+        conn,
+        &highlight.book_id,
+        highlight.page_number,
+        &text,
+        highlight.color.as_deref(),
+        highlight.rects.as_deref(),
+        highlight.highlight_type.as_deref(),
+        highlight.note.as_deref(),
     )
     .map_err(|e| e.to_string())?;
 
-    let mut ret = highlight;
-    ret.id = Some(id);
-    Ok(ret)
+    Ok(Highlight {
+        id: Some(created.id),
+        book_id: created.book_id,
+        page_number: created.page_number,
+        text_content: Some(created.text_content),
+        color: created.color,
+        rects: created.rects,
+        highlight_type: created.highlight_type,
+        note: created.note,
+        created_at: created.created_at,
+        updated_at: None,
+        deleted_at: None,
+    })
 }
 
 /// Updates an existing highlight content, color, or notes.
@@ -88,21 +78,33 @@ pub fn library_update_highlight(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let count = conn
-        .execute(
-            "UPDATE library_highlights SET text_content = ?, color = ?, rects = ?, highlight_type = ?, note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            params![
-                highlight.text_content,
-                highlight.color,
-                highlight.rects,
-                highlight.highlight_type,
-                highlight.note,
-                highlight.id
-            ],
-        )
-        .map_err(|e| e.to_string())?;
+    let id = highlight.id.ok_or("Highlight id required")?;
+    let ok = core_reader::update_highlight_full(
+        conn,
+        &id,
+        highlight.text_content.as_deref(),
+        highlight.color.as_deref(),
+        highlight.rects.as_deref(),
+        highlight.highlight_type.as_deref(),
+        highlight.note.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
 
-    Ok(count as i32)
+    Ok(if ok { 1 } else { 0 })
+}
+
+/// Updates only the note on an existing highlight.
+#[tauri::command]
+#[allow(dead_code)]
+pub fn library_update_highlight_note(
+    id: String,
+    note: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    let guard = db_state.conn.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+
+    core_reader::update_highlight_note(conn, &id, Some(&note)).map_err(|e| e.to_string())
 }
 
 /// Soft-deletes a highlight by ID.
@@ -114,11 +116,5 @@ pub fn library_delete_highlight(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    conn.execute(
-        "UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    core_reader::delete_highlight(conn, &id).map_err(|e| e.to_string())
 }

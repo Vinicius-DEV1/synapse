@@ -214,13 +214,7 @@ pub fn library_delete_book(id: String, db_state: State<'_, DbState>) -> Result<b
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    conn.execute(
-        "UPDATE library_books SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    synapse_core::domain::library::books::soft_delete_book(conn, &id).map_err(|e| e.to_string())
 }
 
 /// Imports and encrypts an external book file (EPUB/PDF) using the library master key.

@@ -4231,6 +4231,7 @@ dependencies = [
  "serde",
  "serde_json",
  "synapse-core",
+ "uuid",
  "zeroize",
 ]
 

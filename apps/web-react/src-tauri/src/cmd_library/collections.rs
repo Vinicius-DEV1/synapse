@@ -1,7 +1,7 @@
-use rusqlite::params;
 use tauri::State;
 use crate::cmd_library::types::Collection;
 use crate::db::DbState;
+use synapse_core::domain::library::collections as core_cols;
 
 /// Retrieves all active library collections.
 #[tauri::command]
@@ -9,26 +9,15 @@ pub fn library_get_collections(db_state: State<'_, DbState>) -> Result<Vec<Colle
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let mut stmt = conn
-        .prepare("SELECT id, name, color FROM library_collections WHERE deleted_at IS NULL")
-        .map_err(|e| e.to_string())?;
-
-    let iter = stmt
-        .query_map([], |row| {
-            Ok(Collection {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                color: row.get(2)?,
-            })
+    let items = core_cols::get_collections(conn)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|c| Collection {
+            id: c.id,
+            name: c.name,
+            color: Some(c.color),
         })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
+        .collect();
     Ok(items)
 }
 
@@ -41,21 +30,16 @@ pub fn library_add_collection(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let id = if collection.id.is_empty() {
-        uuid::Uuid::new_v4().to_string()
-    } else {
-        collection.id.clone()
-    };
+    let color = collection.color.as_deref().unwrap_or("#3b82f6");
+    let created = core_cols::create_collection(conn, &collection.name, color)
+        .map_err(|e| e.to_string())?
+        .ok_or("Invalid collection name or color")?;
 
-    conn.execute(
-        "INSERT INTO library_collections (id, name, color) VALUES (?, ?, ?)",
-        params![id, collection.name, collection.color],
-    )
-    .map_err(|e| e.to_string())?;
-
-    let mut ret = collection;
-    ret.id = id;
-    Ok(ret)
+    Ok(Collection {
+        id: created.id,
+        name: created.name,
+        color: Some(created.color),
+    })
 }
 
 /// Creates a new collection (alternate endpoint).
@@ -64,26 +48,7 @@ pub fn library_create_collection(
     collection: Collection,
     db_state: State<'_, DbState>,
 ) -> Result<Collection, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
-    let id = if collection.id.is_empty() {
-        uuid::Uuid::new_v4().to_string()
-    } else {
-        collection.id.clone()
-    };
-
-    conn.execute(
-        "INSERT INTO library_collections (id, name, color) VALUES (?, ?, ?)",
-        params![id, collection.name, collection.color],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(Collection {
-        id,
-        name: collection.name,
-        color: collection.color,
-    })
+    library_add_collection(collection, db_state)
 }
 
 /// Updates an existing collection name and color.
@@ -95,14 +60,11 @@ pub fn library_update_collection(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let count = conn
-        .execute(
-            "UPDATE library_collections SET name = ?, color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            params![collection.name, collection.color, collection.id],
-        )
+    let color = collection.color.as_deref().unwrap_or("#3b82f6");
+    let ok = core_cols::update_collection(conn, &collection.id, &collection.name, color)
         .map_err(|e| e.to_string())?;
 
-    Ok(count as i32)
+    Ok(if ok { 1 } else { 0 })
 }
 
 /// Soft-deletes a collection by ID.
@@ -114,13 +76,7 @@ pub fn library_delete_collection(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    conn.execute(
-        "UPDATE library_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    core_cols::delete_collection(conn, &id).map_err(|e| e.to_string())
 }
 
 /// Adds a book into a collection association.
@@ -133,14 +89,7 @@ pub fn library_add_book_to_collection(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let id = uuid::Uuid::new_v4().to_string();
-    conn.execute(
-        "INSERT OR REPLACE INTO library_book_collections (id, book_id, collection_id) VALUES (?, ?, ?)",
-        params![id, book_id, collection_id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    core_cols::add_book_to_collection(conn, &book_id, &collection_id).map_err(|e| e.to_string())
 }
 
 /// Removes a book from a collection association (soft delete).
@@ -153,13 +102,7 @@ pub fn library_remove_book_from_collection(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    conn.execute(
-        "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ? AND collection_id = ?",
-        params![book_id, collection_id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    core_cols::remove_book_from_collection(conn, &book_id, &collection_id).map_err(|e| e.to_string())
 }
 
 /// Retrieves all collections associated with a given book ID.
@@ -173,7 +116,9 @@ pub fn library_get_book_collections(
 
     let mut stmt = conn
         .prepare(
-            "SELECT c.id, c.name, c.color FROM library_collections c INNER JOIN library_book_collections bc ON c.id = bc.collection_id WHERE bc.book_id = ? AND bc.deleted_at IS NULL AND c.deleted_at IS NULL",
+            "SELECT c.id, c.name, c.color FROM library_collections c \
+             INNER JOIN library_book_collections bc ON c.id = bc.collection_id \
+             WHERE bc.book_id = ? AND bc.deleted_at IS NULL AND c.deleted_at IS NULL",
         )
         .map_err(|e| e.to_string())?;
 
@@ -188,10 +133,8 @@ pub fn library_get_book_collections(
         .map_err(|e| e.to_string())?;
 
     let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
+    for i in iter.flatten() {
+        items.push(i);
     }
     Ok(items)
 }
@@ -206,24 +149,7 @@ pub fn library_set_book_collections(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    // Soft-delete existing associations
-    conn.execute(
-        "UPDATE library_book_collections SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ? AND deleted_at IS NULL",
-        [&book_id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    // Insert new associations
-    for col_id in &collection_ids {
-        let id = uuid::Uuid::new_v4().to_string();
-        conn.execute(
-            "INSERT OR REPLACE INTO library_book_collections (id, book_id, collection_id, deleted_at) VALUES (?, ?, ?, NULL)",
-            params![id, book_id, col_id],
-        )
-        .map_err(|e| e.to_string())?;
-    }
-
-    Ok(true)
+    core_cols::set_book_collections(conn, &book_id, &collection_ids).map_err(|e| e.to_string())
 }
 
 /// Retrieves all book-to-collection mappings in a single batch query.
@@ -247,10 +173,8 @@ pub fn library_get_all_book_collections(
         .map_err(|e| e.to_string())?;
 
     let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-    for i in iter {
-        if let Ok((b_id, c_id)) = i {
-            map.entry(b_id).or_default().push(c_id);
-        }
+    for i in iter.flatten() {
+        map.entry(i.0).or_default().push(i.1);
     }
     Ok(map)
 }

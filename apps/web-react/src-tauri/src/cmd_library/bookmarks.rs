@@ -1,7 +1,7 @@
-use rusqlite::params;
 use tauri::State;
 use crate::cmd_library::types::Bookmark;
 use crate::db::DbState;
+use synapse_core::domain::library::reader as core_reader;
 
 /// Retrieves all active bookmarks for a specific book.
 #[tauri::command]
@@ -12,33 +12,20 @@ pub fn library_get_bookmarks(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, book_id, page_number, label, created_at, updated_at, deleted_at FROM library_bookmarks WHERE book_id = ? AND deleted_at IS NULL",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let iter = stmt
-        .query_map([&book_id], |row| {
-            Ok(Bookmark {
-                id: row.get(0)?,
-                book_id: row.get(1)?,
-                page_number: row.get(2)?,
-                label: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                deleted_at: row.get(6)?,
-            })
+    let marks = core_reader::get_bookmarks(conn, &book_id)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|b| Bookmark {
+            id: Some(b.id),
+            book_id: b.book_id,
+            page_number: b.page_number,
+            label: b.label,
+            created_at: b.created_at,
+            updated_at: None,
+            deleted_at: None,
         })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
+        .collect();
+    Ok(marks)
 }
 
 /// Creates a new bookmark at a specific page.
@@ -50,20 +37,23 @@ pub fn library_create_bookmark(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let id = bookmark
-        .id
-        .clone()
-        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-
-    conn.execute(
-        "INSERT INTO library_bookmarks (id, book_id, page_number, label) VALUES (?, ?, ?, ?)",
-        params![id, bookmark.book_id, bookmark.page_number, bookmark.label],
+    let created = core_reader::add_bookmark(
+        conn,
+        &bookmark.book_id,
+        bookmark.page_number,
+        bookmark.label.as_deref(),
     )
     .map_err(|e| e.to_string())?;
 
-    let mut ret = bookmark;
-    ret.id = Some(id);
-    Ok(ret)
+    Ok(Bookmark {
+        id: Some(created.id),
+        book_id: created.book_id,
+        page_number: created.page_number,
+        label: created.label,
+        created_at: created.created_at,
+        updated_at: None,
+        deleted_at: None,
+    })
 }
 
 /// Updates the label of an existing bookmark.
@@ -75,14 +65,12 @@ pub fn library_update_bookmark(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    let count = conn
-        .execute(
-            "UPDATE library_bookmarks SET label = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            params![bookmark.label, bookmark.id],
-        )
+    let id = bookmark.id.ok_or("Bookmark id is required")?;
+    let label = bookmark.label.unwrap_or_default();
+    let ok = core_reader::update_bookmark(conn, &id, &label)
         .map_err(|e| e.to_string())?;
 
-    Ok(count as i32)
+    Ok(if ok { 1 } else { 0 })
 }
 
 /// Soft-deletes a bookmark by ID.
@@ -94,11 +82,5 @@ pub fn library_delete_bookmark(
     let guard = db_state.conn.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
-    conn.execute(
-        "UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(true)
+    core_reader::delete_bookmark(conn, &id).map_err(|e| e.to_string())
 }
