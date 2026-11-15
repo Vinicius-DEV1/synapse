@@ -75,12 +75,23 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
             }
         }
         if (success) {
-            const QString now = currentTimestamp();
-            const QVariant folderValue = folderId.isEmpty() ? QVariant() : QVariant(folderId);
-            success = executeSqlPrepared(
-                "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) "
-                "VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, ?8)",
-                {id, name, fileTypeCategory(name), fileSize, encryptedLocalPath, folderValue, mimeType, now}) == 1;
+            const QByteArray idBytes = id.toUtf8();
+            const QByteArray nameBytes = name.toUtf8();
+            const QByteArray typeBytes = fileTypeCategory(name).toUtf8();
+            const QByteArray pathBytes = encryptedLocalPath.toUtf8();
+            const QByteArray folderBytes = folderId.toUtf8();
+            const QByteArray mimeBytes = mimeType.toUtf8();
+            const int res = synapse_files_create_file(
+                m_db,
+                idBytes.constData(),
+                nameBytes.constData(),
+                typeBytes.constData(),
+                fileSize,
+                pathBytes.constData(),
+                folderId.isEmpty() ? nullptr : folderBytes.constData(),
+                mimeType.isEmpty() ? nullptr : mimeBytes.constData()
+            );
+            success = (res == 0);
             if (!success) {
                 QFile::remove(destination);
                 error = "Could not save the file record in the database.";

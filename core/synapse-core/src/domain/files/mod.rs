@@ -201,4 +201,31 @@ impl FilesRepository {
     pub fn update_file_local_path_conn(conn: &rusqlite::Connection, file_id: &str, local_path: &str) -> Result<bool> {
         items::update_file_local_path(conn, file_id, local_path)
     }
+
+    pub fn create_file(
+        db: &Database,
+        id: &str,
+        name: &str,
+        file_type: &str,
+        file_size: i64,
+        local_path: &str,
+        folder_id: Option<&str>,
+        mime_type: Option<&str>,
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        items::create_file(&conn, id, name, file_type, file_size, local_path, folder_id, mime_type)
+    }
+
+    pub fn create_file_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        name: &str,
+        file_type: &str,
+        file_size: i64,
+        local_path: &str,
+        folder_id: Option<&str>,
+        mime_type: Option<&str>,
+    ) -> Result<bool> {
+        items::create_file(conn, id, name, file_type, file_size, local_path, folder_id, mime_type)
+    }
 }

@@ -207,6 +207,7 @@ int synapse_files_unlink_from_page(Database* db, const char* file_id, const char
 char* synapse_files_get_linked_pages(Database* db, const char* file_id);
 char* synapse_files_get_file(Database* db, const char* file_id);
 int synapse_files_update_local_path(Database* db, const char* file_id, const char* local_path);
+int synapse_files_create_file(Database* db, const char* id, const char* name, const char* file_type, int64_t file_size, const char* local_path, const char* folder_id, const char* mime_type);
 
 // Domain APIs: Video & Media
 char* synapse_video_get_all(Database* db, const char* filter);

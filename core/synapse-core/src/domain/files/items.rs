@@ -256,3 +256,24 @@ pub fn update_file_local_path(
     )?;
     Ok(rows > 0)
 }
+
+pub fn create_file(
+    conn: &rusqlite::Connection,
+    id: &str,
+    name: &str,
+    file_type: &str,
+    file_size: i64,
+    local_path: &str,
+    folder_id: Option<&str>,
+    mime_type: Option<&str>,
+) -> Result<bool> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let clean_folder = folder_id.map(|s| s.trim()).filter(|s| !s.is_empty());
+    let clean_mime = mime_type.map(|s| s.trim()).filter(|s| !s.is_empty());
+    let rows = conn.execute(
+        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, ?8)",
+        params![id.trim(), name.trim(), file_type.trim(), file_size, local_path.trim(), clean_folder, clean_mime, now],
+    )?;
+    Ok(rows == 1)
+}

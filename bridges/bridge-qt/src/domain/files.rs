@@ -397,3 +397,46 @@ pub unsafe extern "C" fn synapse_files_update_local_path(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_files_create_file(
+    db: *mut Database,
+    id: *const c_char,
+    name: *const c_char,
+    file_type: *const c_char,
+    file_size: i64,
+    local_path: *const c_char,
+    folder_id: *const c_char,
+    mime_type: *const c_char,
+) -> c_int {
+    if db.is_null() || id.is_null() || name.is_null() || file_type.is_null() || local_path.is_null() {
+        return -1;
+    }
+    let fid = match to_opt_str(id) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let fname = match to_opt_str(name) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let ftype = match to_opt_str(file_type) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let lpath = match to_opt_str(local_path) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let fld = to_opt_str(folder_id);
+    let mime = to_opt_str(mime_type);
+
+    match FilesRepository::create_file(&*db, fid, fname, ftype, file_size, lpath, fld, mime) {
+        Ok(true) => 0,
+        Ok(false) => 1,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] create_file failed: {}", e);
+            -1
+        }
+    }
+}
