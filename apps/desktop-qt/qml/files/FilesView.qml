@@ -13,6 +13,11 @@ Rectangle {
     FilesDialogs {
         id: fileDialogs
         anchors.fill: parent
+        onFolderUploadRequested: function(path, parentId) {
+            fileActions.feedbackText = "Importando pasta e criptografando conteúdo…"
+            dataController.importLocalFile(path, parentId)
+            fileCollection.reload()
+        }
     }
 
     FilesLinkDialogs {

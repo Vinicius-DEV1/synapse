@@ -104,7 +104,9 @@ Item {
             linkDialogs.openLinks(dataController.getFileLinksByFile(item.id))
             return
         }
-        if (action === "details") { openFileDetails(item.id); return }
+        if (action === "details") { dialogs.openFileInfo(item); return }
+        if (action === "ai") { dialogs.openDocumentAi(item); return }
+        if (action === "audio") { dialogs.openAudioPlayer(item); return }
         if (action === "copy" || action === "cut") { setClipboard(action, item); return }
         if (action === "move") { requestMove(item); return }
         if (action === "rename") { dialogs.openRename(item.id, item.name, item.kind === "folder"); return }

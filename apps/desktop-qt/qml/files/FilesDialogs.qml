@@ -15,16 +15,34 @@ Item {
     property bool renameIsFolder: false
     property string exportFileId: ""
     readonly property bool anyDialogOpen: importDialog.visible || exportDialog.visible || createFolderDialog.visible ||
-                                          renameDialog.visible || deleteDialog.visible || moveDialog.visible
+                                          renameDialog.visible || deleteDialog.visible || moveDialog.visible ||
+                                          folderUploadModal.visible || audioPlayerModal.visible || fileInfoModal.visible || documentAiModal.visible
 
     signal importsRequested(var urls)
     signal exportRequested(string fileId, string destinationPath)
     signal folderCreateRequested(string name, string parentId)
+    signal folderUploadRequested(string folderPath, string parentId)
     signal renameRequested(string id, bool isFolder, string name)
     signal deleteRequested(var items)
     signal moveRequested(var items, string folderId)
 
     function openImport() { importDialog.open() }
+
+    function openFolderUpload(parentId) {
+        folderUploadModal.openModal(parentId)
+    }
+
+    function openAudioPlayer(item) {
+        audioPlayerModal.openForFile(item)
+    }
+
+    function openFileInfo(item) {
+        fileInfoModal.openForItem(item)
+    }
+
+    function openDocumentAi(item) {
+        documentAiModal.openForFile(item)
+    }
 
     function openExport(fileId) {
         exportFileId = fileId
@@ -238,5 +256,22 @@ Item {
         }
     }
 
+    FilesFolderUploadModal {
+        id: folderUploadModal
+        onFolderUploadCompleted: function(path, parentId) {
+            dialogs.folderUploadRequested(path, parentId)
+        }
+    }
 
+    FilesAudioPlayerModal {
+        id: audioPlayerModal
+    }
+
+    FilesInfoModal {
+        id: fileInfoModal
+    }
+
+    FilesDocumentAiModal {
+        id: documentAiModal
+    }
 }

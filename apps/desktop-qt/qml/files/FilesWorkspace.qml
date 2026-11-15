@@ -96,6 +96,13 @@ RowLayout {
                 background: Rectangle { color: parent.enabled ? theme.brand600 : theme.bgDarkSurface; radius: 8 }
                 contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             }
+            Button {
+                text: "Importar Pasta"
+                enabled: !dataController.fileOperationRunning
+                onClicked: workspace.dialogs.openFolderUpload(workspace.collection.activeSection === "folders" ? workspace.collection.activeFolderId() : "")
+                background: Rectangle { color: parent.enabled ? (parent.hovered ? theme.bgHover : theme.bgDarkSurface) : theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 8 }
+                contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
             ToolButton {
                 text: "?"
                 ToolTip.visible: hovered

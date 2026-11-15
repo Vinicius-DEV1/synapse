@@ -57,6 +57,19 @@ Menu {
         visible: !itemMenu.isFolder
         onTriggered: itemMenu.actionRequested("details", itemMenu.itemData)
     }
+    MenuItem {
+        text: "🤖 Assistente IA"
+        visible: !itemMenu.isFolder
+        onTriggered: itemMenu.actionRequested("ai", itemMenu.itemData)
+    }
+    MenuItem {
+        text: "🎵 Player de Áudio"
+        visible: !itemMenu.isFolder && (
+            (itemMenu.itemData.mime_type && itemMenu.itemData.mime_type.indexOf("audio") !== -1) ||
+            /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(itemMenu.itemData.name || "")
+        )
+        onTriggered: itemMenu.actionRequested("audio", itemMenu.itemData)
+    }
     MenuSeparator {}
     MenuItem {
         text: "Copiar"
