@@ -199,3 +199,32 @@ During file uploads, encrypted video streaming, and attachment synchronization, 
 - **Precomputed Lookup Tables**: Rather than invoking naive string concatenation or regex parsing on large buffers, `binary.ts` initializes static $O(1)$ byte lookup tables (`b64ToByte` and `byteToB64`).
 - **Chunked String Conversion**: Prevents maximum call stack exhaustion (`RangeError: Maximum call stack size exceeded`) by chunking array buffers when calling `String.fromCharCode.apply`.
 - **Zero UI Stutter**: Media encoding and decoding operations complete at wire speed on the main thread or within worker pipelines without dropping UI frames.
+
+---
+
+## 8. Synchronized Table Inventory & Tombstone Propagation
+
+To guarantee zero data loss and prevent ghost or zombie records across devices, 100% of user data tables across Web (IndexedDB) and Desktop (Tauri SQLite) participate in cloud synchronization:
+
+| Module | Synchronized Tables | Primary Key | Soft Delete Tombstone |
+| --- | --- | --- | --- |
+| `core` | `config`, `ai_prompts` | `id` | `deleted_at` |
+| `notes` | `pages`, `page_history` | `id` | `deleted_at` |
+| `finance` | `transactions`, `wishlist`, `finance_accounts` | `id` | `deleted_at` |
+| `library` | `library_books`, `library_highlights`, `library_bookmarks`, `library_collections`, `library_book_collections`, `library_reading_sessions` | `id` | `deleted_at` |
+| `culture` | `culture_items`, `culture_episodes`, `culture_disliked_items`, `culture_ignored_items` | `id` | `deleted_at` |
+| `video` | `videos`, `video_words`, `youtube_watched`, `youtube_summaries` | `id` | `deleted_at` |
+| `calendar` | `calendar_events` | `id` | `deleted_at` |
+| `vault` | `vault_groups`, `vault_items`, `vault_password_history` | `id` | `deleted_at` |
+| `practice` | `tutor_sessions`, `tutor_messages`, `tutor_memories` | `id` | `deleted_at` |
+| `focus` | `focus_sessions`, `alarms`, `lofis`, `activity_logs` | `id` | `deleted_at` |
+| `anki` | `anki_decks`, `anki_notes`, `anki_cards`, `anki_srs_state`, `anki_reviews`, `anki_deck_settings` | `id` | `deleted_at` |
+| `files` | `files`, `file_folders`, `file_page_links` | `id` | `deleted_at` |
+| `diagrams` | `diagrams` | `id` | `deleted_at` |
+| `quiz` | `quiz_batteries`, `quiz_questions`, `quiz_attempts`, `quiz_page_links` | `id` | `deleted_at` |
+| `habits` | `habits`, `habit_logs` | `id` | `deleted_at` |
+| `notifications` | `notifications` | `id` | `deleted_at` |
+| `sharing` | `shared_page_keys` | `id` (`shareId`) | `deleted_at` |
+
+### 8.1. Tombstone Deletion Model
+Destructive operations (e.g. untoggling habit days, removing culture dislike/ignore signals, revoking shares, dismissing notifications) stamp `deleted_at = new Date().toISOString()` and `updated_at = new Date().toISOString()`. This ensures deletions replicate across all devices via the Firestore relay instead of hard-deleting locally and being resurrected by remote pulls.

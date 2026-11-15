@@ -2,7 +2,10 @@
 
 This app owns the fully native Qt 6 / QML desktop client. Follow the repository [engineering rules](../../AGENTS.md), [application boundaries](../AGENTS.md), and [cross-app module structure](../../docs/architecture/module-structure.md).
 
-- Keep QML presentation in `qml/<module>/` and feature controllers in `src/controllers/<module>/` using the same canonical module ID.
+- Keep QML presentation in `qml/<module>/` and feature controllers in `src/controllers/<module>/` using the same canonical module ID, strictly mirroring `apps/web-react/src/components/<module>/`.
+- Common layout elements (sidebar, top tab bar, command palette, global shortcuts, and `GlobalModalsHost.qml`) belong in `qml/layout/` (mirroring `apps/web-react/src/components/layout/`).
+- Common UI primitives (`Theme.qml`, `AppIcon.qml`, `AppConfirmDialog.qml`) belong in `qml/ui/` (mirroring `apps/web-react/src/components/ui/`).
+- The root `qml/` folder is reserved exclusively for top-level entrypoints (`main.qml`, `AuthenticatedApplication.qml`, and `qmldir`).
 - Feature controllers are thin presentation orchestrators exposing `Q_PROPERTY`, `Q_INVOKABLE`, and Qt signals (`emit ...Changed()`). They must NOT construct raw SQL query strings, manage manual SQLite queries, or calculate business domain metrics (e.g., account balance aggregations, habit streaks, quiz scoring, card review scheduling) in C++.
 - Keep `SynapseDataController`, app startup, and shared media/platform primitives at the `src/` app level when they compose multiple modules.
 - Keep native controller tests in `tests/<module>/`; update CMake source lists whenever files move.

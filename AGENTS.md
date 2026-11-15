@@ -45,6 +45,17 @@ Code must adhere to a strict 4-tier layer separation anchored by the shared core
 3. **Domain & Business Layer (Unified Core SSOT - `core/synapse-core/`)**: Pure domain entities, algorithms (e.g., FSRS spacing, habit streaks, financial summary deltas, quiz scoring, text diffing), completely decoupled from frontend UI frameworks. Web-exclusive helpers remain in `apps/web-react/src/services/` and `src/utils/` only when unshared.
 4. **Infrastructure & Platform Layer (`core/synapse-core/src/db/`, `bridges/`, `apps/web-react/src/api/`)**: SQLite WAL persistence, database migrations, typed platform bridges (`bridge-qt`, `bridge-uniffi`, `bridge-wasm`), and multiplatform web storage abstractions.
 
+### 2.2. Directory Structure Parity Across React and Desktop Qt
+
+To guarantee seamless continuous maintenance and clear mental mapping across platforms without hacks or regressions, `apps/desktop-qt/` mirrors `apps/web-react/` structure across presentation, orchestration, and tests:
+- **Presentation Layer Parity**: `apps/desktop-qt/qml/` matches `apps/web-react/src/components/` with identical 24 canonical feature subdirectories:
+  - `ai-sidebar/`, `anki/`, `auth/`, `calendar/`, `culture/`, `diagrams/`, `files/`, `finance/`, `focus/`, `habits/`, `home/`, `library/`, `notes/`, `notifications/`, `practice/`, `questions/`, `settings/`, `sharing/`, `trash/`, `vault/`, `video/`, `workspace/`.
+  - `layout/`: Shell layout, sidebar navigation, top tab bar, command palette, global shortcuts, and `GlobalModalsHost.qml` (mirroring `apps/web-react/src/components/layout/`).
+  - `ui/`: Design system tokens (`Theme.qml`), vector icons (`AppIcon.qml`), and common confirmation dialogs (`AppConfirmDialog.qml`) (mirroring `apps/web-react/src/components/ui/`).
+  - Root `qml/`: Contains only root application entry points (`main.qml`, `AuthenticatedApplication.qml`, and `qmldir`).
+- **Orchestration Layer Parity**: `apps/desktop-qt/src/controllers/<module>/` mirrors the canonical domains for C++ presentation controllers.
+- **Test Suite Parity**: `apps/desktop-qt/tests/<module>/` mirrors the canonical domains for unit and integration test harnesses.
+
 ---
 
 ## 3. SOLID Principles in Practice
@@ -286,7 +297,7 @@ To guarantee that Caderno delivers a first-class native Android experience insid
 To ensure users never get lost as features grow in depth and power, Caderno enforces a strict, self-documenting in-app knowledge architecture:
 
 ### 12.1. Dedicated In-App Module Guides (`<Module>HelpModal.tsx`)
-- Every primary application module (`library`, `questions`, `vault`, `focus`, `habits`, `finance`, `culture`) must provide a dedicated, interactive User Guide modal (e.g., `LibraryHelpModal`, `QuestionsHelpModal`, `VaultHelpModal`, `FocusHelpModal`, `HabitsHelpModal`, `FinanceHelpModal`, `CultureHelpModal`).
+- Every primary application module (`library`, `questions`, `vault`, `focus`, `finance`, `culture`) as well as rich editor extensions (`habits`) must provide a dedicated, interactive User Guide modal (e.g., `LibraryHelpModal`, `QuestionsHelpModal`, `VaultHelpModal`, `FocusHelpModal`, `FinanceHelpModal`, `CultureHelpModal`, `HabitsHelpModal`).
 - Guides must follow the Zen Design standard: modal dialog with categorized sidebar navigation, clear feature explanations, actionable step-by-step instructions, keyboard shortcut cheat sheets, and pro-tips.
 - The guide trigger button (`HelpCircle` icon, labeled "Guia") must be prominently placed in the module's main navigation header or toolbar (e.g., adjacent to cloud sync, settings, or primary actions).
 

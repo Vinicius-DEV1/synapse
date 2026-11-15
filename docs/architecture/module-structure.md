@@ -48,7 +48,7 @@ This inventory records whether a client has a top-level route or overlay entry p
 | Culture | Route | Route | Route | Hosts React app |
 | Finance | Route | Route | Route | Hosts React app |
 | Focus | Route | Route | Route | Hosts React app |
-| Habits | Editor widget/API; no standalone `Tab` or `ViewFactory` route | Route | Route | Hosts React app; no separate shell route |
+| Habits | Editor widget/API; no standalone `Tab` or `ViewFactory` route | Editor widget/modal; no standalone sidebar route | Route | Hosts React app; no separate shell route |
 | Vault | Route | Route | Route | Hosts React app |
 | Files | Route | Route | No route found | Hosts React app |
 | Practice | Route | No route found | No route found | Hosts React app |
@@ -59,7 +59,7 @@ This inventory records whether a client has a top-level route or overlay entry p
 | Authentication and cloud sync | Auth and sync flows | No equivalent shell flow found | No equivalent shell flow found | Hosts React app |
 | AI assistant sidebar and sharing | Global overlays/actions | No equivalent flow found | No equivalent flow found | Hosts React app |
 
-React `Tab.module`, `ViewFactory`, and the sidebar module registry do not include `habits` as a standalone route. The web client currently exposes habit APIs, editor widgets, and habit selection/heatmap components; Qt and Android expose separate Habits screens. Keep this scope difference explicit when tracking parity.
+React and Qt desktop do not include `habits` as a standalone sidebar navigation route. Both expose habit APIs, in-note editor widgets (`HabitWidget`), and habit selection/heatmap modals (`HabitSelectModal`, `HabitHeatmapModal`); Android exposes a standalone Habits screen. Keep this scope difference explicit when tracking parity.
 
 ## Source locations by client
 

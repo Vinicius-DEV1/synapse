@@ -18,7 +18,7 @@ This catalog identifies product modules and their React and native source locati
 | `culture` | Media and culture tracking | `apps/web-react/src/components/culture/` | `apps/desktop-qt/qml/culture/` |
 | `finance` | Transactions and financial planning | `apps/web-react/src/components/finance/` | `apps/desktop-qt/qml/finance/` |
 | `focus` | Focus timer and history | `apps/web-react/src/components/focus/` | `apps/desktop-qt/qml/focus/` |
-| `habits` | Habit tracking | `apps/web-react/src/components/habits/` | `apps/desktop-qt/qml/habits/` |
+| `habits` | Habit tracking (embedded in note editor) | `apps/web-react/src/components/habits/` | `apps/desktop-qt/qml/habits/`, `apps/desktop-qt/qml/notes/HabitWidget.qml` |
 | `home` | Dashboard and navigation | `apps/web-react/src/components/home/` | `apps/desktop-qt/qml/home/` |
 | `settings` | Application preferences and security | `apps/web-react/src/components/settings/` | `apps/desktop-qt/qml/settings/` |
 | `trash` | Deleted-item recovery | `apps/web-react/src/components/trash/` | `apps/desktop-qt/qml/trash/` |
