@@ -142,6 +142,24 @@ ColumnLayout {
             }
         }
 
+        Rectangle {
+            width: 140; height: 36; radius: 8
+            color: headerRoot.activeSubTab === "loans" ? "#1a6366f1" : "transparent"
+            border.color: headerRoot.activeSubTab === "loans" ? "#6366f1" : "transparent"
+            Text {
+                anchors.centerIn: parent
+                text: "Empréstimos"
+                color: headerRoot.activeSubTab === "loans" ? "#a78bfa" : "#a7a9be"
+                font.pixelSize: 13
+                font.bold: true
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.subTabSelected("loans")
+            }
+        }
+
         Item { Layout.fillWidth: true }
 
         // Transaction Filter Pills (when transactions tab is active)

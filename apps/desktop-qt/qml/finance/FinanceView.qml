@@ -10,7 +10,8 @@ Rectangle {
     property var accounts: []
     property var transactions: []
     property var wishlistItems: []
-    property string activeSubTab: "transactions" // "transactions", "wishlist"
+    property var loans: []
+    property string activeSubTab: "transactions" // "transactions", "wishlist", "loans"
     property string transactionTypeFilter: "all" // "all", "income", "expense"
     property string selectedAccountId: "all"
     property string transactionSearch: ""
@@ -18,13 +19,26 @@ Rectangle {
     property bool isAddingWishlistItem: false
     property bool isAccountManagerOpen: false
     property bool isFinanceHelpOpen: false
+    property bool isDeleteTxModalOpen: false
+    property bool isPaymentModalOpen: false
+    property bool isWishlistDetailsOpen: false
+    property bool isAcquireModalOpen: false
     property var editingTransaction: null
+    property var deletingTransaction: null
+    property var selectedWishlistItem: null
+    property var selectedLoan: null
 
     function refreshData() {
         summary = dataController.getFinancialSummary()
         accounts = dataController.getAccounts()
         transactions = dataController.getTransactions(transactionTypeFilter, selectedAccountId)
         wishlistItems = dataController.getWishlist()
+        if (loans.length === 0) {
+            loans = [
+                { id: "1", title: "Empréstimo Amigo - João", type: "lent", amount: 500, paid_amount: 200 },
+                { id: "2", title: "Financiamento Equipamento", type: "borrowed", amount: 1200, paid_amount: 600 }
+            ]
+        }
     }
 
     function filteredTransactions() {
@@ -94,7 +108,7 @@ Rectangle {
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: financeRoot.activeSubTab === "transactions" ? 0 : 1
+            currentIndex: financeRoot.activeSubTab === "transactions" ? 0 : (financeRoot.activeSubTab === "wishlist" ? 1 : 2)
 
             // 1. Transactions List
             TransactionsTable {
@@ -105,8 +119,16 @@ Rectangle {
                     financeRoot.isAddingTransaction = true
                 }
                 onDeleteRequested: function(txId) {
-                    dataController.deleteTransaction(txId)
-                    financeRoot.refreshData()
+                    for (var i = 0; i < financeRoot.transactions.length; i++) {
+                        if (financeRoot.transactions[i].id === txId) {
+                            financeRoot.deletingTransaction = financeRoot.transactions[i]
+                            break
+                        }
+                    }
+                    if (!financeRoot.deletingTransaction) {
+                        financeRoot.deletingTransaction = { id: txId, description: "Transação", amount: 0, type: "expense" }
+                    }
+                    financeRoot.isDeleteTxModalOpen = true
                 }
             }
 
@@ -114,14 +136,25 @@ Rectangle {
             WishlistGrid {
                 wishlistItems: financeRoot.wishlistItems
                 onAcquiredRequested: function(item) {
-                    var today = Qt.formatDate(new Date(), "yyyy-MM-dd")
-                    dataController.addTransaction(item.title, item.price, "expense", item.category || "Wishlist", today)
-                    dataController.deleteWishlistItem(item.id)
-                    financeRoot.refreshData()
+                    financeRoot.selectedWishlistItem = item
+                    financeRoot.isAcquireModalOpen = true
                 }
                 onDeleteRequested: function(itemId) {
                     dataController.deleteWishlistItem(itemId)
                     financeRoot.refreshData()
+                }
+            }
+
+            // 3. Loans Tab
+            FinanceLoansTab {
+                loansList: financeRoot.loans
+                onPaymentRequested: function(item) {
+                    financeRoot.selectedLoan = item
+                    financeRoot.isPaymentModalOpen = true
+                }
+                onDeleteLoanRequested: function(id) {
+                    var arr = financeRoot.loans.filter(function(l) { return l.id !== id })
+                    financeRoot.loans = arr
                 }
             }
         }
@@ -206,5 +239,63 @@ Rectangle {
     FinanceHelpDialog {
         isOpen: financeRoot.isFinanceHelpOpen
         onClosed: financeRoot.isFinanceHelpOpen = false
+    }
+
+    // Modal: Confirmar Exclusão de Transação
+    FinanceDeleteTransactionModal {
+        visible: financeRoot.isDeleteTxModalOpen
+        transaction: financeRoot.deletingTransaction
+        onCloseRequested: financeRoot.isDeleteTxModalOpen = false
+        onDeleteConfirmed: function(txId) {
+            dataController.deleteTransaction(txId)
+            financeRoot.refreshData()
+        }
+    }
+
+    // Modal: Registrar Pagamento de Empréstimo
+    FinancePaymentModal {
+        visible: financeRoot.isPaymentModalOpen
+        loan: financeRoot.selectedLoan
+        onCloseRequested: financeRoot.isPaymentModalOpen = false
+        onPaymentRecorded: function(loanId, amount, date, notes) {
+            var arr = [...financeRoot.loans]
+            for (var i = 0; i < arr.length; i++) {
+                if (arr[i].id === loanId) {
+                    arr[i].paid_amount = Number(arr[i].paid_amount || 0) + amount
+                    break
+                }
+            }
+            financeRoot.loans = arr
+            dataController.addTransaction("Pagamento Empréstimo", amount, "expense", "Empréstimos", date, "")
+            financeRoot.refreshData()
+        }
+    }
+
+    // Modal: Detalhes da Wishlist
+    FinanceWishlistDetailsModal {
+        visible: financeRoot.isWishlistDetailsOpen
+        item: financeRoot.selectedWishlistItem
+        onCloseRequested: financeRoot.isWishlistDetailsOpen = false
+        onAcquireRequested: function(wItem) {
+            financeRoot.selectedWishlistItem = wItem
+            financeRoot.isAcquireModalOpen = true
+        }
+        onDeleteRequested: function(itemId) {
+            dataController.deleteWishlistItem(itemId)
+            financeRoot.refreshData()
+        }
+    }
+
+    // Modal: Adquirir Item Wishlist
+    FinanceAcquireWishlistModal {
+        visible: financeRoot.isAcquireModalOpen
+        item: financeRoot.selectedWishlistItem
+        accounts: financeRoot.accounts
+        onCloseRequested: financeRoot.isAcquireModalOpen = false
+        onPurchaseConfirmed: function(itemId, title, amount, accountId, date) {
+            dataController.addTransaction(title, amount, "expense", "Wishlist", date, accountId)
+            dataController.deleteWishlistItem(itemId)
+            financeRoot.refreshData()
+        }
     }
 }
