@@ -396,3 +396,25 @@ bool SynapseDataController::deleteDiagram(const QString &diagramId) {
     const QByteArray did = diagramId.trimmed().toUtf8();
     return synapse_diagrams_delete(m_db, did.constData()) == 1;
 }
+
+QString SynapseDataController::readLocalTextFile(const QString &filePath) {
+    if (filePath.trimmed().isEmpty()) return QString();
+    QString path = filePath.trimmed();
+    if (path.startsWith(QLatin1String("file://"))) path = path.mid(7);
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QString();
+    constexpr qint64 maxFileSize = 16LL * 1024LL * 1024LL;
+    if (file.size() > maxFileSize) return QString();
+    const QByteArray bytes = file.readAll();
+    return QString::fromUtf8(bytes);
+}
+
+bool SynapseDataController::saveLocalTextFile(const QString &filePath, const QString &content) {
+    if (filePath.trimmed().isEmpty()) return false;
+    QString path = filePath.trimmed();
+    if (path.startsWith(QLatin1String("file://"))) path = path.mid(7);
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
+    const QByteArray bytes = content.toUtf8();
+    return file.write(bytes) == bytes.size();
+}

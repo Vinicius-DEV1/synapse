@@ -363,6 +363,8 @@ public:
     Q_INVOKABLE bool saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon = "🎨");
     Q_INVOKABLE QString createDiagram(const QString &title, const QString &icon = "🎨");
     Q_INVOKABLE bool deleteDiagram(const QString &diagramId);
+    Q_INVOKABLE QString readLocalTextFile(const QString &filePath);
+    Q_INVOKABLE bool saveLocalTextFile(const QString &filePath, const QString &content);
 
     // 16. Native notification center
     Q_INVOKABLE QVariantList getNotifications();

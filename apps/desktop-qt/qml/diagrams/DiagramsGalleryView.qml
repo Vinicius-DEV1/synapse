@@ -12,6 +12,7 @@ ColumnLayout {
     signal diagramSelected(var diagram)
     signal diagramDeleted(string diagramId)
     signal createRequested()
+    signal importRequested()
     signal helpRequested()
 
     // Header
@@ -58,6 +59,30 @@ ColumnLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: galleryRoot.helpRequested()
+            }
+        }
+
+        Rectangle {
+            width: 104
+            height: 40
+            radius: 10
+            color: importMouse.containsMouse ? "#2a273f" : "#211f30"
+            border.color: "#338b5cf6"
+            border.width: 1
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+                Text { text: "📥"; font.pixelSize: 13 }
+                Text { text: "Importar"; color: "#c4b5fd"; font.pixelSize: 13; font.bold: true }
+            }
+
+            MouseArea {
+                id: importMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: galleryRoot.importRequested()
             }
         }
 
