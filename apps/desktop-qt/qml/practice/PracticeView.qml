@@ -13,6 +13,10 @@ Rectangle {
     property bool isNewSessionModalOpen: false
     property bool isMemoryDrawerOpen: false
     property bool isHelpOpen: false
+    property bool isVoiceCallActive: false
+    property bool isFeedbackOpen: false
+    property bool isMicTestOpen: false
+    property bool isInterviewSetupOpen: false
 
     function refreshSessions() {
         sessions = dataController.getPracticeSessions()
@@ -271,6 +275,56 @@ Rectangle {
                             }
                         }
 
+                        // Voice call trigger
+                        Rectangle {
+                            height: 32
+                            radius: 8
+                            color: voiceBtnMouse.containsMouse ? "#7c3aed" : "#8b5cf6"
+                            Layout.preferredWidth: voiceBtnText.implicitWidth + 20
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+                                Text { text: "🎙️"; font.pixelSize: 12 }
+                                Text { id: voiceBtnText; text: practiceRoot.isVoiceCallActive ? "Em Chamada" : "Chamada de Voz"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
+                            }
+                            MouseArea {
+                                id: voiceBtnMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (practiceRoot.isVoiceCallActive) {
+                                        practiceRoot.isVoiceCallActive = false
+                                        practiceRoot.isFeedbackOpen = true
+                                    } else {
+                                        practiceRoot.isInterviewSetupOpen = true
+                                    }
+                                }
+                            }
+                        }
+
+                        // Mic test button
+                        Rectangle {
+                            height: 32
+                            radius: 8
+                            color: micTestMouse.containsMouse ? "#268b5cf6" : "#211f30"
+                            border.color: "#18ffffff"
+                            Layout.preferredWidth: micTestText.implicitWidth + 18
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+                                Text { text: "🎤"; font.pixelSize: 11 }
+                                Text { id: micTestText; text: "Testar Mic"; color: "#d4d4d8"; font.pixelSize: 11 }
+                            }
+                            MouseArea {
+                                id: micTestMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: practiceRoot.isMicTestOpen = true
+                            }
+                        }
+
                         Rectangle {
                             width: 32; height: 32; radius: 8; color: "#211f30"
                             Text { anchors.centerIn: parent; text: "?"; color: "#a7a9be"; font.pixelSize: 14; font.bold: true }
@@ -279,6 +333,21 @@ Rectangle {
                                 onClicked: practiceRoot.isHelpOpen = true
                             }
                         }
+                    }
+                }
+
+                // Active Voice Call Bar
+                PracticeCallBar {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    Layout.topMargin: 8
+                    visible: practiceRoot.isVoiceCallActive
+                    isCallActive: practiceRoot.isVoiceCallActive
+                    activeModeName: practiceRoot.activeSession ? practiceRoot.activeSession.title : "Chamada com IA"
+                    onEndCallRequested: {
+                        practiceRoot.isVoiceCallActive = false
+                        practiceRoot.isFeedbackOpen = true
                     }
                 }
 
@@ -505,13 +574,42 @@ Rectangle {
         onClosed: practiceRoot.isHelpOpen = false
     }
 
+    PracticeInterviewSetupModal {
+        visible: practiceRoot.isInterviewSetupOpen
+        onCloseRequested: practiceRoot.isInterviewSetupOpen = false
+        onSessionConfigured: function(title, mode, diff, lang, contextNotes) {
+            var fullPrompt = "Modo: " + mode + " | Nível: " + diff + " | Idioma: " + lang + (contextNotes ? "\nContexto: " + contextNotes : "")
+            var newId = dataController.createPracticeSession(title, fullPrompt)
+            practiceRoot.isInterviewSetupOpen = false
+            practiceRoot.refreshSessions()
+            if (newId) {
+                practiceRoot.selectSession({ id: newId, title: title, custom_prompt: fullPrompt })
+            }
+            practiceRoot.isVoiceCallActive = true
+        }
+    }
+
+    PracticeInterviewFeedbackModal {
+        visible: practiceRoot.isFeedbackOpen
+        sessionTitle: practiceRoot.activeSession ? practiceRoot.activeSession.title : "Sessão de Prática"
+        onCloseRequested: practiceRoot.isFeedbackOpen = false
+    }
+
+    PracticeMicTest {
+        visible: practiceRoot.isMicTestOpen
+        onCloseRequested: practiceRoot.isMicTestOpen = false
+    }
+
     Shortcut {
         sequence: "Escape"
-        enabled: practiceRoot.isHelpOpen || practiceRoot.isMemoryDrawerOpen || practiceRoot.isNewSessionModalOpen
+        enabled: practiceRoot.isHelpOpen || practiceRoot.isMemoryDrawerOpen || practiceRoot.isNewSessionModalOpen || practiceRoot.isInterviewSetupOpen || practiceRoot.isFeedbackOpen || practiceRoot.isMicTestOpen
         onActivated: {
             if (practiceRoot.isHelpOpen) practiceRoot.isHelpOpen = false
             else if (practiceRoot.isMemoryDrawerOpen) practiceRoot.isMemoryDrawerOpen = false
             else if (practiceRoot.isNewSessionModalOpen) practiceRoot.isNewSessionModalOpen = false
+            else if (practiceRoot.isInterviewSetupOpen) practiceRoot.isInterviewSetupOpen = false
+            else if (practiceRoot.isFeedbackOpen) practiceRoot.isFeedbackOpen = false
+            else if (practiceRoot.isMicTestOpen) practiceRoot.isMicTestOpen = false
         }
     }
 }
