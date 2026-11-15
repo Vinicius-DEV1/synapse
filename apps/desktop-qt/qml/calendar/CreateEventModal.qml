@@ -243,7 +243,7 @@ Rectangle {
                 // Delete Button (when editing)
                 Rectangle {
                     visible: modalRoot.initialEvent !== null
-                    width: 80; height: 38; radius: 8; color: "rgba(244, 63, 94, 0.15)"
+                    width: 80; height: 38; radius: 8; color: "#26f43f5e"
                     border.color: "#f43f5e"
                     Text { anchors.centerIn: parent; text: "Excluir"; color: "#f43f5e"; font.pixelSize: 12; font.bold: true }
                     MouseArea {

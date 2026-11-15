@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Controls 2.15
 
 Item {
     id: listRoot
@@ -178,11 +179,12 @@ Item {
         spacing: 12
 
         Button {
+            id: prevBtn
             text: "◀ Anterior"
             enabled: listRoot.currentPage > 1
             onClicked: listRoot.currentPage -= 1
-            background: Rectangle { color: parent.enabled ? "#242335" : "#171624"; radius: 6 }
-            contentItem: Text { text: parent.text; color: parent.enabled ? "#ffffff" : "#64748b"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            background: Rectangle { color: prevBtn.enabled ? "#242335" : "#171624"; radius: 6 }
+            contentItem: Text { text: prevBtn.text; color: prevBtn.enabled ? "#ffffff" : "#64748b"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
 
         Text {
@@ -192,11 +194,12 @@ Item {
         }
 
         Button {
+            id: nextBtn
             text: "Próxima ▶"
             enabled: listRoot.currentPage < listRoot.totalPages
             onClicked: listRoot.currentPage += 1
-            background: Rectangle { color: parent.enabled ? "#242335" : "#171624"; radius: 6 }
-            contentItem: Text { text: parent.text; color: parent.enabled ? "#ffffff" : "#64748b"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            background: Rectangle { color: nextBtn.enabled ? "#242335" : "#171624"; radius: 6 }
+            contentItem: Text { text: nextBtn.text; color: nextBtn.enabled ? "#ffffff" : "#64748b"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
     }
 }

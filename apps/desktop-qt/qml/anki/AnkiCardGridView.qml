@@ -88,7 +88,7 @@ Item {
                             color: "#fffffe"
                             font.pixelSize: 13
                             font.bold: true
-                            maxLineCount: 2
+                            maximumLineCount: 2
                             elide: Text.ElideRight
                             wrapMode: Text.Wrap
                         }
@@ -99,7 +99,7 @@ Item {
                             text: modelData.back || ""
                             color: "#a7a9be"
                             font.pixelSize: 11
-                            maxLineCount: 2
+                            maximumLineCount: 2
                             elide: Text.ElideRight
                             wrapMode: Text.Wrap
                         }

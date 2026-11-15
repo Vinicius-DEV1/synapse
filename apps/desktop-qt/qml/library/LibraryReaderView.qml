@@ -229,7 +229,7 @@ Rectangle {
                         selectionColor: "#6d4fc2"
                         font.pixelSize: reader.readerFontSize
                         font.family: reader.readerFontFamily
-                        onSelectionChanged: {
+                        onSelectedTextChanged: {
                             if (selectedText.length > 0) {
                                 highlightMenu.openAt(reader.width / 2 - 130, reader.height - 100, selectedText)
                             }

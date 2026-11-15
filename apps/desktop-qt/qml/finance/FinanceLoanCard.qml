@@ -32,7 +32,7 @@ Rectangle {
             width: 40
             height: 40
             radius: 10
-            color: loanCardRoot.isLent ? "rgba(16, 185, 129, 0.15)" : "rgba(244, 63, 94, 0.15)"
+            color: loanCardRoot.isLent ? "#2610b981" : "#26f43f5e"
             Text {
                 anchors.centerIn: parent
                 text: loanCardRoot.isLent ? "↗️" : "↘️"

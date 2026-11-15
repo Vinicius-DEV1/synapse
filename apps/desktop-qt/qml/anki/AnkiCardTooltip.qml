@@ -26,7 +26,7 @@ Rectangle {
             color: "#ffffff"
             font.pixelSize: 11
             font.bold: true
-            maxLineCount: 3
+            maximumLineCount: 3
             elide: Text.ElideRight
             wrapMode: Text.Wrap
         }

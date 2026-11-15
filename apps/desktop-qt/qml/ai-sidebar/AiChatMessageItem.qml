@@ -15,7 +15,7 @@ Rectangle {
 
     readonly property bool isUser: role === "user"
 
-    color: isUser ? "rgba(139, 92, 246, 0.15)" : "#161524"
+    color: isUser ? "#268b5cf6" : "#161524"
     border.color: isUser ? "#8b5cf6" : "#2e2b44"
     border.width: 1
 

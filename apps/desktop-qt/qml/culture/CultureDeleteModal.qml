@@ -49,7 +49,7 @@ Rectangle {
                     width: 36
                     height: 36
                     radius: 8
-                    color: "rgba(244, 63, 94, 0.2)"
+                    color: "#33f43f5e"
                     Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 18 }
                 }
 

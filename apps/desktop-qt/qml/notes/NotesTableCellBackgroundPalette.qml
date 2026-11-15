@@ -25,14 +25,14 @@ Item {
         : baseScopes
 
     readonly property var colors: [
-        { label: qsTr("Clear"), value: "" },
-        { label: qsTr("Red"), value: "rgba(239, 68, 68, 0.2)" },
-        { label: qsTr("Orange"), value: "rgba(249, 115, 22, 0.2)" },
-        { label: qsTr("Yellow"), value: "rgba(234, 179, 8, 0.2)" },
-        { label: qsTr("Green"), value: "rgba(34, 197, 94, 0.2)" },
-        { label: qsTr("Blue"), value: "rgba(59, 130, 246, 0.2)" },
-        { label: qsTr("Purple"), value: "rgba(139, 92, 246, 0.2)" },
-        { label: qsTr("Pink"), value: "rgba(236, 72, 153, 0.2)" }
+        { label: qsTr("Clear"), value: "", previewColor: "#151420" },
+        { label: qsTr("Red"), value: "rgba(239, 68, 68, 0.2)", previewColor: "#33ef4444" },
+        { label: qsTr("Orange"), value: "rgba(249, 115, 22, 0.2)", previewColor: "#33f97316" },
+        { label: qsTr("Yellow"), value: "rgba(234, 179, 8, 0.2)", previewColor: "#33eab308" },
+        { label: qsTr("Green"), value: "rgba(34, 197, 94, 0.2)", previewColor: "#3322c55e" },
+        { label: qsTr("Blue"), value: "rgba(59, 130, 246, 0.2)", previewColor: "#333b82f6" },
+        { label: qsTr("Purple"), value: "rgba(139, 92, 246, 0.2)", previewColor: "#338b5cf6" },
+        { label: qsTr("Pink"), value: "rgba(236, 72, 153, 0.2)", previewColor: "#33ec4899" }
     ]
 
     function scopeDescription(scope) {
@@ -143,7 +143,7 @@ Item {
                     }
                     background: Rectangle {
                         radius: 5
-                        color: colorButton.modelData.value.length > 0 ? colorButton.modelData.value : "#151420"
+                        color: colorButton.modelData.previewColor || "#151420"
                         border.color: "#40ffffff"
                         Text {
                             anchors.centerIn: parent

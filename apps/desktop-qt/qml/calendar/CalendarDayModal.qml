@@ -53,7 +53,7 @@ Rectangle {
                     width: 36
                     height: 36
                     radius: 8
-                    color: "rgba(56, 189, 248, 0.15)"
+                    color: "#2638bdf8"
                     Text { anchors.centerIn: parent; text: "📅"; font.pixelSize: 18 }
                 }
 

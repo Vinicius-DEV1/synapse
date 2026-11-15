@@ -50,7 +50,7 @@ Rectangle {
                     width: 36
                     height: 36
                     radius: 8
-                    color: "rgba(139, 92, 246, 0.2)"
+                    color: "#338b5cf6"
                     Text { anchors.centerIn: parent; text: "★"; font.pixelSize: 18; color: "#c4b5fd" }
                 }
 

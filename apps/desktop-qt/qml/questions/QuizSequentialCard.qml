@@ -65,8 +65,8 @@ Rectangle {
                             if (!showFeedback) {
                                 return isSelected ? "#2a273f" : (optMouse.containsMouse ? "#1c1a2d" : "#11101a")
                             }
-                            if (isCorrect) return "rgba(16, 185, 129, 0.2)"
-                            if (isSelected && !isCorrect) return "rgba(244, 63, 94, 0.2)"
+                            if (isCorrect) return "#3310b981"
+                            if (isSelected && !isCorrect) return "#33f43f5e"
                             return "#11101a"
                         }
 
@@ -162,7 +162,7 @@ Rectangle {
             Rectangle {
                 Layout.fillWidth: true
                 radius: 10
-                color: "rgba(139, 92, 246, 0.1)"
+                color: "#1a8b5cf6"
                 border.color: "#8b5cf6"
                 border.width: 1
                 visible: cardRoot.showExplanation || (cardRoot.isConfirmed && Boolean(cardRoot.question && cardRoot.question.explanation))

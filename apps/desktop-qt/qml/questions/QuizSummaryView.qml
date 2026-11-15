@@ -156,7 +156,7 @@ Rectangle {
                                 width: 28
                                 height: 28
                                 radius: 6
-                                color: parent.parent.isCorrect ? "rgba(16, 185, 129, 0.2)" : "rgba(244, 63, 94, 0.2)"
+                                color: parent.parent.isCorrect ? "#3310b981" : "#33f43f5e"
                                 Text {
                                     anchors.centerIn: parent
                                     text: parent.parent.isCorrect ? "✓" : "✗"
