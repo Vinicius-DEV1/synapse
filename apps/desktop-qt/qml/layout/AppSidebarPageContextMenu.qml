@@ -1,14 +1,24 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Popup {
-    id: appContextMenu
+    id: pageContextMenu
     padding: 6
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     dim: false
 
-    signal actionTriggered(string actionKey)
+    property string targetPageId: ""
+    property bool isPinned: false
+
+    signal openRequested(string pageId)
+    signal openInNewTabRequested(string pageId)
+    signal createSubRequested(string pageId)
+    signal togglePinRequested(string pageId)
+    signal moveRequested(string pageId)
+    signal renameRequested(string pageId)
+    signal deleteRequested(string pageId)
 
     Theme { id: theme }
 
@@ -21,14 +31,53 @@ Popup {
 
     contentItem: ColumnLayout {
         spacing: 2
-        Layout.preferredWidth: 200
+        Layout.preferredWidth: 190
 
-        // Nova Página
+        // Abrir em nova aba
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
             radius: 6
-            color: newPageMouse.containsMouse ? theme.bgHover : "transparent"
+            color: newTabMouse.containsMouse ? theme.bgHover : "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                AppIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "plus"
+                    color: theme.brand400
+                }
+                Text {
+                    text: qsTr("Abrir em nova aba")
+                    color: theme.textDark
+                    font.pixelSize: 12
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                id: newTabMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pageContextMenu.close()
+                    pageContextMenu.openInNewTabRequested(pageContextMenu.targetPageId)
+                }
+            }
+        }
+
+        // Criar subpágina
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 6
+            color: subMouse.containsMouse ? theme.bgHover : "transparent"
 
             RowLayout {
                 anchors.fill: parent
@@ -40,55 +89,10 @@ Popup {
                     Layout.preferredWidth: 14
                     Layout.preferredHeight: 14
                     name: "notes"
-                    color: theme.brand400
-                }
-                Text {
-                    text: qsTr("Nova página")
-                    color: theme.textDark
-                    font.pixelSize: 12
-                    font.family: theme.fontFamily
-                    Layout.fillWidth: true
-                }
-                Text {
-                    text: "Ctrl+N"
-                    color: theme.textMuted
-                    font.pixelSize: 10
-                    font.family: theme.fontMono
-                }
-            }
-            MouseArea {
-                id: newPageMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    appContextMenu.close()
-                    appContextMenu.actionTriggered("new_note")
-                }
-            }
-        }
-
-        // Novo Evento
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 30
-            radius: 6
-            color: newEventMouse.containsMouse ? theme.bgHover : "transparent"
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 8
-
-                AppIcon {
-                    Layout.preferredWidth: 14
-                    Layout.preferredHeight: 14
-                    name: "calendar"
                     color: theme.textSubtext
                 }
                 Text {
-                    text: qsTr("Novo evento")
+                    text: qsTr("Criar subpágina")
                     color: theme.textDark
                     font.pixelSize: 12
                     font.family: theme.fontFamily
@@ -96,91 +100,13 @@ Popup {
                 }
             }
             MouseArea {
-                id: newEventMouse
+                id: subMouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    appContextMenu.close()
-                    appContextMenu.actionTriggered("new_event")
-                }
-            }
-        }
-
-        // Novo Hábito
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 30
-            radius: 6
-            color: newHabitMouse.containsMouse ? theme.bgHover : "transparent"
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 8
-
-                AppIcon {
-                    Layout.preferredWidth: 14
-                    Layout.preferredHeight: 14
-                    name: "habits"
-                    color: theme.textSubtext
-                }
-                Text {
-                    text: qsTr("Novo hábito")
-                    color: theme.textDark
-                    font.pixelSize: 12
-                    font.family: theme.fontFamily
-                    Layout.fillWidth: true
-                }
-            }
-            MouseArea {
-                id: newHabitMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    appContextMenu.close()
-                    appContextMenu.actionTriggered("new_habit")
-                }
-            }
-        }
-
-        // Nova Transação
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 30
-            radius: 6
-            color: newTxMouse.containsMouse ? theme.bgHover : "transparent"
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 8
-
-                AppIcon {
-                    Layout.preferredWidth: 14
-                    Layout.preferredHeight: 14
-                    name: "finance"
-                    color: theme.textSubtext
-                }
-                Text {
-                    text: qsTr("Nova transação")
-                    color: theme.textDark
-                    font.pixelSize: 12
-                    font.family: theme.fontFamily
-                    Layout.fillWidth: true
-                }
-            }
-            MouseArea {
-                id: newTxMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    appContextMenu.close()
-                    appContextMenu.actionTriggered("new_transaction")
+                    pageContextMenu.close()
+                    pageContextMenu.createSubRequested(pageContextMenu.targetPageId)
                 }
             }
         }
@@ -191,12 +117,12 @@ Popup {
             color: theme.borderSubtle
         }
 
-        // Paleta de Comandos
+        // Fixar / Desafixar
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
             radius: 6
-            color: cmdMouse.containsMouse ? theme.bgHover : "transparent"
+            color: pinMouse.containsMouse ? theme.bgHover : "transparent"
 
             RowLayout {
                 anchors.fill: parent
@@ -207,41 +133,35 @@ Popup {
                 AppIcon {
                     Layout.preferredWidth: 14
                     Layout.preferredHeight: 14
-                    name: "search"
+                    name: pageContextMenu.isPinned ? "pin-off" : "pin"
                     color: theme.textSubtext
                 }
                 Text {
-                    text: qsTr("Paleta de comandos")
+                    text: pageContextMenu.isPinned ? qsTr("Desafixar") : qsTr("Fixar no topo")
                     color: theme.textDark
                     font.pixelSize: 12
                     font.family: theme.fontFamily
                     Layout.fillWidth: true
                 }
-                Text {
-                    text: "Ctrl+K"
-                    color: theme.textMuted
-                    font.pixelSize: 10
-                    font.family: theme.fontMono
-                }
             }
             MouseArea {
-                id: cmdMouse
+                id: pinMouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    appContextMenu.close()
-                    appContextMenu.actionTriggered("command_palette")
+                    pageContextMenu.close()
+                    pageContextMenu.togglePinRequested(pageContextMenu.targetPageId)
                 }
             }
         }
 
-        // Configurações
+        // Mover página
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
             radius: 6
-            color: settingsMouse.containsMouse ? theme.bgHover : "transparent"
+            color: moveMouse.containsMouse ? theme.bgHover : "transparent"
 
             RowLayout {
                 anchors.fill: parent
@@ -252,31 +172,109 @@ Popup {
                 AppIcon {
                     Layout.preferredWidth: 14
                     Layout.preferredHeight: 14
-                    name: "settings"
+                    name: "folder"
                     color: theme.textSubtext
                 }
                 Text {
-                    text: qsTr("Configurações")
+                    text: qsTr("Mover para...")
                     color: theme.textDark
                     font.pixelSize: 12
                     font.family: theme.fontFamily
                     Layout.fillWidth: true
                 }
-                Text {
-                    text: "Ctrl+,"
-                    color: theme.textMuted
-                    font.pixelSize: 10
-                    font.family: theme.fontMono
-                }
             }
             MouseArea {
-                id: settingsMouse
+                id: moveMouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    appContextMenu.close()
-                    appContextMenu.actionTriggered("settings")
+                    pageContextMenu.close()
+                    pageContextMenu.moveRequested(pageContextMenu.targetPageId)
+                }
+            }
+        }
+
+        // Renomear página
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 6
+            color: renameMouse.containsMouse ? theme.bgHover : "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                AppIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "edit"
+                    color: theme.textSubtext
+                }
+                Text {
+                    text: qsTr("Renomear")
+                    color: theme.textDark
+                    font.pixelSize: 12
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                id: renameMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pageContextMenu.close()
+                    pageContextMenu.renameRequested(pageContextMenu.targetPageId)
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: theme.borderSubtle
+        }
+
+        // Excluir página
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 6
+            color: deleteMouse.containsMouse ? theme.bgHover : "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                AppIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "trash"
+                    color: theme.error
+                }
+                Text {
+                    text: qsTr("Mover para lixeira")
+                    color: theme.error
+                    font.pixelSize: 12
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                id: deleteMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pageContextMenu.close()
+                    pageContextMenu.deleteRequested(pageContextMenu.targetPageId)
                 }
             }
         }

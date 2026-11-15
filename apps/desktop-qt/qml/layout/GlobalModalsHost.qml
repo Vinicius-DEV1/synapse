@@ -1,7 +1,8 @@
 import QtQuick 2.15
-import "workspace"
-import "auth"
-import "sharing"
+import "../workspace"
+import "../auth"
+import "../sharing"
+import "../ui"
 
 Item {
     id: globalModalsHost

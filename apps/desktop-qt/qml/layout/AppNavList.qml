@@ -1,10 +1,13 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Item {
     id: navListRoot
     Layout.fillWidth: true
     Layout.fillHeight: true
+
+    Theme { id: theme }
 
     property bool sidebarExpanded: true
     property string activeTab: "home"
@@ -26,7 +29,6 @@ Item {
             { key: "anki", name: "Flashcards", icon: "anki", count: dataController.deckCount },
             { key: "focus", name: "Foco", icon: "focus", count: dataController.focusSessionCount },
             { key: "calendar", name: "Agenda", icon: "calendar", count: dataController.eventCount },
-            { key: "habits", name: "Hábitos", icon: "habits", count: dataController.habitCount },
             { key: "files", name: "Arquivos", icon: "folder", count: 0 },
             { key: "diagrams", name: "Diagramas", icon: "diagrams", count: 0 },
             { key: "practice", name: "Prática", icon: "focus", count: 0 },

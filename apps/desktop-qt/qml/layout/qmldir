@@ -1,0 +1,16 @@
+AppSidebar 1.0 AppSidebar.qml
+AppSidebarPageContextMenu 1.0 AppSidebarPageContextMenu.qml
+AppSidebarPageItem 1.0 AppSidebarPageItem.qml
+AppSidebarPageTree 1.0 AppSidebarPageTree.qml
+AppSidebarPinnedSection 1.0 AppSidebarPinnedSection.qml
+AppNavList 1.0 AppNavList.qml
+AppTopTabBar 1.0 AppTopTabBar.qml
+AppTabContextMenu 1.0 AppTabContextMenu.qml
+CommandPalette 1.0 CommandPalette.qml
+GlobalModalsHost 1.0 GlobalModalsHost.qml
+SyncStatusToast 1.0 SyncStatusToast.qml
+BackgroundTaskWidget 1.0 BackgroundTaskWidget.qml
+AppGlobalShortcuts 1.0 AppGlobalShortcuts.qml
+AppContextMenu 1.0 AppContextMenu.qml
+WindowControls 1.0 WindowControls.qml
+WindowResizeHandles 1.0 WindowResizeHandles.qml

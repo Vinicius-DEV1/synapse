@@ -1,5 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "layout"
+import "ui"
 import "home"
 import "diagrams"
 import "video"
@@ -7,7 +9,6 @@ import "questions"
 import "notes"
 import "anki"
 import "finance"
-import "habits"
 import "calendar"
 import "library"
 import "culture"
@@ -228,7 +229,6 @@ Item {
         if (key === "video") return { title: "Vídeos", icon: "video" }
         if (key === "anki") return { title: "Flashcards", icon: "anki" }
         if (key === "calendar") return { title: "Agenda", icon: "calendar" }
-        if (key === "habits") return { title: "Hábitos", icon: "habits" }
         if (key === "files") return { title: "Arquivos", icon: "folder" }
         if (key === "diagrams") return { title: "Diagramas", icon: "diagrams" }
         if (key === "focus") return { title: "Foco", icon: "focus" }
@@ -246,9 +246,6 @@ Item {
         } else if (actionKey === "new_event") {
             rootWindow.openOrSwitchTab("calendar", "Agenda", "📅")
             calendarView.isCreatingEvent = true
-        } else if (actionKey === "new_habit") {
-            rootWindow.openOrSwitchTab("habits", "Hábitos", "⚡")
-            habitsView.isCreatingHabit = true
         } else if (actionKey === "new_transaction") {
             rootWindow.openOrSwitchTab("finance", "Finanças", "💵")
             financeView.isAddingTransaction = true
@@ -406,14 +403,13 @@ Item {
                         if (rootWindow.activeTab === "video") return 6;
                         if (rootWindow.activeTab === "anki") return 7;
                         if (rootWindow.activeTab === "calendar") return 8;
-                        if (rootWindow.activeTab === "habits") return 9;
-                        if (rootWindow.activeTab === "diagrams") return 10;
-                        if (rootWindow.activeTab === "focus") return 11;
-                        if (rootWindow.activeTab === "vault") return 12;
-                        if (rootWindow.activeTab === "trash") return 13;
-                        if (rootWindow.activeTab === "settings") return 14;
-                        if (rootWindow.activeTab === "files") return 15;
-                        if (rootWindow.activeTab === "practice") return 16;
+                        if (rootWindow.activeTab === "diagrams") return 9;
+                        if (rootWindow.activeTab === "focus") return 10;
+                        if (rootWindow.activeTab === "vault") return 11;
+                        if (rootWindow.activeTab === "trash") return 12;
+                        if (rootWindow.activeTab === "settings") return 13;
+                        if (rootWindow.activeTab === "files") return 14;
+                        if (rootWindow.activeTab === "practice") return 15;
                         return 0;
                     }
 
@@ -449,7 +445,6 @@ Item {
                     }
                     AnkiView { id: ankiView }
                     CalendarView { id: calendarView }
-                    HabitsView { id: habitsView }
                     DiagramsView { id: diagramsView }
                     FocusLofiView {
                         id: focusView

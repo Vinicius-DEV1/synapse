@@ -1,6 +1,11 @@
 #include "synapse_controller.h"
 
 #include <QtCore/QTemporaryDir>
+#include <QtCore/QFileInfo>
+#include <QtCore/QUrl>
+#include <QtQml/QQmlEngine>
+#include <QtQml/QQmlComponent>
+#include <QtQml/QQmlContext>
 #include <QtTest/QtTest>
 
 class NativeLayoutTest final : public QObject {
@@ -103,6 +108,48 @@ private slots:
             }
         }
         QVERIFY(foundPinned);
+    }
+
+    void qmlLayoutAndUiComponentsInstantiateSuccessfully() {
+        QQmlEngine engine;
+        SynapseDataController controller(nullptr, false);
+        engine.rootContext()->setContextProperty("dataController", &controller);
+
+        const QString qmlBase = QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/qml");
+
+        // Verify UI primitives
+        const QStringList uiComponents = {
+            qmlBase + "/ui/Theme.qml",
+            qmlBase + "/ui/AppIcon.qml",
+            qmlBase + "/ui/AppConfirmDialog.qml"
+        };
+        for (const QString &path : uiComponents) {
+            QQmlComponent comp(&engine, QUrl::fromLocalFile(path));
+            QVERIFY2(comp.isReady(), qPrintable(QString("Component failed to load %1: %2").arg(path, comp.errorString())));
+            QScopedPointer<QObject> obj(comp.create());
+            QVERIFY2(obj, qPrintable(QString("Component failed to instantiate %1: %2").arg(path, comp.errorString())));
+        }
+
+        // Verify Layout components
+        const QStringList layoutComponents = {
+            qmlBase + "/layout/WindowControls.qml",
+            qmlBase + "/layout/WindowResizeHandles.qml",
+            qmlBase + "/layout/SyncStatusToast.qml",
+            qmlBase + "/layout/BackgroundTaskWidget.qml",
+            qmlBase + "/layout/AppGlobalShortcuts.qml",
+            qmlBase + "/layout/AppContextMenu.qml",
+            qmlBase + "/layout/AppNavList.qml",
+            qmlBase + "/layout/AppTopTabBar.qml",
+            qmlBase + "/layout/AppSidebar.qml",
+            qmlBase + "/layout/CommandPalette.qml",
+            qmlBase + "/layout/GlobalModalsHost.qml"
+        };
+        for (const QString &path : layoutComponents) {
+            QQmlComponent comp(&engine, QUrl::fromLocalFile(path));
+            QVERIFY2(comp.isReady(), qPrintable(QString("Component failed to load %1: %2").arg(path, comp.errorString())));
+            QScopedPointer<QObject> obj(comp.create());
+            QVERIFY2(obj, qPrintable(QString("Component failed to instantiate %1: %2").arg(path, comp.errorString())));
+        }
     }
 };
 

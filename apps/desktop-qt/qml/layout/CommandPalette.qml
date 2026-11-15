@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: paletteRoot
@@ -38,7 +39,6 @@ Rectangle {
         { label: "Ir para Banco de Questões (ZenQuiz)", icon: "quiz", category: "Navegação", tab: "quiz" },
         { label: "Ir para Vídeos & Media Center", icon: "video", category: "Navegação", tab: "video" },
         { label: "Ir para Finanças & Orçamento", icon: "finance", category: "Navegação", tab: "finance" },
-        { label: "Ir para Hábitos & Rotina", icon: "habits", category: "Navegação", tab: "habits" },
         { label: "Ir para Agenda & Calendário", icon: "calendar", category: "Navegação", tab: "calendar" },
         { label: "Ir para Arquivos", icon: "folder", category: "Navegação", tab: "files" },
         { label: "Ir para Biblioteca & Livros", icon: "library", category: "Navegação", tab: "library" },

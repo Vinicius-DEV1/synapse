@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
-import "workspace"
+import "../workspace"
+import "../ui"
 
 Rectangle {
     id: sidebarRoot
@@ -42,7 +43,6 @@ Rectangle {
         "video": { title: "Vídeos", icon: "video" },
         "anki": { title: "Flashcards", icon: "anki" },
         "calendar": { title: "Agenda", icon: "calendar" },
-        "habits": { title: "Hábitos", icon: "habits" },
         "files": { title: "Arquivos", icon: "folder" },
         "diagrams": { title: "Diagramas", icon: "diagrams" },
         "focus": { title: "Foco", icon: "focus" },

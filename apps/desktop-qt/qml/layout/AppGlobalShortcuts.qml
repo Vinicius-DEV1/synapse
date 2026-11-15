@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import "../ui"
 
 Item {
     id: shortcutsRoot
@@ -32,9 +33,9 @@ Item {
     Shortcut { sequence: "Ctrl+3"; onActivated: shortcutsRoot.openTabRequested("anki", qsTr("Flashcards"), "🎴") }
     Shortcut { sequence: "Ctrl+4"; onActivated: shortcutsRoot.openTabRequested("quiz", qsTr("Quiz"), "☑️") }
     Shortcut { sequence: "Ctrl+5"; onActivated: shortcutsRoot.openTabRequested("finance", qsTr("Finanças"), "💵") }
-    Shortcut { sequence: "Ctrl+6"; onActivated: shortcutsRoot.openTabRequested("habits", qsTr("Hábitos"), "⚡") }
-    Shortcut { sequence: "Ctrl+7"; onActivated: shortcutsRoot.openTabRequested("calendar", qsTr("Agenda"), "📅") }
-    Shortcut { sequence: "Ctrl+8"; onActivated: shortcutsRoot.openTabRequested("library", qsTr("Biblioteca"), "📚") }
-    Shortcut { sequence: "Ctrl+9"; onActivated: shortcutsRoot.openTabRequested("culture", qsTr("Cultura"), "🎭") }
+    Shortcut { sequence: "Ctrl+6"; onActivated: shortcutsRoot.openTabRequested("calendar", qsTr("Agenda"), "📅") }
+    Shortcut { sequence: "Ctrl+7"; onActivated: shortcutsRoot.openTabRequested("library", qsTr("Biblioteca"), "📚") }
+    Shortcut { sequence: "Ctrl+8"; onActivated: shortcutsRoot.openTabRequested("culture", qsTr("Cultura"), "🎭") }
+    Shortcut { sequence: "Ctrl+9"; onActivated: shortcutsRoot.openTabRequested("focus", qsTr("Foco"), "⏳") }
     Shortcut { sequence: "Ctrl+0"; onActivated: shortcutsRoot.openTabRequested("vault", qsTr("Cofre"), "🔒") }
 }
