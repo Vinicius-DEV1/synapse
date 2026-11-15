@@ -9,6 +9,8 @@ Rectangle {
     property var last7Days: []
     property var logMap: ({})
     property bool isHabitsHelpOpen: false
+    property bool isHeatmapOpen: false
+    property var selectedHabitForHeatmap: null
 
     function computeDays() {
         var days = []
@@ -55,6 +57,13 @@ Rectangle {
             onHelpRequested: habitsRoot.isHabitsHelpOpen = true
         }
 
+        // Streak Analytics & Scorecards Strip
+        HabitsScoreCards {
+            habits: habitsRoot.habits
+            last7Days: habitsRoot.last7Days
+            logMap: habitsRoot.logMap
+        }
+
         // Habits Matrix List
         HabitsMatrixList {
             habits: habitsRoot.habits
@@ -64,6 +73,10 @@ Rectangle {
             onToggleCheckin: function(habitId, dateStr) {
                 dataController.toggleHabitCheckin(habitId, dateStr)
                 habitsRoot.refreshHabits()
+            }
+            onHeatmapRequested: function(habit) {
+                habitsRoot.selectedHabitForHeatmap = habit
+                habitsRoot.isHeatmapOpen = true
             }
             onEditHabitRequested: function(habit) {
                 createHabitModal.openModal(habit)
@@ -86,6 +99,13 @@ Rectangle {
             dataController.updateHabit(habitId, title, color, icon, targetDays)
             habitsRoot.refreshHabits()
         }
+    }
+
+    // Modal: Heatmap Anual do Hábito
+    HabitsHeatmapModal {
+        visible: habitsRoot.isHeatmapOpen
+        habit: habitsRoot.selectedHabitForHeatmap
+        onCloseRequested: habitsRoot.isHeatmapOpen = false
     }
 
     // Modal: Guia de Hábitos

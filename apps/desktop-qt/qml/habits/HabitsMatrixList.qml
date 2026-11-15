@@ -13,6 +13,7 @@ Item {
     signal toggleCheckin(string habitId, string dateStr)
     signal editHabitRequested(var habit)
     signal deleteHabitRequested(string habitId)
+    signal heatmapRequested(var habit)
 
     ListView {
         id: habitListView
@@ -126,6 +127,29 @@ Item {
                 }
 
                 Item { Layout.preferredWidth: 8 }
+
+                // Heatmap Button
+                Rectangle {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    radius: 8
+                    color: heatmapMouse.containsMouse ? "#2010b981" : "transparent"
+                    border.color: heatmapMouse.containsMouse ? "#5510b981" : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "📊"
+                        font.pixelSize: 12
+                    }
+
+                    MouseArea {
+                        id: heatmapMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: listRoot.heatmapRequested(habitCardDelegate.habitItem)
+                    }
+                }
 
                 // Edit Habit Button
                 Rectangle {
