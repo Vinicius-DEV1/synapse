@@ -26,6 +26,11 @@ Item {
     property var inspectBattery: null
     property var batteryQuestionsList: []
 
+    // AI & Import modals
+    property bool isAIGenerationOpen: false
+    property bool isImportModalOpen: false
+    property var aiTargetBattery: null
+
     signal sessionNoticeDismissed()
     signal startSimulationRequested(var tags, string status, int limit, bool shuffle)
     signal reviewQuestionRequested(int index)
@@ -40,6 +45,8 @@ Item {
     signal questionUpdateRequested(string questionId, string batteryId, string prompt, var options, int correctIndex, string explanation, var tags)
     signal questionDeleteRequested(string questionId)
     signal createQuestionModalClosed()
+    signal batchQuestionsImported(string batteryId, var questionsList)
+    signal sequentialModeRequested(var battery)
 
     QuizResultsModal {
         isOpen: overlaysRoot.isResultsOpen
@@ -137,6 +144,37 @@ Item {
         }
         onRequestDeleteQuestion: function(qId) {
             overlaysRoot.questionDeleteRequested(qId)
+        }
+        onRequestAIGeneration: function(bat) {
+            overlaysRoot.aiTargetBattery = bat
+            overlaysRoot.isAIGenerationOpen = true
+        }
+        onRequestImport: function(bat) {
+            overlaysRoot.aiTargetBattery = bat
+            overlaysRoot.isImportModalOpen = true
+        }
+        onRequestSequentialMode: function(bat) {
+            overlaysRoot.sequentialModeRequested(bat)
+        }
+    }
+
+    QuizAIGenerationModal {
+        visible: overlaysRoot.isAIGenerationOpen
+        batteryId: overlaysRoot.aiTargetBattery ? (overlaysRoot.aiTargetBattery.id || "") : ""
+        batteryName: overlaysRoot.aiTargetBattery ? (overlaysRoot.aiTargetBattery.title || "Bateria") : "Bateria"
+        onCloseRequested: overlaysRoot.isAIGenerationOpen = false
+        onImportQuestionsRequested: function(tBatId, qs) {
+            overlaysRoot.batchQuestionsImported(tBatId, qs)
+        }
+    }
+
+    QuizImportModal {
+        visible: overlaysRoot.isImportModalOpen
+        batteryId: overlaysRoot.aiTargetBattery ? (overlaysRoot.aiTargetBattery.id || "") : ""
+        batteryName: overlaysRoot.aiTargetBattery ? (overlaysRoot.aiTargetBattery.title || "Bateria") : "Bateria"
+        onCloseRequested: overlaysRoot.isImportModalOpen = false
+        onImportQuestionsRequested: function(tBatId, qs) {
+            overlaysRoot.batchQuestionsImported(tBatId, qs)
         }
     }
 }

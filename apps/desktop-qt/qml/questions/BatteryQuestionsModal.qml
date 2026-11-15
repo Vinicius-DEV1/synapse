@@ -16,6 +16,9 @@ Rectangle {
     signal requestAddQuestion(var battery)
     signal requestEditQuestion(var question)
     signal requestDeleteQuestion(string questionId)
+    signal requestAIGeneration(var battery)
+    signal requestImport(var battery)
+    signal requestSequentialMode(var battery)
 
     MouseArea { anchors.fill: parent }
 
@@ -56,6 +59,72 @@ Rectangle {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                // "⚡ Modo Foco" Button
+                Rectangle {
+                    Layout.preferredWidth: 110
+                    Layout.preferredHeight: 36
+                    radius: 8
+                    color: focusBtnMouse.containsMouse ? "#059669" : "#10b981"
+
+                    RowLayout {
+                        anchors.centerIn: parent; spacing: 4
+                        Text { text: "⚡"; color: "#ffffff"; font.pixelSize: 13 }
+                        Text { text: "Modo Foco"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                    }
+
+                    MouseArea {
+                        id: focusBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: questionsModalRoot.requestSequentialMode(questionsModalRoot.battery)
+                    }
+                }
+
+                // "✨ Gerar IA" Button
+                Rectangle {
+                    Layout.preferredWidth: 100
+                    Layout.preferredHeight: 36
+                    radius: 8
+                    color: aiBtnMouse.containsMouse ? "#7c3aed" : "#8b5cf6"
+
+                    RowLayout {
+                        anchors.centerIn: parent; spacing: 4
+                        Text { text: "✨"; color: "#ffffff"; font.pixelSize: 13 }
+                        Text { text: "Gerar IA"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                    }
+
+                    MouseArea {
+                        id: aiBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: questionsModalRoot.requestAIGeneration(questionsModalRoot.battery)
+                    }
+                }
+
+                // "📄 Importar" Button
+                Rectangle {
+                    Layout.preferredWidth: 96
+                    Layout.preferredHeight: 36
+                    radius: 8
+                    color: importBtnMouse.containsMouse ? "#2563eb" : "#3b82f6"
+
+                    RowLayout {
+                        anchors.centerIn: parent; spacing: 4
+                        Text { text: "📄"; color: "#ffffff"; font.pixelSize: 13 }
+                        Text { text: "Importar"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                    }
+
+                    MouseArea {
+                        id: importBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: questionsModalRoot.requestImport(questionsModalRoot.battery)
+                    }
+                }
 
                 // "+ Nova Questão" Button
                 Rectangle {

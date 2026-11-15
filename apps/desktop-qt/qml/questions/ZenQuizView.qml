@@ -348,6 +348,46 @@ Rectangle {
             questionOverlays.isCreatingQuestion = false
             questionOverlays.editingQuestion = null
         }
+        onBatchQuestionsImported: function(batteryId, questionsList) {
+            if (!questionsList || questionsList.length === 0) return
+            var count = 0
+            for (var i = 0; i < questionsList.length; i++) {
+                var q = questionsList[i]
+                var opts = q.options || []
+                var tags = q.tags || ["importado"]
+                var cIdx = q.correctIndex !== undefined ? q.correctIndex : 0
+                if (dataController.createQuizQuestion(
+                    batteryId,
+                    q.prompt || "",
+                    JSON.stringify(opts),
+                    cIdx,
+                    q.explanation || "",
+                    JSON.stringify(tags)
+                )) {
+                    count++
+                }
+            }
+            quizRoot.loadBatteries()
+            quizRoot.refreshInspectedBatteryQuestions()
+            quizRoot.showSessionNotice(count + " questões importadas com sucesso!")
+        }
+        onSequentialModeRequested: function(battery) {
+            var raw = battery ? dataController.getBatteryQuestions(battery.id) : dataController.getAllQuizQuestions()
+            var qs = QuizSessionData.mapQuestionRows(raw)
+            if (qs.length === 0) {
+                quizRoot.showSessionNotice("Não há questões válidas nesta bateria para iniciar.")
+                return
+            }
+            sequentialFocusModal.startQuiz(battery ? battery.id : "", battery ? battery.title : "Simulado Sequencial", qs)
+        }
+    }
+
+    QuizSequentialFocusModal {
+        id: sequentialFocusModal
+        onRecordAttemptRequested: function(bId, qId, selIndex, correct) {
+            dataController.recordQuizAttempt(bId, qId, selIndex, correct)
+            quizRoot.loadBatteries()
+        }
     }
 
     Keys.onPressed: function(event) {
