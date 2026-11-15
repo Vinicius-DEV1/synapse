@@ -13,6 +13,8 @@ RowLayout {
     signal searchTextChanged(string text)
     signal requestAddItem()
     signal helpRequested()
+    signal goalsRequested()
+    signal onlineSearchRequested()
 
     ColumnLayout {
         spacing: 4
@@ -90,6 +92,56 @@ RowLayout {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: headerRoot.helpRequested()
+        }
+    }
+
+    // "🎯 Metas" Button
+    Rectangle {
+        width: 86
+        height: 40
+        radius: 10
+        color: goalsMouse.containsMouse ? "#262438" : "#15141b"
+        border.color: goalsMouse.containsMouse ? "#808b5cf6" : "#12ffffff"
+        border.width: 1
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 4
+            Text { text: "🎯"; font.pixelSize: 12 }
+            Text { text: "Metas"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
+        }
+
+        MouseArea {
+            id: goalsMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: headerRoot.goalsRequested()
+        }
+    }
+
+    // "🔍 Buscar Online" Button
+    Rectangle {
+        width: 116
+        height: 40
+        radius: 10
+        color: onlineMouse.containsMouse ? "#262438" : "#15141b"
+        border.color: onlineMouse.containsMouse ? "#808b5cf6" : "#12ffffff"
+        border.width: 1
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 4
+            Text { text: "🌐"; font.pixelSize: 12 }
+            Text { text: "Buscar Online"; color: "#fffffe"; font.pixelSize: 12; font.bold: true }
+        }
+
+        MouseArea {
+            id: onlineMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: headerRoot.onlineSearchRequested()
         }
     }
 

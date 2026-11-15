@@ -16,6 +16,10 @@ Rectangle {
     property var selectedItemForDetails: null
     property var selectedItemForEpisodes: null
     property var currentEpisodes: []
+    property bool isDeleteModalOpen: false
+    property bool isGoalsModalOpen: false
+    property bool isSearchOnlineOpen: false
+    property var deletingItem: null
 
     function refreshItems() {
         allItems = dataController.getCultureItems("")
@@ -81,6 +85,8 @@ Rectangle {
                 cultureRoot.isCreatingItem = true
             }
             onHelpRequested: helpDialog.isOpen = true
+            onGoalsRequested: cultureRoot.isGoalsModalOpen = true
+            onOnlineSearchRequested: cultureRoot.isSearchOnlineOpen = true
         }
 
         // Media Grid & Filter Pills
@@ -110,8 +116,16 @@ Rectangle {
                 cultureRoot.refreshItems()
             }
             onItemDeleted: function(itemId) {
-                dataController.deleteCultureItem(itemId)
-                cultureRoot.refreshItems()
+                for (var i = 0; i < cultureRoot.allItems.length; i++) {
+                    if (cultureRoot.allItems[i].id === itemId) {
+                        cultureRoot.deletingItem = cultureRoot.allItems[i]
+                        break
+                    }
+                }
+                if (!cultureRoot.deletingItem) {
+                    cultureRoot.deletingItem = { id: itemId, title: "Obra", type: "item" }
+                }
+                cultureRoot.isDeleteModalOpen = true
             }
         }
     }
@@ -218,5 +232,39 @@ Rectangle {
     CultureHelpDialog {
         id: helpDialog
         onClosed: isOpen = false
+    }
+
+    // Modal: Excluir Obra com Confirmação
+    CultureDeleteModal {
+        visible: cultureRoot.isDeleteModalOpen
+        cultureItem: cultureRoot.deletingItem
+        onCloseRequested: cultureRoot.isDeleteModalOpen = false
+        onDeleteConfirmed: function(itemId) {
+            dataController.deleteCultureItem(itemId)
+            cultureRoot.refreshItems()
+        }
+    }
+
+    // Modal: Metas Culturais
+    CultureGoalModal {
+        visible: cultureRoot.isGoalsModalOpen
+        onCloseRequested: cultureRoot.isGoalsModalOpen = false
+    }
+
+    // Modal: Busca Externa
+    CultureMediaSearchModal {
+        visible: cultureRoot.isSearchOnlineOpen
+        onCloseRequested: cultureRoot.isSearchOnlineOpen = false
+        onMediaSelected: function(media) {
+            cultureRoot.editingItem = {
+                title: media.title,
+                type: media.type,
+                total_episodes: media.episodes,
+                synopsis: media.synopsis,
+                status: "planned",
+                progress: 0
+            }
+            cultureRoot.isCreatingItem = true
+        }
     }
 }
