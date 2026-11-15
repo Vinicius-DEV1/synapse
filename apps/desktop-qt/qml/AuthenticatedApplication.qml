@@ -18,6 +18,7 @@ import "settings"
 import "notifications"
 import "files"
 import "practice"
+import "ai-sidebar"
 
 Item {
     id: rootWindow
@@ -30,6 +31,7 @@ Item {
     property string activeTab: "home"
     property bool sidebarExpanded: true
     property bool notificationsOpen: false
+    property bool aiSidebarOpen: false
     property var tabsList: [
         { id: "tab-home", module: "home", title: "Início", icon: "home", isPinned: false }
     ]
@@ -43,9 +45,45 @@ Item {
         return info.title
     }
 
+    onActiveTitleChanged: {
+        if (activeTab === "notes" && activeTitle && activeTitle.length > 0 && activeTitle !== "Selecione uma nota") {
+            for (var i = 0; i < tabsList.length; ++i) {
+                if (tabsList[i].id === currentTabId) {
+                    if (tabsList[i].title !== activeTitle) {
+                        var newTabs = tabsList.slice()
+                        newTabs[i] = Object.assign({}, newTabs[i], { title: activeTitle })
+                        tabsList = newTabs
+                    }
+                    break
+                }
+            }
+        }
+    }
+
     function flushActiveNotes() {
         if (notesView && (notesView.isDirty || notesView.isRichMode)) {
             notesView.saveActiveNote()
+        }
+    }
+
+    function addNewTab(moduleKey, title, icon) {
+        flushActiveNotes()
+        var mod = moduleKey || "notes"
+        var info = getModuleInfo(mod)
+        var newId = "tab-" + mod + "-" + Date.now() + "-" + Math.floor(Math.random() * 1000)
+        var newTabs = tabsList.slice()
+        newTabs.push({
+            id: newId,
+            module: mod,
+            title: title || (mod === "notes" ? "Nova Nota" : info.title),
+            icon: icon || info.icon,
+            isPinned: false
+        })
+        tabsList = newTabs
+        currentTabId = newId
+        activeTab = mod
+        if (mod === "notes" && notesView) {
+            notesView.createNewRootNote()
         }
     }
 
@@ -81,7 +119,7 @@ Item {
             newTabs.splice(idx, 1)
             tabsList = newTabs
             if (currentTabId === tabId) {
-                var nextTab = newTabs[Math.max(0, idx - 1)]
+                var nextTab = newTabs[Math.min(idx, newTabs.length - 1)] || newTabs[0]
                 currentTabId = nextTab.id
                 activeTab = nextTab.module
             }
@@ -234,6 +272,7 @@ Item {
             rootWindow.openOrSwitchTab("notes", "Caderno", "📖")
             notesView.createNewRootNote()
         }
+        onNewTabRequested: rootWindow.addNewTab("notes", "Nova Nota", "notes")
         onCloseActiveTabRequested: rootWindow.closeTab(rootWindow.currentTabId)
         onNextTabRequested: rootWindow.nextTab()
         onPreviousTabRequested: rootWindow.previousTab()
@@ -256,7 +295,7 @@ Item {
         AppTopTabBar {
             id: topTabBar
             visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen)
-            Layout.preferredHeight: visible ? 42 : 0
+            Layout.preferredHeight: visible ? 46 : 0
             openTabs: rootWindow.tabsList
             activeTabId: rootWindow.currentTabId
             unreadCount: dataController ? dataController.unreadNotificationCount : 0
@@ -271,10 +310,8 @@ Item {
             onCloseOtherTabsRequested: function(tId) { rootWindow.closeOtherTabs(tId) }
             onCloseTabsToRightRequested: function(tId) { rootWindow.closeTabsToRight(tId) }
             onNotificationRequested: rootWindow.notificationsOpen = !rootWindow.notificationsOpen
-            onNewTabRequested: {
-                var info = rootWindow.getModuleInfo("notes")
-                rootWindow.openOrSwitchTab("notes", info.title, info.icon)
-            }
+            onAiAssistantRequested: rootWindow.aiSidebarOpen = !rootWindow.aiSidebarOpen
+            onNewTabRequested: rootWindow.addNewTab("notes", "Nova Nota", "notes")
             onMinimizeRequested: {
                 if (rootWindow.windowRoot) rootWindow.windowRoot.showMinimized()
             }
@@ -460,6 +497,15 @@ Item {
             rootWindow.openOrSwitchTab("notes", info.title, info.icon)
             rootWindow.notificationsOpen = false
         }
+    }
+
+    AiSidebarPanel {
+        id: aiSidebar
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        visible: rootWindow.aiSidebarOpen
+        onCloseRequested: rootWindow.aiSidebarOpen = false
     }
 
     GlobalModalsHost {

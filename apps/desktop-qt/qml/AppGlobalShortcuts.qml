@@ -5,6 +5,7 @@ Item {
 
     signal openCommandPalette()
     signal newPageRequested()
+    signal newTabRequested()
     signal closeActiveTabRequested()
     signal nextTabRequested()
     signal previousTabRequested()
@@ -15,6 +16,7 @@ Item {
     Shortcut { sequence: "Ctrl+K"; onActivated: shortcutsRoot.openCommandPalette() }
     Shortcut { sequence: "Ctrl+P"; onActivated: shortcutsRoot.openCommandPalette() }
     Shortcut { sequence: "Ctrl+N"; onActivated: shortcutsRoot.newPageRequested() }
+    Shortcut { sequence: "Ctrl+T"; onActivated: shortcutsRoot.newTabRequested() }
     Shortcut { sequence: "Ctrl+W"; onActivated: shortcutsRoot.closeActiveTabRequested() }
     Shortcut { sequence: "Ctrl+Tab"; onActivated: shortcutsRoot.nextTabRequested() }
     Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: shortcutsRoot.previousTabRequested() }
