@@ -282,9 +282,9 @@ export interface ICadernoAPI {
     createSession: (session: Partial<Session>) => Promise<{ success: boolean; id?: number | string }>;
     deleteSessions: (options: { type: 'specific'; id: number | string } | { type: 'all' } | { type: 'today' } | { type: 'last7days' }) => Promise<{ success: boolean; error?: string }>;
     getAlarms: () => Promise<Alarm[]>;
-    createAlarm: (alarm: Partial<Alarm>) => Promise<{ success: boolean; id?: number }>;
-    updateAlarm: (id: number, alarm: Partial<Alarm>) => Promise<{ success: boolean }>;
-    deleteAlarm: (id: number) => Promise<{ success: boolean }>;
+    createAlarm: (alarm: Partial<Alarm>) => Promise<{ success: boolean; id?: number | string }>;
+    updateAlarm: (id: number | string, alarm: Partial<Alarm>) => Promise<{ success: boolean }>;
+    deleteAlarm: (id: number | string) => Promise<{ success: boolean }>;
     setAppIcon?: (type: 'normal' | 'zzz') => Promise<void>;
   };
 

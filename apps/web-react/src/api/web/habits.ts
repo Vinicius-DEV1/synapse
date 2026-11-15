@@ -65,28 +65,36 @@ export const webHabitsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =
   getLogs: async (habitId: string): Promise<HabitLog[]> => {
     const allLogs: HabitLog[] = (await db.getAll('habit_logs')) || [];
     return allLogs
-      .filter((l) => l.habit_id === habitId)
+      .filter((l) => l.habit_id === habitId && !l.deleted_at)
       .sort((a, b) => a.date.localeCompare(b.date));
   },
 
   getAllLogs: async (): Promise<HabitLog[]> => {
-    return (await db.getAll('habit_logs')) || [];
+    const allLogs: HabitLog[] = (await db.getAll('habit_logs')) || [];
+    return allLogs.filter((l) => !l.deleted_at);
   },
 
   toggleDayLog: async (habitId: string, date: string): Promise<{ completed: boolean; log?: HabitLog }> => {
     const compositeKey = `${habitId}_${date}`;
     const existing = await db.get('habit_logs', compositeKey);
 
-    if (existing) {
-      await db.delete('habit_logs', compositeKey);
+    if (existing && !existing.deleted_at) {
+      existing.deleted_at = new Date().toISOString();
+      existing.updated_at = new Date().toISOString();
+      await db.put('habit_logs', existing);
       return { completed: false };
     }
 
+    const now = new Date().toISOString();
     const newLog: HabitLog = {
       id: compositeKey,
       habit_id: habitId,
       date,
-      completed_at: new Date().toISOString(),
+      completed_at: existing?.completed_at || now,
+      created_at: existing?.created_at || now,
+      updated_at: now,
+      deleted_at: null,
+      notes: existing?.notes,
     };
     await db.put('habit_logs', newLog);
     return { completed: true, log: newLog };
@@ -98,7 +106,7 @@ export const webHabitsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =
 
     const allLogs: HabitLog[] = (await db.getAll('habit_logs')) || [];
     const logs = allLogs
-      .filter((l) => l.habit_id === habitId)
+      .filter((l) => l.habit_id === habitId && !l.deleted_at)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const stats = calculateHabitStreak(logs);

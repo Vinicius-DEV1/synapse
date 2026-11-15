@@ -17,6 +17,9 @@ export interface HabitLog {
   date: string; // Format: 'YYYY-MM-DD'
   completed_at: string;
   notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface HabitStats {

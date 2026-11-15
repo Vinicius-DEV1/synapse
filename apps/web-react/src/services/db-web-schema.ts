@@ -58,11 +58,14 @@ export interface LinkMetadataCacheEntry {
 }
 
 export interface SharedPageKeyRecord {
+  id?: string;
   shareId: string;
   pageId: string;
   shareKeyBase64: string;
   config: SharedPageConfig;
   createdAt: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 // NOTE: IDB schema uses 'value: any' for CRDT flexibility and dynamic document entities
@@ -91,7 +94,7 @@ export interface CadernoDBSchema extends DBSchema {
   culture_items: { key: string; value: CultureItem };
   culture_episodes: { key: string; value: CultureEpisode; indexes: { item_id: string } };
   focus_sessions: { key: string; value: Session };
-  alarms: { key: number; value: Alarm };
+  alarms: { key: number | string; value: Alarm };
   activity_logs: { key: string; value: ActivityLog };
   calendar_events: { key: string; value: CalendarEvent };
   notifications: { key: string; value: AppNotification };

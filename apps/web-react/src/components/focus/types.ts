@@ -19,7 +19,7 @@ export interface Stats {
 }
 
 export interface Alarm {
-  id?: number;
+  id?: number | string;
   time_str: string;
   label?: string | null;
   is_active: boolean | number;

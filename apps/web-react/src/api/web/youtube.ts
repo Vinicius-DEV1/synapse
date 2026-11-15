@@ -74,7 +74,7 @@ export const webYoutubeApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () 
   getSummary: async (videoId: string): Promise<YoutubeSummaryRecord | null> => {
     try {
       const all = (await db.getAllFromIndex('youtube_summaries', 'video_id', videoId)) || [];
-      return all[0] || null;
+      return all.filter((s) => !s.deleted_at)[0] || null;
     } catch {
       return null;
     }
@@ -96,6 +96,7 @@ export const webYoutubeApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () 
         existing.summary = summary || existing.summary;
         existing.raw_transcript = rawTranscript || existing.raw_transcript;
         existing.updated_at = new Date().toISOString();
+        existing.deleted_at = null;
         await db.put('youtube_summaries', existing);
       } else {
         const newSummary: YoutubeSummaryRecord = {

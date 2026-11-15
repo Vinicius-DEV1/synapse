@@ -32,14 +32,37 @@ export const webSyncApi = (
 
   upsertRow: async <T extends object = Record<string, unknown>>(tableName: string, row: T): Promise<{ success: boolean }> => {
     if (isStoreName(db, tableName)) {
-      let mergedRow: object = row;
-      const rowWithId = row as { id?: unknown; deleted_at?: unknown };
-      const rowId = typeof rowWithId.id === 'string' ? rowWithId.id : undefined;
-      if (rowId) {
+      let mergedRow: Record<string, unknown> = { ...(row as Record<string, unknown>) };
+
+      if (tableName === 'shared_page_keys') {
+        if (!mergedRow.shareId && mergedRow.id) {
+          mergedRow.shareId = mergedRow.id;
+        }
+        if (!mergedRow.id && mergedRow.shareId) {
+          mergedRow.id = mergedRow.shareId;
+        }
+      } else if (tableName === 'link_metadata_cache') {
+        if (!mergedRow.url && mergedRow.id) {
+          mergedRow.url = mergedRow.id;
+        }
+        if (!mergedRow.id && mergedRow.url) {
+          mergedRow.id = mergedRow.url;
+        }
+      }
+
+      const rowWithId = mergedRow as { id?: unknown; shareId?: unknown; url?: unknown; deleted_at?: unknown };
+      const rowId = (typeof rowWithId.id === 'string' || typeof rowWithId.id === 'number')
+        ? rowWithId.id
+        : (typeof rowWithId.shareId === 'string'
+            ? rowWithId.shareId
+            : (typeof rowWithId.url === 'string' ? rowWithId.url : undefined));
+
+      if (rowId !== undefined) {
         try {
-          const existing = await db.get(tableName, rowId);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const existing = await db.get(tableName, rowId as any);
           if (existing && typeof existing === 'object') {
-            mergedRow = { ...(existing as Record<string, unknown>), ...row };
+            mergedRow = { ...(existing as Record<string, unknown>), ...mergedRow };
           }
         } catch (e) {
           console.warn(`Failed to fetch existing row for merge in sync upsert:`, e);
@@ -52,7 +75,7 @@ export const webSyncApi = (
         isStoreName(db, 'library_book_files') &&
         rowId
       ) {
-        await db.delete('library_book_files', rowId).catch(console.warn);
+        await db.delete('library_book_files', String(rowId)).catch(console.warn);
       }
 
       await originalPut(tableName, mergedRow as unknown as CadernoDBSchema[typeof tableName]['value']);

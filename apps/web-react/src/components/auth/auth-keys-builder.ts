@@ -17,6 +17,12 @@ export async function buildModuleKeys(
     'files',
     'calendar',
     'practice',
+    'video',
+    'diagrams',
+    'quiz',
+    'habits',
+    'notifications',
+    'sharing',
   ];
 
   for (const mod of modules) {

@@ -37,7 +37,7 @@ export function useAlarmScheduler(onReloadData: () => Promise<void>) {
     return `${h} hour${h !== 1 ? 's' : ''} and ${m} minute${m !== 1 ? 's' : ''}`;
   };
 
-  const handleToggleAlarm = useCallback(async (id: number, isActive: boolean) => {
+  const handleToggleAlarm = useCallback(async (id: number | string, isActive: boolean) => {
     if (window.api?.focus) {
       await window.api.focus.updateAlarm(id, { is_active: isActive });
       await onReloadData();
@@ -63,7 +63,7 @@ export function useAlarmScheduler(onReloadData: () => Promise<void>) {
         lastTriggeredTimeRef.current = timeStr;
         setTriggeredAlarm(activeAlarm);
         playAlarmSound();
-        if (activeAlarm.id) {
+        if (activeAlarm.id !== undefined) {
           handleToggleAlarm(activeAlarm.id, false);
         }
       }
@@ -82,7 +82,7 @@ export function useAlarmScheduler(onReloadData: () => Promise<void>) {
     }
   }, [onReloadData, showToast]);
 
-  const handleDeleteAlarm = useCallback(async (id: number) => {
+  const handleDeleteAlarm = useCallback(async (id: number | string) => {
     if (window.api?.focus) {
       await window.api.focus.deleteAlarm(id);
       await onReloadData();

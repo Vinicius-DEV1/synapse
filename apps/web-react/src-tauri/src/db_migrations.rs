@@ -12,11 +12,95 @@ pub fn run_migrations(conn: &Connection) {
             summary TEXT NOT NULL,
             raw_transcript TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
         )",
         [],
     );
+    let _ = conn.execute("ALTER TABLE youtube_summaries ADD COLUMN deleted_at DATETIME DEFAULT NULL", []);
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id)", []);
+
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS habits (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            color TEXT DEFAULT 'emerald',
+            icon TEXT DEFAULT 'Flame',
+            target_days_per_week INTEGER DEFAULT 7,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_habits_updated ON habits(updated_at)", []);
+
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS habit_logs (
+            id TEXT PRIMARY KEY,
+            habit_id TEXT NOT NULL,
+            date TEXT NOT NULL,
+            completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_habit_logs_habit ON habit_logs(habit_id)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON habit_logs(date)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_habit_logs_updated ON habit_logs(updated_at)", []);
+
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS shared_page_keys (
+            id TEXT PRIMARY KEY,
+            share_id TEXT,
+            shareId TEXT,
+            page_id TEXT,
+            pageId TEXT,
+            share_key_base64 TEXT,
+            shareKeyBase64 TEXT,
+            config TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_shared_page_keys_page ON shared_page_keys(page_id)", []);
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_shared_page_keys_updated ON shared_page_keys(updated_at)", []);
+
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS culture_disliked_items (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            type TEXT NOT NULL,
+            disliked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            reason TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_culture_disliked_updated ON culture_disliked_items(updated_at)", []);
+
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS culture_ignored_items (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            type TEXT NOT NULL,
+            ignored_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            already_watched INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            deleted_at DATETIME DEFAULT NULL
+        )",
+        [],
+    );
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_culture_ignored_updated ON culture_ignored_items(updated_at)", []);
     let _ = conn.execute(
         "CREATE TABLE IF NOT EXISTS link_metadata_cache (
             url TEXT PRIMARY KEY,

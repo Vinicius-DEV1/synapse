@@ -66,6 +66,9 @@ export interface DislikedCultureItem {
   type: CultureType;
   disliked_at: string;
   reason?: 'not_interested' | 'seen_and_disliked' | 'bad_recommendation';
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface IgnoredCultureItem {
@@ -74,6 +77,9 @@ export interface IgnoredCultureItem {
   type: CultureType;
   ignored_at: string;
   already_watched: boolean;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface AiCulturalDnaProfile {

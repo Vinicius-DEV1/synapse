@@ -8,8 +8,8 @@ interface AlarmsListProps {
   alarms: Alarm[];
   onBack: () => void;
   onNew: () => void;
-  onToggle: (id: number, isActive: boolean) => void;
-  onDelete: (id: number) => void;
+  onToggle: (id: number | string, isActive: boolean) => void;
+  onDelete: (id: number | string) => void;
 }
 
 const AlarmsList: React.FC<AlarmsListProps> = ({ alarms, onBack, onNew, onToggle, onDelete }) => {

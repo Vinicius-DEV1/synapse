@@ -15,7 +15,8 @@ export const CultureFeedbackStorage = {
   async getDislikedItems(): Promise<DislikedCultureItem[]> {
     try {
       const db = await getWebDb();
-      return await db.getAll('culture_disliked_items');
+      const all = await db.getAll('culture_disliked_items');
+      return (all || []).filter((i) => !i.deleted_at);
     } catch (err) {
       console.warn('[CultureFeedbackStorage] Erro ao buscar itens descurtidos:', err);
       return [];
@@ -28,9 +29,13 @@ export const CultureFeedbackStorage = {
   async addDislikedItem(item: Omit<DislikedCultureItem, 'disliked_at'>): Promise<void> {
     try {
       const db = await getWebDb();
+      const now = new Date().toISOString();
       const entry: DislikedCultureItem = {
         ...item,
-        disliked_at: new Date().toISOString(),
+        disliked_at: now,
+        created_at: item.created_at || now,
+        updated_at: now,
+        deleted_at: null,
       };
       await db.put('culture_disliked_items', entry);
     } catch (err) {
@@ -44,7 +49,12 @@ export const CultureFeedbackStorage = {
   async removeDislikedItem(id: string): Promise<void> {
     try {
       const db = await getWebDb();
-      await db.delete('culture_disliked_items', id);
+      const existing = await db.get('culture_disliked_items', id);
+      if (existing) {
+        existing.deleted_at = new Date().toISOString();
+        existing.updated_at = new Date().toISOString();
+        await db.put('culture_disliked_items', existing);
+      }
     } catch (err) {
       console.warn('[CultureFeedbackStorage] Erro ao remover item descurtido:', err);
     }
@@ -56,7 +66,8 @@ export const CultureFeedbackStorage = {
   async getIgnoredItems(): Promise<IgnoredCultureItem[]> {
     try {
       const db = await getWebDb();
-      return await db.getAll('culture_ignored_items');
+      const all = await db.getAll('culture_ignored_items');
+      return (all || []).filter((i) => !i.deleted_at);
     } catch (err) {
       console.warn('[CultureFeedbackStorage] Erro ao buscar itens ignorados:', err);
       return [];
@@ -69,9 +80,13 @@ export const CultureFeedbackStorage = {
   async addIgnoredItem(item: Omit<IgnoredCultureItem, 'ignored_at'>): Promise<void> {
     try {
       const db = await getWebDb();
+      const now = new Date().toISOString();
       const entry: IgnoredCultureItem = {
         ...item,
-        ignored_at: new Date().toISOString(),
+        ignored_at: now,
+        created_at: item.created_at || now,
+        updated_at: now,
+        deleted_at: null,
       };
       await db.put('culture_ignored_items', entry);
     } catch (err) {
@@ -85,7 +100,12 @@ export const CultureFeedbackStorage = {
   async removeIgnoredItem(id: string): Promise<void> {
     try {
       const db = await getWebDb();
-      await db.delete('culture_ignored_items', id);
+      const existing = await db.get('culture_ignored_items', id);
+      if (existing) {
+        existing.deleted_at = new Date().toISOString();
+        existing.updated_at = new Date().toISOString();
+        await db.put('culture_ignored_items', existing);
+      }
     } catch (err) {
       console.warn('[CultureFeedbackStorage] Erro ao remover item ignorado:', err);
     }

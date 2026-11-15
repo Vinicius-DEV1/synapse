@@ -45,7 +45,8 @@ async function prepareRowsForPush(
 
   const promises = rows.map(async (row): Promise<PreparedDoc | null> => {
     const { id, updated_at, created_at, ...sensitiveData } = row;
-    const docId = String(id);
+    const idVal = id ?? (row as Record<string, unknown>).shareId ?? (row as Record<string, unknown>).url;
+    const docId = String(idVal);
 
     // Ensure deleted_at is captured and included in encrypted sensitiveData payload
     const rawDeletedAt = row.deleted_at;

@@ -283,26 +283,44 @@ export async function saveAiPrompt(id: string, module: string, content: string):
 
 export async function getWebShareKey(shareId: string): Promise<SharedPageKeyRecord | null> {
   const db = await getWebDb();
-  return (await db.get('shared_page_keys', shareId)) || null;
+  const record = await db.get('shared_page_keys', shareId);
+  if (!record || record.deleted_at) return null;
+  return record;
 }
 
 export async function getWebShareKeyByPage(pageId: string): Promise<SharedPageKeyRecord | null> {
   const db = await getWebDb();
-  return (await db.getFromIndex('shared_page_keys', 'pageId', pageId)) || null;
+  const record = await db.getFromIndex('shared_page_keys', 'pageId', pageId);
+  if (!record || record.deleted_at) return null;
+  return record;
 }
 
 export async function saveWebShareKey(record: SharedPageKeyRecord): Promise<void> {
   const db = await getWebDb();
+  const now = new Date().toISOString();
+  if (!record.id) {
+    record.id = record.shareId;
+  }
+  if (!record.updated_at) {
+    record.updated_at = record.createdAt || now;
+  }
+  record.deleted_at = null;
   await db.put('shared_page_keys', record);
 }
 
 export async function deleteWebShareKey(shareId: string): Promise<void> {
   const db = await getWebDb();
-  await db.delete('shared_page_keys', shareId);
+  const existing = await db.get('shared_page_keys', shareId);
+  if (existing) {
+    existing.deleted_at = new Date().toISOString();
+    existing.updated_at = new Date().toISOString();
+    await db.put('shared_page_keys', existing);
+  }
 }
 
 export async function listWebShareKeys(): Promise<SharedPageKeyRecord[]> {
   const db = await getWebDb();
-  return await db.getAll('shared_page_keys');
+  const all = await db.getAll('shared_page_keys');
+  return (all || []).filter((r) => !r.deleted_at);
 }
 

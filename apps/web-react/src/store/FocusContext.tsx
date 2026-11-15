@@ -43,8 +43,8 @@ export interface FocusActionsContextType {
   handleAddTotalTime: (minutes: number) => void;
   handleDeleteSession: (id: number | string) => Promise<void>;
   handleSaveAlarm: (alarm: Alarm) => Promise<void>;
-  handleToggleAlarm: (id: number, isActive: boolean) => Promise<void>;
-  handleDeleteAlarm: (id: number) => Promise<void>;
+  handleToggleAlarm: (id: number | string, isActive: boolean) => Promise<void>;
+  handleDeleteAlarm: (id: number | string) => Promise<void>;
   handleTimerFinish: () => void;
   handleTimerCancel: () => void;
   handleSaveSuccess: (summary: string) => Promise<void>;

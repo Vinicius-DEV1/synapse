@@ -96,7 +96,7 @@ export const webFocusApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =>
     return newAlarm;
   },
 
-  updateAlarm: async (id: number, alarm: Partial<Alarm>): Promise<Alarm | null> => {
+  updateAlarm: async (id: number | string, alarm: Partial<Alarm>): Promise<Alarm | null> => {
     const existing = await db.get('alarms', id);
     if (!existing) return null;
     const updated: Alarm = {
@@ -108,7 +108,7 @@ export const webFocusApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =>
     return updated;
   },
 
-  deleteAlarm: async (id: number): Promise<boolean> => {
+  deleteAlarm: async (id: number | string): Promise<boolean> => {
     const existing = await db.get('alarms', id);
     if (existing) {
       existing.deleted_at = new Date().toISOString();

@@ -48,6 +48,12 @@ const ALLOWED_SYNC_TABLES: &[&str] = &[
     "quiz_page_links",
     "notifications",
     "link_metadata_cache",
+    "youtube_summaries",
+    "habits",
+    "habit_logs",
+    "shared_page_keys",
+    "culture_disliked_items",
+    "culture_ignored_items",
 ];
 
 fn validate_sync_table(table_name: &str) -> Result<(), String> {

@@ -14,8 +14,8 @@ export const MODULE_TABLES: Record<string, string[]> = {
     'library_book_collections',
     'library_reading_sessions'
   ],
-  culture: ['culture_items', 'culture_episodes'],
-  video: ['videos', 'video_words', 'youtube_watched'],
+  culture: ['culture_items', 'culture_episodes', 'culture_disliked_items', 'culture_ignored_items'],
+  video: ['videos', 'video_words', 'youtube_watched', 'youtube_summaries'],
   calendar: ['calendar_events'],
   vault: ['vault_groups', 'vault_items', 'vault_password_history'],
   practice: ['tutor_sessions', 'tutor_messages', 'tutor_memories'],
@@ -23,7 +23,10 @@ export const MODULE_TABLES: Record<string, string[]> = {
   anki: ['anki_decks', 'anki_notes', 'anki_cards', 'anki_srs_state', 'anki_reviews', 'anki_deck_settings'],
   files: ['files', 'file_folders', 'file_page_links'],
   diagrams: ['diagrams'],
-  quiz: ['quiz_batteries', 'quiz_questions', 'quiz_attempts', 'quiz_page_links']
+  quiz: ['quiz_batteries', 'quiz_questions', 'quiz_attempts', 'quiz_page_links'],
+  habits: ['habits', 'habit_logs'],
+  notifications: ['notifications'],
+  sharing: ['shared_page_keys']
 };
 
 export const getLastSyncKey = (type: 'pull' | 'push') => `caderno_last_${type}_time`;
