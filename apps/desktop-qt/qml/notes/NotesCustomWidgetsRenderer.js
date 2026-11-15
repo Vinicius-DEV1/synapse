@@ -671,6 +671,41 @@ function renderRichTables(html) {
     })
 }
 
+// 18. YouTube Video Widgets
+function renderYouTubeWidgets(html) {
+    if (!html || (html.indexOf("youtube-video") === -1 && html.indexOf("data-type=\"youtube-video\"") === -1)) return html
+    var pattern = /<div\b(?=[^>]*\b(?:data-type="youtube-video"|class="[^"]*youtube-video[^"]*"))([^>]*)>([\s\S]*?)<\/div>/gi
+    return html.replace(pattern, function(fullMatch, tagAttrs, innerContent) {
+        var attrs = attributesFromTag("<div " + tagAttrs + ">")
+        var url = attrs["data-url"] || "https://www.youtube.com"
+        var title = attrs["data-title"] || "Vídeo do YouTube"
+
+        return "<table width=\"100%\" border=\"1\" bordercolor=\"#dc2626\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#1f0f12\">" +
+               "<tr><td>" +
+               "<p><font color=\"#ef4444\" size=\"2\"><b>▶️ VÍDEO DO YOUTUBE: " + escapeHtml(title) + "</b></font></p>" +
+               "<p><a href=\"synapse-youtube://watch?url=" + encodeURIComponent(url) + "&title=" + encodeURIComponent(title) + "\" style=\"text-decoration:none;\">" +
+               "<font color=\"#f87171\" size=\"2\"><b>▶ Reproduzir Vídeo no App</b></font></a></p>" +
+               "</td></tr></table>"
+    })
+}
+
+// 19. Mermaid Diagram Blocks
+function renderMermaidWidgets(html) {
+    if (!html || (html.indexOf("language-mermaid") === -1 && html.indexOf("mermaid-diagram") === -1)) return html
+    var codePattern = /<pre\b[^>]*><code\b[^>]*class="[^"]*language-mermaid[^"]*"[^>]*>([\s\S]*?)<\/code><\/pre>/gi
+    html = html.replace(codePattern, function(match, codeContent) {
+        var cleanCode = decodeAttribute(codeContent).trim()
+        return "<table width=\"100%\" border=\"1\" bordercolor=\"#2563eb\" cellpadding=\"10\" cellspacing=\"0\" bgcolor=\"#0f172a\">" +
+               "<tr><td>" +
+               "<p><font color=\"#60a5fa\" size=\"2\"><b>📊 DIAGRAMA MERMAID</b></font></p>" +
+               "<pre><font color=\"#93c5fd\" size=\"2\">" + escapeHtml(cleanCode) + "</font></pre>" +
+               "<p><a href=\"synapse-mermaid://view?code=" + encodeURIComponent(cleanCode) + "\" style=\"text-decoration:none;\">" +
+               "<font color=\"#38bdf8\" size=\"2\"><b>🔍 Abrir Visualizador de Diagrama</b></font></a></p>" +
+               "</td></tr></table>"
+    })
+    return html
+}
+
 // Master rendering pipeline
 function renderCustomWidgets(source, options) {
     if (!source || source.length === 0) return ""
@@ -694,5 +729,7 @@ function renderCustomWidgets(source, options) {
     html = renderLinkGroups(html)
     html = renderPageReferences(html)
     html = renderRichTables(html)
+    html = renderYouTubeWidgets(html)
+    html = renderMermaidWidgets(html)
     return html
 }

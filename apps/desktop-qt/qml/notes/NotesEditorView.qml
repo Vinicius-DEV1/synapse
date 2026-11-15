@@ -30,6 +30,8 @@ Rectangle {
     property bool isRichMode: true
     property bool isHistoryOpen: false
     property bool isHelpOpen: false
+    property bool isPageEncrypted: false
+    property bool isPageUnlocked: false
     property string lastLoadedUpdatedAt: ""
     Component.onCompleted: {
         loadPages()
@@ -100,6 +102,8 @@ Rectangle {
         if (!p || !p.id) return false
 
         selectedPageId = pageId
+        isPageEncrypted = Boolean(p.is_locked || p.is_encrypted)
+        isPageUnlocked = !isPageEncrypted || (controller && controller.isVaultUnlocked)
         activeTitle = p.title || "Sem título"
         activeDescription = p.description || ""
         activeContent = p.content || ""
@@ -393,6 +397,28 @@ Rectangle {
             onPageHierarchyChanged: notesRoot.loadPages()
             onPageActionFailed: function(message) { editorCanvas.pageActionStatus = message }
             onCoverModified: function(imageUrl) { notesRoot.updateCover(imageUrl) }
+            onExternalLinkRequested: function(link) {
+                if (link.indexOf("synapse-youtube://watch?") === 0) {
+                    var matchUrl = link.match(/[?&]url=([^&]+)/)
+                    var matchTitle = link.match(/[?&]title=([^&]+)/)
+                    var targetUrl = matchUrl ? decodeURIComponent(matchUrl[1]) : ""
+                    var targetTitle = matchTitle ? decodeURIComponent(matchTitle[1]) : "Vídeo do YouTube"
+                    ytWatchLoader.active = true
+                    if (ytWatchLoader.item) {
+                        ytWatchLoader.item.url = targetUrl
+                        ytWatchLoader.item.videoTitle = targetTitle
+                        ytWatchLoader.item.visible = true
+                    }
+                } else if (link.indexOf("synapse-mermaid://view?") === 0) {
+                    var matchCode = link.match(/[?&]code=([^&]+)/)
+                    var targetCode = matchCode ? decodeURIComponent(matchCode[1]) : ""
+                    mermaidLoader.active = true
+                    if (mermaidLoader.item) {
+                        mermaidLoader.item.chart = targetCode
+                        mermaidLoader.item.visible = true
+                    }
+                }
+            }
         }
 
         NotesEmptyState {
@@ -401,11 +427,65 @@ Rectangle {
         }
     }
 
+    NotesPageUnlockForm {
+        id: pageUnlockForm
+        anchors.fill: parent
+        z: 95
+        visible: notesRoot.selectedPageId !== "" && notesRoot.isPageEncrypted && !notesRoot.isPageUnlocked
+        onUnlocked: {
+            notesRoot.isPageUnlocked = true
+        }
+    }
+
+    Loader {
+        id: ytWatchLoader
+        active: false
+        anchors.fill: parent
+        z: 120
+        source: "YouTubeWatchModal.qml"
+        onLoaded: {
+            if (item) item.visible = true
+        }
+    }
+
+    Connections {
+        target: ytWatchLoader.item
+        ignoreUnknownSignals: true
+        function onCloseRequested() {
+            ytWatchLoader.active = false
+        }
+    }
+
+    Loader {
+        id: mermaidLoader
+        active: false
+        anchors.fill: parent
+        z: 130
+        source: "MermaidFullscreenModal.qml"
+        onLoaded: {
+            if (item) item.visible = true
+        }
+    }
+
+    Connections {
+        target: mermaidLoader.item
+        ignoreUnknownSignals: true
+        function onCloseRequested() {
+            mermaidLoader.active = false
+        }
+    }
+
     PageHistoryModal {
         visible: notesRoot.isHistoryOpen
         pageTitle: notesRoot.activeTitle
         history: notesRoot.pageHistoryEntries
         onCloseRequested: notesRoot.isHistoryOpen = false
+        onRestoreRevisionRequested: function(content) {
+            notesRoot.activeContent = content
+            editorCanvas.setEditorText(content)
+            notesRoot.isDirty = true
+            notesRoot.saveActiveNote()
+        }
     }
 
     NotesPageReferencePreview {

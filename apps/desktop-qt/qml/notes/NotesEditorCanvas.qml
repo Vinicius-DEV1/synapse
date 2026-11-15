@@ -59,6 +59,7 @@ ScrollView {
     signal pageHierarchyChanged()
     signal pageActionFailed(string message)
     signal coverModified(string imageUrl)
+    signal externalLinkRequested(string link)
 
     property var hierarchyActions: NotesHierarchyActions {
         controller: canvasRoot.controller
@@ -132,6 +133,10 @@ ScrollView {
                 previewSurface.openLinkDeleteConfirm(action.url, action.start)
             }
             else contentModified(action.content)
+            return
+        }
+        if (link.indexOf("synapse-youtube://") === 0 || link.indexOf("synapse-mermaid://") === 0) {
+            canvasRoot.externalLinkRequested(link)
             return
         }
         if (link.indexOf("synapse-media://open?") === 0) {

@@ -13,10 +13,17 @@ Rectangle {
     property string pageTitle: ""
     property var history: []
     property int selectedIndex: 0
+    property bool showDiff: true
+
     signal closeRequested()
+    signal restoreRevisionRequested(string content)
 
     function selectedEntry() {
         return selectedIndex >= 0 && selectedIndex < history.length ? history[selectedIndex] : null
+    }
+
+    function previousEntry() {
+        return selectedIndex + 1 < history.length ? history[selectedIndex + 1] : null
     }
 
     function isHtmlDocument(value) {
@@ -30,6 +37,41 @@ Rectangle {
     function formatTimestamp(value) {
         var date = new Date(value || "")
         return isNaN(date.getTime()) ? String(value || "") : Qt.formatDateTime(date, "yyyy-MM-dd HH:mm:ss")
+    }
+
+    function computeDiffHtml(oldText, newText) {
+        if (!oldText || oldText.length === 0) return newText || ""
+        if (!newText || newText.length === 0) {
+            return "<span style=\"background-color:rgba(244,63,94,0.25);color:#fda4af;text-decoration:line-through;\">" + oldText + "</span>"
+        }
+        var oldWords = oldText.split(/\s+/)
+        var newWords = newText.split(/\s+/)
+        var oldSet = ({})
+        for (var i = 0; i < oldWords.length; i++) oldSet[oldWords[i]] = true
+
+        var newSet = ({})
+        for (var j = 0; j < newWords.length; j++) newSet[newWords[j]] = true
+
+        var diffResult = ""
+        // Track deletions from old words
+        for (var d = 0; d < oldWords.length; d++) {
+            var ow = oldWords[d]
+            if (!newSet[ow]) {
+                diffResult += "<span style=\"background-color:rgba(244,63,94,0.25);color:#fda4af;text-decoration:line-through;padding:1px 3px;\">" + ow + "</span> "
+            }
+        }
+        if (diffResult.length > 0) diffResult += "<br/><br/>"
+
+        // Render new words with additions highlighted
+        for (var n = 0; n < newWords.length; n++) {
+            var nw = newWords[n]
+            if (!oldSet[nw]) {
+                diffResult += "<span style=\"background-color:rgba(16,185,129,0.25);color:#6ee7b7;padding:1px 3px;font-weight:bold;\">+" + nw + "</span> "
+            } else {
+                diffResult += nw + " "
+            }
+        }
+        return diffResult
     }
 
     onVisibleChanged: if (visible) selectedIndex = 0
@@ -68,6 +110,40 @@ Rectangle {
                     Text { text: "Histórico de edições"; color: theme.textDark; font.pixelSize: 12; font.bold: true }
                     Text { text: historyRoot.history.length + (historyRoot.history.length === 1 ? " revisão" : " revisões") + " · " + historyRoot.pageTitle; color: theme.textMuted; font.pixelSize: 9; elide: Text.ElideRight }
                 }
+
+                // Diff View Toggle
+                Button {
+                    text: historyRoot.showDiff ? qsTr("Modo Diff Ativo ✓") : qsTr("Ver Diff")
+                    flat: true
+                    visible: historyRoot.previousEntry() !== null
+                    onClicked: historyRoot.showDiff = !historyRoot.showDiff
+                    contentItem: Text {
+                        text: parent.text
+                        color: historyRoot.showDiff ? "#34d399" : "#a1a1aa"
+                        font.pixelSize: 11
+                    }
+                }
+
+                // Restore Button
+                Button {
+                    text: qsTr("Restaurar Esta Versão")
+                    flat: true
+                    visible: historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
+                    onClicked: {
+                        var entry = historyRoot.selectedEntry()
+                        if (entry && entry.content) {
+                            historyRoot.restoreRevisionRequested(entry.content)
+                            historyRoot.closeRequested()
+                        }
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#a78bfa"
+                        font.pixelSize: 11
+                        font.bold: true
+                    }
+                }
+
                 ToolButton {
                     text: "×"
                     implicitWidth: 32
@@ -155,7 +231,8 @@ Rectangle {
                     }
                     Text {
                         text: historyRoot.selectedEntry()
-                              ? "Salva em " + historyRoot.formatTimestamp(historyRoot.selectedEntry().created_at)
+                              ? "Salva em " + historyRoot.formatTimestamp(historyRoot.selectedEntry().created_at) +
+                                (historyRoot.showDiff && historyRoot.previousEntry() ? " (comparando com revisão anterior)" : "")
                               : "Selecione uma revisão à esquerda para visualizar o conteúdo."
                         color: theme.textMuted
                         font.pixelSize: 9
@@ -168,8 +245,16 @@ Rectangle {
                         clip: true
                         Text {
                             width: parent.width
-                            text: historyRoot.selectedEntry() ? (historyRoot.selectedEntry().content || "") : ""
-                            textFormat: historyRoot.isHtmlDocument(text) ? Text.RichText : Text.MarkdownText
+                            text: {
+                                var current = historyRoot.selectedEntry()
+                                if (!current) return ""
+                                var prev = historyRoot.previousEntry()
+                                if (historyRoot.showDiff && prev) {
+                                    return historyRoot.computeDiffHtml(prev.content || "", current.content || "")
+                                }
+                                return current.content || ""
+                            }
+                            textFormat: (historyRoot.showDiff && historyRoot.previousEntry()) || historyRoot.isHtmlDocument(text) ? Text.RichText : Text.MarkdownText
                             color: theme.textSubtext
                             font.pixelSize: 14
                             wrapMode: Text.Wrap
