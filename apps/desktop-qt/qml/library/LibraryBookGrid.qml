@@ -40,6 +40,7 @@ ColumnLayout {
     signal bookSelected(var book)
     signal selectionToggleRequested(string bookId)
     signal bookEditRequested(var book)
+    signal bookAiEnrichRequested(var book)
     signal bookCollectionToggleRequested(var book, string collectionId, bool checked)
     signal bookStatusChangeRequested(var book, string status)
     signal bookArchiveToggleRequested(var book, bool archived)
@@ -149,6 +150,7 @@ ColumnLayout {
                         cardHovered: cardMouse.containsMouse
                         onOpenRequested: function(selectedBook) { gridRoot.bookSelected(selectedBook) }
                         onEditRequested: function(selectedBook) { gridRoot.bookEditRequested(selectedBook) }
+                        onAiEnrichRequested: function(selectedBook) { gridRoot.bookAiEnrichRequested(selectedBook) }
                         onCollectionToggleRequested: function(selectedBook, collectionId, checked) {
                             gridRoot.bookCollectionToggleRequested(selectedBook, collectionId, checked)
                         }

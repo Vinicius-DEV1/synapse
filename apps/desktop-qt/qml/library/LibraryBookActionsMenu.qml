@@ -12,6 +12,7 @@ ToolButton {
 
     signal openRequested(var book)
     signal editRequested(var book)
+    signal aiEnrichRequested(var book)
     signal collectionToggleRequested(var book, string collectionId, bool checked)
     signal statusChangeRequested(var book, string status)
     signal archiveToggleRequested(var book, bool archived)
@@ -37,6 +38,7 @@ ToolButton {
         id: bookActions
         MenuItem { text: "Open details"; onTriggered: actionsMenu.openRequested(actionsMenu.book) }
         MenuItem { text: "Edit book details"; onTriggered: actionsMenu.editRequested(actionsMenu.book) }
+        MenuItem { text: "✨ Enriquecer com IA"; onTriggered: actionsMenu.aiEnrichRequested(actionsMenu.book) }
         MenuSeparator {}
         MenuItem {
             text: "Mark as not started"

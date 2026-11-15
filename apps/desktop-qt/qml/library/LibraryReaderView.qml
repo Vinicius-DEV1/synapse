@@ -23,6 +23,9 @@ Rectangle {
     property var bookmarks: []
     property var highlights: []
     property string readingSessionId: ""
+    property int readerFontSize: 19
+    property string readerFontFamily: "Georgia"
+    property string readerTheme: "dark"
 
     signal backRequested()
 
@@ -175,6 +178,7 @@ Rectangle {
             onPreviousRequested: reader.navigateToPage(reader.currentPage - 1)
             onNextRequested: reader.navigateToPage(reader.currentPage + 1)
             onSearchRequested: searchHost.openSearch()
+            onTypographyRequested: typographyModal.openAt(reader.width - 340, 76)
             onBookmarkRequested: annotationActions.saveCurrentBookmark()
         }
 
@@ -187,7 +191,9 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 14
-                color: "#171620"
+                color: reader.readerTheme === "sepia" ? "#f4ecd8"
+                     : (reader.readerTheme === "light" ? "#ffffff"
+                     : (reader.readerTheme === "midnight" ? "#090d16" : "#171620"))
                 border.color: "#12ffffff"
                 clip: true
 
@@ -218,10 +224,16 @@ Rectangle {
                         readOnly: true
                         selectByMouse: true
                         selectByKeyboard: true
-                        color: "#e8e8ee"
+                        color: reader.readerTheme === "sepia" ? "#5b4636"
+                             : (reader.readerTheme === "light" ? "#18181b" : "#e8e8ee")
                         selectionColor: "#6d4fc2"
-                        font.pixelSize: 19
-                        font.family: "Georgia"
+                        font.pixelSize: reader.readerFontSize
+                        font.family: reader.readerFontFamily
+                        onSelectionChanged: {
+                            if (selectedText.length > 0) {
+                                highlightMenu.openAt(reader.width / 2 - 130, reader.height - 100, selectedText)
+                            }
+                        }
                         onLinkActivated: function(link) {
                             var target = String(link).toLowerCase()
                             if (target.startsWith("https://") || target.startsWith("http://") || target.startsWith("mailto:")) {
@@ -304,6 +316,35 @@ Rectangle {
         }
         function onFilePreviewsInvalidated() {
             if (reader.isOpen) reader.closeReader()
+        }
+    }
+
+    LibraryTypographyModal {
+        id: typographyModal
+        fontSize: reader.readerFontSize
+        fontFamily: reader.readerFontFamily
+        readingTheme: reader.readerTheme
+        onTypographyChanged: function(size, family, theme) {
+            reader.readerFontSize = size
+            reader.readerFontFamily = family
+            reader.readerTheme = theme
+        }
+    }
+
+    LibraryDictionaryModal {
+        id: dictModal
+        onSaveToVocabRequested: function(word, note) {
+            if (reader.book) dataController.addVideoWord(reader.book.id, word, note, reader.currentPage)
+        }
+    }
+
+    LibraryReaderHighlightMenu {
+        id: highlightMenu
+        onHighlightRequested: function(color) {
+            annotationActions.saveSelectionHighlight(highlightMenu.selectedText, "")
+        }
+        onDictionaryRequested: function(text) {
+            dictModal.openForWord(text, "")
         }
     }
 }

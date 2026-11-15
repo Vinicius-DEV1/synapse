@@ -20,6 +20,7 @@ Rectangle {
     signal previousRequested()
     signal nextRequested()
     signal searchRequested()
+    signal typographyRequested()
     signal bookmarkRequested()
 
     RowLayout {
@@ -89,6 +90,17 @@ Rectangle {
             onClicked: toolbar.searchRequested()
             background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
             contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; font.pixelSize: 18; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+
+        Button {
+            text: "Aa"
+            Accessible.name: "Tipografia e tema"
+            ToolTip.visible: hovered
+            ToolTip.text: "Tipografia e tema"
+            enabled: !toolbar.busy && toolbar.totalPages > 0
+            onClicked: toolbar.typographyRequested()
+            background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
+            contentItem: Text { text: parent.text; color: parent.enabled ? "#a78bfa" : "#595968"; font.pixelSize: 14; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
 
         Button {

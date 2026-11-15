@@ -188,6 +188,7 @@ Rectangle {
                 libraryRoot.isEditingProgress = true
             }
             onBookEditRequested: function(book) { bookEditDialog.openFor(book) }
+            onBookAiEnrichRequested: function(book) { aiEnrichModal.openForBook(book) }
             onBookCollectionToggleRequested: function(book, collectionId, checked) {
                 if (viewState.updateBookCollection(book, collectionId, checked)) {
                     libraryRoot.importStatus = "Book collections updated."
@@ -318,5 +319,28 @@ Rectangle {
         isViewingArchived: libraryRoot.isViewingArchived
         actionsVisible: !libraryRoot.isEditingProgress && !libraryRoot.isCreatingBook &&
                         !libraryRoot.isHelpOpen && !bookEditDialog.visible && !readingStatsDialog.visible
+    }
+
+    LibraryAiEnrichModal {
+        id: aiEnrichModal
+        onApplyEnrichmentRequested: function(book, metadata) {
+            var ok = dataController.updateLibraryBookMetadata(
+                book.id,
+                metadata.title,
+                metadata.author,
+                book.publisher || "",
+                book.published_year || 0,
+                "pt-BR",
+                metadata.description,
+                book.reading_status || "reading",
+                book.cover_image || ""
+            )
+            if (ok) {
+                libraryRoot.importStatus = "Metadados enriquecidos pela IA com sucesso."
+                libraryRoot.refreshBooks()
+            } else {
+                libraryRoot.importStatus = "Não foi possível aplicar os metadados enriquecidos."
+            }
+        }
     }
 }
