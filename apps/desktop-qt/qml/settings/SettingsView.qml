@@ -94,6 +94,18 @@ Rectangle {
                 }
             }
 
+            // AI API Key Pool & Models
+            SettingsAiTab {
+            }
+
+            // Editor Typography & Preferences
+            SettingsEditorTab {
+            }
+
+            // Zero-Knowledge Cloud Sync Configuration
+            SettingsSyncTab {
+            }
+
             Item { height: 24 } // Bottom padding
         }
     }

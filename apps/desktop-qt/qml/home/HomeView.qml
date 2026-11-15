@@ -67,6 +67,10 @@ Rectangle {
                 onHelpRequested: homeRoot.isHelpOpen = true
             }
 
+            // Live Weather and Clock Widget
+            HomeWeatherWidget {
+            }
+
             // Two-column Main Dashboard Layout (Matching Image 1)
             RowLayout {
                 Layout.fillWidth: true

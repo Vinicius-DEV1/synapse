@@ -7,6 +7,9 @@ Item {
     Layout.fillHeight: true
 
     property var items: []
+    property int currentPage: 1
+    property int pageSize: 50
+    readonly property int totalPages: Math.max(1, Math.ceil((items ? items.length : 0) / pageSize))
 
     signal restoreRequested(string id, string itemType)
     signal deletePermanentlyRequested(string id, string itemType)
@@ -29,9 +32,17 @@ Item {
 
     ListView {
         id: trashListView
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: paginationBar.visible ? paginationBar.top : parent.bottom
+        anchors.bottomMargin: paginationBar.visible ? 8 : 0
         clip: true
-        model: listRoot.items
+        model: {
+            if (!listRoot.items) return []
+            var start = (listRoot.currentPage - 1) * listRoot.pageSize
+            return listRoot.items.slice(start, start + listRoot.pageSize)
+        }
         spacing: 8
 
         delegate: Rectangle {
@@ -154,6 +165,38 @@ Item {
             text: "A lixeira está vazia. Nenhum item excluído."
             color: "#64748b"
             font.pixelSize: 14
+        }
+    }
+
+    // Pagination Footer
+    RowLayout {
+        id: paginationBar
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        height: 36
+        visible: listRoot.items && listRoot.items.length > listRoot.pageSize
+        spacing: 12
+
+        Button {
+            text: "◀ Anterior"
+            enabled: listRoot.currentPage > 1
+            onClicked: listRoot.currentPage -= 1
+            background: Rectangle { color: parent.enabled ? "#242335" : "#171624"; radius: 6 }
+            contentItem: Text { text: parent.text; color: parent.enabled ? "#ffffff" : "#64748b"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+
+        Text {
+            text: "Página " + listRoot.currentPage + " de " + listRoot.totalPages + " (" + listRoot.items.length + " itens)"
+            color: "#a7a9be"
+            font.pixelSize: 12
+        }
+
+        Button {
+            text: "Próxima ▶"
+            enabled: listRoot.currentPage < listRoot.totalPages
+            onClicked: listRoot.currentPage += 1
+            background: Rectangle { color: parent.enabled ? "#242335" : "#171624"; radius: 6 }
+            contentItem: Text { text: parent.text; color: parent.enabled ? "#ffffff" : "#64748b"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
     }
 }
