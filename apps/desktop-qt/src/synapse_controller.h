@@ -75,6 +75,7 @@ class SynapseDataController : public QObject {
     Q_PROPERTY(bool isVaultUnlocked READ isVaultUnlocked NOTIFY vaultStateChanged)
     Q_PROPERTY(int autoLockMinutes READ autoLockMinutes WRITE setAutoLockMinutes NOTIFY autoLockMinutesChanged)
     Q_PROPERTY(QString vaultLockError READ vaultLockError NOTIFY vaultLockErrorChanged)
+    Q_PROPERTY(QVariantList activeTasks READ getActiveTasks NOTIFY tasksChanged)
 
 public:
     explicit SynapseDataController(QObject *parent = nullptr, bool initializeDefaultDatabase = true);
@@ -98,6 +99,12 @@ public:
     bool librarySearchRunning() const { return m_librarySearchRunning; }
     int vaultUnlockRemainingSeconds() const;
     bool isVaultConfigured() const { return m_isVaultConfigured; }
+
+    Q_INVOKABLE QVariantList getActiveTasks() const;
+    Q_INVOKABLE QString startTask(const QString &title, const QString &type = "generic");
+    Q_INVOKABLE void updateTaskProgress(const QString &taskId, int progress, const QString &status = "running", const QString &errorMessage = "");
+    Q_INVOKABLE void cancelTask(const QString &taskId);
+    Q_INVOKABLE void removeTask(const QString &taskId);
     bool isVaultUnlocked() const { return m_isVaultUnlocked; }
     int autoLockMinutes() const { return m_autoLockMinutes; }
     void setAutoLockMinutes(int minutes);
@@ -426,6 +433,8 @@ signals:
     void pageConflictDetected(const QString &pageId, const QString &externalContent);
     void libraryBookMetadataSearchFinished(const QVariantMap &result);
     void filePreviewsInvalidated();
+    void tasksChanged();
+    void taskCancelled(const QString &taskId);
 
 private:
     void startNotesRichImageOperation(std::function<QVariantMap()> operation,
@@ -475,6 +484,7 @@ private:
     };
     QHash<QFutureWatcher<QVariantMap> *, PageReferenceSearchTask> m_pageReferenceSearchTasks;
     int m_latestPageReferenceSearchRequestId = 0;
+    QVariantList m_activeTasks;
 
     void checkKeychainState();
     void clearUnlockedKeys();

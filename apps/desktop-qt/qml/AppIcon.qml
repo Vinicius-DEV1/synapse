@@ -241,9 +241,45 @@ Canvas {
             ctx.arc(12, 19, 2, 0, Math.PI)
             ctx.stroke()
             break
-        case "plus":
-            line([12, 5, 12, 19])
+        case "pin":
+            line([12, 17, 12, 22])
+            line([9, 4, 15, 4])
+            line([9, 4, 9, 9, 7, 12, 17, 12, 15, 9, 15, 4])
+            break
+        case "pin-off":
+            line([2, 2, 22, 22])
+            line([12, 17, 12, 22])
+            line([9, 4, 15, 4])
+            break
+        case "copy":
+            rect(8, 8, 12, 12, 2)
+            line([4, 16, 4, 4, 16, 4])
+            break
+        case "arrow-right":
             line([5, 12, 19, 12])
+            line([13, 6, 19, 12, 13, 18])
+            break
+        case "check":
+            line([4, 12, 9, 17, 20, 6])
+            break
+        case "alert":
+            circle(12, 12, 9)
+            line([12, 8, 12, 13])
+            circle(12, 16, 0.6)
+            break
+        case "loader":
+            ctx.beginPath()
+            ctx.arc(12, 12, 8, 0, Math.PI * 1.5)
+            ctx.stroke()
+            break
+        case "more-vertical":
+            circle(12, 6, 1)
+            circle(12, 12, 1)
+            circle(12, 18, 1)
+            break
+        case "edit":
+            line([4, 20, 8, 20, 20, 8, 16, 4, 4, 16, 4, 20])
+            line([14, 6, 18, 10])
             break
         default:
             circle(12, 12, 8)

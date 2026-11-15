@@ -1,7 +1,5 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import "notes"
 
 Rectangle {
     id: sidebarRoot
@@ -17,12 +15,18 @@ Rectangle {
     signal toggleSidebarRequested()
     signal openCommandPaletteRequested()
     signal notePageSelected(string pageId)
+    signal openInNewTabRequested(string pageId)
     signal createNoteRequested()
     signal createSubNoteRequested(string parentId)
     signal toggleNotePinRequested(string pageId)
     signal toggleNoteCollapseRequested(string pageId)
     signal noteSearchChanged(string query)
     signal moveNoteRequested(string pageId)
+    signal renameNoteRequested(string pageId)
+    signal deleteNoteRequested(string pageId)
+    signal moveNoteInTreeRequested(string sourceId, string targetParentId)
+
+    Theme { id: theme }
 
     readonly property var moduleMeta: ({
         "home": { title: "Início", icon: "home" },
@@ -87,7 +91,7 @@ Rectangle {
         anchors.margins: 12
         spacing: 10
 
-        // 1. Top Header Row: Active Module + Collapse button (Matching Original App)
+        // 1. Top Header Row: Active Module + Collapse button
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -98,8 +102,8 @@ Rectangle {
                 spacing: 8
 
                 AppIcon {
-                    width: 18
-                    height: 18
+                    Layout.preferredWidth: 18
+                    Layout.preferredHeight: 18
                     name: sidebarRoot.getModuleIcon(sidebarRoot.activeTab)
                     color: theme.brand400
                 }
@@ -116,7 +120,9 @@ Rectangle {
 
             // Collapse / Expand Button
             Rectangle {
-                width: 28; height: 28; radius: 6
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                radius: 6
                 color: collapseMouse.containsMouse ? theme.bgHover : "transparent"
 
                 Text {
@@ -136,11 +142,11 @@ Rectangle {
             }
         }
 
-        // 2. Search entry opens the command palette instead of presenting an unsupported workspace switcher.
+        // 2. Search entry opens the command palette
         Rectangle {
             visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes"
             Layout.fillWidth: true
-            height: 34
+            Layout.preferredHeight: 34
             radius: 7
             color: searchMouse.containsMouse ? theme.bgDarkSurface : "transparent"
             border.color: searchMouse.containsMouse ? theme.borderBrand : theme.borderSubtle
@@ -152,10 +158,15 @@ Rectangle {
                 anchors.rightMargin: 8
                 spacing: 8
 
-                AppIcon { width: 16; height: 16; name: "search"; color: theme.textSubtext }
+                AppIcon {
+                    Layout.preferredWidth: 16
+                    Layout.preferredHeight: 16
+                    name: "search"
+                    color: theme.textSubtext
+                }
 
                 Text {
-                    text: "Buscar..."
+                    text: qsTr("Buscar...")
                     color: theme.textSubtext
                     font.pixelSize: 12
                     font.family: theme.fontFamily
@@ -164,11 +175,11 @@ Rectangle {
                 }
 
                 Rectangle {
-                    height: 18
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 18
                     radius: 4
                     color: theme.bgDarkBg
                     border.color: theme.borderSubtle
-                    Layout.preferredWidth: 48
                     Text {
                         anchors.centerIn: parent
                         text: "Ctrl+K"
@@ -188,7 +199,8 @@ Rectangle {
             }
         }
 
-        NotesTreeSidebar {
+        // 3. Hierarchical Page Tree for Notes module
+        AppSidebarPageTree {
             visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab === "notes"
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -197,14 +209,21 @@ Rectangle {
             collapsedNodeMap: sidebarRoot.noteCollapsedNodeMap
             selectedPageId: sidebarRoot.selectedNotePageId
             onPageSelected: function(pageId) { sidebarRoot.notePageSelected(pageId) }
+            onOpenInNewTabRequested: function(pageId) { sidebarRoot.openInNewTabRequested(pageId) }
             onCreateRootRequested: sidebarRoot.createNoteRequested()
-            onCreateSubRequested: function(pageId) { sidebarRoot.createSubNoteRequested(pageId) }
+            onCreateSubRequested: function(parentId) { sidebarRoot.createSubNoteRequested(parentId) }
             onTogglePinRequested: function(pageId) { sidebarRoot.toggleNotePinRequested(pageId) }
             onToggleCollapseRequested: function(pageId) { sidebarRoot.toggleNoteCollapseRequested(pageId) }
             onSearchChanged: function(query) { sidebarRoot.noteSearchChanged(query) }
             onMovePageRequested: function(pageId) { sidebarRoot.moveNoteRequested(pageId) }
+            onRenamePageRequested: function(pageId) { sidebarRoot.renameNoteRequested(pageId) }
+            onDeletePageRequested: function(pageId) { sidebarRoot.deleteNoteRequested(pageId) }
+            onMovePageInTree: function(sourceId, targetParentId) {
+                sidebarRoot.moveNoteInTreeRequested(sourceId, targetParentId)
+            }
         }
 
+        // 4. Other Modules Description
         ColumnLayout {
             visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes"
             Layout.fillWidth: true
@@ -233,15 +252,16 @@ Rectangle {
         Rectangle {
             visible: sidebarRoot.sidebarExpanded
             Layout.fillWidth: true
-            height: 1
+            Layout.preferredHeight: 1
             color: theme.borderSubtle
         }
 
+        // 5. Expandable Modules Header
         Rectangle {
             id: modulesHeader
             visible: sidebarRoot.sidebarExpanded
             Layout.fillWidth: true
-            height: 30
+            Layout.preferredHeight: 30
             radius: 6
             color: modulesHeaderMouse.containsMouse ? theme.bgHover : "transparent"
 
@@ -251,7 +271,7 @@ Rectangle {
                 anchors.rightMargin: 8
 
                 Text {
-                    text: "MÓDULOS"
+                    text: qsTr("MÓDULOS")
                     color: theme.textMuted
                     font.pixelSize: 10
                     font.bold: true
@@ -274,6 +294,7 @@ Rectangle {
             }
         }
 
+        // 6. Navigation list of modules
         AppNavList {
             visible: !sidebarRoot.sidebarExpanded || sidebarRoot.modulesExpanded
             sidebarExpanded: sidebarRoot.sidebarExpanded

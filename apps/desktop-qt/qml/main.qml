@@ -10,7 +10,8 @@ ApplicationWindow {
     height: 840
     minimumWidth: 1024
     minimumHeight: 680
-    title: "Caderno"
+    property string windowTitle: "Synapse"
+    title: windowTitle
     color: "#0f0e17"
     flags: Qt.Window | Qt.FramelessWindowHint
 
@@ -31,6 +32,9 @@ ApplicationWindow {
         sourceComponent: Component {
             AuthenticatedApplication {
                 windowRoot: appWindow
+                onActiveTitleChanged: {
+                    appWindow.windowTitle = activeTitle ? (activeTitle + " — Synapse") : "Synapse"
+                }
             }
         }
     }

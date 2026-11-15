@@ -91,6 +91,7 @@ add_executable(synapse-desktop
     src/controllers/files/files_transfer_controller.cpp
     src/controllers/files/files_preview_controller.cpp
     src/controllers/platform/system_controller.cpp
+    src/controllers/layout/task_manager_controller.cpp
     src/controllers/trash/trash_controller.cpp
     src/controllers/home/home_controller.cpp
     src/controllers/notifications/notifications_controller.cpp
@@ -196,6 +197,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/trash/native_trash_test.cpp
         tests/settings/native_settings_test.cpp
         tests/home/native_home_test.cpp
+        tests/layout/native_layout_test.cpp
         tests/diagrams/native_diagrams_test.cpp
         tests/practice/native_practice_test.cpp
         src/video/mpv_track_parser.cpp
@@ -266,6 +268,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/files/files_transfer_controller.cpp
         src/controllers/files/files_preview_controller.cpp
         src/controllers/platform/system_controller.cpp
+        src/controllers/layout/task_manager_controller.cpp
         src/controllers/trash/trash_controller.cpp
         src/controllers/home/home_controller.cpp
         src/controllers/notifications/notifications_controller.cpp
