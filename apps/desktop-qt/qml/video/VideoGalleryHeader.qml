@@ -16,6 +16,7 @@ ColumnLayout {
     signal viewModeRequested(string mode)
     signal refreshRequested()
     signal importRequested()
+    signal youtubeRequested()
     signal helpRequested()
 
     RowLayout {
@@ -118,6 +119,24 @@ ColumnLayout {
                 enabled: !headerRoot.importRunning
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: headerRoot.importRequested()
+            }
+        }
+
+        Rectangle {
+            width: 130
+            height: 38
+            radius: 10
+            color: "#272536"
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 6
+                Text { text: "▶"; color: "#ef4444"; font.pixelSize: 14 }
+                Text { text: "YouTube"; color: "#ffffff"; font.pixelSize: 13; font.bold: true }
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.youtubeRequested()
             }
         }
 

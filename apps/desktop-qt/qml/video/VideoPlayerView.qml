@@ -222,7 +222,8 @@ Rectangle {
                 folderId, videoRoot.selectedCollection, videoRoot.selectedCollectionName))
         }
         onViewModeRequested: function(mode) { galleryPreferences.viewMode = mode }
-        onImportRequested: videoDialogs.openImport()
+        onImportRequested: videoModalsHost.openUpload(videoRoot.selectedCollection, videoRoot.selectedCollectionName)
+        onYoutubeRequested: videoModalsHost.openYouTubeDownload(videoRoot.selectedCollection)
         statusMessage: videoRoot.importStatus
         importRunning: dataController.fileOperationRunning
         onVideoSelected: function(vid) { videoRoot.playVideo(vid) }
@@ -236,6 +237,20 @@ Rectangle {
             videoDialogs.requestDelete(vid)
         }
         onVideoInfoRequested: function(vid) { videoInfoHost.openFor(vid) }
+    }
+
+    VideoModalsHost {
+        id: videoModalsHost
+        anchors.fill: parent
+        collections: galleryCollections.names
+        onVideoImportRequested: function(sourcePath, collectionId) {
+            videoRoot.importStatus = "Criptografando e adicionando vídeo…"
+            galleryCollections.importVideo(sourcePath, collectionId)
+        }
+        onVideoYouTubeDownloaded: function(videoData) {
+            videoRoot.importStatus = "Vídeo do YouTube importado com sucesso: " + videoData.title
+            videoRoot.loadVideos()
+        }
     }
 
     VideoInfoDialogHost {

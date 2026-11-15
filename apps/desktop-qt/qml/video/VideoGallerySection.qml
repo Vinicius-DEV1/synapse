@@ -34,6 +34,7 @@ Item {
     signal videoMoveRequested(var video, string folderId)
     signal videoInfoRequested(var video)
     signal importRequested()
+    signal youtubeRequested()
 
     function refreshItems() {
         var rootView = selectedCollection === "__all__"
@@ -96,6 +97,7 @@ Item {
                 onRefreshRequested: galleryRoot.refreshRequested()
                 onViewModeRequested: function(mode) { galleryRoot.viewModeRequested(mode) }
                 onImportRequested: galleryRoot.importRequested()
+                onYoutubeRequested: galleryRoot.youtubeRequested()
                 onHelpRequested: galleryRoot.isHelpOpen = true
             }
 

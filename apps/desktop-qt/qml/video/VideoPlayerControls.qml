@@ -15,6 +15,7 @@ Item {
     property bool isPlaying: false
     property int bookmarksCount: 0
     property bool isVocabDrawerOpen: false
+    property bool isVocabSidebarOpen: false
     property bool shortcutsBlocked: false
     property var mediaPlayer: null
     property var controller: null
@@ -25,6 +26,7 @@ Item {
     signal exitRequested()
     signal speedChanged(double speed)
     signal vocabDrawerToggled()
+    signal vocabSidebarToggled()
     signal playPauseToggled()
     signal seekRelativeRequested(int seconds)
     signal seekAbsoluteRequested(double seconds)
@@ -78,6 +80,7 @@ Item {
         currentSpeed: controlsRoot.currentSpeed
         bookmarksCount: controlsRoot.bookmarksCount
         isVocabDrawerOpen: controlsRoot.isVocabDrawerOpen
+        isVocabSidebarOpen: controlsRoot.isVocabSidebarOpen
         shortcutsBlocked: controlsRoot.shortcutsBlocked
         mediaPlayer: controlsRoot.mediaPlayer
         controller: controlsRoot.controller
@@ -91,6 +94,7 @@ Item {
         onExitRequested: controlsRoot.exitRequested()
         onSpeedRequested: function(speed) { controlsRoot.speedChanged(speed) }
         onVocabDrawerRequested: controlsRoot.vocabDrawerToggled()
+        onVocabSidebarRequested: controlsRoot.vocabSidebarToggled()
         onPlayPauseRequested: controlsRoot.playPauseToggled()
         onSeekRelativeRequested: function(seconds) { controlsRoot.seekRelativeRequested(seconds) }
         onFullscreenRequested: controlsRoot.fullscreenToggled()

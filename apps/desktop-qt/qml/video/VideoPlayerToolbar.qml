@@ -14,6 +14,7 @@ Item {
     property double currentSpeed: 1.0
     property int bookmarksCount: 0
     property bool isVocabDrawerOpen: false
+    property bool isVocabSidebarOpen: false
     property bool shortcutsBlocked: false
     property var mediaPlayer: null
     property var controller: null
@@ -21,6 +22,7 @@ Item {
     signal exitRequested()
     signal speedRequested(double speed)
     signal vocabDrawerRequested()
+    signal vocabSidebarRequested()
     signal playPauseRequested()
     signal seekRelativeRequested(int seconds)
     signal fullscreenRequested()
@@ -151,6 +153,32 @@ Item {
                     radius: 6
                     color: fullscreenButton.down ? "#30303b" : "#171720"
                     border.color: "#242430"
+                }
+            }
+
+            Rectangle {
+                Layout.preferredHeight: 30
+                Layout.preferredWidth: vocabWordsBtnText.contentWidth + 24
+                radius: 8
+                color: toolbarRoot.isVocabSidebarOpen ? "#818cf8" : "#15ffffff"
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text { text: "📖"; font.pixelSize: 12 }
+                    Text {
+                        id: vocabWordsBtnText
+                        text: "Vocabulário"
+                        color: "#ffffff"
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: toolbarRoot.vocabSidebarRequested()
                 }
             }
 

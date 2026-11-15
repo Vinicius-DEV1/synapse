@@ -16,6 +16,7 @@ Item {
     property bool isPlaying: false
     property int bookmarksCount: 0
     property bool isVocabDrawerOpen: false
+    property bool isVocabSidebarOpen: false
     property bool shortcutsBlocked: false
     property bool showResumePrompt: false
     property string playerError: ""
@@ -29,6 +30,7 @@ Item {
     signal exitRequested()
     signal speedRequested(double speed)
     signal vocabDrawerToggled()
+    signal vocabSidebarToggled()
     signal playPauseToggled()
     signal seekRelativeRequested(int seconds)
     signal seekAbsoluteRequested(double seconds)
@@ -122,11 +124,19 @@ Item {
         shortcutsBlocked: surfaceRoot.shortcutsBlocked
         bookmarksCount: surfaceRoot.bookmarksCount
         isVocabDrawerOpen: surfaceRoot.isVocabDrawerOpen
+        isVocabSidebarOpen: surfaceRoot.isVocabSidebarOpen
         isPlayerFullscreen: surfaceRoot.isPlayerFullscreen
 
         onExitRequested: surfaceRoot.exitRequested()
         onSpeedChanged: function(speed) { surfaceRoot.speedRequested(speed) }
-        onVocabDrawerToggled: surfaceRoot.vocabDrawerToggled()
+        onVocabDrawerToggled: {
+            if (!surfaceRoot.isVocabDrawerOpen && surfaceRoot.isVocabSidebarOpen) surfaceRoot.isVocabSidebarOpen = false
+            surfaceRoot.vocabDrawerToggled()
+        }
+        onVocabSidebarToggled: {
+            if (!surfaceRoot.isVocabSidebarOpen && surfaceRoot.isVocabDrawerOpen) surfaceRoot.isVocabDrawerOpen = false
+            surfaceRoot.vocabSidebarToggled()
+        }
         onPlayPauseToggled: surfaceRoot.playPauseToggled()
         onSeekRelativeRequested: function(seconds) { surfaceRoot.seekRelativeRequested(seconds) }
         onSeekAbsoluteRequested: function(seconds) { surfaceRoot.seekAbsoluteRequested(seconds) }
@@ -143,6 +153,19 @@ Item {
         onJumpRequested: function(timestamp) { surfaceRoot.timestampRequested(timestamp) }
         onBookmarkSaved: function(word, note) { surfaceRoot.bookmarkSaved(word, note) }
         onBookmarkDeleted: function(bookmarkId) { surfaceRoot.bookmarkDeleted(bookmarkId) }
+    }
+
+    VideoVocabularySidebar {
+        visible: surfaceRoot.isVocabSidebarOpen
+        videoWords: surfaceRoot.bookmarks
+        currentPos: surfaceRoot.currentPos
+
+        onCloseRequested: surfaceRoot.isVocabSidebarOpen = false
+        onJumpRequested: function(timestamp) { surfaceRoot.timestampRequested(timestamp) }
+        onWordDeleted: function(wordId) { surfaceRoot.bookmarkDeleted(wordId) }
+        onDictLookupRequested: function(word, context) {
+            dictDialog.openForWord(word, context, surfaceRoot.currentPos, true)
+        }
     }
 
     VideoResumePrompt {
