@@ -279,6 +279,72 @@ private slots:
         QVERIFY(controller.deleteVaultItem(itemId));
         QCOMPARE(controller.getVaultItems("").size(), 0);
     }
+
+    void vaultGroupsAndExtendedItemFeaturesWithPasswordHistoryAndSecurity() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        const QString databasePath = sandbox.filePath("vault-extended.sqlite");
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(databasePath));
+
+        // 1. Groups CRUD
+        const QString grpId = controller.createVaultGroup("Work & Dev", "folder", "#3b82f6");
+        QVERIFY(!grpId.isEmpty());
+
+        QVariantList groups = controller.getVaultGroups();
+        QCOMPARE(groups.size(), 1);
+        QCOMPARE(groups.first().toMap().value("name").toString(), QString("Work & Dev"));
+
+        QVERIFY(controller.updateVaultGroup(grpId, "Work & Production", "folder", "#10b981"));
+        groups = controller.getVaultGroups();
+        QCOMPARE(groups.first().toMap().value("name").toString(), QString("Work & Production"));
+
+        // 2. Extended Item with Custom Fields and Password History
+        const QString customJson = QStringLiteral("[{\"key\":\"PIN\",\"value\":\"1234\",\"type\":\"hidden\"}]");
+        QVERIFY(controller.saveVaultItem("", grpId, "GitHub", "octocat", "", "InitialPass123!",
+                                         "https://github.com", "Dev token", customJson, "password"));
+
+        QVariantList items = controller.getVaultItems(grpId);
+        QCOMPARE(items.size(), 1);
+        const QVariantMap item = items.first().toMap();
+        const QString itemId = item.value("id").toString();
+        QCOMPARE(item.value("label").toString(), QString("GitHub"));
+        QCOMPARE(item.value("login_type").toString(), QString("password"));
+        QCOMPARE(item.value("password").toString(), QString("InitialPass123!"));
+        QVERIFY(item.value("custom_fields").toString().contains("PIN"));
+
+        // Update password to trigger history recording
+        QVERIFY(controller.saveVaultItem(itemId, grpId, "GitHub", "octocat", "", "NewSecurePass2026!#",
+                                         "https://github.com", "Dev token", customJson, "password"));
+
+        QVariantList history = controller.getPasswordHistory(itemId);
+        QCOMPARE(history.size(), 1);
+        QCOMPARE(history.first().toMap().value("password").toString(), QString("InitialPass123!"));
+
+        // 3. Google SSO Item
+        QVERIFY(controller.saveVaultItem("", grpId, "Google Workspace", "", "octo@work.com", "",
+                                         "https://workspace.google.com", "", "[]", "google"));
+
+        items = controller.getVaultItems(grpId);
+        QCOMPARE(items.size(), 2);
+
+        // 4. Password Strength & Security Analysis
+        const int weakScore = controller.checkPasswordStrength("123456");
+        QCOMPARE(weakScore, 0);
+
+        const int strongScore = controller.checkPasswordStrength("NewSecurePass2026!#");
+        QVERIFY(strongScore >= 3);
+
+        const QVariantMap analysis = controller.getVaultSecurityAnalysis();
+        QCOMPARE(analysis.value("totalCount").toInt(), 2);
+        QCOMPARE(analysis.value("googleItems").toList().size(), 1);
+        QVERIFY(analysis.value("score").toInt() >= 70);
+
+        // 5. Delete group
+        QVERIFY(controller.deleteVaultGroup(grpId));
+        QCOMPARE(controller.getVaultGroups().size(), 0);
+    }
 };
 
 int runNativeVaultCryptoTest(int argc, char **argv) {

@@ -23,7 +23,19 @@ pub struct VaultItem {
     pub password: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
+    pub custom_fields: Option<String>,
     pub is_favorite: bool,
+    pub login_type: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
+pub struct VaultPasswordHistoryEntry {
+    pub id: String,
+    pub item_id: String,
+    pub password: String,
+    pub changed_at: String,
+    pub deleted_at: Option<String>,
 }

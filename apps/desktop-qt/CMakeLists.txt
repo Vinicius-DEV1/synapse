@@ -86,6 +86,8 @@ add_executable(synapse-desktop
     src/controllers/focus/focus_controller.cpp
     src/controllers/practice/practice_controller.cpp
     src/controllers/vault/vault_items_controller.cpp
+    src/controllers/vault/vault_groups_controller.cpp
+    src/controllers/vault/vault_security_controller.cpp
     src/controllers/files/files_browser_controller.cpp
     src/controllers/files/files_items_controller.cpp
     src/controllers/files/files_transfer_controller.cpp
@@ -263,6 +265,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/focus/focus_controller.cpp
         src/controllers/practice/practice_controller.cpp
         src/controllers/vault/vault_items_controller.cpp
+        src/controllers/vault/vault_groups_controller.cpp
+        src/controllers/vault/vault_security_controller.cpp
         src/controllers/files/files_browser_controller.cpp
         src/controllers/files/files_items_controller.cpp
         src/controllers/files/files_transfer_controller.cpp

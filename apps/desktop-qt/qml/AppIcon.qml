@@ -197,9 +197,51 @@ Canvas {
             circle(20, 4, 2)
             break
         case "vault":
+        case "shield":
             line([12, 3, 20, 6, 19, 14, 16, 19, 12, 21, 8, 19, 5, 14, 4, 6, 12, 3])
             circle(12, 12, 2)
             line([12, 14, 12, 17])
+            break
+        case "key":
+            circle(7.5, 12, 3.5)
+            line([11, 12, 19, 12])
+            line([16, 12, 16, 15])
+            line([19, 12, 19, 15])
+            break
+        case "eye":
+            ctx.beginPath()
+            ctx.moveTo(2, 12)
+            ctx.bezierCurveTo(6, 6, 18, 6, 22, 12)
+            ctx.bezierCurveTo(18, 18, 6, 18, 2, 12)
+            ctx.stroke()
+            circle(12, 12, 3)
+            break
+        case "eye-off":
+            line([2, 2, 22, 22])
+            ctx.beginPath()
+            ctx.moveTo(6.7, 6.7)
+            ctx.bezierCurveTo(8.3, 6.2, 10.1, 6, 12, 6)
+            ctx.bezierCurveTo(18, 6, 22, 12, 22, 12)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(2, 12)
+            ctx.bezierCurveTo(2, 12, 4.4, 15.6, 8.5, 17.2)
+            ctx.stroke()
+            break
+        case "history":
+            circle(12, 12, 8)
+            line([12, 8, 12, 12, 15, 14])
+            break
+        case "help":
+            circle(12, 12, 9)
+            line([12, 16, 12, 16.5])
+            line([10, 9, 12, 7, 14, 9, 12, 12, 12, 13])
+            break
+        case "refresh":
+            ctx.beginPath()
+            ctx.arc(12, 12, 7, 0.2, Math.PI * 1.5, false)
+            ctx.stroke()
+            line([17, 11, 19, 13, 21, 11])
             break
         case "trash":
             rect(5, 7, 14, 14, 2)

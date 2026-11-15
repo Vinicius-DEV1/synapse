@@ -151,7 +151,9 @@ pub unsafe extern "C" fn synapse_vault_save_item(
         password: to_opt_str(password).map(String::from),
         url: to_opt_str(url).map(String::from),
         notes: to_opt_str(notes).map(String::from),
+        custom_fields: None,
         is_favorite: is_favorite != 0,
+        login_type: None,
         created_at: None,
         updated_at: None,
     };
@@ -160,6 +162,54 @@ pub unsafe extern "C" fn synapse_vault_save_item(
         Ok(_) => 1,
         Err(e) => {
             eprintln!("[Synapse Bridge] save_vault_item failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_vault_save_item_extended(
+    db: *mut Database,
+    id: *const c_char,
+    group_id: *const c_char,
+    label: *const c_char,
+    username: *const c_char,
+    email: *const c_char,
+    password: *const c_char,
+    url: *const c_char,
+    notes: *const c_char,
+    custom_fields: *const c_char,
+    login_type: *const c_char,
+    is_favorite: c_int,
+) -> c_int {
+    if db.is_null() || label.is_null() {
+        return -1;
+    }
+    let label_str = match to_opt_str(label) {
+        Some(s) => s,
+        None => return -1,
+    };
+
+    let item = VaultItem {
+        id: to_opt_str(id).unwrap_or("").to_string(),
+        group_id: to_opt_str(group_id).map(String::from),
+        label: label_str.to_string(),
+        username: to_opt_str(username).map(String::from),
+        email: to_opt_str(email).map(String::from),
+        password: to_opt_str(password).map(String::from),
+        url: to_opt_str(url).map(String::from),
+        notes: to_opt_str(notes).map(String::from),
+        custom_fields: to_opt_str(custom_fields).map(String::from),
+        is_favorite: is_favorite != 0,
+        login_type: to_opt_str(login_type).map(String::from),
+        created_at: None,
+        updated_at: None,
+    };
+
+    match VaultRepository::save_item(&*db, item) {
+        Ok(_) => 1,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] save_vault_item_extended failed: {}", e);
             -1
         }
     }
@@ -185,4 +235,39 @@ pub unsafe extern "C" fn synapse_vault_delete_item(
             -1
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_vault_get_password_history(
+    db: *mut Database,
+    item_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || item_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let id_str = match to_opt_str(item_id) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    match VaultRepository::get_password_history(&*db, id_str) {
+        Ok(history) => json_to_c_char(&history),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_vault_password_history failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_vault_check_password_strength(
+    password: *const c_char,
+) -> c_int {
+    if password.is_null() {
+        return 0;
+    }
+    let pass_str = match to_opt_str(password) {
+        Some(s) => s,
+        None => return 0,
+    };
+    synapse_core::domain::vault::check_password_strength(pass_str) as c_int
 }

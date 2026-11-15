@@ -6,43 +6,7 @@
 #include <QtCore/QJsonObject>
 #include <QtCore/QRandomGenerator>
 
-// Native encrypted credential and group persistence delegated to synapse_vault_* domain APIs.
-
-QVariantList SynapseDataController::getVaultGroups() {
-    if (!m_db) return {};
-    char *jsonStr = synapse_vault_get_groups(m_db);
-    if (!jsonStr) return {};
-
-    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
-    synapse_free_string(jsonStr);
-
-    const QJsonArray rows = doc.array();
-    QVariantList groups;
-    const QString vaultKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
-    for (const QJsonValue &value : rows) {
-        QJsonObject group = value.toObject();
-        if (m_isVaultConfigured) {
-            if (!m_isVaultUnlocked || vaultKey.isEmpty()) continue;
-            bool failed = false;
-            for (const QString &field : {QStringLiteral("name"), QStringLiteral("icon"), QStringLiteral("color")}) {
-                const QString val = group.value(field).toString();
-                if (val.isEmpty()) continue;
-                // An AES-GCM encrypted envelope consists of 3 hex parts separated by colons (IV:Ciphertext:Tag)
-                if (val.count(':') == 2) {
-                    const QString decrypted = decryptContent(vaultKey, val);
-                    if (!decrypted.isNull()) {
-                        group[field] = decrypted;
-                    } else {
-                        failed = true;
-                    }
-                }
-            }
-            if (failed) group["decryption_error"] = true;
-        }
-        groups.append(group.toVariantMap());
-    }
-    return groups;
-}
+// Native encrypted credential persistence delegated to synapse_vault_* domain APIs.
 
 QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
     if (!m_db || (m_isVaultConfigured && !m_isVaultUnlocked)) {
@@ -83,7 +47,11 @@ QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
             tryDec("password");
             tryDec("url");
             tryDec("notes");
+            tryDec("custom_fields");
             if (decryptionFailed) item["decryption_error"] = true;
+        }
+        if (!item.contains("login_type") || item.value("login_type").toString().isEmpty()) {
+            item["login_type"] = QStringLiteral("password");
         }
         list.append(item.toVariantMap());
     }
@@ -92,7 +60,8 @@ QVariantList SynapseDataController::getVaultItems(const QString &groupId) {
 
 bool SynapseDataController::saveVaultItem(const QString &id, const QString &groupId, const QString &label,
                                          const QString &username, const QString &email, const QString &password,
-                                         const QString &url, const QString &notes) {
+                                         const QString &url, const QString &notes, const QString &customFields,
+                                         const QString &loginType) {
     if (!m_db || (m_isVaultConfigured && !m_isVaultUnlocked)) return false;
     const QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
     if (m_isVaultConfigured && vKey.isEmpty()) return false;
@@ -103,6 +72,8 @@ bool SynapseDataController::saveVaultItem(const QString &id, const QString &grou
     QString sPass = password;
     QString sUrl = url;
     QString sNotes = notes;
+    QString sCustom = customFields;
+    QString sLogin = loginType.trimmed().isEmpty() ? QStringLiteral("password") : loginType.trimmed();
 
     if (m_isVaultConfigured && m_isVaultUnlocked && !vKey.isEmpty()) {
         sLabel = encryptContent(vKey, label);
@@ -112,6 +83,7 @@ bool SynapseDataController::saveVaultItem(const QString &id, const QString &grou
         if (!password.isEmpty()) { sPass = encryptContent(vKey, password); if (sPass.isNull()) return false; }
         if (!url.isEmpty()) { sUrl = encryptContent(vKey, url); if (sUrl.isNull()) return false; }
         if (!notes.isEmpty()) { sNotes = encryptContent(vKey, notes); if (sNotes.isNull()) return false; }
+        if (!customFields.isEmpty()) { sCustom = encryptContent(vKey, customFields); if (sCustom.isNull()) return false; }
     }
 
     const QByteArray idBytes = id.trimmed().toUtf8();
@@ -122,8 +94,10 @@ bool SynapseDataController::saveVaultItem(const QString &id, const QString &grou
     const QByteArray passBytes = sPass.trimmed().toUtf8();
     const QByteArray urlBytes = sUrl.trimmed().toUtf8();
     const QByteArray notesBytes = sNotes.trimmed().toUtf8();
+    const QByteArray customBytes = sCustom.trimmed().toUtf8();
+    const QByteArray loginBytes = sLogin.toUtf8();
 
-    const int ret = synapse_vault_save_item(
+    const int ret = synapse_vault_save_item_extended(
         m_db,
         idBytes.isEmpty() ? nullptr : idBytes.constData(),
         groupBytes.isEmpty() ? nullptr : groupBytes.constData(),
@@ -133,11 +107,14 @@ bool SynapseDataController::saveVaultItem(const QString &id, const QString &grou
         passBytes.isEmpty() ? nullptr : passBytes.constData(),
         urlBytes.isEmpty() ? nullptr : urlBytes.constData(),
         notesBytes.isEmpty() ? nullptr : notesBytes.constData(),
+        customBytes.isEmpty() ? nullptr : customBytes.constData(),
+        loginBytes.constData(),
         0
     );
 
     if (ret == 1) {
         refreshStats();
+        emit vaultStateChanged();
         return true;
     }
     return false;
@@ -148,9 +125,39 @@ bool SynapseDataController::deleteVaultItem(const QString &itemId) {
     const int ret = synapse_vault_delete_item(m_db, itemId.trimmed().toUtf8().constData());
     if (ret == 1) {
         refreshStats();
+        emit vaultStateChanged();
         return true;
     }
     return false;
+}
+
+QVariantList SynapseDataController::getPasswordHistory(const QString &itemId) {
+    if (!m_db || itemId.trimmed().isEmpty()) return {};
+    if (m_isVaultConfigured && !m_isVaultUnlocked) return {};
+
+    const QByteArray idBytes = itemId.trimmed().toUtf8();
+    char *jsonStr = synapse_vault_get_password_history(m_db, idBytes.constData());
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+
+    const QString vKey = m_unlockedKeys.value("vault", m_unlockedKeys.value("notes"));
+    QVariantList list;
+    for (const QJsonValue &val : doc.array()) {
+        QJsonObject entry = val.toObject();
+        if (!vKey.isEmpty()) {
+            const QString passStr = entry.value("password").toString();
+            if (!passStr.isEmpty() && passStr.count(':') == 2) {
+                const QString dec = decryptContent(vKey, passStr);
+                if (!dec.isNull()) {
+                    entry["password"] = dec;
+                }
+            }
+        }
+        list.append(entry.toVariantMap());
+    }
+    return list;
 }
 
 QString SynapseDataController::generateSecurePassword(int length, bool uppercase, bool lowercase, bool numbers, bool symbols) {

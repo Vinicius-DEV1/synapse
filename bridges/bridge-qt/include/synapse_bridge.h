@@ -184,7 +184,10 @@ int synapse_vault_update_group(Database* db, const char* id, const char* name, c
 int synapse_vault_delete_group(Database* db, const char* id);
 char* synapse_vault_get_items(Database* db, const char* group_id);
 int synapse_vault_save_item(Database* db, const char* id, const char* group_id, const char* label, const char* username, const char* email, const char* password, const char* url, const char* notes, int is_favorite);
+int synapse_vault_save_item_extended(Database* db, const char* id, const char* group_id, const char* label, const char* username, const char* email, const char* password, const char* url, const char* notes, const char* custom_fields, const char* login_type, int is_favorite);
 int synapse_vault_delete_item(Database* db, const char* id);
+char* synapse_vault_get_password_history(Database* db, const char* item_id);
+int synapse_vault_check_password_strength(const char* password);
 
 // Domain APIs: Files & Folders
 char* synapse_files_get_folders(Database* db, const char* parent_id);

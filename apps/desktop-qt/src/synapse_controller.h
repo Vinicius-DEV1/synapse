@@ -322,9 +322,14 @@ public:
 
     // 11. Cofre E2EE & Credenciais
     Q_INVOKABLE QVariantList getVaultGroups();
+    Q_INVOKABLE QString createVaultGroup(const QString &name, const QString &icon = "", const QString &color = "#3b82f6");
+    Q_INVOKABLE bool updateVaultGroup(const QString &id, const QString &name, const QString &icon = "", const QString &color = "#3b82f6", int position = -1);
+    Q_INVOKABLE bool deleteVaultGroup(const QString &id);
     Q_INVOKABLE QVariantList getVaultItems(const QString &groupId = "");
-    Q_INVOKABLE bool saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes);
+    Q_INVOKABLE bool saveVaultItem(const QString &id, const QString &groupId, const QString &label, const QString &username, const QString &email, const QString &password, const QString &url, const QString &notes, const QString &customFields = "", const QString &loginType = "password");
     Q_INVOKABLE bool deleteVaultItem(const QString &itemId);
+    Q_INVOKABLE QVariantList getPasswordHistory(const QString &itemId);
+    Q_INVOKABLE QVariantMap getVaultSecurityAnalysis();
     Q_INVOKABLE QString generateSecurePassword(int length = 20, bool uppercase = true, bool lowercase = true, bool numbers = true, bool symbols = true);
     Q_INVOKABLE bool checkVaultConfigured();
     Q_INVOKABLE bool unlockVault(const QString &password);

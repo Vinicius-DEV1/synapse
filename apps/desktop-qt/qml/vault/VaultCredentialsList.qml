@@ -1,22 +1,26 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import ".."
 
 ListView {
     id: vaultListView
     Layout.fillWidth: true
     Layout.fillHeight: true
     clip: true
-    spacing: 10
+    spacing: 8
 
     property var items: []
     property var revealedPasswords: ({})
     property string copiedId: ""
+    property var selectedItem: null
 
     signal toggleRevealRequested(string itemId)
     signal copyPasswordRequested(string password, string itemId)
     signal deleteRequested(string itemId)
     signal editRequested(var item)
+    signal itemSelected(var item)
 
     ScrollBar.vertical: ScrollBar {
         policy: ScrollBar.AsNeeded
@@ -27,11 +31,17 @@ ListView {
 
     delegate: Rectangle {
         id: vaultCardDelegate
+        required property var modelData
+        required property int index
+
+        readonly property bool isSelected: vaultListView.selectedItem && (vaultListView.selectedItem.id === vaultCardDelegate.modelData.id)
+        readonly property bool isGoogle: vaultCardDelegate.modelData.login_type === "google"
+
         width: vaultListView.width
-        height: 76
+        height: 72
         radius: 12
-        color: vaultCardMouse.containsMouse ? "#211f30" : "#1a1924" // bg-dark-card
-        border.color: vaultCardMouse.containsMouse ? "#668b5cf6" : "#0fffffff"
+        color: isSelected ? "#281b38" : (vaultCardMouse.containsMouse ? "#211f30" : "#16161e")
+        border.color: isSelected ? "#7c3aed" : (vaultCardMouse.containsMouse ? "#4f46e5" : "#2e2e38")
         border.width: 1
 
         Behavior on color { ColorAnimation { duration: 150 } }
@@ -39,164 +49,128 @@ ListView {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.topMargin: 12
-            anchors.bottomMargin: 12
-            spacing: 14
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            spacing: 12
 
+            // Icon box
             Rectangle {
-                Layout.preferredWidth: 42
-                Layout.preferredHeight: 42
+                Layout.preferredWidth: 38
+                Layout.preferredHeight: 38
                 radius: 10
-                color: "#1a8b5cf6"
-                border.color: "#338b5cf6"
+                color: vaultCardDelegate.isGoogle ? "#1f1f2e" : "#281b38"
+                border.color: vaultCardDelegate.isGoogle ? "#3a3a4c" : "#7c3aed"
+                border.width: 1
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "🔑"
-                    font.pixelSize: 18
+                Item {
+                    anchors.fill: parent
+                    GoogleGIcon {
+                        anchors.centerIn: parent
+                        visible: vaultCardDelegate.isGoogle
+                        size: 20
+                    }
+                    AppIcon {
+                        anchors.centerIn: parent
+                        visible: !vaultCardDelegate.isGoogle
+                        name: "key"
+                        color: "#a78bfa"
+                        Layout.preferredWidth: 18
+                        Layout.preferredHeight: 18
+                    }
                 }
             }
 
+            // Info column
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 120
-                spacing: 3
-
-                Text {
-                    Layout.fillWidth: true
-                    text: modelData.label || "Sem título"
-                    color: vaultCardMouse.containsMouse ? "#c4b5fd" : "#fffffe"
-                    font.pixelSize: 15
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: (modelData.username || modelData.email || "Sem usuário") + (modelData.url ? " • " + modelData.url : "")
-                    color: "#a7a9be"
-                    font.pixelSize: 12
-                    elide: Text.ElideRight
-                }
-            }
-
-            // Password Box with Reveal and Copy Buttons
-            Rectangle {
-                Layout.preferredWidth: 260
-                Layout.preferredHeight: 38
-                radius: 8
-                color: "#15141b"
-                border.color: "#12ffffff"
+                spacing: 2
 
                 RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 8
                     spacing: 6
-
                     Text {
-                        Layout.fillWidth: true
-                        text: vaultListView.revealedPasswords[modelData.id] ? (modelData.password || "") : "••••••••••••"
+                        text: vaultCardDelegate.modelData.label || "Sem título"
                         color: "#fffffe"
                         font.pixelSize: 13
-                        font.family: "Monospace"
+                        font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
 
-                    // Ver / Ocultar
                     Rectangle {
-                        Layout.preferredWidth: 50
-                        Layout.preferredHeight: 26
-                        radius: 6
-                        color: "#0affffff"
-
+                        visible: vaultCardDelegate.isGoogle
+                        Layout.preferredHeight: 16
+                        Layout.preferredWidth: 36
+                        radius: 4
+                        color: "#1e1438"
                         Text {
                             anchors.centerIn: parent
-                            text: vaultListView.revealedPasswords[modelData.id] ? "Ocultar" : "Ver"
-                            color: "#c4b5fd"
-                            font.pixelSize: 11
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: vaultListView.toggleRevealRequested(modelData.id)
-                        }
-                    }
-
-                    // Copiar Senha
-                    Rectangle {
-                        Layout.preferredWidth: 56
-                        Layout.preferredHeight: 26
-                        radius: 6
-                        color: vaultListView.copiedId === modelData.id ? "#2610b981" : "#0affffff"
-                        border.color: vaultListView.copiedId === modelData.id ? "#10b981" : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: vaultListView.copiedId === modelData.id ? "Copiado!" : "Copiar"
-                            color: vaultListView.copiedId === modelData.id ? "#34d399" : "#a7a9be"
-                            font.pixelSize: 11
-                            font.bold: vaultListView.copiedId === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: vaultListView.copyPasswordRequested(modelData.password || "", modelData.id)
+                            text: "SSO"
+                            color: "#a78bfa"
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
                         }
                     }
                 }
-            }
-
-            // Edit Button
-            Rectangle {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                radius: 8
-                color: editCredMouse.containsMouse ? "#268b5cf6" : "#1a8b5cf6"
-                border.color: editCredMouse.containsMouse ? "#668b5cf6" : "#338b5cf6"
 
                 Text {
-                    anchors.centerIn: parent
-                    text: "✎"
-                    color: "#c4b5fd"
-                    font.pixelSize: 13
-                }
-
-                MouseArea {
-                    id: editCredMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: vaultListView.editRequested(modelData)
-                }
-            }
-
-            // Delete Button
-            Rectangle {
-                Layout.preferredWidth: 68
-                Layout.preferredHeight: 32
-                radius: 8
-                color: delCredMouse.containsMouse ? "#26f43f5e" : "#1af43f5e"
-                border.color: delCredMouse.containsMouse ? "#66f43f5e" : "#33f43f5e"
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Excluir"
-                    color: "#fb7185"
+                    Layout.fillWidth: true
+                    text: (vaultCardDelegate.modelData.username || vaultCardDelegate.modelData.email || "Sem usuário") + (vaultCardDelegate.modelData.url ? " • " + vaultCardDelegate.modelData.url : "")
+                    color: "#a7a9be"
                     font.pixelSize: 11
-                    font.bold: true
+                    elide: Text.ElideRight
+                }
+            }
+
+            // Fast Copy / Reveal / Actions
+            RowLayout {
+                spacing: 6
+
+                // Copy Password Button
+                Rectangle {
+                    visible: !vaultCardDelegate.isGoogle && vaultCardDelegate.modelData.password
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: 6
+                    color: vaultListView.copiedId === vaultCardDelegate.modelData.id ? "#14532d" : (copyMouse.containsMouse ? "#2e2e38" : "#1f1f2e")
+
+                    AppIcon {
+                        anchors.centerIn: parent
+                        name: vaultListView.copiedId === vaultCardDelegate.modelData.id ? "check" : "copy"
+                        color: vaultListView.copiedId === vaultCardDelegate.modelData.id ? "#4ade80" : "#a7a9be"
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
+                    }
+
+                    MouseArea {
+                        id: copyMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: vaultListView.copyPasswordRequested(vaultCardDelegate.modelData.password || "", vaultCardDelegate.modelData.id)
+                    }
                 }
 
-                MouseArea {
-                    id: delCredMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: vaultListView.deleteRequested(modelData.id)
+                // Delete Button
+                Rectangle {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: 6
+                    color: delMouse.containsMouse ? "#3b1e28" : "transparent"
+
+                    AppIcon {
+                        anchors.centerIn: parent
+                        name: "trash"
+                        color: delMouse.containsMouse ? "#ef4444" : "#6b7280"
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
+                    }
+
+                    MouseArea {
+                        id: delMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: vaultListView.deleteRequested(vaultCardDelegate.modelData.id)
+                    }
                 }
             }
         }
@@ -205,15 +179,17 @@ ListView {
             id: vaultCardMouse
             anchors.fill: parent
             hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             z: -1
+            onClicked: vaultListView.itemSelected(vaultCardDelegate.modelData)
         }
     }
 
     Text {
         anchors.centerIn: parent
-        visible: vaultListView.items.length === 0
+        visible: !vaultListView.items || vaultListView.items.length === 0
         text: "Nenhuma credencial encontrada no cofre."
-        color: "#64748b"
-        font.pixelSize: 15
+        color: "#6b7280"
+        font.pixelSize: 13
     }
 }
