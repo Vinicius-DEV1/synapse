@@ -4,7 +4,8 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     id: activeTimerRoot
-    anchors.fill: parent
+    Layout.fillWidth: true
+    Layout.fillHeight: true
     color: "#0f0e17" // bg-dark-bg
 
     property string tag: "Estudo"

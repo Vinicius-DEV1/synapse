@@ -153,18 +153,6 @@ Rectangle {
             }
         }
 
-        // Mention Popup
-        AiPageMentionMenu {
-            id: mentionMenu
-            anchors.bottom: inputRect.top
-            anchors.left: inputRect.left
-            pagesList: sidebarRoot.availablePages
-            onPageSelected: function(pageId, pageTitle) {
-                promptInput.text += pageTitle + " "
-                promptInput.cursorPosition = promptInput.text.length
-            }
-        }
-
         // Bottom Input Bar
         Rectangle {
             id: inputRect
@@ -261,5 +249,18 @@ Rectangle {
         msgList.positionViewAtEnd()
         isGenerating = true
         replyTimer.restart()
+    }
+
+    // Mention Popup (Floats above input bar, outside ColumnLayout)
+    AiPageMentionMenu {
+        id: mentionMenu
+        anchors.bottom: inputRect.top
+        anchors.bottomMargin: 6
+        anchors.left: inputRect.left
+        pagesList: sidebarRoot.availablePages
+        onPageSelected: function(pageId, pageTitle) {
+            promptInput.text += pageTitle + " "
+            promptInput.cursorPosition = promptInput.text.length
+        }
     }
 }

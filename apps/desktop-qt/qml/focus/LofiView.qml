@@ -5,7 +5,8 @@ import QtQuick.Dialogs 6.3
 
 Rectangle {
     id: lofiViewRoot
-    anchors.fill: parent
+    Layout.fillWidth: true
+    Layout.fillHeight: true
     color: "#0f0e17" // bg-dark-bg
 
     property var lofis: []
