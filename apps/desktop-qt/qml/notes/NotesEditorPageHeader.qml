@@ -32,6 +32,7 @@ ColumnLayout {
     signal deleteRequested()
     signal historyRequested()
     signal helpRequested()
+    signal shareRequested()
     signal richModeRequested(bool enabled)
     signal moveRequested(string pageId)
     signal previewToggled(bool preview)
@@ -96,6 +97,7 @@ ColumnLayout {
             onDeleteRequested: pageHeader.deleteRequested()
             onHistoryRequested: pageHeader.historyRequested()
             onHelpRequested: pageHeader.helpRequested()
+            onShareRequested: pageHeader.shareRequested()
             onRichModeRequested: function(enabled) { pageHeader.richModeRequested(enabled) }
             onMoveRequested: pageHeader.moveRequested(pageHeader.activePageId)
             onPreviewToggled: function(preview) { pageHeader.previewToggled(preview) }

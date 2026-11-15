@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "workspace"
 
 Rectangle {
     id: sidebarRoot
@@ -25,6 +26,9 @@ Rectangle {
     signal renameNoteRequested(string pageId)
     signal deleteNoteRequested(string pageId)
     signal moveNoteInTreeRequested(string sourceId, string targetParentId)
+    signal openWorkspaceCreateRequested()
+    signal openWorkspaceMembersRequested()
+    signal openAccountEvolutionRequested()
 
     Theme { id: theme }
 
@@ -140,6 +144,14 @@ Rectangle {
                     onClicked: sidebarRoot.toggleSidebarRequested()
                 }
             }
+        }
+
+        // 1.1 Workspace Switcher Dropdown
+        WorkspaceSwitcher {
+            visible: sidebarRoot.sidebarExpanded
+            onOpenCreateModal: sidebarRoot.openWorkspaceCreateRequested()
+            onOpenMembersModal: sidebarRoot.openWorkspaceMembersRequested()
+            onOpenEvolutionModal: sidebarRoot.openAccountEvolutionRequested()
         }
 
         // 2. Search entry opens the command palette

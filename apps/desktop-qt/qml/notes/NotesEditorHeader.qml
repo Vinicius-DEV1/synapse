@@ -21,6 +21,7 @@ RowLayout {
     signal historyRequested()
     signal moveRequested()
     signal helpRequested()
+    signal shareRequested()
     signal richModeRequested(bool enabled)
 
     spacing: 4
@@ -72,6 +73,18 @@ RowLayout {
         ToolTip.text: qsTr("Move to…")
         background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
         contentItem: Text { text: parent.text; color: parent.hovered ? "#ddd6fe" : "#a7a9be"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+    }
+
+    ToolButton {
+        Layout.preferredWidth: 30
+        Layout.preferredHeight: 30
+        text: "🔗"
+        Accessible.name: qsTr("Share page")
+        onClicked: headerRoot.shareRequested()
+        ToolTip.visible: hovered
+        ToolTip.text: qsTr("Share with link…")
+        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
+        contentItem: Text { text: parent.text; color: parent.hovered ? "#ddd6fe" : "#a7a9be"; font.pixelSize: 13; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
     }
 
     ToolButton {

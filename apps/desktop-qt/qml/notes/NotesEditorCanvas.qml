@@ -60,6 +60,7 @@ ScrollView {
     signal pageActionFailed(string message)
     signal coverModified(string imageUrl)
     signal externalLinkRequested(string link)
+    signal shareRequested()
 
     property var hierarchyActions: NotesHierarchyActions {
         controller: canvasRoot.controller
@@ -259,6 +260,7 @@ ScrollView {
                 onDeleteRequested: canvasRoot.deleteRequested()
                 onHistoryRequested: canvasRoot.historyRequested()
                 onHelpRequested: canvasRoot.helpRequested()
+                onShareRequested: canvasRoot.shareRequested()
                 onRichModeRequested: function(enabled) { canvasRoot.richModeRequested(enabled) }
                 onMoveRequested: function(pageId) { movePageDialog.openForPage(pageId) }
                 onPreviewToggled: function(preview) { canvasRoot.previewToggled(preview) }

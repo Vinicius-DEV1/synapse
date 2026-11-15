@@ -338,6 +338,9 @@ Item {
                     notesView.loadPages()
                     globalModals.showSyncStatus("success")
                 }
+                onOpenWorkspaceCreateRequested: globalModals.openWorkspaceCreate()
+                onOpenWorkspaceMembersRequested: globalModals.openWorkspaceMembers()
+                onOpenAccountEvolutionRequested: globalModals.openAccountEvolution()
             }
 
             // Main Workspace Area (Stack of Native Modules)

@@ -1,4 +1,7 @@
 import QtQuick 2.15
+import "workspace"
+import "auth"
+import "sharing"
 
 Item {
     id: globalModalsHost
@@ -25,6 +28,35 @@ Item {
         contextMenu.x = Math.max(8, Math.min(xPos, globalModalsHost.width - 210))
         contextMenu.y = Math.max(8, Math.min(yPos, globalModalsHost.height - 250))
         contextMenu.open()
+    }
+
+    function openWorkspaceCreate() {
+        workspaceCreateModal.visible = true
+    }
+
+    function openWorkspaceMembers() {
+        workspaceMembersModal.visible = true
+    }
+
+    function openAccountEvolution() {
+        accountEvolutionModal.visible = true
+    }
+
+    function openShare(pageId, pageTitle) {
+        shareModal.pageId = pageId
+        shareModal.pageTitle = pageTitle || "Página"
+        shareModal.visible = true
+    }
+
+    function openShareManagement() {
+        shareManagementPanel.visible = true
+    }
+
+    function openShareAccessRequest(email, pageTitle, role) {
+        shareAccessRequestModal.requesterEmail = email || "colega@equipe.com"
+        shareAccessRequestModal.pageTitle = pageTitle || "Página"
+        shareAccessRequestModal.requestedRole = role || "editor"
+        shareAccessRequestModal.visible = true
     }
 
     AppConfirmDialog {
@@ -56,5 +88,45 @@ Item {
         onActionTriggered: function(actionKey) {
             globalModalsHost.actionTriggered(actionKey)
         }
+    }
+
+    // Workspace & Auth Modals
+    WorkspaceCreateModal {
+        id: workspaceCreateModal
+        visible: false
+        onClosed: visible = false
+        onWorkspaceCreated: function(name, icon, desc) {
+            visible = false
+        }
+    }
+
+    WorkspaceMembersModal {
+        id: workspaceMembersModal
+        visible: false
+        onClosed: visible = false
+    }
+
+    AccountEvolutionModal {
+        id: accountEvolutionModal
+        visible: false
+        onClosed: visible = false
+    }
+
+    ShareModal {
+        id: shareModal
+        visible: false
+        onClosed: visible = false
+    }
+
+    ShareManagementPanel {
+        id: shareManagementPanel
+        visible: false
+        onClosed: visible = false
+    }
+
+    ShareAccessRequestModal {
+        id: shareAccessRequestModal
+        visible: false
+        onClosed: visible = false
     }
 }

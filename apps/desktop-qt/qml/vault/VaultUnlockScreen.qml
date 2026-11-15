@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../auth"
 
 Rectangle {
     id: unlockScreenRoot
@@ -244,6 +245,15 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    AuthLockoutView {
+        visible: unlockScreenRoot.lockoutRemainingSeconds > 0
+        lockoutSeconds: unlockScreenRoot.lockoutRemainingSeconds
+        onCooldownFinished: {
+            unlockScreenRoot.lockoutRemainingSeconds = 0
+            dataController.refreshVaultLockout()
         }
     }
 }

@@ -350,6 +350,11 @@ Rectangle {
             onDeleteRequested: notesRoot.requestDeleteActiveNote()
             onHistoryRequested: notesRoot.openPageHistory()
             onHelpRequested: notesRoot.isHelpOpen = true
+            onShareRequested: {
+                if (typeof globalModals !== "undefined" && globalModals) {
+                    globalModals.openShare(notesRoot.selectedPageId, notesRoot.activeTitle)
+                }
+            }
             onPreviewToggled: function(prev) { notesRoot.setPreviewMode(prev) }
             onRichModeRequested: function(enabled) {
                 if (enabled) {
