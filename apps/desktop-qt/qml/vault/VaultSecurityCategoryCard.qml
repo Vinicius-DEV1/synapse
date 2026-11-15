@@ -73,7 +73,7 @@ Rectangle {
             // Empty state
             Rectangle {
                 anchors.fill: parent
-                visible: !categoryCardRoot.items || categoryCardRoot.items.length === 0
+                visible: Boolean(!categoryCardRoot.items || categoryCardRoot.items.length === 0)
                 radius: 10
                 color: "#132b21"
                 border.color: "#10b981"
@@ -91,7 +91,7 @@ Rectangle {
             // Scrollable list
             ListView {
                 anchors.fill: parent
-                visible: categoryCardRoot.items && categoryCardRoot.items.length > 0
+                visible: Boolean(categoryCardRoot.items && categoryCardRoot.items.length > 0)
                 clip: true
                 spacing: 6
                 model: categoryCardRoot.items

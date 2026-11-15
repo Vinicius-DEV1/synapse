@@ -23,7 +23,6 @@ Rectangle {
         if (isOpen && book) {
             currentPage = book.current_page || 0
             totalPages = book.total_pages || 0
-            pageInput.text = currentPage.toString()
         }
     }
 

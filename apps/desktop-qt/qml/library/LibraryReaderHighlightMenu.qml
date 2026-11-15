@@ -70,7 +70,7 @@ Rectangle {
             width: 28; height: 28; radius: 6
             color: "#2038bdf8"
             Text { anchors.centerIn: parent; text: "📖"; font.pixelSize: 13 }
-            ToolTip.visible: dictMouse.hovered
+            ToolTip.visible: dictMouse.containsMouse
             ToolTip.text: "Dicionário"
             MouseArea {
                 id: dictMouse
@@ -89,7 +89,7 @@ Rectangle {
             width: 28; height: 28; radius: 6
             color: "#18ffffff"
             Text { anchors.centerIn: parent; text: "📋"; font.pixelSize: 13 }
-            ToolTip.visible: copyMouse.hovered
+            ToolTip.visible: copyMouse.containsMouse
             ToolTip.text: "Copiar"
             MouseArea {
                 id: copyMouse

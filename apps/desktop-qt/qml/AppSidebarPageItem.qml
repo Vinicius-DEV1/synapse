@@ -172,9 +172,14 @@ Item {
             anchors.fill: parent
             keys: ["pageId"]
             onDropped: function(drop) {
-                if (drop.hasText && pageItemRoot.pageData) {
-                    var sourceId = drop.text
-                    if (sourceId !== pageItemRoot.pageData.id) {
+                if (pageItemRoot.pageData) {
+                    var sourceId = ""
+                    if (drop.source && drop.source.pageId) {
+                        sourceId = drop.source.pageId
+                    } else if (drop.hasText) {
+                        sourceId = drop.text
+                    }
+                    if (sourceId.length > 0 && sourceId !== pageItemRoot.pageData.id) {
                         pageItemRoot.pageDropped(sourceId, pageItemRoot.pageData.id)
                     }
                 }
@@ -183,8 +188,9 @@ Item {
 
         Item {
             id: dragProxy
+            property string pageId: pageItemRoot.pageData ? String(pageItemRoot.pageData.id || "") : ""
             Drag.active: itemMouse.drag.active
-            Drag.source: pageItemRoot.pageData ? pageItemRoot.pageData.id : ""
+            Drag.source: dragProxy
             Drag.keys: ["pageId"]
         }
     }

@@ -102,6 +102,8 @@ QString sanitizeXhtml(const QByteArray &bytes) {
     html.remove(QRegularExpression("(?is)<(script|iframe|object|embed)\\b[^>]*>.*?</\\1\\s*>"));
     html.remove(QRegularExpression("(?is)<(script|iframe|object|embed)\\b[^>]*/\\s*>"));
     html.replace(QRegularExpression("(?i)\\s+href\\s*=\\s*([\"'])\\s*javascript:[^\"']*\\1"), "");
+    // Remove unresolvable relative <img> tags to avoid QQuickTextEdit warnings when rendering EPUB text
+    html.remove(QRegularExpression("(?is)<img\\b[^>]*?>"));
     const QRegularExpression bodyPattern("(?is)<body\\b[^>]*>(.*?)</body\\s*>");
     const QRegularExpressionMatch body = bodyPattern.match(html);
     if (body.hasMatch()) html = body.captured(1);

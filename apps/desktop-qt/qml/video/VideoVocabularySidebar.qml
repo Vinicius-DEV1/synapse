@@ -208,7 +208,7 @@ Rectangle {
 
                     // Context sentence
                     Text {
-                        visible: modelData.context && modelData.context.length > 0
+                        visible: Boolean(modelData.context && modelData.context.length > 0)
                         Layout.fillWidth: true
                         text: "“" + (modelData.context || "") + "”"
                         color: "#94a3b8"
@@ -221,7 +221,7 @@ Rectangle {
 
                     // Note / Definition preview
                     Text {
-                        visible: modelData.note && modelData.note.length > 0
+                        visible: Boolean(modelData.note && modelData.note.length > 0)
                         Layout.fillWidth: true
                         text: modelData.note || ""
                         color: "#c4b5fd"
