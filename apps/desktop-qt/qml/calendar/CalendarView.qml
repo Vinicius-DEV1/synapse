@@ -16,6 +16,9 @@ Rectangle {
     property var editingEvent: null
     property string initialCreateDate: ""
     property var monthCells: []
+    property bool isDayModalOpen: false
+    property string selectedDayDate: ""
+    property var selectedDayEvents: []
 
     function updateMonthCells() {
         monthCells = getMonthCells()
@@ -158,6 +161,12 @@ Rectangle {
         isCreatingEvent = true
     }
 
+    function openDayModal(dateStr) {
+        selectedDayDate = dateStr
+        selectedDayEvents = getEventsForDate(dateStr)
+        isDayModalOpen = true
+    }
+
     function openEditModal(eventData) {
         if (!eventData || !eventData.id) return
         editingEvent = eventData
@@ -209,7 +218,7 @@ Rectangle {
                 onPrevMonthRequested: calendarRoot.prevMonth()
                 onNextMonthRequested: calendarRoot.nextMonth()
                 onTodayRequested: calendarRoot.goToToday()
-                onCellClicked: function(dateStr) { calendarRoot.openCreateModal(dateStr) }
+                onCellClicked: function(dateStr) { calendarRoot.openDayModal(dateStr) }
                 onEventClicked: function(eventData) { calendarRoot.openEditModal(eventData) }
             }
 
@@ -231,7 +240,22 @@ Rectangle {
         }
     }
 
-    // Modal: Novo Evento
+    // Modal: Detalhes do Dia
+    CalendarDayModal {
+        visible: calendarRoot.isDayModalOpen
+        dateStr: calendarRoot.selectedDayDate
+        dayEvents: calendarRoot.selectedDayEvents
+        onCloseRequested: calendarRoot.isDayModalOpen = false
+        onAddEventRequested: function(dStr) { calendarRoot.openCreateModal(dStr) }
+        onEventClicked: function(ev) { calendarRoot.openEditModal(ev) }
+        onToggleStatusRequested: function(evId, curStatus) {
+            dataController.toggleEventStatus(evId)
+            calendarRoot.refreshEvents()
+            calendarRoot.selectedDayEvents = calendarRoot.getEventsForDate(calendarRoot.selectedDayDate)
+        }
+    }
+
+    // Modal: Novo / Editar Evento
     CreateEventModal {
         id: createModal
         visible: calendarRoot.isCreatingEvent
@@ -240,6 +264,12 @@ Rectangle {
         onClosed: {
             calendarRoot.isCreatingEvent = false
             calendarRoot.editingEvent = null
+        }
+        onEventDeleted: function(eventId) {
+            dataController.deleteCalendarEvent(eventId)
+            calendarRoot.isCreatingEvent = false
+            calendarRoot.editingEvent = null
+            calendarRoot.refreshEvents()
         }
         onEventSubmitted: function(title, desc, dateTime, color, type, pageId) {
             var saved = calendarRoot.editingEvent

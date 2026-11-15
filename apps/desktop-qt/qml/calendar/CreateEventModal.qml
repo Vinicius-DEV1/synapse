@@ -15,6 +15,7 @@ Rectangle {
     property string errorMessage: ""
 
     signal eventSubmitted(string title, string desc, string dateTime, string color, string type, string pageId)
+    signal eventDeleted(string eventId)
     signal closed()
 
     function loadInitialEvent() {
@@ -227,12 +228,36 @@ Rectangle {
                 }
             }
 
+            // Reminders Selector
+            CalendarEventFormReminders {
+                id: remindersPicker
+            }
+
             Item { Layout.fillHeight: true }
 
             // Actions Footer
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 12
+
+                // Delete Button (when editing)
+                Rectangle {
+                    visible: modalRoot.initialEvent !== null
+                    width: 80; height: 38; radius: 8; color: "rgba(244, 63, 94, 0.15)"
+                    border.color: "#f43f5e"
+                    Text { anchors.centerIn: parent; text: "Excluir"; color: "#f43f5e"; font.pixelSize: 12; font.bold: true }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (modalRoot.initialEvent && modalRoot.initialEvent.id) {
+                                modalRoot.eventDeleted(modalRoot.initialEvent.id)
+                            }
+                            modalRoot.closed()
+                        }
+                    }
+                }
+
                 Item { Layout.fillWidth: true }
                 Rectangle {
                     width: 90; height: 38; radius: 8; color: "#211f30"
