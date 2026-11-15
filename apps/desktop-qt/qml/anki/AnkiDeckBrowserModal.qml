@@ -14,12 +14,18 @@ Rectangle {
     property var cards: []
     property string searchQuery: ""
     property string typeFilter: "all"
+    property int viewMode: 0 // 0: List, 1: Grid, 2: Table
+    property var selectedIds: ({})
+    property int selectedCount: 0
 
     signal closed()
     signal requestAddCard()
     signal requestEditCard(var card)
     signal requestOpenSettings()
     signal requestDeleteCard(string cardId)
+    signal requestOpenAI()
+    signal requestBatchDelete(var cardIds)
+    signal requestBatchReset(var cardIds)
 
     readonly property var filteredCards: {
         var query = searchQuery.trim().toLowerCase()
@@ -44,7 +50,30 @@ Rectangle {
         if (isOpen) {
             searchQuery = ""
             typeFilter = "all"
+            clearSelection()
         }
+    }
+
+    function toggleCardSelected(cardId) {
+        var copy = Object.assign({}, selectedIds)
+        if (copy[cardId]) delete copy[cardId]
+        else copy[cardId] = true
+        selectedIds = copy
+        selectedCount = Object.keys(copy).length
+    }
+
+    function selectAllCards() {
+        var copy = {}
+        for (var i = 0; i < filteredCards.length; i++) {
+            copy[filteredCards[i].id] = true
+        }
+        selectedIds = copy
+        selectedCount = Object.keys(copy).length
+    }
+
+    function clearSelection() {
+        selectedIds = ({})
+        selectedCount = 0
     }
 
     MouseArea { anchors.fill: parent }
@@ -87,7 +116,7 @@ Rectangle {
 
                 // "+ Novo Cartão" Button
                 Rectangle {
-                    width: 130; height: 36; radius: 8
+                    width: 120; height: 36; radius: 8
                     color: newCardMouse.containsMouse ? "#4f46e5" : "#6366f1"
 
                     RowLayout {
@@ -105,9 +134,29 @@ Rectangle {
                     }
                 }
 
+                // "✨ Assistente IA" Button
+                Rectangle {
+                    width: 120; height: 36; radius: 8
+                    color: aiMouse.containsMouse ? "#4338ca" : "#3730a3"
+
+                    RowLayout {
+                        anchors.centerIn: parent; spacing: 6
+                        Text { text: "✨"; font.pixelSize: 13 }
+                        Text { text: qsTr("Assistente IA"); color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                    }
+
+                    MouseArea {
+                        id: aiMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: browserRoot.requestOpenAI()
+                    }
+                }
+
                 // "⚙ Ajustes" Button
                 Rectangle {
-                    width: 96; height: 36; radius: 8
+                    width: 90; height: 36; radius: 8
                     color: settingsMouse.containsMouse ? "#2d2a40" : "#211f30"
                     border.color: "#15ffffff"
 
@@ -123,6 +172,29 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: browserRoot.requestOpenSettings()
+                    }
+                }
+
+                // View Mode Switcher (List, Grid, Table)
+                RowLayout {
+                    spacing: 4
+                    Rectangle {
+                        width: 30; height: 30; radius: 6
+                        color: browserRoot.viewMode === 0 ? "#4338ca" : "#1a1928"
+                        Text { anchors.centerIn: parent; text: "☰"; color: browserRoot.viewMode === 0 ? "#ffffff" : "#71717a"; font.pixelSize: 13 }
+                        MouseArea { anchors.fill: parent; onClicked: browserRoot.viewMode = 0 }
+                    }
+                    Rectangle {
+                        width: 30; height: 30; radius: 6
+                        color: browserRoot.viewMode === 1 ? "#4338ca" : "#1a1928"
+                        Text { anchors.centerIn: parent; text: "▦"; color: browserRoot.viewMode === 1 ? "#ffffff" : "#71717a"; font.pixelSize: 13 }
+                        MouseArea { anchors.fill: parent; onClicked: browserRoot.viewMode = 1 }
+                    }
+                    Rectangle {
+                        width: 30; height: 30; radius: 6
+                        color: browserRoot.viewMode === 2 ? "#4338ca" : "#1a1928"
+                        Text { anchors.centerIn: parent; text: "𝄜"; color: browserRoot.viewMode === 2 ? "#ffffff" : "#71717a"; font.pixelSize: 13 }
+                        MouseArea { anchors.fill: parent; onClicked: browserRoot.viewMode = 2 }
                     }
                 }
 
@@ -204,6 +276,7 @@ Rectangle {
                         ]
 
                         delegate: Rectangle {
+                            required property var modelData
                             readonly property bool isSelected: browserRoot.typeFilter === modelData.key
                             Layout.preferredHeight: 32
                             Layout.preferredWidth: chipText.contentWidth + 16
@@ -231,7 +304,24 @@ Rectangle {
                 }
             }
 
-            // Cards List Table
+            // Batch Actions Bar (visible when cards are selected)
+            AnkiBatchActions {
+                selectedCount: browserRoot.selectedCount
+                onSelectAllRequested: browserRoot.selectAllCards()
+                onClearSelectionRequested: browserRoot.clearSelection()
+                onBatchDeleteRequested: {
+                    var ids = Object.keys(browserRoot.selectedIds)
+                    browserRoot.requestBatchDelete(ids)
+                    browserRoot.clearSelection()
+                }
+                onBatchResetRequested: {
+                    var ids = Object.keys(browserRoot.selectedIds)
+                    browserRoot.requestBatchReset(ids)
+                    browserRoot.clearSelection()
+                }
+            }
+
+            // Cards Container
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -240,8 +330,10 @@ Rectangle {
                 border.color: "#0fffffff"
                 clip: true
 
+                // View Mode 0: Compact List
                 ListView {
                     id: browserCardsList
+                    visible: browserRoot.viewMode === 0
                     anchors.fill: parent
                     anchors.margins: 8
                     spacing: 6
@@ -249,6 +341,8 @@ Rectangle {
 
                     delegate: Rectangle {
                         id: cardItemRect
+                        required property var modelData
+                        required property int index
                         width: browserCardsList.width
                         height: 68
                         radius: 8
@@ -396,6 +490,27 @@ Rectangle {
                         font.pixelSize: 13
                         horizontalAlignment: Text.AlignHCenter
                     }
+                }
+
+                // View Mode 1: Grid View
+                AnkiCardGridView {
+                    anchors.fill: parent
+                    visible: browserRoot.viewMode === 1
+                    cards: browserRoot.filteredCards
+                    selectedIds: browserRoot.selectedIds
+                    onCardClicked: function(card) { browserRoot.requestEditCard(card) }
+                    onToggleCardSelected: function(cardId) { browserRoot.toggleCardSelected(cardId) }
+                }
+
+                // View Mode 2: Table View
+                AnkiCardTableView {
+                    anchors.fill: parent
+                    visible: browserRoot.viewMode === 2
+                    cards: browserRoot.filteredCards
+                    selectedIds: browserRoot.selectedIds
+                    onCardEditRequested: function(card) { browserRoot.requestEditCard(card) }
+                    onCardDeleteRequested: function(cardId) { browserRoot.requestDeleteCard(cardId) }
+                    onToggleCardSelected: function(cardId) { browserRoot.toggleCardSelected(cardId) }
                 }
             }
         }

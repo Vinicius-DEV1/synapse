@@ -55,6 +55,15 @@ Dialog {
                 { action: "Agendamento determinístico", keys: "Cálculos nativos em Rust FSRSv4" },
                 { action: "Estatísticas globais", keys: "Cabeçalho  ›  Estatísticas" }
             ]
+        },
+        {
+            title: "Assistente de IA & Geração",
+            entries: [
+                { action: "Gerar cartões por tema", keys: "Navegador  ›  ✨ Assistente IA" },
+                { action: "Extração de texto", keys: "Cole resumos para extrair perguntas e respostas" },
+                { action: "Revisão antes de importar", keys: "Seleção por checkbox e edição inline" },
+                { action: "Importação direta", keys: "Adiciona ao baralho ativo instantaneamente" }
+            ]
         }
     ]
 

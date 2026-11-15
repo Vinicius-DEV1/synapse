@@ -238,6 +238,23 @@ Rectangle {
             ankiRoot.loadBrowserCards(ankiRoot.browserDeck.id)
             ankiRoot.reloadDecks()
         }
+        onRequestOpenAI: {
+            ankiAIModal.visible = true
+        }
+        onRequestBatchDelete: function(cardIds) {
+            for (var i = 0; i < cardIds.length; i++) {
+                dataController.deleteCard(cardIds[i])
+            }
+            if (ankiRoot.browserDeck) ankiRoot.loadBrowserCards(ankiRoot.browserDeck.id)
+            ankiRoot.reloadDecks()
+        }
+        onRequestBatchReset: function(cardIds) {
+            for (var j = 0; j < cardIds.length; j++) {
+                dataController.resetDeckProgress(cardIds[j])
+            }
+            if (ankiRoot.browserDeck) ankiRoot.loadBrowserCards(ankiRoot.browserDeck.id)
+            ankiRoot.reloadDecks()
+        }
     }
 
     // ===================================================================
@@ -310,5 +327,23 @@ Rectangle {
         id: ankiHelpDialog
         isOpen: ankiRoot.isHelpDialogOpen
         onDismissRequested: ankiRoot.isHelpDialogOpen = false
+    }
+
+    // ===================================================================
+    // 8. AI Flashcard Assistant Modal
+    // ===================================================================
+    AnkiAIAssistantModal {
+        id: ankiAIModal
+        deckId: ankiRoot.browserDeck ? ankiRoot.browserDeck.id : ""
+        deckName: ankiRoot.browserDeck ? ankiRoot.browserDeck.name : "Baralho"
+        onCloseRequested: ankiAIModal.visible = false
+        onImportCardsRequested: function(targetDeckId, cardsList) {
+            for (var k = 0; k < cardsList.length; k++) {
+                var c = cardsList[k]
+                dataController.createCard(targetDeckId, c.front, c.back, "", c.card_type || "reading", "")
+            }
+            if (targetDeckId) ankiRoot.loadBrowserCards(targetDeckId)
+            ankiRoot.reloadDecks()
+        }
     }
 }
