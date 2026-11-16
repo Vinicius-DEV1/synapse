@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, useStoreSelector } from '../store/useStore';
 import { X, ChevronRight, FileText, ExternalLink, Sparkles, Send, Plus, Minimize2, AtSign, Check, Paperclip } from 'lucide-react';
 import { useAiSidebarResize } from './ai-sidebar/useAiSidebarResize';
 import { usePageMentions } from './ai-sidebar/usePageMentions';
@@ -9,7 +9,7 @@ import { AiChatSessionList } from './ai-sidebar/AiChatSessionList';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { triggerToast } from './ui/ToastContext';
 
-export default function AiSidebar() {
+function AiSidebarContent() {
   const { state, dispatch } = useStore();
   const [prompt, setPrompt] = useState('');
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
@@ -402,5 +402,16 @@ export default function AiSidebar() {
       />
     </div>
   );
+}
+
+export default function AiSidebar() {
+  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
+  const isReadingModeFullScreen = useStoreSelector((s) => s.isReadingModeFullScreen);
+
+  if (!showAiSidebar || isReadingModeFullScreen) {
+    return null;
+  }
+
+  return <AiSidebarContent />;
 }
 

@@ -16,6 +16,7 @@ export default defineConfig({
     exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
   },
   build: {
+    target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : process.env.TAURI_ENV_PLATFORM ? 'safari13' : 'es2022',
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),

@@ -61,6 +61,7 @@ async function init() {
     
     let syncTimeout: ReturnType<typeof setTimeout> | null = null;
     const pendingDirtyTables = new Set<string>();
+    const proxyCache = new WeakMap<object, unknown>();
 
     function inferTableFromPath(path: string, prop: string): string | undefined {
       if (path === 'notes') return 'pages';
@@ -155,7 +156,12 @@ async function init() {
             };
           }
           if (typeof val === 'object' && val !== null) {
-            return createApiProxy(val as Record<string, unknown>, path ? `${path}.${prop}` : prop);
+            let cached = proxyCache.get(val as object);
+            if (!cached) {
+              cached = createApiProxy(val as Record<string, unknown>, path ? `${path}.${prop}` : prop);
+              proxyCache.set(val as object, cached);
+            }
+            return cached as unknown as T[Extract<keyof T, string>];
           }
           return val;
         }

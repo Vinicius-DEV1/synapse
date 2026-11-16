@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, memo, useMemo } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ToastProvider } from './components/ui/ToastContext';
@@ -29,6 +29,73 @@ import { I18nProvider } from './i18n';
 import type { Page } from './types';
 
 
+interface TabContentItemProps {
+  tab: import('./types').Tab;
+  isActive: boolean;
+  page: Page | null;
+  navDirection: 'forward' | 'backward' | null;
+  onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => Promise<void>;
+  onCreatePage: (parentId: string | null) => Promise<void>;
+  onCreateLinkedPage: (title: string, parentId: string | null) => Promise<string>;
+  onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+}
+
+const TabContentItem = memo(function TabContentItem({
+  tab,
+  isActive,
+  page,
+  navDirection,
+  onUpdateContent,
+  onCreatePage,
+  onCreateLinkedPage,
+  onUpdatePage,
+}: TabContentItemProps) {
+  return (
+    <div 
+      className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
+      style={isActive ? undefined : { contentVisibility: 'hidden' }}
+    >
+      <div 
+        key={page?.id || 'empty'} 
+        className={`w-full h-full flex flex-col ${
+          isActive && navDirection === 'forward' ? 'animate-slide-in-right' : 
+          isActive && navDirection === 'backward' ? 'animate-slide-in-left' : ''
+        }`}
+      >
+        <ErrorBoundary moduleName={`Aba: ${tab.module}`} pageId={tab.pageId}>
+          <ViewFactory 
+            tab={tab}
+            page={page}
+            onUpdateContent={onUpdateContent}
+            onCreatePage={onCreatePage}
+            onCreateLinkedPage={onCreateLinkedPage}
+            onUpdatePage={onUpdatePage}
+            isActive={isActive}
+          />
+        </ErrorBoundary>
+      </div>
+    </div>
+  );
+}, (prev, next) => {
+  // If active state transitioned (active -> inactive or inactive -> active), re-render immediately
+  if (prev.isActive !== next.isActive) return false;
+  // If actively visible, update whenever content, page, navigation or tab attributes change
+  if (next.isActive) {
+    return (
+      prev.tab === next.tab &&
+      prev.page === next.page &&
+      prev.navDirection === next.navDirection &&
+      prev.onUpdateContent === next.onUpdateContent &&
+      prev.onCreatePage === next.onCreatePage &&
+      prev.onCreateLinkedPage === next.onCreateLinkedPage &&
+      prev.onUpdatePage === next.onUpdatePage
+    );
+  }
+  // While inactive, freeze intermediate re-renders to liberate the JS thread.
+  // The tab re-renders instantly with fresh state when the user selects it.
+  return true;
+});
+
 function AppContent() {
   const { state, dispatch } = useStore();
   const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
@@ -38,6 +105,14 @@ function AppContent() {
   const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
   const activeModule = activeTab?.module;
   const isReadingBook = activeTab?.module === 'library' && Boolean(activeTab?.bookTitle);
+
+  const pagesMap = useMemo(() => {
+    const map = new Map<string, Page>();
+    for (const p of state.pages) {
+      map.set(p.id, p);
+    }
+    return map;
+  }, [state.pages]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -253,34 +328,20 @@ function AppContent() {
         <div className="flex-1 overflow-hidden relative">
           {state.tabs.map((tab) => {
             const isActive = tab.id === state.activeTabId;
-            const page = tab.pageId ? state.pages.find((p) => p.id === tab.pageId) || null : null;
+            const page = tab.pageId ? pagesMap.get(tab.pageId) || null : null;
             
             return (
-              <div 
-                key={tab.id} 
-                className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
-                style={isActive ? undefined : { contentVisibility: 'hidden' }}
-              >
-                <div 
-                  key={page?.id || 'empty'} 
-                  className={`w-full h-full flex flex-col ${
-                    isActive && state.navDirection === 'forward' ? 'animate-slide-in-right' : 
-                    isActive && state.navDirection === 'backward' ? 'animate-slide-in-left' : ''
-                  }`}
-                >
-                  <ErrorBoundary moduleName={`Aba: ${tab.module}`} pageId={tab.pageId}>
-                    <ViewFactory 
-                      tab={tab}
-                      page={page}
-                      onUpdateContent={handleUpdateContent}
-                      onCreatePage={handleCreatePage}
-                      onCreateLinkedPage={handleCreateLinkedPage}
-                      onUpdatePage={handleUpdatePage}
-                      isActive={isActive}
-                    />
-                  </ErrorBoundary>
-                </div>
-              </div>
+              <TabContentItem
+                key={tab.id}
+                tab={tab}
+                isActive={isActive}
+                page={page}
+                navDirection={state.navDirection}
+                onUpdateContent={handleUpdateContent}
+                onCreatePage={handleCreatePage}
+                onCreateLinkedPage={handleCreateLinkedPage}
+                onUpdatePage={handleUpdatePage}
+              />
             );
           })}
         </div>
