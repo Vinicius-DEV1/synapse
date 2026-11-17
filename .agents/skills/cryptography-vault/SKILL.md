@@ -123,6 +123,29 @@ export async function encryptFile(buffer: ArrayBuffer, masterKey: CryptoKey): Pr
 export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: CryptoKey): Promise<ArrayBuffer>;
 ```
 
+### 3.2.1. Encrypted Firebase Sync Rows
+
+- Sync payloads are encrypted with the row's module key before Firestore writes.
+  The current implementation is in `apps/web-react/src/services/sync/`.
+- Large JSON rows are gzip-compressed. If the compressed Base64 payload still
+  exceeds the parent document budget, the client splits it into independently
+  AES-GCM-encrypted chunks under the row's `chunks` subcollection.
+- Each encrypted chunk envelope binds the format version, table, encoded parent
+  document ID, chunk-set ID, sequence index, and total chunk count. Decryption
+  must validate all fields, require a complete ordered set, then decompress and
+  parse the reconstructed payload. Do not trust parent metadata without checking
+  the authenticated chunk envelopes.
+- Chunk documents contain ciphertext and structural routing metadata only. The
+  parent pointer is committed after all chunks are written; access rules must
+  keep chunk reads and writes within the same authenticated user or workspace
+  role as the parent sync document.
+- Read the current limits from `sync-chunked-payload.ts` and `sync-payload.ts`;
+  never copy old byte limits into new code. A partial chunk write must not
+  advance the row checkpoint or replace the parent pointer.
+- Keep legacy-key fallback only while old documents require it. Re-encrypt with
+  the module key after a successful decrypt, and preserve the source document
+  until the new parent and complete chunk set are verified.
+
 ### 3.3. Native Desktop Qt 6 & Rust FFI (`bridges/bridge-qt/`, `apps/desktop-qt/src/synapse_controller.*`)
 
 - **Engine**: Rust FFI C-ABI bridge linked directly with Qt 6 C++ backend.
@@ -232,6 +255,7 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 | `apps/web-react/src-tauri/src/cmd_vault/` | Rust Backend | Tauri vault command modules for vault CRUD and field-level flows |
 | `apps/web-react/src-tauri/src/cmd_notes.rs` | Rust Backend | Note content encryption/decryption on read/write |
 | `apps/web-react/src/services/crypto.ts` | Web Frontend | Web Crypto API wrappers |
+| `apps/web-react/src/services/sync/sync-chunked-payload.ts` | Web Frontend | Authenticated encrypted chunks for oversized Firebase sync rows |
 | `apps/web-react/src/services/storage/` | Web Frontend | IndexedDB/Firestore encrypted sync adapters |
 
 ---
