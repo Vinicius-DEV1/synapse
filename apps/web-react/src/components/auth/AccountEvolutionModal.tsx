@@ -27,12 +27,14 @@ import { useStore } from '../../store/useStore';
 interface AccountEvolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  moduleKeys: Record<string, CryptoKey> | null;
   masterKey: CryptoKey | null;
 }
 
 export const AccountEvolutionModal: React.FC<AccountEvolutionModalProps> = ({
   isOpen,
   onClose,
+  moduleKeys,
   masterKey,
 }) => {
   const { dispatch } = useStore();
@@ -61,8 +63,8 @@ export const AccountEvolutionModal: React.FC<AccountEvolutionModalProps> = ({
       return;
     }
 
-    if (!masterKey) {
-      setError('Chave mestra não encontrada. Desbloqueie o aplicativo primeiro.');
+    if (!moduleKeys || Object.keys(moduleKeys).length === 0 || !masterKey) {
+      setError('Chaves de criptografia não encontradas. Desbloqueie o aplicativo primeiro.');
       return;
     }
 
@@ -74,7 +76,7 @@ export const AccountEvolutionModal: React.FC<AccountEvolutionModalProps> = ({
         const user = await registerWithFirebase(email, password, displayName.trim() || undefined);
 
         setStep('Migrando seus dados para o seu novo Workspace Pessoal...');
-        const res = await migrateLegacyUserToWorkspace(user.uid, user.email || email, masterKey);
+        const res = await migrateLegacyUserToWorkspace(user.uid, user.email || email, moduleKeys, masterKey);
 
         if (res.errors.length > 0) {
           throw new Error(res.errors[0]);
@@ -96,15 +98,16 @@ export const AccountEvolutionModal: React.FC<AccountEvolutionModalProps> = ({
         const user = await signInWithFirebase(email, password);
 
         setStep('Vinculando workspace pessoal...');
-        const res = await migrateLegacyUserToWorkspace(user.uid, user.email || email, masterKey);
+        const res = await migrateLegacyUserToWorkspace(user.uid, user.email || email, moduleKeys, masterKey);
 
-        if (res.errors.length === 0) {
-          dispatch({
-            type: 'SET_ACTIVE_WORKSPACE',
-            workspaceId: res.workspaceId,
-            role: 'owner',
-          });
+        if (res.errors.length > 0) {
+          throw new Error(res.errors[0]);
         }
+        dispatch({
+          type: 'SET_ACTIVE_WORKSPACE',
+          workspaceId: res.workspaceId,
+          role: 'owner',
+        });
 
         setSuccess(true);
         setStep('Login realizado e workspace sincronizado!');

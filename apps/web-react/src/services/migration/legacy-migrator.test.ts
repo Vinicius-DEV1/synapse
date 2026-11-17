@@ -1,133 +1,132 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as firestore from 'firebase/firestore';
-import {
-  migrateLegacyUserToWorkspace,
-  createLocalBackupSnapshot,
-} from './legacy-migrator';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { migrateLegacyUserToWorkspace } from './legacy-migrator';
 import * as workspaceService from '../workspace/workspace-service';
+import * as syncPush from '../sync/sync-push';
 
-vi.mock('../firebase', () => ({
-  db: {},
+const firebase = vi.hoisted(() => ({
+  auth: { currentUser: { uid: 'user-1', isAnonymous: false } as { uid: string; isAnonymous: boolean } | null },
+  batch: { set: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) },
 }));
 
+vi.mock('../firebase', () => ({ auth: firebase.auth, db: {} }));
 vi.mock('../workspace/workspace-service', () => ({
   listUserWorkspaces: vi.fn(),
   createWorkspace: vi.fn(),
 }));
+vi.mock('../sync/sync-push', () => ({ pushAllToCloud: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn((_db, ...segments: string[]) => ({ path: segments.join('/') })),
+  writeBatch: vi.fn(() => firebase.batch),
+}));
 
-vi.mock('firebase/firestore', () => {
-  const batchMock = {
-    set: vi.fn(),
-    commit: vi.fn().mockResolvedValue(undefined),
-  };
-
-  return {
-    collection: vi.fn((_db, ...parts) => ({ path: parts.join('/') })),
-    doc: vi.fn((_db, ...parts) => ({ path: parts.join('/') })),
-    getDoc: vi.fn(),
-    getDocs: vi.fn(),
-    writeBatch: vi.fn(() => batchMock),
-  };
-});
-
-describe('legacy-migrator', () => {
-  const mockMasterKey = {} as CryptoKey;
+describe('migrateLegacyUserToWorkspace', () => {
+  const moduleKeys = { core: {} as CryptoKey, notes: {} as CryptoKey };
+  const masterKey = {} as CryptoKey;
+  const localTableReader = vi.fn().mockImplementation((table: string) =>
+    Promise.resolve(table === 'pages' ? [{ id: 'page-1' }] : [])
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
+    firebase.auth.currentUser = { uid: 'user-1', isAnonymous: false };
+    firebase.batch.commit.mockResolvedValue(undefined);
+    localTableReader.mockImplementation((table: string) =>
+      Promise.resolve(table === 'pages' ? [{ id: 'page-1' }] : [])
+    );
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: { sync: { getTable: localTableReader } },
+    });
+    vi.mocked(workspaceService.listUserWorkspaces).mockResolvedValue([
+      { workspaceId: 'workspace-1', name: 'Personal', isDefault: true, role: 'owner', icon: '📁', joinedAt: '' },
+    ]);
   });
 
-  describe('createLocalBackupSnapshot', () => {
-    it('aggregates local table records via window.api.sync.getTable', async () => {
-      (window as any).api = {
-        sync: {
-          getTable: vi.fn().mockImplementation((table: string) => {
-            if (table === 'pages') return Promise.resolve([{ id: 'p1', title: 'Note' }]);
-            return Promise.resolve([]);
-          }),
-        },
-      };
+  it('dry-runs local rows without writing to Firestore or the cloud sync service', async () => {
+    const result = await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey, { dryRun: true });
 
-      const snapshot = await createLocalBackupSnapshot();
-      expect(snapshot['pages']).toEqual([{ id: 'p1', title: 'Note' }]);
-      expect(snapshot['transactions']).toEqual([]);
+    expect(result).toMatchObject({
+      dryRun: true,
+      sourceDocCount: 1,
+      migratedDocCount: 0,
+      tablesProcessed: ['pages'],
+      workspaceId: 'workspace-1',
+      errors: [],
     });
+    expect(syncPush.pushAllToCloud).not.toHaveBeenCalled();
+    expect(firebase.batch.commit).not.toHaveBeenCalled();
   });
 
-  describe('migrateLegacyUserToWorkspace in dry-run mode', () => {
-    it('calculates counts without performing any writes', async () => {
-      vi.mocked(workspaceService.listUserWorkspaces).mockResolvedValueOnce([
-        { workspaceId: 'ws_personal_1', name: 'Meu Espaço', isDefault: true, role: 'owner', icon: '📁', joinedAt: '' },
-      ]);
+  it('pushes local rows only into the authenticated personal workspace', async () => {
+    const result = await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey);
 
-      vi.mocked(firestore.getDoc).mockResolvedValueOnce({
-        exists: () => true,
-        data: () => ({ encryptedData: 'val' }),
-      } as any);
-
-      vi.mocked(firestore.getDocs).mockResolvedValue({
-        empty: false,
-        docs: [
-          { id: 'doc1', data: () => ({ encryptedData: 'data1' }) },
-          { id: 'doc2', data: () => ({ encryptedData: 'data2' }) },
-        ],
-      } as any);
-
-      const summary = await migrateLegacyUserToWorkspace('u1', 'test@example.com', mockMasterKey, {
-        dryRun: true,
-      });
-
-      expect(summary.dryRun).toBe(true);
-      expect(summary.sourceDocCount).toBeGreaterThan(0);
-      expect(workspaceService.createWorkspace).not.toHaveBeenCalled();
-
-      const batch = firestore.writeBatch({} as any);
-      expect(batch.commit).not.toHaveBeenCalled();
-    });
+    expect(syncPush.pushAllToCloud).toHaveBeenCalledWith(moduleKeys, undefined, 'workspace-1', 'user-1');
+    expect(firebase.batch.commit).toHaveBeenCalledOnce();
+    expect(result.migratedDocCount).toBe(1);
+    expect(result.errors).toEqual([]);
   });
 
-  describe('migrateLegacyUserToWorkspace live mode', () => {
-    it('creates default workspace if missing and batches copy to target workspace', async () => {
-      vi.mocked(workspaceService.listUserWorkspaces).mockResolvedValueOnce([]);
-      vi.mocked(workspaceService.createWorkspace).mockResolvedValueOnce({
-        workspace: { id: 'ws_new_1', name: 'Meu Espaço', createdAt: '' } as any,
-        workspaceKey: {} as any,
-      });
+  it('does not read or copy documents from legacy root collections', async () => {
+    await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey);
 
-      vi.mocked(firestore.getDoc).mockResolvedValue({
-        exists: () => false,
-      } as any);
+    expect(localTableReader).toHaveBeenCalledWith('pages');
+    expect(syncPush.pushAllToCloud).toHaveBeenCalledWith(moduleKeys, undefined, 'workspace-1', 'user-1');
+  });
 
-      vi.mocked(firestore.getDocs).mockResolvedValueOnce({
-        empty: false,
-        docs: [{ id: 'p1', data: () => ({ encryptedData: 'enc' }) }],
-      } as any);
-
-      const summary = await migrateLegacyUserToWorkspace('u1', 'test@example.com', mockMasterKey, {
-        dryRun: false,
-      });
-
-      expect(summary.dryRun).toBe(false);
-      expect(workspaceService.createWorkspace).toHaveBeenCalledWith(
-        'u1',
-        'test@example.com',
-        expect.objectContaining({ name: 'Meu Espaço', type: 'personal' }),
-        mockMasterKey
-      );
-
-      const batch = firestore.writeBatch({} as any);
-      expect(batch.commit).toHaveBeenCalled();
+  it('wraps a newly created workspace key with the real master key', async () => {
+    vi.mocked(workspaceService.listUserWorkspaces).mockResolvedValue([]);
+    vi.mocked(workspaceService.createWorkspace).mockResolvedValue({
+      workspace: {
+        id: 'workspace-created',
+        name: 'Meu Espaço',
+        icon: '🏠',
+        type: 'personal',
+        ownerId: 'user-1',
+        isArchived: false,
+        memberCount: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      workspaceKey: {} as CryptoKey,
     });
 
-    it('handles and collects errors gracefully in summary.errors without crashing', async () => {
-      vi.mocked(workspaceService.listUserWorkspaces).mockRejectedValueOnce(
-        new Error('Network failure during workspace check')
-      );
+    const result = await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey);
 
-      const summary = await migrateLegacyUserToWorkspace('u1', 'test@example.com', mockMasterKey);
-      expect(summary.errors.length).toBeGreaterThan(0);
-      expect(summary.errors[0]).toContain('Network failure');
-      expect(summary.migratedDocCount).toBe(0);
-    });
+    expect(workspaceService.createWorkspace).toHaveBeenCalledWith(
+      'user-1',
+      'user@example.com',
+      { name: 'Meu Espaço', icon: '🏠', type: 'personal' },
+      masterKey
+    );
+    expect(syncPush.pushAllToCloud).toHaveBeenCalledWith(moduleKeys, undefined, 'workspace-created', 'user-1');
+    expect(result.errors).toEqual([]);
+  });
+
+  it('rejects a migration targeted at a different signed-in account', async () => {
+    const result = await migrateLegacyUserToWorkspace('another-user', 'user@example.com', moduleKeys, masterKey);
+
+    expect(result.errors[0]).toContain('does not match');
+    expect(syncPush.pushAllToCloud).not.toHaveBeenCalled();
+  });
+
+  it('rejects anonymous Firebase sessions', async () => {
+    firebase.auth.currentUser = { uid: 'user-1', isAnonymous: true };
+    const result = await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey);
+
+    expect(result.errors[0]).toContain('does not match');
+    expect(syncPush.pushAllToCloud).not.toHaveBeenCalled();
+  });
+
+  it('does not mark completion when local table inspection or cloud sync fails', async () => {
+    localTableReader.mockRejectedValueOnce(new Error('Local database unavailable'));
+    const failedRead = await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey);
+    expect(failedRead.errors[0]).toContain('Could not inspect local table');
+    expect(syncPush.pushAllToCloud).not.toHaveBeenCalled();
+
+    localTableReader.mockImplementation((table: string) => Promise.resolve(table === 'pages' ? [{ id: 'page-1' }] : []));
+    vi.mocked(syncPush.pushAllToCloud).mockRejectedValueOnce(new Error('Cloud write failed'));
+    const failedPush = await migrateLegacyUserToWorkspace('user-1', 'user@example.com', moduleKeys, masterKey);
+    expect(failedPush.errors[0]).toContain('Cloud write failed');
+    expect(firebase.batch.commit).not.toHaveBeenCalled();
   });
 });

@@ -1,23 +1,14 @@
 /**
  * @file legacy-migrator.ts
- * @description Safe, idempotent, reversible migration service for transitioning
- * legacy single-user flat collections into isolated user profiles and collaborative workspaces.
+ * @description Copies the authenticated installation's local data into its private workspace.
  */
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  writeBatch,
-  type DocumentData,
-} from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, writeBatch } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { MODULE_TABLES } from '../sync/sync-utils';
+import { pushAllToCloud } from '../sync/sync-push';
 import { createWorkspace, listUserWorkspaces } from '../workspace/workspace-service';
 import { getErrorMessage } from '../../utils/error';
-
-const MIGRATION_BATCH_SIZE = 400;
 
 export interface MigrationSummary {
   dryRun: boolean;
@@ -29,34 +20,12 @@ export interface MigrationSummary {
 }
 
 /**
- * Creates an exportable JSON snapshot of all local database records for pre-migration safety.
- */
-export async function createLocalBackupSnapshot(): Promise<Record<string, unknown[]>> {
-  const snapshot: Record<string, unknown[]> = {};
-  if (!window.api?.sync) {
-    return snapshot;
-  }
-
-  const allTables = Object.values(MODULE_TABLES).flat();
-  for (const table of allTables) {
-    try {
-      const rows = await window.api.sync.getTable(table);
-      snapshot[table] = rows || [];
-    } catch {
-      snapshot[table] = [];
-    }
-  }
-
-  return snapshot;
-}
-
-/**
- * Idempotently migrates all legacy flat collections to a personal workspace under the authenticated user.
- * Preserves legacy collections untouched for zero data loss and instantaneous rollback capability.
+ * Copies local rows into the authenticated user's workspace without reading or copying shared legacy roots.
  */
 export async function migrateLegacyUserToWorkspace(
   userId: string,
   userEmail: string,
+  moduleKeys: Record<string, CryptoKey>,
   masterKey: CryptoKey,
   options: { dryRun?: boolean } = {}
 ): Promise<MigrationSummary> {
@@ -71,18 +40,39 @@ export async function migrateLegacyUserToWorkspace(
   };
 
   try {
-    // 1. Locate or provision the user's default personal workspace
-    const existingWorkspaces = await listUserWorkspaces(userId);
-    let personalWs = existingWorkspaces.find((w) => w.isDefault);
+    if (!auth.currentUser || auth.currentUser.isAnonymous || auth.currentUser.uid !== userId) {
+      throw new Error('The signed-in Firebase account does not match the migration target.');
+    }
+    if (!window.api?.sync) {
+      throw new Error('Local sync API is unavailable; migration cannot read local data.');
+    }
 
-    if (!personalWs && !isDryRun) {
+    const localTables = Object.values(MODULE_TABLES).flat();
+    for (const table of localTables) {
+      try {
+        const rows = await window.api.sync.getTable<unknown>(table);
+        if (!Array.isArray(rows)) throw new Error(`Local table ${table} returned an invalid row list.`);
+        if (rows.length > 0) {
+          summary.sourceDocCount += rows.length;
+          summary.tablesProcessed.push(table);
+        }
+      } catch (tableError: unknown) {
+        summary.errors.push(`Could not inspect local table ${table}: ${getErrorMessage(tableError)}`);
+      }
+    }
+    if (summary.errors.length > 0) return summary;
+
+    const existingWorkspaces = await listUserWorkspaces(userId);
+    let personalWorkspace = existingWorkspaces.find((workspace) => workspace.isDefault);
+
+    if (!personalWorkspace && !isDryRun) {
       const created = await createWorkspace(
         userId,
         userEmail,
         { name: 'Meu Espaço', icon: '🏠', type: 'personal' },
         masterKey
       );
-      personalWs = {
+      personalWorkspace = {
         workspaceId: created.workspace.id,
         name: created.workspace.name,
         icon: created.workspace.icon,
@@ -92,100 +82,32 @@ export async function migrateLegacyUserToWorkspace(
       };
     }
 
-    const targetWsId = personalWs?.workspaceId || `ws_dryrun_${userId}`;
-    summary.workspaceId = targetWsId;
+    const targetWorkspaceId = personalWorkspace?.workspaceId || `ws_dryrun_${userId}`;
+    summary.workspaceId = targetWorkspaceId;
+    if (isDryRun) return summary;
 
-    // 2. Migrate User-Scoped Config (auth_validator, module_keys, security_lock)
-    const configDocs = ['auth_validator', 'module_keys', 'security_lock'];
-    for (const configName of configDocs) {
-      try {
-        const legacyRef = doc(db, 'config', configName);
-        const legacySnap = await getDoc(legacyRef);
+    await pushAllToCloud(moduleKeys, undefined, targetWorkspaceId, userId);
 
-        if (legacySnap.exists()) {
-          summary.sourceDocCount++;
-          if (!isDryRun) {
-            const userConfigRef = doc(db, 'users', userId, 'config', configName);
-            const batch = writeBatch(db);
-            batch.set(userConfigRef, legacySnap.data(), { merge: true });
-            await batch.commit();
-            summary.migratedDocCount++;
-          }
-        }
-      } catch (configErr) {
-        summary.errors.push(`Erro config/${configName}: ${getErrorMessage(configErr)}`);
-      }
-    }
-
-    // 3. Migrate All Module Tables to Scoped Workspace Subcollections
-    const allTables = Object.values(MODULE_TABLES).flat();
-    for (const table of allTables) {
-      try {
-        const legacyColRef = collection(db, table);
-        const legacySnap = await getDocs(legacyColRef);
-
-        if (legacySnap.empty) continue;
-
-        summary.tablesProcessed.push(table);
-        const docs = legacySnap.docs;
-        summary.sourceDocCount += docs.length;
-
-        if (isDryRun) {
-          summary.migratedDocCount += docs.length;
-          continue;
-        }
-
-        // Commit in safe chunks of 400 documents
-        for (let i = 0; i < docs.length; i += MIGRATION_BATCH_SIZE) {
-          const chunk = docs.slice(i, i + MIGRATION_BATCH_SIZE);
-          const batch = writeBatch(db);
-
-          for (const d of chunk) {
-            const targetDocRef = doc(db, 'workspaces', targetWsId, table, d.id);
-            const data = d.data() as DocumentData;
-            batch.set(
-              targetDocRef,
-              {
-                ...data,
-                workspaceId: targetWsId,
-                migratedFromLegacy: true,
-                migratedAt: new Date().toISOString(),
-              },
-              { merge: true }
-            );
-          }
-
-          await batch.commit();
-          summary.migratedDocCount += chunk.length;
-        }
-      } catch (tableErr) {
-        summary.errors.push(`Erro na tabela ${table}: ${getErrorMessage(tableErr)}`);
-      }
-    }
-
-    // 4. Mark migration receipt on user profile
-    if (!isDryRun) {
-      const userProfileRef = doc(db, 'users', userId);
-      const batch = writeBatch(db);
-      batch.set(
-        userProfileRef,
-        {
-          uid: userId,
-          email: userEmail,
-          defaultWorkspaceId: targetWsId,
-          migrationV2: {
-            status: 'completed',
-            completedAt: new Date().toISOString(),
-            sourceCount: summary.sourceDocCount,
-            migratedCount: summary.migratedDocCount,
-          },
+    const profileBatch = writeBatch(db);
+    profileBatch.set(
+      doc(db, 'users', userId),
+      {
+        uid: userId,
+        email: userEmail,
+        defaultWorkspaceId: targetWorkspaceId,
+        migrationV2: {
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          sourceCount: summary.sourceDocCount,
+          migratedCount: summary.sourceDocCount,
         },
-        { merge: true }
-      );
-      await batch.commit();
-    }
-  } catch (globalErr) {
-    summary.errors.push(`Falha global na migração: ${getErrorMessage(globalErr)}`);
+      },
+      { merge: true }
+    );
+    await profileBatch.commit();
+    summary.migratedDocCount = summary.sourceDocCount;
+  } catch (migrationError: unknown) {
+    summary.errors.push(`Local-to-workspace migration failed: ${getErrorMessage(migrationError)}`);
   }
 
   return summary;

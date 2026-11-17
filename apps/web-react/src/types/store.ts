@@ -61,6 +61,7 @@ export interface AppState {
   aiSidebarWidth: number;
   activeAiChatId: string | null;
   moduleKeys: Record<string, CryptoKey>;
+  masterKey: CryptoKey | null;
   isReadingModeFullScreen: boolean;
   navDirection: 'forward' | 'backward' | null;
   activeWorkspaceId: string | null;
@@ -101,6 +102,7 @@ export type Action =
   | { type: 'SET_AI_SIDEBAR_WIDTH'; width: number }
   | { type: 'OPEN_AI_CHAT'; chatId: string | null }
   | { type: 'SET_MODULE_KEYS'; keys: Record<string, CryptoKey> }
+  | { type: 'SET_MASTER_KEY'; key: CryptoKey | null }
   | { type: 'SET_NAV_DIRECTION'; direction: 'forward' | 'backward' | null }
   | { type: 'SET_READING_MODE_FULLSCREEN'; isFullScreen: boolean }
   | { type: 'CLEANUP_DELETED_ENTITY_TABS'; entityType: 'book' | 'video' | 'file' | 'page' | 'diagram'; id: string }

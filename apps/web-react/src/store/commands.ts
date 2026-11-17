@@ -271,7 +271,11 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'OPEN_AI_CHAT':
       return { ...state, showAiSidebar: true, activeAiChatId: action.chatId };
     case 'SET_MODULE_KEYS':
-      return { ...state, moduleKeys: action.keys };
+      return Object.keys(action.keys).length === 0
+        ? { ...state, moduleKeys: {}, masterKey: null, activeWorkspaceKey: null, activeWorkspaceRole: null }
+        : { ...state, moduleKeys: action.keys };
+    case 'SET_MASTER_KEY':
+      return { ...state, masterKey: action.key };
     case 'SET_READING_MODE_FULLSCREEN':
       return { ...state, isReadingModeFullScreen: action.isFullScreen };
     case 'CLEANUP_DELETED_ENTITY_TABS': {

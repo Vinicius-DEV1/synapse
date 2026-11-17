@@ -195,6 +195,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           setWebVaultKey((rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash);
           
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
+          dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
           }
@@ -258,6 +259,7 @@ export default function AuthScreen({ status, onSuccess }: AuthScreenProps) {
           setWebVaultKey((rawKeys && rawKeys.vault) ? rawKeys.vault : vaultKeyHash);
 
           dispatch({ type: 'SET_MODULE_KEYS', keys: moduleKeys });
+          dispatch({ type: 'SET_MASTER_KEY', key: masterKey });
           if (window.api._setMasterKey) {
             window.api._setMasterKey(masterKey);
           }

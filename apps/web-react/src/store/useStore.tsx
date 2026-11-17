@@ -75,6 +75,7 @@ const initialState: AppState = {
   aiSidebarWidth: saved.aiSidebarWidth || 340,
   activeAiChatId: null,
   moduleKeys: {},
+  masterKey: null,
   isReadingModeFullScreen: false,
   navDirection: null,
   activeWorkspaceId: null,

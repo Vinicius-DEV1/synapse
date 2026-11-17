@@ -361,7 +361,8 @@ export function GlobalModals({
       <AccountEvolutionModal
         isOpen={isAccountEvolutionOpen}
         onClose={() => setIsAccountEvolutionOpen(false)}
-        masterKey={state.moduleKeys?.notes || state.moduleKeys?.core || null}
+        moduleKeys={state.moduleKeys}
+        masterKey={state.masterKey}
       />
     </Suspense>
   );
