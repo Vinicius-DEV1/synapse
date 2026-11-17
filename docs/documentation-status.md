@@ -1,6 +1,6 @@
 # Documentation Ownership and Current Status
 
-**Last reviewed:** 2026-11-15
+**Last reviewed:** 2026-11-17
 
 This page identifies the current sources of truth. Older reports and migration plans may contain estimates, test totals, file paths, or completion checkboxes that have not been revalidated. Do not use those records as proof of current implementation status.
 
@@ -12,6 +12,7 @@ This page identifies the current sources of truth. Older reports and migration p
 | Cross-app module inventory | [Module structure](./architecture/module-structure.md) | Canonical module IDs, source locations, and current route presence per client |
 | Qt desktop feature parity | [Native desktop parity matrix](./native-desktop-parity.md) | Verified Qt coverage and remaining React parity gaps |
 | Synchronization engine | [Sync Engine Architecture](./architecture/sync-engine.md) | Cloud synchronization, E2EE batch encryption, and table sync inventory |
+| Firebase integrity audit | [Firebase sync integrity audit](./audits/firebase-sync-integrity-2026-11-17/README.md) | Current local schema, Firestore ID reconciliation, security findings, and resolution checklist |
 | Qt vault and encryption coverage | [Native encryption audit](./security/native-encryption-audit.md) | Implemented protection, test evidence, and open encryption risks |
 | Build and setup commands | [Setup and build guide](./guides/setup-and-build.md) | Current build commands and prerequisites |
 | System architecture | [Architecture overview](./architecture/overview.md) | Runtime responsibilities and platform boundaries |
@@ -22,7 +23,7 @@ This page identifies the current sources of truth. Older reports and migration p
 
 - The repository contains React Web/Tauri, native Qt desktop, native Kotlin/Compose Android, and an Expo/WebView Android shell. The root npm workspace delegates to `apps/web-react/`; other app targets keep their own build systems.
 - Qt desktop feature parity: The React client remains the single source of truth for UX and feature parity. The habits feature is strictly an editor extension (`/habito` slash command and interactive widget) in both React and Qt, rather than a standalone top-level route.
-- Cloud Synchronization: 100% of user data tables across Web and Desktop Tauri are synchronized to Firebase Firestore with zero omitted tables (including `habits`, `habit_logs`, `youtube_summaries`, `notifications`, `shared_page_keys`, `culture_disliked_items`, `culture_ignored_items`). Soft-deletion tombstones (`deleted_at`) ensure deletion propagation across devices.
+- Cloud Synchronization: **Unverified / incomplete.** The active local database was integrity-checked and its three missing sync tables were created. All 50 client sync table names were compared across Web, Firestore rules, Rust, IndexedDB, and active SQLite; optional timestamp-column differences are explicitly handled. Local code scopes cloud rows by Firebase user or workspace, rejects unscoped sync, and replaces the unsafe root-copy migration. Replacement Firestore rules pass local Emulator Suite tests but are not deployed. The old root-only records and decrypted field parity still require an authenticated reconciliation. See the [audit and resolution checklist](./audits/firebase-sync-integrity-2026-11-17/README.md).
 - Native vault protection is partial. The Qt setup now migrates referenced media inside managed directories and can recover an interrupted media migration. Sensitive business-data fields in several SQLite modules remain plaintext, and the security audit must remain open.
 - The unified architecture establishes `core/synapse-core/` as the Single Source of Truth for domain models, SQLite repositories, and business calculations across all native clients, eliminating duplicated raw SQL queries in `desktop-qt` and `web-react/src-tauri`.
 

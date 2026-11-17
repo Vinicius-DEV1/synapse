@@ -2,6 +2,8 @@
 
 > **Scope:** This document preserves React/Web sync and autosave design notes, including historical performance claims. It does not certify Qt or Android sync parity, zero-lock behavior, repository-wide E2EE, or that every implementation detail still matches the current code. Verify paths and contracts before changing the sync system.
 
+> **Verification status (2026-11-17):** The local client now requires an authenticated Firebase UID or workspace and uses scoped paths. Replacement rules pass local Firebase Emulator Suite tests, but neither the client nor rules have been deployed. The [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md) still tracks old root-document reconciliation, decrypted parity, and production verification. Do not treat the table inventory below as a successful-sync guarantee.
+
 ## 1. Architectural Overview
 
 The React/Web client is designed around offline-first persistence and asynchronous synchronization. Actual behavior and encryption coverage depend on the specific adapter and entity:
@@ -140,7 +142,7 @@ All timestamp fields (`created_at`, `updated_at`, `deleted_at`) must follow RFC3
 - Prevents 3-hour timezone shifts when comparing timestamps between local databases and cloud storage.
 
 ### 4.2. Per-Table Last-Sync Tracking & Clock Skew Leeway
-- Timestamps are stored per table (`lastPush_${table}`, `lastPull_${table}`) to prevent edits in one module from artificially suppressing synchronization in other modules.
+- Timestamps are stored per account/workspace and table to prevent one identity's checkpoint from skipping data in another scope or module.
 - A 5,000ms (5-second) clock skew buffer is subtracted from the cutoff timestamp when querying rows, ensuring no record is missed due to minor device clock variations.
 
 ### 4.3. Cross-Platform Timestamp Normalization & Resilient Device Tracking
@@ -168,18 +170,17 @@ Differences in date formatting between SQLite native strings (`YYYY-MM-DD HH:MM:
      }
      ```
    - Cloud operators and database administrators cannot read note titles, content, transaction amounts, or vault credentials.
-3. **Multi-Tenant Workspace Scoped Synchronization**:
-   - When a user operates within a collaborative workspace (`activeWorkspaceId`), the sync engine routes mutations to scoped paths:
+3. **Account and Workspace Scoped Synchronization**:
+   - Sync requires a non-anonymous Firebase UID. Local-only app sessions do not send data to Firestore.
+   - When a workspace is active, the sync engine uses member-controlled paths:
      ```ts
-     // Push & Pull Scoping
      const targetCollection = workspaceId
        ? collection(db, 'workspaces', workspaceId, table)
-       : collection(db, table);
+       : collection(db, 'users', userId, 'sync', 'data', table);
      ```
-   - Real-time signaling binds dynamically to the active workspace:
-     - Root singleton signal: `config/sync_signal` (single-user legacy).
-     - Workspace signal: `workspaces/{workspaceId}/config/sync_signal` (collaborative multi-tenant).
-   - Switching workspaces in the UI unbinds the previous listener, resets local caches, and subscribes to the new workspace signal instantly with zero data cross-talk.
+   - Without a workspace, records live in the authenticated account's private subcollection. User config documents hold the account's sync signal and manifest; workspace config holds the workspace equivalents.
+   - Checkpoints and deletion backfill flags are scoped by the same UID/workspace key. The first sync into a new scope performs a full table scan.
+   - The local account-evolution migration copies local records into the authenticated user's personal workspace. It never reads unscoped root collections. Historical root documents remain unreconciled until an ownership-aware process is run.
 
 ---
 
@@ -202,9 +203,9 @@ During file uploads, encrypted video streaming, and attachment synchronization, 
 
 ---
 
-## 8. Synchronized Table Inventory & Tombstone Propagation
+## 8. Intended Sync Table Inventory & Tombstone Propagation
 
-To guarantee zero data loss and prevent ghost or zombie records across devices, 100% of user data tables across Web (IndexedDB) and Desktop (Tauri SQLite) participate in cloud synchronization:
+The table list below is the current client-side sync allowlist. It documents intended participation, not proof of complete cloud persistence, field parity, or account ownership. The audit checklist tracks reconciliation separately.
 
 | Module | Synchronized Tables | Primary Key | Soft Delete Tombstone |
 | --- | --- | --- | --- |
