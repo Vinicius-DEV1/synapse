@@ -9,6 +9,7 @@ import {
 import { pullAllFromCloud, listenForCloudSyncSignal } from './sync-pull';
 import { importHexKey, encryptText, decryptText } from '../crypto';
 import { uint8ArrayToBase64 } from '../../utils/binary';
+import { prepareEncryptedSyncChunks } from './sync-chunked-payload';
 import * as firestore from 'firebase/firestore';
 
 const firestoreMockState = getFirestoreMockState();
@@ -66,12 +67,11 @@ describe('sync-pull service', () => {
     await pullAllFromCloud({ core: cryptoKey, notes: notesKey }, undefined, 'test-user');
 
     expect(firestore.deleteDoc).not.toHaveBeenCalled();
-    expect(firestore.setDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/test-user/sync/data/pages/legacy-page-1' }),
-      expect.objectContaining({ isCompressed: false }),
-      { merge: true }
+    const rewrittenWrite = firestoreMockState.batchSetCalls.find(
+      (call) => call.reference.path === 'users/test-user/sync/data/pages/legacy-page-1'
     );
-    const rewritten = firestoreMockState.setDocCalls[0]?.data.encryptedData;
+    expect(rewrittenWrite?.data).toEqual(expect.objectContaining({ isCompressed: false }));
+    const rewritten = rewrittenWrite?.data.encryptedData;
     expect(typeof rewritten).toBe('string');
     if (typeof rewritten !== 'string') throw new Error('Expected encrypted legacy payload.');
     expect(JSON.parse(await decryptText(rewritten, notesKey))).toEqual(legacyData);
@@ -189,4 +189,59 @@ describe('sync-pull service', () => {
         content: '<p>Compressed body content</p>',
       })
     );
-  });});
+  });
+
+  it('reassembles encrypted chunk documents before applying a large sync row', async () => {
+    const randomBytes = new Uint8Array(200_000);
+    for (let offset = 0; offset < randomBytes.length; offset += 65_536) {
+      crypto.getRandomValues(randomBytes.subarray(offset, Math.min(offset + 65_536, randomBytes.length)));
+    }
+    const textContent = uint8ArrayToBase64(randomBytes);
+    const json = JSON.stringify({ session_id: 'session-1', role: 'assistant', text_content: textContent });
+    const body = new Response(json).body;
+    if (!body) throw new Error('Expected a compression stream body.');
+    const compressed = await new Response(body.pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+    const compressedBase64 = uint8ArrayToBase64(new Uint8Array(compressed));
+    const documentId = 'large-message-remote';
+    const chunked = await prepareEncryptedSyncChunks(compressedBase64, cryptoKey, 'tutor_messages', documentId);
+    const documentPath = `users/test-user/sync/data/tutor_messages/${documentId}`;
+
+    setFirestoreDocuments('tutor_messages', [{
+      id: documentId,
+      ref: { path: documentPath },
+      data: () => ({
+        isChunked: true,
+        isCompressed: true,
+        chunkSetId: chunked.chunkSetId,
+        chunkCount: chunked.chunks.length,
+        updatedAt: '2026-08-25T18:00:00.000Z',
+        createdAt: '2026-08-25T10:00:00.000Z',
+      }),
+    }]);
+    firestoreMockState.documentsByCollection.set(
+      `${documentPath}/chunks`,
+      chunked.chunks.map((chunk) => ({
+        id: chunk.id,
+        data: () => ({
+          chunkSetId: chunk.chunkSetId,
+          index: chunk.index,
+          version: 1,
+          encryptedChunk: chunk.encryptedChunk,
+        }),
+      }))
+    );
+
+    await pullAllFromCloud({ core: cryptoKey }, undefined, 'test-user');
+
+    expect(chunked.chunks.length).toBeGreaterThan(1);
+    expect(mockApi.sync.upsertRow).toHaveBeenCalledWith(
+      'tutor_messages',
+      expect.objectContaining({
+        id: documentId,
+        session_id: 'session-1',
+        role: 'assistant',
+        text_content: textContent,
+      })
+    );
+  });
+});

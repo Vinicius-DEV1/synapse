@@ -87,6 +87,10 @@ service cloud.firestore {
 
       match /sync/data/{table}/{documentId} {
         allow read, write: if isUser(userId) && syncTableName(table);
+
+        match /chunks/{chunkId} {
+          allow read, write: if isUser(userId) && syncTableName(table);
+        }
       }
     }
 
@@ -152,6 +156,11 @@ service cloud.firestore {
       match /{collectionName}/{documentId} {
         allow read: if syncTableName(collectionName) && isWorkspaceMember(workspaceId);
         allow write: if syncTableName(collectionName) && isEditorOrAbove(workspaceId);
+
+        match /chunks/{chunkId} {
+          allow read: if syncTableName(collectionName) && isWorkspaceMember(workspaceId);
+          allow write: if syncTableName(collectionName) && isEditorOrAbove(workspaceId);
+        }
       }
     }
 

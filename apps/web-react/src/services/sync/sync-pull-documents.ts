@@ -1,11 +1,11 @@
-import { setDoc, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { decodeSyncDocumentId, parseSyncRows, type SyncRow } from './sync-utils';
 import { logFirebaseOp } from './sync-monitor';
 import { decryptCloudBatch } from './sync-decrypt-batch';
 import { prepareRowForUpsert, upsertRowWithoutDroppingFields } from './sync-pull-merge';
 import { prepareRowsForPush } from './sync-payload';
 import { getErrorMessage } from '../../utils/error';
-import { getSyncDocument } from './sync-cloud-paths';
+import { commitPreparedSyncDocuments } from './sync-push-documents';
 
 const DECRYPT_BATCH_SIZE = 20;
 
@@ -40,7 +40,7 @@ export async function processCloudDocuments(
       table
     );
     const freshRowsById = new Map(freshRows.map((row) => [row.id, row]));
-    const decryptedResults = await decryptCloudBatch(batch, key, moduleKeys);
+    const decryptedResults = await decryptCloudBatch(batch, key, moduleKeys, table);
 
     for (const decrypted of decryptedResults) {
       const cloudDocument = decrypted.docSnap;
@@ -85,18 +85,12 @@ export async function processCloudDocuments(
           }
 
           const preparedDocument = prepared[0];
-          const cloudDocumentRef = getSyncDocument(table, cloudDocument.id, { workspaceId, userId });
-          await setDoc(cloudDocumentRef, {
-            encryptedData: preparedDocument.encryptedData,
-            isCompressed: preparedDocument.isCompressed || false,
-            updatedAt: preparedDocument.updatedAt,
-            createdAt: preparedDocument.createdAt,
-            ...(preparedDocument.deletedAt ? { deletedAt: preparedDocument.deletedAt } : {}),
-            ...(preparedDocument.idEncodingVersion
-              ? { idEncodingVersion: preparedDocument.idEncodingVersion }
-              : {}),
-          }, { merge: true });
-          logFirebaseOp('write', 1);
+          const writeResult = await commitPreparedSyncDocuments(
+            [preparedDocument],
+            table,
+            { workspaceId, userId }
+          );
+          logFirebaseOp('write', writeResult.writeCount);
           result.pulledDocsCount++;
         } catch (rekeyError: unknown) {
           const message = `PULL erro ao migrar criptografia do doc ${rowId} (${table}): ${getErrorMessage(rekeyError)}`;

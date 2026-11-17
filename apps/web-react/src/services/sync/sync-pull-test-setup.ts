@@ -4,6 +4,7 @@ import type { SyncRow } from './sync-utils';
 export interface MockCloudDocument {
   id: string;
   data: () => Record<string, unknown>;
+  ref?: { path: string };
 }
 
 interface MockDocumentReference {
@@ -19,6 +20,11 @@ const mockFirestoreState = vi.hoisted(() => {
     data: Record<string, unknown>;
     options?: unknown;
   }> = [];
+  const batchSetCalls: Array<{
+    reference: MockDocumentReference;
+    data: Record<string, unknown>;
+    options?: unknown;
+  }> = [];
 
   const getCollectionPath = (value: unknown): string | undefined => {
     if (typeof value !== 'object' || value === null) return undefined;
@@ -27,7 +33,7 @@ const mockFirestoreState = vi.hoisted(() => {
     return undefined;
   };
 
-  return { documentsByCollection, setDocCalls, getCollectionPath };
+  return { documentsByCollection, setDocCalls, batchSetCalls, getCollectionPath };
 });
 
 export function getFirestoreMockState(): typeof mockFirestoreState {
@@ -63,6 +69,7 @@ export function resetSyncPullMocks(): void {
   vi.clearAllMocks();
   mockFirestoreState.documentsByCollection.clear();
   mockFirestoreState.setDocCalls.length = 0;
+  mockFirestoreState.batchSetCalls.length = 0;
 }
 
 vi.mock('firebase/firestore', () => ({
@@ -71,7 +78,13 @@ vi.mock('firebase/firestore', () => ({
     table: segments.at(-2) || '',
     id: segments.at(-1) || '',
   })),
-  collection: vi.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join('/'), table: segments.at(-1) || '' })),
+  collection: vi.fn((first: unknown, ...segments: string[]) => {
+    const parentPath = typeof first === 'object' && first !== null && 'path' in first && typeof first.path === 'string'
+      ? first.path
+      : '';
+    const path = [parentPath, ...segments].filter(Boolean).join('/');
+    return { path, table: segments.at(-1) || '' };
+  }),
   query: vi.fn((...args: unknown[]) => ({ type: 'query', args })),
   where: vi.fn((field: string, op: string, val: unknown) => ({ field, op, val })),
   orderBy: vi.fn((field: string) => ({ field })),
@@ -91,6 +104,14 @@ vi.mock('firebase/firestore', () => ({
   ) => {
     mockFirestoreState.setDocCalls.push({ reference, data, options });
   }),
+  deleteField: vi.fn(() => 'MOCK_DELETE_FIELD'),
+  writeBatch: vi.fn(() => ({
+    set: (reference: MockDocumentReference, data: Record<string, unknown>, options?: unknown) => {
+      mockFirestoreState.batchSetCalls.push({ reference, data, options });
+    },
+    delete: vi.fn(),
+    commit: vi.fn().mockResolvedValue(undefined),
+  })),
   onSnapshot: vi.fn((
     _docRef: unknown,
     callback: (snapshot: { exists: () => boolean; data: () => Record<string, unknown> }) => void

@@ -1,6 +1,7 @@
 import { encryptText } from '../crypto';
 import { uint8ArrayToBase64 } from '../../utils/binary';
 import { encodeSyncDocumentId, parseDateSafe, type SyncRow } from './sync-utils';
+import { prepareEncryptedSyncChunks, type PreparedSyncChunk } from './sync-chunked-payload';
 
 /** Individual Firestore documents are kept below the platform's 1 MiB limit. */
 const MAX_PAYLOAD_BYTES = 600_000;
@@ -8,8 +9,12 @@ const MAX_ENCRYPTED_PAYLOAD_CHARACTERS = 900_000;
 
 export interface PreparedDoc {
   id: string;
-  encryptedData: string;
+  encryptedData?: string;
   isCompressed?: boolean;
+  isChunked?: boolean;
+  chunkSetId?: string;
+  chunkCount?: number;
+  chunks?: PreparedSyncChunk[];
   updatedAt: string | null;
   createdAt: string | null;
   deletedAt?: string;
@@ -50,6 +55,8 @@ export async function prepareRowsForPush(
     const jsonString = JSON.stringify(sensitiveData);
     let payloadString = jsonString;
     let isCompressed = false;
+    let chunkSetId: string | undefined;
+    let chunks: PreparedSyncChunk[] | undefined;
 
     if (jsonString.length > MAX_PAYLOAD_BYTES) {
       try {
@@ -63,22 +70,22 @@ export async function prepareRowsForPush(
           payloadString = base64;
           isCompressed = true;
         } else {
-          skippedLarge.push(
-            `[PUSH SKIP] Doc ${encodedId.id} (${table}) exceeds the Firestore document limit after compression.`
-          );
-          return null;
+          const chunkedPayload = await prepareEncryptedSyncChunks(base64, key, table, encodedId.id);
+          chunkSetId = chunkedPayload.chunkSetId;
+          chunks = chunkedPayload.chunks;
+          isCompressed = true;
         }
       } catch (error: unknown) {
-        console.warn(`[Sync Compress] Error compressing doc ${encodedId.id}`, error);
+        console.warn(`[Sync Compress] Error preparing doc ${encodedId.id}`, error);
         skippedLarge.push(
-          `[PUSH SKIP] Doc ${encodedId.id} (${table}) exceeded the payload limit and compression failed.`
+          `[PUSH SKIP] Doc ${encodedId.id} (${table}) could not be compressed or split into safe encrypted chunks.`
         );
         return null;
       }
     }
 
-    const encryptedData = await encryptText(payloadString, key);
-    if (encryptedData.length > MAX_ENCRYPTED_PAYLOAD_CHARACTERS) {
+    const encryptedData = chunks ? undefined : await encryptText(payloadString, key);
+    if (encryptedData && encryptedData.length > MAX_ENCRYPTED_PAYLOAD_CHARACTERS) {
       skippedLarge.push(
         `[PUSH SKIP] Doc ${encodedId.id} (${table}) exceeds the safe encrypted payload size.`
       );
@@ -93,8 +100,9 @@ export async function prepareRowsForPush(
 
     return {
       id: encodedId.id,
-      encryptedData,
+      ...(encryptedData ? { encryptedData } : {}),
       isCompressed,
+      ...(chunks ? { isChunked: true, chunkSetId, chunkCount: chunks.length, chunks } : {}),
       updatedAt: new Date(fallbackTime).toISOString(),
       createdAt: createdTime > 0 ? new Date(createdTime).toISOString() : null,
       ...(safeDeletedAt ? { deletedAt: safeDeletedAt } : {}),

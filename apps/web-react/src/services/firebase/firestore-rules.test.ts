@@ -40,6 +40,7 @@ describe('Firestore security rules', () => {
 
   it('isolates private account sync data and denies flat root collections', async () => {
     await seedDocument('users/alice/sync/data/pages/page-1', { encryptedData: 'alice-data' });
+    await seedDocument('users/alice/sync/data/pages/page-1/chunks/chunk-1', { encryptedChunk: 'alice-chunk' });
     await seedDocument('pages/legacy-page', { encryptedData: 'unscoped-data' });
 
     const aliceDb = testEnvironment.authenticatedContext('alice', {
@@ -53,11 +54,15 @@ describe('Firestore security rules', () => {
     }).firestore();
 
     await assertSucceeds(getDoc(doc(aliceDb, 'users/alice/sync/data/pages/page-1')));
+    await assertSucceeds(getDoc(doc(aliceDb, 'users/alice/sync/data/pages/page-1/chunks/chunk-1')));
     await assertFails(getDoc(doc(bobDb, 'users/alice/sync/data/pages/page-1')));
+    await assertFails(getDoc(doc(bobDb, 'users/alice/sync/data/pages/page-1/chunks/chunk-1')));
     await assertFails(getDocs(collection(bobDb, 'users/alice/sync/data/pages')));
     await assertFails(setDoc(doc(bobDb, 'users/alice/sync/data/pages/page-2'), { encryptedData: 'x' }));
+    await assertFails(setDoc(doc(bobDb, 'users/alice/sync/data/pages/page-1/chunks/chunk-2'), { encryptedChunk: 'x' }));
     await assertFails(deleteDoc(doc(bobDb, 'users/alice/sync/data/pages/page-1')));
     await assertFails(getDoc(doc(anonymousDb, 'users/alice/sync/data/pages/page-1')));
+    await assertFails(getDoc(doc(anonymousDb, 'users/alice/sync/data/pages/page-1/chunks/chunk-1')));
     await assertFails(getDoc(doc(aliceDb, 'pages/legacy-page')));
     await assertFails(setDoc(doc(anonymousDb, 'pages/injected'), { encryptedData: 'x' }));
   });
@@ -69,6 +74,7 @@ describe('Firestore security rules', () => {
     await seedDocument('workspaces/team-1/members/editor', { role: 'editor' });
     await seedDocument('workspaces/team-1/members/viewer', { role: 'viewer' });
     await seedDocument('workspaces/team-1/pages/page-1', { encryptedData: 'team-data' });
+    await seedDocument('workspaces/team-1/pages/page-1/chunks/chunk-1', { encryptedChunk: 'team-chunk' });
 
     const editorDb = testEnvironment.authenticatedContext('editor', {
       firebase: { sign_in_provider: 'password' },
@@ -87,12 +93,17 @@ describe('Firestore security rules', () => {
     }).firestore();
 
     await assertSucceeds(getDoc(doc(editorDb, 'workspaces/team-1/pages/page-1')));
+    await assertSucceeds(getDoc(doc(editorDb, 'workspaces/team-1/pages/page-1/chunks/chunk-1')));
+    await assertSucceeds(setDoc(doc(editorDb, 'workspaces/team-1/pages/page-1/chunks/chunk-2'), { encryptedChunk: 'new' }));
     await assertSucceeds(setDoc(doc(editorDb, 'workspaces/team-1/pages/page-2'), { encryptedData: 'new' }));
     await assertSucceeds(setDoc(doc(adminDb, 'workspaces/team-1/pages/page-3'), { encryptedData: 'admin' }));
     await assertSucceeds(setDoc(doc(ownerDb, 'workspaces/team-1/pages/page-4'), { encryptedData: 'owner' }));
     await assertSucceeds(getDoc(doc(viewerDb, 'workspaces/team-1/pages/page-1')));
+    await assertSucceeds(getDoc(doc(viewerDb, 'workspaces/team-1/pages/page-1/chunks/chunk-1')));
+    await assertFails(setDoc(doc(viewerDb, 'workspaces/team-1/pages/page-1/chunks/chunk-2'), { encryptedChunk: 'new' }));
     await assertFails(setDoc(doc(viewerDb, 'workspaces/team-1/pages/page-2'), { encryptedData: 'new' }));
     await assertFails(getDoc(doc(outsiderDb, 'workspaces/team-1/pages/page-1')));
+    await assertFails(getDoc(doc(outsiderDb, 'workspaces/team-1/pages/page-1/chunks/chunk-1')));
     await assertFails(setDoc(doc(outsiderDb, 'workspaces/team-1/members/outsider'), { role: 'editor' }));
   });
 

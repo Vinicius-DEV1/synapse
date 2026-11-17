@@ -1,5 +1,4 @@
-import { db } from '../firebase';
-import { setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   MODULE_TABLES,
   getLastSyncTime,
@@ -12,7 +11,8 @@ import {
   type SyncRow,
 } from './sync-utils';
 import { prepareRowsForPush } from './sync-payload';
-import { getSyncConfigDocument, getSyncDocument, getSyncScopeKey } from './sync-cloud-paths';
+import { commitPreparedSyncDocuments } from './sync-push-documents';
+import { getSyncConfigDocument, getSyncScopeKey } from './sync-cloud-paths';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 import { getErrorMessage } from '../../utils/error';
 
@@ -126,33 +126,20 @@ export async function pushAllToCloud(
 
         if (prepared.length === 0) continue;
 
-        // #1: WriteBatch - send in chunks of BATCH_SIZE with atomic write
+        // Keep logical row batches bounded while the document writer handles large payload parts.
         for (let i = 0; i < prepared.length; i += BATCH_SIZE) {
           const chunk = prepared.slice(i, i + BATCH_SIZE);
-          const batch = writeBatch(db);
-          let chunkBytes = 0;
 
           for (const item of chunk) {
             if (typeof window !== 'undefined' && window.api?.log) {
               window.api.log(`[PUSH DOING] Doc ${item.id} (${item.table}). Batching to Firebase...`);
             }
-            const docRef = getSyncDocument(table, item.id, scope);
-            batch.set(docRef, {
-              encryptedData: item.encryptedData,
-              isCompressed: item.isCompressed || false,
-              updatedAt: item.updatedAt,
-              createdAt: item.createdAt,
-              ...(item.deletedAt ? { deletedAt: item.deletedAt } : {}),
-              ...(item.idEncodingVersion ? { idEncodingVersion: item.idEncodingVersion } : {}),
-            }, { merge: true });
-            
-            chunkBytes += item.id.length + item.encryptedData.length + 150;
           }
 
           try {
-            await batch.commit();
-            logFirebaseOp('write', chunk.length);
-            logFirebaseTraffic(0, chunkBytes);
+            const writeResult = await commitPreparedSyncDocuments(chunk, table, scope);
+            logFirebaseOp('write', writeResult.writeCount);
+            logFirebaseTraffic(0, writeResult.trafficBytes);
             // #6: Advance highestSuccessTime ONLY after successful commit
             for (const item of chunk) {
               pushedCount++;

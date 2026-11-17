@@ -1,6 +1,8 @@
 import { decryptText } from '../crypto';
 import { base64ToArrayBuffer } from '../../utils/binary';
+import { collection, getDocs, type DocumentData, type DocumentReference } from 'firebase/firestore';
 import { isRecord } from './sync-utils';
+import { decryptEncryptedSyncChunks, MAX_SYNC_CHUNKS_PER_DOCUMENT } from './sync-chunked-payload';
 
 export interface CloudData {
   encryptedData?: string;
@@ -8,13 +10,16 @@ export interface CloudData {
   createdAt?: unknown;
   updatedAt?: unknown;
   idEncodingVersion?: unknown;
+  isChunked?: boolean;
+  chunkSetId?: string;
+  chunkCount?: number;
   [key: string]: unknown;
 }
 
 export interface FirestoreDocLike {
   id: string;
   data: () => Record<string, unknown> | undefined;
-  ref?: unknown;
+  ref?: DocumentReference<DocumentData>;
 }
 
 export interface DecryptedResult {
@@ -33,13 +38,28 @@ export function parseCloudData(value: unknown): CloudData {
   if (value.isCompressed !== undefined && typeof value.isCompressed !== 'boolean') {
     throw new Error('Invalid isCompressed field in Firestore sync document.');
   }
+  if (value.isChunked !== undefined && typeof value.isChunked !== 'boolean') {
+    throw new Error('Invalid isChunked field in Firestore sync document.');
+  }
+  if (value.isChunked === true && (
+    typeof value.chunkSetId !== 'string' ||
+    value.chunkSetId.length === 0 ||
+    typeof value.chunkCount !== 'number' ||
+    !Number.isInteger(value.chunkCount) ||
+    value.chunkCount < 1 ||
+    value.chunkCount > MAX_SYNC_CHUNKS_PER_DOCUMENT ||
+    value.isCompressed !== true
+  )) {
+    throw new Error('Invalid chunked sync metadata in Firestore document.');
+  }
   return value;
 }
 
 export async function decryptCloudDoc(
   docSnap: FirestoreDocLike,
   key: CryptoKey,
-  moduleKeys: Record<string, CryptoKey>
+  moduleKeys: Record<string, CryptoKey>,
+  table?: string
 ): Promise<DecryptedResult> {
   const rawData = docSnap.data();
   let cloudData: CloudData = {};
@@ -47,21 +67,42 @@ export async function decryptCloudDoc(
     cloudData = parseCloudData(rawData ?? {});
     let decryptedJsonOrB64: string;
     let isLegacy = false;
-    try {
-      if (!cloudData.encryptedData) {
-        throw new Error('Missing encryptedData');
-      }
-      decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
-    } catch (e) {
-      if (key !== moduleKeys['core'] && moduleKeys['core'] && cloudData.encryptedData) {
-        try {
-          decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, moduleKeys['core']);
-          isLegacy = true; // Decrypt success with core key instead of module key
-        } catch {
+    if (cloudData.isChunked) {
+      if (!table || !docSnap.ref) throw new Error('Chunked sync document has no table or Firestore reference.');
+      const chunkSnapshot = await getDocs(collection(docSnap.ref, 'chunks'));
+      const decryptedChunks = await decryptEncryptedSyncChunks(
+        chunkSnapshot.docs.map((document) => ({
+          id: document.id,
+          data: () => document.data(),
+        })),
+        {
+          table,
+          documentId: docSnap.id,
+          chunkSetId: cloudData.chunkSetId || '',
+          chunkCount: cloudData.chunkCount || 0,
+        },
+        key,
+        moduleKeys
+      );
+      decryptedJsonOrB64 = decryptedChunks.payload;
+      isLegacy = decryptedChunks.isLegacy;
+    } else {
+      try {
+        if (!cloudData.encryptedData) {
+          throw new Error('Missing encryptedData');
+        }
+        decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, key);
+      } catch (e) {
+        if (key !== moduleKeys['core'] && moduleKeys['core'] && cloudData.encryptedData) {
+          try {
+            decryptedJsonOrB64 = await decryptText(cloudData.encryptedData, moduleKeys['core']);
+            isLegacy = true; // Decrypt success with core key instead of module key
+          } catch {
+            throw e;
+          }
+        } else {
           throw e;
         }
-      } else {
-        throw e;
       }
     }
 
@@ -91,7 +132,8 @@ export async function decryptCloudDoc(
 export async function decryptCloudBatch(
   batch: FirestoreDocLike[],
   key: CryptoKey,
-  moduleKeys: Record<string, CryptoKey>
+  moduleKeys: Record<string, CryptoKey>,
+  table?: string
 ): Promise<DecryptedResult[]> {
-  return Promise.all(batch.map((docSnap) => decryptCloudDoc(docSnap, key, moduleKeys)));
+  return Promise.all(batch.map((docSnap) => decryptCloudDoc(docSnap, key, moduleKeys, table)));
 }

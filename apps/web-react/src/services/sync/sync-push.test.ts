@@ -5,6 +5,7 @@ import * as syncMonitor from './sync-monitor';
 import * as syncUtils from './sync-utils';
 import * as firestore from 'firebase/firestore';
 import type { SyncRow } from './sync-utils';
+import { uint8ArrayToBase64 } from '../../utils/binary';
 
 interface MockDocumentReference {
   path: string;
@@ -19,6 +20,7 @@ const firestoreMockState = vi.hoisted(() => {
       _data: Record<string, unknown>,
       _options?: unknown
     ) => undefined),
+    delete: vi.fn((_reference: MockDocumentReference) => undefined),
     commit: vi.fn(async () => undefined),
   });
 
@@ -57,6 +59,14 @@ vi.mock('firebase/firestore', () => {
       table: segments.at(-2) || '',
       id: segments.at(-1) || '',
     })),
+    collection: vi.fn((first: unknown, ...segments: string[]) => ({
+      path: typeof first === 'object' && first !== null && 'path' in first && typeof first.path === 'string'
+        ? `${String(first.path)}/${segments.join('/')}`
+        : segments.join('/'),
+    })),
+    getDoc: vi.fn(async () => ({ exists: () => false, data: () => ({}) })),
+    getDocs: vi.fn(async () => ({ docs: [] })),
+    deleteField: vi.fn(() => 'MOCK_DELETE_FIELD'),
     setDoc: vi.fn().mockResolvedValue(undefined),
     serverTimestamp: vi.fn(() => 'MOCK_SERVER_TIMESTAMP'),
     writeBatch: vi.fn(() => firestoreMockState.batch),
@@ -266,6 +276,27 @@ describe('sync-push service', () => {
     const pushedData = mockBatch.set.mock.calls[0][1];
     expect(pushedData.isCompressed).toBe(true);
     expect(typeof pushedData.encryptedData).toBe('string');
+  });
+
+  it('stores incompressible large rows in authenticated encrypted chunks', async () => {
+    const randomBytes = new Uint8Array(700_000);
+    for (let offset = 0; offset < randomBytes.length; offset += 65_536) {
+      crypto.getRandomValues(randomBytes.subarray(offset, Math.min(offset + 65_536, randomBytes.length)));
+    }
+    const largeContent = uint8ArrayToBase64(randomBytes);
+    const mockBatch = installMockBatch();
+    mockApi.sync.getTable = vi.fn().mockImplementation(async (table: string) => table === 'tutor_messages'
+      ? [{ id: 'large-message-1', session_id: 'session-1', text_content: largeContent }]
+      : []);
+
+    await pushAllToCloud({ core: cryptoKey }, ['tutor_messages'], undefined, TEST_USER_ID);
+
+    const parentWrite = mockBatch.set.mock.calls.find(([reference]) => reference.id === 'large-message-1');
+    const chunkWrites = mockBatch.set.mock.calls.filter(([, data]) => 'encryptedChunk' in data);
+    expect(parentWrite?.[1]).toEqual(expect.objectContaining({ isChunked: true, isCompressed: true, chunkCount: expect.any(Number) }));
+    expect(parentWrite?.[1].encryptedData).toBe('');
+    expect(chunkWrites.length).toBeGreaterThan(1);
+    expect(chunkWrites.every(([, data]) => typeof data.encryptedChunk === 'string')).toBe(true);
   });
 
   it('encodes document IDs containing slashes before creating Firestore references', async () => {
