@@ -2,7 +2,7 @@
 
 > **Scope:** This document preserves React/Web sync and autosave design notes, including historical performance claims. It does not certify Qt or Android sync parity, zero-lock behavior, repository-wide E2EE, or that every implementation detail still matches the current code. Verify paths and contracts before changing the sync system.
 
-> **Verification status (2026-11-17):** The scoped web client and replacement rules are deployed to the four Hosting sites configured in `firebase.json`. Production anonymous root reads are denied. Firebase Auth providers are enabled, but the project currently has zero Auth users; the [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md) tracks account creation, legacy-root reconciliation, decrypted parity, and native-client rollout. Do not treat the table inventory below as a successful-sync guarantee.
+> **Verification status (2026-11-17):** Scoped rules and the latest web client are deployed to the four Hosting sites configured in `firebase.json`. Production anonymous root reads are denied, and the primary Firebase Auth account was validated. The protected source archive contains 4,873 root documents; eligible records were copied to the account scope, and the local database now contains all 4,867 non-transient source IDs plus 138 local-only rows. A post-write count returned 5,005 scoped sync documents and 3 protected config documents. The final per-document verifier reported one missing destination document; subsequent reads returned Firestore HTTP 429, so full cloud readback and decrypted parity remain unverified. Keep source roots and rollback snapshots. See the [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md). Do not treat the table inventory below as a successful-sync guarantee.
 
 ## 1. Architectural Overview
 
@@ -180,7 +180,7 @@ Differences in date formatting between SQLite native strings (`YYYY-MM-DD HH:MM:
      ```
    - Without a workspace, records live in the authenticated account's private subcollection. User config documents hold the account's sync signal and manifest; workspace config holds the workspace equivalents.
    - Checkpoints and deletion backfill flags are scoped by the same UID/workspace key. The first sync into a new scope performs a full table scan.
-   - The local account-evolution migration copies local records into the authenticated user's personal workspace. It never reads unscoped root collections. Historical root documents remain unreconciled until an ownership-aware process is run.
+   - The local account-evolution migration copies local records into the authenticated user's personal workspace. It never reads unscoped root collections. An authenticated, owner-approved reconciliation copied eligible historical root documents into the user's scope while preserving the originals. Final document-by-document verification is still pending; the remaining completion gates are tracked in the audit checklist.
 
 ---
 

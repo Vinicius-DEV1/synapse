@@ -4,21 +4,19 @@
 
 | Priority | Finding | State |
 | --- | --- | --- |
-| P0 | The former Firestore rules allowed anonymous root access. | Scoped rules deployed; live anonymous root read returns `403 PERMISSION_DENIED` |
-| P1 | Local rows lack matching root-document IDs, and root-only IDs need a scoped destination. | User confirmed sole ownership; Firebase Auth currently has zero users, so UID-based reconciliation remains open |
-| P1 | Default sync previously used flat root collections when no workspace ID was active. | Scoped client deployed to the four configured web Hosting sites; local account sign-in and data reconciliation remain open |
-| P1 | Previous push/pull error paths could advance checkpoints or continue after incomplete pulls. | Fixed in local source; tests added |
-| P1 | Tauri upsert could discard unknown columns, and sync row readers could silently skip rows or convert blobs to null. | Fixed in local source; tests added |
-| P1 | Invalid Firestore document IDs could fail writes for local IDs containing `/`. | Fixed for new writes with versioned reversible encoding |
-| P2 | Three sync tables were absent from the active local database. | Fixed; created empty after verified snapshot |
-| P2 | Migrations suppress many SQLite errors instead of reporting failure. | Open; listed for cleanup/refactor |
-| P1 | Public shares previously stored their raw AES share key in Firestore for direct links. | New share version protects keys; legacy shares must be reissued |
+| P0 | Former Firestore rules allowed anonymous root access. | Fixed; scoped rules deployed and anonymous root reads are denied. |
+| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation writes completed. Final per-document cloud verification remains open after one missing-document result and HTTP 429 quota errors. |
+| P1 | Push/pull failures could advance checkpoints or hide incomplete work. | Fixed in source; targeted tests pass. |
+| P1 | Tauri sync upserts could silently discard unsupported columns or fail whole rows on optional timestamps. | Fixed in source; regression coverage added. |
+| P1 | Legacy share metadata could expose raw share keys. | New versioned share flow protects keys; old shares remain blocked pending reissue. |
+| P2 | Three expected sync tables were absent from the active local database. | Created from current migration source after a verified snapshot. |
+| P2 | SQLite migration errors are suppressed in many paths. | Still open; tracked in the cleanup inventory. |
 
-## Firestore ID Reconciliation
+## Original Root ID Comparison
 
-The comparison checks document IDs only. “Root-only” means present in a flat Firestore collection but absent from this local database; it does not mean that the document belongs to this account.
+The initial ID-only comparison did not establish ownership or content equality. The owner later confirmed that this project has one account and authorized associating all pending root records with it.
 
-| Collection | Local rows | Local IDs found in root | Root documents | Local IDs absent in root | Root-only IDs |
+| Collection | Local rows at initial audit | Local IDs found in root | Root documents | Local IDs absent in root | Root-only IDs |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `page_history` | 4,204 | 4,141 | 4,148 | 63 | 7 |
 | `wishlist` | 22 | 21 | 21 | 1 | 0 |
@@ -32,62 +30,62 @@ The comparison checks document IDs only. “Root-only” means present in a flat
 | `activity_logs` | 96 | 73 | 74 | 23 | 1 |
 | `anki_decks` | 10 | 1 | 1 | 9 | 0 |
 | `notifications` | 4 | 0 | 0 | 4 | 0 |
-| **Total across listed differences** |  |  |  | **126** | **11** |
+| **Totals across listed differences** |  |  |  | **126** | **11** |
 
-The 50 client-side sync collections contained 4,995 local rows in aggregate. Firestore aggregate counts totaled 4,873 root documents, including system documents in `config`; these totals are not directly comparable. `config` was not included in ID matching because local IDs may contain `/`.
+`config` was not part of the initial ID-only comparison because some local IDs contain `/`. Current sync code encodes such IDs reversibly.
 
-## Security and Ownership
+## Reconciliation Results
 
-### Public rules
+- The protected archive contains 4,873 root documents and passed its document-count and hash checks.
+- The archived source contained 4,867 non-transient sync documents, 3 protected account config documents, and 3 transient system config documents. The eligible 4,870 documents were copied with create-only writes into the authenticated account scope. The three transient system records were not copied. Original root documents were not deleted or changed by the copy process.
+- The pre-write decrypted comparison covered 4,856 matching local/root IDs. It found 3,165 exact payloads and 1,691 payload differences. These included 99 cases where local non-null fields were absent remotely, 40 cases with differing shared values, and 1,565 cases where the difference was only a local null omitted remotely; these categories overlap.
+- The application's conflict resolver classified 4,837 rows as equal timestamp, 3 as local newer, 15 as root newer, and 1 as lacking comparable timestamps. Local-newer rows were preserved, root-newer rows were applied, and the Yjs page-history path was used where applicable.
+- Reconciliation submitted 1,766 parent updates, skipped 3,090 already-resolved matches, created 138 local-only records, and wrote 9 oversized records through encrypted chunks. Nine regular write batches completed; no delete writes were submitted.
+- The local merge applied 4,853 row updates and created the 11 records that had existed only in root. The original local-only records were preserved.
+- A post-write collection-count check returned 5,005 scoped sync documents and 3 protected config documents. The final per-document verification reported one missing document. A later targeted read returned HTTP 429 (`Quota exceeded`), preventing identification and safe repair of that path.
+- Independent local comparison now finds all 4,867 non-transient source IDs present in SQLite, 138 local-only sync rows, and zero root-only source IDs. SQLite has 5,006 rows across 50 canonical tables; one transient config row is excluded from sync, leaving 5,005 syncable rows. Integrity check is `ok`; foreign-key violations are zero.
 
-At audit time, live rules had `match /{document=**} { allow read, write: if true; }`. Anonymous aggregate reads against live root collections succeeded. The [`firestore.rules`](../../../firestore.rules) replacement removes the catch-all, scopes user and workspace sync paths, prevents self-enrollment into unrelated workspaces, and narrows share operations. It is deployed, and an anonymous production read of `page_history` now returns `403 PERMISSION_DENIED`. Previous ruleset `4dbee571-c0f9-4add-9f32-f6a1faa53e6f` is retained by Firebase for rollback.
+## Security and Account Scope
 
-The local `/users/{userId}` rule permits reads only by that user. Membership creation requires an owner-created workspace or an accepted invitation. The old user-self membership rule allowed an authenticated user to self-add to arbitrary workspace membership documents.
+The former rules included a public catch-all. The deployed [`firestore.rules`](../../../firestore.rules) now scopes personal data to `/users/{uid}/sync/data/...`, restricts workspace data by membership role, narrows share operations, and denies unmatched roots. The prior production ruleset `4dbee571-c0f9-4add-9f32-f6a1faa53e6f` remains available for rollback. Anonymous production root reads were verified as denied.
 
-### Unscoped root sync
+The primary Firebase Auth account was created and validated using the provided local credential file. Email/password and anonymous providers are enabled, and the four Hosting sites in [`firebase.json`](../../../firebase.json) are authorized. Account identifiers and secrets are intentionally omitted from repository documentation.
 
-The local sync client now requires a non-anonymous Firebase UID or an active workspace. No-workspace data uses `/users/{uid}/sync/data/{table}/{documentId}`; workspace data uses `/workspaces/{workspaceId}/{table}/{documentId}`. Manifest and signal checkpoints are scoped to the same identity. The account-evolution migrator reads local rows and pushes them into the authenticated user's workspace; it does not read or copy unscoped root documents. It now receives the actual master key retained by the auth flow, instead of incorrectly using a module key to create the workspace key envelope.
+The client's previous default-to-root path was removed. Personal sync requires a non-anonymous UID; workspace sync remains role-scoped. Manifest and signal checkpoints are scoped to the same identity. The account-evolution migrator now uses the master key retained by the auth flow and fails on local-read or cloud-push errors.
 
-These changes prevent new clients from mixing data across accounts, but they do not copy old root documents. The owner confirmed that all legacy records belong to the sole account. Firebase Auth currently has zero users, so no UID is available for writing scoped records. The 126 local IDs absent from the audited root paths and 11 root-only IDs still need an authenticated, unlocked reconciliation. The static PBKDF2 salt also means successful decryption alone is not sufficient proof of document ownership.
+## Public Share Key Exposure
 
-### Public share key exposure
+Older direct-share config could store a raw share key in publicly readable metadata. New shares require an owner account and master key; version 2 metadata stores a master-wrapped owner key and, where configured, a password-wrapped visitor key. Unprotected direct links carry the key in the URL fragment. Public rules deny old version 1 shares. Recreate any needed old shares from the unlocked app before retiring their records.
 
-The previous direct-share config stored `wrappedShareKey` as raw Base64 unless owner approval was enabled. Since share metadata was publicly readable, anyone could fetch that key and decrypt the content even when a password gate was shown. New shares require an owner Firebase account and master key; Firestore stores only a master-wrapped key, a password-wrapped key where configured, and version 2 metadata. Direct unprotected links carry the key in the URL fragment, which browsers do not send in HTTP requests. The local rules deny public reads of old shares without version 2 metadata; existing shares must be recreated after the rules are deployed.
+## Local Schema and Column Coverage
 
-## Local Schema and Database
+- The active database initially lacked `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items`; all were created empty from the current migration source after an integrity-checked rollback snapshot.
+- The current 50-table Web sync allowlist aligns with Firestore rules, Rust sync commands, IndexedDB, and the active SQLite schema. All 50 tables exist and contain an `id` column; no sync row has a blank ID.
+- The separate Rust-only `link_metadata_cache` table is not part of the canonical Web sync allowlist.
+- Local `config` contains one transient row excluded by design. It is not part of the 5,005 syncable-row count.
+- Three tables legitimately omit optional timestamp columns: `config.deleted_at`, `quiz_attempts.updated_at/deleted_at`, and `quiz_page_links.updated_at`. The sync payload mapper now omits unavailable optional metadata instead of synthesizing columns rejected by Tauri upsert.
+- `quick_check=ok`; `foreign_key_check` returned zero violations.
 
-- Before migration, the active database had 52 tables and lacked `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items`, all present in the current `MODULE_TABLES` inventory and current Tauri migration source.
-- The missing tables had zero corresponding root documents at audit time. They were created empty with the current schema.
-- A rollback snapshot was verified outside the repository before applying the migration.
-- `quick_check` and `foreign_key_check` passed after migration. Fingerprints over all pre-existing table columns found no changed row values.
-- A separate stale database copy exists outside the active app data location. It was not migrated or used as the source of truth.
-- Matching IDs do not establish column-level or decrypted field parity. Full field compatibility still needs authenticated end-to-end verification for every table and client adapter.
+## Sync Bugs Fixed in Source
 
-## Sync Bugs Fixed in Local Source
+- Missing table checkpoints now trigger a full table scan; failed or incomplete pushes and pulls do not advance checkpoints.
+- Pull/decrypt/upsert failures reject the pull so a later push cannot silently publish stale local state.
+- Legacy-key re-encryption preserves the winning row and does not delete cloud data first.
+- Invalid Firestore document IDs use reversible versioned encoding.
+- Tauri sync readers surface row/blob conversion failures. Upserts reject unknown columns rather than silently dropping them.
+- Local IndexedDB read failures are no longer mistaken for missing records.
+- External Firestore metadata, adapter rows, and decrypted JSON are validated before affecting IDs, checkpoints, or SQLite.
+- Large encrypted payloads use gzip and authenticated AES-GCM chunk envelopes. The parent pointer is written only after chunk writes; rules constrain chunks to the same owner or workspace role.
+- Optional timestamp mapping no longer rejects otherwise valid records when the local schema omits those columns.
+- The document decrypt/upsert/rekey path is extracted into [`sync-pull-documents.ts`](../../../apps/web-react/src/services/sync/sync-pull-documents.ts).
+- The unused unscoped `hardResetCloud()` helper and deprecated no-op `restoreLastSyncTimesFromDb()` path were removed.
 
-- Missing per-table checkpoints now trigger a full table scan rather than reusing a global timestamp.
-- Push errors and oversized skipped payloads hold that table's checkpoint; incomplete pushes now reject the operation.
-- Pull/decrypt/upsert failures hold checkpoints and reject the pull, preventing the full-sync flow from pushing stale local data afterward.
-- A legacy-key re-encryption path now upserts or retains the winning local row before rewriting the cloud ciphertext; it no longer deletes the cloud row first.
-- Firestore-invalid local IDs use a versioned base64url document ID and are decoded before local lookup/upsert.
-- Tauri sync readers now report row/blob conversion errors. Upserts reject unknown columns rather than silently dropping fields, and ID-based reads enforce the sync-table allowlist.
-- A missing local sync API now rejects the pull instead of reporting a successful no-op.
-- Firestore metadata, sync adapter rows, and decrypted JSON objects now pass runtime shape checks before they affect IDs, checkpoints, or SQLite upserts.
-- The document decrypt/upsert/rekey path was extracted into [`sync-pull-documents.ts`](../../../apps/web-react/src/services/sync/sync-pull-documents.ts), leaving the table query/checkpoint loop in `sync-pull.ts`.
-- IndexedDB sync reads now fail visibly if a required store or row operation is unavailable; local read failures are no longer mistaken for absent data and then overwritten by cloud rows.
-- Compared the 50 client sync table names and active SQLite schema against the Firestore rule table allowlist, Rust allowlist, and IndexedDB stores. The names are aligned. Three SQLite tables legitimately lack optional timestamp columns (`config.deleted_at`, `quiz_attempts.updated_at/deleted_at`, `quiz_page_links.updated_at`); payload mapping now omits absent optional metadata instead of synthesizing columns that Tauri rejects.
+## Verification Evidence and Limits
 
-## Migration Reliability
-
-[`db_migrations.rs`](../../../apps/web-react/src-tauri/src/db_migrations.rs) ignores many `execute` errors. A partial migration can therefore appear successful. The migration source also combines table creation, column changes, defaults, and data updates in one routine. Refactor it into explicit versioned migrations that return errors and run transactionally where SQLite permits, with separate tests for upgrades from supported schema versions.
-
-## Current Local Verification
-
-- Targeted sync, sharing, migration, and viewer tests: 122 passing across 21 files.
+- Targeted sync tests: 41 passing across 4 files, including chunked payload, push, pull recovery, and pull merge cases.
 - `npm run typecheck`: passed.
-- `npm run test:firestore-rules`: 4 passing against the local Firestore Emulator.
-- Rust sync-command tests passed earlier in this remediation pass.
-- `npm run build:web`: passed; Vite emitted large-chunk and dependency `eval` warnings.
-- Production: the rules source hash matches the active ruleset; anonymous root read is denied. The 4 configured Hosting sites serve the built `index.html` and `share-viewer.html`.
-- Production Auth: email/password and anonymous providers are enabled; the five expected domains are authorized; Auth user count is zero.
-- No Firestore document data was changed, copied, deleted, or decrypted by the deployment.
+- `npm run test:firestore-rules`: 4 emulator tests passed.
+- `npm run build:web`: passed. Vite reports large-chunk warnings and a direct `eval` warning from `onnxruntime-web`.
+- The latest web build was deployed to `https://synapse-dev.web.app`, `https://synapsedev.web.app`, `https://synapse-web.web.app`, and `https://fourth-cirrus-468923-h7.web.app`.
+- Production Firestore writes completed, but final item-by-item readback and full authenticated app-pull verification remain open. Repeated reads currently return HTTP 429. Do not claim complete decrypted cloud parity until these checks pass.
+- Legacy public shares, native client updates, migration reliability refactoring, backup restore verification, and cleanup of stale data/site copies remain open.

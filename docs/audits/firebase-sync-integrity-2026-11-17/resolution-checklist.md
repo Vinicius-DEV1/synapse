@@ -1,61 +1,58 @@
 # Resolution Checklist
 
-Use this checklist as the acceptance record. A checked item has evidence in this audit or the repository; do not check an item based only on a plan or an old completion note.
+Use this checklist as the acceptance record. A checked item has reproducible evidence in the repository, local database, emulator, or production deployment. Aggregate counts alone do not prove per-document or decrypted payload equality.
 
 ## A. Local Schema and Sync Error Safety
 
 - [x] Identify the active SQLite database using the configured Tauri app identifier; exclude older copies from the active database decision.
 - [x] Create and integrity-check a rollback snapshot outside the repository before changing the active database.
-- [x] Run the current migration against an isolated database copy first and verify no existing row/column values change.
+- [x] Run the current migration against an isolated database copy and verify no existing row/column values change.
 - [x] Create the missing `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items` tables in the active database.
 - [x] Verify post-migration table presence, SQLite integrity, foreign keys, and unchanged pre-existing values.
-- [x] Hold push/pull table checkpoints on failed rows, and reject incomplete sync passes.
+- [x] Hold push/pull checkpoints on failed rows and reject incomplete sync passes.
 - [x] Preserve cloud rows during legacy-key re-encryption and encode Firestore-invalid local IDs.
 - [x] Reject unknown sync columns and surface row/blob conversion failures in Tauri sync commands.
-- [x] Separate per-table pull orchestration from document decrypt/upsert/rekey processing, and split pull tests into focused files.
-- [x] Compare all 50 client sync collection names across Web, Firestore rules, Rust, IndexedDB, and active SQLite; handle optional timestamp-column differences without inventing unsupported local columns.
+- [x] Split pull orchestration from document decrypt/upsert/rekey processing and divide tests into focused files.
+- [x] Compare the 50 client sync tables across Web, Firestore rules, Rust, IndexedDB, and active SQLite; handle optional timestamps without inventing unsupported columns.
 - [x] Propagate local IndexedDB read/store failures instead of treating failed reads as missing records.
 - [x] Remove the unused unscoped cloud reset helper and deprecated no-op timestamp restore call.
-- [x] Run targeted sync and migration tests plus `npm run typecheck`; Firebase Emulator validation is tracked separately below.
+- [x] Verify all 50 sync tables exist and have no blank IDs; active SQLite integrity is `ok` with zero FK violations.
+- [x] Run focused sync tests, `npm run typecheck`, Firestore Emulator rules tests, and a production Web build.
 
-## B. Scope Data Before Backfill
+## B. Scope and Reconcile Data
 
-- [x] Record the owner's explicit confirmation that all audited legacy root data belongs to the project's sole account.
-- [ ] Enumerate account memberships and workspace IDs through an authenticated session, then audit every owned workspace collection as well as the flat root collections.
-- [ ] Inspect ownership fields only through the authenticated app after key unlock; do not infer ownership from root-only IDs.
-- [ ] Design and test an authenticated, ownership-aware reconciliation for old root documents. Reject ambiguous documents and preserve an export/rollback copy.
-- [x] Replace the unsafe root-copy migrator with an authenticated local-to-workspace migration that fails on local read or cloud push errors and never reads the shared roots.
-- [x] Change default single-account sync to `/users/{uid}/sync/data/{table}/{id}` and keep workspace sync under member-controlled workspace paths.
-- [x] Add Firebase Emulator tests proving anonymous isolation and cross-user query/read/write/delete denial.
-- [x] Deploy the scoped web client and Firestore rules to the four Hosting sites configured in `firebase.json`.
-- [ ] Create/sign in to the main Firebase Auth account, unlock the local vault, then re-audit every sync collection and run a controlled full reconciliation. Scope-specific checkpoints now force a first full pass for each new user/workspace.
-- [ ] Pull remote data before pushing local data. Preserve newer local edits and page history; do not bulk overwrite by document count alone.
-- [ ] Republish locally present rows only after they are confirmed to belong to the signed-in account. The current audit found 126 local IDs absent from queried root collections across the 11 tables listed in [findings](./findings.md); re-run the audit immediately before backfill.
-- [x] Record the user's instruction to associate all 11 root-only IDs with the sole account; no rows were copied because Firebase Auth has zero users and no destination UID exists.
-- [ ] Copy the root-only rows into that UID's scoped path after account creation. Preserve the original root documents until decrypted parity and conflict behavior are verified.
-- [ ] Unlock the app and verify decrypted field equality, tombstones, timestamps, and conflict behavior across all 50 sync collections and each supported storage adapter.
-- [ ] Re-run aggregate and ID comparison until all owned rows reconcile, then perform content-level verification on representative and boundary cases.
+- [x] Record the owner's confirmation that all audited legacy-root records belong to the project's sole account.
+- [x] Create/sign in to the primary Firebase Auth account and validate the provided master password against the encrypted legacy validator.
+- [x] Archive all 4,873 root documents outside the repository and verify archive count/hash before writes.
+- [x] Copy 4,867 eligible sync documents and 3 protected config documents to authenticated user scope with create-only writes; preserve 3 transient system config documents in the archive only.
+- [x] Preserve the original unscoped root documents; submit no delete writes.
+- [x] Compare decrypted root/local payloads and apply the application conflict resolver; preserve newer local edits and merge remote-only records into SQLite.
+- [x] Create 138 local-only scoped records and write 9 oversized records with encrypted chunks.
+- [x] Verify SQLite after merge: 5,005 syncable rows across 50 tables, 1 transient config excluded, `quick_check=ok`, zero FK violations.
+- [x] Recheck local IDs against the protected source archive: all 4,867 non-transient source IDs are local, 138 local-only rows remain, and no source-only IDs remain.
+- [ ] Identify and resolve the single missing destination document reported by the final per-document verifier.
+- [ ] Re-read every expected scoped path and verify decrypted payloads, tombstones, metadata, chunks, and conflicts across the entire destination. Current Firestore REST reads return HTTP 429.
+- [ ] Unlock the app and run a full authenticated application pull to verify the deployed client end to end. Browser automation was unavailable in this environment.
+- [ ] Re-run aggregate and ID comparison after quota recovery; confirm every owned local/scoped row reconciles and no unexpected remote-only rows remain.
 
-## C. Firestore Rule Hardening
+## C. Firestore Access and Production Client
 
-- [x] Remove the repository's public catch-all grant and make unmatched root collections deny by default.
-- [x] Restrict `/users/{userId}` reads to that user and prevent users from self-adding as members of arbitrary workspaces.
-- [x] Review public share rules; require owner UID for writes, active versioned shares for public reads, and owner/visitor scoping for access requests and trusted-device records.
-- [x] Stop storing new public share keys in plaintext Firestore fields; protect owner keys with the master key and visitor keys with a password or URL fragment.
-- [x] Add Firebase Emulator Suite tests for anonymous, cross-user, workspace-member, editor, admin, owner, invitation acceptance, and versioned public-share scenarios.
-- [x] Deploy Email/Password and Anonymous Firebase Auth providers and authorize the four configured Hosting domains. No Auth user was created.
-- [x] Deploy the reviewed Firestore rules and verify an anonymous production root read fails. Previous production ruleset `4dbee571-c0f9-4add-9f32-f6a1faa53e6f` remains available for rollback.
-- [x] Publish the built web client to the four configured Hosting sites and verify the served entry pages match the build artifacts.
-- [ ] Verify a real account can sign in and scoped sync succeeds; the project currently has zero Firebase Auth users.
-- [ ] Update/rebuild native installations and verify compatibility with scoped rules.
-- [ ] Reissue legacy public shares created before key protection version 2; the rules now deny public access to those old records.
+- [x] Remove the public Firestore catch-all and scope personal and workspace data paths.
+- [x] Restrict user-profile reads and prevent self-enrollment into unrelated workspaces.
+- [x] Require owner-scoped/versioned public shares and protect new share keys.
+- [x] Add Emulator rules tests for anonymous isolation, cross-user denial, workspace roles, invitations, and versioned shares.
+- [x] Deploy Email/Password and Anonymous Auth providers and authorize the four configured Hosting domains.
+- [x] Deploy reviewed Firestore rules and verify anonymous production root reads are denied; retain rules rollback version `4dbee571-c0f9-4add-9f32-f6a1faa53e6f`.
+- [x] Build and publish the latest Web client to all four configured Hosting sites, including optional timestamp mapping fix.
+- [ ] Verify full sign-in and scoped sync through the app UI after local master-key unlock; CLI Auth validation alone is not the complete UX check.
+- [ ] Update/rebuild installed native clients and verify compatibility with scoped rules.
+- [ ] Reissue any required version 1 public shares and verify replacement links before retiring the old shares.
 
 ## D. Legacy Removal and Final Acceptance
 
-- [ ] Complete the prerequisites in [legacy cleanup inventory](./legacy-cleanup-inventory.md) before removing any migration path, data directory, or generated database copy.
+- [x] Inventory legacy data, code paths, rollback copies, and non-configured Hosting sites in [legacy cleanup inventory](./legacy-cleanup-inventory.md).
 - [x] Remove the unscoped `hardResetCloud()` and no-op `restoreLastSyncTimesFromDb()` source paths.
-- [ ] Refactor `db_migrations.rs` so schema failures are returned, migrations have explicit versions, and supported upgrade paths are covered.
+- [ ] Refactor `db_migrations.rs` so schema failures propagate, migrations have explicit versions, and supported upgrades are tested.
 - [ ] Reconcile duplicate schema ownership between the Rust core and Tauri database layer before deleting either source.
-- [ ] Update the sync architecture inventory and this status page only after reproducible end-to-end evidence supports the claims.
-- [ ] Keep the SQLite and Firestore rules rollback snapshots until cloud reconciliation, security verification, and restore procedure have passed.
-- [ ] Mark the audit complete only when owned local rows, scoped cloud documents, decrypted content, tombstones, and authorization checks all pass.
+- [ ] Complete the cloud readback, app-pull, and backup restore checks before removing source-root documents or rollback snapshots.
+- [ ] Mark this audit complete only after local rows, scoped cloud documents, decrypted content, tombstones, and authorization checks all pass.
