@@ -115,6 +115,26 @@ describe('sync-pull-merge service', () => {
       expect(pageLink.rowToUpsert.created_at).toBe('2026-10-25T10:00:00.000Z');
     });
 
+    it('omits config tombstone metadata when the local schema has no deleted_at column', async () => {
+      const prepared = await prepareRowForUpsert(
+        createMockResult(
+          'preference-1',
+          {
+            updatedAt: '2026-10-25T12:00:00.000Z',
+            createdAt: '2026-10-25T10:00:00.000Z',
+            deletedAt: '2026-10-25T11:00:00.000Z',
+          },
+          { data: 'preference-data', value: 'enabled', deleted_at: '2026-10-25T11:00:00.000Z' }
+        ),
+        'config',
+        undefined,
+        undefined
+      );
+
+      expect(prepared.rowToUpsert.updated_at).toBe('2026-10-25T12:00:00.000Z');
+      expect(prepared.rowToUpsert).not.toHaveProperty('deleted_at');
+    });
+
     it('merges Yjs CRDT states when table is pages and both have crdt_state', async () => {
       // Create local YDoc with state
       const localDoc = new Y.Doc();

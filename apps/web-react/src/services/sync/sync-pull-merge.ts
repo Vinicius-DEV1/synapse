@@ -39,6 +39,7 @@ let yjsUtils: {
 } | null = null;
 
 const TABLES_WITHOUT_UPDATED_AT = new Set(['quiz_attempts', 'quiz_page_links']);
+const TABLES_WITHOUT_DELETED_AT = new Set(['config', 'quiz_attempts']);
 
 export async function prepareRowForUpsert(
   result: DecryptedResult,
@@ -56,6 +57,8 @@ export async function prepareRowForUpsert(
     id: docSnap.id,
     ...(parsed || {}),
   };
+  if (TABLES_WITHOUT_UPDATED_AT.has(table)) delete rowToUpsert.updated_at;
+  if (TABLES_WITHOUT_DELETED_AT.has(table)) delete rowToUpsert.deleted_at;
 
   if (cloudData.updatedAt !== undefined && !TABLES_WITHOUT_UPDATED_AT.has(table)) {
     rowToUpsert.updated_at = normalizeCloudTimestamp(cloudData.updatedAt, 'updatedAt');
@@ -63,9 +66,9 @@ export async function prepareRowForUpsert(
   if (cloudData.createdAt !== undefined && cloudData.createdAt !== null) {
     rowToUpsert.created_at = normalizeCloudTimestamp(cloudData.createdAt, 'createdAt');
   }
-  if (cloudData.deletedAt !== undefined && cloudData.deletedAt !== null) {
+  if (!TABLES_WITHOUT_DELETED_AT.has(table) && cloudData.deletedAt !== undefined && cloudData.deletedAt !== null) {
     rowToUpsert.deleted_at = normalizeCloudTimestamp(cloudData.deletedAt, 'deletedAt');
-  } else if (parsed && parsed.deleted_at !== undefined) {
+  } else if (!TABLES_WITHOUT_DELETED_AT.has(table) && parsed && parsed.deleted_at !== undefined) {
     rowToUpsert.deleted_at = parsed.deleted_at
       ? normalizeCloudTimestamp(parsed.deleted_at, 'deleted_at')
       : null;
@@ -117,7 +120,7 @@ export async function prepareRowForUpsert(
       throw new Error(`Failed to merge Yjs state for page ${docSnap.id}.`);
     }
   } else if (localTime > cloudTime) {
-    const isCloudDeleted = Boolean(
+    const isCloudDeleted = !TABLES_WITHOUT_DELETED_AT.has(table) && Boolean(
       (cloudData.deletedAt !== undefined && cloudData.deletedAt !== null) ||
       (parsed && parsed.deleted_at)
     );
@@ -169,7 +172,7 @@ export async function prepareRowForUpsert(
   // Race condition protection: check for local edits during sync
   if (freshRow) {
     const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
-    const isCloudDeleted = Boolean(rowToUpsert.deleted_at);
+    const isCloudDeleted = !TABLES_WITHOUT_DELETED_AT.has(table) && Boolean(rowToUpsert.deleted_at);
     if (freshTime > cloudTime && (!isCloudDeleted || freshRow.deleted_at)) {
       return { rowToUpsert, isSkipped: true };
     }
