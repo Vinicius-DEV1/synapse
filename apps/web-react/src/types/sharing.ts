@@ -13,6 +13,10 @@ export interface SharedPageConfig {
   pageId: string;
   /** Owner device fingerprint hash to verify authorship */
   ownerId: string;
+  /** Firebase UID controlling writes to this share record */
+  ownerUid: string;
+  /** Version 2 stores no plaintext share key in public Firestore documents. */
+  keyProtectionVersion: 2;
 
   // Scope & Inclusions
   /** Share scope: single page or include nested descendants */
@@ -39,6 +43,8 @@ export interface SharedPageConfig {
   encryptionKeyHash: string;
   /** Share key wrapped with the owner's Master Key for local/cloud storage */
   wrappedShareKey: string;
+  /** Share key wrapped with the visitor password when password access is enabled */
+  passwordWrappedShareKey?: string | null;
 
   // Status & Quotas
   /** Whether the share link is active (false = revoked without deletion) */
@@ -124,6 +130,8 @@ export interface DeviceFingerprint {
 export interface ShareAccessRequest {
   id: string;
   shareId: string;
+  ownerUid: string;
+  visitorUid: string;
   deviceFingerprint: DeviceFingerprint;
   /** Truncated/salted IP hash for owner pattern inspection */
   ipHash: string;
@@ -141,6 +149,8 @@ export interface ShareAccessRequest {
   encryptedShareKey: string | null;
   /** Visitor's ephemeral ECDH public key (JWK format) */
   visitorPublicKey: string;
+  /** Visitor's persistent per-installation ECDH public key for trusted-device renewal */
+  visitorTrustPublicKey: string;
   /** Owner's ephemeral ECDH public key (JWK format) populated upon approval */
   ownerPublicKey?: string | null;
 }
@@ -149,6 +159,7 @@ export interface ShareAccessRequest {
 export interface ShareTrustedDevice {
   id: string;
   shareId: string;
+  ownerUid: string;
   fingerprintHash: string;
   persistentToken: string;
   displayLabel: string;
@@ -158,6 +169,8 @@ export interface ShareTrustedDevice {
   accessCount: number;
   /** Share key wrapped with device-specific derived key */
   encryptedShareKey: string;
+  ownerPublicKey: string;
+  visitorUid: string;
   isRevoked: boolean;
   revokedAt: string | null;
 }
@@ -166,6 +179,7 @@ export interface ShareTrustedDevice {
 export interface ShareAccessLog {
   id: string;
   shareId: string;
+  ownerUid: string;
   accessedAt: string;
   ipHash: string;
   ipCountry?: string;

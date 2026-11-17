@@ -13,6 +13,7 @@ import { getWebShareKey } from '../../../services/db-web';
 import {
   importShareKeyFromBase64,
   unwrapShareKeyWithMaster,
+  exportShareKeyToBase64,
 } from '../../../services/sharing/share-crypto';
 import { getNotesKey } from '../../../store/useStore';
 import { triggerToast } from '../../ui/ToastContext';
@@ -29,6 +30,7 @@ export function useShareModalActions({
   masterKey,
 }: UseShareModalActionsParams) {
   const [existingShare, setExistingShare] = useState<SharedPageConfig | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -45,18 +47,36 @@ export function useShareModalActions({
     if (!isOpen) return;
     let isMounted = true;
     setLoading(true);
+    setShareUrl('');
 
     getShareByPageId(page.id)
-      .then((share) => {
+      .then(async (share) => {
         if (!isMounted) return;
         setExistingShare(share);
         if (share) {
+          let keyBase64: string | undefined;
+          const cachedKey = await getWebShareKey(share.id);
+          keyBase64 = cachedKey?.shareKeyBase64;
+          if (!keyBase64 && masterKey) {
+            try {
+              const shareKey = await unwrapShareKeyWithMaster(share.wrappedShareKey, masterKey);
+              keyBase64 = await exportShareKeyToBase64(shareKey);
+            } catch (unwrapError: unknown) {
+              console.warn('[ShareModal] Could not restore the direct share key from the owner key.', unwrapError);
+            }
+          }
+          const carriesLinkKey = !share.isPasswordProtected && !share.requireOwnerApproval;
+          setShareUrl(buildShareUrl(share.id, carriesLinkKey ? keyBase64 : undefined));
           setScope(share.scope);
           setIncludeMedia(share.includeMedia);
           setIsPasswordProtected(share.isPasswordProtected);
           setRequireOwnerApproval(share.requireOwnerApproval);
           setPermission(share.permission);
         }
+      })
+      .catch((error: unknown) => {
+        console.error('[ShareModal] Could not load existing share configuration.', error);
+        if (isMounted) setExistingShare(null);
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -65,9 +85,7 @@ export function useShareModalActions({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, page.id]);
-
-  const shareUrl = existingShare ? buildShareUrl(existingShare.id) : '';
+  }, [isOpen, page.id, masterKey]);
 
   const handleCopyLink = () => {
     if (!shareUrl) return;
@@ -106,11 +124,15 @@ export function useShareModalActions({
       );
 
       setExistingShare(result.config);
+      setShareUrl(result.shareUrl);
       window.dispatchEvent(new CustomEvent('caderno-share-created'));
       triggerToast('Página compartilhada com sucesso! Link seguro gerado.', 'success');
     } catch (err) {
       console.error('Failed to create share:', err);
-      triggerToast('Erro ao criar link de compartilhamento.', 'error');
+      const message = err instanceof Error && err.message.includes('Sign in')
+        ? 'Entre na sua conta Firebase para criar um compartilhamento.'
+        : 'Erro ao criar link de compartilhamento.';
+      triggerToast(message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -127,13 +149,7 @@ export function useShareModalActions({
         shareKey = await importShareKeyFromBase64(cached.shareKeyBase64);
       } else if (existingShare.wrappedShareKey) {
         if (effectiveMasterKey) {
-          try {
-            shareKey = await unwrapShareKeyWithMaster(existingShare.wrappedShareKey, effectiveMasterKey);
-          } catch {
-            shareKey = await importShareKeyFromBase64(existingShare.wrappedShareKey);
-          }
-        } else {
-          shareKey = await importShareKeyFromBase64(existingShare.wrappedShareKey);
+          shareKey = await unwrapShareKeyWithMaster(existingShare.wrappedShareKey, effectiveMasterKey);
         }
       }
 
@@ -187,10 +203,10 @@ export function useShareModalActions({
 
   return {
     existingShare,
+    shareUrl,
     loading,
     isSubmitting,
     copied,
-    shareUrl,
     scope,
     setScope,
     includeMedia,

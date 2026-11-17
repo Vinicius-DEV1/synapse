@@ -116,7 +116,9 @@ export function useShareAccessRequests() {
   const handleDeny = useCallback(
     async (requestId: string): Promise<boolean> => {
       try {
-        await denyAccessRequest(requestId);
+        const request = pendingRequests.find((candidate) => candidate.id === requestId);
+        if (!request) return false;
+        await denyAccessRequest(request);
         setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
         if (activeModalRequest?.id === requestId) {
           setActiveModalRequest(null);
@@ -127,7 +129,7 @@ export function useShareAccessRequests() {
         return false;
       }
     },
-    [activeModalRequest]
+    [activeModalRequest, pendingRequests]
   );
 
   return {

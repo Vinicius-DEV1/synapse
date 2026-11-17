@@ -146,6 +146,10 @@ export interface CadernoDBSchema extends DBSchema {
     value: SharedPageKeyRecord;
     indexes: { pageId: string };
   };
+  share_visitor_keys: {
+    key: string;
+    value: { id: string; keyPair: CryptoKeyPair; createdAt: string };
+  };
   habits: {
     key: string;
     value: Habit;

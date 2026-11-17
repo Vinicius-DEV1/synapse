@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Share2, Search, AlertTriangle } from 'lucide-react';
+import { Share2, Search, AlertTriangle, HelpCircle } from 'lucide-react';
 import type { SharedPageConfig } from '../../types/sharing';
 import {
   listShares,
@@ -12,12 +12,15 @@ import { triggerToast } from '../ui/ToastContext';
 import { ShareAccessLogViewer } from './ShareAccessLogViewer';
 import { ShareConfigEditor } from './ShareConfigEditor';
 import { ShareManagementCard } from './components/ShareManagementCard';
+import { getWebShareKey } from '../../services/db-web';
+import { ShareHelpModal } from './ShareHelpModal';
 
 export const ShareManagementPanel: React.FC = () => {
   const [shares, setShares] = useState<SharedPageConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Modal states
   const [inspectingLogsShare, setInspectingLogsShare] = useState<SharedPageConfig | null>(null);
@@ -45,20 +48,39 @@ export const ShareManagementPanel: React.FC = () => {
     return shares.filter((s) => s.title.toLowerCase().includes(q));
   }, [shares, searchQuery]);
 
-  const handleCopyLink = (shareId: string) => {
-    const url = buildShareUrl(shareId);
-    navigator.clipboard.writeText(url);
-    setCopiedId(shareId);
-    triggerToast('Link seguro copiado!', 'success');
-    setTimeout(() => setCopiedId(null), 2000);
+  const getShareUrl = async (shareId: string): Promise<string> => {
+    const share = shares.find((item) => item.id === shareId);
+    if (!share) throw new Error('Shared page is unavailable.');
+    if (share.isPasswordProtected || share.requireOwnerApproval) return buildShareUrl(shareId);
+    const cached = await getWebShareKey(shareId);
+    if (!cached?.shareKeyBase64) throw new Error('The local share key is unavailable.');
+    return buildShareUrl(shareId, cached.shareKeyBase64);
   };
 
-  const handleOpenInBrowser = (shareId: string) => {
-    const url = buildShareUrl(shareId);
-    if (window.api?.os?.openInBrowser) {
-      window.api.os.openInBrowser(url);
-    } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
+  const handleCopyLink = async (shareId: string) => {
+    try {
+      const url = await getShareUrl(shareId);
+      await navigator.clipboard.writeText(url);
+      setCopiedId(shareId);
+      triggerToast('Link seguro copiado!', 'success');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error: unknown) {
+      console.error('[ShareManagement] Could not copy share link.', error);
+      triggerToast('Não foi possível gerar o link seguro neste dispositivo.', 'error');
+    }
+  };
+
+  const handleOpenInBrowser = async (shareId: string) => {
+    try {
+      const url = await getShareUrl(shareId);
+      if (window.api?.os?.openInBrowser) {
+        window.api.os.openInBrowser(url);
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error: unknown) {
+      console.error('[ShareManagement] Could not open share link.', error);
+      triggerToast('Não foi possível gerar o link seguro neste dispositivo.', 'error');
     }
   };
 
@@ -138,15 +160,27 @@ export const ShareManagementPanel: React.FC = () => {
           </p>
         </div>
 
-        {shares.length > 0 && (
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
-            onClick={handleRevokeAll}
-            className="py-2 px-3.5 rounded-xl text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            type="button"
+            onClick={() => setShowHelp(true)}
+            title="Guia de compartilhamento"
+            aria-label="Abrir guia de compartilhamento"
+            className="flex items-center gap-1.5 rounded-xl border border-brand-500/25 bg-brand-500/10 px-3 py-2 text-xs font-medium text-brand-300 transition-colors hover:bg-brand-500/20"
           >
-            <AlertTriangle size={14} />
-            <span>Revogar Todos os Links</span>
+            <HelpCircle size={14} />
+            <span>Guia</span>
           </button>
-        )}
+          {shares.length > 0 && (
+            <button
+              onClick={handleRevokeAll}
+              className="py-2 px-3.5 rounded-xl text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <AlertTriangle size={14} />
+              <span>Revogar Todos os Links</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
@@ -214,6 +248,7 @@ export const ShareManagementPanel: React.FC = () => {
           }}
         />
       )}
+      {showHelp && <ShareHelpModal onClose={() => setShowHelp(false)} />}
     </div>
   );
 };

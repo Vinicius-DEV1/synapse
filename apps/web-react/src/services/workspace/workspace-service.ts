@@ -104,7 +104,7 @@ export async function listUserWorkspaces(userId: string): Promise<UserMembership
     return snap.docs.map((d) => d.data() as UserMembershipPointer);
   } catch (err) {
     console.warn('[WorkspaceService] Error listing user workspaces:', getErrorMessage(err));
-    return [];
+    throw err;
   }
 }
 
@@ -334,6 +334,7 @@ export async function acceptInvitation(
     encryptedWorkspaceKey: '',
     joinedAt: now,
     invitedBy: invitation.invitedByUserId,
+    invitationId,
   };
   batch.set(doc(db, 'workspaces', workspaceId, 'members', userId), member);
 

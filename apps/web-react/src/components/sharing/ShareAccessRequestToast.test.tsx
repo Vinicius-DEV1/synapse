@@ -7,6 +7,8 @@ describe('ShareAccessRequestToast', () => {
   const mockRequest: ShareAccessRequest = {
     id: 'req_123',
     shareId: 'share_abc',
+    ownerUid: 'owner_user',
+    visitorUid: 'visitor_user',
     deviceFingerprint: {
       fingerprintHash: 'hash1234567890abcdef',
       persistentToken: 'token_123',
@@ -35,6 +37,7 @@ describe('ShareAccessRequestToast', () => {
     passwordVerified: true,
     encryptedShareKey: null,
     visitorPublicKey: '{}',
+    visitorTrustPublicKey: '{}',
     ownerPublicKey: null,
   };
 

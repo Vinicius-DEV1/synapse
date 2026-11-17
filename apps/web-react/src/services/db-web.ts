@@ -9,8 +9,11 @@ let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 27, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 28, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
+        if (!db.objectStoreNames.contains('share_visitor_keys')) {
+          db.createObjectStore('share_visitor_keys', { keyPath: 'id' });
+        }
         if (!db.objectStoreNames.contains('shared_page_keys')) {
           const store = db.createObjectStore('shared_page_keys', { keyPath: 'shareId' });
           store.createIndex('pageId', 'pageId');
@@ -286,6 +289,21 @@ export async function getWebShareKey(shareId: string): Promise<SharedPageKeyReco
   const record = await db.get('shared_page_keys', shareId);
   if (!record || record.deleted_at) return null;
   return record;
+}
+
+export async function getVisitorShareKeyPair(): Promise<CryptoKeyPair | undefined> {
+  const db = await getWebDb();
+  const record = await db.get('share_visitor_keys', 'persistent-visitor-key-v1');
+  return record?.keyPair;
+}
+
+export async function saveVisitorShareKeyPair(keyPair: CryptoKeyPair): Promise<void> {
+  const db = await getWebDb();
+  await db.put('share_visitor_keys', {
+    id: 'persistent-visitor-key-v1',
+    keyPair,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 export async function getWebShareKeyByPage(pageId: string): Promise<SharedPageKeyRecord | null> {

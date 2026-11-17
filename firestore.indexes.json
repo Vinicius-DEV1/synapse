@@ -21,6 +21,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "pageId", "order": "ASCENDING" },
+        { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" }
       ]
     },
@@ -29,7 +30,26 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "shareId", "order": "ASCENDING" },
+        { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "share_trusted_devices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shareId", "order": "ASCENDING" },
+        { "fieldPath": "visitorUid", "order": "ASCENDING" },
+        { "fieldPath": "isRevoked", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "share_access_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shareId", "order": "ASCENDING" },
+        { "fieldPath": "ownerUid", "order": "ASCENDING" },
+        { "fieldPath": "accessedAt", "order": "DESCENDING" }
       ]
     }
   ],

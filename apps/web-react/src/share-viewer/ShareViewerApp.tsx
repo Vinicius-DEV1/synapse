@@ -18,6 +18,7 @@ import {
   decryptFromShare,
   importShareKeyFromBase64,
   verifyPasswordHash,
+  unwrapShareKeyWithPassword,
 } from '../services/sharing/share-crypto';
 import { generateDeviceFingerprint } from '../services/sharing/device-fingerprint';
 import { getOrGeneratePersona } from '../services/sharing/share-persona';
@@ -69,6 +70,16 @@ function extractShareId(): string | null {
   return params.get('s') || params.get('shareId');
 }
 
+function extractShareKeyFromFragment(): string | null {
+  if (typeof window === 'undefined' || !window.location.hash) return null;
+  const fragment = new URLSearchParams(window.location.hash.slice(1));
+  const key = fragment.get('key');
+  if (key) {
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  }
+  return key;
+}
+
 export const ShareViewerApp: React.FC = () => {
   const [state, setState] = useState<ViewerState>({ status: 'loading' });
   const [shareConfig, setShareConfig] = useState<SharedPageConfig | null>(null);
@@ -107,6 +118,7 @@ export const ShareViewerApp: React.FC = () => {
 
     async function init() {
       const shareId = extractShareId();
+      const linkShareKey = extractShareKeyFromFragment();
       if (!shareId) {
         setState({ status: 'expired', reason: 'not-found' });
         return;
@@ -181,11 +193,12 @@ export const ShareViewerApp: React.FC = () => {
               const trustCheck = await checkDeviceTrust(shareId, fp);
               if (!isMounted) return;
 
-              if (trustCheck.isTrusted && trustCheck.encryptedShareKey) {
+              if (trustCheck.isTrusted) {
                 // Device is trusted! Decrypt content immediately
-                const shareKey = await importShareKeyFromBase64(trustCheck.encryptedShareKey);
-                await loadAndDisplayContent(config, shareKey, fp);
-                return;
+                if (trustCheck.shareKey) {
+                  await loadAndDisplayContent(config, trustCheck.shareKey, fp);
+                  return;
+                }
               }
 
               // If not trusted: determine gate
@@ -195,8 +208,9 @@ export const ShareViewerApp: React.FC = () => {
                 // No password, but owner approval required
                 await initiateAccessRequest(config, fp, false);
               } else {
-                // Unprotected share: deliver key directly
-                const shareKey = await importShareKeyFromBase64(config.wrappedShareKey);
+                // Unprotected links carry the key in the URL fragment, which is not sent to Firestore.
+                if (!linkShareKey) throw new Error('Share key is missing from the link.');
+                const shareKey = await importShareKeyFromBase64(linkShareKey);
                 await loadAndDisplayContent(config, shareKey, fp);
               }
             } catch (gateErr) {
@@ -361,8 +375,18 @@ export const ShareViewerApp: React.FC = () => {
         if (shareConfig.requireOwnerApproval) {
           await initiateAccessRequest(shareConfig, fingerprint, true);
         } else {
-          // Direct unlock
-          const shareKey = await importShareKeyFromBase64(shareConfig.wrappedShareKey);
+          if (!shareConfig.passwordWrappedShareKey || !shareConfig.passwordSalt) return false;
+          let shareKey: CryptoKey;
+          try {
+            shareKey = await unwrapShareKeyWithPassword(
+              shareConfig.passwordWrappedShareKey,
+              candidatePassword,
+              shareConfig.passwordSalt
+            );
+          } catch (unwrapError: unknown) {
+            console.warn('[ShareViewer] Password verifier passed but key unwrap failed.', unwrapError);
+            return false;
+          }
           await loadAndDisplayContent(shareConfig, shareKey, fingerprint);
         }
         return true;

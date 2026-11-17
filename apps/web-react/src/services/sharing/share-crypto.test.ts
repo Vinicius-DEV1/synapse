@@ -14,6 +14,8 @@ import {
   computeContentHash,
   wrapShareKeyWithMaster,
   unwrapShareKeyWithMaster,
+  wrapShareKeyWithPassword,
+  unwrapShareKeyWithPassword,
 } from './share-crypto';
 
 describe('share-crypto service', () => {
@@ -99,5 +101,17 @@ describe('share-crypto service', () => {
     const encrypted = await encryptForShare(testText, unwrapped);
     const decrypted = await decryptFromShare(encrypted, shareKey);
     expect(decrypted).toBe(testText);
+  });
+
+  it('wraps a public share key with its password instead of storing the raw key', async () => {
+    const shareKey = await generateShareKey();
+    const salt = generateRandomSalt();
+    const wrapped = await wrapShareKeyWithPassword(shareKey, 'correct horse battery staple', salt);
+    const rawKey = await exportShareKeyToBase64(shareKey);
+
+    expect(wrapped).not.toBe(rawKey);
+    const unwrapped = await unwrapShareKeyWithPassword(wrapped, 'correct horse battery staple', salt);
+    expect(await exportShareKeyToBase64(unwrapped)).toBe(rawKey);
+    await expect(unwrapShareKeyWithPassword(wrapped, 'wrong password', salt)).rejects.toThrow();
   });
 });

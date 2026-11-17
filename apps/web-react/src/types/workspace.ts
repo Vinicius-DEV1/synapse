@@ -26,6 +26,7 @@ export interface WorkspaceMember {
   encryptedWorkspaceKey: string; // Base64 wrapped with member's Master Key
   joinedAt: string;
   invitedBy: string;
+  invitationId?: string;
 }
 
 export interface UserMembershipPointer {

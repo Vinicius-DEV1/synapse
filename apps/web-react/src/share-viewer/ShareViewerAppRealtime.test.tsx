@@ -77,11 +77,21 @@ describe('ShareViewerApp Real-Time Revocation & State Machine', () => {
     id: 'test-share-id',
     pageId: 'page-123',
     ownerId: 'owner-456',
-    permission: 'readonly',
+    ownerUid: 'owner-user',
+    keyProtectionVersion: 2,
+    scope: 'single',
+    includeMedia: false,
+    permission: 'read-only',
     isPasswordProtected: false,
     requireOwnerApproval: false,
     isActive: true,
     wrappedShareKey: 'bW9jay1rZXk=',
+    passwordHash: null,
+    passwordSalt: null,
+    passwordWrappedShareKey: null,
+    expiresAt: null,
+    maxViews: null,
+    viewCount: 0,
     title: 'PROGRAMACAO',
     icon: '💻',
     createdAt: '2026-09-20T00:00:00Z',
@@ -91,12 +101,14 @@ describe('ShareViewerApp Real-Time Revocation & State Machine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     snapshotCallback = null;
+    vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
 
     // Simulate URL /s/test-share-id
     Object.defineProperty(window, 'location', {
       value: {
         pathname: '/s/test-share-id',
         search: '',
+        hash: '#key=bW9jay1rZXk=',
       },
       writable: true,
     });

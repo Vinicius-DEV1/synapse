@@ -5,9 +5,11 @@
  * local key caching in IndexedDB, and link generation.
  */
 
+import { auth } from '../firebase';
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,
@@ -36,6 +38,8 @@ import {
   generateShareKey,
   hashPasswordPBKDF2,
   wrapShareKeyWithMaster,
+  wrapShareKeyWithPassword,
+  importShareKeyFromBase64,
 } from './share-crypto';
 import { generateDeviceFingerprint } from './device-fingerprint';
 import { decryptText } from '../crypto';
@@ -55,7 +59,7 @@ import { isDesktopApp } from '../platform';
  * so that shared links can be accessed by any recipient on the web.
  * Internal Tauri desktop origins (e.g. tauri://localhost) are strictly prohibited.
  */
-export function buildShareUrl(shareId: string): string {
+export function buildShareUrl(shareId: string, shareKeyBase64?: string): string {
   // Explicit opt-in ONLY for local dev testing in a standard web browser (never in desktop Tauri app)
   if (
     !isDesktopApp() &&
@@ -65,7 +69,7 @@ export function buildShareUrl(shareId: string): string {
     !window.location.origin.includes('tauri://') &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ) {
-    return `${window.location.origin}/s/${shareId}`;
+    return `${window.location.origin}/s/${shareId}${shareKeyBase64 ? `#key=${encodeURIComponent(shareKeyBase64)}` : ''}`;
   }
 
   const rawDomain = (import.meta.env.VITE_FIREBASE_SHARE_DOMAIN as string | undefined) || 'synapse-dev.web.app';
@@ -77,7 +81,7 @@ export function buildShareUrl(shareId: string): string {
     ? cleanDomain
     : `https://${cleanDomain}`;
 
-  return `${baseDomain}/s/${shareId}`;
+  return `${baseDomain}/s/${shareId}${shareKeyBase64 ? `#key=${encodeURIComponent(shareKeyBase64)}` : ''}`;
 }
 
 /**
@@ -147,6 +151,10 @@ export async function createShare(
   page: Page,
   masterKey?: CryptoKey
 ): Promise<{ shareId: string; shareUrl: string; config: SharedPageConfig }> {
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid || auth.currentUser?.isAnonymous) throw new Error('Sign in to a Firebase account before creating a share.');
+  if (!masterKey) throw new Error('The master key is required to protect the stored share key.');
+
   const shareId = generateShareId();
   const shareKey = await generateShareKey();
   const shareKeyBase64 = await exportShareKeyToBase64(shareKey);
@@ -158,17 +166,14 @@ export async function createShare(
   // Password handling
   let passwordHash: string | null = null;
   let passwordSalt: string | null = null;
+  let passwordWrappedShareKey: string | null = null;
   if (req.password && req.password.trim().length > 0) {
     passwordSalt = generateRandomSalt();
     passwordHash = await hashPasswordPBKDF2(req.password, passwordSalt);
+    passwordWrappedShareKey = await wrapShareKeyWithPassword(shareKey, req.password, passwordSalt);
   }
 
-  // Key wrapping: only wrap with master key if owner approval is required;
-  // for direct shares, visitor unlocks directly with shareKeyBase64
-  let wrappedShareKey = shareKeyBase64;
-  if (masterKey && req.requireOwnerApproval) {
-    wrappedShareKey = await wrapShareKeyWithMaster(shareKey, masterKey);
-  }
+  const wrappedShareKey = await wrapShareKeyWithMaster(shareKey, masterKey);
 
   const rawContent = await resolvePageRawContent(page, masterKey);
   const encryptedContent = await encryptForShare(rawContent, shareKey);
@@ -180,6 +185,8 @@ export async function createShare(
     id: shareId,
     pageId: page.id,
     ownerId: localFingerprint.fingerprintHash,
+    ownerUid,
+    keyProtectionVersion: 2,
     scope: req.scope,
     includeMedia: req.includeMedia,
     isPasswordProtected: Boolean(passwordHash),
@@ -189,6 +196,7 @@ export async function createShare(
     permission: req.permission,
     encryptionKeyHash,
     wrappedShareKey,
+    passwordWrappedShareKey,
     isActive: true,
     expiresAt: req.expiresAt,
     maxViews: req.maxViews,
@@ -235,7 +243,10 @@ export async function createShare(
 
   return {
     shareId,
-    shareUrl: buildShareUrl(shareId),
+    shareUrl: buildShareUrl(
+      shareId,
+      !req.password && !req.requireOwnerApproval ? shareKeyBase64 : undefined
+    ),
     config,
   };
 }
@@ -283,13 +294,18 @@ export async function updateShareConfig(req: UpdateShareRequest): Promise<void> 
 
   if (req.password !== undefined) {
     if (req.password && req.password.trim().length > 0) {
+      const cached = await getWebShareKey(req.shareId);
+      if (!cached?.shareKeyBase64) throw new Error('The local share key is required to update password protection.');
+      const shareKey = await importShareKeyFromBase64(cached.shareKeyBase64);
       const salt = generateRandomSalt();
       updates.passwordSalt = salt;
       updates.passwordHash = await hashPasswordPBKDF2(req.password, salt);
+      updates.passwordWrappedShareKey = await wrapShareKeyWithPassword(shareKey, req.password, salt);
       updates.isPasswordProtected = true;
     } else {
       updates.passwordSalt = null;
       updates.passwordHash = null;
+      updates.passwordWrappedShareKey = null;
       updates.isPasswordProtected = false;
     }
   }
@@ -353,9 +369,11 @@ export async function deleteShare(shareId: string): Promise<void> {
  * Retrieves the active share config for a specific notebook page.
  */
 export async function getShareByPageId(pageId: string): Promise<SharedPageConfig | null> {
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid || auth.currentUser?.isAnonymous) return null;
   // Check local cache first for 0ms latency
   const cached = await getWebShareKeyByPage(pageId);
-  if (cached?.config && cached.config.isActive) {
+  if (cached?.config && cached.config.ownerUid === ownerUid && cached.config.isActive) {
     return cached.config as SharedPageConfig;
   }
 
@@ -363,6 +381,7 @@ export async function getShareByPageId(pageId: string): Promise<SharedPageConfig
   const q = query(
     collection(db, 'shared_pages'),
     where('pageId', '==', pageId),
+    where('ownerUid', '==', ownerUid),
     where('isActive', '==', true)
   );
   const snap = await getDocs(q);
@@ -377,15 +396,17 @@ export async function getShareByPageId(pageId: string): Promise<SharedPageConfig
  * Lists all shares owned by this device.
  */
 export async function listShares(): Promise<SharedPageConfig[]> {
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid || auth.currentUser?.isAnonymous) return [];
   const localKeys = await listWebShareKeys();
-  if (localKeys.length > 0) {
-    return localKeys.map((item) => item.config as SharedPageConfig);
+  const ownedLocalKeys = localKeys.filter((item) => item.config.ownerUid === ownerUid);
+  if (ownedLocalKeys.length > 0) {
+    return ownedLocalKeys.map((item) => item.config as SharedPageConfig);
   }
 
-  const localFingerprint = await generateDeviceFingerprint();
   const q = query(
     collection(db, 'shared_pages'),
-    where('ownerId', '==', localFingerprint.fingerprintHash)
+    where('ownerUid', '==', ownerUid)
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as SharedPageConfig);
@@ -394,15 +415,19 @@ export async function listShares(): Promise<SharedPageConfig[]> {
 /**
  * Logs an access event to the append-only `share_access_logs` collection.
  */
-export async function logShareAccess(log: Omit<ShareAccessLog, 'id'>): Promise<void> {
+export async function logShareAccess(log: Omit<ShareAccessLog, 'id' | 'ownerUid'>): Promise<void> {
   try {
+    if (!auth.currentUser) return;
+    const shareSnap = await getDoc(doc(db, 'shared_pages', log.shareId));
+    if (!shareSnap.exists() || typeof shareSnap.data().ownerUid !== 'string') return;
     const logRef = doc(collection(db, 'share_access_logs'));
     await setDoc(logRef, {
       id: logRef.id,
+      ownerUid: shareSnap.data().ownerUid,
       ...log,
     });
-  } catch {
-    // Audit log failure should not block page rendering
+  } catch (error: unknown) {
+    console.warn('[share-manager] Could not record share access event.', error);
   }
 }
 
@@ -413,9 +438,12 @@ export async function getAccessLogs(
   shareId: string,
   maxLogs = 50
 ): Promise<ShareAccessLog[]> {
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid) return [];
   const q = query(
     collection(db, 'share_access_logs'),
     where('shareId', '==', shareId),
+    where('ownerUid', '==', ownerUid),
     orderBy('accessedAt', 'desc'),
     limit(maxLogs)
   );

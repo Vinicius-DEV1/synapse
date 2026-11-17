@@ -251,6 +251,61 @@ export async function verifyPasswordHash(
   return diff === 0;
 }
 
+async function derivePasswordWrappingKey(password: string, saltHex: string): Promise<CryptoKey> {
+  const passwordKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  const salt = Uint8Array.from(hexToUint8Array(saltHex));
+  return await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    passwordKey,
+    { name: AES_ALGORITHM, length: AES_KEY_LENGTH },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/** Wraps a share key for password-protected public access without storing it in plaintext. */
+export async function wrapShareKeyWithPassword(
+  shareKey: CryptoKey,
+  password: string,
+  saltHex: string
+): Promise<string> {
+  const wrappingKey = await derivePasswordWrappingKey(password, saltHex);
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const rawShareKey = await crypto.subtle.exportKey('raw', shareKey);
+  const ciphertext = await crypto.subtle.encrypt({ name: AES_ALGORITHM, iv }, wrappingKey, rawShareKey);
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  return uint8ArrayToBase64(combined);
+}
+
+/** Unwraps a password-protected share key after the password verifier succeeds. */
+export async function unwrapShareKeyWithPassword(
+  wrappedBase64: string,
+  password: string,
+  saltHex: string
+): Promise<CryptoKey> {
+  const combined = base64ToUint8Array(wrappedBase64);
+  if (combined.length < IV_LENGTH + 32) throw new Error('Malformed password-wrapped share key.');
+  const iv = combined.slice(0, IV_LENGTH);
+  const ciphertext = combined.slice(IV_LENGTH);
+  const wrappingKey = await derivePasswordWrappingKey(password, saltHex);
+  const rawShareKey = await crypto.subtle.decrypt({ name: AES_ALGORITHM, iv }, wrappingKey, ciphertext);
+  return await crypto.subtle.importKey(
+    'raw',
+    rawShareKey,
+    { name: AES_ALGORITHM },
+    true,
+    ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']
+  );
+}
+
 /**
  * Wraps (encrypts) the share key with the owner's Master Key using AES-KW or AES-GCM.
  */

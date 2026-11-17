@@ -1,140 +1,240 @@
 rules_version = '2';
 
-/**
- * CLOUD FIRESTORE SECURITY RULES - SYNAPSE
- *
- * Implements strict multi-tenant isolation, Role-Based Access Control (RBAC),
- * and zero-knowledge E2EE workspace partitioning.
- */
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ─── HELPER FUNCTIONS ───────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null && request.auth.uid != null;
     }
 
+    function isRegisteredUser() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     function isUser(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isRegisteredUser() && request.auth.uid == userId;
     }
 
-    function isWorkspaceMember(wsId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
+    function isWorkspaceMember(workspaceId) {
+      return isRegisteredUser()
+        && exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid));
     }
 
-    function getMemberRole(wsId) {
-      return get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role;
+    function memberRole(workspaceId) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.role;
     }
 
-    function isEditorOrAbove(wsId) {
-      return isWorkspaceMember(wsId) && getMemberRole(wsId) in ['owner', 'admin', 'editor'];
+    function isEditorOrAbove(workspaceId) {
+      return isWorkspaceMember(workspaceId) && memberRole(workspaceId) in ['owner', 'admin', 'editor'];
     }
 
-    function isAdminOrOwner(wsId) {
-      return isWorkspaceMember(wsId) && getMemberRole(wsId) in ['owner', 'admin'];
+    function isAdminOrOwner(workspaceId) {
+      return isWorkspaceMember(workspaceId) && memberRole(workspaceId) in ['owner', 'admin'];
     }
 
-    function isOwner(wsId) {
-      return isWorkspaceMember(wsId) && getMemberRole(wsId) == 'owner';
+    function isOwner(workspaceId) {
+      return isWorkspaceMember(workspaceId) && memberRole(workspaceId) == 'owner';
     }
 
-    // ─── USER PROFILES & PRIVATE CONFIG ─────────────────────────────
+    function syncTableName(name) {
+      return name in [
+        'config', 'ai_prompts', 'pages', 'page_history', 'transactions', 'wishlist',
+        'finance_accounts', 'library_books', 'library_highlights', 'library_bookmarks',
+        'library_collections', 'library_book_collections', 'library_reading_sessions',
+        'culture_items', 'culture_episodes', 'culture_disliked_items', 'culture_ignored_items',
+        'videos', 'video_words', 'youtube_watched', 'youtube_summaries', 'calendar_events',
+        'vault_groups', 'vault_items', 'vault_password_history', 'tutor_sessions',
+        'tutor_messages', 'tutor_memories', 'focus_sessions', 'alarms', 'lofis',
+        'activity_logs', 'anki_decks', 'anki_notes', 'anki_cards', 'anki_srs_state',
+        'anki_reviews', 'anki_deck_settings', 'files', 'file_folders', 'file_page_links',
+        'diagrams', 'quiz_batteries', 'quiz_questions', 'quiz_attempts', 'quiz_page_links',
+        'habits', 'habit_logs', 'notifications', 'shared_page_keys'
+      ];
+    }
+
+    function shareExists(shareId) {
+      return exists(/databases/$(database)/documents/shared_pages/$(shareId));
+    }
+
+    function shareData(shareId) {
+      return get(/databases/$(database)/documents/shared_pages/$(shareId)).data;
+    }
+
+    function isShareOwner(shareId) {
+      return isRegisteredUser() && shareExists(shareId) && shareData(shareId).ownerUid == request.auth.uid;
+    }
+
+    function isActiveShare(shareId) {
+      return shareExists(shareId)
+        && shareData(shareId).isActive == true
+        && shareData(shareId).keyProtectionVersion == 2;
+    }
+
+    // Private user profile, settings, credentials, sync manifests, and solo sync data.
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isUser(userId);
+      allow read, create, update: if isUser(userId);
+      allow delete: if false;
 
       match /config/{configDoc} {
         allow read, write: if isUser(userId);
       }
 
-      match /memberships/{wsId} {
+      match /memberships/{workspaceId} {
         allow read: if isUser(userId);
-        allow write: if isUser(userId);
+        allow create: if existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(userId))
+          && (isUser(userId) || isAdminOrOwner(workspaceId));
+        allow update, delete: if isUser(userId) || isAdminOrOwner(workspaceId);
+      }
+
+      match /sync/data/{table}/{documentId} {
+        allow read, write: if isUser(userId) && syncTableName(table);
       }
     }
 
-    // ─── WORKSPACES ROOT & METADATA ─────────────────────────────────
-    match /workspaces/{wsId} {
-      allow read: if isWorkspaceMember(wsId);
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAdminOrOwner(wsId);
-      allow delete: if isOwner(wsId);
+    // Workspace metadata and membership are explicitly separated from synced domain tables.
+    match /workspaces/{workspaceId} {
+      allow read: if isWorkspaceMember(workspaceId);
+      allow create: if isRegisteredUser() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isOwner(workspaceId)
+        || (isAdminOrOwner(workspaceId) && request.resource.data.ownerId == resource.data.ownerId);
+      allow delete: if isOwner(workspaceId);
 
-      // Members Subcollection
       match /members/{memberUid} {
-        allow read: if isWorkspaceMember(wsId);
-        allow create: if isAdminOrOwner(wsId) || isUser(memberUid);
-        allow update: if isOwner(wsId) || (isAdminOrOwner(wsId) && resource.data.role != 'owner' && request.resource.data.role != 'owner');
-        allow delete: if isOwner(wsId) || (isAdminOrOwner(wsId) && resource.data.role != 'owner') || isUser(memberUid);
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if (isOwner(workspaceId)
+            || (isAdminOrOwner(workspaceId) && request.resource.data.role != 'owner'))
+          || (isUser(memberUid)
+            && memberUid == request.auth.uid
+            && request.resource.data.role == 'owner'
+            && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid)
+          || (isUser(memberUid)
+            && memberUid == request.auth.uid
+            && request.resource.data.invitationId is string
+            && existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/invitations/$(request.resource.data.invitationId))
+            && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/invitations/$(request.resource.data.invitationId)).data.status == 'accepted'
+            && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/invitations/$(request.resource.data.invitationId)).data.invitedEmail == request.auth.token.email
+            && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/invitations/$(request.resource.data.invitationId)).data.role == request.resource.data.role)
+          && request.resource.data.role in ['owner', 'admin', 'editor', 'viewer'];
+        allow update: if (isOwner(workspaceId)
+          || (isAdminOrOwner(workspaceId)
+            && resource.data.role != 'owner'
+            && request.resource.data.role != 'owner'))
+          && request.resource.data.role in ['owner', 'admin', 'editor', 'viewer'];
+        allow delete: if isOwner(workspaceId)
+          || (isAdminOrOwner(workspaceId) && resource.data.role != 'owner');
       }
 
-      // Invitations Subcollection
-      match /invitations/{invId} {
-        allow read: if isWorkspaceMember(wsId) || (isSignedIn() && request.auth.token.email == resource.data.invitedEmail);
-        allow create, delete: if isAdminOrOwner(wsId);
-        allow update: if isSignedIn() && request.auth.token.email == resource.data.invitedEmail;
+      match /invitations/{invitationId} {
+        allow read: if isWorkspaceMember(workspaceId)
+          || (isSignedIn() && request.auth.token.email == resource.data.invitedEmail);
+        allow create: if isAdminOrOwner(workspaceId)
+          && request.resource.data.workspaceId == workspaceId
+          && request.resource.data.status == 'pending'
+          && request.resource.data.role in ['admin', 'editor', 'viewer'];
+        allow delete: if isAdminOrOwner(workspaceId);
+        allow update: if isSignedIn()
+          && request.auth.token.email == resource.data.invitedEmail
+          && resource.data.status == 'pending'
+          && request.resource.data.status in ['accepted', 'declined']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
       }
 
-      // Workspace Signals & Manifests
       match /config/{configDoc} {
-        allow read: if isWorkspaceMember(wsId);
-        allow write: if isEditorOrAbove(wsId);
+        allow read: if isWorkspaceMember(workspaceId);
+        allow write: if isEditorOrAbove(workspaceId);
       }
 
-      // Realtime CRDT Collaborative Deltas
       match /collab_updates/{updateId} {
-        allow read: if isWorkspaceMember(wsId);
-        allow create: if isEditorOrAbove(wsId);
-        allow update, delete: if isAdminOrOwner(wsId);
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if isEditorOrAbove(workspaceId);
+        allow update, delete: if isAdminOrOwner(workspaceId);
       }
 
-      // Scoped Workspace Data Tables (pages, transactions, library_books, anki, etc.)
-      match /{collectionName}/{docId} {
-        allow read: if isWorkspaceMember(wsId);
-        allow write: if isEditorOrAbove(wsId);
+      match /{collectionName}/{documentId} {
+        allow read: if syncTableName(collectionName) && isWorkspaceMember(workspaceId);
+        allow write: if syncTableName(collectionName) && isEditorOrAbove(workspaceId);
       }
     }
 
-    // ─── CADERNO PAGE SHARING (PUBLIC VIEWER) ────────────────────────
+    // Public share metadata and encrypted payloads are readable only while a share is active.
     match /shared_pages/{shareId} {
-      allow read: if resource == null || resource.data.isActive == true;
-      allow write: if true;
+      allow read: if (resource.data.isActive == true && resource.data.keyProtectionVersion == 2)
+        || isShareOwner(shareId);
+      allow create: if isSignedIn()
+        && request.resource.data.id == shareId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keyProtectionVersion == 2
+        && request.resource.data.wrappedShareKey is string
+        && request.resource.data.wrappedShareKey.size() > 44;
+      allow update: if isShareOwner(shareId)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.id == resource.data.id;
+      allow delete: if isShareOwner(shareId);
     }
 
     match /shared_page_content/{shareId} {
-      allow read, write: if true;
+      allow read: if isActiveShare(shareId) || isShareOwner(shareId);
+      allow create, update: if isShareOwner(shareId)
+        && request.resource.data.shareId == shareId;
+      allow delete: if isShareOwner(shareId);
     }
 
     match /shared_page_children/{childId} {
-      allow read, write: if true;
+      allow read: if isActiveShare(resource.data.shareId) || isShareOwner(resource.data.shareId);
+      allow create: if isShareOwner(request.resource.data.shareId);
+      allow update: if isShareOwner(resource.data.shareId)
+        && request.resource.data.shareId == resource.data.shareId;
+      allow delete: if isShareOwner(resource.data.shareId);
     }
 
     match /share_access_requests/{requestId} {
-      allow read, write: if true;
+      allow read: if isSignedIn()
+        && (resource.data.visitorUid == request.auth.uid || resource.data.ownerUid == request.auth.uid);
+      allow create: if isSignedIn()
+        && isActiveShare(request.resource.data.shareId)
+        && request.resource.data.visitorUid == request.auth.uid
+        && request.resource.data.ownerUid == shareData(request.resource.data.shareId).ownerUid
+        && request.resource.data.status == 'pending';
+      allow update: if isShareOwner(resource.data.shareId)
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.visitorUid == resource.data.visitorUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'resolvedAt', 'encryptedShareKey', 'ownerPublicKey'
+        ])
+        && request.resource.data.status in ['approved', 'denied'];
+      allow delete: if false;
     }
 
     match /share_trusted_devices/{deviceId} {
-      allow read, write: if true;
+      allow read: if isShareOwner(resource.data.shareId)
+        || (isSignedIn() && resource.data.visitorUid == request.auth.uid);
+      allow create: if isShareOwner(request.resource.data.shareId)
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isShareOwner(resource.data.shareId)
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isShareOwner(resource.data.shareId);
     }
 
     match /share_access_logs/{logId} {
-      allow create: if true;
-      allow read: if true;
+      allow read: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && isActiveShare(request.resource.data.shareId)
+        && request.resource.data.ownerUid == shareData(request.resource.data.shareId).ownerUid;
       allow update, delete: if false;
     }
 
     match /share_updates/{updateId} {
-      allow read, write: if true;
+      allow read: if isActiveShare(resource.data.shareId);
+      allow create: if isSignedIn()
+        && isActiveShare(request.resource.data.shareId)
+        && shareData(request.resource.data.shareId).permission == 'editable';
+      allow update, delete: if false;
     }
 
     match /share_presence/{presenceId} {
-      allow read, write: if true;
-    }
-
-    // ─── LEGACY ROOT COLLECTIONS (BACKWARD COMPATIBILITY) ────────────
-    // Allows legacy single-user sync during transition before full workspace migration
-    match /{document=**} {
-      allow read, write: if true;
+      allow read: if isActiveShare(resource.data.shareId);
+      allow create, update: if isSignedIn() && isActiveShare(request.resource.data.shareId);
+      allow delete: if isSignedIn() && isActiveShare(resource.data.shareId);
     }
   }
 }

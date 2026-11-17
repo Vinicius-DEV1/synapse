@@ -17,7 +17,8 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { auth, db } from '../firebase';
 import type {
   DeviceFingerprint,
   ShareAccessRequest,
@@ -32,6 +33,7 @@ import {
   exportShareKeyToBase64,
   importShareKeyFromBase64,
 } from './share-crypto';
+import { getVisitorShareKeyPair, saveVisitorShareKeyPair } from '../db-web';
 
 const ECDH_ALGORITHM = 'ECDH';
 const NAMED_CURVE = 'P-256';
@@ -135,6 +137,17 @@ export async function submitAccessRequest(
   passwordVerified: boolean,
   visitorPublicKeyJwk: string
 ): Promise<string> {
+  const visitor = auth.currentUser ?? (await signInAnonymously(auth)).user;
+  const shareSnap = await getDoc(doc(db, 'shared_pages', shareId));
+  if (!shareSnap.exists() || shareSnap.data().isActive !== true) {
+    throw new Error('This share is unavailable or has been revoked.');
+  }
+  const ownerUid = shareSnap.data().ownerUid;
+  if (typeof ownerUid !== 'string' || !ownerUid) {
+    throw new Error('This share does not have a valid owner account.');
+  }
+  const visitorKeyPair = await getOrCreatePersistentVisitorKeyPair();
+  const visitorTrustPublicKey = await exportKeyToJWK(visitorKeyPair.publicKey);
   const reqRef = doc(collection(db, 'share_access_requests'));
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString(); // 10m TTL
@@ -142,6 +155,8 @@ export async function submitAccessRequest(
   const request: ShareAccessRequest = {
     id: reqRef.id,
     shareId,
+    ownerUid,
+    visitorUid: visitor.uid,
     deviceFingerprint: fingerprint,
     ipHash: fingerprint.fingerprintHash.slice(0, 16),
     status: 'pending',
@@ -151,6 +166,7 @@ export async function submitAccessRequest(
     passwordVerified,
     encryptedShareKey: null,
     visitorPublicKey: visitorPublicKeyJwk,
+    visitorTrustPublicKey,
     ownerPublicKey: null,
   };
 
@@ -190,12 +206,15 @@ export function listenToPendingRequests(
   if (shareIds.length === 0) {
     return () => {};
   }
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid || auth.currentUser?.isAnonymous) return () => {};
 
   // Firestore "in" queries support up to 30 elements
   const targetIds = shareIds.slice(0, 30);
   const q = query(
     collection(db, 'share_access_requests'),
     where('shareId', 'in', targetIds),
+    where('ownerUid', '==', ownerUid),
     where('status', '==', 'pending')
   );
 
@@ -220,6 +239,9 @@ export async function approveAccessRequest(
   shareKey: CryptoKey,
   trustDevice = true
 ): Promise<void> {
+  if (!auth.currentUser || auth.currentUser.uid !== request.ownerUid || auth.currentUser.isAnonymous) {
+    throw new Error('Only the signed-in share owner can approve this request.');
+  }
   const ownerKeyPair = await generateECDHKeyPair();
   const visitorPublicKey = await importPublicKeyFromJWK(request.visitorPublicKey);
   const sharedSecret = await deriveSharedSecretKey(ownerKeyPair.privateKey, visitorPublicKey);
@@ -235,19 +257,28 @@ export async function approveAccessRequest(
   });
 
   if (trustDevice) {
-    await registerTrustedDevice(
-      request.shareId,
-      request.deviceFingerprint,
-      encryptedShareKey
-    );
+    try {
+      await registerTrustedDevice(
+        request.shareId,
+        request.deviceFingerprint,
+        shareKey,
+        request.visitorUid,
+        request.visitorTrustPublicKey
+      );
+    } catch (trustError: unknown) {
+      console.warn('[ShareAccess] Approval succeeded, but trusted-device registration failed.', trustError);
+    }
   }
 }
 
 /**
  * Denies an access request.
  */
-export async function denyAccessRequest(requestId: string): Promise<void> {
-  const reqRef = doc(db, 'share_access_requests', requestId);
+export async function denyAccessRequest(request: ShareAccessRequest): Promise<void> {
+  if (!auth.currentUser || auth.currentUser.uid !== request.ownerUid || auth.currentUser.isAnonymous) {
+    throw new Error('Only the signed-in share owner can deny this request.');
+  }
+  const reqRef = doc(db, 'share_access_requests', request.id);
   await updateDoc(reqRef, {
     status: 'denied',
     resolvedAt: new Date().toISOString(),
@@ -262,14 +293,25 @@ export async function denyAccessRequest(requestId: string): Promise<void> {
 export async function registerTrustedDevice(
   shareId: string,
   fingerprint: DeviceFingerprint,
-  encryptedShareKey: string
+  shareKey: CryptoKey,
+  visitorUid: string,
+  visitorTrustPublicKey: string
 ): Promise<void> {
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid || auth.currentUser?.isAnonymous) throw new Error('A signed-in share owner is required.');
+  const ownerKeyPair = await generateECDHKeyPair();
+  const visitorPublicKey = await importPublicKeyFromJWK(visitorTrustPublicKey);
+  const sharedSecret = await deriveSharedSecretKey(ownerKeyPair.privateKey, visitorPublicKey);
+  const encryptedShareKey = await wrapShareKeyWithSecret(shareKey, sharedSecret);
+  const ownerPublicKey = await exportKeyToJWK(ownerKeyPair.publicKey);
   const docId = `${shareId}_${fingerprint.fingerprintHash}`;
   const deviceRef = doc(db, 'share_trusted_devices', docId);
 
   const trustedRecord: ShareTrustedDevice = {
     id: docId,
     shareId,
+    ownerUid,
+    visitorUid,
     fingerprintHash: fingerprint.fingerprintHash,
     persistentToken: fingerprint.persistentToken,
     displayLabel: fingerprint.displayLabel,
@@ -278,6 +320,7 @@ export async function registerTrustedDevice(
     lastAccessAt: new Date().toISOString(),
     accessCount: 1,
     encryptedShareKey,
+    ownerPublicKey,
     isRevoked: false,
     revokedAt: null,
   };
@@ -291,7 +334,18 @@ export async function registerTrustedDevice(
 export async function checkDeviceTrust(
   shareId: string,
   fingerprint: DeviceFingerprint
-): Promise<{ isTrusted: boolean; encryptedShareKey?: string }> {
+): Promise<{ isTrusted: boolean; shareKey?: CryptoKey }> {
+  let visitor = auth.currentUser;
+  if (!visitor) {
+    try {
+      visitor = (await signInAnonymously(auth)).user;
+    } catch (authError: unknown) {
+      console.warn('[ShareAccess] Anonymous sign-in unavailable; continuing without device trust.', authError);
+      return { isTrusted: false };
+    }
+  }
+  const visitorKeyPair = await getOrCreatePersistentVisitorKeyPair();
+
   // Check exact fingerprint match first
   const exactDocId = `${shareId}_${fingerprint.fingerprintHash}`;
   const exactRef = doc(db, 'share_trusted_devices', exactDocId);
@@ -299,12 +353,8 @@ export async function checkDeviceTrust(
 
   if (exactSnap.exists()) {
     const data = exactSnap.data() as ShareTrustedDevice;
-    if (!data.isRevoked) {
-      await updateDoc(exactRef, {
-        lastAccessAt: new Date().toISOString(),
-        accessCount: (data.accessCount || 1) + 1,
-      });
-      return { isTrusted: true, encryptedShareKey: data.encryptedShareKey };
+    if (!data.isRevoked && data.visitorUid === visitor.uid) {
+      return { isTrusted: true, shareKey: await unwrapTrustedDeviceKey(data, visitorKeyPair) };
     }
   }
 
@@ -312,7 +362,7 @@ export async function checkDeviceTrust(
   const q = query(
     collection(db, 'share_trusted_devices'),
     where('shareId', '==', shareId),
-    where('persistentToken', '==', fingerprint.persistentToken),
+    where('visitorUid', '==', visitor.uid),
     where('isRevoked', '==', false)
   );
 
@@ -321,15 +371,28 @@ export async function checkDeviceTrust(
     const data = matchDoc.data() as ShareTrustedDevice;
     const overlap = computeSignalOverlap(fingerprint.signals, data.signals);
     if (overlap >= 0.70) {
-      await updateDoc(matchDoc.ref, {
-        lastAccessAt: new Date().toISOString(),
-        accessCount: (data.accessCount || 1) + 1,
-      });
-      return { isTrusted: true, encryptedShareKey: data.encryptedShareKey };
+      return { isTrusted: true, shareKey: await unwrapTrustedDeviceKey(data, visitorKeyPair) };
     }
   }
 
   return { isTrusted: false };
+}
+
+async function getOrCreatePersistentVisitorKeyPair(): Promise<CryptoKeyPair> {
+  const existingKeyPair = await getVisitorShareKeyPair();
+  if (existingKeyPair) return existingKeyPair;
+  const keyPair = await generateECDHKeyPair();
+  await saveVisitorShareKeyPair(keyPair);
+  return keyPair;
+}
+
+async function unwrapTrustedDeviceKey(
+  record: ShareTrustedDevice,
+  visitorKeyPair: CryptoKeyPair
+): Promise<CryptoKey> {
+  const ownerPublicKey = await importPublicKeyFromJWK(record.ownerPublicKey);
+  const sharedSecret = await deriveSharedSecretKey(visitorKeyPair.privateKey, ownerPublicKey);
+  return await unwrapShareKeyWithSecret(record.encryptedShareKey, sharedSecret);
 }
 
 /**
