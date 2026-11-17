@@ -41,10 +41,9 @@ describe('webSyncApi (Persistence & Sync Storage Adapter)', () => {
       expect(results.map((r: any) => r.id)).toEqual(['2', '3', '4', '5']);
     });
 
-    it('returns empty array when table store is not found', async () => {
+    it('reports missing local stores instead of treating them as empty tables', async () => {
       const api = webSyncApi(mockDb, originalDelete, originalPut);
-      const results = await api.getModifiedRows!('unknown_table', 1000);
-      expect(results).toEqual([]);
+      await expect(api.getModifiedRows!('unknown_table', 1000)).rejects.toThrow('IndexedDB store is unavailable');
     });
   });
 
@@ -93,23 +92,23 @@ describe('webSyncApi (Persistence & Sync Storage Adapter)', () => {
       expect(originalPut).toHaveBeenCalledWith('library_books', expect.objectContaining({ id: 'book-99' }));
     });
 
-    it('still writes safely when fetching existing row throws', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it('does not overwrite a row when fetching the existing record fails', async () => {
       mockDb.get.mockRejectedValueOnce(new Error('IndexedDB transaction timeout'));
 
       const api = webSyncApi(mockDb, originalDelete, originalPut);
-      const res = await api.upsertRow('pages', { id: 'p2', title: 'Fallback Write' });
+      await expect(api.upsertRow('pages', { id: 'p2', title: 'Fallback Write' })).rejects.toThrow(
+        'IndexedDB transaction timeout'
+      );
 
-      expect(res.success).toBe(true);
-      expect(originalPut).toHaveBeenCalledWith('pages', { id: 'p2', title: 'Fallback Write' });
-      consoleWarnSpy.mockRestore();
+      expect(originalPut).not.toHaveBeenCalled();
     });
 
-    it('skips write gracefully when table does not exist in store names', async () => {
+    it('reports a missing store instead of skipping a write', async () => {
       const api = webSyncApi(mockDb, originalDelete, originalPut);
-      const res = await api.upsertRow('non_existent_table', { id: 'x1' });
+      await expect(api.upsertRow('non_existent_table', { id: 'x1' })).rejects.toThrow(
+        'IndexedDB store is unavailable'
+      );
 
-      expect(res.success).toBe(true);
       expect(originalPut).not.toHaveBeenCalled();
     });
   });
@@ -164,11 +163,10 @@ describe('webSyncApi (Persistence & Sync Storage Adapter)', () => {
       expect(missing).toBeNull();
     });
 
-    it('catches and returns null when getRow encounters internal error', async () => {
+    it('reports a getRow storage failure instead of returning a false miss', async () => {
       mockDb.get.mockRejectedValueOnce(new Error('Corrupt block'));
       const api = webSyncApi(mockDb, originalDelete, originalPut);
-      const res = await api.getRow!('pages', 'corrupt-id');
-      expect(res).toBeNull();
+      await expect(api.getRow!('pages', 'corrupt-id')).rejects.toThrow('Corrupt block');
     });
   });
 

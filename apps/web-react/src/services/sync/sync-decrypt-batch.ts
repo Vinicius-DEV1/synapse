@@ -1,11 +1,13 @@
 import { decryptText } from '../crypto';
 import { base64ToArrayBuffer } from '../../utils/binary';
+import { isRecord } from './sync-utils';
 
 export interface CloudData {
   encryptedData?: string;
   isCompressed?: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
+  idEncodingVersion?: unknown;
   [key: string]: unknown;
 }
 
@@ -23,14 +25,26 @@ export interface DecryptedResult {
   error: unknown;
 }
 
+export function parseCloudData(value: unknown): CloudData {
+  if (!isRecord(value)) throw new Error('Invalid Firestore sync document.');
+  if (value.encryptedData !== undefined && typeof value.encryptedData !== 'string') {
+    throw new Error('Invalid encryptedData field in Firestore sync document.');
+  }
+  if (value.isCompressed !== undefined && typeof value.isCompressed !== 'boolean') {
+    throw new Error('Invalid isCompressed field in Firestore sync document.');
+  }
+  return value;
+}
+
 export async function decryptCloudDoc(
   docSnap: FirestoreDocLike,
   key: CryptoKey,
   moduleKeys: Record<string, CryptoKey>
 ): Promise<DecryptedResult> {
   const rawData = docSnap.data();
-  const cloudData: CloudData = (rawData as CloudData) || {};
+  let cloudData: CloudData = {};
   try {
+    cloudData = parseCloudData(rawData ?? {});
     let decryptedJsonOrB64: string;
     let isLegacy = false;
     try {
@@ -56,7 +70,9 @@ export async function decryptCloudDoc(
     if (cloudData.isCompressed) {
       try {
         const buffer = base64ToArrayBuffer(decryptedJsonOrB64);
-        const stream = new Response(buffer).body!.pipeThrough(new DecompressionStream('gzip'));
+        const body = new Response(buffer).body;
+        if (!body) throw new Error('Decompression stream body is unavailable.');
+        const stream = body.pipeThrough(new DecompressionStream('gzip'));
         finalJson = await new Response(stream).text();
       } catch (decErr) {
         console.error('[Sync Decompress] Error decompressing document', decErr);
@@ -64,7 +80,8 @@ export async function decryptCloudDoc(
       }
     }
 
-    const parsed = JSON.parse(finalJson) as Record<string, unknown>;
+    const parsed: unknown = JSON.parse(finalJson);
+    if (!isRecord(parsed)) throw new Error('Decrypted sync payload must be a JSON object.');
     return { docSnap, cloudData, parsed, isLegacy, error: null };
   } catch (err: unknown) {
     return { docSnap, cloudData, parsed: null, isLegacy: false, error: err };

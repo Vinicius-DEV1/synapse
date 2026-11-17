@@ -12,7 +12,7 @@ import { deriveMasterKey, encryptText } from '../crypto';
 import * as firestore from 'firebase/firestore';
 
 vi.mock('firebase/firestore', () => ({
-  doc: vi.fn((_db, table, id) => ({ path: `${table}/${id}`, table, id })),
+  doc: vi.fn((_db, ...segments: string[]) => ({ path: segments.join('/'), table: segments.at(-2), id: segments.at(-1) })),
   getDoc: vi.fn(),
   setDoc: vi.fn().mockResolvedValue(undefined),
   serverTimestamp: vi.fn(() => 'MOCK_SERVER_TIMESTAMP'),
@@ -20,6 +20,7 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('../firebase', () => ({
   db: { type: 'mock-firestore-db' },
+  auth: { currentUser: { uid: 'test-user', isAnonymous: false } },
 }));
 
 describe('sync-auth service', () => {
@@ -112,7 +113,7 @@ describe('sync-auth service', () => {
 
     await pushModularKeysToCloud(modularKeys, masterKey);
     expect(firestore.setDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'config/module_keys' }),
+      expect.objectContaining({ path: 'users/test-user/config/module_keys' }),
       expect.objectContaining({
         encryptedData: expect.any(String),
       }),

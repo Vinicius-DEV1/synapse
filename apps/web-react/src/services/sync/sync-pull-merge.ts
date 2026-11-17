@@ -1,19 +1,30 @@
 import type { DecryptedResult } from './sync-decrypt-batch';
-import { parseDateSafe, type SyncRow } from './sync-utils';
+import { isRecord, parseDateSafe, type SyncRow } from './sync-utils';
 
 export function normalizeTime(t: unknown): string | undefined {
   if (!t) return undefined;
-  if (typeof t === 'object' && t !== null && 'toDate' in t && typeof (t as { toDate: () => Date }).toDate === 'function') {
-    return (t as { toDate: () => Date }).toDate().toISOString();
-  }
-  if (typeof t === 'object' && t !== null && 'seconds' in t && typeof (t as { seconds: number }).seconds === 'number') {
-    return new Date((t as { seconds: number }).seconds * 1000).toISOString();
+  if (t instanceof Date) return Number.isNaN(t.getTime()) ? undefined : t.toISOString();
+  if (isRecord(t)) {
+    if (typeof t.toDate === 'function') {
+      const date: unknown = Reflect.apply(t.toDate, t, []);
+      if (date instanceof Date && !Number.isNaN(date.getTime())) return date.toISOString();
+    }
+    if (typeof t.seconds === 'number' && Number.isFinite(t.seconds)) {
+      return new Date(t.seconds * 1000).toISOString();
+    }
   }
   if (typeof t === 'string' || typeof t === 'number') {
     const epoch = parseDateSafe(t);
     return epoch > 0 ? new Date(epoch).toISOString() : undefined;
   }
   return undefined;
+}
+
+function normalizeCloudTimestamp(value: unknown, field: string): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  const normalized = normalizeTime(value);
+  if (!normalized) throw new Error(`Invalid ${field} timestamp in cloud document.`);
+  return normalized;
 }
 
 export interface PreparedUpsert {
@@ -27,6 +38,8 @@ let yjsUtils: {
   getYDocStateAsBase64: (doc: import('yjs').Doc) => string;
 } | null = null;
 
+const TABLES_WITHOUT_UPDATED_AT = new Set(['quiz_attempts', 'quiz_page_links']);
+
 export async function prepareRowForUpsert(
   result: DecryptedResult,
   table: string,
@@ -34,9 +47,7 @@ export async function prepareRowForUpsert(
   freshRow: SyncRow | undefined
 ): Promise<PreparedUpsert> {
   const { docSnap, cloudData, parsed } = result;
-  const cloudTime = parseDateSafe(
-    (cloudData.updatedAt || cloudData.createdAt || 0) as string | number
-  );
+  const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
   const localTime = localRow
     ? parseDateSafe(localRow.updated_at || localRow.created_at || 0)
     : -1;
@@ -46,18 +57,18 @@ export async function prepareRowForUpsert(
     ...(parsed || {}),
   };
 
-  if (cloudData.updatedAt !== undefined) {
-    rowToUpsert.updated_at = normalizeTime(cloudData.updatedAt) || (cloudData.updatedAt as string);
+  if (cloudData.updatedAt !== undefined && !TABLES_WITHOUT_UPDATED_AT.has(table)) {
+    rowToUpsert.updated_at = normalizeCloudTimestamp(cloudData.updatedAt, 'updatedAt');
   }
-  if (cloudData.createdAt !== undefined) {
-    rowToUpsert.created_at = normalizeTime(cloudData.createdAt) || (cloudData.createdAt as string);
+  if (cloudData.createdAt !== undefined && cloudData.createdAt !== null) {
+    rowToUpsert.created_at = normalizeCloudTimestamp(cloudData.createdAt, 'createdAt');
   }
-  if (cloudData.deletedAt !== undefined) {
-    rowToUpsert.deleted_at = normalizeTime(cloudData.deletedAt) || (cloudData.deletedAt as string | null);
+  if (cloudData.deletedAt !== undefined && cloudData.deletedAt !== null) {
+    rowToUpsert.deleted_at = normalizeCloudTimestamp(cloudData.deletedAt, 'deletedAt');
   } else if (parsed && parsed.deleted_at !== undefined) {
-    rowToUpsert.deleted_at = parsed.deleted_at ? (normalizeTime(parsed.deleted_at) || (parsed.deleted_at as string)) : null;
-  } else {
-    rowToUpsert.deleted_at = null;
+    rowToUpsert.deleted_at = parsed.deleted_at
+      ? normalizeCloudTimestamp(parsed.deleted_at, 'deleted_at')
+      : null;
   }
 
   // CRDT merge for pages (Yjs)
@@ -68,15 +79,22 @@ export async function prepareRowForUpsert(
     typeof parsed.crdt_state === 'string'
   ) {
     try {
-      if (!Y) {
-        Y = await import('yjs');
-        yjsUtils = await import('../../utils/yjs-utils');
+      const [Yjs, utils] = await Promise.all([
+        Y ?? import('yjs'),
+        yjsUtils ?? import('../../utils/yjs-utils'),
+      ]);
+      Y = Yjs;
+      yjsUtils = utils;
+      const localCrdtState = localRow.crdt_state;
+      const cloudCrdtState = parsed.crdt_state;
+      if (typeof localCrdtState !== 'string' || typeof cloudCrdtState !== 'string') {
+        throw new Error('Page CRDT state changed during merge preparation.');
       }
-      const ydoc = new Y.Doc();
+      const ydoc = new Yjs.Doc();
       try {
-        Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(localRow.crdt_state));
-        Y.applyUpdate(ydoc, yjsUtils!.base64ToUint8Array(parsed.crdt_state));
-        const mergedCrdtState = yjsUtils!.getYDocStateAsBase64(ydoc);
+        Yjs.applyUpdate(ydoc, utils.base64ToUint8Array(localCrdtState));
+        Yjs.applyUpdate(ydoc, utils.base64ToUint8Array(cloudCrdtState));
+        const mergedCrdtState = utils.getYDocStateAsBase64(ydoc);
         rowToUpsert.crdt_state = mergedCrdtState;
 
         if (typeof window !== 'undefined') {
@@ -96,6 +114,7 @@ export async function prepareRowForUpsert(
       }
     } catch (crdtErr) {
       console.error('Erro no merge CRDT Yjs:', crdtErr);
+      throw new Error(`Failed to merge Yjs state for page ${docSnap.id}.`);
     }
   } else if (localTime > cloudTime) {
     const isCloudDeleted = Boolean(
@@ -104,7 +123,9 @@ export async function prepareRowForUpsert(
     );
     if (isCloudDeleted && !localRow?.deleted_at) {
       Object.assign(rowToUpsert, localRow);
-      rowToUpsert.deleted_at = (normalizeTime(cloudData.deletedAt) || (parsed?.deleted_at as string)) || new Date().toISOString();
+      rowToUpsert.deleted_at = normalizeCloudTimestamp(cloudData.deletedAt, 'deletedAt')
+        || normalizeCloudTimestamp(parsed?.deleted_at, 'deleted_at')
+        || new Date().toISOString();
     } else {
       if (
         table === 'pages' &&
@@ -120,6 +141,7 @@ export async function prepareRowForUpsert(
           await window.api.savePageHistory(result.docSnap.id, String(parsed.content));
         } catch (histErr) {
           console.warn('[Sync] Failed to archive conflicting cloud revision to history:', histErr);
+          throw new Error(`Failed to preserve the local page revision for ${docSnap.id}.`);
         }
       }
       return { rowToUpsert, isSkipped: true };
@@ -139,6 +161,7 @@ export async function prepareRowForUpsert(
         await window.api.savePageHistory(result.docSnap.id, String(localRow.content));
       } catch (histErr) {
         console.warn('[Sync] Failed to archive conflicting local revision to history:', histErr);
+        throw new Error(`Failed to preserve the cloud page revision for ${docSnap.id}.`);
       }
     }
   }
@@ -155,36 +178,13 @@ export async function prepareRowForUpsert(
   return { rowToUpsert, isSkipped: false };
 }
 
-export async function upsertRowWithColumnFallback(
+export async function upsertRowWithoutDroppingFields(
   table: string,
   rowToUpsert: SyncRow
 ): Promise<void> {
-  if (!window.api?.sync) return;
-  try {
-    await window.api.sync.upsertRow(table, rowToUpsert);
-  } catch (upsertErr: unknown) {
-    const errMessage = upsertErr instanceof Error ? upsertErr.message : String(upsertErr);
-    const retryRow: Record<string, unknown> = { ...rowToUpsert };
-    let lastErr: Error | null = upsertErr instanceof Error ? upsertErr : new Error(String(upsertErr));
-
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const colMatch = errMessage.match(/has no column named (\S+)/);
-      if (colMatch && colMatch[1]) {
-        delete retryRow[colMatch[1]];
-        try {
-          await window.api.sync.upsertRow(table, retryRow as SyncRow);
-          Object.keys(rowToUpsert).forEach((k) => {
-            if (!(k in retryRow)) delete rowToUpsert[k];
-          });
-          lastErr = null;
-          break;
-        } catch (retryErr: unknown) {
-          lastErr = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
-        }
-      } else {
-        break;
-      }
-    }
-    if (lastErr) throw lastErr;
+  if (!window.api?.sync) {
+    throw new Error('Sync API is unavailable while applying a cloud row.');
   }
+
+  await window.api.sync.upsertRow(table, rowToUpsert);
 }

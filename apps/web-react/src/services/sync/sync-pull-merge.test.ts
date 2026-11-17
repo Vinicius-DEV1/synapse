@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import {
   normalizeTime,
   prepareRowForUpsert,
-  upsertRowWithColumnFallback,
+  upsertRowWithoutDroppingFields,
 } from './sync-pull-merge';
 import { getYDocStateAsBase64 } from '../../utils/yjs-utils';
 import type { DecryptedResult } from './sync-decrypt-batch';
@@ -32,14 +32,16 @@ describe('sync-pull-merge service', () => {
       const mockRawSeconds = { seconds: 1761402600 };
       const result = normalizeTime(mockRawSeconds);
       expect(result).toBeDefined();
-      expect(new Date(result!).getTime()).toBe(1761402600 * 1000);
+      if (!result) throw new Error('Expected a normalized timestamp.');
+      expect(new Date(result).getTime()).toBe(1761402600 * 1000);
     });
 
     it('normalizes ISO string and SQLite space-separated date strings', () => {
       expect(normalizeTime('2026-10-25T10:00:00.000Z')).toBe('2026-10-25T10:00:00.000Z');
       const spaceDate = normalizeTime('2026-10-25 10:00:00');
       expect(spaceDate).toBeDefined();
-      expect(new Date(spaceDate!).getUTCFullYear()).toBe(2026);
+      if (!spaceDate) throw new Error('Expected a normalized timestamp.');
+      expect(new Date(spaceDate).getUTCFullYear()).toBe(2026);
     });
 
     it('returns undefined for malformed non-date strings', () => {
@@ -53,8 +55,8 @@ describe('sync-pull-merge service', () => {
       cloudData: Record<string, unknown>,
       parsed: Record<string, unknown> | null
     ): DecryptedResult => ({
-      docSnap: { id: docId } as any,
-      cloudData: cloudData as any,
+      docSnap: { id: docId, data: () => undefined },
+      cloudData,
       parsed,
       isLegacy: false,
       error: null,
@@ -77,7 +79,40 @@ describe('sync-pull-merge service', () => {
       expect(prepared.rowToUpsert.title).toBe('New Note');
       expect(prepared.rowToUpsert.content).toBe('Fresh cloud content');
       expect(prepared.rowToUpsert.updated_at).toBe('2026-10-25T12:00:00.000Z');
-      expect(prepared.rowToUpsert.deleted_at).toBeNull();
+      expect(prepared.rowToUpsert.deleted_at).toBeUndefined();
+    });
+
+    it('does not add timestamp columns that are absent from local sync table schemas', async () => {
+      const attempt = await prepareRowForUpsert(
+        createMockResult(
+          'attempt-1',
+          {
+            updatedAt: '2026-10-25T12:00:00.000Z',
+            createdAt: '2026-10-25T10:00:00.000Z',
+            deletedAt: null,
+          },
+          { question_id: 'question-1', battery_id: 'battery-1' }
+        ),
+        'quiz_attempts',
+        undefined,
+        undefined
+      );
+      const pageLink = await prepareRowForUpsert(
+        createMockResult(
+          'page-link-1',
+          { updatedAt: '2026-10-25T12:00:00.000Z', createdAt: '2026-10-25T10:00:00.000Z' },
+          { battery_id: 'battery-1', page_id: 'page-1' }
+        ),
+        'quiz_page_links',
+        undefined,
+        undefined
+      );
+
+      expect(attempt.rowToUpsert).not.toHaveProperty('updated_at');
+      expect(attempt.rowToUpsert).not.toHaveProperty('deleted_at');
+      expect(attempt.rowToUpsert.created_at).toBe('2026-10-25T10:00:00.000Z');
+      expect(pageLink.rowToUpsert).not.toHaveProperty('updated_at');
+      expect(pageLink.rowToUpsert.created_at).toBe('2026-10-25T10:00:00.000Z');
     });
 
     it('merges Yjs CRDT states when table is pages and both have crdt_state', async () => {
@@ -109,11 +144,13 @@ describe('sync-pull-merge service', () => {
       const prepared = await prepareRowForUpsert(mockResult, 'pages', localRow, undefined);
 
       expect(prepared.isSkipped).toBe(false);
-      expect(prepared.rowToUpsert.crdt_state).toBeDefined();
-      expect(typeof prepared.rowToUpsert.crdt_state).toBe('string');
+      const mergedCrdtState = prepared.rowToUpsert.crdt_state;
+      expect(mergedCrdtState).toBeDefined();
+      expect(typeof mergedCrdtState).toBe('string');
+      if (typeof mergedCrdtState !== 'string') throw new Error('Expected a merged CRDT state.');
       // Verify merged state combines both CRDT operations
       const mergedDoc = new Y.Doc();
-      const updateBytes = Uint8Array.from(atob(prepared.rowToUpsert.crdt_state as string), c => c.charCodeAt(0));
+      const updateBytes = Uint8Array.from(atob(mergedCrdtState), c => c.charCodeAt(0));
       Y.applyUpdate(mergedDoc, updateBytes);
       expect(mergedDoc.getText('content').toString()).toContain('Local edit');
     });
@@ -187,9 +224,9 @@ describe('sync-pull-merge service', () => {
 
     it('archives local content to page_history when cloud wins LWW on conflicting non-CRDT page edit', async () => {
       const mockSavePageHistory = vi.fn().mockResolvedValue({ success: true, id: 'hist-1' });
-      (window as any).api = {
+      Object.defineProperty(window, 'api', { configurable: true, value: {
         savePageHistory: mockSavePageHistory,
-      };
+      } });
 
       const mockResult = createMockResult(
         'page-conflict-1',
@@ -213,9 +250,9 @@ describe('sync-pull-merge service', () => {
 
     it('archives cloud content to page_history when local wins LWW on conflicting non-CRDT page edit', async () => {
       const mockSavePageHistory = vi.fn().mockResolvedValue({ success: true, id: 'hist-2' });
-      (window as any).api = {
+      Object.defineProperty(window, 'api', { configurable: true, value: {
         savePageHistory: mockSavePageHistory,
-      };
+      } });
 
       const mockResult = createMockResult(
         'page-conflict-2',
@@ -238,31 +275,25 @@ describe('sync-pull-merge service', () => {
     });
   });
 
-  describe('upsertRowWithColumnFallback (Schema Evolution & Fault Tolerance)', () => {
+  describe('upsertRowWithoutDroppingFields', () => {
     it('succeeds immediately when upsertRow does not throw', async () => {
       const mockUpsert = vi.fn().mockResolvedValue({ success: true });
-      (window as any).api = {
+      Object.defineProperty(window, 'api', { configurable: true, value: {
         sync: { upsertRow: mockUpsert },
-      };
+      } });
 
-      await upsertRowWithColumnFallback('pages', { id: 'p1', title: 'Test' });
+      await upsertRowWithoutDroppingFields('pages', { id: 'p1', title: 'Test' });
       expect(mockUpsert).toHaveBeenCalledWith('pages', { id: 'p1', title: 'Test' });
     });
 
-    it('gracefully recovers by stripping unmapped schema column when SQLite reports missing column', async () => {
-      let callCount = 0;
-      const mockUpsert = vi.fn().mockImplementation(async (_table: string, row: Record<string, unknown>) => {
-        callCount++;
-        if (callCount === 1) {
-          // First attempt fails because SQLite has not migrated the new column yet
-          throw new Error('table pages has no column named new_v2_feature_field');
-        }
-        return { success: true };
-      });
+    it('preserves all cloud fields and propagates a schema mismatch', async () => {
+      const mockUpsert = vi.fn().mockRejectedValue(
+        new Error('SQLite schema mismatch: pages is missing new_v2_feature_field')
+      );
 
-      (window as any).api = {
+      Object.defineProperty(window, 'api', { configurable: true, value: {
         sync: { upsertRow: mockUpsert },
-      };
+      } });
 
       const rowToUpsert = {
         id: 'p1',
@@ -270,35 +301,31 @@ describe('sync-pull-merge service', () => {
         new_v2_feature_field: 'experimental data',
       };
 
-      await upsertRowWithColumnFallback('pages', rowToUpsert);
+      await expect(upsertRowWithoutDroppingFields('pages', rowToUpsert)).rejects.toThrow(
+        'SQLite schema mismatch'
+      );
 
-      expect(callCount).toBe(2);
-      expect(rowToUpsert).not.toHaveProperty('new_v2_feature_field');
-      expect(rowToUpsert).toHaveProperty('title', 'Test');
+      expect(mockUpsert).toHaveBeenCalledTimes(1);
+      expect(rowToUpsert).toHaveProperty('new_v2_feature_field', 'experimental data');
     });
 
     it('rethrows error when failure is unrelated to missing columns', async () => {
       const mockUpsert = vi.fn().mockRejectedValue(new Error('disk I/O error or constraint failure'));
-      (window as any).api = {
+      Object.defineProperty(window, 'api', { configurable: true, value: {
         sync: { upsertRow: mockUpsert },
-      };
+      } });
 
       await expect(
-        upsertRowWithColumnFallback('pages', { id: 'p1', title: 'Test' })
+        upsertRowWithoutDroppingFields('pages', { id: 'p1', title: 'Test' })
       ).rejects.toThrow('disk I/O error or constraint failure');
     });
 
-    it('stops and rethrows when column retries exceed maximum threshold (5 attempts)', async () => {
-      const mockUpsert = vi.fn().mockRejectedValue(new Error('has no column named always_failing_col'));
-      (window as any).api = {
-        sync: { upsertRow: mockUpsert },
-      };
+    it('fails instead of silently succeeding when the sync adapter is unavailable', async () => {
+      Object.defineProperty(window, 'api', { configurable: true, value: { sync: undefined } });
 
       await expect(
-        upsertRowWithColumnFallback('pages', { id: 'p1', always_failing_col: 'value' })
-      ).rejects.toThrow('has no column named always_failing_col');
-
-      expect(mockUpsert).toHaveBeenCalledTimes(6);
+        upsertRowWithoutDroppingFields('pages', { id: 'p1', title: 'Test' })
+      ).rejects.toThrow('Sync API is unavailable');
     });
   });
 });

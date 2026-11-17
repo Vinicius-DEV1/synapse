@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { pullAllFromCloud, pushAllToCloud, syncPdfsToCloud, listenForCloudSyncSignal } from '../services/sync';
-import { getDeviceId, restoreLastSyncTimesFromDb } from '../services/sync/sync-utils';
+import { getDeviceId } from '../services/sync/sync-utils';
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<T>((_, reject) =>
@@ -69,7 +71,14 @@ export function useSync(
   workspaceId?: string
 ) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [firebaseUserId, setFirebaseUserId] = useState<string | undefined>(
+    auth.currentUser && !auth.currentUser.isAnonymous ? auth.currentUser.uid : undefined
+  );
   const syncDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => onAuthStateChanged(auth, (user) => {
+    setFirebaseUserId(user && !user.isAnonymous ? user.uid : undefined);
+  }), []);
 
   const startSync = () => {
     setSyncStatus('syncing');
@@ -90,7 +99,7 @@ export function useSync(
   };
 
   useEffect(() => {
-    if (isAuth && masterKey) {
+    if (isAuth && masterKey && firebaseUserId) {
       let isClosed = false;
       let isSyncing = false; // Mutex: prevents concurrent syncs wasting Firebase quota
       let lastFullSyncTime = 0; // Cooldown: minimum interval between full syncs
@@ -114,9 +123,6 @@ export function useSync(
           doPushOnlySync();
         }
       };
-
-      // Restore sync timestamps from local database (protects against localStorage clearing)
-      restoreLastSyncTimesFromDb().catch(() => {});
 
       const doFullSync = async () => {
         if (isClosed) return;
@@ -142,12 +148,12 @@ export function useSync(
         hasUntargetedDirty = false;
         startSync();
         try {
-          await withTimeout(workspaceId ? pullAllFromCloud(masterKey, workspaceId) : pullAllFromCloud(masterKey), 120_000);
+          await withTimeout(pullAllFromCloud(masterKey, workspaceId, firebaseUserId), 120_000);
           loadPages();
           window.dispatchEvent(new CustomEvent('caderno-sync-complete'));
           await withTimeout(
             Promise.all([
-              workspaceId ? pushAllToCloud(masterKey, undefined, workspaceId) : pushAllToCloud(masterKey),
+              pushAllToCloud(masterKey, undefined, workspaceId, firebaseUserId),
               syncPdfsToCloud(masterKey),
             ]),
             120_000
@@ -188,7 +194,7 @@ export function useSync(
           // Silent background push targeting dirty tables (or all tables if unassigned)
           // Note: syncPdfsToCloud is intentionally excluded here to prevent heavy drive scans during keystroke autosaves
           await withTimeout(
-            workspaceId ? pushAllToCloud(masterKey, tablesToPush, workspaceId) : pushAllToCloud(masterKey, tablesToPush),
+            pushAllToCloud(masterKey, tablesToPush, workspaceId, firebaseUserId),
             120_000
           );
           if (!isClosed) {
@@ -218,7 +224,7 @@ export function useSync(
         }
         isSyncing = true;
         startSync();
-        withTimeout(workspaceId ? pullAllFromCloud(masterKey, workspaceId) : pullAllFromCloud(masterKey), 60_000)
+        withTimeout(pullAllFromCloud(masterKey, workspaceId, firebaseUserId), 60_000)
           .then(() => {
             loadPages();
             finishSync(true);
@@ -252,9 +258,7 @@ export function useSync(
         }
         executeRealTimePull();
       };
-      const unsubRealTime = workspaceId
-        ? listenForCloudSyncSignal(onSignal, workspaceId)
-        : listenForCloudSyncSignal(onSignal);
+      const unsubRealTime = listenForCloudSyncSignal(onSignal, workspaceId, firebaseUserId);
 
       // 3. Cross-Tab Sync (Same Browser)
       syncChannel.onmessage = (msg) => {
@@ -368,7 +372,7 @@ export function useSync(
         syncChannel.close();
       };
     }
-  }, [isAuth, masterKey, loadPages, workspaceId]);
+  }, [isAuth, masterKey, loadPages, workspaceId, firebaseUserId]);
 
   return { syncStatus };
 }

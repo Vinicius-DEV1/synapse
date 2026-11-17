@@ -63,6 +63,28 @@ fn validate_sync_table(table_name: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_sync_row_columns(
+    table_name: &str,
+    row: &serde_json::Map<String, Value>,
+    valid_columns: &std::collections::HashSet<String>,
+) -> Result<(), String> {
+    let unknown_columns: Vec<&str> = row
+        .keys()
+        .filter(|column| !valid_columns.contains(column.as_str()))
+        .map(String::as_str)
+        .collect();
+
+    if unknown_columns.is_empty() {
+        return Ok(());
+    }
+
+    Err(format!(
+        "SQLite schema mismatch for sync table {}: missing column(s): {}",
+        table_name,
+        unknown_columns.join(", ")
+    ))
+}
+
 #[tauri::command]
 pub fn sync_get_table(
     table_name: String,
@@ -82,7 +104,7 @@ pub fn sync_get_table(
         .query_map([], |row| {
             let mut map = serde_json::Map::new();
             for (i, col) in column_names.iter().enumerate() {
-                let val = row.get_ref(i).unwrap();
+                let val = row.get_ref(i)?;
                 let json_val = match val {
                     rusqlite::types::ValueRef::Null => Value::Null,
                     rusqlite::types::ValueRef::Integer(i) => Value::Number(i.into()),
@@ -92,7 +114,13 @@ pub fn sync_get_table(
                     rusqlite::types::ValueRef::Text(t) => {
                         Value::String(String::from_utf8_lossy(t).to_string())
                     }
-                    rusqlite::types::ValueRef::Blob(_) => Value::Null, // Ignorando blobs no sync
+                    rusqlite::types::ValueRef::Blob(_) => {
+                        return Err(rusqlite::Error::InvalidColumnType(
+                            i,
+                            col.clone(),
+                            rusqlite::types::Type::Blob,
+                        ));
+                    }
                 };
                 map.insert(col.clone(), json_val);
             }
@@ -102,9 +130,7 @@ pub fn sync_get_table(
 
     let mut items = Vec::new();
     for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
+        items.push(i.map_err(|e| e.to_string())?);
     }
     Ok(items)
 }
@@ -150,6 +176,8 @@ pub fn sync_upsert_row(
         .map_err(|e| e.to_string())?
         .filter_map(|r| r.ok())
         .collect();
+
+    validate_sync_row_columns(&table_name, obj, &valid_columns)?;
 
     let mut columns = Vec::new();
     let mut placeholders = Vec::new();
@@ -214,7 +242,7 @@ pub fn sync_upsert_row(
 
 /// #3: Queries rows matching specific IDs in a table.
 /// Optimized replacement for full sync_get_table during targeted synchronization.
-/// conflitos contra um subconjunto de docs que vieram da nuvem.
+/// conflicts against a subset of documents received from the cloud.
 #[tauri::command]
 pub fn sync_get_rows_by_ids(
     table_name: String,
@@ -225,9 +253,7 @@ pub fn sync_get_rows_by_ids(
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     // Validate table name to prevent SQL injection
-    if !table_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return Err("Invalid table name".into());
-    }
+    validate_sync_table(&table_name)?;
 
     if ids.is_empty() {
         return Ok(Vec::new());
@@ -253,7 +279,7 @@ pub fn sync_get_rows_by_ids(
         .query_map(rusqlite::params_from_iter(params.iter()), |row| {
             let mut map = serde_json::Map::new();
             for (i, col) in column_names.iter().enumerate() {
-                let val = row.get_ref(i).unwrap();
+                let val = row.get_ref(i)?;
                 let json_val = match val {
                     rusqlite::types::ValueRef::Null => Value::Null,
                     rusqlite::types::ValueRef::Integer(i) => Value::Number(i.into()),
@@ -263,7 +289,13 @@ pub fn sync_get_rows_by_ids(
                     rusqlite::types::ValueRef::Text(t) => {
                         Value::String(String::from_utf8_lossy(t).to_string())
                     }
-                    rusqlite::types::ValueRef::Blob(_) => Value::Null,
+                    rusqlite::types::ValueRef::Blob(_) => {
+                        return Err(rusqlite::Error::InvalidColumnType(
+                            i,
+                            col.clone(),
+                            rusqlite::types::Type::Blob,
+                        ));
+                    }
                 };
                 map.insert(col.clone(), json_val);
             }
@@ -273,9 +305,7 @@ pub fn sync_get_rows_by_ids(
 
     let mut items = Vec::new();
     for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
+        items.push(i.map_err(|e| e.to_string())?);
     }
     Ok(items)
 }
@@ -347,7 +377,7 @@ pub fn sync_get_modified_rows(
         .query_map(rusqlite::params_from_iter(params.iter()), |row| {
             let mut map = serde_json::Map::new();
             for (i, col) in cols.iter().enumerate() {
-                let val = row.get_ref(i).unwrap();
+                let val = row.get_ref(i)?;
                 let json_val = match val {
                     rusqlite::types::ValueRef::Null => Value::Null,
                     rusqlite::types::ValueRef::Integer(i) => Value::Number(i.into()),
@@ -357,7 +387,13 @@ pub fn sync_get_modified_rows(
                     rusqlite::types::ValueRef::Text(t) => {
                         Value::String(String::from_utf8_lossy(t).to_string())
                     }
-                    rusqlite::types::ValueRef::Blob(_) => Value::Null,
+                    rusqlite::types::ValueRef::Blob(_) => {
+                        return Err(rusqlite::Error::InvalidColumnType(
+                            i,
+                            col.clone(),
+                            rusqlite::types::Type::Blob,
+                        ));
+                    }
                 };
                 map.insert(col.clone(), json_val);
             }
@@ -367,9 +403,7 @@ pub fn sync_get_modified_rows(
 
     let mut items = Vec::new();
     for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
+        items.push(i.map_err(|e| e.to_string())?);
     }
     Ok(items)
 }
@@ -377,6 +411,27 @@ pub fn sync_get_modified_rows(
 #[cfg(test)]
 mod tests {
     use rusqlite::Connection;
+    use serde_json::json;
+
+    #[test]
+    fn sync_upsert_rejects_unknown_columns_without_dropping_them() {
+        let row = json!({"id": "page-1", "future_field": "preserve me"});
+        let valid_columns = std::collections::HashSet::from(["id".to_string()]);
+        let error = super::validate_sync_row_columns(
+            "pages",
+            row.as_object().expect("row is an object"),
+            &valid_columns,
+        )
+        .expect_err("unknown columns must hold the checkpoint until the schema is migrated");
+
+        assert!(error.contains("future_field"));
+    }
+
+    #[test]
+    fn sync_get_rows_by_ids_only_allows_registered_sync_tables() {
+        assert!(super::validate_sync_table("pages").is_ok());
+        assert!(super::validate_sync_table("keychain").is_err());
+    }
 
     #[test]
     fn test_sqlite_strftime_comparison() {

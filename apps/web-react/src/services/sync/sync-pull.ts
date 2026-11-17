@@ -1,15 +1,11 @@
-import { db } from '../firebase';
 import {
   query,
   where,
-  collection,
-  doc,
   getDoc,
   getDocs,
   limit,
   startAfter,
   orderBy,
-  deleteDoc,
   type Query,
   type DocumentData,
   type QueryDocumentSnapshot,
@@ -21,6 +17,9 @@ import {
   getTableLastSyncTime,
   setTableLastSyncTime,
   parseDateSafe,
+  decodeSyncDocumentId,
+  isStringRecord,
+  parseSyncRows,
   type SyncRow,
 } from './sync-utils';
 import {
@@ -29,42 +28,42 @@ import {
   logSyncEvent,
   logFirebaseTraffic,
 } from './sync-monitor';
-import { decryptCloudBatch, type CloudData } from './sync-decrypt-batch';
-import { prepareRowForUpsert, upsertRowWithColumnFallback } from './sync-pull-merge';
+import { parseCloudData } from './sync-decrypt-batch';
+import { processCloudDocuments } from './sync-pull-documents';
+import { getSyncCollection, getSyncConfigDocument, getSyncScopeKey } from './sync-cloud-paths';
 import { getErrorMessage } from '../../utils/error';
-
-/** Parallel decryption batch size */
-const DECRYPT_BATCH_SIZE = 20;
 
 export async function pullAllFromCloud(
   moduleKeys: Record<string, CryptoKey>,
-  workspaceId?: string
+  workspaceId?: string,
+  userId?: string
 ): Promise<void> {
   if (!window.api?.sync) {
-    console.error('Sync API não exposta no preload.');
-    return;
+    throw new Error('Local sync API is unavailable.');
   }
   if (isEmergencyStopped()) {
-    console.warn('[Sync PULL] Bloqueado por medida de segurança (Emergency Stop).');
-    return;
+    throw new Error('Cloud pull is disabled by the emergency sync stop.');
   }
 
-  const lastPull = getLastSyncTime('pull');
+  const scope = { workspaceId, userId };
+  const scopeKey = getSyncScopeKey(scope);
+  const lastPull = getLastSyncTime('pull', scopeKey);
   let highestCloudTime = lastPull;
   let pulledDocsCount = 0;
   let skippedDocsCount = 0;
+  let pullHadErrors = false;
+  const pullErrors: string[] = [];
 
   // Manifest: read once to determine which tables changed since lastPull.
   let manifest: Record<string, string> | null = null;
   if (lastPull > 0) {
     try {
-      const manifestRef = workspaceId
-        ? doc(db, 'workspaces', workspaceId, 'config', 'sync_manifest')
-        : doc(db, 'config', 'sync_manifest');
+      const manifestRef = getSyncConfigDocument('sync_manifest', scope);
       const manifestSnap = await getDoc(manifestRef);
       logFirebaseOp('read', 1);
       if (manifestSnap.exists()) {
-        manifest = manifestSnap.data() as Record<string, string>;
+        const manifestData: unknown = manifestSnap.data();
+        manifest = isStringRecord(manifestData) ? manifestData : null;
       }
     } catch (manifestErr: unknown) {
       console.debug(
@@ -77,14 +76,18 @@ export async function pullAllFromCloud(
   for (const module of Object.keys(MODULE_TABLES)) {
     const key = moduleKeys[module] || moduleKeys['core'];
     if (!key) {
-      console.warn(`[Sync PULL] Nenhuma chave encontrada para o módulo ${module}. Pulando...`);
+      const message = `[Sync PULL] Nenhuma chave encontrada para o módulo ${module}.`;
+      console.warn(`${message} Pulando...`);
+      pullErrors.push(message);
+      pullHadErrors = true;
       continue;
     }
     const tables = MODULE_TABLES[module] || [];
 
     for (const table of tables) {
+      let tableHadErrors = false;
       try {
-        const lastPullTable = getTableLastSyncTime('pull', table);
+        const lastPullTable = getTableLastSyncTime('pull', table, scopeKey);
         let highestTableTime = lastPullTable;
 
         if (manifest) {
@@ -101,9 +104,7 @@ export async function pullAllFromCloud(
           }
         }
 
-        const targetCollection = workspaceId
-          ? collection(db, 'workspaces', workspaceId, table)
-          : collection(db, table);
+        const targetCollection = getSyncCollection(table, scope);
 
         let qBase: Query<DocumentData> = targetCollection;
         if (lastPullTable > 0) {
@@ -135,7 +136,7 @@ export async function pullAllFromCloud(
 
           let chunkBytes = 0;
           querySnapshot.docs.forEach((docSnap) => {
-            const data = docSnap.data() as CloudData;
+            const data = parseCloudData(docSnap.data());
             chunkBytes += docSnap.id.length + (data.encryptedData?.length || 0) + 150;
           });
           logFirebaseTraffic(chunkBytes, 0);
@@ -150,60 +151,48 @@ export async function pullAllFromCloud(
           if (!localMap) {
             if (window.api.sync.getRowsByIds) {
               const cloudIds = querySnapshot.docs
-                .filter(
-                  (d) =>
-                    (d.data() as CloudData).encryptedData &&
-                    d.id !== 'auth_validator' &&
-                    d.id !== 'module_keys'
-                )
-                .map((d) => d.id);
+                .map((d) => decodeSyncDocumentId(d.id, parseCloudData(d.data()).idEncodingVersion));
               if (cloudIds.length > 0) {
-                const localRows = (await window.api.sync.getRowsByIds(
-                  table,
-                  cloudIds
-                )) as SyncRow[];
+                const localRows = parseSyncRows(
+                  await window.api.sync.getRowsByIds<unknown>(table, cloudIds),
+                  table
+                );
                 localMap = new Map(localRows.map((r) => [r.id, r]));
               } else {
                 localMap = new Map();
               }
             } else {
-              const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
+              const localRows = parseSyncRows(await window.api.sync.getTable<unknown>(table), table);
               localMap = new Map(localRows.map((r) => [r.id, r]));
             }
           } else if (window.api.sync.getRowsByIds) {
+            const knownRowsById = localMap;
+            if (!knownRowsById) throw new Error(`Could not load local rows for ${table}.`);
             const newIds = querySnapshot.docs
-              .filter(
-                (d) =>
-                  (d.data() as CloudData).encryptedData &&
-                  d.id !== 'auth_validator' &&
-                  d.id !== 'module_keys' &&
-                  !localMap!.has(d.id)
-              )
-              .map((d) => d.id);
+              .map((d) => ({
+                rowId: decodeSyncDocumentId(d.id, parseCloudData(d.data()).idEncodingVersion),
+              }))
+              .filter(({ rowId }) => !knownRowsById.has(rowId))
+              .map(({ rowId }) => rowId);
             if (newIds.length > 0) {
-              const newRows = (await window.api.sync.getRowsByIds(table, newIds)) as SyncRow[];
+              const newRows = parseSyncRows(
+                await window.api.sync.getRowsByIds<unknown>(table, newIds),
+                table
+              );
               for (const r of newRows) {
-                localMap.set(r.id, r);
+                knownRowsById.set(r.id, r);
               }
             }
           }
 
+          const localRowsById = localMap;
+          if (!localRowsById) throw new Error(`Could not load local rows for ${table}.`);
+
           const docsToProcess = querySnapshot.docs.filter((docSnap) => {
-            const cloudData = docSnap.data() as CloudData;
-            if (!cloudData.encryptedData) return false;
-            if (
-              [
-                'auth_validator',
-                'module_keys',
-                'sync_manifest',
-                'sync_signal',
-                'security_lock',
-              ].includes(docSnap.id)
-            )
-              return false;
+            const cloudData = parseCloudData(docSnap.data());
 
             const cloudTime = parseDateSafe(
-              (cloudData.updatedAt || cloudData.deletedAt || cloudData.createdAt || 0) as string | number
+              cloudData.updatedAt || cloudData.deletedAt || cloudData.createdAt || 0
             );
             if (cloudTime > highestCloudTime) {
               highestCloudTime = cloudTime;
@@ -213,7 +202,8 @@ export async function pullAllFromCloud(
             }
             if (lastPullTable > 0 && cloudTime <= Math.max(0, lastPullTable - 10_000)) return false;
 
-            const localRow = localMap!.get(docSnap.id);
+            const rowId = decodeSyncDocumentId(docSnap.id, cloudData.idEncodingVersion);
+            const localRow = localRowsById.get(rowId);
             const localTime = localRow
               ? Math.max(
                   parseDateSafe(localRow.updated_at || localRow.created_at || 0),
@@ -228,67 +218,21 @@ export async function pullAllFromCloud(
             return cloudTime !== localTime;
           });
 
-          for (let i = 0; i < docsToProcess.length; i += DECRYPT_BATCH_SIZE) {
-            const batch = docsToProcess.slice(i, i + DECRYPT_BATCH_SIZE);
-            const batchIds = batch.map((d) => d.id);
-            const freshRowsList = (await window.api.sync.getRowsByIds(
-              table,
-              batchIds
-            )) as SyncRow[];
-            const freshMap = new Map(freshRowsList.map((r) => [r.id, r]));
-
-            const decryptedResults = await decryptCloudBatch(batch, key, moduleKeys);
-
-            for (const result of decryptedResults) {
-              if (result.error || !result.parsed) {
-                const msg = `PULL erro doc ${result.docSnap.id} (${table}): ${getErrorMessage(result.error)}`;
-                console.error(msg);
-                window.api?.log?.(msg);
-                continue;
-              }
-
-              if (result.isLegacy) {
-                try {
-                  console.log(
-                    `[PULL CLEANUP] Deletando documento legado do Firebase: ${result.docSnap.id} (${table})`
-                  );
-                  const docToDelete = workspaceId
-                    ? doc(db, 'workspaces', workspaceId, table, result.docSnap.id)
-                    : doc(db, table, result.docSnap.id);
-                  await deleteDoc(docToDelete);
-                } catch (delErr) {
-                  console.error(
-                    `Erro ao deletar documento antigo do Firebase: ${result.docSnap.id}`,
-                    delErr
-                  );
-                }
-                skippedDocsCount++;
-                continue;
-              }
-
-              const localRow = localMap!.get(result.docSnap.id);
-              const freshRow = freshMap.get(result.docSnap.id);
-
-              const { rowToUpsert, isSkipped } = await prepareRowForUpsert(
-                result,
-                table,
-                localRow,
-                freshRow
-              );
-
-              if (isSkipped) {
-                skippedDocsCount++;
-                continue;
-              }
-
-              pulledDocsCount++;
-              try {
-                await upsertRowWithColumnFallback(table, rowToUpsert);
-                localMap!.set(result.docSnap.id, rowToUpsert);
-              } catch (upsertErr) {
-                console.warn(`PULL erro doc ${result.docSnap.id} (${table}):`, upsertErr);
-              }
-            }
+          const processedDocuments = await processCloudDocuments(
+            docsToProcess,
+            table,
+            key,
+            moduleKeys,
+            workspaceId,
+            userId,
+            localRowsById
+          );
+          pulledDocsCount += processedDocuments.pulledDocsCount;
+          skippedDocsCount += processedDocuments.skippedDocsCount;
+          if (processedDocuments.errors.length > 0) {
+            pullErrors.push(...processedDocuments.errors);
+            tableHadErrors = true;
+            pullHadErrors = true;
           }
 
           if (querySnapshot.docs.length < CHUNK_SIZE) {
@@ -296,30 +240,39 @@ export async function pullAllFromCloud(
           }
         }
 
-        if (highestTableTime > lastPullTable) {
-          setTableLastSyncTime('pull', table, highestTableTime);
+        const tableCheckpoint = Math.max(highestTableTime, lastPullTable, lastPull);
+        if (!tableHadErrors && tableCheckpoint > lastPullTable) {
+          setTableLastSyncTime('pull', table, tableCheckpoint, scopeKey);
         }
       } catch (err: unknown) {
         const msg = `PULL erro tabela ${table}: ${getErrorMessage(err)}`;
         console.error(msg);
         window.api?.log?.(msg);
         logSyncEvent('error', `Falha ao sincronizar ${table}: ${getErrorMessage(err)}`);
+        pullErrors.push(msg);
+        pullHadErrors = true;
       }
     }
   }
 
-  if (getLastSyncTime('push') === 0 && highestCloudTime > 0) {
-    setLastSyncTime('push', highestCloudTime);
+  if (!pullHadErrors && getLastSyncTime('push', scopeKey) === 0 && highestCloudTime > 0) {
+    setLastSyncTime('push', highestCloudTime, scopeKey);
   }
 
-  if (highestCloudTime > lastPull) {
-    setLastSyncTime('pull', highestCloudTime);
+  if (!pullHadErrors && highestCloudTime > lastPull) {
+    setLastSyncTime('pull', highestCloudTime, scopeKey);
   }
 
   if (pulledDocsCount > 0 || skippedDocsCount > 0) {
     logSyncEvent(
       'pull',
       `Sincronização (Download) concluída: ${pulledDocsCount} novos, ${skippedDocsCount} ignorados.`
+    );
+  }
+
+  if (pullHadErrors) {
+    throw new Error(
+      `Cloud pull incomplete: ${pullErrors.length} item(s) failed. ${pullErrors[0] || ''}`
     );
   }
 }

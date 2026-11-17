@@ -1,18 +1,28 @@
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import { encryptText, decryptText, deriveMasterKey } from '../crypto';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { logFirebaseOp } from './sync-monitor';
 import { getErrorMessage } from '../../utils/error';
 
+function getUserConfigRef(configName: string) {
+  const user = auth.currentUser;
+  const userId = user && !user.isAnonymous ? user.uid : null;
+  return userId ? doc(db, 'users', userId, 'config', configName) : null;
+}
+
+function getSecurityLockStorageKey(): string {
+  return `caderno_security_lock_${auth.currentUser?.uid || 'local'}`;
+}
+
 export async function verifyCloudMasterPassword(password: string): Promise<{ isValid: boolean; isNew: boolean; error?: 'offline' | 'timeout' | 'invalid' }> {
   try {
     const masterKey = await deriveMasterKey(password);
+    const docRef = getUserConfigRef('auth_validator');
+    if (!docRef) return { isValid: true, isNew: true };
     
     if (!navigator.onLine) {
       return { isValid: false, isNew: false, error: 'offline' };
     }
-    
-    const docRef = doc(db, 'config', 'auth_validator');
     
     // 5-second timeout to avoid blocking login indefinitely
     const docSnap = await Promise.race([
@@ -63,18 +73,20 @@ export async function getSecurityLock(): Promise<SecurityLock> {
   // 1. Attempt reading from cloud
   if (navigator.onLine) {
     try {
-      const docRef = doc(db, 'config', 'security_lock');
-      const docSnap = await Promise.race([
-        getDoc(docRef),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
-      ]);
-      
-      if (docSnap) {
-        logFirebaseOp('read', 1);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          failedAttempts = data.failedAttempts || 0;
-          lastFailedAt = data.lastFailedAt || 0;
+      const docRef = getUserConfigRef('security_lock');
+      if (docRef) {
+        const docSnap = await Promise.race([
+          getDoc(docRef),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+        ]);
+
+        if (docSnap) {
+          logFirebaseOp('read', 1);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            failedAttempts = data.failedAttempts || 0;
+            lastFailedAt = data.lastFailedAt || 0;
+          }
         }
       }
     } catch (lockReadErr) {
@@ -84,7 +96,7 @@ export async function getSecurityLock(): Promise<SecurityLock> {
 
   // 2. Fallback: Read from local storage
   try {
-    const localLockStr = localStorage.getItem('caderno_security_lock');
+    const localLockStr = localStorage.getItem(getSecurityLockStorageKey());
     if (localLockStr) {
       const localLock = JSON.parse(localLockStr);
       // If local is more recent, use local values
@@ -108,16 +120,19 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
   };
 
   // Persist locally
-  localStorage.setItem('caderno_security_lock', JSON.stringify(newLock));
+  localStorage.setItem(getSecurityLockStorageKey(), JSON.stringify(newLock));
 
   // Persist to Cloud
   if (navigator.onLine) {
     try {
-      await Promise.race([
-        setDoc(doc(db, 'config', 'security_lock'), newLock, { merge: true }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
-      ]);
-      logFirebaseOp('write', 1);
+      const lockRef = getUserConfigRef('security_lock');
+      if (lockRef) {
+        await Promise.race([
+          setDoc(lockRef, newLock, { merge: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+        ]);
+        logFirebaseOp('write', 1);
+      }
     } catch (cloudWriteErr) {
       console.debug('[SyncAuth] Failed to persist security lock to cloud:', getErrorMessage(cloudWriteErr));
     }
@@ -127,11 +142,13 @@ export async function recordFailedAttempt(): Promise<SecurityLock> {
 }
 
 export async function clearFailedAttempts(): Promise<void> {
-  localStorage.removeItem('caderno_security_lock');
+  localStorage.removeItem(getSecurityLockStorageKey());
   if (navigator.onLine) {
     try {
+      const lockRef = getUserConfigRef('security_lock');
+      if (!lockRef) return;
       await Promise.race([
-        setDoc(doc(db, 'config', 'security_lock'), { failedAttempts: 0, lastFailedAt: 0 }, { merge: true }),
+        setDoc(lockRef, { failedAttempts: 0, lastFailedAt: 0 }, { merge: true }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
       ]);
       logFirebaseOp('write', 1);
@@ -144,11 +161,13 @@ export async function clearFailedAttempts(): Promise<void> {
 // --- END OF SECURITY SESSION ---
 
 export async function initializeCloudValidator(masterKey: CryptoKey): Promise<void> {
+  const validatorRef = getUserConfigRef('auth_validator');
+  if (!validatorRef) return;
   const payload = JSON.stringify({ validator: 'CADERNO_VALIDO' });
   const encryptedData = await encryptText(payload, masterKey);
   try {
     await Promise.race([
-      setDoc(doc(db, 'config', 'auth_validator'), {
+      setDoc(validatorRef, {
         encryptedData,
         updatedAt: new Date().toISOString()
       }),
@@ -161,9 +180,9 @@ export async function initializeCloudValidator(masterKey: CryptoKey): Promise<vo
 }
 
 export async function pushModularKeysToCloud(keys: Record<string, string>, masterKey: CryptoKey): Promise<void> {
-  if (!navigator.onLine) return;
+  const docRef = getUserConfigRef('module_keys');
+  if (!navigator.onLine || !docRef) return;
   try {
-    const docRef = doc(db, 'config', 'module_keys');
     const docSnap = await Promise.race([
       getDoc(docRef),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
@@ -197,10 +216,11 @@ export async function pushModularKeysToCloud(keys: Record<string, string>, maste
 }
 
 export async function pullModularKeysFromCloud(masterKey: CryptoKey): Promise<Record<string, string> | null> {
-  if (!navigator.onLine) return null;
+  const keysRef = getUserConfigRef('module_keys');
+  if (!navigator.onLine || !keysRef) return null;
   try {
     const docSnap = await Promise.race([
-      getDoc(doc(db, 'config', 'module_keys')),
+      getDoc(keysRef),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
     ]);
     

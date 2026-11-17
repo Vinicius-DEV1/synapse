@@ -1,6 +1,5 @@
 import { db } from '../firebase';
-import { encryptText } from '../crypto';
-import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import {
   MODULE_TABLES,
   getLastSyncTime,
@@ -9,139 +8,50 @@ import {
   setTableLastSyncTime,
   parseDateSafe,
   getDeviceId,
+  parseSyncRows,
   type SyncRow,
 } from './sync-utils';
+import { prepareRowsForPush } from './sync-payload';
+import { getSyncConfigDocument, getSyncDocument, getSyncScopeKey } from './sync-cloud-paths';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 import { getErrorMessage } from '../../utils/error';
-import { uint8ArrayToBase64 } from '../../utils/binary';
 
 /** Max Firestore batch size is 500; 400 is used as safety threshold */
 const BATCH_SIZE = 400;
 
-/** Individual document payload limit (Firestore doc limit ~1MB) */
-const MAX_PAYLOAD_BYTES = 900_000;
-
-interface PreparedDoc {
-  id: string;
-  encryptedData: string;
-  isCompressed?: boolean;
-  updatedAt: string | null;
-  createdAt: string | null;
-  deletedAt: string | null;
-  localTime: number;
-  table: string;
-}
-
-/**
- * Serializes and encrypts a list of database rows in parallel for Cloud Push.
- * Returns ready documents and logs warnings for skipped rows exceeding payload thresholds.
- */
-async function prepareRowsForPush(
-  rows: SyncRow[],
-  key: CryptoKey,
-  table: string
-): Promise<{ prepared: PreparedDoc[]; skippedLarge: string[] }> {
-  const skippedLarge: string[] = [];
-
-  const promises = rows.map(async (row): Promise<PreparedDoc | null> => {
-    const { id, updated_at, created_at, ...sensitiveData } = row;
-    const idVal = id ?? (row as Record<string, unknown>).shareId ?? (row as Record<string, unknown>).url;
-    const docId = String(idVal);
-
-    // Ensure deleted_at is captured and included in encrypted sensitiveData payload
-    const rawDeletedAt = row.deleted_at;
-    const safeDeletedAt = rawDeletedAt ? new Date(parseDateSafe(rawDeletedAt)).toISOString() : null;
-    if (safeDeletedAt) {
-      sensitiveData.deleted_at = safeDeletedAt;
-    }
-
-    const jsonString = JSON.stringify(sensitiveData);
-
-    let payloadString = jsonString;
-    let isCompressed = false;
-
-    if (jsonString.length > MAX_PAYLOAD_BYTES) {
-      try {
-        const stream = new Response(jsonString).body!.pipeThrough(new CompressionStream('gzip'));
-        const buffer = await new Response(stream).arrayBuffer();
-        const b64 = uint8ArrayToBase64(new Uint8Array(buffer));
-        
-        if (b64.length < MAX_PAYLOAD_BYTES) {
-          payloadString = b64;
-          isCompressed = true;
-          console.debug(`[Sync Compress] Doc ${docId} compressed from ${jsonString.length} to ${b64.length} bytes.`);
-        } else {
-          const msg = `[PUSH SKIP] Doc ${docId} (${table}) skipped: content exceeds max size even after compression (${(b64.length / 1024).toFixed(0)}KB).`;
-          skippedLarge.push(msg);
-          return null;
-        }
-      } catch (err) {
-        console.warn(`[Sync Compress] Error compressing doc ${docId}`, err);
-        const msg = `[PUSH SKIP] Doc ${docId} (${table}) skipped: content too large and compression failed.`;
-        skippedLarge.push(msg);
-        return null;
-      }
-    }
-
-    const encryptedData = await encryptText(payloadString, key);
-    const localTime = Math.max(
-      parseDateSafe(updated_at || created_at || 0),
-      parseDateSafe(rawDeletedAt || 0)
-    );
-    // Ensure safeUpdatedAt is bumped to deletion time so Firestore updatedAt queries catch deleted docs
-    const safeUpdatedAt = localTime > 0
-      ? new Date(localTime).toISOString()
-      : (updated_at ? new Date(parseDateSafe(updated_at)).toISOString() : null);
-    const safeCreatedAt = created_at ? new Date(parseDateSafe(created_at)).toISOString() : null;
-
-    return {
-      id: docId,
-      encryptedData,
-      isCompressed,
-      updatedAt: safeUpdatedAt,
-      createdAt: safeCreatedAt,
-      deletedAt: safeDeletedAt,
-      localTime,
-      table
-    };
-  });
-
-  const results = await Promise.all(promises);
-  const prepared = results.filter((r): r is PreparedDoc => r !== null);
-  return { prepared, skippedLarge };
-}
-
 export async function pushAllToCloud(
   moduleKeys: Record<string, CryptoKey>,
   targetTables?: string[],
-  workspaceId?: string
+  workspaceId?: string,
+  userId?: string
 ): Promise<void> {
-  if (!window.api?.sync) return;
+  if (!window.api?.sync) {
+    throw new Error('Local sync API is unavailable.');
+  }
   if (isEmergencyStopped()) {
-    console.warn('[Sync PUSH] Bloqueado por medida de segurança (Emergency Stop).');
-    return;
+    throw new Error('Cloud push is disabled by the emergency sync stop.');
   }
   
   if (!navigator.onLine) {
     throw new Error('Sem conexão com a internet para sincronizar.');
   }
 
-  const lastPush = getLastSyncTime('push');
-  const hasRepushedDeletions = typeof localStorage !== 'undefined' && localStorage.getItem('caderno_sync_fix_deletions_v1') === 'true';
+  const scope = { workspaceId, userId };
+  const scopeKey = getSyncScopeKey(scope);
+  const lastPush = getLastSyncTime('push', scopeKey);
+  const deletionFixKey = `caderno_sync_fix_deletions_v1_${encodeURIComponent(scopeKey)}`;
+  const hasRepushedDeletions = typeof localStorage !== 'undefined' && localStorage.getItem(deletionFixKey) === 'true';
   let highestSuccessTime = lastPush; // Only advances timestamp for successful documents
   let pushedCount = 0;
   const errors: string[] = [];
-  // Manifest: rastreia o timestamp mais alto de cada tabela que teve push bem-sucedido
+  let pushHadErrors = false;
+  // The manifest tracks the newest timestamp for each table pushed successfully.
   const manifestUpdate: Record<string, string> = {};
 
   const targetSet = targetTables && targetTables.length > 0 ? new Set(targetTables) : null;
+  const isFullPush = targetSet === null;
 
   for (const module of Object.keys(MODULE_TABLES)) {
-    const key = moduleKeys[module] || moduleKeys['core'];
-    if (!key) {
-      console.warn(`[Sync PUSH] Nenhuma chave encontrada para o módulo ${module}. Pulando...`);
-      continue;
-    }
     const allTables = MODULE_TABLES[module] || [];
     const tables = targetSet
       ? allTables.filter((t) => targetSet.has(t))
@@ -149,22 +59,35 @@ export async function pushAllToCloud(
 
     if (tables.length === 0) continue;
 
+    const key = moduleKeys[module] || moduleKeys['core'];
+    if (!key) {
+      const message = `[Sync PUSH] Nenhuma chave encontrada para o módulo ${module}.`;
+      console.warn(`${message} Pulando...`);
+      errors.push(message);
+      pushHadErrors = true;
+      continue;
+    }
+
     for (const table of tables) {
+      let tableHadErrors = false;
       try {
-        const lastPushTable = getTableLastSyncTime('push', table);
+        const lastPushTable = getTableLastSyncTime('push', table, scopeKey);
         let tableHighestSuccessTime = lastPushTable;
         // 1-second leeway window to accommodate SQLite's second-level timestamp truncations
         const pushThreshold = Math.max(0, lastPushTable - 1000);
 
         let rowsToPush: SyncRow[];
         if (lastPushTable > 0 && window.api.sync.getModifiedRows && hasRepushedDeletions) {
-          const modified = (await window.api.sync.getModifiedRows(table, pushThreshold)) as SyncRow[];
+          const modified = parseSyncRows(
+            await window.api.sync.getModifiedRows<unknown>(table, pushThreshold),
+            table
+          );
           rowsToPush = modified.filter((r: SyncRow) => {
             const rTime = Math.max(parseDateSafe(r.updated_at || r.created_at || 0), parseDateSafe(r.deleted_at || 0));
             return rTime > pushThreshold;
           });
         } else {
-          const localRows = (await window.api.sync.getTable(table)) as SyncRow[];
+          const localRows = parseSyncRows(await window.api.sync.getTable<unknown>(table), table);
           if (localRows.length === 0) continue;
 
           rowsToPush = lastPushTable > 0 
@@ -189,6 +112,9 @@ export async function pushAllToCloud(
         // Notification for documents skipped due to payload size limits
         for (const msg of skippedLarge) {
           console.warn(msg);
+          errors.push(msg);
+          tableHadErrors = true;
+          pushHadErrors = true;
           if (typeof window !== 'undefined' && window.api?.log) {
             window.api.log(msg);
           }
@@ -210,15 +136,14 @@ export async function pushAllToCloud(
             if (typeof window !== 'undefined' && window.api?.log) {
               window.api.log(`[PUSH DOING] Doc ${item.id} (${item.table}). Batching to Firebase...`);
             }
-            const docRef = workspaceId
-              ? doc(db, 'workspaces', workspaceId, table, item.id)
-              : doc(db, table, item.id);
+            const docRef = getSyncDocument(table, item.id, scope);
             batch.set(docRef, {
               encryptedData: item.encryptedData,
               isCompressed: item.isCompressed || false,
               updatedAt: item.updatedAt,
               createdAt: item.createdAt,
-              deletedAt: item.deletedAt ?? null
+              ...(item.deletedAt ? { deletedAt: item.deletedAt } : {}),
+              ...(item.idEncodingVersion ? { idEncodingVersion: item.idEncodingVersion } : {}),
             }, { merge: true });
             
             chunkBytes += item.id.length + item.encryptedData.length + 150;
@@ -246,6 +171,8 @@ export async function pushAllToCloud(
               manifestUpdate[table] = new Date(chunkHighest).toISOString();
             }
           } catch (err: unknown) {
+            tableHadErrors = true;
+            pushHadErrors = true;
             // If batch fails, record error for each document in chunk
             const errMsg = getErrorMessage(err);
             for (const item of chunk) {
@@ -256,10 +183,15 @@ export async function pushAllToCloud(
           }
         }
 
-        if (tableHighestSuccessTime > lastPushTable) {
-          setTableLastSyncTime('push', table, tableHighestSuccessTime);
+        if (!tableHadErrors && tableHighestSuccessTime > lastPushTable) {
+          setTableLastSyncTime('push', table, tableHighestSuccessTime, scopeKey);
+        } else if (tableHadErrors) {
+          // Keep the old checkpoint so skipped rows and failed chunks are retried.
+          delete manifestUpdate[table];
         }
       } catch (err: unknown) {
+        tableHadErrors = true;
+        pushHadErrors = true;
         const errMsg = getErrorMessage(err);
         const msg = `PUSH erro tabela ${table}: ${errMsg}`;
         console.error(msg);
@@ -282,18 +214,13 @@ export async function pushAllToCloud(
       window.api.log(`[PUSH] ${pushedCount} enviados, ${errors.length} pulados.`);
     }
     // #6: Update lastPush timestamp strictly from successfully committed docs
-    if (highestSuccessTime > getLastSyncTime('push')) {
-      setLastSyncTime('push', highestSuccessTime);
-    }
-    if (!hasRepushedDeletions && typeof localStorage !== 'undefined') {
-      localStorage.setItem('caderno_sync_fix_deletions_v1', 'true');
+    if (highestSuccessTime > getLastSyncTime('push', scopeKey)) {
+      setLastSyncTime('push', highestSuccessTime, scopeKey);
     }
     if (pushedCount > 0) {
       try {
         // #7: Include deviceId in signal so listener can ignore self-device signals
-        const signalDocRef = workspaceId
-          ? doc(db, 'workspaces', workspaceId, 'config', 'sync_signal')
-          : doc(db, 'config', 'sync_signal');
+        const signalDocRef = getSyncConfigDocument('sync_signal', scope);
         await setDoc(signalDocRef, {
           updatedAt: serverTimestamp(),
           source: navigator.userAgent,
@@ -309,9 +236,7 @@ export async function pushAllToCloud(
       // merge: true preserves timestamps of tables pushed by other devices.
       if (Object.keys(manifestUpdate).length > 0) {
         try {
-          const manifestDocRef = workspaceId
-            ? doc(db, 'workspaces', workspaceId, 'config', 'sync_manifest')
-            : doc(db, 'config', 'sync_manifest');
+          const manifestDocRef = getSyncConfigDocument('sync_manifest', scope);
           await setDoc(manifestDocRef, manifestUpdate, { merge: true });
           logFirebaseOp('write', 1);
         } catch (e: unknown) {
@@ -319,5 +244,13 @@ export async function pushAllToCloud(
         }
       }
     }
+  }
+
+  if (!hasRepushedDeletions && isFullPush && !pushHadErrors && typeof localStorage !== 'undefined') {
+    localStorage.setItem(deletionFixKey, 'true');
+  }
+
+  if (pushHadErrors) {
+    throw new Error(`Cloud push incomplete: ${errors.length} item(s) failed or were skipped.`);
   }
 }

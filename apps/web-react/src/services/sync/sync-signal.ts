@@ -1,6 +1,6 @@
-import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { onSnapshot } from 'firebase/firestore';
 import { logFirebaseOp } from './sync-monitor';
+import { getSyncConfigDocument } from './sync-cloud-paths';
 
 /**
  * Realtime listener passing cloud signal deviceId to callback.
@@ -8,11 +8,10 @@ import { logFirebaseOp } from './sync-monitor';
  */
 export function listenForCloudSyncSignal(
   onSignal: (deviceId?: string) => void,
-  workspaceId?: string
+  workspaceId?: string,
+  userId?: string
 ) {
-  const signalRef = workspaceId
-    ? doc(db, 'workspaces', workspaceId, 'config', 'sync_signal')
-    : doc(db, 'config', 'sync_signal');
+  const signalRef = getSyncConfigDocument('sync_signal', { workspaceId, userId });
 
   return onSnapshot(signalRef, (docSnap) => {
     logFirebaseOp('read', 1);

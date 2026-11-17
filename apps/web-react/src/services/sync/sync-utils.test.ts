@@ -3,8 +3,12 @@ import {
   MODULE_TABLES,
   getLastSyncTime,
   setLastSyncTime,
+  getTableLastSyncTime,
+  setTableLastSyncTime,
   parseDateSafe,
   getDeviceId,
+  encodeSyncDocumentId,
+  decodeSyncDocumentId,
 } from './sync-utils';
 
 describe('sync-utils service', () => {
@@ -29,6 +33,31 @@ describe('sync-utils service', () => {
 
     setLastSyncTime('push', 1700000000000);
     expect(getLastSyncTime('push')).toBe(1700000000000);
+  });
+
+  it('does not use a global cursor for a table without its own checkpoint', () => {
+    setLastSyncTime('push', 1700000000000);
+
+    expect(getTableLastSyncTime('push', 'youtube_summaries')).toBe(0);
+
+    setTableLastSyncTime('push', 'youtube_summaries', 1699999999000);
+    expect(getTableLastSyncTime('push', 'youtube_summaries')).toBe(1699999999000);
+  });
+
+  it('encodes Firestore-invalid document IDs and restores their original value', () => {
+    const originalId = 'link_entity:https://example.com/path/to/item';
+    const encoded = encodeSyncDocumentId(originalId);
+
+    expect(encoded.encodingVersion).toBe(1);
+    expect(encoded.id).not.toContain('/');
+    expect(decodeSyncDocumentId(encoded.id, encoded.encodingVersion)).toBe(originalId);
+  });
+
+  it('preserves valid Firestore document IDs without changing their format', () => {
+    const encoded = encodeSyncDocumentId('page-123');
+
+    expect(encoded).toEqual({ id: 'page-123' });
+    expect(decodeSyncDocumentId(encoded.id, encoded.encodingVersion)).toBe('page-123');
   });
 
   describe('parseDateSafe', () => {

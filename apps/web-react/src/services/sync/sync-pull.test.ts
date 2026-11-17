@@ -1,76 +1,47 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { pullAllFromCloud, listenForCloudSyncSignal } from './sync-pull';
+import {
+  createMockApi,
+  installMockApi,
+  resetSyncPullMocks,
+  setFirestoreDocuments,
+} from './sync-pull-test-setup';
+import { pullAllFromCloud } from './sync-pull';
 import { importHexKey, encryptText } from '../crypto';
-import { uint8ArrayToBase64 } from '../../utils/binary';
 import * as syncMonitor from './sync-monitor';
 import * as syncUtils from './sync-utils';
 import * as firestore from 'firebase/firestore';
 
-vi.mock('firebase/firestore', () => {
-  return {
-    doc: vi.fn((_db, table, id) => ({ path: `${table}/${id}`, table, id })),
-    collection: vi.fn((_db, table) => ({ path: table, table })),
-    query: vi.fn((...args) => ({ type: 'query', args })),
-    where: vi.fn((field, op, val) => ({ field, op, val })),
-    orderBy: vi.fn((field) => ({ field })),
-    limit: vi.fn((n) => ({ limit: n })),
-    startAfter: vi.fn((doc) => ({ startAfter: doc })),
-    getDoc: vi.fn().mockResolvedValue({
-      exists: () => false,
-      data: () => ({}),
-    }),
-    getDocs: vi.fn().mockResolvedValue({
-      empty: true,
-      docs: [],
-    }),
-    deleteDoc: vi.fn().mockResolvedValue(undefined),
-    onSnapshot: vi.fn((docRef, cb) => {
-      cb({
-        exists: () => true,
-        data: () => ({ deviceId: 'remote-device-123' }),
-      });
-      return () => {}; // Unsubscribe function
-    }),
-  };
-});
-
-vi.mock('../firebase', () => ({
-  db: { type: 'mock-firestore-db' },
-}));
-
 describe('sync-pull service', () => {
   const testHexKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   let cryptoKey: CryptoKey;
+  let mockApi: ReturnType<typeof createMockApi>;
 
   beforeEach(async () => {
     localStorage.clear();
     sessionStorage.clear();
-    vi.clearAllMocks();
+    resetSyncPullMocks();
+    mockApi = createMockApi();
     cryptoKey = await importHexKey(testHexKey);
-
-    (window as any).api = {
-      sync: {
-        getTable: vi.fn().mockResolvedValue([]),
-        getRowsByIds: vi.fn().mockResolvedValue([]),
-        upsertRow: vi.fn().mockResolvedValue(undefined),
-      },
-      log: vi.fn(),
-    };
+    installMockApi(mockApi);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('aborts when window.api.sync is not present', async () => {
-    delete (window as any).api.sync;
-    await pullAllFromCloud({ core: cryptoKey });
+  it('fails when window.api.sync is not present', async () => {
+    Object.defineProperty(window, 'api', { configurable: true, value: undefined });
+    await expect(pullAllFromCloud({ core: cryptoKey })).rejects.toThrow(
+      'Local sync API is unavailable.'
+    );
     expect(firestore.getDocs).not.toHaveBeenCalled();
   });
 
-  it('aborts when emergency stop is active', async () => {
+  it('fails visibly when emergency stop is active', async () => {
     vi.spyOn(syncMonitor, 'isEmergencyStopped').mockReturnValue(true);
-    await pullAllFromCloud({ core: cryptoKey });
+    await expect(
+      pullAllFromCloud({ core: cryptoKey }, undefined, 'test-user')
+    ).rejects.toThrow('Cloud pull is disabled by the emergency sync stop.');
     expect(firestore.getDocs).not.toHaveBeenCalled();
   });
 
@@ -90,20 +61,11 @@ describe('sync-pull service', () => {
       }),
     };
 
-    (firestore.getDocs as any).mockImplementation((q: any) => {
-      const collectionPath = q.args?.[0]?.path || q.path;
-      if (collectionPath === 'pages') {
-        return Promise.resolve({
-          empty: false,
-          docs: [mockDocSnap],
-        });
-      }
-      return Promise.resolve({ empty: true, docs: [] });
-    });
+    setFirestoreDocuments('pages', [mockDocSnap]);
 
-    await pullAllFromCloud({ core: cryptoKey, notes: cryptoKey });
+    await pullAllFromCloud({ core: cryptoKey, notes: cryptoKey }, undefined, 'test-user');
 
-    expect(window.api.sync.upsertRow).toHaveBeenCalledWith(
+    expect(mockApi.sync.upsertRow).toHaveBeenCalledWith(
       'pages',
       expect.objectContaining({
         id: 'cloud-page-1',
@@ -112,145 +74,25 @@ describe('sync-pull service', () => {
       })
     );
 
-    expect(syncUtils.getLastSyncTime('pull')).toBeGreaterThan(0);
+    expect(syncUtils.getLastSyncTime('pull', 'user_test-user')).toBeGreaterThan(0);
   });
 
-  it('skips remote doc when local timestamp is newer than cloud timestamp', async () => {
-    const remotePageData = { title: 'Página Antiga na Nuvem' };
-    const encrypted = await encryptText(JSON.stringify(remotePageData), cryptoKey);
-
+  it('keeps the pull checkpoint unchanged when a local upsert fails', async () => {
+    const priorPull = new Date('2026-08-20T10:00:00.000Z').getTime();
+    syncUtils.setLastSyncTime('pull', priorPull, 'user_test-user');
+    const encrypted = await encryptText(JSON.stringify({ title: 'Retry me' }), cryptoKey);
     const mockDocSnap = {
-      id: 'page-local-newer',
-      data: () => ({
-        encryptedData: encrypted,
-        updatedAt: '2026-08-20T10:00:00.000Z',
-      }),
+      id: 'cloud-page-upsert-failure',
+      data: () => ({ encryptedData: encrypted, updatedAt: '2026-08-22T10:00:00.000Z' }),
     };
 
-    (firestore.getDocs as any).mockImplementation((q: any) => {
-      const collectionPath = q.args?.[0]?.path || q.path;
-      if (collectionPath === 'pages') {
-        return Promise.resolve({
-          empty: false,
-          docs: [mockDocSnap],
-        });
-      }
-      return Promise.resolve({ empty: true, docs: [] });
-    });
+    setFirestoreDocuments('pages', [mockDocSnap]);
+    mockApi.sync.upsertRow.mockRejectedValue(new Error('disk is full'));
 
-    (window as any).api.sync.getRowsByIds.mockResolvedValue([
-      {
-        id: 'page-local-newer',
-        title: 'Página Recém Editada Local',
-        updated_at: '2026-08-22T08:00:00.000Z', // Newer than cloud!
-      },
-    ]);
+    await expect(pullAllFromCloud({ core: cryptoKey }, undefined, 'test-user')).rejects.toThrow('Cloud pull incomplete');
 
-    await pullAllFromCloud({ core: cryptoKey, notes: cryptoKey });
-
-    expect(window.api.sync.upsertRow).not.toHaveBeenCalled();
+    expect(syncUtils.getLastSyncTime('pull', 'user_test-user')).toBe(priorPull);
+    expect(syncUtils.getTableLastSyncTime('pull', 'pages', 'user_test-user')).toBe(0);
   });
 
-  it('pulls soft-deleted remote doc and persists deleted_at locally', async () => {
-    const remoteBookData = {
-      title: 'Livro Remoto Deletado',
-      deleted_at: '2026-08-22T15:00:00.000Z',
-    };
-    const encrypted = await encryptText(JSON.stringify(remoteBookData), cryptoKey);
-
-    const mockDocSnap = {
-      id: 'book-remote-deleted',
-      data: () => ({
-        encryptedData: encrypted,
-        updatedAt: '2026-08-22T15:00:00.000Z',
-        createdAt: '2026-08-20T10:00:00.000Z',
-        deletedAt: '2026-08-22T15:00:00.000Z',
-      }),
-    };
-
-    (firestore.getDocs as any).mockImplementation((q: any) => {
-      const collectionPath = q.args?.[0]?.path || q.path;
-      if (collectionPath === 'library_books') {
-        return Promise.resolve({
-          empty: false,
-          docs: [mockDocSnap],
-        });
-      }
-      return Promise.resolve({ empty: true, docs: [] });
-    });
-
-    (window as any).api.sync.getRowsByIds.mockResolvedValue([
-      {
-        id: 'book-remote-deleted',
-        title: 'Livro Remoto Deletado',
-        updated_at: '2026-08-21T10:00:00.000Z',
-        deleted_at: null,
-      },
-    ]);
-
-    await pullAllFromCloud({ library: cryptoKey });
-
-    expect(window.api.sync.upsertRow).toHaveBeenCalledWith(
-      'library_books',
-      expect.objectContaining({
-        id: 'book-remote-deleted',
-        deleted_at: '2026-08-22T15:00:00.000Z',
-      })
-    );
-  });
-
-  it('subscribes to cloud sync signals using listenForCloudSyncSignal', () => {
-    const callback = vi.fn();
-    const unsubscribe = listenForCloudSyncSignal(callback);
-
-    expect(firestore.onSnapshot).toHaveBeenCalled();
-    expect(callback).toHaveBeenCalledWith('remote-device-123');
-    expect(typeof unsubscribe).toBe('function');
-  });
-
-  it('correctly decompresses and upserts remote documents flagged with isCompressed', async () => {
-    const remotePageData = {
-      title: 'Compressed Cloud Note',
-      content: '<p>Compressed body content</p>',
-    };
-    const jsonStr = JSON.stringify(remotePageData);
-    const stream = new Response(jsonStr).body!.pipeThrough(new CompressionStream('gzip'));
-    const buffer = await new Response(stream).arrayBuffer();
-    const b64 = uint8ArrayToBase64(new Uint8Array(buffer));
-    const encrypted = await encryptText(b64, cryptoKey);
-
-    const mockDocSnap = {
-      id: 'cloud-compressed-1',
-      data: () => ({
-        encryptedData: encrypted,
-        isCompressed: true,
-        updatedAt: '2026-08-25T18:00:00.000Z',
-        createdAt: '2026-08-25T10:00:00.000Z',
-      }),
-    };
-
-    (firestore.getDocs as any).mockImplementation((q: any) => {
-      const collectionPath = q.args?.[0]?.path || q.path;
-      if (collectionPath === 'pages') {
-        return Promise.resolve({
-          empty: false,
-          docs: [mockDocSnap],
-        });
-      }
-      return Promise.resolve({ empty: true, docs: [] });
-    });
-
-    (window as any).api.sync.getRow = vi.fn().mockResolvedValue(null);
-
-    await pullAllFromCloud({ notes: cryptoKey });
-
-    expect(window.api.sync.upsertRow).toHaveBeenCalledWith(
-      'pages',
-      expect.objectContaining({
-        id: 'cloud-compressed-1',
-        title: 'Compressed Cloud Note',
-        content: '<p>Compressed body content</p>',
-      })
-    );
-  });
 });
