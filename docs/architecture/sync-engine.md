@@ -2,7 +2,7 @@
 
 > **Scope:** This document preserves React/Web sync and autosave design notes, including historical performance claims. It does not certify Qt or Android sync parity, zero-lock behavior, repository-wide E2EE, or that every implementation detail still matches the current code. Verify paths and contracts before changing the sync system.
 
-> **Verification status (2026-11-17):** The local client now requires an authenticated Firebase UID or workspace and uses scoped paths. Replacement rules pass local Firebase Emulator Suite tests, but neither the client nor rules have been deployed. The [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md) still tracks old root-document reconciliation, decrypted parity, and production verification. Do not treat the table inventory below as a successful-sync guarantee.
+> **Verification status (2026-11-17):** The scoped web client and replacement rules are deployed to the four Hosting sites configured in `firebase.json`. Production anonymous root reads are denied. Firebase Auth providers are enabled, but the project currently has zero Auth users; the [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md) tracks account creation, legacy-root reconciliation, decrypted parity, and native-client rollout. Do not treat the table inventory below as a successful-sync guarantee.
 
 ## 1. Architectural Overview
 

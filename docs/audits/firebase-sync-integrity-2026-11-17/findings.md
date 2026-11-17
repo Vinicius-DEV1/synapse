@@ -4,9 +4,9 @@
 
 | Priority | Finding | State |
 | --- | --- | --- |
-| P0 | The live Firestore rules still include a public catch-all read/write grant; anonymous aggregate reads succeeded against live root collections. | Local replacement passes Emulator Suite tests; deployment and live verification remain open |
-| P1 | Local rows lack matching root-document IDs, and root-only IDs cannot be attributed to this account. | Open; no remote data changed |
-| P1 | Default sync previously used flat root collections when no workspace ID was active. | Fixed in local source; account reconciliation and deployment remain open |
+| P0 | The former Firestore rules allowed anonymous root access. | Scoped rules deployed; live anonymous root read returns `403 PERMISSION_DENIED` |
+| P1 | Local rows lack matching root-document IDs, and root-only IDs need a scoped destination. | User confirmed sole ownership; Firebase Auth currently has zero users, so UID-based reconciliation remains open |
+| P1 | Default sync previously used flat root collections when no workspace ID was active. | Scoped client deployed to the four configured web Hosting sites; local account sign-in and data reconciliation remain open |
 | P1 | Previous push/pull error paths could advance checkpoints or continue after incomplete pulls. | Fixed in local source; tests added |
 | P1 | Tauri upsert could discard unknown columns, and sync row readers could silently skip rows or convert blobs to null. | Fixed in local source; tests added |
 | P1 | Invalid Firestore document IDs could fail writes for local IDs containing `/`. | Fixed for new writes with versioned reversible encoding |
@@ -40,7 +40,7 @@ The 50 client-side sync collections contained 4,995 local rows in aggregate. Fir
 
 ### Public rules
 
-At audit time, live rules had `match /{document=**} { allow read, write: if true; }`. Anonymous aggregate reads against live root collections succeeded. The local [`firestore.rules`](../../../firestore.rules) now removes the catch-all, scopes user and workspace sync paths, prevents self-enrollment into unrelated workspaces, and narrows share operations. Emulator tests pass against the local rules, which have not been deployed; live rules remain a production risk until release verification.
+At audit time, live rules had `match /{document=**} { allow read, write: if true; }`. Anonymous aggregate reads against live root collections succeeded. The [`firestore.rules`](../../../firestore.rules) replacement removes the catch-all, scopes user and workspace sync paths, prevents self-enrollment into unrelated workspaces, and narrows share operations. It is deployed, and an anonymous production read of `page_history` now returns `403 PERMISSION_DENIED`. Previous ruleset `4dbee571-c0f9-4add-9f32-f6a1faa53e6f` is retained by Firebase for rollback.
 
 The local `/users/{userId}` rule permits reads only by that user. Membership creation requires an owner-created workspace or an accepted invitation. The old user-self membership rule allowed an authenticated user to self-add to arbitrary workspace membership documents.
 
@@ -48,7 +48,7 @@ The local `/users/{userId}` rule permits reads only by that user. Membership cre
 
 The local sync client now requires a non-anonymous Firebase UID or an active workspace. No-workspace data uses `/users/{uid}/sync/data/{table}/{documentId}`; workspace data uses `/workspaces/{workspaceId}/{table}/{documentId}`. Manifest and signal checkpoints are scoped to the same identity. The account-evolution migrator reads local rows and pushes them into the authenticated user's workspace; it does not read or copy unscoped root documents. It now receives the actual master key retained by the auth flow, instead of incorrectly using a module key to create the workspace key envelope.
 
-These changes prevent new clients from mixing data across accounts, but they do not attribute old root-only documents. The 126 local IDs absent from the audited root paths and 11 root-only IDs still need an authenticated, unlocked reconciliation. The static PBKDF2 salt also means successful decryption alone is not sufficient proof of document ownership.
+These changes prevent new clients from mixing data across accounts, but they do not copy old root documents. The owner confirmed that all legacy records belong to the sole account. Firebase Auth currently has zero users, so no UID is available for writing scoped records. The 126 local IDs absent from the audited root paths and 11 root-only IDs still need an authenticated, unlocked reconciliation. The static PBKDF2 salt also means successful decryption alone is not sufficient proof of document ownership.
 
 ### Public share key exposure
 
@@ -86,4 +86,8 @@ The previous direct-share config stored `wrappedShareKey` as raw Base64 unless o
 - Targeted sync, sharing, migration, and viewer tests: 122 passing across 21 files.
 - `npm run typecheck`: passed.
 - `npm run test:firestore-rules`: 4 passing against the local Firestore Emulator.
-- Rust sync-command tests passed earlier in this remediation pass. No live Firebase documents, hosting, or rules were changed by this code pass.
+- Rust sync-command tests passed earlier in this remediation pass.
+- `npm run build:web`: passed; Vite emitted large-chunk and dependency `eval` warnings.
+- Production: the rules source hash matches the active ruleset; anonymous root read is denied. The 4 configured Hosting sites serve the built `index.html` and `share-viewer.html`.
+- Production Auth: email/password and anonymous providers are enabled; the five expected domains are authorized; Auth user count is zero.
+- No Firestore document data was changed, copied, deleted, or decrypted by the deployment.

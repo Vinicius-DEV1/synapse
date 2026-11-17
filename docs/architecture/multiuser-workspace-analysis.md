@@ -70,7 +70,7 @@ The project enforces strict separation of concerns across four tiers:
 | Firebase Service | Current Status | Detailed Configuration & Code Location |
 | :--- | :--- | :--- |
 | **Firestore** | **Active (Core Sync Relay)** | Configured via `apps/web-react/src/services/firebase.ts`, rules in `firestore.rules`. Serves as encrypted blind relay. |
-| **Authentication** | **Inactive (NOT in use)** | `getAuth` is **not initialized**. Current login is purely a client-side password hash/PBKDF2 check. |
+| **Authentication** | **Configured (2026-11-17), account setup pending** | Firebase Auth email/password and anonymous providers are enabled for the configured web app. Production currently has zero Auth users; local password/PBKDF2 accounts are not automatically linked. |
 | **Storage** | **Initialized but Unused** | Exported in `apps/web-react/src/services/firebase.ts:24` (`export const storage = getStorage(app)`), but has 0 consumers across the entire codebase. Binary files (PDFs, EPUBs, videos) are routed to Google Drive or local SQLite/IndexedDB. |
 | **Functions** | **Inactive (NOT configured)** | No Cloud Functions exist in `firebase.json` or source tree. |
 | **Hosting** | **Active (Production & Dev PWA)** | Configured in `firebase.json` for 4 targets (`synapse-dev`, `synapsedev`, `synapse-web`, `fourth-cirrus-468923-h7`). Deploys `apps/web-react/dist-web` with `/s/** -> /share-viewer.html` and `** -> /index.html` rewrites. |
@@ -279,7 +279,7 @@ service cloud.firestore {
 2. **Denial of Service via Blanket Overwrites**:
    An attacker can overwrite `config/auth_validator` or `config/module_keys`, permanently locking the user out of their cloud synchronization.
 3. **No Ownership Validation (`request.auth == null`)**:
-   Because Firebase Authentication is not yet integrated, rules cannot enforce `request.auth.uid == resource.data.userId`.
+   This was a historical finding. Firebase Auth is now configured and deployed; the user account still needs to be created/signed in before scoped data can be reconciled. See the current [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md).
 
 ### 6.2. Indexes Audit
 - **Source Control Status**: There is **no `firestore.indexes.json` file** in the repository, and `firebase.json` does not reference any index configuration file.
