@@ -17,13 +17,6 @@
 class MockPageCreationController final : public QObject {
     Q_OBJECT
 public:
-    QString lastParentId;
-    QString lastTitle;
-    QString lastIcon;
-    QString createdPageId = QStringLiteral("page-created");
-    int createCount = 0;
-    bool shouldFail = false;
-
     QString lastSavedPageId;
     QString lastSavedTitle;
     QString lastSavedContent;
@@ -32,18 +25,11 @@ public:
     QString lastSavedDescription;
     int savePageCount = 0;
     bool saveShouldFail = false;
+    bool descriptionSaveShouldFail = false;
     QString currentTitle = QStringLiteral("Stored target");
     QString currentDescription = QStringLiteral("Target description");
     QString currentContent = QStringLiteral("<p>Target body</p>");
     QString currentUpdatedAt = QStringLiteral("2026-11-13T12:00:00Z");
-
-    Q_INVOKABLE QString createSubPage(const QString &parentId, const QString &title, const QString &icon) {
-        ++createCount;
-        lastParentId = parentId;
-        lastTitle = title;
-        lastIcon = icon;
-        return shouldFail ? QString() : createdPageId;
-    }
 
     Q_INVOKABLE bool savePage(const QString &pageId, const QString &title, const QString &content,
                               const QString &icon, const QString &expectedUpdatedAt = QString()) {
@@ -61,6 +47,8 @@ public:
     }
 
     Q_INVOKABLE bool updatePageDescription(const QString &pageId, const QString &description) {
+        Q_UNUSED(pageId);
+        if (descriptionSaveShouldFail) return false;
         lastSavedDescription = description;
         currentDescription = description;
         return true;
@@ -178,6 +166,43 @@ private slots:
         QVERIFY(preview->property("statusMessage").toString().contains("Failed"));
     }
 
+    void floatingPagePreviewReportsPartialSaveWhenDescriptionPersistenceFails() {
+        QQmlEngine engine;
+        MockPageCreationController controller;
+        controller.descriptionSaveShouldFail = true;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesPageReferencePreview.qml")));
+        QScopedPointer<QObject> preview(component.create());
+        QVERIFY2(preview, qPrintable(component.errorString()));
+        preview->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        preview->setProperty("pageId", "page-one");
+
+        QVariant result;
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "loadPage", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "startEditing", Q_RETURN_ARG(QVariant, result)));
+        QVERIFY(result.toBool());
+        preview->setProperty("editTitle", "Saved title");
+        preview->setProperty("editDescription", "Unsaved description");
+        preview->setProperty("editContent", "Saved content");
+        QSignalSpy savedSpy(preview.data(), SIGNAL(pageSaved(QString, QString)));
+
+        QVERIFY(QMetaObject::invokeMethod(preview.data(), "saveEdits", Q_RETURN_ARG(QVariant, result)));
+
+        QVERIFY(!result.toBool());
+        QVERIFY(preview->property("isEditing").toBool());
+        QVERIFY(!preview->property("isSaving").toBool());
+        QVERIFY(preview->property("statusMessage").toString().contains("Failed"));
+        QCOMPARE(preview->property("editTitle").toString(), QString("Saved title"));
+        QCOMPARE(preview->property("editDescription").toString(), QString("Unsaved description"));
+        QCOMPARE(preview->property("editContent").toString(), QString("Saved content"));
+        QCOMPARE(controller.currentTitle, QString("Saved title"));
+        QCOMPARE(controller.currentContent, QString("Saved content"));
+        QCOMPARE(controller.currentDescription, QString("Target description"));
+        QCOMPARE(savedSpy.count(), 1);
+    }
+
     void reactPageReferenceMarkupRoundTripsAndRejectsUnsafeIds() {
         NotesTextOperations operations;
         const QVariantList pages = {QVariantMap{
@@ -223,217 +248,7 @@ private slots:
             "<p><span data-page-id=\"removed-page\" title=\"Old title\"></span></p>"));
     }
 
-    void slashSearchInsertsAtCaretSupportsUndoAndOpensFloatingPreview() {
-        QQmlEngine engine;
-        NotesTextOperations operations;
-        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
-        QQmlComponent component(&engine);
-        component.loadUrl(QUrl::fromLocalFile(
-            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/NotesRichTableHarness.qml")));
-        QScopedPointer<QObject> root(component.create());
-        QVERIFY2(root, qPrintable(component.errorString()));
-        QQuickWindow window;
-        window.resize(960, 520);
-        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
-        QVERIFY(rootItem);
-        rootItem->setParentItem(window.contentItem());
-        window.show();
-        QTRY_VERIFY(window.isVisible());
 
-        QObject *richEditor = root->findChild<QObject *>("richTableEditor");
-        QObject *textEdit = root->findChild<QObject *>("notesRichTextEditor");
-        QObject *slashMenu = root->findChild<QObject *>("notesRichSlashCommandMenu");
-        QObject *pageMenu = root->findChild<QObject *>("notesRichPageReferenceMenu");
-        QObject *searchField = root->findChild<QObject *>("notesRichPageReferenceSearchField");
-        QVERIFY(richEditor);
-        QVERIFY(textEdit);
-        QVERIFY(slashMenu);
-        QVERIFY(pageMenu);
-        QVERIFY(searchField);
-
-        richEditor->setProperty("pageList", QVariantList{
-            QVariantMap{{"id", "page-one"}, {"title", "First page"}, {"icon", "📄"}, {"depth", 0}},
-            QVariantMap{{"id", "page-two"}, {"title", "Second page"}, {"icon", "📄"}, {"depth", 1}}
-        });
-        richEditor->setProperty("sourceHtml", "<p>BeginEnd</p>");
-        richEditor->setProperty("active", true);
-        QVariant loaded;
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, loaded)));
-        QVERIFY(loaded.toBool());
-        textEdit->setProperty("cursorPosition", 5);
-        auto *textItem = qobject_cast<QQuickItem *>(textEdit);
-        QVERIFY(textItem);
-        textItem->forceActiveFocus();
-        QTRY_VERIFY(textItem->hasActiveFocus());
-
-        QTest::keyClick(&window, Qt::Key_Slash);
-        QTest::keyClick(&window, Qt::Key_P);
-        QTest::keyClick(&window, Qt::Key_A);
-        QTest::keyClick(&window, Qt::Key_G);
-        QTest::keyClick(&window, Qt::Key_E);
-        QTRY_VERIFY(slashMenu->property("visible").toBool());
-        const QVariantList commands = slashMenu->property("filteredCommands").toList();
-        int pageCommandIndex = -1;
-        for (int index = 0; index < commands.size(); ++index) {
-            if (commands.at(index).toMap().value("id").toString() == "page") pageCommandIndex = index;
-        }
-        QVERIFY(pageCommandIndex >= 0);
-        slashMenu->setProperty("selectedIndex", pageCommandIndex);
-        QTest::keyClick(&window, Qt::Key_Return);
-        QTRY_VERIFY(pageMenu->property("visible").toBool());
-        QTest::keyClick(&window, Qt::Key_S);
-        QTest::keyClick(&window, Qt::Key_E);
-        QTest::keyClick(&window, Qt::Key_C);
-        QTRY_COMPARE(pageMenu->property("filteredPages").toList().size(), 1);
-        QCOMPARE(pageMenu->property("filteredPages").toList().first().toMap().value("id").toString(),
-                 QString("page-two"));
-        QTest::keyClick(&window, Qt::Key_Return);
-        QTRY_VERIFY(!pageMenu->property("visible").toBool());
-        auto *quickDocument = qobject_cast<QQuickTextDocument *>(textEdit->property("textDocument").value<QObject *>());
-        QVERIFY(quickDocument);
-        QVERIFY(quickDocument->textDocument()->toPlainText().contains("↗ Second page"));
-        QTextCursor referenceCursor(quickDocument->textDocument());
-        referenceCursor.setPosition(5);
-        referenceCursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
-        QVERIFY(referenceCursor.charFormat().isAnchor());
-        QCOMPARE(referenceCursor.charFormat().background().color(), QColor(255, 255, 255, 10));
-
-        QVariant committed;
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
-        QVERIFY(committed.toBool());
-        QCOMPARE(richEditor->property("sourceHtml").toString(), QString(
-            "<p>Begin<span data-page-id=\"page-two\" title=\"Second page\"></span>End</p>"));
-
-        QSignalSpy preview(richEditor, SIGNAL(pagePreviewRequested(QString)));
-        const QString href = QStringLiteral("synapse-page:/page-two?title=Second%20page");
-        QVERIFY(QMetaObject::invokeMethod(textEdit, "linkActivated", Qt::DirectConnection, Q_ARG(QString, href)));
-        QCOMPARE(preview.count(), 1);
-        QCOMPARE(preview.takeFirst().at(0).toString(), QString("page-two"));
-
-        QTest::keyClick(&window, Qt::Key_Z, Qt::ControlModifier);
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
-        QVERIFY(committed.toBool());
-        QCOMPARE(richEditor->property("sourceHtml").toString(), QString("<p>BeginEnd</p>"));
-    }
-
-    void slashCreateAddsLinkedChildAndReportsDatabaseFailure() {
-        QQmlEngine engine;
-        NotesTextOperations operations;
-        MockPageCreationController controller;
-        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
-        QQmlComponent component(&engine);
-        component.loadUrl(QUrl::fromLocalFile(
-            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/NotesRichTableHarness.qml")));
-        QScopedPointer<QObject> root(component.create());
-        QVERIFY2(root, qPrintable(component.errorString()));
-        QQuickWindow window;
-        window.resize(960, 520);
-        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
-        QVERIFY(rootItem);
-        rootItem->setParentItem(window.contentItem());
-        window.show();
-        QTRY_VERIFY(window.isVisible());
-
-        QObject *richEditor = root->findChild<QObject *>("richTableEditor");
-        QObject *textEdit = root->findChild<QObject *>("notesRichTextEditor");
-        QObject *slashMenu = root->findChild<QObject *>("notesRichSlashCommandMenu");
-        QObject *pageMenu = root->findChild<QObject *>("notesRichPageReferenceMenu");
-        QObject *searchField = root->findChild<QObject *>("notesRichPageReferenceSearchField");
-        QVERIFY(richEditor);
-        QVERIFY(textEdit);
-        QVERIFY(slashMenu);
-        QVERIFY(pageMenu);
-        QVERIFY(searchField);
-        richEditor->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
-        richEditor->setProperty("parentPageId", "parent-page");
-        richEditor->setProperty("sourceHtml", "<p>BeginEnd</p>");
-        richEditor->setProperty("active", true);
-        QVariant loaded;
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "loadSource", Q_RETURN_ARG(QVariant, loaded)));
-        QVERIFY(loaded.toBool());
-        textEdit->setProperty("cursorPosition", 5);
-        auto *textItem = qobject_cast<QQuickItem *>(textEdit);
-        QVERIFY(textItem);
-        textItem->forceActiveFocus();
-        QTRY_VERIFY(textItem->hasActiveFocus());
-
-        QSignalSpy hierarchy(richEditor, SIGNAL(pageHierarchyChanged()));
-        QSignalSpy navigation(richEditor, SIGNAL(pageNavigationRequested(QString)));
-        QTest::keyClick(&window, Qt::Key_Slash);
-        const QString command = QStringLiteral("page-create");
-        for (const QChar character : command) {
-            const int key = character == QLatin1Char('-') ? Qt::Key_Minus
-                : Qt::Key_A + character.toLower().unicode() - QLatin1Char('a').unicode();
-            QTest::keyClick(&window, key);
-        }
-        QTRY_VERIFY(slashMenu->property("visible").toBool());
-        const QVariantList commands = slashMenu->property("filteredCommands").toList();
-        int createCommandIndex = -1;
-        for (int index = 0; index < commands.size(); ++index) {
-            if (commands.at(index).toMap().value("id").toString() == "page-create")
-                createCommandIndex = index;
-        }
-        QVERIFY(createCommandIndex >= 0);
-        slashMenu->setProperty("selectedIndex", createCommandIndex);
-        QTest::keyClick(&window, Qt::Key_Return);
-        QTRY_VERIFY(pageMenu->property("visible").toBool());
-        QCOMPARE(pageMenu->property("mode").toString(), QString("create"));
-        const QVariantList initialOptions = pageMenu->property("options").toList();
-        QVERIFY(!initialOptions.isEmpty());
-        QVERIFY(initialOptions.first().toMap().value("createNew").toBool());
-        searchField->setProperty("text", "New child");
-        QCOMPARE(searchField->property("text").toString(), QString("New child"));
-        QTest::keyClick(&window, Qt::Key_Return);
-        QTRY_VERIFY(!pageMenu->property("visible").toBool());
-        QCOMPARE(controller.createCount, 1);
-        QCOMPARE(controller.lastParentId, QString("parent-page"));
-        QCOMPARE(controller.lastTitle, QString("New child"));
-        QCOMPARE(controller.lastIcon, QString("📄"));
-        QCOMPARE(hierarchy.count(), 1);
-        QCOMPARE(navigation.count(), 0);
-        QVERIFY(richEditor->property("active").toBool());
-        QCOMPARE(richEditor->property("parentPageId").toString(), QString("parent-page"));
-
-        QVariant committed;
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
-        QVERIFY(committed.toBool());
-        QCOMPARE(richEditor->property("sourceHtml").toString(), QString(
-            "<p>Begin<span data-page-id=\"page-created\" title=\"New child\"></span>End</p>"));
-        QTest::keyClick(&window, Qt::Key_Z, Qt::ControlModifier);
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
-        QVERIFY(committed.toBool());
-        QCOMPARE(richEditor->property("sourceHtml").toString(), QString("<p>BeginEnd</p>"));
-
-        controller.shouldFail = true;
-        textEdit->setProperty("cursorPosition", 5);
-        QTest::keyClick(&window, Qt::Key_Slash);
-        for (const QChar character : command) {
-            const int key = character == QLatin1Char('-') ? Qt::Key_Minus
-                : Qt::Key_A + character.toLower().unicode() - QLatin1Char('a').unicode();
-            QTest::keyClick(&window, key);
-        }
-        QTRY_VERIFY(slashMenu->property("visible").toBool());
-        const QVariantList failureCommands = slashMenu->property("filteredCommands").toList();
-        createCommandIndex = -1;
-        for (int index = 0; index < failureCommands.size(); ++index) {
-            if (failureCommands.at(index).toMap().value("id").toString() == "page-create")
-                createCommandIndex = index;
-        }
-        QVERIFY(createCommandIndex >= 0);
-        slashMenu->setProperty("selectedIndex", createCommandIndex);
-        QTest::keyClick(&window, Qt::Key_Return);
-        QTRY_VERIFY(pageMenu->property("visible").toBool());
-        searchField->setProperty("text", "Failed child");
-        QTest::keyClick(&window, Qt::Key_Return);
-        QTRY_VERIFY(pageMenu->property("visible").toBool());
-        QVERIFY(!pageMenu->property("errorMessage").toString().isEmpty());
-        QCOMPARE(controller.createCount, 2);
-        QCOMPARE(hierarchy.count(), 1);
-        QCOMPARE(navigation.count(), 0);
-        QCOMPARE(richEditor->property("sourceHtml").toString(), QString("<p>BeginEnd</p>"));
-        QTest::keyClick(&window, Qt::Key_Escape);
-        QTRY_VERIFY(!pageMenu->property("visible").toBool());
-    }
 };
 
 int runNativeNotesPageReferenceQmlTest(int argc, char **argv) {

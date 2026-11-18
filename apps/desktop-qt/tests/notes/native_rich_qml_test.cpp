@@ -14,6 +14,7 @@ int runNativeNotesCodeLanguageQmlTest(int argc, char **argv);
 int runNativeNotesDividerDragQmlTest(int argc, char **argv);
 int runNativeNotesSlashMenuQmlTest(int argc, char **argv);
 int runNativeNotesPageReferenceQmlTest(int argc, char **argv);
+int runNativeNotesPageReferenceSlashQmlTest(int argc, char **argv);
 int runNativeNotesReferenceSearchQmlTest(int argc, char **argv);
 int runNativeNotesReferenceActionsQmlTest(int argc, char **argv);
 int runNativeNotesRichImagesQmlTest(int argc, char **argv);
@@ -372,6 +373,7 @@ int main(int argc, char **argv) {
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |
         runNativeNotesSlashMenuQmlTest(argc, argv) |
         runNativeNotesPageReferenceQmlTest(argc, argv) |
+        runNativeNotesPageReferenceSlashQmlTest(argc, argv) |
         runNativeNotesReferenceSearchQmlTest(argc, argv) |
         runNativeNotesReferenceActionsQmlTest(argc, argv) |
         runNativeNotesCalloutQmlTest(argc, argv) |

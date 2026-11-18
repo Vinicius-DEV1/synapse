@@ -86,6 +86,18 @@ Popup {
         return true
     }
 
+    function preserveEditsAfterDescriptionFailure(title, description, content, error) {
+        console.error("[NotesPageReferencePreview] Failed to save page description", pageId, error)
+        loadPage()
+        editTitle = title
+        editDescription = description
+        editContent = content
+        isSaving = false
+        statusMessage = qsTr("Failed to save page description. Other fields were saved.")
+        pageSaved(pageId, title)
+        return false
+    }
+
     function saveEdits() {
         if (!controller || String(pageData.id || "") !== pageId) {
             statusMessage = qsTr("Failed to save changes.")
@@ -105,8 +117,27 @@ Popup {
             ok = false
         }
         if (ok) {
-            if (typeof controller.updatePageDescription === "function") {
-                try { controller.updatePageDescription(pageId, descToSave) } catch (err) {}
+            if (typeof controller.updatePageDescription !== "function") {
+                return preserveEditsAfterDescriptionFailure(
+                    titleToSave,
+                    descToSave,
+                    contentToSave,
+                    new Error("Controller does not implement updatePageDescription.")
+                )
+            }
+            var descriptionSaved = false
+            try {
+                descriptionSaved = controller.updatePageDescription(pageId, descToSave)
+            } catch (error) {
+                return preserveEditsAfterDescriptionFailure(titleToSave, descToSave, contentToSave, error)
+            }
+            if (!descriptionSaved) {
+                return preserveEditsAfterDescriptionFailure(
+                    titleToSave,
+                    descToSave,
+                    contentToSave,
+                    new Error("Controller rejected the description update.")
+                )
             }
             loadPage()
             isEditing = false
@@ -132,7 +163,11 @@ Popup {
         if (/^(https?:\/\/|mailto:)/i.test(href)) { Qt.openUrlExternally(href); return; }
         var match = href.match(/^synapse-page:\/([^?]+)(?:\?.*)?$/)
         if (!match) return
-        try { openForPage(decodeURIComponent(match[1])) } catch (error) {}
+        try {
+            openForPage(decodeURIComponent(match[1]))
+        } catch (error) {
+            console.warn("[NotesPageReferencePreview] Ignoring malformed page reference link", href, error)
+        }
     }
 
     background: Rectangle { radius: 14; color: "#0f0e17"; border.color: "#18ffffff" }
@@ -223,100 +258,21 @@ Popup {
             }
         }
 
-        ScrollView {
-            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-            contentWidth: availableWidth; ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-            ColumnLayout {
-                width: Math.min(parent.width, 760); anchors.horizontalCenter: parent.horizontalCenter; spacing: 14
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 20; color: "transparent" }
-
-                Label {
-                    visible: previewRoot.loadError.length > 0; Layout.fillWidth: true
-                    text: previewRoot.loadError; color: "#fda4af"; wrapMode: Text.Wrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                // View mode header
-                RowLayout {
-                    visible: previewRoot.loadError.length === 0 && !previewRoot.isEditing
-                    Layout.fillWidth: true; spacing: 12
-                    Label { text: previewRoot.pageData.icon || "📄"; font.pixelSize: 29; Accessible.name: qsTr("Page icon") }
-                    Label {
-                        Layout.fillWidth: true; text: previewRoot.pageData.title || qsTr("Untitled")
-                        color: "#fffffe"; font.pixelSize: 30; font.weight: Font.Bold; wrapMode: Text.Wrap
-                    }
-                }
-
-                // View mode description
-                Label {
-                    visible: previewRoot.loadError.length === 0 && !previewRoot.isEditing && String(previewRoot.pageData.description || "").trim().length > 0
-                    Layout.fillWidth: true; text: String(previewRoot.pageData.description || "")
-                    color: "#a7a9be"; font.pixelSize: 15; wrapMode: Text.Wrap; leftPadding: 42
-                }
-
-                // Edit mode title
-                RowLayout {
-                    visible: previewRoot.loadError.length === 0 && previewRoot.isEditing
-                    Layout.fillWidth: true; spacing: 12
-                    Label { text: previewRoot.pageData.icon || "📄"; font.pixelSize: 29; Accessible.name: qsTr("Page icon") }
-                    TextField {
-                        id: titleInput
-                        objectName: "notesPageReferenceTitleInput"
-                        Layout.fillWidth: true; text: previewRoot.editTitle; placeholderText: qsTr("Page title")
-                        color: "#fffffe"; font.pixelSize: 24; font.bold: true; selectByMouse: true
-                        background: Rectangle { color: "#18ffffff"; radius: 8; border.color: titleInput.activeFocus ? "#8b5cf6" : "#28ffffff" }
-                        onTextChanged: previewRoot.editTitle = text; Accessible.name: qsTr("Page title")
-                    }
-                }
-
-                // Edit mode description
-                TextField {
-                    id: descriptionInput
-                    objectName: "notesPageReferenceDescriptionInput"
-                    visible: previewRoot.loadError.length === 0 && previewRoot.isEditing
-                    Layout.fillWidth: true; Layout.leftMargin: 42; text: previewRoot.editDescription
-                    placeholderText: qsTr("Add description..."); color: "#e2e8f0"; font.pixelSize: 14; selectByMouse: true
-                    background: Rectangle { color: "#14ffffff"; radius: 8; border.color: descriptionInput.activeFocus ? "#8b5cf6" : "#20ffffff" }
-                    onTextChanged: previewRoot.editDescription = text; Accessible.name: qsTr("Page description")
-                }
-
-                Rectangle {
-                    visible: previewRoot.loadError.length === 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#0cffffff"
-                }
-
-                // View mode content
-                TextEdit {
-                    objectName: "notesPageReferencePreviewContent"
-                    visible: previewRoot.loadError.length === 0 && !previewRoot.isEditing
-                    Layout.fillWidth: true; Layout.preferredHeight: contentHeight
-                    text: String(previewRoot.pageData.content || "").trim().length > 0 ? String(previewRoot.pageData.content) : qsTr("This page is empty.")
-                    textFormat: TextEdit.AutoText; color: "#fffffe"; font.pixelSize: 15; wrapMode: TextEdit.Wrap; readOnly: true
-                    selectByMouse: true; onLinkActivated: function(link) { previewRoot.activateContentLink(link) }
-                }
-
-                // Edit mode content editor
-                TextArea {
-                    id: contentEditor
-                    objectName: "notesPageReferenceContentEditor"
-                    visible: previewRoot.loadError.length === 0 && previewRoot.isEditing
-                    Layout.fillWidth: true; Layout.minimumHeight: 220; text: previewRoot.editContent
-                    placeholderText: qsTr("Page content..."); color: "#fffffe"; font.pixelSize: 15; wrapMode: TextEdit.Wrap; selectByMouse: true
-                    background: Rectangle { color: "#10ffffff"; radius: 8; border.color: contentEditor.activeFocus ? "#8b5cf6" : "#20ffffff" }
-                    onTextChanged: previewRoot.editContent = text; Accessible.name: qsTr("Page content")
-                }
-
-                // Status message feedback
-                Label {
-                    id: previewStatusLabel
-                    objectName: "notesPageReferenceStatusLabel"
-                    visible: previewRoot.statusMessage.length > 0; Layout.fillWidth: true; text: previewRoot.statusMessage
-                    color: previewRoot.statusMessage.indexOf(qsTr("Failed")) >= 0 ? "#fda4af" : "#a7f3d0"
-                    font.pixelSize: 13; Accessible.role: Accessible.StaticText; Accessible.name: text
-                }
-
-                Item { Layout.fillWidth: true; Layout.preferredHeight: 28 }
-            }
+        NotesPageReferencePreviewBody {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            pageData: previewRoot.pageData
+            pageId: previewRoot.pageId
+            loadError: previewRoot.loadError
+            isEditing: previewRoot.isEditing
+            editTitle: previewRoot.editTitle
+            editDescription: previewRoot.editDescription
+            editContent: previewRoot.editContent
+            statusMessage: previewRoot.statusMessage
+            onTitleEdited: function(value) { previewRoot.editTitle = value }
+            onDescriptionEdited: function(value) { previewRoot.editDescription = value }
+            onContentEdited: function(value) { previewRoot.editContent = value }
+            onPageReferenceLinkActivated: function(link) { previewRoot.activateContentLink(link) }
         }
     }
 }
