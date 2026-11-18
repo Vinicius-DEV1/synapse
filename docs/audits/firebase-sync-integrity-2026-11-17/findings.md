@@ -5,7 +5,7 @@
 | Priority | Finding | State |
 | --- | --- | --- |
 | P0 | Former Firestore rules allowed anonymous root access. | Fixed; scoped rules deployed and anonymous root reads are denied. |
-| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation and authenticated decrypted readback completed; all expected documents match. Original roots are preserved pending restore and app-pull acceptance. |
+| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation and authenticated decrypted readback completed; all expected documents match. Original roots are preserved pending app-pull acceptance. |
 | P1 | Push/pull failures could advance checkpoints or hide incomplete work. | Fixed in source; targeted tests pass. |
 | P1 | Tauri sync upserts could silently discard unsupported columns or fail whole rows on optional timestamps. | Fixed in source; regression coverage added. |
 | P1 | Legacy share metadata could expose raw share keys. | New versioned share flow protects keys; old shares remain blocked pending reissue. |
@@ -92,5 +92,5 @@ Older direct-share config could store a raw share key in publicly readable metad
 - `npm run test:firestore-rules`: 4 emulator tests passed.
 - `npm run build:web`: passed. Vite reports large-chunk warnings and a direct `eval` warning from `onnxruntime-web`.
 - The latest web build was deployed to `https://synapse-dev.web.app`, `https://synapsedev.web.app`, `https://synapse-web.web.app`, and `https://fourth-cirrus-468923-h7.web.app`.
-- Authenticated item-by-item scoped readback and decrypted payload parity are complete. A full authenticated app UI pull remains open because browser automation was unavailable; an isolated backup restore is also still required.
+- Authenticated item-by-item scoped readback and decrypted payload parity are complete. An exact-hash rollback snapshot passed isolated SQLite integrity checks; one config-count comparison remains open. A full authenticated app UI pull remains open because browser automation is unavailable.
 - Legacy public shares, native client updates, migration reliability refactoring, and safe retirement of preserved data/site copies remain open.
