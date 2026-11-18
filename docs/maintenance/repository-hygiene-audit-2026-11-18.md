@@ -11,7 +11,7 @@
 - No loose SQLite files, temporary files, or other debug logs were found outside recognized generated directories.
 - Firebase Storage was initialized and exported without any source consumer. The unused SDK initialization and `VITE_FIREBASE_STORAGE_BUCKET` configuration were removed. Firestore and Firebase Authentication remain initialized.
 - The current documentation index incorrectly described Firebase Auth as having zero users and the scoped reconciliation as incomplete. It now reflects the later audit evidence: one primary account, 5,005 scoped documents verified, no missing or remote-only IDs, and 9,398 reads. Full application sign-in and sync pull remain open.
-- Historical architecture analyses are explicitly labeled as snapshots. They remain available as historical context and are not treated as current implementation evidence.
+- Historical architecture analyses and workspace proposals are explicitly labeled as snapshots/proposals. Stale present-tense claims about account setup, Firebase Storage, and Authentication certification were corrected and linked to current sources of truth.
 
 ## Deliberately Retained Files
 
@@ -32,6 +32,7 @@
 - [x] Remove four closed Firebase CLI debug logs.
 - [x] Remove Firebase Storage initialization with no callers and its unused environment setting.
 - [x] Correct the current documentation status using the later audit report.
+- [x] Label historical authentication/storage findings and workspace proposals so they cannot be mistaken for current status.
 - [x] Keep data-bearing backups and active compatibility code behind explicit gates.
 - [ ] Complete the full authenticated app sign-in and sync-pull acceptance before retiring Firebase source archives or rollback copies.
 - [ ] Complete Qt and Android account/key migrations before removing their local credential and crypto paths.

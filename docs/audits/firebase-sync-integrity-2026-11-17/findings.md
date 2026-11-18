@@ -5,7 +5,7 @@
 | Priority | Finding | State |
 | --- | --- | --- |
 | P0 | Former Firestore rules allowed anonymous root access. | Fixed; scoped rules deployed and anonymous root reads are denied. |
-| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation and authenticated decrypted readback completed; all expected documents match. Original roots are preserved pending app-pull acceptance. |
+| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation and authenticated decrypted readback completed; all expected documents match. Original roots remain preserved until full app-mediated sign-in and sync-pull acceptance passes. |
 | P1 | Push/pull failures could advance checkpoints or hide incomplete work. | Fixed in source; targeted tests pass. |
 | P1 | Tauri sync upserts could silently discard unsupported columns or fail whole rows on optional timestamps. | Fixed in source; regression coverage added. |
 | P1 | Legacy share metadata could expose raw share keys. | New versioned share flow protects keys; old shares remain blocked pending reissue. |

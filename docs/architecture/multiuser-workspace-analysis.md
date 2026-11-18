@@ -1,6 +1,6 @@
 # Historical Multi-User Workspace Audit
 
-> **Document status:** Historical analysis snapshot; not a current acceptance report. File paths, line numbers, package behavior, and security findings must be revalidated before implementation. The current workspaces implementation status is not certified; see the [documentation status index](../documentation-status.md) and the associated [action plan](./multiuser-workspace-action-plan.md).
+> **Document status:** Historical analysis snapshot from 2026-11-17; not a current acceptance report. All present-tense descriptions below refer to that source snapshot and may be obsolete. Current authentication, synchronization, security, and cleanup status is maintained in the [documentation status index](../documentation-status.md), the [Firebase integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md), and the [cloud account migration checklist](../security/cloud-account-encryption-migration.md). Workspace implementation status is not certified; see the associated [proposal](./multiuser-workspace-action-plan.md).
 
 ---
 
@@ -67,11 +67,11 @@ The project enforces strict separation of concerns across four tiers:
 - **Realtime Database**: **NOT in use**. Not imported, configured, or referenced anywhere.
 
 ### 2.2. Firebase Services Status Matrix
-| Firebase Service | Current Status | Detailed Configuration & Code Location |
+| Firebase Service | Snapshot status (2026-11-17) | Detailed Configuration & Code Location in that snapshot |
 | :--- | :--- | :--- |
 | **Firestore** | **Active (Core Sync Relay)** | Configured via `apps/web-react/src/services/firebase.ts`, rules in `firestore.rules`. Serves as encrypted blind relay. |
-| **Authentication** | **Configured (2026-11-17), account setup pending** | Firebase Auth email/password and anonymous providers are enabled for the configured web app. Production currently has zero Auth users; local password/PBKDF2 accounts are not automatically linked. |
-| **Storage** | **Initialized but Unused** | Exported in `apps/web-react/src/services/firebase.ts:24` (`export const storage = getStorage(app)`), but has 0 consumers across the entire codebase. Binary files (PDFs, EPUBs, videos) are routed to Google Drive or local SQLite/IndexedDB. |
+| **Authentication** | **Configured; account setup pending in this snapshot** | Firebase Auth email/password and anonymous providers were enabled for the configured web app. The production project had zero Auth users at the time. The primary account was established later; scoped reconciliation and remaining UI acceptance are tracked in the current Firebase audit. |
+| **Storage** | **Initialized but unused in this snapshot; since removed** | Firebase Storage had no consumers at the time. Its unused initialization and environment setting have since been removed; see the [repository hygiene audit](../maintenance/repository-hygiene-audit-2026-11-18.md). |
 | **Functions** | **Inactive (NOT configured)** | No Cloud Functions exist in `firebase.json` or source tree. |
 | **Hosting** | **Active (Production & Dev PWA)** | Configured in `firebase.json` for 4 targets (`synapse-dev`, `synapsedev`, `synapse-web`, `fourth-cirrus-468923-h7`). Deploys `apps/web-react/dist-web` with `/s/** -> /share-viewer.html` and `** -> /index.html` rewrites. |
 
@@ -89,8 +89,8 @@ Credentials are read via Vite environment variables defined in the React app's [
 
 ## 3. End-to-End Authentication & Session Lifecycle
 
-### 3.1. Current Single-Password Mechanism
-The application currently operates with a **Single Master Password** paradigm, serving dual purposes: identity verification and encryption key derivation.
+### 3.1. Historical Single-Password Mechanism (Snapshot: 2026-11-17)
+At the time of this snapshot, the application used a **Single Master Password** for identity verification and encryption key derivation. React Web, Tauri, and WebView have since adopted Firebase account sign-in with a checked key migration; Qt and native Android remain separate migration targets. See the [current cloud account migration checklist](../security/cloud-account-encryption-migration.md).
 
 ```
 [ User Input: Single Master Password ]
@@ -279,7 +279,7 @@ service cloud.firestore {
 2. **Denial of Service via Blanket Overwrites**:
    An attacker can overwrite `config/auth_validator` or `config/module_keys`, permanently locking the user out of their cloud synchronization.
 3. **No Ownership Validation (`request.auth == null`)**:
-   This was a historical finding. Firebase Auth is now configured and deployed; the user account still needs to be created/signed in before scoped data can be reconciled. See the current [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md).
+   This was a historical finding. Firebase Auth and scoped rules are deployed, and the primary account and scoped data reconciliation are established. Full app-mediated sign-in and sync-pull acceptance remain open; see the current [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md).
 
 ### 6.2. Indexes Audit
 - **Source Control Status**: There is **no `firestore.indexes.json` file** in the repository, and `firebase.json` does not reference any index configuration file.
@@ -294,7 +294,7 @@ service cloud.firestore {
 
 ## 7. Catalog of Single-User Architectural Assumptions
 
-The codebase currently assumes a single user everywhere. The table below catalogs all specific occurrences with exact file paths and code snippets:
+The source snapshot analyzed here assumed a single user in the locations below. These paths and findings are historical and must be revalidated before implementation:
 
 | Category | File & Line | Code Snippet | Single-User Assumption & Problem |
 | :--- | :--- | :--- | :--- |
@@ -356,7 +356,7 @@ The codebase currently assumes a single user everywhere. The table below catalog
 
 ## 10. Phase 1 Audit Conclusion & Sign-Off
 
-The analysis confirms that while Synapse has an exceptionally solid local-first architectural foundation (React 19, Yjs CRDTs, Two-Tier Keychain, clean 4-tier layer boundaries), the current cloud persistence and authentication layers are strictly built around a single-user model with hardcoded Firestore paths, flat collections, and open security rules.
+At the time of this snapshot, the analysis described cloud persistence and authentication as a single-user model with hardcoded Firestore paths, flat collections, and open security rules. Later implementation and verification are recorded in the current Firebase audit and documentation index.
 
 The requirements for **Fase 2 (Detailed Action Plan)** are clearly scoped:
 1. Transition authentication to **Firebase Authentication** (email/password) while providing a seamless, zero-loss migration path for the current single user.
@@ -364,4 +364,4 @@ The requirements for **Fase 2 (Detailed Action Plan)** are clearly scoped:
 3. Partition Firestore data safely by workspace/user with strict security rules enforcing default-deny and role-based permissions.
 4. Scale Yjs real-time collaboration cleanly within workspaces.
 
-*Phase 1 is hereby concluded. Proceeding to Phase 2 (Detailed Action Plan).*
+*The historical Phase 1 analysis was concluded in this snapshot. The following Phase 2 items are archived recommendations, not a current implementation plan or completion status.*
