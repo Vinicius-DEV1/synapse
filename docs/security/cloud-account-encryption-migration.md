@@ -28,7 +28,7 @@ Password reset is not encryption-key recovery. The sign-in screen warns users be
 
 An ordinary online unlock reads the verifier and module-key configuration documents. A one-time cloud rewrap reads those documents before migration and reads them again inside the transaction; a transaction retry can increase the count. It writes only the two configuration documents. Failed-attempt lock records and normal app synchronization are separate operations.
 
-No production Firebase reads, writes, deployments, or account-data reconciliation were performed while implementing this code. The normal read count is therefore determined by Firestore at runtime, not by local build output. Keep the existing daily quota limit in mind when validating with a real account.
+No Firestore reads, writes, rules deployments, or account-data reconciliation were performed for this code change. The production Web bundle was published to the four Hosting sites on 2026-11-18 after the local checks below; Hosting publication does not modify Firestore. The account migration itself still runs when the user signs in to the released client. Keep the existing daily read quota in mind during that validation.
 
 ## Safe Legacy Removal Checklist
 
@@ -63,7 +63,10 @@ No production Firebase reads, writes, deployments, or account-data reconciliatio
 - `npm run test -- src/components/settings/tabs/security/SecuritySections.test.tsx` — 1 file and 4 tests passed.
 - `cargo test -p synapse-core keychain::tests --lib` — 3 migration transaction tests passed.
 - `npm run tauri -- build --bundles deb` — passed, including the production React build and optimized Tauri Rust build; produced `target/release/bundle/deb/Caderno_1.0.0_amd64.deb` (about 94 MB).
+- `npm run build:web` — passed; this is the bundle published to the configured Hosting sites.
+- `firebase deploy --only hosting --project fourth-cirrus-468923-h7 --non-interactive` — Hosting release completed for all four configured sites. Firestore rules and data were not deployed or modified.
+- Chromium headless through the Chrome DevTools Protocol loaded `https://synapse-dev.web.app`; the cloud-account sign-in view rendered with email and account-password fields and no browser console errors. No sign-in was submitted, so this check made no Firestore reads.
 - `dpkg-deb --info target/release/bundle/deb/Caderno_1.0.0_amd64.deb` — package metadata and `amd64` architecture verified.
 - `git diff --check` and `rustfmt --check --edition 2021 apps/web-react/src-tauri/src/cmd_auth.rs core/synapse-core/src/db/keychain.rs` — passed.
 
-A passing test or local build does not prove a production user's account has completed migration. No Firebase account was read, written, or deployed during this work; Web/Tauri migration runs when the user signs into the released client. Qt and native Android still require their own account/key migration before their legacy credential flows can be removed.
+A passing test, initial sign-in screen, or Hosting release does not prove a production user's account has completed migration. No Firestore account configuration or app data was read or written during this work; Web/Tauri migration runs when the user signs into the released client. Qt and native Android still require their own account/key migration before their legacy credential flows can be removed.

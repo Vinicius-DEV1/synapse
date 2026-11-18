@@ -56,7 +56,7 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Deploy Email/Password and Anonymous Auth providers and authorize the four configured Hosting domains.
 - [x] Deploy reviewed Firestore rules and verify anonymous production root reads are denied; retain rules rollback version `4dbee571-c0f9-4add-9f32-f6a1faa53e6f`.
 - [x] Build and publish the latest Web client to all four configured Hosting sites, including optional timestamp mapping and JSON-array normalization fixes.
-- [ ] Verify full sign-in and scoped sync through the app UI after local master-key unlock; CLI Auth validation alone is not the complete UX check.
+- [ ] Verify cloud-account sign-in, legacy-key migration, and scoped sync through the app UI; CLI Auth validation alone is not the complete UX check.
 - [ ] Verify installed Tauri and Mobile WebView builds load the scoped client and complete an authenticated UI pull. The checked-in Qt and Android clients do not implement Firestore sync directly.
 - [ ] Reissue any required version 1 public shares and verify replacement links before retiring the old shares.
 

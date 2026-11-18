@@ -30,7 +30,7 @@ The recorded rollback file was missing from its original path, but a copy with t
 
 - Firestore rules were deployed. Emulator rules tests passed (4 tests).
 - Email/password and anonymous providers are enabled. Authenticated CLI sign-in to the primary account succeeded.
-- Current web code passed focused sync tests (45 tests across 5 files), `npm run typecheck`, and `npm run build:web`; the latest build was deployed to all four sites configured in `firebase.json`.
+- Current web code passed focused sync tests (45 tests across 5 files), `npm run typecheck`, and `npm run build:web`; the cloud-account unlock update was published to all four sites configured in `firebase.json` on 2026-11-18. This Hosting release did not change Firestore rules or data.
 - Rust database migration checks passed (7 focused tests), and `cargo check` passed for the Tauri library. Tauri and the core now use one versioned core schema initializer; all 50 Web sync tables are present, migration failures roll back and propagate, and legacy `sessions` rows are preserved.
 - Four focused Tauri tests verify interrupted legacy-directory copy recovery, error-marker retention and retry, protection of an existing canonical database, and committed data read from a live SQLite WAL. The legacy database is copied with SQLite's online backup API; other files use temporary copies and atomic renames.
 - The checked-in [SQLite migration-copy verifier](./verify_migration_copy.py) applied the migration only to a temporary SQLite backup of the canonical app database. All 55 pre-existing tables, 5,044 rows, and existing column values were preserved; `schema_migrations` was the only new table, `quick_check=ok`, and foreign-key violations were zero. No transaction-account backfill or default finance account seed was needed. Re-run with `python3 docs/audits/firebase-sync-integrity-2026-11-17/verify_migration_copy.py --database <sqlite-path>`.
@@ -40,7 +40,7 @@ The recorded rollback file was missing from its original path, but a copy with t
 
 ## Remaining Acceptance Gates
 
-1. Unlock the app and run a full authenticated UI pull to verify the deployed client end to end. Browser automation remains unavailable; production data was verified through authenticated Firestore reads and the application decryption path instead.
+1. Sign in through the deployed cloud-account UI and run a full authenticated UI pull to verify key migration and sync end to end. A headless Chromium check confirmed the sign-in view loads without console errors, but no credentials were submitted and the full UI pull remains open; production data was verified through authenticated Firestore reads and the application decryption path instead.
 2. Keep old root documents, legacy shares, unused Hosting sites, and legacy storage copies listed in the cleanup inventory until their individual gates pass. No data or legacy copy was deleted during reconciliation.
 3. Continue the separate native-client compatibility, legacy-share review, and safe cleanup items in the checklist.
 
