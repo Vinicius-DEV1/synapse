@@ -1,12 +1,12 @@
 # Native Desktop Encryption Audit
 
-**Status: partial coverage; do not claim repository-wide encryption at rest. Last reviewed 2026-11-12.** This audit records the Qt desktop behavior checked against the Rust bridge, shared SQLite schema, and current React/Tauri implementation. Native vault setup protects selected content fields and referenced media in managed directories, but it does not encrypt every user-data table or migrate every existing asset.
+**Status: partial coverage; do not claim repository-wide encryption at rest. Last reviewed 2026-11-18.** This audit records Qt desktop encryption and the shared React/Tauri key-envelope flow. React Web, Tauri, and the React-hosted WebView now authenticate with the Firebase account password and can rewrap their existing key envelopes. Qt still uses its separate local credential, and native Android has no equivalent account flow. Native vault setup protects selected content fields and referenced media in managed directories, but it does not encrypt every user-data table or migrate every existing asset.
 
 ## Verified Protection and Recent Fixes
 
 | Data or flow | Current Qt behavior | Status |
 | --- | --- | --- |
-| Application access gate | The native module shell is not instantiated until a master password is configured and unlocked. Lock and auto-lock unload it and clear exposed in-memory count properties. A local failed-login cooldown applies after three consecutive failures. This is a UI/session gate; it does not encrypt every business table or metadata field. | Implemented for native shell access; broader at-rest coverage remains partial. |
+| Application access gate | Qt still requires its separate local vault credential before the native shell is instantiated. React Web/Tauri use Firebase account sign-in before loading the shell. These are UI/session gates; neither encrypts every business table or metadata field. | Implemented for React/Tauri; Qt remains on its local credential; broader at-rest coverage remains partial. |
 | Master key | PBKDF2-HMAC-SHA256 with 600,000 iterations and the existing fixed local salt. The raw key is not stored in SQLite. | Implemented; salt format is compatibility-bound. |
 | Module key envelopes | Random 32-byte module keys are wrapped with AES-GCM and stored in `keychain`. Password change re-wraps envelopes in a transaction. | Implemented for the current keychain format. |
 | Note body and revision body | Setup migrates plaintext `pages.content` and `page_history.content`; saves encrypt them while unlocked. Locked writes fail. Native rich-editor image data is stored inline in `pages.content` and follows that body-column behavior; it does not create a separately managed image asset. `pages.cover_image` remains plaintext metadata and may contain an embedded image data URL. | Implemented for body columns only; titles, descriptions, icons, cover images, and other page metadata remain plaintext. |
@@ -28,7 +28,8 @@ Open Library metadata lookup is user-triggered and sends the entered book title 
 | Critical | Sensitive records in finance, calendar, habits, culture, Anki, questions, focus, notifications, tutor data, and library annotations/caches remain plaintext in SQLite. |
 | High | Files outside managed folders are not migrated; library/video paths and module metadata remain visible. Qt recovers pending asset journals, but React/Tauri do not yet block access while a Qt journal is pending. |
 | High | Video, library, and other module metadata remains visible; some metadata also contains local paths or user-created text. This includes generated or uploaded `library_books.cover_image` values. |
-| High | Legacy records without a decryptable key envelope still rely on the old fast SHA-256 verifier in Tauri. |
+| High | The Qt bridge still retains a fast SHA-256 verifier for legacy local credential compatibility. React/Tauri no longer accept that verifier as an unlock path. |
+| High | Native Qt account authentication and native Android account/keychain migration are not implemented; do not remove their existing local crypto flows. |
 | High | Qt/React string copies, QML state, WAL snapshots, and temporary files do not yet have a complete, interruption-safe zeroization proof. |
 | Medium | The local KDF salt is fixed for cross-client compatibility; there is no per-vault random salt/version migration yet. |
 | Medium | Missing module envelopes can still alias to a fallback key for legacy keychain compatibility. |
@@ -37,7 +38,7 @@ Open Library metadata lookup is user-triggered and sends the entered book title 
 2. **Metadata remains visible.** Examples include page and diagram titles, video titles/progress and paths, subtitle labels and paths in `subtitles_json`, video vocabulary words/context, library metadata, and many relationship fields.
 3. **Unmanaged pre-existing media is not migrated.** Setup aborts if a referenced file exists outside its managed directory rather than modifying a user's external file. A separate copy-and-relink flow is needed to migrate those assets without altering the source.
 4. **SQLite residuals are not fully eliminated.** Setup now attempts a WAL checkpoint and `VACUUM`, and reports a warning if that operation fails. Concurrent React/Tauri connections can prevent cleanup; filesystem deletion and query-buffer lifetimes also cannot promise physical-sector erasure or zero plaintext memory copies.
-5. **Legacy authentication verifiers remain weak.** New Qt and Tauri setups now store `v2:` verifiers derived from the PBKDF2 master key, and successful envelope unlocks upgrade the stored verifier. Tauri still accepts the old deterministic SHA-256 password-plus-suffix verifier for compatibility. A legacy record without any decryptable envelope cannot yet migrate itself and remains a cheap offline password-guess target.
+5. **Legacy authentication verifiers remain weak in Qt.** New Qt and Tauri setups store `v2:` verifiers derived from the PBKDF2 root, and successful envelope unlocks upgrade the stored verifier. React/Tauri now require successful envelope decryption and no longer accept Tauri's old deterministic SHA-256 password-plus-suffix verifier. Qt still has a legacy SHA-256 compatibility path that remains a cheap offline password-guess target.
 6. **The KDF salt is fixed across local vaults.** This is the current cross-client compatibility format; a per-vault random salt requires a versioned keychain migration across Qt, Tauri, and web clients.
 7. **Unlock compatibility still aliases missing module envelopes.** Legacy keychains may reuse a fallback module key. New keychains create independent keys, but the fallback prevents a universal key-separation guarantee for older records.
 8. **Plaintext buffers remain in process memory where UI/API contracts require strings.** The bridge and selected buffers are wiped, but JSON query buffers, Qt implicit-shared `QString` copies, and QML view-model values are not comprehensively zeroized.
@@ -46,11 +47,11 @@ Open Library metadata lookup is user-triggered and sends the entered book title 
 
 - Define a cross-client entity/column encryption schema and encrypt every sensitive field that the product promises to protect.
 - Extend the transactional setup migration to every plaintext business-data field and to external assets through a copy-and-relink flow; abort if any decrypt/encrypt step fails.
-- Version the master-key KDF salt and password verifier, migrate React/Tauri and Qt together, and retain legacy reads only during migration.
+- Version the key-derivation salt across React/Tauri and Qt. Complete Qt account authentication and Android key ownership before removing their local credential paths; retain old-format reads only until each client has a verified migration.
 - Validate every decrypt result before displaying or saving it; never substitute plaintext or ciphertext after a cryptographic error.
 - Close UI readers and invalidate decrypted caches on lock; test these transitions per module.
 - Verify database WAL/checkpoint behavior and temporary-file cleanup under interruption before claiming there are no plaintext residuals.
-- Compare Qt and React/Tauri on the same migrated database, including vault setup, unlock, password change, lock, removal, backup, and recovery.
+- Compare each client on its supported database, including vault setup, account/local unlock, envelope migration, lock, removal, backup, and recovery. React/Tauri account migration coverage and remaining Qt/Android gaps are tracked in [`cloud-account-encryption-migration.md`](./cloud-account-encryption-migration.md).
 
 ## Targeted Verification
 

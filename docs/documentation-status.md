@@ -1,6 +1,6 @@
 # Documentation Ownership and Current Status
 
-**Last reviewed:** 2026-11-17
+**Last reviewed:** 2026-11-18
 
 This page identifies the current sources of truth. Older reports and migration plans may contain estimates, test totals, file paths, or completion checkboxes that have not been revalidated. Do not use those records as proof of current implementation status.
 
@@ -14,6 +14,7 @@ This page identifies the current sources of truth. Older reports and migration p
 | Synchronization engine | [Sync Engine Architecture](./architecture/sync-engine.md) | Cloud synchronization, E2EE batch encryption, and table sync inventory |
 | Firebase integrity audit | [Firebase sync integrity audit](./audits/firebase-sync-integrity-2026-11-17/README.md) | Current local schema, Firestore ID reconciliation, security findings, and resolution checklist |
 | Qt vault and encryption coverage | [Native encryption audit](./security/native-encryption-audit.md) | Implemented protection, test evidence, and open encryption risks |
+| Cloud account key migration | [Cloud account encryption migration](./security/cloud-account-encryption-migration.md) | React/Tauri/WebView migration flow, client coverage, quota footprint, and safe legacy-removal gates |
 | Build and setup commands | [Setup and build guide](./guides/setup-and-build.md) | Current build commands and prerequisites |
 | System architecture | [Architecture overview](./architecture/overview.md) | Runtime responsibilities and platform boundaries |
 | Engineering rules | [Root AGENTS.md](../AGENTS.md) and app-level `AGENTS.md` files | Required code, testing, documentation, and ownership rules |
@@ -25,6 +26,7 @@ This page identifies the current sources of truth. Older reports and migration p
 - Qt desktop feature parity: The React client remains the single source of truth for UX and feature parity. The habits feature is strictly an editor extension (`/habito` slash command and interactive widget) in both React and Qt, rather than a standalone top-level route.
 - Cloud Synchronization: **Unverified / incomplete.** The active local database passed integrity checks and its three missing sync tables were created. All 50 client sync table names were compared across Web, Firestore rules, Rust, IndexedDB, and active SQLite; optional timestamp-column differences are explicitly handled. The scoped web client and Firestore rules are deployed to the four configured Firebase Hosting sites; an anonymous root read now fails with `403 PERMISSION_DENIED`. Email/password and anonymous Firebase Auth providers are enabled, but Auth currently has zero users. The user's legacy-data ownership confirmation is recorded; UID-based reconciliation and decrypted field parity still require a Firebase account and unlocked vault. See the [audit and resolution checklist](./audits/firebase-sync-integrity-2026-11-17/README.md).
 - Native vault protection is partial. The Qt setup now migrates referenced media inside managed directories and can recover an interrupted media migration. Sensitive business-data fields in several SQLite modules remain plaintext, and the security audit must remain open.
+- React Web/Tauri now use Firebase account credentials to unlock their encrypted key envelopes, with a one-time checked rewrap for older local/cloud credentials. The separate Qt and native Android clients are not migrated; see the [account migration checklist](./security/cloud-account-encryption-migration.md).
 - The unified architecture establishes `core/synapse-core/` as the Single Source of Truth for domain models, SQLite repositories, and business calculations across all native clients, eliminating duplicated raw SQL queries in `desktop-qt` and `web-react/src-tauri`.
 
 ## Documentation Update Rules

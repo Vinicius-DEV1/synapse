@@ -3,7 +3,7 @@ name: cryptography-vault
 description: >-
   Canonical reference for Synapse's cryptographic design and current client flows:
   Two-Tier Keychain, PBKDF2/AES-GCM key derivation, ENC1 media streaming,
-  and Master Password lifecycle. Activate when
+  cloud-account key migration, and legacy native credential lifecycle. Activate when
   implementing, auditing, or modifying any cryptographic operation or vault flow.
 ---
 
@@ -30,10 +30,11 @@ coverage and open gaps are recorded in [`docs/security/native-encryption-audit.m
 1. **Encrypt at the boundary** — Encrypt sensitive content before it enters a
    remote sync or storage path. Verify each concrete path before making a claim
    about all cloud data or all modules.
-2. **Opt-in local vault** — Without a Master Password, local storage is generally
-   plaintext. With a configured Qt vault, selected notes, vault fields, and
-   supported media are protected. Several business tables, metadata, and assets
-   outside managed folders remain outside the current migration.
+2. **Client-specific local vaults** — React Web/Tauri use the Firebase account
+   password as the input to their existing local encryption-root derivation. Qt
+   still uses its separate local vault credential. Native Android has no account
+   keychain flow. Selected data remains encrypted; several business tables,
+   metadata, and assets outside managed folders remain plaintext.
 3. **Defense in depth** — Use separate module keys where the keychain defines
    them, AES-GCM envelopes, strict failure handling, bounded media paths, and
    lock-time cleanup. Diagrams currently use the notes key; there is no dedicated
@@ -43,14 +44,16 @@ coverage and open gaps are recorded in [`docs/security/native-encryption-audit.m
 
 ## 2. Two-Tier Key Hierarchy (Keychain Architecture)
 
-User authentication is decoupled from data encryption using a **Two-Tier Envelope
-Key System**:
+Each client uses a **Two-Tier Envelope Key System**. React Web/Tauri intentionally
+use the authenticated Firebase account password as the local key-derivation input;
+Qt retains its independent local credential until a separate verified migration.
+Firebase receives neither the derived root key nor module keys:
 
 ```
-[ User Master Password ]
+[ Account Password (React/Tauri) or Legacy Local Credential (Qt) ]
           │
           ▼ PBKDF2-HMAC-SHA256 (600,000 iterations)
-   [ Master Key (256-bit) ]
+   [ Encryption Root Key (256-bit) ]
           │
           ▼ AES-256-GCM (Unwraps keychain table)
 ┌─────────────────────────────────────────────────────────────────┐
@@ -77,7 +80,7 @@ Key System**:
 | **Algorithm**      | PBKDF2 with HMAC-SHA256            |
 | **Iterations**     | 600,000 rounds (NIST SP 800-132)   |
 | **Local Desktop Salt** | Fixed compatibility salt in the Rust bridge |
-| **Web / Cloud Salt** | Versioned separately by the relevant web crypto flow |
+| **Web / Cloud Salt** | Existing Web salt in `apps/web-react/src/services/crypto.ts`; remains compatibility-bound |
 
 The fixed local salt is a known limitation, not a per-vault random salt. A
 versioned salt migration remains open; do not describe this as unique-salt
@@ -160,7 +163,7 @@ export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: Crypt
 - **Controller & Lifecycle (`SynapseDataController`)**:
   - Transparent on-the-fly decryption for `getPage`, `getPageHistory`, and `getVaultItems`.
   - Zero-plaintext residual guarantee: when saving in encrypted mode, `content` is wiped to `""` and ciphertext stored exclusively in `encrypted_content`.
-  - Master Password Setup, Change (atomic envelope re-wrap without touching content ciphertexts), and Removal with in-memory zeroization.
+  - Local credential setup/change/removal with envelope rewrap; this Qt-only flow has not been migrated to Firebase account authentication.
   - Auto-lock timer and memory wipe on lock and application shutdown.
 
 ---
@@ -212,7 +215,7 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 
 ### Prohibited Anti-Patterns
 
-- **NO plaintext passwords in SQLite** — Use `hash_auth_password()` with SHA-256 or PBKDF2.
+- **NO plaintext passwords in SQLite** — Store only a versioned verifier. The Qt legacy SHA-256 verifier remains compatibility code and must not be used as the React/Tauri account unlock check.
 - **NO static IVs** — Hardcoded `[0u8; 12]` is strictly prohibited.
 - **NO ciphertexts in logs** — Never log `encrypted_payload` or raw keys.
 - **NO unhandled decryption failures** — Return `Result<T, DecryptionError>` and
@@ -220,14 +223,26 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 
 ---
 
-## 7. Master Password Change Flow
+## 7. Key-Envelope Credential Migration
 
-1. **Derive Old Master Key**: `PBKDF2(old_password, salt, 600000)` → `old_master_key`.
-2. **Derive New Master Key**: `PBKDF2(new_password, salt, 600000)` → `new_master_key`.
-3. **Decrypt All Module Keys**: Using `old_master_key`, recover every `*_key_enc`.
-4. **Re-Encrypt All Module Keys**: Using `new_master_key`, re-encrypt each with fresh IVs.
-5. **Update Auth Verifier**: Replace the stored verifier with the versioned verifier derived from the new PBKDF2 master key.
-6. **Zero Old Key Material**: Clear `old_master_key` and intermediates from memory immediately.
+### React Web and Tauri account migration
+
+1. Authenticate the user with Firebase Authentication before accessing cloud configuration.
+2. Derive the existing Web encryption root from the account password; never upload that key or plaintext module keys.
+3. Verify and decrypt only the user's `auth_validator` and `module_keys` configuration documents.
+4. If envelopes use a previous credential, require it only when the current account credential cannot open the envelope. Compare all overlapping module keys before rewrapping.
+5. Rewrap both cloud configuration documents in one Firestore transaction and the local keychain in one IndexedDB or SQLite transaction. Keep the previous source intact if any verification or write fails.
+6. Reopen the saved local keychain with the account credential before entering the app. Make retries safe when cloud and local commits finish at different times.
+
+See [`docs/security/cloud-account-encryption-migration.md`](../../../docs/security/cloud-account-encryption-migration.md) for client coverage, the remaining native gaps, and legacy deletion gates.
+
+### Qt legacy local credential change
+
+1. **Derive Current Root Key**: `PBKDF2(previous_credential, salt, 600000)`.
+2. **Verify and Recover Module Keys**: Decrypt each current `*_key_enc` envelope.
+3. **Rewrap for the New Local Credential**: Re-encrypt the same module keys with fresh IVs.
+4. **Update the Versioned Verifier** in the same SQLite transaction.
+5. **Zero Temporary Key Material** immediately after use.
 
 > [!CAUTION]
 > - Module keys themselves do NOT change — only their wrapping envelope changes. All
@@ -250,6 +265,9 @@ To support 4K/60fps video playback without loading hundreds of megabytes into RA
 | `apps/desktop-qt/qml/settings/MasterPasswordModal.qml` | QML Presentation | Setup, change, and remove master password dialogs with strength meter |
 | `apps/desktop-qt/qml/vault/PasswordGeneratorModal.qml` | QML Presentation | Interactive entropy-controlled secure password generator |
 | `apps/web-react/src-tauri/src/crypto.rs` | Rust Backend | AES-256-GCM encrypt/decrypt, PBKDF2 derivation, module key generation |
+| `apps/web-react/src/services/auth/account-vault.ts` | React orchestration | Account sign-in, key reconciliation, and safe legacy-envelope migration |
+| `apps/web-react/src/services/sync/sync-auth.ts` | Web infrastructure | Encrypted account-key configuration in Firestore |
+| `core/synapse-core/src/db/keychain.rs` | Shared Rust persistence | Transactional Tauri keychain verification and rewrap |
 | `apps/web-react/src-tauri/src/crypto_stream.rs` | Rust Backend | Chunked AES-GCM streaming for large files (video) |
 | `apps/web-react/src-tauri/src/protocol_encrypted.rs` | Rust Backend | Custom `encrypted://` URI protocol, HTTP 206 partial content |
 | `apps/web-react/src-tauri/src/cmd_vault/` | Rust Backend | Tauri vault command modules for vault CRUD and field-level flows |
@@ -269,5 +287,6 @@ When adding or modifying encryption code:
    multi-byte UTF-8, emojis, and large 10MB+ buffers.
 3. **Ciphertext Randomness**: Encrypting identical plaintext twice must produce
    different IVs and completely different ciphertexts.
-4. **Password Change Integrity**: After changing password, all module keys decrypt
-   successfully with the new master key and all content remains accessible.
+4. **Credential Migration Integrity**: Verify that module keys remain byte-for-byte
+   unchanged after the Web/Tauri rewrap and that the previous envelope no longer
+   opens. Keep Qt legacy credential tests until its account migration is complete.
