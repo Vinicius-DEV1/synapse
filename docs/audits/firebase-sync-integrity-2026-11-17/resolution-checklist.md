@@ -6,7 +6,8 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 
 - [x] Identify the active SQLite database using the configured Tauri app identifier; exclude older copies from the active database decision.
 - [x] Create and integrity-check a rollback snapshot outside the repository before changing the active database.
-- [x] Run the current migration against an isolated database copy and verify no existing row/column values change.
+- [x] Apply the current migration to a temporary SQLite backup of the canonical database; preserve all 55 existing tables, 5,044 rows, and existing column values, with `quick_check=ok` and zero FK violations.
+- [x] Exercise legacy fixtures; verify legacy session rows and quiz answers survive the intended transformations.
 - [x] Create the missing `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items` tables in the active database.
 - [x] Verify post-migration table presence, SQLite integrity, foreign keys, and unchanged pre-existing values.
 - [x] Hold push/pull checkpoints on failed rows and reject incomplete sync passes.
@@ -17,6 +18,13 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Propagate local IndexedDB read/store failures instead of treating failed reads as missing records.
 - [x] Remove the unused unscoped cloud reset helper and deprecated no-op timestamp restore call.
 - [x] Verify all 50 sync tables exist and have no blank IDs; active SQLite integrity is `ok` with zero FK violations.
+- [x] Centralize SQLite schema initialization in `synapse-core`; Tauri delegates to it and the duplicate `db_migrations.rs` source was removed.
+- [x] Add schema migration versioning and execute schema, data, and index changes in one transaction; return contextual errors and record the version only after success.
+- [x] Verify an injected schema failure rolls back version metadata and partial schema changes; verify repeated initialization is idempotent.
+- [x] Preserve any legacy `sessions` table and rows instead of dropping it; add a regression test.
+- [x] Propagate Tauri database initialization and legacy-directory copy errors instead of continuing with an unavailable database.
+- [x] Verify interrupted legacy-directory copies resume, retain progress on errors, preserve the canonical database, and include committed SQLite WAL data through online backup.
+- [x] Compare the Web sync allowlist to the shared core schema in a focused test; all 50 tables are present.
 - [x] Run focused sync tests, `npm run typecheck`, Firestore Emulator rules tests, and a production Web build.
 
 ## B. Scope and Reconcile Data
@@ -48,15 +56,15 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Deploy reviewed Firestore rules and verify anonymous production root reads are denied; retain rules rollback version `4dbee571-c0f9-4add-9f32-f6a1faa53e6f`.
 - [x] Build and publish the latest Web client to all four configured Hosting sites, including optional timestamp mapping and JSON-array normalization fixes.
 - [ ] Verify full sign-in and scoped sync through the app UI after local master-key unlock; CLI Auth validation alone is not the complete UX check.
-- [ ] Update/rebuild installed native clients and verify compatibility with scoped rules.
+- [ ] Verify installed Tauri and Mobile WebView builds load the scoped client and complete an authenticated UI pull. The checked-in Qt and Android clients do not implement Firestore sync directly.
 - [ ] Reissue any required version 1 public shares and verify replacement links before retiring the old shares.
 
 ## D. Legacy Removal and Final Acceptance
 
 - [x] Inventory legacy data, code paths, rollback copies, and non-configured Hosting sites in [legacy cleanup inventory](./legacy-cleanup-inventory.md).
 - [x] Remove the unscoped `hardResetCloud()` and no-op `restoreLastSyncTimesFromDb()` source paths.
-- [ ] Refactor `db_migrations.rs` so schema failures propagate, migrations have explicit versions, and supported upgrades are tested.
-- [ ] Reconcile duplicate schema ownership between the Rust core and Tauri database layer before deleting either source.
+- [x] Replace the ignored-error Tauri migration copy with versioned, transactional core migrations and migration regression coverage.
+- [x] Reconcile Tauri and core schema ownership: the core is canonical and the Tauri adapter delegates initialization to it.
 - [x] Complete the cloud readback before considering source-root removal; scoped document and payload parity now pass.
 - [x] Restore the rollback snapshot from an exact-SHA-256 copy into a temporary isolated database; `integrity_check=ok`, zero foreign-key violations, and the temporary copy was removed after verification. All 32 merge-baseline tables are present; 31 counts match, and the extra `config` row is the documented local-only transient row excluded from cloud sync.
 - [ ] Unlock the app and verify a full authenticated UI pull before considering source-root cleanup; browser automation is unavailable in this environment.

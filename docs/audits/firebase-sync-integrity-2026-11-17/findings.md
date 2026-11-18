@@ -10,7 +10,8 @@
 | P1 | Tauri sync upserts could silently discard unsupported columns or fail whole rows on optional timestamps. | Fixed in source; regression coverage added. |
 | P1 | Legacy share metadata could expose raw share keys. | New versioned share flow protects keys; old shares remain blocked pending reissue. |
 | P2 | Three expected sync tables were absent from the active local database. | Created from current migration source after a verified snapshot. |
-| P2 | SQLite migration errors are suppressed in many paths. | Still open; tracked in the cleanup inventory. |
+| P2 | SQLite migration errors were suppressed and unversioned. | Fixed: core now runs versioned transactional migrations, reports errors to startup, and has rollback/idempotency coverage. |
+| P1 | Tauri startup suppressed SQLite initialization and legacy-copy errors. | Fixed: setup now logs and propagates directory, legacy-copy, and database initialization failures instead of managing an empty connection. |
 
 ## Original Root ID Comparison
 
@@ -61,10 +62,16 @@ The client's previous default-to-root path was removed. Personal sync requires a
 
 Older direct-share config could store a raw share key in publicly readable metadata. New shares require an owner account and master key; version 2 metadata stores a master-wrapped owner key and, where configured, a password-wrapped visitor key. Unprotected direct links carry the key in the URL fragment. Public rules deny old version 1 shares. Recreate any needed old shares from the unlocked app before retiring their records.
 
+## Cross-Client Sync Scope
+
+- The current `apps/desktop-qt` and `apps/mobile-android` source trees contain no Firebase or Firestore sync implementation. `apps/mobile-webview` loads the configured Firebase Hosting web client.
+- The React web client is the repository's Firestore sync implementation and is deployed to all four configured Hosting sites. The installed Tauri and Mobile WebView versions still need a signed-in UI pull check to confirm their bundled or hosted client version.
+
 ## Local Schema and Column Coverage
 
 - The active database initially lacked `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items`; all were created empty from the current migration source after an integrity-checked rollback snapshot.
 - The current 50-table Web sync allowlist aligns with Firestore rules, Rust sync commands, IndexedDB, and the active SQLite schema. All 50 tables exist and contain an `id` column; no sync row has a blank ID.
+- The canonical `synapse-core` SQLite schema now contains all 50 Web sync tables, including `ai_prompts`, `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items`. Tauri delegates initialization to this core schema; the duplicate Tauri schema and migration module were removed.
 - The separate Rust-only `link_metadata_cache` table is not part of the canonical Web sync allowlist.
 - Local `config` contains one transient row excluded by design. It is not part of the 5,005 syncable-row count.
 - Three tables legitimately omit optional timestamp columns: `config.deleted_at`, `quiz_attempts.updated_at/deleted_at`, and `quiz_page_links.updated_at`. The sync payload mapper now omits unavailable optional metadata instead of synthesizing columns rejected by Tauri upsert.
@@ -82,6 +89,9 @@ Older direct-share config could store a raw share key in publicly readable metad
 - Large encrypted payloads use gzip and authenticated AES-GCM chunk envelopes. The parent pointer is written only after chunk writes; rules constrain chunks to the same owner or workspace role.
 - The publisher converts SQLite JSON-text values in `library_books.collections` and `calendar_events.reminders` / `notified_reminders` to structured arrays before encryption. Other fields and malformed legacy values remain untouched.
 - Optional timestamp mapping no longer rejects otherwise valid records when the local schema omits those columns.
+- SQLite migration version 1 runs atomically, checks columns before adding them, propagates query/DDL failures, and records its version only after all schema, quiz, index, and finance-seed steps succeed.
+- The former `DROP TABLE IF EXISTS sessions` migration was removed; a regression test proves any existing `sessions` table and its rows survive initialization.
+- Legacy data-directory copying uses a progress marker, resumes after interruption, leaves the marker on errors, and uses SQLite's online backup API to include committed WAL transactions; Tauri setup aborts with a contextual error instead of continuing with `conn: None`.
 - The document decrypt/upsert/rekey path is extracted into [`sync-pull-documents.ts`](../../../apps/web-react/src/services/sync/sync-pull-documents.ts).
 - The unused unscoped `hardResetCloud()` helper and deprecated no-op `restoreLastSyncTimesFromDb()` path were removed.
 
@@ -91,6 +101,10 @@ Older direct-share config could store a raw share key in publicly readable metad
 - `npm run typecheck`: passed.
 - `npm run test:firestore-rules`: 4 emulator tests passed.
 - `npm run build:web`: passed. Vite reports large-chunk warnings and a direct `eval` warning from `onnxruntime-web`.
+- `cargo test --manifest-path core/synapse-core/Cargo.toml db::`: 7 focused migration/database tests passed, including 50-table sync parity, version idempotency, transaction rollback, quiz data preservation, and legacy-session preservation.
+- `cargo test --manifest-path apps/web-react/src-tauri/Cargo.toml --lib legacy_data_migration::tests`: 4 focused tests passed for interrupted-copy recovery, error retry, canonical database preservation, and live-WAL backup.
+- `cargo check --manifest-path apps/web-react/src-tauri/Cargo.toml --lib`: passed after Tauri initialization was delegated to `synapse-core`.
+- The [SQLite migration-copy verifier](./verify_migration_copy.py) used a read-only SQLite backup and migrated only a temporary copy: all 55 source tables, 5,044 rows, and existing column values remained; one `schema_migrations` table was added; `quick_check` passed with zero foreign-key violations.
 - The latest web build was deployed to `https://synapse-dev.web.app`, `https://synapsedev.web.app`, `https://synapse-web.web.app`, and `https://fourth-cirrus-468923-h7.web.app`.
-- Authenticated item-by-item scoped readback and decrypted payload parity are complete. An exact-hash rollback snapshot passed isolated SQLite integrity checks; one config-count comparison remains open. A full authenticated app UI pull remains open because browser automation is unavailable.
-- Legacy public shares, native client updates, migration reliability refactoring, and safe retirement of preserved data/site copies remain open.
+- Authenticated item-by-item scoped readback and decrypted payload parity are complete. The exact-hash rollback snapshot has all 32 baseline tables; the single extra `config` row is the known local-only transient row excluded from cloud sync. A full authenticated app UI pull remains open because browser automation is unavailable.
+- Legacy public shares, native-client compatibility, and safe retirement of preserved data/site copies remain open.
