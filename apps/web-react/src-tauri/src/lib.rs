@@ -36,7 +36,6 @@ pub mod notes_history;
 pub mod file_links;
 pub mod anki_fsrs;
 mod db;
-pub mod db_migrations;
 pub mod protocol_encrypted;
 pub mod protocol_encrypted_utils;
 use std::sync::{Mutex, OnceLock};
@@ -44,7 +43,7 @@ use tauri::Manager;
 
 static APP_DATA_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
 
-/// Copies all files and directories recursively from src to dst.
+/// Copies missing files and directories recursively from src to dst.
 fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
@@ -55,7 +54,7 @@ fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result
         } else {
             let target_file = dst.join(entry.file_name());
             if !target_file.exists() {
-                let _ = std::fs::copy(entry.path(), target_file);
+                std::fs::copy(entry.path(), target_file)?;
             }
         }
     }
@@ -63,32 +62,37 @@ fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result
 }
 
 /// Automatically migrates data from the legacy data dir (~/.local/share/caderno) to canonical app_data_dir if needed.
-fn migrate_legacy_data_dir(canonical_dir: &std::path::Path) {
-    if let Some(data_dir) = dirs::data_dir() {
-        let legacy_dir = data_dir.join("caderno");
-        if legacy_dir.exists() && legacy_dir != canonical_dir {
-            let canonical_db = canonical_dir.join("caderno.sqlite");
-            let legacy_db = legacy_dir.join("caderno.sqlite");
+fn migrate_legacy_data_dir(canonical_dir: &std::path::Path) -> std::io::Result<()> {
+    let Some(data_dir) = dirs::data_dir() else {
+        return Ok(());
+    };
+    let legacy_dir = data_dir.join("caderno");
+    if !legacy_dir.exists() || legacy_dir == canonical_dir {
+        return Ok(());
+    }
 
-            if !canonical_db.exists() && legacy_db.exists() {
-                println!("[Migration] Migrando dados legados de {:?} para {:?}", legacy_dir, canonical_dir);
-                let _ = std::fs::create_dir_all(canonical_dir);
-                if let Ok(entries) = std::fs::read_dir(&legacy_dir) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        let target = canonical_dir.join(entry.file_name());
-                        if !target.exists() {
-                            if path.is_dir() {
-                                let _ = copy_dir_all(&path, &target);
-                            } else {
-                                let _ = std::fs::copy(&path, &target);
-                            }
-                        }
-                    }
-                }
-            }
+    let canonical_db = canonical_dir.join("caderno.sqlite");
+    let legacy_db = legacy_dir.join("caderno.sqlite");
+    if canonical_db.exists() || !legacy_db.exists() {
+        return Ok(());
+    }
+
+    println!(
+        "[Migration] Migrating legacy data from {:?} to {:?}",
+        legacy_dir, canonical_dir
+    );
+    std::fs::create_dir_all(canonical_dir)?;
+    for entry in std::fs::read_dir(&legacy_dir)? {
+        let entry = entry?;
+        let source = entry.path();
+        let target = canonical_dir.join(entry.file_name());
+        if source.is_dir() {
+            copy_dir_all(&source, &target)?;
+        } else if !target.exists() {
+            std::fs::copy(&source, &target)?;
         }
     }
+    Ok(())
 }
 
 /// Initializes the Single Source of Truth directory path for the app.
@@ -195,18 +199,24 @@ pub fn run() {
         })
         .setup(|app| {
             let app_data_dir = init_app_data_dir(app.handle());
-            migrate_legacy_data_dir(&app_data_dir);
-            if let Err(e) = std::fs::create_dir_all(&app_data_dir) {
-                eprintln!("[Caderno Setup] Failed to create app data directory: {}", e);
-            }
+            std::fs::create_dir_all(&app_data_dir).map_err(|error| {
+                log::error!("Failed to create app data directory: {error}");
+                error
+            })?;
+            migrate_legacy_data_dir(&app_data_dir).map_err(|error| {
+                log::error!("Failed to migrate legacy app data directory: {error}");
+                error
+            })?;
 
             let db_path = app_data_dir.join("caderno.sqlite");
 
-            // Clean SQLite database initialization
-            let conn = db::init_db(db_path).ok();
+            let conn = db::init_db(db_path).map_err(|error| {
+                log::error!("Failed to initialize the SQLite database: {error}");
+                std::io::Error::other(error)
+            })?;
 
             app.manage(db::DbState {
-                conn: Mutex::new(conn),
+                conn: Mutex::new(Some(conn)),
                 keys: Mutex::new(None),
             });
 

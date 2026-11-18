@@ -1,55 +1,40 @@
 use rusqlite::Connection;
 
-fn table_columns(conn: &Connection, table: &str) -> Vec<String> {
-    let sql = format!("PRAGMA table_info({table})");
-    let Ok(mut statement) = conn.prepare(&sql) else {
-        return Vec::new();
-    };
-    statement
-        .query_map([], |row| row.get::<_, String>(1))
-        .and_then(|rows| rows.collect())
-        .unwrap_or_default()
-}
-
-fn add_column_if_missing(conn: &Connection, table: &str, column: &str, definition: &str) -> bool {
-    if table_columns(conn, table).iter().any(|name| name == column) {
-        return false;
-    }
-
-    let sql = format!("ALTER TABLE {table} ADD COLUMN {column} {definition}");
-    match conn.execute(&sql, []) {
-        Ok(_) => true,
-        Err(error) => {
-            log::warn!("Unable to migrate {table}.{column}: {error}");
-            false
-        }
-    }
-}
+use super::add_column_if_missing;
 
 fn migrate_legacy_quiz_answers(
     conn: &Connection,
     question_index_added: bool,
     attempt_index_added: bool,
-) {
+) -> Result<(), String> {
     if question_index_added {
-        let legacy_questions = conn
-            .prepare("SELECT id, options, correct_answer, type FROM quiz_questions")
-            .and_then(|mut statement| {
-                statement
-                    .query_map([], |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1).unwrap_or_default(),
-                            row.get::<_, String>(2).unwrap_or_default(),
-                            row.get::<_, String>(3).unwrap_or_default(),
-                        ))
-                    })?
-                    .collect::<Result<Vec<_>, _>>()
-            })
-            .unwrap_or_default();
+        let legacy_questions = {
+            let mut statement = conn
+                .prepare("SELECT id, options, correct_answer, type FROM quiz_questions")
+                .map_err(|error| format!("Failed to read legacy quiz questions: {error}"))?;
+            statement
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                        row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                        row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                    ))
+                })
+                .and_then(|rows| rows.collect::<Result<Vec<_>, _>>())
+                .map_err(|error| format!("Failed to decode legacy quiz questions: {error}"))?
+        };
 
         for (id, options_json, correct_answer, question_type) in legacy_questions {
-            let options = serde_json::from_str::<Vec<String>>(&options_json).unwrap_or_default();
+            let options = match serde_json::from_str::<Vec<String>>(&options_json) {
+                Ok(options) => options,
+                Err(error) => {
+                    log::warn!(
+                        "Preserving quiz question answer because options JSON is invalid: {error}"
+                    );
+                    continue;
+                }
+            };
             let answer = correct_answer.trim();
             let matched_index = options
                 .iter()
@@ -62,40 +47,52 @@ fn migrate_legacy_quiz_answers(
                 });
 
             if let Some(index) = matched_index {
-                let _ = conn.execute(
+                conn.execute(
                     "UPDATE quiz_questions SET correct_index = ?, expected_answer = CASE WHEN type = 'open' THEN correct_answer ELSE expected_answer END WHERE id = ?",
                     (index as i64, id),
-                );
+                )
+                .map_err(|error| format!("Failed to migrate a legacy quiz answer: {error}"))?;
             } else if question_type == "open" && !answer.is_empty() {
-                let _ = conn.execute(
+                conn.execute(
                     "UPDATE quiz_questions SET expected_answer = correct_answer WHERE id = ?",
                     [id],
-                );
+                )
+                .map_err(|error| format!("Failed to migrate an open quiz answer: {error}"))?;
             }
         }
     }
 
     if attempt_index_added {
-        let legacy_attempts = conn
-            .prepare(
-                "SELECT a.id, a.user_answer, q.options, q.type FROM quiz_attempts a LEFT JOIN quiz_questions q ON q.id = a.question_id",
-            )
-            .and_then(|mut statement| {
-                statement
-                    .query_map([], |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1).unwrap_or_default(),
-                            row.get::<_, String>(2).unwrap_or_default(),
-                            row.get::<_, String>(3).unwrap_or_else(|_| "multiple_choice".to_owned()),
-                        ))
-                    })?
-                    .collect::<Result<Vec<_>, _>>()
-            })
-            .unwrap_or_default();
+        let legacy_attempts = {
+            let mut statement = conn
+                .prepare(
+                    "SELECT a.id, a.user_answer, q.options, q.type FROM quiz_attempts a LEFT JOIN quiz_questions q ON q.id = a.question_id",
+                )
+                .map_err(|error| format!("Failed to read legacy quiz attempts: {error}"))?;
+            statement
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                        row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                        row.get::<_, Option<String>>(3)?
+                            .unwrap_or_else(|| "multiple_choice".to_owned()),
+                    ))
+                })
+                .and_then(|rows| rows.collect::<Result<Vec<_>, _>>())
+                .map_err(|error| format!("Failed to decode legacy quiz attempts: {error}"))?
+        };
 
         for (id, user_answer, options_json, question_type) in legacy_attempts {
-            let options = serde_json::from_str::<Vec<String>>(&options_json).unwrap_or_default();
+            let options = match serde_json::from_str::<Vec<String>>(&options_json) {
+                Ok(options) => options,
+                Err(error) => {
+                    log::warn!(
+                        "Preserving quiz attempt because question options JSON is invalid: {error}"
+                    );
+                    continue;
+                }
+            };
             let answer = user_answer.trim();
             let selected_index = options
                 .iter()
@@ -106,55 +103,56 @@ fn migrate_legacy_quiz_answers(
                         .ok()
                         .filter(|index| *index < options.len())
                 });
-
             let user_typed_answer = if question_type == "open" { answer } else { "" };
-            let _ = conn.execute(
+
+            conn.execute(
                 "UPDATE quiz_attempts SET type = ?, selected_index = ?, user_typed_answer = ? WHERE id = ?",
                 (question_type, selected_index.map(|index| index as i64), user_typed_answer, id),
-            );
+            )
+            .map_err(|error| format!("Failed to migrate a legacy quiz attempt: {error}"))?;
         }
     }
+
+    Ok(())
 }
 
-pub fn migrate_quiz_schema(conn: &Connection) {
-    let _ = add_column_if_missing(
+pub fn migrate_quiz_schema(conn: &Connection) -> Result<(), String> {
+    add_column_if_missing(
         conn,
         "quiz_questions",
         "correct_answer",
         "TEXT NOT NULL DEFAULT ''",
-    );
+    )?;
     let question_index_added =
-        add_column_if_missing(conn, "quiz_questions", "correct_index", "INTEGER DEFAULT 0");
-    let _ = add_column_if_missing(conn, "quiz_questions", "expected_answer", "TEXT DEFAULT ''");
-    let _ = add_column_if_missing(conn, "quiz_questions", "tags", "TEXT DEFAULT '[]'");
-    let _ = add_column_if_missing(conn, "quiz_questions", "sort_order", "INTEGER DEFAULT 0");
-    let _ = add_column_if_missing(
+        add_column_if_missing(conn, "quiz_questions", "correct_index", "INTEGER DEFAULT 0")?;
+    add_column_if_missing(conn, "quiz_questions", "expected_answer", "TEXT DEFAULT ''")?;
+    add_column_if_missing(conn, "quiz_questions", "tags", "TEXT DEFAULT '[]'")?;
+    add_column_if_missing(conn, "quiz_questions", "sort_order", "INTEGER DEFAULT 0")?;
+    add_column_if_missing(
         conn,
         "quiz_attempts",
         "user_answer",
         "TEXT NOT NULL DEFAULT ''",
-    );
-    let _ = add_column_if_missing(
+    )?;
+    add_column_if_missing(
         conn,
         "quiz_attempts",
         "type",
         "TEXT DEFAULT 'multiple_choice'",
-    );
+    )?;
     let attempt_index_added =
-        add_column_if_missing(conn, "quiz_attempts", "selected_index", "INTEGER");
-    let _ = add_column_if_missing(
+        add_column_if_missing(conn, "quiz_attempts", "selected_index", "INTEGER")?;
+    add_column_if_missing(
         conn,
         "quiz_attempts",
         "user_typed_answer",
         "TEXT DEFAULT ''",
-    );
-    let _ = add_column_if_missing(conn, "quiz_attempts", "ai_feedback", "TEXT");
-    let _ = add_column_if_missing(conn, "quiz_attempts", "duration_ms", "INTEGER DEFAULT 0");
-    migrate_legacy_quiz_answers(conn, question_index_added, attempt_index_added);
-    let _ = conn.execute_batch(
-        "CREATE INDEX IF NOT EXISTS idx_quiz_questions_battery_deleted ON quiz_questions(battery_id, deleted_at, sort_order);
-         CREATE INDEX IF NOT EXISTS idx_quiz_attempts_question_created ON quiz_attempts(question_id, created_at DESC);",
-    );
+    )?;
+    add_column_if_missing(conn, "quiz_attempts", "ai_feedback", "TEXT")?;
+    add_column_if_missing(conn, "quiz_attempts", "duration_ms", "INTEGER DEFAULT 0")?;
+
+    migrate_legacy_quiz_answers(conn, question_index_added, attempt_index_added)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -194,7 +192,7 @@ mod tests {
             )
             .expect("create legacy quiz schema");
 
-        migrate_quiz_schema(&connection);
+        migrate_quiz_schema(&connection).expect("migrate legacy quiz data");
 
         let correct_index: i64 = connection
             .query_row(
@@ -215,7 +213,7 @@ mod tests {
         assert_eq!(selected_index, 0);
         assert_eq!(user_answer, "A");
 
-        migrate_quiz_schema(&connection);
+        migrate_quiz_schema(&connection).expect("rerun idempotent quiz migration");
         let persisted_index: i64 = connection
             .query_row(
                 "SELECT correct_index FROM quiz_questions WHERE id = 'question-1'",
@@ -224,5 +222,12 @@ mod tests {
             )
             .expect("read answer after idempotent migration");
         assert_eq!(persisted_index, 1);
+    }
+
+    #[test]
+    fn quiz_schema_migration_reports_missing_tables() {
+        let connection = Connection::open_in_memory().expect("open in-memory database");
+        let error = migrate_quiz_schema(&connection).expect_err("missing tables must be reported");
+        assert!(error.contains("quiz_questions"));
     }
 }
