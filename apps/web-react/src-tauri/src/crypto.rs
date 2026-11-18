@@ -1,7 +1,7 @@
 use aes_gcm::{
     aead::{consts::U16, Aead, KeyInit},
     aes::Aes256,
-    AesGcm, Aes256Gcm,
+    Aes256Gcm, AesGcm,
 };
 use hex;
 use pbkdf2::pbkdf2_hmac;
@@ -10,8 +10,6 @@ use sha2::Sha256;
 
 // Type alias for AES-256-GCM with 16-byte nonce (used for module keys)
 type Aes256Gcm16 = AesGcm<Aes256, U16>;
-
-
 
 pub fn derive_key_from_password(password: &str) -> [u8; 32] {
     let mut key = [0u8; 32];
@@ -22,13 +20,6 @@ pub fn derive_key_from_password(password: &str) -> [u8; 32] {
         &mut key,
     );
     key
-}
-
-pub fn hash_auth_password(password: &str) -> String {
-    use sha2::Digest;
-    let mut hasher = Sha256::new();
-    hasher.update(format!("{}caderno-auth-hash", password));
-    hex::encode(hasher.finalize())
 }
 
 pub fn generate_module_key() -> String {
@@ -96,8 +87,6 @@ pub fn decrypt_module_key_with_key(
 
     String::from_utf8(decrypted).map_err(|_| "Invalid UTF-8".into())
 }
-
-
 
 pub fn encrypt_content(key_hex: &str, plaintext: &str) -> Result<String, String> {
     let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
@@ -229,8 +218,16 @@ mod tests {
         assert_eq!(parts.len(), 3);
 
         // Tamper with ciphertext by altering last byte
-        let tampered_payload = format!("{}:{}:{}00", parts[0], parts[1], &parts[2][..parts[2].len() - 2]);
+        let tampered_payload = format!(
+            "{}:{}:{}00",
+            parts[0],
+            parts[1],
+            &parts[2][..parts[2].len() - 2]
+        );
         let result = decrypt_content(&key_hex, &tampered_payload);
-        assert!(result.is_err(), "Tampered ciphertext should fail authentication");
+        assert!(
+            result.is_err(),
+            "Tampered ciphertext should fail authentication"
+        );
     }
 }

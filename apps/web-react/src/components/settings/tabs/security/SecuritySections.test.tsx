@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BackupAndWipeSection } from './BackupAndWipeSection';
 import { VisitorsManagementSection } from './VisitorsManagementSection';
-import { MasterPasswordSection } from './MasterPasswordSection';
 import { I18nProvider } from '../../../../i18n';
 
 describe('Security Sections', () => {
@@ -73,32 +72,4 @@ describe('Security Sections', () => {
     });
   });
 
-  describe('MasterPasswordSection', () => {
-    it('renders password input fields', () => {
-      render(
-        <I18nProvider initialLanguage="pt-BR">
-          <MasterPasswordSection onCancel={vi.fn()} />
-        </I18nProvider>
-      );
-
-      expect(screen.getByPlaceholderText(/Digite a nova senha/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/Digite a senha novamente/i)).toBeInTheDocument();
-      expect(screen.getByText(/Confirmar Alteração/i)).toBeInTheDocument();
-    });
-
-    it('triggers onCancel when Escape or back button is pressed', () => {
-      const handleCancel = vi.fn();
-      render(
-        <I18nProvider initialLanguage="pt-BR">
-          <MasterPasswordSection onCancel={handleCancel} />
-        </I18nProvider>
-      );
-
-      fireEvent.keyDown(window, { key: 'Escape' });
-      expect(handleCancel).toHaveBeenCalledTimes(1);
-
-      window.dispatchEvent(new CustomEvent('caderno-back-press'));
-      expect(handleCancel).toHaveBeenCalledTimes(2);
-    });
-  });
 });

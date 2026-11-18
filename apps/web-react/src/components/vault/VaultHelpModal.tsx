@@ -16,7 +16,7 @@ interface VaultHelpModalProps {
   onClose: () => void;
 }
 
-type TabKey = 'basics' | 'master_key' | 'items' | 'breach_audit' | 'video_streaming';
+type TabKey = 'basics' | 'account_key' | 'items' | 'breach_audit' | 'video_streaming';
 
 export function VaultHelpModal({ onClose }: VaultHelpModalProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('basics');
@@ -72,10 +72,10 @@ export function VaultHelpModal({ onClose }: VaultHelpModalProps) {
               label="Zero-Knowledge & E2EE"
             />
             <TabButton
-              active={activeTab === 'master_key'}
-              onClick={() => setActiveTab('master_key')}
+              active={activeTab === 'account_key'}
+              onClick={() => setActiveTab('account_key')}
               icon={<Key size={16} />}
-              label="Senha Mestre & PBKDF2"
+              label="Conta Nuvem & criptografia"
             />
             <TabButton
               active={activeTab === 'items'}
@@ -109,7 +109,7 @@ export function VaultHelpModal({ onClose }: VaultHelpModalProps) {
 
             <div className="max-w-2xl mx-auto space-y-6">
               {activeTab === 'basics' && <BasicsTab />}
-              {activeTab === 'master_key' && <MasterKeyTab />}
+              {activeTab === 'account_key' && <AccountKeyTab />}
               {activeTab === 'items' && <ItemsTab />}
               {activeTab === 'breach_audit' && <BreachAuditTab />}
               {activeTab === 'video_streaming' && <VideoStreamingTab />}
@@ -162,11 +162,11 @@ function BasicsTab() {
       <div className="space-y-3">
         <FeatureItem
           title="Dois Níveis de Keychain (Two-Tier Architecture)"
-          description="A aplicação utiliza uma Chave Mestre de Derivação (PBKDF2) e uma Chave Simétrica de Dados (AES-256-GCM). Alterar sua senha mestre re-criptografa apenas o Keychain em milissegundos sem tocar nos arquivos volumosos."
+          description="A senha da Conta Nuvem deriva localmente uma chave de acesso com PBKDF2. As chaves de dados usam AES-256-GCM e são reembrulhadas quando a credencial da conta muda, sem recriptografar os arquivos volumosos."
         />
         <FeatureItem
           title="Autenticação Forte sem Backdoors"
-          description="Nenhum servidor, banco de dados em nuvem ou desenvolvedor possui acesso à sua senha mestre ou chave de descriptografia. Se a senha for perdida, os dados não podem ser recuperados."
+          description="O servidor Firebase autentica a conta, mas não recebe as chaves de descriptografia em texto claro. A redefinição de senha da conta não recupera chaves criptográficas já protegidas pela credencial anterior."
         />
         <FeatureItem
           title="Bloqueio Automático em Segundo Plano"
@@ -177,13 +177,13 @@ function BasicsTab() {
   );
 }
 
-function MasterKeyTab() {
+function AccountKeyTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-xl font-bold text-white mb-2">Senha Mestre & Derivação PBKDF2</h3>
+        <h3 className="text-xl font-bold text-white mb-2">Conta Nuvem & derivação PBKDF2</h3>
         <p className="text-sm text-dark-subtext leading-relaxed">
-          Padrões criptográficos de nível militar protegem sua chave mestre contra ataques de força bruta:
+          A credencial da Conta Nuvem deriva uma chave criptográfica no dispositivo para proteger as chaves de dados:
         </p>
       </div>
 
@@ -201,7 +201,7 @@ function MasterKeyTab() {
       <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 leading-relaxed flex items-start gap-2.5">
         <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
         <p>
-          <strong>Importante:</strong> Guarde sua senha mestre em local seguro. Por segurança, não existe opção de "esqueci minha senha" no modelo Zero-Knowledge.
+          <strong>Importante:</strong> Redefinir a senha da Conta Nuvem não recupera dados criptografados com a credencial anterior. A migração exige a credencial que ainda abre as chaves existentes.
         </p>
       </div>
     </div>

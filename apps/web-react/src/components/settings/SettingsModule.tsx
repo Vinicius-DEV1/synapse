@@ -20,7 +20,6 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
   const { t } = useI18n();
   const activeTab = tab?.pageId || 'general';
   const [appSettings, setAppSettings] = useState<AppSettings>(getSettings());
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
@@ -51,7 +50,7 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
     { id: 'sharing', label: t('settings.tabs.sharing'), icon: Share2 },
   ] as const;
 
-  const showSaveButton = !isChangingPassword && ['general', 'editor', 'security', 'ai'].includes(activeTab);
+  const showSaveButton = ['general', 'editor', 'security', 'ai'].includes(activeTab);
   const currentTab = tabs.find(t => t.id === activeTab);
 
   return (
@@ -68,48 +67,43 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
           </div>
 
           <form onSubmit={handleSaveSettings} className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl">
-            {activeTab === 'general' && !isChangingPassword && (
+            {activeTab === 'general' && (
               <GeneralTab appSettings={appSettings} setAppSettings={setAppSettings} />
             )}
 
-            {activeTab === 'editor' && !isChangingPassword && (
+            {activeTab === 'editor' && (
               <EditorTab appSettings={appSettings} setAppSettings={setAppSettings} />
             )}
 
             {activeTab === 'security' && (
-              <SecurityTab 
-                appSettings={appSettings} 
-                setAppSettings={setAppSettings} 
-                isChangingPassword={isChangingPassword}
-                setIsChangingPassword={setIsChangingPassword}
-              />
+              <SecurityTab appSettings={appSettings} setAppSettings={setAppSettings} />
             )}
 
-            {activeTab === 'ai' && !isChangingPassword && (
+            {activeTab === 'ai' && (
               <AiTab appSettings={appSettings} setAppSettings={setAppSettings} />
             )}
 
-            {activeTab === 'shortcuts' && !isChangingPassword && (
+            {activeTab === 'shortcuts' && (
               <ShortcutsTab />
             )}
 
-            {activeTab === 'storage' && !isChangingPassword && (
+            {activeTab === 'storage' && (
               <StorageTab />
             )}
 
-            {activeTab === 'video' && !isChangingPassword && (
+            {activeTab === 'video' && (
               <VideoTab />
             )}
 
-            {activeTab === 'backup' && !isChangingPassword && (
+            {activeTab === 'backup' && (
               <BackupTab />
             )}
 
-            {activeTab === 'sync' && !isChangingPassword && (
+            {activeTab === 'sync' && (
               <SyncMonitor />
             )}
 
-            {activeTab === 'sharing' && !isChangingPassword && (
+            {activeTab === 'sharing' && (
               <SharingTab />
             )}
 

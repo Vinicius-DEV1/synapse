@@ -1,104 +1,131 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import AuthScreen from './AuthScreen';
+import {
+  LegacyVaultMigrationRequired,
+  migrateLegacyVaultToAccountPassword,
+  unlockWithAccountPassword,
+  type AccountVaultSession,
+} from '../services/auth/account-vault';
+import { registerWithFirebase, signInWithFirebase } from '../services/auth/firebase-auth';
+import { clearFailedAttempts } from '../services/sync';
 
-vi.mock('../store/useStore', () => ({
-  useStore: vi.fn(() => ({
-    dispatch: vi.fn(),
-  })),
-}));
-
-vi.mock('../services/sync', () => ({
-  initializeCloudValidator: vi.fn(),
-  verifyCloudMasterPassword: vi.fn().mockResolvedValue(true),
-  pushModularKeysToCloud: vi.fn(),
-  pullModularKeysFromCloud: vi.fn().mockResolvedValue(null),
-  getSecurityLock: vi.fn().mockResolvedValue({ failedAttempts: 0, lastFailedAt: 0 }),
-  recordFailedAttempt: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  dispatch: vi.fn(),
+  signInWithFirebase: vi.fn(),
+  registerWithFirebase: vi.fn(),
+  resetFirebasePassword: vi.fn(),
+  unlockWithAccountPassword: vi.fn(),
+  migrateLegacyVaultToAccountPassword: vi.fn(),
   clearFailedAttempts: vi.fn(),
-}));
-
-vi.mock('../services/crypto', () => ({
-  deriveMasterKey: vi.fn().mockResolvedValue({} as CryptoKey),
-  exportKeyToHex: vi.fn().mockResolvedValue('deadbeef'),
-  importHexKey: vi.fn().mockResolvedValue({} as CryptoKey),
-}));
-
-vi.mock('../services/vault-crypto', () => ({
-  getVaultKeyHash: vi.fn().mockResolvedValue('hash123'),
-}));
-
-vi.mock('../services/drive', () => ({
+  recordFailedAttempt: vi.fn(),
+  getCurrentAuthUser: vi.fn(),
+  setWebVaultKey: vi.fn(),
   setDriveMasterKey: vi.fn(),
+  getVaultKeyHash: vi.fn(),
+  setMasterKey: vi.fn(),
 }));
 
-const mockSignIn = vi.fn().mockResolvedValue({ uid: 'user_123', email: 'test@example.com' });
-const mockRegister = vi.fn().mockResolvedValue({ uid: 'user_456', email: 'new@example.com' });
-
+vi.mock('../store/useStore', () => ({ useStore: () => ({ dispatch: mocks.dispatch }) }));
+vi.mock('./auth/useAuthLockout', () => ({
+  useAuthLockout: () => ({ lockoutTime: 0, intimidatingPhrase: '', triggerImmediateLockout: vi.fn() }),
+}));
+vi.mock('../i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../services/auth/firebase-auth', () => ({
-  signInWithFirebase: (...args: unknown[]) => mockSignIn(...args),
-  registerWithFirebase: (...args: unknown[]) => mockRegister(...args),
-  resetFirebasePassword: vi.fn().mockResolvedValue(undefined),
+  getCurrentAuthUser: mocks.getCurrentAuthUser,
+  registerWithFirebase: mocks.registerWithFirebase,
+  resetFirebasePassword: mocks.resetFirebasePassword,
+  signInWithFirebase: mocks.signInWithFirebase,
 }));
+vi.mock('../services/auth/account-vault', () => ({
+  LegacyVaultMigrationRequired: class extends Error {
+    reason: 'device' | 'cloud' | 'both';
+    constructor(reason: 'device' | 'cloud' | 'both') {
+      super('Migration required');
+      this.reason = reason;
+    }
+  },
+  PreviousVaultCredentialInvalid: class extends Error {},
+  migrateLegacyVaultToAccountPassword: mocks.migrateLegacyVaultToAccountPassword,
+  unlockWithAccountPassword: mocks.unlockWithAccountPassword,
+}));
+vi.mock('../services/sync', () => ({
+  clearFailedAttempts: mocks.clearFailedAttempts,
+  getSecurityLock: vi.fn().mockResolvedValue({ failedAttempts: 0, lastFailedAt: 0 }),
+  recordFailedAttempt: mocks.recordFailedAttempt,
+}));
+vi.mock('../services/vault-crypto', () => ({ getVaultKeyHash: mocks.getVaultKeyHash }));
+vi.mock('../api/web/vault', () => ({ setWebVaultKey: mocks.setWebVaultKey }));
+vi.mock('../services/drive', () => ({ setDriveMasterKey: mocks.setDriveMasterKey }));
 
-describe('AuthScreen Component', () => {
-  beforeEach(() => {
+describe('cloud account unlock screen', () => {
+  let accountKey: CryptoKey;
+  let session: AccountVaultSession;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
-    (window as any).api = {
-      auth: {
-        login: vi.fn().mockResolvedValue({ success: true, keys: {} }),
-        forceUpdateKeychain: vi.fn().mockResolvedValue({ success: true }),
-      },
+    accountKey = await crypto.subtle.importKey(
+      'raw',
+      new Uint8Array(32),
+      { name: 'AES-GCM' },
+      true,
+      ['encrypt', 'decrypt'],
+    );
+    session = {
+      accountKey,
+      moduleKeys: {},
+      rawModuleKeys: { vault: 'a'.repeat(64) },
     };
-  });
-
-  it('renders setup form for new vault in English by default', () => {
-    const onSuccess = vi.fn();
-    const { getByPlaceholderText, getByText } = render(
-      <AuthScreen status="new" onSuccess={onSuccess} />
-    );
-
-    expect(getByPlaceholderText(/Enter master password.../i)).toBeDefined();
-    expect(getByText(/Set Password/i)).toBeDefined();
-  });
-
-  it('renders unlock form for encrypted vault and submits', async () => {
-    const onSuccess = vi.fn();
-    const { getByPlaceholderText, getByRole } = render(
-      <AuthScreen status="encrypted" onSuccess={onSuccess} />
-    );
-
-    const input = getByPlaceholderText(/Enter master password.../i);
-    fireEvent.change(input, { target: { value: 'minha-senha-segura-123' } });
-
-    const submitBtn = getByRole('button', { name: /Unlock/i });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalled();
+    vi.mocked(mocks.unlockWithAccountPassword).mockResolvedValue(session);
+    vi.mocked(mocks.migrateLegacyVaultToAccountPassword).mockResolvedValue(session);
+    vi.mocked(mocks.signInWithFirebase).mockResolvedValue({ uid: 'user-1', email: 'alice@example.com' });
+    vi.mocked(mocks.registerWithFirebase).mockResolvedValue({ uid: 'user-2', email: 'new@example.com' });
+    vi.mocked(mocks.getCurrentAuthUser).mockReturnValue(null);
+    vi.mocked(mocks.getVaultKeyHash).mockResolvedValue('vault-hash');
+    vi.mocked(mocks.clearFailedAttempts).mockResolvedValue(undefined);
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: { _setMasterKey: mocks.setMasterKey },
     });
   });
 
-  it('switches to Conta Nuvem and submits login', async () => {
+  it('uses the Firebase account password as the only primary unlock credential', async () => {
     const onSuccess = vi.fn();
-    const { getByText, getByPlaceholderText, getByRole } = render(
-      <AuthScreen status="encrypted" onSuccess={onSuccess} />
-    );
+    render(<AuthScreen status="new" onSuccess={onSuccess} />);
 
-    const cloudTab = getByText(/Conta Nuvem/i);
-    fireEvent.click(cloudTab);
-
-    const emailInput = getByPlaceholderText(/seu.email@exemplo.com/i);
-    const passwordInput = getByPlaceholderText(/Mínimo 6 caracteres/i);
-
-    fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'senhaForte123' } });
-
-    const loginBtn = getByRole('button', { name: /Entrar na Conta/i });
-    fireEvent.click(loginBtn);
-
-    await waitFor(() => {
-      expect(mockSignIn).toHaveBeenCalledWith('alice@example.com', 'senhaForte123');
+    expect(screen.queryByText(/Senha Mestre|Master Password/i)).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText('auth.emailPlaceholder'), {
+      target: { value: 'alice@example.com' },
     });
+    fireEvent.change(screen.getByPlaceholderText('auth.accountPasswordPlaceholder'), {
+      target: { value: 'account-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'auth.signInToAccount' }));
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
+    expect(signInWithFirebase).toHaveBeenCalledWith('alice@example.com', 'account-password');
+    expect(unlockWithAccountPassword).toHaveBeenCalledWith('account-password');
+    expect(clearFailedAttempts).toHaveBeenCalledOnce();
+  });
+
+  it('shows the previous credential step only when verified keys need migration', async () => {
+    vi.mocked(unlockWithAccountPassword).mockRejectedValueOnce(new LegacyVaultMigrationRequired('device'));
+    const onSuccess = vi.fn();
+    render(<AuthScreen status="encrypted" onSuccess={onSuccess} />);
+
+    fireEvent.change(screen.getByPlaceholderText('auth.emailPlaceholder'), {
+      target: { value: 'alice@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('auth.accountPasswordPlaceholder'), {
+      target: { value: 'account-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'auth.signInToAccount' }));
+
+    const previousCredential = await screen.findByPlaceholderText('auth.previousCredentialPlaceholder');
+    fireEvent.change(previousCredential, { target: { value: 'previous-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'auth.migrateAndUnlock' }));
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
+    expect(migrateLegacyVaultToAccountPassword).toHaveBeenCalledWith('account-password', 'previous-password');
   });
 });

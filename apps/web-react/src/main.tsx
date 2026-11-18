@@ -21,7 +21,6 @@ function isShareRoute(): boolean {
 
 async function init() {
   // If user navigates directly to a share link (/s/:id or ?s=:id), mount the standalone viewer directly.
-  // This completely prevents unauthenticated visitors from ever being redirected to Caderno's Master Password setup screen.
   if (isShareRoute()) {
     console.log('[Caderno] Share link route detected. Initializing standalone ShareViewerApp...');
     const { ShareViewerApp } = await import('./share-viewer/ShareViewerApp');

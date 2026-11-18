@@ -55,11 +55,12 @@ export interface FilesApi {
 }
 
 export interface AuthApi {
-  setup: (password: string, existingKeys?: { library?: string; finance?: string; notes?: string }) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
-  login: (password: string) => Promise<{ success: boolean; error?: string; keys?: { library?: string; finance?: string; notes?: string } }>;
+  setup: (accountPassword: string, existingKeys?: Record<string, string>) => Promise<{ success: boolean; error?: string; keys?: Record<string, string> }>;
+  login: (accountPassword: string) => Promise<{ success: boolean; error?: string; keys?: Record<string, string> }>;
+  forceUpdateKeychain: (accountPassword: string, keys: Record<string, string>) => Promise<{ success: boolean; error?: string }>;
+  rewrapKeychain: (previousPassword: string, accountPassword: string, keys: Record<string, string>) => Promise<{ success: boolean; error?: string }>;
   status: () => Promise<{ status: 'new' | 'encrypted' | 'unencrypted' }>;
   wipeLocalData: () => Promise<void>;
-  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   createVisitor: (visitorPassword: string, allowedModules: string[]) => Promise<{ success: boolean; error?: string; visitorId?: string }>;
   getVisitors: () => Promise<Array<{ id: string; modules: string[] }>>;
   deleteVisitor: (id: string) => Promise<{ success: boolean; error?: string }>;

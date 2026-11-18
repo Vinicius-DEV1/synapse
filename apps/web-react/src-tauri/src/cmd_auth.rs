@@ -1,13 +1,30 @@
-pub use crate::cmd_auth_keys::{AuthStatus, LoginResponse, UnlockedKeys};
 use crate::cmd_auth_keys::{resolve_unlocked_keys, KeychainRow};
+pub use crate::cmd_auth_keys::{AuthStatus, LoginResponse, UnlockedKeys};
 use crate::crypto::{
-    decrypt_module_key_with_key, derive_key_from_password, encrypt_module_key,
-    generate_module_key, hash_auth_password,
+    decrypt_module_key_with_key, derive_key_from_password, encrypt_module_key, generate_module_key,
 };
 use crate::db::DbState;
-use synapse_core::crypto::hash_auth_password_v2;
 use std::collections::HashMap;
+use synapse_core::crypto::hash_auth_password_v2;
+use synapse_core::db::keychain::{replace_keychain_module_keys, rewrap_keychain_for_account};
 use tauri::State;
+use zeroize::{Zeroize, Zeroizing};
+
+struct SensitiveKeys(HashMap<String, String>);
+
+impl SensitiveKeys {
+    fn into_inner(mut self) -> HashMap<String, String> {
+        std::mem::take(&mut self.0)
+    }
+}
+
+impl Drop for SensitiveKeys {
+    fn drop(&mut self) {
+        for key in self.0.values_mut() {
+            key.zeroize();
+        }
+    }
+}
 
 #[tauri::command]
 pub fn get_base_dir() -> Result<String, String> {
@@ -133,28 +150,28 @@ pub async fn auth_login(
         }
     };
 
-    let legacy_auth_hash = hash_auth_password(&password);
     let auth_hash_v2 = hash_auth_password_v2(&password);
     let modern_key = derive_key_from_password(&password);
 
     let mut is_valid = false;
-    let mut verified_with_envelope = false;
-
-    // Primary verification: Authenticated AES-256-GCM decryption check using 600,000-round PBKDF2 key
-    let test_enc = keychain_row
-        .library_enc
-        .as_ref()
-        .or(keychain_row.notes_enc.as_ref());
-    if let Some(enc) = test_enc {
-        if decrypt_module_key_with_key(enc, &modern_key).is_ok() {
+    let envelopes = [
+        &keychain_row.library_enc,
+        &keychain_row.finance_enc,
+        &keychain_row.notes_enc,
+        &keychain_row.culture_enc,
+        &keychain_row.anki_enc,
+        &keychain_row.focus_enc,
+        &keychain_row.files_enc,
+        &keychain_row.vault_enc,
+        &keychain_row.calendar_enc,
+        &keychain_row.practice_enc,
+        &keychain_row.core_enc,
+    ];
+    for envelope in envelopes.into_iter().flatten() {
+        if decrypt_module_key_with_key(envelope, &modern_key).is_ok() {
             is_valid = true;
-            verified_with_envelope = true;
+            break;
         }
-    }
-
-    // Secondary fallback for legacy keychain records
-    if !is_valid && keychain_row.auth_hash == legacy_auth_hash {
-        is_valid = true;
     }
 
     if !is_valid {
@@ -169,7 +186,7 @@ pub async fn auth_login(
 
     let (keys_to_return, modules) = resolve_unlocked_keys(&keychain_row, &modern_key);
 
-    if verified_with_envelope && keychain_row.auth_hash != auth_hash_v2 {
+    if keychain_row.auth_hash != auth_hash_v2 {
         let guard = db_state.lock_conn()?;
         let conn = guard.as_ref().ok_or("Database not initialized")?;
         conn.execute(
@@ -261,32 +278,32 @@ pub async fn auth_force_update_keychain(
     keys: HashMap<String, String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
+    let password = Zeroizing::new(password);
+    let keys = SensitiveKeys(keys);
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    replace_keychain_module_keys(conn, password.as_str(), keys.into_inner())?;
+    Ok(true)
+}
 
-    let get_enc = |module: &str| -> Option<String> {
-        keys.get(module).and_then(|k| encrypt_module_key(k, &password).ok())
-    };
-
-    let library_enc = get_enc("library");
-    let finance_enc = get_enc("finance");
-    let notes_enc = get_enc("notes");
-    let culture_enc = get_enc("culture");
-    let anki_enc = get_enc("anki");
-    let focus_enc = get_enc("focus");
-    let files_enc = get_enc("files");
-    let vault_enc = get_enc("vault");
-    let calendar_enc = get_enc("calendar");
-    let practice_enc = get_enc("practice");
-    let core_enc = get_enc("core");
-
-    conn.execute(
-        "UPDATE keychain SET library_key_enc = ?, finance_key_enc = ?, notes_key_enc = ?, culture_key_enc = ?, anki_key_enc = ?, focus_key_enc = ?, files_key_enc = ?, vault_key_enc = ?, calendar_key_enc = ?, practice_key_enc = ?, core_key_enc = ?",
-        rusqlite::params![
-            library_enc, finance_enc, notes_enc, culture_enc, anki_enc, focus_enc, files_enc, vault_enc, calendar_enc, practice_enc, core_enc
-        ],
-    ).map_err(|e| e.to_string())?;
-
+#[tauri::command]
+pub fn auth_rewrap_keychain(
+    previous_password: String,
+    account_password: String,
+    keys: HashMap<String, String>,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    let previous_password = Zeroizing::new(previous_password);
+    let account_password = Zeroizing::new(account_password);
+    let keys = SensitiveKeys(keys);
+    let guard = db_state.lock_conn()?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    rewrap_keychain_for_account(
+        conn,
+        previous_password.as_str(),
+        account_password.as_str(),
+        keys.into_inner(),
+    )?;
     Ok(true)
 }
 

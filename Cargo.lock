@@ -489,6 +489,7 @@ dependencies = [
  "urlencoding",
  "uuid",
  "webkit2gtk",
+ "zeroize",
 ]
 
 [[package]]

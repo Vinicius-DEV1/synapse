@@ -1,4 +1,5 @@
 pub mod migrations;
+pub mod keychain;
 mod schema;
 
 use rusqlite::Connection;

@@ -1,68 +1,103 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { openDB, type IDBPDatabase } from 'idb';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { deleteDB, openDB, type IDBPDatabase } from 'idb';
 import type { CadernoDBSchema } from '../../services/db-web-schema';
 import { webAuthApi } from './auth';
 
-describe('webAuthApi - Offline and Secure Keychain Storage', () => {
+const MODULE_KEYS = {
+  library: '1'.repeat(64),
+  finance: '2'.repeat(64),
+  notes: '3'.repeat(64),
+  core: '4'.repeat(64),
+  focus: '5'.repeat(64),
+  vault: '6'.repeat(64),
+  culture: '7'.repeat(64),
+  anki: '8'.repeat(64),
+  files: '9'.repeat(64),
+  calendar: 'a'.repeat(64),
+  practice: 'b'.repeat(64),
+  video: 'c'.repeat(64),
+  diagrams: 'd'.repeat(64),
+  quiz: 'e'.repeat(64),
+  habits: 'f'.repeat(64),
+  notifications: '0'.repeat(64),
+  sharing: 'a'.repeat(64),
+};
+
+describe('webAuthApi cloud-account keychain', () => {
   let db: IDBPDatabase<CadernoDBSchema>;
+  let dbName: string;
 
   beforeEach(async () => {
-    // Open in-memory or fresh indexeddb database for testing
-    db = await openDB<CadernoDBSchema>(`test-auth-db-${Date.now()}-${Math.random()}`, 1, {
+    dbName = `test-auth-db-${Date.now()}-${Math.random()}`;
+    db = await openDB<CadernoDBSchema>(dbName, 1, {
       upgrade(database) {
-        if (!database.objectStoreNames.contains('config')) {
-          database.createObjectStore('config', { keyPath: 'id' });
-        }
+        database.createObjectStore('config', { keyPath: 'id' });
       },
     });
   });
 
-  it('detects new vault status when unconfigured and encrypted when configured', async () => {
-    const api = webAuthApi(db);
-    const initialStatus = await api.status();
-    expect(initialStatus.status).toBe('new');
-
-    await api.setup('my-secret-password-123');
-    const configuredStatus = await api.status();
-    expect(configuredStatus.status).toBe('encrypted');
+  afterEach(async () => {
+    db.close();
+    await deleteDB(dbName);
   });
 
-  it('fails login with wrong password and succeeds with correct password', async () => {
+  it('initializes only with a valid module key set and reports an encrypted device', async () => {
     const api = webAuthApi(db);
-    await api.setup('correct-password-456');
+    expect((await api.status()).status).toBe('new');
+    await expect(api.setup('account-password')).resolves.toMatchObject({ success: false });
 
-    const wrongResult = await api.login('wrong-password');
-    expect(wrongResult.success).toBe(false);
-    expect(wrongResult.error).toBe('Senha incorreta');
-
-    const correctResult = await api.login('correct-password-456');
-    expect(correctResult.success).toBe(true);
+    await expect(api.setup('account-password', MODULE_KEYS)).resolves.toMatchObject({
+      success: true,
+      keys: MODULE_KEYS,
+    });
+    expect((await api.status()).status).toBe('encrypted');
+    await expect(api.login('wrong-password')).resolves.toMatchObject({ success: false });
+    await expect(api.login('account-password')).resolves.toMatchObject({
+      success: true,
+      keys: MODULE_KEYS,
+    });
   });
 
-  it('persists and retrieves encrypted keychain offline via forceUpdateKeychain', async () => {
+  it('rewraps the same verified module keys under the cloud account credential', async () => {
     const api = webAuthApi(db);
-    const password = 'vault-offline-password-789';
-    await api.setup(password);
+    await api.setup('previous-password', MODULE_KEYS);
 
-    const mockKeys = {
-      library: 'deadbeef01',
-      notes: 'deadbeef02',
-      finance: 'deadbeef03',
-      vault: 'deadbeef04',
-    };
+    await expect(api.rewrapKeychain('incorrect-previous-password', 'account-password', MODULE_KEYS))
+      .resolves.toMatchObject({ success: false });
+    await expect(api.login('previous-password')).resolves.toMatchObject({ success: true });
 
-    const updateRes = await api.forceUpdateKeychain(password, mockKeys);
-    expect(updateRes.success).toBe(true);
+    await expect(api.rewrapKeychain('previous-password', 'account-password', MODULE_KEYS))
+      .resolves.toEqual({ success: true });
+    await expect(api.login('previous-password')).resolves.toMatchObject({ success: false });
+    await expect(api.login('account-password')).resolves.toMatchObject({
+      success: true,
+      keys: MODULE_KEYS,
+    });
+  });
 
-    // Verify stored data in IndexedDB is encrypted (not plaintext)
-    const storedRecord = await db.get('config', 'encryptedKeychain');
-    expect(storedRecord).toBeDefined();
-    expect(typeof storedRecord?.value).toBe('string');
-    expect(storedRecord?.value).not.toContain('deadbeef01'); // Ciphertext, not plaintext!
+  it('requires key verification before updating the local keychain', async () => {
+    const api = webAuthApi(db);
+    await api.setup('account-password', MODULE_KEYS);
+    const differentKeys = { ...MODULE_KEYS, notes: 'e'.repeat(64) };
 
-    // Login should decrypt the keychain and return raw keys
-    const loginRes = await api.login(password);
-    expect(loginRes.success).toBe(true);
-    expect(loginRes.keys).toEqual(mockKeys);
+    await expect(api.forceUpdateKeychain('account-password', differentKeys))
+      .resolves.toMatchObject({ success: false });
+    await expect(api.login('account-password')).resolves.toMatchObject({
+      success: true,
+      keys: MODULE_KEYS,
+    });
+  });
+
+  it('refuses to rewrap when local and cloud module keys disagree', async () => {
+    const api = webAuthApi(db);
+    await api.setup('previous-password', MODULE_KEYS);
+    const differentKeys = { ...MODULE_KEYS, notes: 'e'.repeat(64) };
+
+    await expect(api.rewrapKeychain('previous-password', 'account-password', differentKeys))
+      .resolves.toMatchObject({ success: false });
+    await expect(api.login('previous-password')).resolves.toMatchObject({
+      success: true,
+      keys: MODULE_KEYS,
+    });
   });
 });
