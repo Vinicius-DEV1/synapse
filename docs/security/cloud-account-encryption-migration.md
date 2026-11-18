@@ -28,7 +28,7 @@ Password reset is not encryption-key recovery. The sign-in screen warns users be
 
 An ordinary online unlock reads the verifier and module-key configuration documents. A one-time cloud rewrap reads those documents before migration and reads them again inside the transaction; a transaction retry can increase the count. It writes only the two configuration documents. Failed-attempt lock records and normal app synchronization are separate operations.
 
-No Firestore reads, writes, rules deployments, or account-data reconciliation were performed for this code change. The production Web bundle was published to the four Hosting sites on 2026-11-18 after the local checks below; Hosting publication does not modify Firestore. The account migration itself still runs when the user signs in to the released client. Keep the existing daily read quota in mind during that validation.
+The original migration implementation did not scan application collections. After the later sync fix, the deployed React Web app was signed into with the primary account and completed a fresh full pull (5,030 app-recorded reads and 5 writes, no sync error or emergency stop). This verifies the React Web account unlock and key-loading path. Hosting was published to the four configured sites; that deployment did not modify Firestore rules. Installed Tauri/WebView validation and native-client migration remain open.
 
 ## Safe Legacy Removal Checklist
 
@@ -39,8 +39,9 @@ No Firestore reads, writes, rules deployments, or account-data reconciliation we
 - [x] Stop Tauri from accepting the legacy fast SHA-256 password verifier as an unlock path; successful envelope unlock upgrades the stored verifier.
 - [x] Require key-envelope verification and matching module keys before local Web/Tauri key replacement.
 - [x] Keep the vault-field SHA-256 fallback only as a documented compatibility path while old encrypted vault fields are inventoried and migrated.
-- [ ] Run the migration with the real account on Web/Tauri, then verify the account's two encrypted configuration documents and decrypted module-key equality without scanning application collections.
-- [ ] Verify the installed Expo WebView loads the migrated React build.
+- [x] Sign in with the primary account through React Web and complete a fresh authenticated pull; the app loaded keys and decrypted the scoped dataset without a sync error.
+- [ ] Validate sign-in and key rewrap in the installed Tauri package; the source shares the React account flow but the packaged client was not launched for this acceptance.
+- [ ] Verify the installed Expo WebView loads the migrated React build and completes an authenticated pull.
 - [ ] Implement and verify Firebase account authentication and safe local key rewrap for Qt before deleting its master-password gate, QML modal, controller methods, and compatibility tests.
 - [ ] Define and verify the native Android account/keychain flow before removing or renaming any crypto binding used by that client.
 - [ ] After every supported local database is migrated and backed up, remove the remaining legacy `masterHash` detection/deletion path and old-version compatibility code.
@@ -67,8 +68,8 @@ No Firestore reads, writes, rules deployments, or account-data reconciliation we
 - Android native build — not run: this checkout has no Gradle wrapper and the environment has no `gradle` executable. No Android crypto bindings were removed or renamed.
 - `npm run build:web` — passed; this is the bundle published to the configured Hosting sites.
 - `firebase deploy --only hosting --project fourth-cirrus-468923-h7 --non-interactive` — Hosting release completed for all four configured sites. Firestore rules and data were not deployed or modified.
-- Chromium headless through the Chrome DevTools Protocol loaded `https://synapse-dev.web.app`; the cloud-account sign-in view rendered with email and account-password fields and no browser console errors. No sign-in was submitted, so this check made no Firestore reads.
+- Chromium headless through the Chrome DevTools Protocol signed into `https://synapse-dev.web.app` using the supplied local test credential and completed the initial pull/full sync. The app recorded 5,030 reads and 5 writes, emitted both completion and success events, and recorded no sync error or emergency stop. The temporary browser profile and Auth user export were deleted. No credential value was added to repository files or command output.
 - `dpkg-deb --info target/release/bundle/deb/Caderno_1.0.0_amd64.deb` — package metadata and `amd64` architecture verified.
 - `git diff --check` and `rustfmt --check --edition 2021 apps/web-react/src-tauri/src/cmd_auth.rs core/synapse-core/src/db/keychain.rs` — passed.
 
-A passing test, initial sign-in screen, or Hosting release does not prove a production user's account has completed migration. No Firestore account configuration or app data was read or written during this work; Web/Tauri migration runs when the user signs into the released client. Qt and native Android still require their own account/key migration before their legacy credential flows can be removed.
+React Web sign-in, key loading, and a full authenticated pull were verified. This does not prove installed Tauri/WebView acceptance or migrate Qt/native Android. Those clients still require their own account/key migration before their legacy credential flows can be removed.

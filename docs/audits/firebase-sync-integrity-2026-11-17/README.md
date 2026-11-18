@@ -4,7 +4,7 @@
 
 **Last verified:** 2026-11-18
 
-**Status:** Scoped Firestore reconciliation, authenticated decrypted readback, and an isolated SQLite restore integrity check are complete. The full app UI pull remains open. Original root documents and rollback snapshots remain preserved until the app-pull gate and cleanup review pass.
+**Status:** Scoped Firestore reconciliation, authenticated decrypted readback, isolated SQLite restore integrity, and a fresh React Web account sign-in/full sync pull are complete. Installed Tauri/WebView acceptance, native-client migration, and legacy-data cleanup gates remain open. Original root documents and rollback snapshots remain preserved.
 
 ## Executive Summary
 
@@ -15,6 +15,8 @@ On 2026-11-18, an authenticated readback scanned only the 50 user-scoped sync co
 The readback found representation-only differences in 16 documents (28 fields): SQLite stores specific array columns as JSON text while Firestore stores arrays as structured values. Parsing the local JSON text produced exact semantic matches. Ten metadata timestamps were then normalized to canonical RFC3339 strings using update-time preconditions and verified by readback; encrypted payloads were not changed. The sync publisher now normalizes the known SQLite JSON-array columns before encryption.
 
 The authenticated parity pass used 9,398 Firestore document reads, below the 50,000 daily free-tier read quota. It did not read the unscoped root collections. No further Firestore scan is needed for this audit.
+
+After the latest Hosting release, a fresh headless browser profile signed into the deployed React Web app and completed its initial pull and full sync. App telemetry recorded 5,030 reads and 5 writes; both `caderno-sync-complete` and `caderno-sync-success` fired, with no sync error or emergency stop. The browser profile and temporary Auth export were removed after verification. This run used the normal authenticated app flow; it was not another full parity scan.
 
 The active SQLite database passes `quick_check` and `foreign_key_check`. Across the 50 canonical sync tables it contains 5,006 rows: 5,005 syncable rows plus one transient config row intentionally excluded from cloud sync. Every one of the 4,867 non-transient source document IDs is represented locally; there are 138 additional local sync rows and no source-only IDs.
 
@@ -30,18 +32,19 @@ The recorded rollback file was missing from its original path, but a copy with t
 
 - Firestore rules were deployed. Emulator rules tests passed (4 tests).
 - Email/password and anonymous providers are enabled. Authenticated CLI sign-in to the primary account succeeded.
-- Current web code passed focused sync tests (45 tests across 5 files), `npm run typecheck`, and `npm run build:web`; the cloud-account unlock update was published to all four sites configured in `firebase.json` on 2026-11-18. This Hosting release did not change Firestore rules or data.
+- The latest sync fix passed 77 focused tests across 11 files, `npm run typecheck`, and targeted ESLint. `npm run build`, `npm run build:web`, and `npm run tauri -- build --bundles deb` passed; the performance budget gate passed all seven checks. The newest React Web bundle was published to all four configured Hosting sites without changing Firestore rules.
 - Rust database migration checks passed (7 focused tests), and `cargo check` passed for the Tauri library. Tauri and the core now use one versioned core schema initializer; all 50 Web sync tables are present, migration failures roll back and propagate, and legacy `sessions` rows are preserved.
 - Four focused Tauri tests verify interrupted legacy-directory copy recovery, error-marker retention and retry, protection of an existing canonical database, and committed data read from a live SQLite WAL. The legacy database is copied with SQLite's online backup API; other files use temporary copies and atomic renames.
 - The checked-in [SQLite migration-copy verifier](./verify_migration_copy.py) applied the migration only to a temporary SQLite backup of the canonical app database. All 55 pre-existing tables, 5,044 rows, and existing column values were preserved; `schema_migrations` was the only new table, `quick_check=ok`, and foreign-key violations were zero. No transaction-account backfill or default finance account seed was needed. Re-run with `python3 docs/audits/firebase-sync-integrity-2026-11-17/verify_migration_copy.py --database <sqlite-path>`.
 - After a fresh permission-restricted online backup was verified, schema version 1 was applied to the canonical local database with the app closed. A value-level comparison confirmed all 55 pre-existing tables and 5,044 rows were unchanged; `schema_migrations` added one version row. The active database now has 56 tables, 5,045 total rows, and all 50 sync tables with 5,006 rows and zero blank IDs. A second verifier pass confirmed idempotency (`added_tables=none`), `quick_check=ok`, and zero FK violations.
 - Scoped production readback covered all 5,005 sync documents, 41 encrypted chunk documents, and 3 protected config documents. All encrypted payloads decrypted and matched; no missing or remote-only sync IDs were found.
+- The deployed React Web app then completed one fresh authenticated full sync pull (5,030 app-recorded reads, 5 writes, no error/emergency stop). This verified account sign-in, key loading, and the application pull path for React Web.
 - SQLite integrity is `ok`; foreign-key violations are zero. The exact-hash rollback snapshot copy was restored in a temporary isolated database and passed structural integrity checks. The secure reconciliation archive and SQLite rollback snapshots remain outside the repository. Their paths, document IDs, payloads, account identifiers, and hashes are kept out of this report.
 
 ## Remaining Acceptance Gates
 
-1. Sign in through the deployed cloud-account UI and run a full authenticated UI pull to verify key migration and sync end to end. A headless Chromium check confirmed the sign-in view loads without console errors, but no credentials were submitted and the full UI pull remains open; production data was verified through authenticated Firestore reads and the application decryption path instead.
-2. Keep old root documents, legacy shares, unused Hosting sites, and legacy storage copies listed in the cleanup inventory until their individual gates pass. No data or legacy copy was deleted during reconciliation.
-3. Continue the separate native-client compatibility, legacy-share review, and safe cleanup items in the checklist.
+1. Verify account unlock and scoped sync in the installed Tauri and Expo WebView clients. React Web passed; native Qt and Android do not implement this Firebase flow yet.
+2. Keep old root documents, legacy shares, unused Hosting sites, rollback archives, and legacy storage copies listed in the cleanup inventory until their individual retention and removal gates pass. No original root or backup data was deleted.
+3. Continue the separate Qt/Android credential migration, legacy-share review, and safe cleanup items in the checklist.
 
-The scoped cloud data and decrypted payloads now have item-by-item evidence, and the protected snapshot opens cleanly in isolation. This does not certify the full app UI flow, exact content parity of the restored snapshot, other client targets, or authorize removal of preserved source data.
+The scoped cloud data and decrypted payloads have item-by-item evidence, the protected snapshot opens cleanly in isolation, and the React Web app-mediated sign-in/pull passed. This does not certify exact content parity of the restored snapshot or installed/native clients, and it does not authorize removal of preserved source data by implication.

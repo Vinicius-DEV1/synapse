@@ -5,7 +5,7 @@
 | Priority | Finding | State |
 | --- | --- | --- |
 | P0 | Former Firestore rules allowed anonymous root access. | Fixed; scoped rules deployed and anonymous root reads are denied. |
-| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation and authenticated decrypted readback completed; all expected documents match. Original roots remain preserved until full app-mediated sign-in and sync-pull acceptance passes. |
+| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation, decrypted readback, and React Web app-mediated sign-in/pull completed; all expected scoped documents match. Original roots remain preserved pending backup-retention and cleanup review. |
 | P1 | Push/pull failures could advance checkpoints or hide incomplete work. | Fixed in source; targeted tests pass. |
 | P1 | Tauri sync upserts could silently discard unsupported columns or fail whole rows on optional timestamps. | Fixed in source; regression coverage added. |
 | P1 | Legacy share metadata could expose raw share keys. | New versioned share flow protects keys; old shares remain blocked pending reissue. |
@@ -15,7 +15,7 @@
 
 ## Original Root ID Comparison
 
-The initial ID-only comparison did not establish ownership or content equality. The owner later confirmed that this project has one account and authorized associating all pending root records with it.
+The table below records the initial ID-only comparison; it did not establish ownership or content equality. The owner later confirmed that this project has one account and authorized associating all pending root records with it. Subsequent source archive and scoped readbacks found all expected documents with zero missing or remote-only sync IDs; the initial 126/11 differences are not unresolved records.
 
 | Collection | Local rows at initial audit | Local IDs found in root | Root documents | Local IDs absent in root | Root-only IDs |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -87,6 +87,8 @@ Older direct-share config could store a raw share key in publicly readable metad
 - Local IndexedDB read failures are no longer mistaken for missing records.
 - External Firestore metadata, adapter rows, and decrypted JSON are validated before affecting IDs, checkpoints, or SQLite.
 - Large encrypted payloads use gzip and authenticated AES-GCM chunk envelopes. The parent pointer is written only after chunk writes; rules constrain chunks to the same owner or workspace role.
+- Initial full sync builds a per-table delta from cloud IDs and timestamps, local-only/newer rows, tombstones, and merged page CRDT state. It pushes only planned IDs, records checkpoints for unchanged tables, and keeps a bounded per-minute emergency guard.
+- Firestore timestamps and deletion timestamps are compared by their newest represented instant. Timestamp objects are accepted, and local tombstones are preserved over older cloud content.
 - The publisher converts SQLite JSON-text values in `library_books.collections` and `calendar_events.reminders` / `notified_reminders` to structured arrays before encryption. Other fields and malformed legacy values remain untouched.
 - Optional timestamp mapping no longer rejects otherwise valid records when the local schema omits those columns.
 - SQLite migration version 1 runs atomically, checks columns before adding them, propagates query/DDL failures, and records its version only after all schema, quiz, index, and finance-seed steps succeed.
@@ -97,7 +99,7 @@ Older direct-share config could store a raw share key in publicly readable metad
 
 ## Verification Evidence and Limits
 
-- Targeted sync tests: 45 passing across 5 files, including JSON-array normalization, chunked payload, push, pull recovery, and pull merge cases.
+- Targeted sync tests: 77 passing across 11 files, including initial delta planning, empty-table checkpoints, tombstone ordering, JSON-array normalization, chunked payload, push, pull recovery, and pull merge cases.
 - `npm run typecheck`: passed.
 - `npm run test:firestore-rules`: 4 emulator tests passed.
 - `npm run build:web`: passed. Vite reports large-chunk warnings and a direct `eval` warning from `onnxruntime-web`.
@@ -107,5 +109,6 @@ Older direct-share config could store a raw share key in publicly readable metad
 - The [SQLite migration-copy verifier](./verify_migration_copy.py) used a read-only SQLite backup and migrated only a temporary copy: all 55 source tables, 5,044 rows, and existing column values remained; one `schema_migrations` table was added; `quick_check` passed with zero foreign-key violations.
 - The same versioned migration was applied to the canonical local database only after creating and verifying a separate SQLite online backup. A value-level comparison confirmed all 55 existing tables and 5,044 rows were unchanged; the active schema now records version 1, has 56 tables / 5,045 rows including the metadata row, and passes the sync-table and integrity checks.
 - The latest web build was deployed to `https://synapse-dev.web.app`, `https://synapsedev.web.app`, `https://synapse-web.web.app`, and `https://fourth-cirrus-468923-h7.web.app`.
-- Authenticated item-by-item scoped readback and decrypted payload parity are complete. The exact-hash rollback snapshot has all 32 baseline tables; the single extra `config` row is the known local-only transient row excluded from cloud sync. A full authenticated app UI pull remains open because browser automation is unavailable.
+- One fresh React Web account sign-in and full sync pull passed after deployment: 5,030 app-recorded reads and 5 writes, with completion/success events and no sync error or emergency stop. The installed Tauri/WebView clients remain unverified.
+- Authenticated item-by-item scoped readback and decrypted payload parity are complete. The exact-hash rollback snapshot has all 32 baseline tables; the single extra `config` row is the known local-only transient row excluded from cloud sync. React Web full app pull acceptance passed; installed Tauri/WebView and native Qt/Android account-key flows remain open.
 - Legacy public shares, native-client compatibility, and safe retirement of preserved data/site copies remain open.

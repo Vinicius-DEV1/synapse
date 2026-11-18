@@ -44,7 +44,7 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Resolve 16 documents with 28 representation-only array-field differences; parsed SQLite JSON text matched the structured Firestore values exactly.
 - [x] Normalize and read back 10 metadata timestamps using update-time preconditions without changing encrypted payloads.
 - [x] Record the verification-pass Firestore read budget: 9,398 document reads, below the 50,000/day free-tier quota; no unscoped root collection reads were made.
-- [ ] Unlock the app and run a full authenticated application pull to verify the deployed client end to end. Browser automation was unavailable in this environment.
+- [x] Sign in through the deployed React Web cloud-account UI and complete one full authenticated pull/sync: 5,030 app-recorded reads, 5 writes, completion and success events, no sync error or emergency stop. The temporary browser profile and Auth export were removed.
 - [x] Re-run aggregate and ID comparison after quota recovery; confirm all 5,005 owned local sync rows have scoped documents and no unexpected remote-only rows remain.
 
 ## C. Firestore Access and Production Client
@@ -56,7 +56,7 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Deploy Email/Password and Anonymous Auth providers and authorize the four configured Hosting domains.
 - [x] Deploy reviewed Firestore rules and verify anonymous production root reads are denied; retain rules rollback version `4dbee571-c0f9-4add-9f32-f6a1faa53e6f`.
 - [x] Build and publish the latest Web client to all four configured Hosting sites, including optional timestamp mapping and JSON-array normalization fixes.
-- [ ] Verify cloud-account sign-in, legacy-key migration, and scoped sync through the app UI; CLI Auth validation alone is not the complete UX check.
+- [x] Verify cloud-account sign-in, key loading, and scoped sync through the deployed React Web UI; CLI Auth validation alone was not treated as the UX check.
 - [ ] Verify installed Tauri and Mobile WebView builds load the scoped client and complete an authenticated UI pull. The checked-in Qt and Android clients do not implement Firestore sync directly.
 - [ ] Reissue any required version 1 public shares and verify replacement links before retiring the old shares.
 
@@ -68,5 +68,5 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Reconcile Tauri and core schema ownership: the core is canonical and the Tauri adapter delegates initialization to it.
 - [x] Complete the cloud readback before considering source-root removal; scoped document and payload parity now pass.
 - [x] Restore the rollback snapshot from an exact-SHA-256 copy into a temporary isolated database; `integrity_check=ok`, zero foreign-key violations, and the temporary copy was removed after verification. All 32 merge-baseline tables are present; 31 counts match, and the extra `config` row is the documented local-only transient row excluded from cloud sync.
-- [ ] Unlock the app and verify a full authenticated UI pull before considering source-root cleanup; browser automation is unavailable in this environment.
-- [ ] Mark this audit complete only after local rows, scoped cloud documents, decrypted content, tombstones, and authorization checks all pass.
+- [x] Unlock the React Web app and verify a full authenticated UI pull before considering source-root cleanup; installed Tauri/WebView clients remain separate acceptance gates.
+- [x] Mark the scoped React Web reconciliation audit complete after local rows, scoped cloud documents, decrypted content, tombstones, and authorization checks passed. This does not delete or retire preserved source data.

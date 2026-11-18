@@ -1,7 +1,7 @@
 # Repository Hygiene Audit
 
 **Reviewed:** 2026-11-18
-**Status:** Safe generated-file cleanup completed; data-bearing and active compatibility paths remain protected by their existing removal gates.
+**Status:** Safe generated-file cleanup completed; React Web account sign-in/full sync now passes. Data-bearing and active compatibility paths remain protected by their existing removal gates.
 
 ## Scope and Findings
 
@@ -10,7 +10,7 @@
 - Four ignored Firebase CLI debug logs were present: `firebase-debug.log` and `firestore-debug.log` at the repository root and under `apps/web-react/`. No process had them open. They were generated during previous CLI work and have been removed.
 - No loose SQLite files, temporary files, or other debug logs were found outside recognized generated directories.
 - Firebase Storage was initialized and exported without any source consumer. The unused SDK initialization and `VITE_FIREBASE_STORAGE_BUCKET` configuration were removed. Firestore and Firebase Authentication remain initialized.
-- The current documentation index incorrectly described Firebase Auth as having zero users and the scoped reconciliation as incomplete. It now reflects the later audit evidence: one primary account, 5,005 scoped documents verified, no missing or remote-only IDs, and 9,398 reads. Full application sign-in and sync pull remain open.
+- The documentation index now reflects one primary account and 5,005 scoped documents verified with no missing or remote-only IDs. A later fresh React Web sign-in/full sync passed with 5,030 app-recorded reads and 5 writes; installed Tauri/WebView checks and Qt/Android migration remain open.
 - Historical architecture analyses and workspace proposals are explicitly labeled as snapshots/proposals. Stale present-tense claims about account setup, Firebase Storage, and Authentication certification were corrected and linked to current sources of truth.
 
 ## Deliberately Retained Files
@@ -34,7 +34,8 @@
 - [x] Correct the current documentation status using the later audit report.
 - [x] Label historical authentication/storage findings and workspace proposals so they cannot be mistaken for current status.
 - [x] Keep data-bearing backups and active compatibility code behind explicit gates.
-- [ ] Complete the full authenticated app sign-in and sync-pull acceptance before retiring Firebase source archives or rollback copies.
+- [x] Complete the React Web authenticated app sign-in and sync-pull acceptance before considering Firebase source-archive cleanup.
+- [ ] Verify installed Tauri and Expo WebView account sign-in/pull; React Web evidence does not cover those installed clients.
 - [ ] Complete Qt and Android account/key migrations before removing their local credential and crypto paths.
 
 This audit does not treat every filename containing `legacy`, `backup`, or `session` as dead code. Several such paths still preserve user data or serve active callers; their removal requires the evidence listed above.
