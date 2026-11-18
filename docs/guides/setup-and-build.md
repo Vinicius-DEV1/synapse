@@ -154,7 +154,6 @@ cp apps/web-react/.env.example apps/web-react/.env
 | `VITE_FIREBASE_API_KEY` | Firebase API Key for web signaling and sync | `AIzaSy...` |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain | `your-project.firebaseapp.com` |
 | `VITE_FIREBASE_PROJECT_ID` | Firebase Project Identifier | `your-project-id` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket | `your-project.firebasestorage.app` |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase Messaging Sender ID | `123456789` |
 | `VITE_FIREBASE_APP_ID` | Firebase Web App ID | `1:123456789:web:...` |
 | `VITE_FIREBASE_SHARE_DOMAIN` | Custom domain for encrypted note sharing viewer | `synapse-dev.web.app` |
