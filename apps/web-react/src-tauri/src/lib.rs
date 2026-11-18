@@ -36,64 +36,13 @@ pub mod notes_history;
 pub mod file_links;
 pub mod anki_fsrs;
 mod db;
+mod legacy_data_migration;
 pub mod protocol_encrypted;
 pub mod protocol_encrypted_utils;
 use std::sync::{Mutex, OnceLock};
 use tauri::Manager;
 
 static APP_DATA_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
-
-/// Copies missing files and directories recursively from src to dst.
-fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dst)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            copy_dir_all(&entry.path(), &dst.join(entry.file_name()))?;
-        } else {
-            let target_file = dst.join(entry.file_name());
-            if !target_file.exists() {
-                std::fs::copy(entry.path(), target_file)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Automatically migrates data from the legacy data dir (~/.local/share/caderno) to canonical app_data_dir if needed.
-fn migrate_legacy_data_dir(canonical_dir: &std::path::Path) -> std::io::Result<()> {
-    let Some(data_dir) = dirs::data_dir() else {
-        return Ok(());
-    };
-    let legacy_dir = data_dir.join("caderno");
-    if !legacy_dir.exists() || legacy_dir == canonical_dir {
-        return Ok(());
-    }
-
-    let canonical_db = canonical_dir.join("caderno.sqlite");
-    let legacy_db = legacy_dir.join("caderno.sqlite");
-    if canonical_db.exists() || !legacy_db.exists() {
-        return Ok(());
-    }
-
-    println!(
-        "[Migration] Migrating legacy data from {:?} to {:?}",
-        legacy_dir, canonical_dir
-    );
-    std::fs::create_dir_all(canonical_dir)?;
-    for entry in std::fs::read_dir(&legacy_dir)? {
-        let entry = entry?;
-        let source = entry.path();
-        let target = canonical_dir.join(entry.file_name());
-        if source.is_dir() {
-            copy_dir_all(&source, &target)?;
-        } else if !target.exists() {
-            std::fs::copy(&source, &target)?;
-        }
-    }
-    Ok(())
-}
 
 /// Initializes the Single Source of Truth directory path for the app.
 pub fn init_app_data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
@@ -203,7 +152,7 @@ pub fn run() {
                 log::error!("Failed to create app data directory: {error}");
                 error
             })?;
-            migrate_legacy_data_dir(&app_data_dir).map_err(|error| {
+            legacy_data_migration::migrate_legacy_data_dir(&app_data_dir).map_err(|error| {
                 log::error!("Failed to migrate legacy app data directory: {error}");
                 error
             })?;
