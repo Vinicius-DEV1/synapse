@@ -3,6 +3,22 @@ import { renderHook, act } from '@testing-library/react';
 import { useSync } from './useSync';
 import * as syncService from '../services/sync';
 
+vi.mock('../services/firebase', () => ({
+  auth: { currentUser: { uid: 'sync-test-user', isAnonymous: false } },
+}));
+
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn(
+    (
+      _auth: unknown,
+      callback: (user: { uid: string; isAnonymous: boolean }) => void,
+    ) => {
+      callback({ uid: 'sync-test-user', isAnonymous: false });
+      return vi.fn();
+    },
+  ),
+}));
+
 vi.mock('../services/sync', () => ({
   pullAllFromCloud: vi.fn().mockResolvedValue(undefined),
   pushAllToCloud: vi.fn().mockResolvedValue(undefined),
@@ -40,6 +56,7 @@ describe('useSync Hook', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('triggers initial full sync on mount when isAuth is true', async () => {
@@ -50,9 +67,14 @@ describe('useSync Hook', () => {
     expect(result.current.syncStatus).toBe('syncing');
 
     await vi.waitFor(() => {
-      expect(syncService.pullAllFromCloud).toHaveBeenCalledWith(mockMasterKeys);
+      expect(syncService.pullAllFromCloud).toHaveBeenCalledWith(mockMasterKeys, undefined, 'sync-test-user');
       expect(loadPages).toHaveBeenCalled();
-      expect(syncService.pushAllToCloud).toHaveBeenCalledWith(mockMasterKeys);
+      expect(syncService.pushAllToCloud).toHaveBeenCalledWith(
+        mockMasterKeys,
+        undefined,
+        undefined,
+        'sync-test-user',
+      );
       expect(syncService.syncPdfsToCloud).toHaveBeenCalledWith(mockMasterKeys);
       expect(result.current.syncStatus).toBe('success');
     });
@@ -114,7 +136,7 @@ describe('useSync Hook', () => {
     });
 
     await vi.waitFor(() => {
-      expect(syncService.pullAllFromCloud).toHaveBeenCalledWith(mockMasterKeys);
+      expect(syncService.pullAllFromCloud).toHaveBeenCalledWith(mockMasterKeys, undefined, 'sync-test-user');
     });
   });
 
@@ -204,7 +226,12 @@ describe('useSync Hook', () => {
     });
 
     await vi.waitFor(() => {
-      expect(syncService.pushAllToCloud).toHaveBeenCalledWith(mockMasterKeys, ['pages']);
+      expect(syncService.pushAllToCloud).toHaveBeenCalledWith(
+        mockMasterKeys,
+        ['pages'],
+        undefined,
+        'sync-test-user',
+      );
       // Ensure syncPdfsToCloud was NOT invoked during fast push
       expect(syncService.syncPdfsToCloud).not.toHaveBeenCalled();
     });
@@ -243,7 +270,12 @@ describe('useSync Hook', () => {
     // Mutex should unlock and immediately drain the pending push
     await vi.waitFor(() => {
       expect(syncService.pushAllToCloud).toHaveBeenCalledTimes(2);
-      expect(syncService.pushAllToCloud).toHaveBeenLastCalledWith(mockMasterKeys, ['pages']);
+      expect(syncService.pushAllToCloud).toHaveBeenLastCalledWith(
+        mockMasterKeys,
+        ['pages'],
+        undefined,
+        'sync-test-user',
+      );
     });
   });
 });
