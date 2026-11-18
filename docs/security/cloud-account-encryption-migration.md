@@ -63,6 +63,8 @@ No Firestore reads, writes, rules deployments, or account-data reconciliation we
 - `npm run test -- src/components/settings/tabs/security/SecuritySections.test.tsx` — 1 file and 4 tests passed.
 - `cargo test -p synapse-core keychain::tests --lib` — 3 migration transaction tests passed.
 - `npm run tauri -- build --bundles deb` — passed, including the production React build and optimized Tauri Rust build; produced `target/release/bundle/deb/Caderno_1.0.0_amd64.deb` (about 94 MB).
+- `cmake --build apps/desktop-qt/build --config Release -j4` — passed for the separately implemented Qt desktop executable and native test targets. This build does not migrate Qt's local credential flow.
+- Android native build — not run: this checkout has no Gradle wrapper and the environment has no `gradle` executable. No Android crypto bindings were removed or renamed.
 - `npm run build:web` — passed; this is the bundle published to the configured Hosting sites.
 - `firebase deploy --only hosting --project fourth-cirrus-468923-h7 --non-interactive` — Hosting release completed for all four configured sites. Firestore rules and data were not deployed or modified.
 - Chromium headless through the Chrome DevTools Protocol loaded `https://synapse-dev.web.app`; the cloud-account sign-in view rendered with email and account-password fields and no browser console errors. No sign-in was submitted, so this check made no Firestore reads.
