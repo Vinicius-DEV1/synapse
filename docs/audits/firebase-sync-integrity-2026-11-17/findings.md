@@ -5,7 +5,7 @@
 | Priority | Finding | State |
 | --- | --- | --- |
 | P0 | Former Firestore rules allowed anonymous root access. | Fixed; scoped rules deployed and anonymous root reads are denied. |
-| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation writes completed. Final per-document cloud verification remains open after one missing-document result and HTTP 429 quota errors. |
+| P1 | Local and root records differed, and sync scopes were not isolated. | Scoped reconciliation and authenticated decrypted readback completed; all expected documents match. Original roots are preserved pending restore and app-pull acceptance. |
 | P1 | Push/pull failures could advance checkpoints or hide incomplete work. | Fixed in source; targeted tests pass. |
 | P1 | Tauri sync upserts could silently discard unsupported columns or fail whole rows on optional timestamps. | Fixed in source; regression coverage added. |
 | P1 | Legacy share metadata could expose raw share keys. | New versioned share flow protects keys; old shares remain blocked pending reissue. |
@@ -42,8 +42,12 @@ The initial ID-only comparison did not establish ownership or content equality. 
 - The application's conflict resolver classified 4,837 rows as equal timestamp, 3 as local newer, 15 as root newer, and 1 as lacking comparable timestamps. Local-newer rows were preserved, root-newer rows were applied, and the Yjs page-history path was used where applicable.
 - Reconciliation submitted 1,766 parent updates, skipped 3,090 already-resolved matches, created 138 local-only records, and wrote 9 oversized records through encrypted chunks. Nine regular write batches completed; no delete writes were submitted.
 - The local merge applied 4,853 row updates and created the 11 records that had existed only in root. The original local-only records were preserved.
-- A post-write collection-count check returned 5,005 scoped sync documents and 3 protected config documents. The final per-document verification reported one missing document. A later targeted read returned HTTP 429 (`Quota exceeded`), preventing identification and safe repair of that path.
+- The initial post-write verifier returned 5,005 scoped sync documents and 3 protected config documents, then reported one missing document before Firestore reads hit HTTP 429. The complete quota-reset pass on 2026-11-18 rechecked all expected paths and found no missing document; the earlier result was not reproducible.
 - Independent local comparison now finds all 4,867 non-transient source IDs present in SQLite, 138 local-only sync rows, and zero root-only source IDs. SQLite has 5,006 rows across 50 canonical tables; one transient config row is excluded from sync, leaving 5,005 syncable rows. Integrity check is `ok`; foreign-key violations are zero.
+- On 2026-11-18, a quota-reset authenticated pass enumerated all 50 scoped sync collections: 5,005 expected documents were present, with zero missing and zero remote-only IDs. All 5,005 payloads were decrypted and compared; there were no decryption errors and no legacy-key decryptions. The previous single-missing-document signal did not reproduce.
+- The pass also verified 9 chunked parent documents and all 41 encrypted chunk children, plus the 3 protected config documents. Sixteen documents had 28 type-shape differences because SQLite stores known array fields as JSON text; parsing the local values yielded exact semantic equality with Firestore arrays.
+- Ten `updatedAt` metadata values were normalized to canonical RFC3339 strings with Firestore `updateTime` preconditions. Nine represented the same instant with different types; one local value was newer and was retained. A follow-up read verified all ten updates; encrypted payloads were not rewritten.
+- This verification pass used 9,398 Firestore document reads, below the 50,000 free-tier daily read quota, and did not read unscoped root collections. No additional full scan is necessary.
 
 ## Security and Account Scope
 
@@ -76,16 +80,17 @@ Older direct-share config could store a raw share key in publicly readable metad
 - Local IndexedDB read failures are no longer mistaken for missing records.
 - External Firestore metadata, adapter rows, and decrypted JSON are validated before affecting IDs, checkpoints, or SQLite.
 - Large encrypted payloads use gzip and authenticated AES-GCM chunk envelopes. The parent pointer is written only after chunk writes; rules constrain chunks to the same owner or workspace role.
+- The publisher converts SQLite JSON-text values in `library_books.collections` and `calendar_events.reminders` / `notified_reminders` to structured arrays before encryption. Other fields and malformed legacy values remain untouched.
 - Optional timestamp mapping no longer rejects otherwise valid records when the local schema omits those columns.
 - The document decrypt/upsert/rekey path is extracted into [`sync-pull-documents.ts`](../../../apps/web-react/src/services/sync/sync-pull-documents.ts).
 - The unused unscoped `hardResetCloud()` helper and deprecated no-op `restoreLastSyncTimesFromDb()` path were removed.
 
 ## Verification Evidence and Limits
 
-- Targeted sync tests: 41 passing across 4 files, including chunked payload, push, pull recovery, and pull merge cases.
+- Targeted sync tests: 45 passing across 5 files, including JSON-array normalization, chunked payload, push, pull recovery, and pull merge cases.
 - `npm run typecheck`: passed.
 - `npm run test:firestore-rules`: 4 emulator tests passed.
 - `npm run build:web`: passed. Vite reports large-chunk warnings and a direct `eval` warning from `onnxruntime-web`.
 - The latest web build was deployed to `https://synapse-dev.web.app`, `https://synapsedev.web.app`, `https://synapse-web.web.app`, and `https://fourth-cirrus-468923-h7.web.app`.
-- Production Firestore writes completed, but final item-by-item readback and full authenticated app-pull verification remain open. Repeated reads currently return HTTP 429. Do not claim complete decrypted cloud parity until these checks pass.
-- Legacy public shares, native client updates, migration reliability refactoring, backup restore verification, and cleanup of stale data/site copies remain open.
+- Authenticated item-by-item scoped readback and decrypted payload parity are complete. A full authenticated app UI pull remains open because browser automation was unavailable; an isolated backup restore is also still required.
+- Legacy public shares, native client updates, migration reliability refactoring, and safe retirement of preserved data/site copies remain open.

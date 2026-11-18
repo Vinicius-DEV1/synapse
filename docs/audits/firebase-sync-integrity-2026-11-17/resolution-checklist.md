@@ -30,10 +30,13 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Create 138 local-only scoped records and write 9 oversized records with encrypted chunks.
 - [x] Verify SQLite after merge: 5,005 syncable rows across 50 tables, 1 transient config excluded, `quick_check=ok`, zero FK violations.
 - [x] Recheck local IDs against the protected source archive: all 4,867 non-transient source IDs are local, 138 local-only rows remain, and no source-only IDs remain.
-- [ ] Identify and resolve the single missing destination document reported by the final per-document verifier.
-- [ ] Re-read every expected scoped path and verify decrypted payloads, tombstones, metadata, chunks, and conflicts across the entire destination. Current Firestore REST reads return HTTP 429.
+- [x] Recheck the earlier single-missing-document signal; a complete quota-reset scan found all expected paths and zero missing or remote-only documents.
+- [x] Read every expected scoped path and verify decrypted payloads, tombstones, metadata, chunks, and conflicts across all 50 tables: 5,005 payloads decrypted and compared, 9 chunk parents / 41 encrypted chunk children verified, and 3 protected config documents verified.
+- [x] Resolve 16 documents with 28 representation-only array-field differences; parsed SQLite JSON text matched the structured Firestore values exactly.
+- [x] Normalize and read back 10 metadata timestamps using update-time preconditions without changing encrypted payloads.
+- [x] Record the verification-pass Firestore read budget: 9,398 document reads, below the 50,000/day free-tier quota; no unscoped root collection reads were made.
 - [ ] Unlock the app and run a full authenticated application pull to verify the deployed client end to end. Browser automation was unavailable in this environment.
-- [ ] Re-run aggregate and ID comparison after quota recovery; confirm every owned local/scoped row reconciles and no unexpected remote-only rows remain.
+- [x] Re-run aggregate and ID comparison after quota recovery; confirm all 5,005 owned local sync rows have scoped documents and no unexpected remote-only rows remain.
 
 ## C. Firestore Access and Production Client
 
@@ -43,7 +46,7 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Add Emulator rules tests for anonymous isolation, cross-user denial, workspace roles, invitations, and versioned shares.
 - [x] Deploy Email/Password and Anonymous Auth providers and authorize the four configured Hosting domains.
 - [x] Deploy reviewed Firestore rules and verify anonymous production root reads are denied; retain rules rollback version `4dbee571-c0f9-4add-9f32-f6a1faa53e6f`.
-- [x] Build and publish the latest Web client to all four configured Hosting sites, including optional timestamp mapping fix.
+- [x] Build and publish the latest Web client to all four configured Hosting sites, including optional timestamp mapping and JSON-array normalization fixes.
 - [ ] Verify full sign-in and scoped sync through the app UI after local master-key unlock; CLI Auth validation alone is not the complete UX check.
 - [ ] Update/rebuild installed native clients and verify compatibility with scoped rules.
 - [ ] Reissue any required version 1 public shares and verify replacement links before retiring the old shares.
@@ -54,5 +57,6 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Remove the unscoped `hardResetCloud()` and no-op `restoreLastSyncTimesFromDb()` source paths.
 - [ ] Refactor `db_migrations.rs` so schema failures propagate, migrations have explicit versions, and supported upgrades are tested.
 - [ ] Reconcile duplicate schema ownership between the Rust core and Tauri database layer before deleting either source.
-- [ ] Complete the cloud readback, app-pull, and backup restore checks before removing source-root documents or rollback snapshots.
+- [x] Complete the cloud readback before considering source-root removal; scoped document and payload parity now pass.
+- [ ] Complete the app-pull and isolated backup restore checks before removing source-root documents or rollback snapshots.
 - [ ] Mark this audit complete only after local rows, scoped cloud documents, decrypted content, tombstones, and authorization checks all pass.
