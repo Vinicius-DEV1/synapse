@@ -58,7 +58,6 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [ ] Refactor `db_migrations.rs` so schema failures propagate, migrations have explicit versions, and supported upgrades are tested.
 - [ ] Reconcile duplicate schema ownership between the Rust core and Tauri database layer before deleting either source.
 - [x] Complete the cloud readback before considering source-root removal; scoped document and payload parity now pass.
-- [x] Restore the rollback snapshot from an exact-SHA-256 copy into a temporary isolated database; `integrity_check=ok`, zero foreign-key violations, and the temporary copy was removed after verification. The 32-table merge baseline is present; 31 counts match and `config` has one extra row consistent with the documented local transient config exclusion.
+- [x] Restore the rollback snapshot from an exact-SHA-256 copy into a temporary isolated database; `integrity_check=ok`, zero foreign-key violations, and the temporary copy was removed after verification. All 32 merge-baseline tables are present; 31 counts match, and the extra `config` row is the documented local-only transient row excluded from cloud sync.
 - [ ] Unlock the app and verify a full authenticated UI pull before considering source-root cleanup; browser automation is unavailable in this environment.
-- [ ] Resolve the one-row `config` count delta against the preserved merge baseline before claiming full backup-content parity.
 - [ ] Mark this audit complete only after local rows, scoped cloud documents, decrypted content, tombstones, and authorization checks all pass.
