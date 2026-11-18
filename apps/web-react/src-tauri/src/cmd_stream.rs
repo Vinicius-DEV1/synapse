@@ -1,4 +1,5 @@
 use crate::db::DbState;
+use crate::protocol_encrypted_utils::{is_trusted_app_origin, TRUSTED_APP_ORIGINS};
 
 use axum::http::{header, StatusCode};
 use axum::{
@@ -37,11 +38,7 @@ pub struct StreamDriveParams {
 
 fn get_stream_cors_origin(headers: &axum::http::HeaderMap) -> String {
     if let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) {
-        if origin.starts_with("tauri://")
-            || origin.starts_with("http://localhost")
-            || origin.starts_with("http://127.0.0.1")
-            || origin.starts_with("http://tauri.localhost")
-        {
+        if is_trusted_app_origin(origin) {
             return origin.to_string();
         }
     }
@@ -51,16 +48,7 @@ fn get_stream_cors_origin(headers: &axum::http::HeaderMap) -> String {
 pub async fn start_stream_server(app: AppHandle) -> Result<u16, String> {
     let state = StreamState { app_handle: app };
 
-    let allowed_origins = [
-        "tauri://localhost".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://tauri.localhost".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://localhost:35174".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://localhost:5173".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://localhost:1420".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://127.0.0.1:35174".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://127.0.0.1:5173".parse::<axum::http::HeaderValue>().unwrap(),
-        "http://127.0.0.1:1420".parse::<axum::http::HeaderValue>().unwrap(),
-    ];
+    let allowed_origins = TRUSTED_APP_ORIGINS.map(axum::http::HeaderValue::from_static);
 
     let cors = CorsLayer::new()
         .allow_origin(allowed_origins)
@@ -322,6 +310,10 @@ pub fn video_get_stream_port(app: AppHandle) -> Result<u16, String> {
 }
 
 pub struct StreamPortState(pub u16);
+
+#[cfg(test)]
+#[path = "cmd_stream_tests.rs"]
+mod tests;
 
 async fn stream_drive_handler(
     State(state): State<StreamState>,

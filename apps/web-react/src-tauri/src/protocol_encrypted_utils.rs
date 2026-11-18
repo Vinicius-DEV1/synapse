@@ -1,6 +1,46 @@
 use std::path::{Path, PathBuf};
 use tauri::http::Request;
 
+pub const TRUSTED_APP_ORIGINS: [&str; 8] = [
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "http://localhost:35174",
+    "http://localhost:5173",
+    "http://localhost:1420",
+    "http://127.0.0.1:35174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:1420",
+];
+
+pub fn is_trusted_app_origin(origin: &str) -> bool {
+    TRUSTED_APP_ORIGINS.contains(&origin)
+}
+
+pub fn is_trusted_app_url(value: &str) -> bool {
+    let Ok(url) = url::Url::parse(value) else {
+        return false;
+    };
+    if !url.username().is_empty() || url.password().is_some() {
+        return false;
+    }
+
+    let host = match url.host_str() {
+        Some(host) => host,
+        None => return false,
+    };
+
+    let origin = match (url.scheme(), host, url.port()) {
+        ("tauri", "localhost", None) => "tauri://localhost".to_string(),
+        ("http", "tauri.localhost", None) => "http://tauri.localhost".to_string(),
+        ("http", "localhost" | "127.0.0.1", Some(port)) => {
+            format!("http://{host}:{port}")
+        }
+        _ => return false,
+    };
+
+    is_trusted_app_origin(&origin)
+}
+
 pub fn get_mime_type(path: &Path) -> String {
     let path_for_mime = if path.to_string_lossy().ends_with(".enc") {
         path.with_extension("")
@@ -91,12 +131,12 @@ pub fn find_file(module_name: &str, decoded_path: &str) -> Option<PathBuf> {
 }
 
 pub fn get_safe_cors_origin(request: &Request<Vec<u8>>) -> String {
-    if let Some(origin) = request.headers().get("origin").and_then(|v| v.to_str().ok()) {
-        if origin.starts_with("tauri://")
-            || origin.starts_with("http://localhost")
-            || origin.starts_with("http://127.0.0.1")
-            || origin.starts_with("http://tauri.localhost")
-        {
+    if let Some(origin) = request
+        .headers()
+        .get("origin")
+        .and_then(|v| v.to_str().ok())
+    {
+        if is_trusted_app_origin(origin) {
             return origin.to_string();
         }
     }
@@ -106,6 +146,45 @@ pub fn get_safe_cors_origin(request: &Request<Vec<u8>>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn trusted_app_origin_allowlist_rejects_lookalike_hosts_and_ports() {
+        for origin in TRUSTED_APP_ORIGINS {
+            assert!(is_trusted_app_origin(origin));
+        }
+
+        assert!(!is_trusted_app_origin(
+            "http://localhost.attacker.example:35174"
+        ));
+        assert!(!is_trusted_app_origin(
+            "http://127.0.0.1.attacker.example:5173"
+        ));
+        assert!(!is_trusted_app_origin("tauri://attacker.example"));
+        assert!(!is_trusted_app_origin("http://localhost:5000"));
+    }
+
+    #[test]
+    fn trusted_app_url_allows_local_app_paths_but_not_url_prefix_spoofing() {
+        assert!(is_trusted_app_url("http://localhost:35174/settings"));
+        assert!(is_trusted_app_url("tauri://localhost/index.html"));
+        assert!(!is_trusted_app_url(
+            "http://localhost.attacker.example:35174/app"
+        ));
+        assert!(!is_trusted_app_url("http://localhost:5000/app"));
+        assert!(!is_trusted_app_url(
+            "http://localhost:35174@attacker.example/app"
+        ));
+    }
+
+    #[test]
+    fn untrusted_cors_origin_uses_the_app_fallback_instead_of_reflection() {
+        let request = Request::builder()
+            .header("origin", "http://localhost.attacker.example:35174")
+            .body(Vec::new())
+            .expect("request should be valid");
+
+        assert_eq!(get_safe_cors_origin(&request), "tauri://localhost");
+    }
 
     #[test]
     fn test_is_path_confined_rejects_external_paths() {

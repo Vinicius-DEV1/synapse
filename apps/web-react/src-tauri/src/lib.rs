@@ -198,9 +198,8 @@ pub fn run() {
                         }
                         wv.connect_permission_request(|view, request| {
                             let uri = view.uri().map(|u| u.to_string()).unwrap_or_default();
-                            let is_trusted_origin = uri.starts_with("tauri://")
-                                || uri.starts_with("http://localhost")
-                                || uri.starts_with("http://127.0.0.1");
+                            let is_trusted_origin =
+                                crate::protocol_encrypted_utils::is_trusted_app_url(&uri);
 
                             if is_trusted_origin {
                                 request.allow();
