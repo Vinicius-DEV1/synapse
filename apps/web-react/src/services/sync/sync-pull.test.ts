@@ -77,6 +77,53 @@ describe('sync-pull service', () => {
     expect(syncUtils.getLastSyncTime('pull', 'user_test-user')).toBeGreaterThan(0);
   });
 
+  it('builds an initial push plan for local-only, newer, and late-edited rows', async () => {
+    const cloudNewer = await encryptText(JSON.stringify({ title: 'Cloud wins' }), cryptoKey);
+    const localNewer = await encryptText(JSON.stringify({ title: 'Local wins' }), cryptoKey);
+    const initialRows = [
+      { id: 'cloud-newer', title: 'Old local copy', updated_at: '2026-10-22T10:00:00.000Z' },
+      { id: 'local-newer', title: 'Local edit', updated_at: '2026-10-24T10:00:00.000Z' },
+      { id: 'late-edit', title: 'Before edit', updated_at: '2026-10-23T10:00:00.000Z' },
+      { id: 'local-only', title: 'Offline note', updated_at: '2026-10-25T10:00:00.000Z' },
+    ];
+    const finalRows = initialRows.map((row) => row.id === 'late-edit'
+      ? { ...row, title: 'Edited during pull', updated_at: '2026-10-26T10:00:00.000Z' }
+      : row);
+    let pagesRead = 0;
+    mockApi.sync.getTable.mockImplementation(async (table: string) => {
+      if (table !== 'pages') return [];
+      pagesRead += 1;
+      return pagesRead === 1 ? initialRows : finalRows;
+    });
+    mockApi.sync.getRowsByIds.mockImplementation(async (_table: string, ids: string[]) =>
+      initialRows.filter((row) => ids.includes(row.id))
+    );
+    setFirestoreDocuments('pages', [
+      {
+        id: 'cloud-newer',
+        data: () => ({ encryptedData: cloudNewer, updatedAt: '2026-10-23T10:00:00.000Z' }),
+      },
+      {
+        id: 'local-newer',
+        data: () => ({ encryptedData: localNewer, updatedAt: '2026-10-22T10:00:00.000Z' }),
+      },
+      {
+        id: 'late-edit',
+        data: () => ({ encryptedData: localNewer, updatedAt: '2026-10-23T10:00:00.000Z' }),
+      },
+    ]);
+
+    const plan = await pullAllFromCloud({ core: cryptoKey, notes: cryptoKey }, undefined, 'test-user');
+
+    expect([...plan?.get('pages')?.rowIds || []].sort()).toEqual([
+      'late-edit',
+      'local-newer',
+      'local-only',
+    ]);
+    expect(plan?.get('pages')?.checkpoint).toBe(new Date('2026-10-26T10:00:00.000Z').getTime());
+    expect(plan?.get('pages')?.rowIds.has('cloud-newer')).toBe(false);
+  });
+
   it('keeps the pull checkpoint unchanged when a local upsert fails', async () => {
     const priorPull = new Date('2026-08-20T10:00:00.000Z').getTime();
     syncUtils.setLastSyncTime('pull', priorPull, 'user_test-user');

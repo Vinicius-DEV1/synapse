@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSync } from './useSync';
 import * as syncService from '../services/sync';
+import * as syncOperations from '../services/sync/sync-operation-queue';
 
 vi.mock('../services/firebase', () => ({
   auth: { currentUser: { uid: 'sync-test-user', isAnonymous: false } },
@@ -67,12 +68,12 @@ describe('useSync concurrency safeguards', () => {
     });
 
     let resolveInitialPull: () => void = () => {};
-    const initialPull = new Promise<void>((resolve) => {
-      resolveInitialPull = resolve;
+    const initialPull = new Promise<undefined>((resolve) => {
+      resolveInitialPull = () => resolve(undefined);
     });
     let resolveQueuedPull: () => void = () => {};
-    const queuedPull = new Promise<void>((resolve) => {
-      resolveQueuedPull = resolve;
+    const queuedPull = new Promise<undefined>((resolve) => {
+      resolveQueuedPull = () => resolve(undefined);
     });
     vi.mocked(syncService.pullAllFromCloud)
       .mockImplementationOnce(() => initialPull)
@@ -153,10 +154,25 @@ describe('useSync concurrency safeguards', () => {
     }
   });
 
+  it('allows five minutes for a full push after a large account pull', async () => {
+    const syncOperationSpy = vi.spyOn(syncOperations, 'runSerializedSyncOperation');
+    const { result, unmount } = renderHook(() => useSync(true, mockMasterKeys, vi.fn()));
+
+    try {
+      await vi.waitFor(() => {
+        expect(syncOperationSpy.mock.calls.some(([, , timeout]) => timeout === 300_000)).toBe(true);
+      });
+      await vi.waitFor(() => expect(result.current.syncStatus).toBe('success'));
+      expect(syncService.pushAllToCloud).toHaveBeenCalled();
+    } finally {
+      unmount();
+    }
+  });
+
   it('does not load pages when a pull finishes after the hook unmounts', async () => {
     let resolveInitialPull: () => void = () => {};
-    const initialPull = new Promise<void>((resolve) => {
-      resolveInitialPull = resolve;
+    const initialPull = new Promise<undefined>((resolve) => {
+      resolveInitialPull = () => resolve(undefined);
     });
     vi.mocked(syncService.pullAllFromCloud).mockImplementationOnce(() => initialPull);
 
@@ -177,8 +193,8 @@ describe('useSync concurrency safeguards', () => {
 
   it('serializes a new workspace sync behind an operation from the previous effect', async () => {
     let resolvePreviousPull: () => void = () => {};
-    const previousPull = new Promise<void>((resolve) => {
-      resolvePreviousPull = resolve;
+    const previousPull = new Promise<undefined>((resolve) => {
+      resolvePreviousPull = () => resolve(undefined);
     });
     vi.mocked(syncService.pullAllFromCloud).mockImplementationOnce(() => previousPull);
 
@@ -208,8 +224,8 @@ describe('useSync concurrency safeguards', () => {
 
   it('does not start a queued sync after its wait timeout expires', async () => {
     let resolvePreviousPull: () => void = () => {};
-    const previousPull = new Promise<void>((resolve) => {
-      resolvePreviousPull = resolve;
+    const previousPull = new Promise<undefined>((resolve) => {
+      resolvePreviousPull = () => resolve(undefined);
     });
     vi.mocked(syncService.pullAllFromCloud).mockImplementationOnce(() => previousPull);
 

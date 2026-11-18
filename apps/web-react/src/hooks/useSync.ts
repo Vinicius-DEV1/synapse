@@ -7,6 +7,7 @@ import { bindSyncEventListeners } from './sync/sync-event-bindings';
 import { handleSyncError, isPromiseSettledResult } from './sync/sync-error-utils';
 import { setGlobalSyncStatus, type SyncStatus } from './sync/sync-status';
 import { deferSyncMutexReleaseUntilSettled } from './sync/sync-timeout-lifecycle';
+import { FULL_SYNC_PULL_TIMEOUT_MS, FULL_SYNC_PUSH_TIMEOUT_MS, PUSH_ONLY_TIMEOUT_MS, REAL_TIME_PULL_TIMEOUT_MS } from './sync/sync-timeouts';
 
 export { getSyncStatusSnapshot, subscribeSyncStatus, useSyncStatus } from './sync/sync-status';
 export type { SyncStatus } from './sync/sync-status';
@@ -93,10 +94,10 @@ export function useSync(
         let releaseDeferred = false;
         let fullSyncStage: 'pull' | 'push' = 'pull';
         try {
-          await runSerializedSyncOperation(
+          const initialPushPlan = await runSerializedSyncOperation(
             () => isClosed,
             () => pullAllFromCloud(masterKey, workspaceId, firebaseUserId),
-            120_000,
+            FULL_SYNC_PULL_TIMEOUT_MS,
           );
           if (isClosed) return;
           loadPages();
@@ -105,10 +106,10 @@ export function useSync(
           const fullSyncTasks = await runSerializedSyncOperation(
             () => isClosed,
             () => Promise.allSettled([
-              pushAllToCloud(masterKey, undefined, workspaceId, firebaseUserId),
+              pushAllToCloud(masterKey, undefined, workspaceId, firebaseUserId, initialPushPlan),
               syncPdfsToCloud(masterKey),
             ]),
-            120_000,
+            FULL_SYNC_PUSH_TIMEOUT_MS,
           );
           const failedTask = fullSyncTasks.find(
             (task): task is PromiseRejectedResult => task.status === 'rejected',
@@ -179,7 +180,7 @@ export function useSync(
           await runSerializedSyncOperation(
             () => isClosed,
             () => pushAllToCloud(masterKey, tablesToPush, workspaceId, firebaseUserId),
-            120_000,
+            PUSH_ONLY_TIMEOUT_MS,
           );
           if (!isClosed) {
             syncChannel.postMessage(updatePayload);
@@ -221,7 +222,7 @@ export function useSync(
         runSerializedSyncOperation(
           () => isClosed,
           () => pullAllFromCloud(masterKey, workspaceId, firebaseUserId),
-          60_000,
+          REAL_TIME_PULL_TIMEOUT_MS,
         )
           .then(() => {
             if (isClosed) return;

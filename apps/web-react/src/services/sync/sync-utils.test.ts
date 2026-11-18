@@ -6,6 +6,7 @@ import {
   getTableLastSyncTime,
   setTableLastSyncTime,
   parseDateSafe,
+  getCloudSyncTime,
   getDeviceId,
   encodeSyncDocumentId,
   decodeSyncDocumentId,
@@ -71,6 +72,7 @@ describe('sync-utils service', () => {
 
       const isoTimestamp = parseDateSafe('2026-08-19T12:00:00Z');
       expect(isoTimestamp).toBeGreaterThan(0);
+      expect(parseDateSafe({ seconds: isoTimestamp / 1000 })).toBe(isoTimestamp);
 
       // Ensures SQLite space format without timezone specifier resolves to the exact same UTC millisecond value as ISO
       expect(timestamp).toBe(isoTimestamp);
@@ -83,6 +85,13 @@ describe('sync-utils service', () => {
       // Handles ISO string without Z
       const noZ = parseDateSafe('2026-08-19T12:00:00');
       expect(noZ).toBe(isoTimestamp);
+    });
+
+    it('uses the newest cloud timestamp, including Firestore timestamp objects and tombstones', () => {
+      expect(getCloudSyncTime({
+        updatedAt: { seconds: 1_700_000_000 },
+        deletedAt: '2027-01-15T00:00:00.000Z',
+      })).toBe(new Date('2027-01-15T00:00:00.000Z').getTime());
     });
   });
 

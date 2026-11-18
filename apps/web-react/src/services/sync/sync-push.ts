@@ -15,6 +15,10 @@ import { commitPreparedSyncDocuments } from './sync-push-documents';
 import { getSyncConfigDocument, getSyncScopeKey } from './sync-cloud-paths';
 import { logFirebaseOp, isEmergencyStopped, logSyncEvent, logFirebaseTraffic } from './sync-monitor';
 import { getErrorMessage } from '../../utils/error';
+import {
+  selectInitialSyncPushRows,
+  type InitialSyncPushPlan,
+} from './sync-push-plan';
 
 /** Max Firestore batch size is 500; 400 is used as safety threshold */
 const BATCH_SIZE = 400;
@@ -23,7 +27,8 @@ export async function pushAllToCloud(
   moduleKeys: Record<string, CryptoKey>,
   targetTables?: string[],
   workspaceId?: string,
-  userId?: string
+  userId?: string,
+  initialPushPlan?: InitialSyncPushPlan,
 ): Promise<void> {
   if (!window.api?.sync) {
     throw new Error('Local sync API is unavailable.');
@@ -73,11 +78,24 @@ export async function pushAllToCloud(
       try {
         const lastPushTable = getTableLastSyncTime('push', table, scopeKey);
         let tableHighestSuccessTime = lastPushTable;
+        const initialTablePlan = initialPushPlan?.get(table);
+        if (initialPushPlan && !initialTablePlan) {
+          throw new Error(`Initial push plan is missing table ${table}.`);
+        }
         // 1-second leeway window to accommodate SQLite's second-level timestamp truncations
         const pushThreshold = Math.max(0, lastPushTable - 1000);
 
         let rowsToPush: SyncRow[];
-        if (lastPushTable > 0 && window.api.sync.getModifiedRows && hasRepushedDeletions) {
+        if (initialTablePlan) {
+          const localRows = window.api.sync.getRowsByIds
+            ? parseSyncRows(
+                await window.api.sync.getRowsByIds<unknown>(table, [...initialTablePlan.rowIds]),
+                table,
+              )
+            : parseSyncRows(await window.api.sync.getTable<unknown>(table), table);
+          rowsToPush = selectInitialSyncPushRows(localRows, initialTablePlan);
+          tableHighestSuccessTime = initialTablePlan.checkpoint;
+        } else if (lastPushTable > 0 && window.api.sync.getModifiedRows && hasRepushedDeletions) {
           const modified = parseSyncRows(
             await window.api.sync.getModifiedRows<unknown>(table, pushThreshold),
             table
@@ -100,6 +118,10 @@ export async function pushAllToCloud(
         }
 
         if (rowsToPush.length === 0) {
+          if (initialTablePlan) {
+            setTableLastSyncTime('push', table, initialTablePlan.checkpoint, scopeKey);
+            highestSuccessTime = Math.max(highestSuccessTime, initialTablePlan.checkpoint);
+          }
           console.log(`[Push SKIP] Tabela ${table} ignorada (0 registros > lastPush).`);
           continue;
         }
@@ -185,6 +207,17 @@ export async function pushAllToCloud(
         errors.push(msg);
         logSyncEvent('error', `Falha ao enviar para nuvem (${table}): ${errMsg}`);
       }
+    }
+  }
+
+  if (initialPushPlan && !pushHadErrors) {
+    const checkpoint = [...initialPushPlan.values()].reduce(
+      (highest, plan) => Math.max(highest, plan.checkpoint),
+      highestSuccessTime,
+    );
+    highestSuccessTime = checkpoint;
+    if (checkpoint > getLastSyncTime('push', scopeKey)) {
+      setLastSyncTime('push', checkpoint, scopeKey);
     }
   }
 

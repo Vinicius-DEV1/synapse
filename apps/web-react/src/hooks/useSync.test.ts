@@ -61,6 +61,10 @@ describe('useSync Hook', () => {
 
   it('triggers initial full sync on mount when isAuth is true', async () => {
     const loadPages = vi.fn();
+    const initialPushPlan = new Map([
+      ['pages', { rowIds: new Set<string>(['local-only']), checkpoint: 1_800_000_000_000 }],
+    ]);
+    vi.mocked(syncService.pullAllFromCloud).mockResolvedValueOnce(initialPushPlan);
 
     const { result } = renderHook(() => useSync(true, mockMasterKeys, loadPages));
 
@@ -74,6 +78,7 @@ describe('useSync Hook', () => {
         undefined,
         undefined,
         'sync-test-user',
+        initialPushPlan,
       );
       expect(syncService.syncPdfsToCloud).toHaveBeenCalledWith(mockMasterKeys);
       expect(result.current.syncStatus).toBe('success');
@@ -179,8 +184,8 @@ describe('useSync Hook', () => {
     });
 
     let resolveInitialPull: () => void = () => {};
-    const initialPullPromise = new Promise<void>((resolve) => {
-      resolveInitialPull = resolve;
+    const initialPullPromise = new Promise<undefined>((resolve) => {
+      resolveInitialPull = () => resolve(undefined);
     });
 
     // Initial pull hangs until resolveInitialPull is called

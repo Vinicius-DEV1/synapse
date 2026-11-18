@@ -106,6 +106,9 @@ export function decodeSyncDocumentId(id: string, encodingVersion: unknown): stri
 
 export function parseDateSafe(dateValue: unknown): number {
   if (typeof dateValue === 'number') return Number.isFinite(dateValue) ? dateValue : 0;
+  if (isRecord(dateValue) && typeof dateValue.seconds === 'number') {
+    return Number.isFinite(dateValue.seconds) ? dateValue.seconds * 1000 : 0;
+  }
   if (typeof dateValue !== 'string') return 0;
   let s = dateValue.trim();
   if (!s) return 0;
@@ -122,6 +125,14 @@ export function parseDateSafe(dateValue: unknown): number {
 
   const parsed = Date.parse(s);
   return isNaN(parsed) ? 0 : parsed;
+}
+
+export function getCloudSyncTime(value: unknown): number {
+  if (!isRecord(value)) return 0;
+  return Math.max(
+    parseDateSafe(value.updatedAt || value.createdAt || 0),
+    parseDateSafe(value.deletedAt || 0),
+  );
 }
 
 /**

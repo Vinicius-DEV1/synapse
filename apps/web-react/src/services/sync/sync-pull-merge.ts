@@ -48,9 +48,15 @@ export async function prepareRowForUpsert(
   freshRow: SyncRow | undefined
 ): Promise<PreparedUpsert> {
   const { docSnap, cloudData, parsed } = result;
-  const cloudTime = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+  const cloudTime = Math.max(
+    parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0),
+    parseDateSafe(cloudData.deletedAt || 0),
+  );
   const localTime = localRow
-    ? parseDateSafe(localRow.updated_at || localRow.created_at || 0)
+    ? Math.max(
+      parseDateSafe(localRow.updated_at || localRow.created_at || 0),
+      parseDateSafe(localRow.deleted_at || 0),
+    )
     : -1;
 
   const rowToUpsert: SyncRow = {
@@ -117,7 +123,7 @@ export async function prepareRowForUpsert(
       }
     } catch (crdtErr) {
       console.error('Erro no merge CRDT Yjs:', crdtErr);
-      throw new Error(`Failed to merge Yjs state for page ${docSnap.id}.`);
+      throw new Error(`Failed to merge Yjs state for page ${docSnap.id}.`, { cause: crdtErr });
     }
   } else if (localTime > cloudTime) {
     const isCloudDeleted = !TABLES_WITHOUT_DELETED_AT.has(table) && Boolean(
@@ -144,7 +150,7 @@ export async function prepareRowForUpsert(
           await window.api.savePageHistory(result.docSnap.id, String(parsed.content));
         } catch (histErr) {
           console.warn('[Sync] Failed to archive conflicting cloud revision to history:', histErr);
-          throw new Error(`Failed to preserve the local page revision for ${docSnap.id}.`);
+          throw new Error(`Failed to preserve the local page revision for ${docSnap.id}.`, { cause: histErr });
         }
       }
       return { rowToUpsert, isSkipped: true };
@@ -164,14 +170,17 @@ export async function prepareRowForUpsert(
         await window.api.savePageHistory(result.docSnap.id, String(localRow.content));
       } catch (histErr) {
         console.warn('[Sync] Failed to archive conflicting local revision to history:', histErr);
-        throw new Error(`Failed to preserve the cloud page revision for ${docSnap.id}.`);
+        throw new Error(`Failed to preserve the cloud page revision for ${docSnap.id}.`, { cause: histErr });
       }
     }
   }
 
   // Race condition protection: check for local edits during sync
   if (freshRow) {
-    const freshTime = parseDateSafe(freshRow.updated_at || freshRow.created_at || 0);
+    const freshTime = Math.max(
+      parseDateSafe(freshRow.updated_at || freshRow.created_at || 0),
+      parseDateSafe(freshRow.deleted_at || 0),
+    );
     const isCloudDeleted = !TABLES_WITHOUT_DELETED_AT.has(table) && Boolean(rowToUpsert.deleted_at);
     if (freshTime > cloudTime && (!isCloudDeleted || freshRow.deleted_at)) {
       return { rowToUpsert, isSkipped: true };

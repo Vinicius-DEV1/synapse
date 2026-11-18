@@ -1,5 +1,5 @@
 import { type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
-import { decodeSyncDocumentId, parseSyncRows, type SyncRow } from './sync-utils';
+import { decodeSyncDocumentId, getCloudSyncTime, parseDateSafe, parseSyncRows, type SyncRow } from './sync-utils';
 import { logFirebaseOp } from './sync-monitor';
 import { decryptCloudBatch } from './sync-decrypt-batch';
 import { prepareRowForUpsert, upsertRowWithoutDroppingFields } from './sync-pull-merge';
@@ -13,6 +13,7 @@ export interface PullDocumentBatchResult {
   pulledDocsCount: number;
   skippedDocsCount: number;
   errors: string[];
+  pushCandidateIds: string[];
 }
 
 export async function processCloudDocuments(
@@ -28,6 +29,7 @@ export async function processCloudDocuments(
     pulledDocsCount: 0,
     skippedDocsCount: 0,
     errors: [],
+    pushCandidateIds: [],
   };
 
   for (let i = 0; i < docs.length; i += DECRYPT_BATCH_SIZE) {
@@ -66,6 +68,22 @@ export async function processCloudDocuments(
         localRow,
         freshRow
       );
+
+      const cloudTime = getCloudSyncTime(decrypted.cloudData);
+      const localTime = Math.max(
+        parseDateSafe(localRow?.updated_at || localRow?.created_at || 0),
+        parseDateSafe(localRow?.deleted_at || 0),
+      );
+      const freshTime = Math.max(
+        parseDateSafe(freshRow?.updated_at || freshRow?.created_at || 0),
+        parseDateSafe(freshRow?.deleted_at || 0),
+      );
+      const mergedPageState = table === 'pages'
+        && typeof decrypted.parsed?.crdt_state === 'string'
+        && rowToUpsert.crdt_state !== decrypted.parsed.crdt_state;
+      if (!decrypted.isLegacy && (localTime > cloudTime || freshTime > cloudTime || mergedPageState)) {
+        result.pushCandidateIds.push(rowId);
+      }
 
       if (decrypted.isLegacy) {
         try {

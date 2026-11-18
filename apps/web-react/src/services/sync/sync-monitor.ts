@@ -1,5 +1,8 @@
 export type FirebaseOpType = 'read' | 'write' | 'delete';
 
+const SYNC_READ_BURN_LIMIT_PER_MINUTE = 10_000;
+const SYNC_WRITE_BURN_LIMIT_PER_MINUTE = 8_000;
+
 export interface SyncStats {
   date: string;
   reads: number;
@@ -142,8 +145,11 @@ function checkBurnRate(type: FirebaseOpType, count: number) {
   if (type === 'read') burnAccumulator.reads += count;
   if (type === 'write') burnAccumulator.writes += count;
 
-  // Increased threshold to 2000 writes and 5000 reads for long offline sync resilience
-  if (burnAccumulator.writes > 2000 || burnAccumulator.reads > 5000) {
+  // A complete initial account sync may process the existing dataset in one minute.
+  if (
+    burnAccumulator.writes > SYNC_WRITE_BURN_LIMIT_PER_MINUTE
+    || burnAccumulator.reads > SYNC_READ_BURN_LIMIT_PER_MINUTE
+  ) {
     console.error(`🚨 FIREBASE BURN RATE DETECTED! ${burnAccumulator.writes} writes, ${burnAccumulator.reads} reads in 1 min!`);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('caderno-sync-error', { 

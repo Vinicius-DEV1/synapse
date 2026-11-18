@@ -1,0 +1,4 @@
+export const FULL_SYNC_PULL_TIMEOUT_MS = 120_000;
+export const FULL_SYNC_PUSH_TIMEOUT_MS = 300_000;
+export const PUSH_ONLY_TIMEOUT_MS = 120_000;
+export const REAL_TIME_PULL_TIMEOUT_MS = 60_000;

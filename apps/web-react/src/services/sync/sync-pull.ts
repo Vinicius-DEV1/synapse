@@ -17,6 +17,7 @@ import {
   getTableLastSyncTime,
   setTableLastSyncTime,
   parseDateSafe,
+  getCloudSyncTime,
   decodeSyncDocumentId,
   isStringRecord,
   parseSyncRows,
@@ -30,6 +31,7 @@ import {
 } from './sync-monitor';
 import { parseCloudData } from './sync-decrypt-batch';
 import { processCloudDocuments } from './sync-pull-documents';
+import { InitialSyncPushPlanBuilder, type InitialSyncPushPlan } from './sync-push-plan';
 import { getSyncCollection, getSyncConfigDocument, getSyncScopeKey } from './sync-cloud-paths';
 import { getErrorMessage } from '../../utils/error';
 
@@ -37,7 +39,7 @@ export async function pullAllFromCloud(
   moduleKeys: Record<string, CryptoKey>,
   workspaceId?: string,
   userId?: string
-): Promise<void> {
+): Promise<InitialSyncPushPlan | undefined> {
   if (!window.api?.sync) {
     throw new Error('Local sync API is unavailable.');
   }
@@ -53,6 +55,9 @@ export async function pullAllFromCloud(
   let skippedDocsCount = 0;
   let pullHadErrors = false;
   const pullErrors: string[] = [];
+  const initialPushPlanBuilder = lastPull === 0 && getLastSyncTime('push', scopeKey) === 0
+    ? new InitialSyncPushPlanBuilder()
+    : undefined;
 
   // Manifest: read once to determine which tables changed since lastPull.
   let manifest: Record<string, string> | null = null;
@@ -121,7 +126,12 @@ export async function pullAllFromCloud(
         let lastDocSnap: QueryDocumentSnapshot<DocumentData> | null = null;
         const CHUNK_SIZE = 100;
 
-        let localMap: Map<string, SyncRow> | null = null;
+        const initialLocalRows = initialPushPlanBuilder
+          ? parseSyncRows(await window.api.sync.getTable<unknown>(table), table)
+          : null;
+        let localMap: Map<string, SyncRow> | null = initialLocalRows
+          ? new Map(initialLocalRows.map((row) => [row.id, row]))
+          : null;
 
         while (hasMore) {
           let q = qBase;
@@ -147,14 +157,21 @@ export async function pullAllFromCloud(
           }
 
           lastDocSnap = querySnapshot.docs[querySnapshot.docs.length - 1];
+          const cloudRows = querySnapshot.docs.map((docSnap) => {
+            const cloudData = parseCloudData(docSnap.data());
+            return {
+              id: decodeSyncDocumentId(docSnap.id, cloudData.idEncodingVersion),
+              syncTime: getCloudSyncTime(cloudData),
+            };
+          });
+          const cloudRowIds = cloudRows.map((row) => row.id);
+          initialPushPlanBuilder?.addCloudRows(table, cloudRows);
 
           if (!localMap) {
             if (window.api.sync.getRowsByIds) {
-              const cloudIds = querySnapshot.docs
-                .map((d) => decodeSyncDocumentId(d.id, parseCloudData(d.data()).idEncodingVersion));
-              if (cloudIds.length > 0) {
+              if (cloudRowIds.length > 0) {
                 const localRows = parseSyncRows(
-                  await window.api.sync.getRowsByIds<unknown>(table, cloudIds),
+                  await window.api.sync.getRowsByIds<unknown>(table, cloudRowIds),
                   table
                 );
                 localMap = new Map(localRows.map((r) => [r.id, r]));
@@ -165,15 +182,10 @@ export async function pullAllFromCloud(
               const localRows = parseSyncRows(await window.api.sync.getTable<unknown>(table), table);
               localMap = new Map(localRows.map((r) => [r.id, r]));
             }
-          } else if (window.api.sync.getRowsByIds) {
+          } else if (!initialPushPlanBuilder && window.api.sync.getRowsByIds) {
             const knownRowsById = localMap;
             if (!knownRowsById) throw new Error(`Could not load local rows for ${table}.`);
-            const newIds = querySnapshot.docs
-              .map((d) => ({
-                rowId: decodeSyncDocumentId(d.id, parseCloudData(d.data()).idEncodingVersion),
-              }))
-              .filter(({ rowId }) => !knownRowsById.has(rowId))
-              .map(({ rowId }) => rowId);
+            const newIds = cloudRowIds.filter((rowId) => !knownRowsById.has(rowId));
             if (newIds.length > 0) {
               const newRows = parseSyncRows(
                 await window.api.sync.getRowsByIds<unknown>(table, newIds),
@@ -191,9 +203,7 @@ export async function pullAllFromCloud(
           const docsToProcess = querySnapshot.docs.filter((docSnap) => {
             const cloudData = parseCloudData(docSnap.data());
 
-            const cloudTime = parseDateSafe(
-              cloudData.updatedAt || cloudData.deletedAt || cloudData.createdAt || 0
-            );
+            const cloudTime = getCloudSyncTime(cloudData);
             if (cloudTime > highestCloudTime) {
               highestCloudTime = cloudTime;
             }
@@ -229,6 +239,7 @@ export async function pullAllFromCloud(
           );
           pulledDocsCount += processedDocuments.pulledDocsCount;
           skippedDocsCount += processedDocuments.skippedDocsCount;
+          initialPushPlanBuilder?.addPushCandidates(table, processedDocuments.pushCandidateIds);
           if (processedDocuments.errors.length > 0) {
             pullErrors.push(...processedDocuments.errors);
             tableHadErrors = true;
@@ -243,6 +254,10 @@ export async function pullAllFromCloud(
         const tableCheckpoint = Math.max(highestTableTime, lastPullTable, lastPull);
         if (!tableHadErrors && tableCheckpoint > lastPullTable) {
           setTableLastSyncTime('pull', table, tableCheckpoint, scopeKey);
+        }
+        if (initialPushPlanBuilder && !tableHadErrors && localMap) {
+          const localRows = parseSyncRows(await window.api.sync.getTable<unknown>(table), table);
+          initialPushPlanBuilder.completeTable(table, localRows, tableCheckpoint);
         }
       } catch (err: unknown) {
         const msg = `PULL erro tabela ${table}: ${getErrorMessage(err)}`;
@@ -275,6 +290,8 @@ export async function pullAllFromCloud(
       `Cloud pull incomplete: ${pullErrors.length} item(s) failed. ${pullErrors[0] || ''}`
     );
   }
+
+  return initialPushPlanBuilder?.build();
 }
 
 export { listenForCloudSyncSignal } from './sync-signal';
