@@ -1,4 +1,5 @@
-use std::ffi::OsString;
+use rusqlite::{Connection, DatabaseName, OpenFlags};
+use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -6,11 +7,22 @@ const MIGRATION_MARKER: &str = ".synapse-legacy-copy-in-progress";
 
 /// Copies missing files and directories recursively, publishing files atomically.
 fn copy_dir_all(src: &Path, dst: &Path) -> io::Result<()> {
+    copy_dir_contents(src, dst, false)
+}
+
+fn copy_legacy_files(src: &Path, dst: &Path) -> io::Result<()> {
+    copy_dir_contents(src, dst, true)
+}
+
+fn copy_dir_contents(src: &Path, dst: &Path, skip_root_sqlite_files: bool) -> io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
         let source = entry.path();
         let target = dst.join(entry.file_name());
+        if skip_root_sqlite_files && is_legacy_database_file(&entry.file_name()) {
+            continue;
+        }
         if entry.file_type()?.is_dir() {
             copy_dir_all(&source, &target)?;
         } else {
@@ -18,6 +30,17 @@ fn copy_dir_all(src: &Path, dst: &Path) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+fn is_legacy_database_file(name: &OsStr) -> bool {
+    [
+        "caderno.sqlite",
+        "caderno.sqlite-wal",
+        "caderno.sqlite-shm",
+        "caderno.sqlite-journal",
+    ]
+    .iter()
+    .any(|candidate| name == OsStr::new(candidate))
 }
 
 fn copy_file_if_missing(source: &Path, target: &Path) -> io::Result<()> {
@@ -34,7 +57,32 @@ fn copy_file_if_missing(source: &Path, target: &Path) -> io::Result<()> {
         Err(copy_error) => return Err(cleanup_after_error(&temporary, copy_error)),
     }
 
-    match std::fs::rename(&temporary, target) {
+    publish_temporary_file(&temporary, target)
+}
+
+fn copy_sqlite_database_if_missing(source: &Path, target: &Path) -> io::Result<()> {
+    if target_is_existing_file(target)? {
+        return Ok(());
+    }
+    let temporary = temporary_path(target)?;
+    let connection = Connection::open_with_flags(
+        source,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|error| io::Error::other(format!("Failed to open legacy SQLite database: {error}")))?;
+    if let Err(error) = connection.backup(DatabaseName::Main, &temporary, None) {
+        return Err(cleanup_after_error(
+            &temporary,
+            io::Error::other(format!(
+                "Failed to create a consistent SQLite backup: {error}"
+            )),
+        ));
+    }
+    publish_temporary_file(&temporary, target)
+}
+
+fn publish_temporary_file(temporary: &Path, target: &Path) -> io::Result<()> {
+    match std::fs::rename(temporary, target) {
         Ok(()) => Ok(()),
         Err(rename_error) => match target_is_existing_file(target) {
             Ok(true) => {
@@ -136,7 +184,8 @@ fn migrate_legacy_data_dir_from(legacy_dir: &Path, canonical_dir: &Path) -> io::
     );
     std::fs::create_dir_all(canonical_dir)?;
     std::fs::write(&marker, b"in-progress")?;
-    copy_dir_all(legacy_dir, canonical_dir)?;
+    copy_legacy_files(legacy_dir, canonical_dir)?;
+    copy_sqlite_database_if_missing(&legacy_db, &canonical_db)?;
     std::fs::remove_file(marker)?;
     Ok(())
 }
@@ -144,6 +193,7 @@ fn migrate_legacy_data_dir_from(legacy_dir: &Path, canonical_dir: &Path) -> io::
 #[cfg(test)]
 mod tests {
     use super::{migrate_legacy_data_dir_from, MIGRATION_MARKER};
+    use rusqlite::Connection;
     use std::path::PathBuf;
 
     struct TestDirectories {
@@ -199,8 +249,12 @@ mod tests {
     #[test]
     fn failed_copy_keeps_progress_marker_and_can_resume() {
         let dirs = TestDirectories::new();
-        std::fs::write(dirs.legacy.join("caderno.sqlite"), b"database")
-            .expect("write legacy database");
+        let legacy_database = Connection::open(dirs.legacy.join("caderno.sqlite"))
+            .expect("create legacy SQLite database");
+        legacy_database
+            .execute_batch("CREATE TABLE migration_probe (id TEXT PRIMARY KEY);")
+            .expect("initialize legacy SQLite database");
+        drop(legacy_database);
         std::fs::create_dir_all(dirs.legacy.join("media")).expect("create legacy media directory");
         std::fs::write(dirs.legacy.join("media/book.epub"), b"book").expect("write legacy media");
         std::fs::create_dir_all(&dirs.canonical).expect("create canonical directory");
@@ -218,6 +272,37 @@ mod tests {
             std::fs::read(dirs.canonical.join("media/book.epub")).expect("read copied media"),
             b"book"
         );
+        assert!(!dirs.canonical.join(MIGRATION_MARKER).exists());
+    }
+
+    #[test]
+    fn legacy_migration_uses_a_consistent_backup_of_the_live_wal_database() {
+        let dirs = TestDirectories::new();
+        let source_path = dirs.legacy.join("caderno.sqlite");
+        let source = Connection::open(&source_path).expect("open legacy SQLite database");
+        source
+            .execute_batch(
+                "PRAGMA journal_mode=WAL;
+                 CREATE TABLE migration_probe (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+                 INSERT INTO migration_probe (id, payload) VALUES ('probe', 'committed-in-wal');",
+            )
+            .expect("write committed legacy database row");
+        assert!(dirs.legacy.join("caderno.sqlite-wal").exists());
+
+        migrate_legacy_data_dir_from(&dirs.legacy, &dirs.canonical)
+            .expect("copy legacy files with online SQLite backup");
+
+        let target = Connection::open(dirs.canonical.join("caderno.sqlite"))
+            .expect("open canonical database copy");
+        let payload: String = target
+            .query_row(
+                "SELECT payload FROM migration_probe WHERE id = 'probe'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read committed WAL data from canonical copy");
+        assert_eq!(payload, "committed-in-wal");
+        assert!(source_path.exists());
         assert!(!dirs.canonical.join(MIGRATION_MARKER).exists());
     }
 
