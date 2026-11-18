@@ -117,7 +117,9 @@ function generateHtmlPage(scenarioName, cssHrefs, bodyContent) {
           }
         });
         observer.observe({ entryTypes: ['longtask'] });
-      } catch (e) {}
+      } catch (error) {
+        console.warn('[Scroll benchmark] Long-task observation is unavailable:', error);
+      }
     }
 
     window.startRecording = () => {

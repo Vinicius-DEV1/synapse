@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark": "node --expose-gc scripts/benchmark.mjs",
     "benchmark:scroll": "node scripts/benchmark-scroll.mjs",
     "check:budgets": "node scripts/check-perf-budgets.mjs",
     "swarm:setup": "bash ../../.agents/skills/parallel-swarm-audit/scripts/setup.sh",

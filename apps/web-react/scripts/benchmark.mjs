@@ -347,9 +347,8 @@ function benchNetworkTransferSimulation(payloadSizeBytes = 2 * 1024 * 1024, band
  * and measures retained heap delta over 50 cycles.
  */
 function benchMemoryLeakCycle(cycles = 50) {
-  if (global.gc) {
-    try { global.gc(); } catch {}
-  }
+  const forceGarbageCollection = typeof global.gc === 'function' ? global.gc : undefined;
+  forceGarbageCollection?.();
   const initialHeap = process.memoryUsage().heapUsed;
   const tempCaches = [];
 
@@ -375,12 +374,15 @@ function benchMemoryLeakCycle(cycles = 50) {
   }
 
   tempCaches.length = 0;
-  if (global.gc) {
-    try { global.gc(); } catch {}
-  }
+  forceGarbageCollection?.();
   const finalHeap = process.memoryUsage().heapUsed;
   const deltaKb = Number(((finalHeap - initialHeap) / 1024).toFixed(2));
-  return { initialHeap, finalHeap, deltaKb };
+  return {
+    initialHeap,
+    finalHeap,
+    deltaKb,
+    garbageCollectionAvailable: forceGarbageCollection !== undefined,
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -584,16 +586,20 @@ async function runBenchmark() {
     heapTotalMb: Number((mem.heapTotal / 1024 / 1024).toFixed(2)),
     rssMb: Number((mem.rss / 1024 / 1024).toFixed(2)),
     retainedHeapDeltaKb: leakTest.deltaKb,
+    garbageCollectionAvailable: leakTest.garbageCollectionAvailable,
   };
   console.log(`  Heap Used             : ${results.memory.heapUsedMb} MB`);
   console.log(`  Heap Total            : ${results.memory.heapTotalMb} MB`);
   console.log(`  RSS                   : ${results.memory.rssMb} MB`);
   console.log(`  Retained Heap Delta   : ${results.memory.retainedHeapDeltaKb} KB (over 50 alloc/free cycles)`);
+  console.log(`  Forced GC Available   : ${results.memory.garbageCollectionAvailable}`);
 
   // Clean temporary benchmark output
   try {
     fs.rmSync(distDir, { recursive: true, force: true });
-  } catch {}
+  } catch (error) {
+    console.warn('[Benchmark] Failed to remove temporary build output:', error);
+  }
 
   // Save results
   const outPath = path.resolve('benchmark-results.json');
