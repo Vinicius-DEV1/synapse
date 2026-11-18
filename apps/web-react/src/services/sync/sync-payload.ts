@@ -2,6 +2,7 @@ import { encryptText } from '../crypto';
 import { uint8ArrayToBase64 } from '../../utils/binary';
 import { encodeSyncDocumentId, parseDateSafe, type SyncRow } from './sync-utils';
 import { prepareEncryptedSyncChunks, type PreparedSyncChunk } from './sync-chunked-payload';
+import { normalizeSyncPayloadRow } from './sync-payload-normalization';
 
 /** Individual Firestore documents are kept below the platform's 1 MiB limit. */
 const MAX_PAYLOAD_BYTES = 600_000;
@@ -36,7 +37,8 @@ export async function prepareRowsForPush(
 ): Promise<PreparedRows> {
   const skippedLarge: string[] = [];
 
-  const promises = rows.map(async (row): Promise<PreparedDoc | null> => {
+  const promises = rows.map(async (sourceRow): Promise<PreparedDoc | null> => {
+    const row = normalizeSyncPayloadRow(sourceRow, table);
     const { id, updated_at, created_at, ...sensitiveData } = row;
     const idVal = id ?? row.shareId ?? row.url;
     if (idVal === undefined || idVal === null || String(idVal).length === 0) {
