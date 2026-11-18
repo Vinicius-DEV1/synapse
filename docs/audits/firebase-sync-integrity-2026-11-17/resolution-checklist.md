@@ -7,6 +7,7 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Identify the active SQLite database using the configured Tauri app identifier; exclude older copies from the active database decision.
 - [x] Create and integrity-check a rollback snapshot outside the repository before changing the active database.
 - [x] Apply the current migration to a temporary SQLite backup of the canonical database; preserve all 55 existing tables, 5,044 rows, and existing column values, with `quick_check=ok` and zero FK violations.
+- [x] Back up the canonical database outside the repository, apply schema version 1 to the inactive database, and compare all pre-existing table values to the backup; confirm one metadata row was added and repeated initialization is idempotent.
 - [x] Exercise legacy fixtures; verify legacy session rows and quiz answers survive the intended transformations.
 - [x] Create the missing `shared_page_keys`, `culture_disliked_items`, and `culture_ignored_items` tables in the active database.
 - [x] Verify post-migration table presence, SQLite integrity, foreign keys, and unchanged pre-existing values.
@@ -17,7 +18,7 @@ Use this checklist as the acceptance record. A checked item has reproducible evi
 - [x] Compare the 50 client sync tables across Web, Firestore rules, Rust, IndexedDB, and active SQLite; handle optional timestamps without inventing unsupported columns.
 - [x] Propagate local IndexedDB read/store failures instead of treating failed reads as missing records.
 - [x] Remove the unused unscoped cloud reset helper and deprecated no-op timestamp restore call.
-- [x] Verify all 50 sync tables exist and have no blank IDs; active SQLite integrity is `ok` with zero FK violations.
+- [x] Verify all 50 sync tables exist in the migrated active database and have no blank IDs; SQLite integrity is `ok` with zero FK violations.
 - [x] Centralize SQLite schema initialization in `synapse-core`; Tauri delegates to it and the duplicate `db_migrations.rs` source was removed.
 - [x] Add schema migration versioning and execute schema, data, and index changes in one transaction; return contextual errors and record the version only after success.
 - [x] Verify an injected schema failure rolls back version metadata and partial schema changes; verify repeated initialization is idempotent.
