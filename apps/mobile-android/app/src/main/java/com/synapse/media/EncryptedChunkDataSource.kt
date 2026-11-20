@@ -21,6 +21,7 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
     private var opened = false
 
     override fun open(dataSpec: DataSpec): Long {
+        close()
         uri = dataSpec.uri
         val scheme = uri?.scheme
 
@@ -34,26 +35,57 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
 
         transferInitializing(dataSpec)
 
+        var reader: SynapseVideoReader? = null
         try {
-            val reader = SynapseVideoReader.open(filePath, keyHex)
-            videoReader = reader
-            val totalSize = reader.size()
+            val openedReader = SynapseVideoReader.open(filePath, keyHex)
+            reader = openedReader
+            val totalSize = openedReader.size()
 
-            if (dataSpec.position > totalSize) {
+            if (totalSize < 0) {
+                throw IOException("Encrypted video size is unavailable.")
+            }
+
+            if (dataSpec.position < 0 || dataSpec.position > totalSize) {
                 throw IOException("Requested position ${dataSpec.position} exceeds total size $totalSize")
             }
 
-            currentPosition = dataSpec.position
-            bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+            val requestedLength = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
                 dataSpec.length
             } else {
                 totalSize - dataSpec.position
             }
+            if (requestedLength < 0) {
+                throw IOException("Requested encrypted video length must not be negative.")
+            }
 
+            currentPosition = dataSpec.position
+            bytesRemaining = requestedLength
+
+            videoReader = openedReader
             opened = true
             transferStarted(dataSpec)
+            reader = null
             return bytesRemaining
         } catch (e: Exception) {
+            val wasOpened = opened
+            opened = false
+            try {
+                reader?.close()
+            } catch (closeError: Exception) {
+                e.addSuppressed(closeError)
+            } finally {
+                if (wasOpened) {
+                    try {
+                        transferEnded()
+                    } catch (endError: Exception) {
+                        e.addSuppressed(endError)
+                    }
+                }
+            }
+            videoReader = null
+            bytesRemaining = 0
+            currentPosition = 0
+            uri = null
             throw IOException("Failed to initialize SynapseVideoReader: ${e.message}", e)
         }
     }
@@ -85,13 +117,17 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
     override fun getUri(): Uri? = uri
 
     override fun close() {
+        val wasOpened = opened
+        opened = false
+        val reader = videoReader
+        videoReader = null
         uri = null
-        if (opened) {
-            opened = false
-            try {
-                videoReader?.close()
-            } finally {
-                videoReader = null
+        bytesRemaining = 0
+        currentPosition = 0
+        try {
+            reader?.close()
+        } finally {
+            if (wasOpened) {
                 transferEnded()
             }
         }

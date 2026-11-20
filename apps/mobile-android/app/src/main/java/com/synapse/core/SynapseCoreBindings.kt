@@ -17,24 +17,34 @@ data class SrsCardResult(
     val state: Byte
 )
 
-/**
- * Synapse Database representation wrapping SQLite in WAL mode with all 28 tables
- */
-class SynapseDatabase internal constructor(private val handle: Pointer) : Closeable {
-    fun execute(sql: String): Long {
-        return NativeBridge.INSTANCE.synapse_db_execute(handle, sql)
+/** A SQLite database handle backed by the shared Rust domain core. */
+class SynapseDatabase internal constructor(handle: Pointer) : Closeable {
+    private var nativeHandle: Pointer? = handle
+
+    private fun requireOpenHandle(): Pointer = checkNotNull(nativeHandle) {
+        "SynapseDatabase is already closed."
     }
 
+    @Synchronized
+    fun execute(sql: String): Long {
+        return NativeBridge.INSTANCE.synapse_db_execute(requireOpenHandle(), sql)
+    }
+
+    @Synchronized
     fun querySingleString(sql: String): String? {
-        val ptr = NativeBridge.INSTANCE.synapse_db_query_single_string(handle, sql)
+        val ptr = NativeBridge.INSTANCE.synapse_db_query_single_string(requireOpenHandle(), sql)
         return ptr?.getString(0)
     }
 
+    @Synchronized
     fun tableExists(tableName: String): Boolean {
-        return NativeBridge.INSTANCE.synapse_db_table_exists(handle, tableName) != 0
+        return NativeBridge.INSTANCE.synapse_db_table_exists(requireOpenHandle(), tableName) != 0
     }
 
+    @Synchronized
     override fun close() {
+        val handle = nativeHandle ?: return
+        nativeHandle = null
         NativeBridge.INSTANCE.synapse_db_close(handle)
     }
 
@@ -50,21 +60,36 @@ class SynapseDatabase internal constructor(private val handle: Pointer) : Closea
 /**
  * Synapse Encrypted Video Reader for streaming 1MB ENC1 chunks directly to ExoPlayer
  */
-class SynapseVideoReader internal constructor(private val handle: Pointer) : Closeable {
-    fun size(): Long {
-        return NativeBridge.INSTANCE.synapse_video_reader_size(handle)
+class SynapseVideoReader internal constructor(handle: Pointer) : Closeable {
+    private var nativeHandle: Pointer? = handle
+
+    private fun requireOpenHandle(): Pointer = checkNotNull(nativeHandle) {
+        "SynapseVideoReader is already closed."
     }
 
+    @Synchronized
+    fun size(): Long {
+        return NativeBridge.INSTANCE.synapse_video_reader_size(requireOpenHandle())
+    }
+
+    @Synchronized
     fun readAt(offset: Long, length: Int): ByteArray {
+        require(offset >= 0) { "Read offset must not be negative." }
+        require(length >= 0) { "Read length must not be negative." }
         val buffer = ByteArray(length)
-        val readBytes = NativeBridge.INSTANCE.synapse_video_reader_read_at(handle, offset, buffer, length)
+        val readBytes = NativeBridge.INSTANCE.synapse_video_reader_read_at(
+            requireOpenHandle(), offset, buffer, length
+        )
         if (readBytes < 0) {
             throw RuntimeException("Error reading encrypted video chunk at offset $offset")
         }
         return if (readBytes == length) buffer else buffer.copyOf(readBytes)
     }
 
+    @Synchronized
     override fun close() {
+        val handle = nativeHandle ?: return
+        nativeHandle = null
         NativeBridge.INSTANCE.synapse_video_reader_free(handle)
     }
 
@@ -81,8 +106,13 @@ class SynapseVideoReader internal constructor(private val handle: Pointer) : Clo
  * Synapse FSRS v5 spaced repetition engine
  */
 class SynapseFsrs : Closeable {
-    private val handle: Pointer = NativeBridge.INSTANCE.synapse_fsrs_new()
+    private var nativeHandle: Pointer? = NativeBridge.INSTANCE.synapse_fsrs_new()
 
+    private fun requireOpenHandle(): Pointer = checkNotNull(nativeHandle) {
+        "SynapseFsrs is already closed."
+    }
+
+    @Synchronized
     fun review(stability: Double, difficulty: Double, state: Byte, rating: Byte, elapsedDays: Int): SrsCardResult {
         val outStability = DoubleArray(1)
         val outDifficulty = DoubleArray(1)
@@ -91,7 +121,7 @@ class SynapseFsrs : Closeable {
         val outState = ByteArray(1)
 
         NativeBridge.INSTANCE.synapse_fsrs_calculate(
-            handle,
+            requireOpenHandle(),
             stability,
             difficulty,
             state,
@@ -113,11 +143,17 @@ class SynapseFsrs : Closeable {
         )
     }
 
+    @Synchronized
     fun retrievability(elapsedDays: Double, stability: Double): Double {
-        return NativeBridge.INSTANCE.synapse_fsrs_retrievability(handle, elapsedDays, stability)
+        return NativeBridge.INSTANCE.synapse_fsrs_retrievability(
+            requireOpenHandle(), elapsedDays, stability
+        )
     }
 
+    @Synchronized
     override fun close() {
+        val handle = nativeHandle ?: return
+        nativeHandle = null
         NativeBridge.INSTANCE.synapse_fsrs_free(handle)
     }
 }
@@ -174,9 +210,11 @@ internal interface NativeBridge : Library {
         val INSTANCE: NativeBridge by lazy {
             try {
                 Native.load("synapse_bridge_uniffi", NativeBridge::class.java)
-            } catch (e: UnsatisfiedLinkError) {
-                // Fallback to bridge-qt or embedded fallback
-                Native.load("synapse_bridge_qt", NativeBridge::class.java)
+            } catch (error: UnsatisfiedLinkError) {
+                throw IllegalStateException(
+                    "The Android UniFFI bridge is missing for this ABI; the Qt C ABI is not compatible.",
+                    error,
+                )
             }
         }
     }
