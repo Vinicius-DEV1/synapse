@@ -88,6 +88,15 @@ This review compared the Android bridge declarations, Kotlin call sites, Rust br
 - **Resolution:** Added a completion screen with score and percentage, a restart action that resets all session state, and a scroll reset when advancing to a new question. Extracted the curated question bank and answer option component into feature-owned files.
 - **Status:** Resolved. On the final debug APK, all three correct answers rendered a 3/3 result; restarting returned to question 1 with a clean selection state.
 
+### ANDROID-09 — Focus showed fabricated completion totals
+
+- **Severity:** Medium
+- **Category:** Data integrity, incorrect aggregation
+- **Location:** `apps/mobile-android/app/src/main/java/com/synapse/features/focus/ui/FocusScreen.kt`
+- **Root cause:** The session counter started at three despite no completed sessions, and the displayed focus time multiplied every cycle by 25 minutes regardless of the selected timer preset.
+- **Resolution:** The counter now starts at zero and completed focus minutes accumulate the actual selected preset duration.
+- **Status:** Resolved. `:app:assembleDebug` passed, and the `Medium_Phone_API_37.0` emulator showed `0 ciclos concluídos hoje (0 min)` on a fresh launch.
+
 ## Verification and Limits
 
 - `git diff --check` — passed.
@@ -95,7 +104,7 @@ This review compared the Android bridge declarations, Kotlin call sites, Rust br
 - `apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug` — passed with Gradle 8.9, JDK 17, NDK `30.0.16248370`, and `cargo-ndk` 4.1.2. The build task compiles the bridge and generates version-matched Kotlin bindings.
 - `apps/mobile-android/gradlew -p apps/mobile-android :app:connectedDebugAndroidTest` — passed. The instrumented test constructed the generated `SynapseFsrs`, called the Rust review API, validated the result, and closed the native handle.
 - `tools/scripts/build-all.sh` — passed for native Rust bridges, WebAssembly, Qt desktop, and Android NDK bridge/bindings.
-- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`, SHA-256 `4a6bc6b5aaf049800827f38268c53094b663b18eb6b500c9334c4cbefc3dac7c`, package `com.synapse.app`, version `2.0.0` (version code `200`). The APK contains `libsynapse_bridge_uniffi.so` for `arm64-v8a`, `x86_64`, and `armeabi-v7a`; no unused `libsynapse_core.so` is packaged.
+- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`, SHA-256 `6c917d09b7298d73c691684764c473c532f4bc5cf4af0e7fce085fb97ded6bc6`, package `com.synapse.app`, version `2.0.0` (version code `200`). The APK contains `libsynapse_bridge_uniffi.so` for `arm64-v8a`, `x86_64`, and `armeabi-v7a`; no unused `libsynapse_core.so` is packaged.
 - The final APK was installed and launched on the `Medium_Phone_API_37.0` emulator. Calendar, Finance, Habits, Library, Culture, Diagrams, and Video displayed their empty states. Quiz interaction showed the 3/3 completion result and reset to question 1. No fatal application exception appeared. These checks do not exercise real persisted records, Firebase sync, or encrypted video playback.
 - Home, Notes, Anki, Trash, and Vault empty states were checked on the earlier debug APK after fabricated personal defaults were removed; those screens were not modified by the later UI extractions.
 - Native libraries and generated Kotlin sources live under ignored `apps/mobile-android/app/build/generated/`; no generated binary is committed under `app/src/main/jniLibs/`.
@@ -110,5 +119,6 @@ This review compared the Android bridge declarations, Kotlin call sites, Rust br
 - [x] Review and remove the Android module sample datasets that were rendered as personal data.
 - [x] Fix the quiz completion flow and modularize the video and quiz screens; see the [UI modularization record](./android-ui-modularization-plan-2026-11-20.md).
 - [ ] Replace Compose-only module mutations with typed persisted core repositories and verify navigation/process-restart recovery.
+- [x] Rebuild and verify that Focus starts at zero completed sessions and accumulates the selected preset duration.
 
 This review does not certify the Android app, account sign-in, keychain migration, or encrypted video at runtime. The cloud-account migration remains an independent open gate in the [migration audit](../security/cloud-account-encryption-migration.md).
