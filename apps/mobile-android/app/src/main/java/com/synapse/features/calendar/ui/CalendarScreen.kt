@@ -20,10 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.synapse.features.calendar.model.CalendarEventItem
+import com.synapse.features.calendar.ui.components.CalendarEventCard
 import com.synapse.features.calendar.ui.dialogs.NewEventSheet
 import com.synapse.ui.theme.*
 
@@ -169,99 +169,15 @@ fun CalendarScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filteredEvents, key = { it.id }) { item ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = DarkSurface,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (item.isCompleted) CorrectEmerald.copy(alpha = 0.2f) else DarkBorder
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Color Stripe
-                                Box(
-                                    modifier = Modifier
-                                        .width(4.dp)
-                                        .height(38.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(item.color)
-                                )
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                // Details
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.title,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = if (item.isCompleted) TextMuted else TextPrimary,
-                                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "${item.date} às ${item.time}" +
-                                            if (item.description.isNotBlank()) " • ${item.description}" else "",
-                                        fontSize = 12.sp,
-                                        color = TextSecondary,
-                                        maxLines = 1
-                                    )
+                        CalendarEventCard(
+                            event = item,
+                            onToggleComplete = {
+                                events = events.map {
+                                    if (it.id == item.id) it.copy(isCompleted = !it.isCompleted) else it
                                 }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                // Checkbox Toggle
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(if (item.isCompleted) CorrectEmeraldBg else DarkSurfaceElevated)
-                                        .border(
-                                            1.dp,
-                                            if (item.isCompleted) CorrectEmerald else DarkBorder,
-                                            CircleShape
-                                        )
-                                        .clickable {
-                                            events = events.map {
-                                                if (it.id == item.id) it.copy(isCompleted = !it.isCompleted) else it
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (item.isCompleted) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = "Concluído",
-                                            tint = CorrectEmeraldText,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(6.dp))
-
-                                // Delete Button
-                                IconButton(
-                                    onClick = {
-                                        events = events.filter { it.id != item.id }
-                                    },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Excluir",
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
+                            },
+                            onDelete = { events = events.filter { it.id != item.id } }
+                        )
                     }
                 }
             }
