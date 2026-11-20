@@ -19,16 +19,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.features.finance.model.TransactionItem
+import com.synapse.features.finance.ui.components.FinanceSummaryCard
+import com.synapse.features.finance.ui.dialogs.NewTransactionDialog
 import com.synapse.ui.theme.*
-
-data class TransactionItem(
-    val id: String,
-    val title: String,
-    val amount: Double,
-    val isIncome: Boolean,
-    val category: String,
-    val date: String = "Hoje"
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,100 +88,12 @@ fun FinanceScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // KPI Overview Banner (Total Balance)
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp)),
-                color = DarkSurface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Saldo Líquido Consolidado",
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (transactions.isEmpty()) "—" else "R$ %,.2f".format(netBalance),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            transactions.isEmpty() -> TextMuted
-                            netBalance >= 0 -> CorrectEmeraldText
-                            else -> IncorrectRoseText
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Incomes and Expenses Subcards
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp)),
-                            color = CorrectEmeraldBg
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowUpward,
-                                    contentDescription = "Receitas",
-                                    tint = CorrectEmerald,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Column {
-                                    Text("Receitas", fontSize = 10.sp, color = CorrectEmeraldText)
-                                    Text(
-                                        if (transactions.isEmpty()) "—" else "R$ %,.2f".format(totalIncome),
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = CorrectEmeraldText
-                                    )
-                                }
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp)),
-                            color = IncorrectRoseBg
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowDownward,
-                                    contentDescription = "Despesas",
-                                    tint = IncorrectRose,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Column {
-                                    Text("Despesas", fontSize = 10.sp, color = IncorrectRoseText)
-                                    Text(
-                                        if (transactions.isEmpty()) "—" else "R$ %,.2f".format(totalExpense),
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = IncorrectRoseText
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            FinanceSummaryCard(
+                hasTransactions = transactions.isNotEmpty(),
+                netBalance = netBalance,
+                totalIncome = totalIncome,
+                totalExpense = totalExpense
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -299,105 +205,33 @@ fun FinanceScreen(
             }
         }
 
-        // Add Transaction Dialog
         if (isAddingTransaction) {
-            AlertDialog(
-                onDismissRequest = { isAddingTransaction = false },
-                containerColor = DarkSurfaceElevated,
-                title = {
-                    Text("Nova Transação", color = TextPrimary, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = { newIsIncome = false },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (!newIsIncome) IncorrectRose else DarkSurface
-                                ),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Despesa", color = Color.White)
-                            }
-                            Button(
-                                onClick = { newIsIncome = true },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (newIsIncome) CorrectEmerald else DarkSurface
-                                ),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Receita", color = Color.White)
-                            }
-                        }
-
-                        OutlinedTextField(
-                            value = newTitle,
-                            onValueChange = { newTitle = it },
-                            label = { Text("Descrição", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
+            NewTransactionDialog(
+                title = newTitle,
+                amount = newAmount,
+                category = newCategory,
+                isIncome = newIsIncome,
+                onTitleChange = { newTitle = it },
+                onAmountChange = { newAmount = it },
+                onCategoryChange = { newCategory = it },
+                onIncomeChange = { newIsIncome = it },
+                onDismiss = { isAddingTransaction = false },
+                onRegister = {
+                    val parsedAmount = newAmount.replace(",", ".").toDoubleOrNull() ?: 0.0
+                    if (newTitle.isNotBlank() && parsedAmount > 0) {
+                        transactions = listOf(
+                            TransactionItem(
+                                id = System.currentTimeMillis().toString(),
+                                title = newTitle.trim(),
+                                amount = parsedAmount,
+                                isIncome = newIsIncome,
+                                category = newCategory.trim(),
+                                date = "Hoje"
                             )
-                        )
-
-                        OutlinedTextField(
-                            value = newAmount,
-                            onValueChange = { newAmount = it },
-                            label = { Text("Valor (R$)", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-
-                        OutlinedTextField(
-                            value = newCategory,
-                            onValueChange = { newCategory = it },
-                            label = { Text("Categoria", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            val parsedAmount = newAmount.replace(",", ".").toDoubleOrNull() ?: 0.0
-                            if (newTitle.isNotBlank() && parsedAmount > 0) {
-                                transactions = listOf(
-                                    TransactionItem(
-                                        id = System.currentTimeMillis().toString(),
-                                        title = newTitle.trim(),
-                                        amount = parsedAmount,
-                                        isIncome = newIsIncome,
-                                        category = newCategory.trim(),
-                                        date = "Hoje"
-                                    )
-                                ) + transactions
-                                newTitle = ""
-                                newAmount = ""
-                                isAddingTransaction = false
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo)
-                    ) {
-                        Text("Registrar", color = Color.White)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { isAddingTransaction = false }) {
-                        Text("Cancelar", color = TextSecondary)
+                        ) + transactions
+                        newTitle = ""
+                        newAmount = ""
+                        isAddingTransaction = false
                     }
                 }
             )
