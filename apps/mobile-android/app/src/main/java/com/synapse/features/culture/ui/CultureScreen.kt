@@ -19,18 +19,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.features.culture.model.CultureMediaItem
+import com.synapse.features.culture.ui.components.CultureMediaCard
+import com.synapse.features.culture.ui.components.CultureMetricsRow
+import com.synapse.features.culture.ui.dialogs.AddMediaSheet
+import com.synapse.features.culture.ui.dialogs.CultureDetailsSheet
 import com.synapse.ui.theme.*
-
-data class CultureMediaItem(
-    val id: String,
-    val title: String,
-    val type: String, // "movie", "series", "anime", "book"
-    val status: String, // "watching", "completed", "plan_to_watch"
-    val score: Double = 8.5,
-    val currentProgress: Int = 0,
-    val totalProgress: Int = 12,
-    val notes: String = ""
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,16 +123,12 @@ fun CultureScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 4 KPI Metric Cards
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                MetricPill("Catálogo", totalItems.toString(), BrandIndigo, Modifier.weight(1f))
-                MetricPill("Assistindo", totalWatching.toString(), AmberWarning, Modifier.weight(1f))
-                MetricPill("Concluídos", totalCompleted.toString(), CorrectEmerald, Modifier.weight(1f))
-                MetricPill("Média", if (itemsList.isEmpty()) "—" else String.format("%.1f", avgScore), BrandPurple, Modifier.weight(1f))
-            }
+            CultureMetricsRow(
+                totalItems = totalItems,
+                totalWatching = totalWatching,
+                totalCompleted = totalCompleted,
+                averageScore = if (itemsList.isEmpty()) null else avgScore
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -191,287 +181,65 @@ fun CultureScreen(
                 }
 
                 items(filteredItems, key = { it.id }) { item ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { selectedItemForDetails = item },
-                        color = DarkSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Poster Box
-                            Box(
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(DarkSurfaceElevated)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(8.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = when (item.type) {
-                                        "movie" -> "🎬"
-                                        "series" -> "📺"
-                                        "anime" -> "🎌"
-                                        else -> "📖"
-                                    },
-                                    fontSize = 24.sp
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // Info
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.title,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = "★ ${item.score}",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AmberWarningText
-                                    )
-                                    Text(
-                                        text = "${item.currentProgress}/${item.totalProgress} ep",
-                                        fontSize = 12.sp,
-                                        color = TextSecondary
-                                    )
-                                    Text(
-                                        text = when (item.status) {
-                                            "watching" -> "Assistindo"
-                                            "completed" -> "Concluído"
-                                            else -> "Planejado"
-                                        },
-                                        fontSize = 11.sp,
-                                        color = when (item.status) {
-                                            "completed" -> CorrectEmeraldText
-                                            "watching" -> AmberWarningText
-                                            else -> TextMuted
-                                        }
-                                    )
+                    CultureMediaCard(
+                        item = item,
+                        onOpenDetails = { selectedItemForDetails = item },
+                        onDecrementProgress = {
+                            if (item.currentProgress > 0) {
+                                itemsList = itemsList.map {
+                                    if (it.id == item.id) it.copy(currentProgress = it.currentProgress - 1) else it
                                 }
                             }
-
-                            // Stepper Controls
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .background(DarkSurfaceElevated)
-                                        .clickable {
-                                            if (item.currentProgress > 0) {
-                                                itemsList = itemsList.map {
-                                                    if (it.id == item.id) it.copy(currentProgress = it.currentProgress - 1) else it
-                                                }
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("-", color = TextPrimary, fontWeight = FontWeight.Bold)
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .background(DarkSurfaceElevated)
-                                        .clickable {
-                                            if (item.currentProgress < item.totalProgress) {
-                                                val nextProg = item.currentProgress + 1
-                                                val newStatus = if (nextProg == item.totalProgress) "completed" else item.status
-                                                itemsList = itemsList.map {
-                                                    if (it.id == item.id) it.copy(currentProgress = nextProg, status = newStatus) else it
-                                                }
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("+", color = TextPrimary, fontWeight = FontWeight.Bold)
+                        },
+                        onIncrementProgress = {
+                            if (item.currentProgress < item.totalProgress) {
+                                val nextProgress = item.currentProgress + 1
+                                val newStatus = if (nextProgress == item.totalProgress) "completed" else item.status
+                                itemsList = itemsList.map {
+                                    if (it.id == item.id) it.copy(currentProgress = nextProgress, status = newStatus) else it
                                 }
                             }
                         }
-                    }
+                    )
                 }
             }
         }
 
-        // Details Bottom Sheet
         selectedItemForDetails?.let { detailItem ->
-            ModalBottomSheet(
-                onDismissRequest = { selectedItemForDetails = null },
-                containerColor = DarkSurfaceElevated,
-                dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = detailItem.title,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Tipo: ${detailItem.type.uppercase()} • Avaliação: ${detailItem.score}/10",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                    if (detailItem.notes.isNotBlank()) {
-                        Text(
-                            text = "Sinopse / Notas Pessoais:",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = detailItem.notes,
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            lineHeight = 18.sp
-                        )
+            CultureDetailsSheet(
+                item = detailItem,
+                onDismiss = { selectedItemForDetails = null },
+                onMarkCompleted = {
+                    itemsList = itemsList.map {
+                        if (it.id == detailItem.id) it.copy(status = "completed", currentProgress = it.totalProgress) else it
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            itemsList = itemsList.map {
-                                if (it.id == detailItem.id) it.copy(status = "completed", currentProgress = it.totalProgress) else it
-                            }
-                            selectedItemForDetails = null
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = CorrectEmerald),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Marcar como Concluído", fontWeight = FontWeight.Bold, color = Color.White)
-                    }
+                    selectedItemForDetails = null
                 }
-            }
+            )
         }
 
-        // Add Media Modal
         if (isAddingItem) {
-            ModalBottomSheet(
-                onDismissRequest = { isAddingItem = false },
-                containerColor = DarkSurfaceElevated,
-                dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Adicionar Nova Mídia",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-
-                    OutlinedTextField(
-                        value = newTitle,
-                        onValueChange = { newTitle = it },
-                        label = { Text("Título da Mídia") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = BrandIndigo,
-                            unfocusedBorderColor = DarkBorder
+            AddMediaSheet(
+                title = newTitle,
+                type = newType,
+                onTitleChange = { newTitle = it },
+                onTypeChange = { newType = it },
+                onDismiss = { isAddingItem = false },
+                onAdd = {
+                    if (newTitle.isNotBlank()) {
+                        itemsList = itemsList + CultureMediaItem(
+                            id = java.util.UUID.randomUUID().toString(),
+                            title = newTitle.trim(),
+                            type = newType,
+                            status = "watching",
+                            currentProgress = 0,
+                            totalProgress = newTotal.toIntOrNull() ?: 12
                         )
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        listOf("movie" to "Filme", "series" to "Série", "anime" to "Anime").forEach { (typeVal, label) ->
-                            val isSel = newType == typeVal
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { newType = typeVal },
-                                color = if (isSel) BrandIndigo.copy(alpha = 0.25f) else DarkSurface,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) BrandIndigo else DarkBorder)
-                            ) {
-                                Text(
-                                    text = label,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSel) Color.White else TextSecondary,
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            if (newTitle.isNotBlank()) {
-                                itemsList = itemsList + CultureMediaItem(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    title = newTitle.trim(),
-                                    type = newType,
-                                    status = "watching",
-                                    currentProgress = 0,
-                                    totalProgress = newTotal.toIntOrNull() ?: 12
-                                )
-                                newTitle = ""
-                                isAddingItem = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Cadastrar Mídia", fontWeight = FontWeight.Bold)
+                        newTitle = ""
+                        isAddingItem = false
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MetricPill(label: String, value: String, accentColor: Color, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = DarkSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = accentColor)
-            Text(text = label, fontSize = 10.sp, color = TextSecondary)
+            )
         }
     }
 }
