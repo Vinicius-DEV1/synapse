@@ -151,6 +151,28 @@ private slots:
             QVERIFY2(obj, qPrintable(QString("Component failed to instantiate %1: %2").arg(path, comp.errorString())));
         }
     }
+
+    void cloudAccountNoticeDoesNotClaimConnection() {
+        QQmlEngine engine;
+        const QString qmlPath = QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/auth/AccountEvolutionModal.qml");
+        QQmlComponent component(&engine, QUrl::fromLocalFile(qmlPath));
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+
+        QScopedPointer<QObject> modal(component.create());
+        QVERIFY2(modal, qPrintable(component.errorString()));
+
+        QObject *message = modal->findChild<QObject *>(QStringLiteral("cloudStatusMessage"));
+        QVERIFY(message);
+        QVERIFY(message->property("text").toString().contains(QStringLiteral("não estão disponíveis")));
+        QVERIFY(modal->metaObject()->indexOfSignal("accountEvolved(QString)") < 0);
+
+        QObject *dismissButton = modal->findChild<QObject *>(QStringLiteral("dismissCloudNoticeAction"));
+        QVERIFY(dismissButton);
+        QSignalSpy closed(modal.data(), SIGNAL(closed()));
+        QVERIFY(QMetaObject::invokeMethod(dismissButton, "clicked", Qt::DirectConnection));
+        QCOMPARE(closed.count(), 1);
+    }
 };
 
 int runNativeLayoutTest(int argc, char **argv) {
