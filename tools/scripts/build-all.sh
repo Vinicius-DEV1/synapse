@@ -25,7 +25,7 @@ cargo build --target wasm32-unknown-unknown --release -p synapse-bridge-wasm --m
 echo "[3/4] Preparing Desktop Qt 6 assets..."
 "$PROJECT_ROOT/tools/scripts/build-desktop.sh"
 
-echo "[4/4] Preparing Android NDK assets..."
+echo "[4/4] Building Android NDK bridge and UniFFI bindings..."
 "$PROJECT_ROOT/tools/scripts/build-android.sh"
 
 echo "=================================================="

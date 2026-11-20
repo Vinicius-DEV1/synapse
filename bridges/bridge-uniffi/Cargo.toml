@@ -7,6 +7,14 @@ edition = "2021"
 crate-type = ["lib", "cdylib", "staticlib"]
 name = "synapse_bridge_uniffi"
 
+[features]
+bindgen-cli = ["uniffi/cli"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen-cli"]
+
 [dependencies]
 synapse-core = { path = "../../core/synapse-core" }
 uniffi = "0.28"

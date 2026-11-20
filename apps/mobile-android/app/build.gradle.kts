@@ -4,9 +4,38 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val repositoryRoot = rootProject.projectDir.parentFile.parentFile
+val pinnedNdkVersion = file("../ndk.version").readText().trim()
+val buildSynapseAndroidBridge by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Builds the Synapse Rust bridge for Android and generates UniFFI Kotlin bindings."
+    commandLine("bash", repositoryRoot.resolve("tools/scripts/build-android.sh").absolutePath)
+    inputs.files(
+        repositoryRoot.resolve("Cargo.lock"),
+        repositoryRoot.resolve("Cargo.toml"),
+        repositoryRoot.resolve("core/synapse-core/Cargo.toml"),
+        repositoryRoot.resolve("bridges/bridge-uniffi/Cargo.toml"),
+        repositoryRoot.resolve("bridges/bridge-uniffi/uniffi.toml"),
+        repositoryRoot.resolve("tools/scripts/build-android.sh"),
+        file("../ndk.version"),
+    )
+    inputs.dir(repositoryRoot.resolve("core/synapse-core/src"))
+    inputs.dir(repositoryRoot.resolve("bridges/bridge-uniffi/src"))
+    outputs.dir(layout.buildDirectory.dir("generated/jniLibs/main"))
+    outputs.dir(layout.buildDirectory.dir("generated/source/uniffi/main/java"))
+}
+
+tasks.named("preBuild") {
+    dependsOn(buildSynapseAndroidBridge)
+}
+
+val generatedJniLibs = layout.buildDirectory.dir("generated/jniLibs/main")
+val generatedUniFfiKotlin = layout.buildDirectory.dir("generated/source/uniffi/main/java")
+
 android {
     namespace = "com.synapse"
     compileSdk = 35
+    ndkVersion = pinnedNdkVersion
 
     defaultConfig {
         applicationId = "com.synapse.app"
@@ -49,7 +78,8 @@ android {
 
     sourceSets {
         getByName("main") {
-            jniLibs.srcDirs("src/main/jniLibs")
+            java.srcDir(generatedUniFfiKotlin)
+            jniLibs.srcDir(generatedJniLibs)
         }
     }
 }
