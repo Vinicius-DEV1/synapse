@@ -54,6 +54,8 @@ pub(super) const COLUMN_MIGRATIONS: &[(&str, &str, &str)] = &[
     ("transactions", "due_date", "TEXT"),
     ("transactions", "linked_loan_id", "TEXT"),
     ("transactions", "paid_amount", "REAL"),
+    ("transactions", "person", "TEXT"),
+    ("transactions", "updated_at", "DATETIME"),
     ("vault_items", "custom_fields", "TEXT"),
     ("vault_items", "login_type", "TEXT DEFAULT 'password'"),
     ("vault_items", "position", "INTEGER DEFAULT 0"),

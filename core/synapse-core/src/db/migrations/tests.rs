@@ -29,7 +29,7 @@ fn initialization_is_versioned_idempotent_and_preserves_legacy_sessions() {
             row.get(0)
         })
         .expect("read migration version count");
-    assert_eq!(version_count, 1);
+    assert_eq!(version_count, 3);
 
     for table in [
         "shared_page_keys",
@@ -45,6 +45,44 @@ fn initialization_is_versioned_idempotent_and_preserves_legacy_sessions() {
             .expect("check canonical sync table");
         assert!(exists, "expected canonical table {table}");
     }
+}
+
+#[test]
+fn versioned_migrations_add_finance_columns_to_existing_databases() {
+    let connection = Connection::open_in_memory().expect("open in-memory database");
+    connection
+        .execute_batch(
+            "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+             INSERT INTO schema_migrations (version, applied_at) VALUES (1, 'existing');
+             CREATE TABLE transactions (id TEXT PRIMARY KEY, description TEXT NOT NULL);",
+        )
+        .expect("create version one database without transaction timestamp");
+
+    crate::db::migrations::run_migrations(&connection).expect("apply version two migration");
+
+    let has_updated_at: bool = connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM pragma_table_info('transactions') WHERE name = 'updated_at')",
+            [],
+            |row| row.get(0),
+        )
+        .expect("check transaction timestamp column");
+    let has_person: bool = connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM pragma_table_info('transactions') WHERE name = 'person')",
+            [],
+            |row| row.get(0),
+        )
+        .expect("check transaction person column");
+    let version: i64 = connection
+        .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+            row.get(0)
+        })
+        .expect("check migrated version");
+
+    assert!(has_updated_at);
+    assert!(has_person);
+    assert_eq!(version, 3);
 }
 
 #[test]
@@ -83,7 +121,7 @@ fn initialization_rejects_a_database_from_a_newer_schema_version() {
     connection
         .execute_batch(
             "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
-             INSERT INTO schema_migrations (version, applied_at) VALUES (2, 'future');",
+             INSERT INTO schema_migrations (version, applied_at) VALUES (4, 'future');",
         )
         .expect("create newer schema marker");
 

@@ -10,7 +10,7 @@ pub use quiz::migrate_quiz_schema;
 mod tests;
 
 // Released migration numbers are explicit in `apply_versioned_migration`; append, never renumber.
-const CURRENT_SCHEMA_VERSION: i64 = 1;
+const CURRENT_SCHEMA_VERSION: i64 = 3;
 
 /// Applies all pending schema changes atomically and records the applied version.
 pub fn run_migrations(conn: &Connection) -> Result<(), String> {
@@ -42,7 +42,9 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
         .map_err(|error| format!("Failed to read SQLite schema version: {error}"))?;
 
     if current_version < 0 {
-        return Err(format!("Database has invalid SQLite schema version {current_version}."));
+        return Err(format!(
+            "Database has invalid SQLite schema version {current_version}."
+        ));
     }
     if current_version > CURRENT_SCHEMA_VERSION {
         return Err(format!(
@@ -57,7 +59,9 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
                 "INSERT INTO schema_migrations (version) VALUES (?1)",
                 [version],
             )
-            .map_err(|error| format!("Failed to record SQLite schema version {version}: {error}"))?;
+            .map_err(|error| {
+                format!("Failed to record SQLite schema version {version}: {error}")
+            })?;
     }
 
     transaction
@@ -68,7 +72,11 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
 fn apply_versioned_migration(conn: &Connection, version: i64) -> Result<(), String> {
     match version {
         1 => apply_initial_schema(conn),
-        _ => Err(format!("SQLite schema migration {version} is not registered.")),
+        2 => add_column_if_missing(conn, "transactions", "updated_at", "DATETIME").map(|_| ()),
+        3 => add_column_if_missing(conn, "transactions", "person", "TEXT").map(|_| ()),
+        _ => Err(format!(
+            "SQLite schema migration {version} is not registered."
+        )),
     }
 }
 

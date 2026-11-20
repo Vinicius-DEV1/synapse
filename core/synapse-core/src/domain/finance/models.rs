@@ -39,6 +39,7 @@ pub struct Transaction {
     pub account_id: Option<String>,
     pub destination_account_id: Option<String>,
     pub linked_loan_id: Option<String>,
+    pub person: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }

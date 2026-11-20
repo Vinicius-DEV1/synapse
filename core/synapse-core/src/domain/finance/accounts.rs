@@ -38,8 +38,10 @@ pub fn get_accounts(conn: &rusqlite::Connection) -> Result<Vec<Account>> {
         "SELECT account_id, destination_account_id, type, amount 
          FROM transactions 
          WHERE deleted_at IS NULL 
-           AND (status IS NULL OR status != 'pending') 
-           AND (is_paid IS NULL OR is_paid != 0)",
+           AND (
+             type IN ('loan_made', 'loan_taken')
+             OR ((status IS NULL OR status != 'pending') AND (is_paid IS NULL OR is_paid != 0))
+           )",
     )?;
 
     let mut deltas: HashMap<String, f64> = HashMap::new();
@@ -79,7 +81,9 @@ pub fn create_account(
 ) -> Result<Account> {
     let trimmed_name = name.trim();
     if trimmed_name.is_empty() {
-        return Err(SynapseError::Validation("Account name cannot be empty".into()));
+        return Err(SynapseError::Validation(
+            "Account name cannot be empty".into(),
+        ));
     }
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -94,6 +98,7 @@ pub fn create_account(
         .unwrap_or("wallet")
         .to_string();
     let balance = initial_balance.unwrap_or(0.0);
+    validate_initial_balance(balance)?;
     let now = Utc::now().to_rfc3339();
 
     conn.execute(
@@ -123,12 +128,25 @@ pub fn create_account_struct(conn: &rusqlite::Connection, account: Account) -> R
     };
     let name = account.name.trim().to_string();
     if name.is_empty() {
-        return Err(SynapseError::Validation("Account name cannot be empty".into()));
+        return Err(SynapseError::Validation(
+            "Account name cannot be empty".into(),
+        ));
     }
-    let color = account.color.unwrap_or_else(|| "#10b981".to_string());
-    let icon = account.icon.unwrap_or_else(|| "wallet".to_string());
     let initial_balance = account.initial_balance.unwrap_or(0.0);
-    let created_at = account.created_at.unwrap_or_else(|| Utc::now().to_rfc3339());
+    validate_initial_balance(initial_balance)?;
+    let color = account
+        .color
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "#10b981".to_string());
+    let icon = account
+        .icon
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "wallet".to_string());
+    let created_at = account
+        .created_at
+        .unwrap_or_else(|| Utc::now().to_rfc3339());
     let updated_at = Utc::now().to_rfc3339();
 
     conn.execute(
@@ -160,7 +178,9 @@ pub fn update_account(
     let trimmed_id = account_id.trim();
     let trimmed_name = name.trim();
     if trimmed_id.is_empty() || trimmed_name.is_empty() {
-        return Err(SynapseError::Validation("ID and name cannot be empty".into()));
+        return Err(SynapseError::Validation(
+            "ID and name cannot be empty".into(),
+        ));
     }
 
     let resolved_color = color
@@ -172,32 +192,59 @@ pub fn update_account(
         .filter(|s| !s.is_empty())
         .unwrap_or("wallet");
     let balance = initial_balance.unwrap_or(0.0);
+    validate_initial_balance(balance)?;
     let now = Utc::now().to_rfc3339();
 
     let count = conn.execute(
         "UPDATE finance_accounts 
          SET name = ?, color = ?, icon = ?, initial_balance = ?, updated_at = ? 
          WHERE id = ? AND deleted_at IS NULL",
-        params![trimmed_name, resolved_color, resolved_icon, balance, now, trimmed_id],
+        params![
+            trimmed_name,
+            resolved_color,
+            resolved_icon,
+            balance,
+            now,
+            trimmed_id
+        ],
     )?;
 
     if count == 0 {
-        return Err(SynapseError::NotFound(format!("Account {} not found", trimmed_id)));
+        return Err(SynapseError::NotFound(format!(
+            "Account {} not found",
+            trimmed_id
+        )));
     }
 
     Ok(())
 }
 
 pub fn update_account_struct(conn: &rusqlite::Connection, account: Account) -> Result<i32> {
-    let color = account.color.unwrap_or_else(|| "#10b981".to_string());
-    let icon = account.icon.unwrap_or_else(|| "wallet".to_string());
+    let id = account.id.trim();
+    let name = account.name.trim();
+    if id.is_empty() || name.is_empty() {
+        return Err(SynapseError::Validation(
+            "Account ID and name cannot be empty".into(),
+        ));
+    }
     let initial_balance = account.initial_balance.unwrap_or(0.0);
+    validate_initial_balance(initial_balance)?;
+    let color = account
+        .color
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "#10b981".to_string());
+    let icon = account
+        .icon
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "wallet".to_string());
 
     let count = conn.execute(
         "UPDATE finance_accounts 
          SET name = ?, color = ?, icon = ?, initial_balance = ?, updated_at = CURRENT_TIMESTAMP 
-         WHERE id = ?",
-        params![account.name, color, icon, initial_balance, account.id],
+         WHERE id = ? AND deleted_at IS NULL",
+        params![name, color, icon, initial_balance, id],
     )?;
 
     Ok(count as i32)
@@ -211,9 +258,34 @@ pub fn delete_account(conn: &rusqlite::Connection, account_id: &str) -> Result<b
 
     let now = Utc::now().to_rfc3339();
     let count = conn.execute(
-        "UPDATE finance_accounts SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+        "UPDATE finance_accounts SET deleted_at = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL
+           AND (SELECT COUNT(*) FROM finance_accounts WHERE deleted_at IS NULL) > 1",
         params![now, now, trimmed_id],
     )?;
 
-    Ok(count > 0)
+    if count > 0 {
+        return Ok(true);
+    }
+    let account_exists: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM finance_accounts WHERE id = ? AND deleted_at IS NULL)",
+        [trimmed_id],
+        |row| row.get(0),
+    )?;
+    if account_exists {
+        return Err(SynapseError::Validation(
+            "At least one active finance account must remain".into(),
+        ));
+    }
+    Ok(false)
+}
+
+fn validate_initial_balance(balance: f64) -> Result<()> {
+    const MAX_CURRENCY_AMOUNT: f64 = i64::MAX as f64 / 100.0;
+    if !balance.is_finite() || balance.abs() > MAX_CURRENCY_AMOUNT {
+        return Err(SynapseError::Validation(
+            "Initial balance must be a finite currency amount".into(),
+        ));
+    }
+    Ok(())
 }
