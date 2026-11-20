@@ -30,20 +30,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.features.diagrams.model.DiagramItem
+import com.synapse.features.diagrams.model.DrawPath
+import com.synapse.features.diagrams.ui.dialogs.CreateDiagramSheet
 import com.synapse.ui.theme.*
-
-data class DiagramItem(
-    val id: String,
-    val title: String,
-    val icon: String = "🎨",
-    val updatedAt: String = "Hoje"
-)
-
-data class DrawPath(
-    val path: Path,
-    val color: Color,
-    val strokeWidth: Float = 6f
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -270,63 +260,26 @@ fun DiagramsScreen(
                 }
             }
 
-            // Create Diagram Modal
             if (isCreatingDiagram) {
-                ModalBottomSheet(
-                    onDismissRequest = { isCreatingDiagram = false },
-                    containerColor = DarkSurfaceElevated,
-                    dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .padding(bottom = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Text(
-                            text = "Novo Diagrama ou Lousa",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-
-                        OutlinedTextField(
-                            value = newTitle,
-                            onValueChange = { newTitle = it },
-                            label = { Text("Título da Lousa") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
+                CreateDiagramSheet(
+                    title = newTitle,
+                    onTitleChange = { newTitle = it },
+                    onDismiss = { isCreatingDiagram = false },
+                    onCreate = {
+                        if (newTitle.isNotBlank()) {
+                            val created = DiagramItem(
+                                id = java.util.UUID.randomUUID().toString(),
+                                title = newTitle.trim(),
+                                icon = "🎨"
                             )
-                        )
-
-                        Button(
-                            onClick = {
-                                if (newTitle.isNotBlank()) {
-                                    val created = DiagramItem(
-                                        id = java.util.UUID.randomUUID().toString(),
-                                        title = newTitle.trim(),
-                                        icon = "🎨"
-                                    )
-                                    diagrams = diagrams + created
-                                    newTitle = ""
-                                    isCreatingDiagram = false
-                                    activeDiagram = created
-                                    paths.clear()
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("Criar Lousa", fontWeight = FontWeight.Bold)
+                            diagrams = diagrams + created
+                            newTitle = ""
+                            isCreatingDiagram = false
+                            activeDiagram = created
+                            paths.clear()
                         }
                     }
-                }
+                )
             }
         }
     }
