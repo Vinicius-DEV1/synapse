@@ -23,17 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.features.calendar.model.CalendarEventItem
+import com.synapse.features.calendar.ui.dialogs.NewEventSheet
 import com.synapse.ui.theme.*
-
-data class CalendarEventItem(
-    val id: String,
-    val title: String,
-    val description: String = "",
-    val date: String,
-    val time: String = "09:00",
-    val color: Color = BrandIndigo,
-    val isCompleted: Boolean = false
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -275,132 +267,36 @@ fun CalendarScreen(
             }
         }
 
-        // New Event Bottom Sheet
         if (isAddingEvent) {
-            ModalBottomSheet(
-                onDismissRequest = { isAddingEvent = false },
-                containerColor = DarkSurfaceElevated,
-                dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Text(
-                        text = "Novo Compromisso na Agenda",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-
-                    OutlinedTextField(
-                        value = newTitle,
-                        onValueChange = { newTitle = it },
-                        label = { Text("Título do Evento") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = BrandIndigo,
-                            unfocusedBorderColor = DarkBorder
+            NewEventSheet(
+                title = newTitle,
+                description = newDesc,
+                date = newDate,
+                time = newTime,
+                selectedColor = selectedColor,
+                colorOptions = colorOptions,
+                onTitleChange = { newTitle = it },
+                onDescriptionChange = { newDesc = it },
+                onDateChange = { newDate = it },
+                onTimeChange = { newTime = it },
+                onColorChange = { selectedColor = it },
+                onDismiss = { isAddingEvent = false },
+                onSave = {
+                    if (newTitle.isNotBlank()) {
+                        events = events + CalendarEventItem(
+                            id = java.util.UUID.randomUUID().toString(),
+                            title = newTitle.trim(),
+                            description = newDesc.trim(),
+                            date = newDate.trim(),
+                            time = newTime.trim(),
+                            color = selectedColor
                         )
-                    )
-
-                    OutlinedTextField(
-                        value = newDesc,
-                        onValueChange = { newDesc = it },
-                        label = { Text("Descrição (opcional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = BrandIndigo,
-                            unfocusedBorderColor = DarkBorder
-                        )
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newDate,
-                            onValueChange = { newDate = it },
-                            label = { Text("Data") },
-                            modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-                        OutlinedTextField(
-                            value = newTime,
-                            onValueChange = { newTime = it },
-                            label = { Text("Hora") },
-                            modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-                    }
-
-                    // Color tags
-                    Text(
-                        text = "Etiqueta de Cor",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        colorOptions.forEach { col ->
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(col)
-                                    .border(
-                                        2.dp,
-                                        if (selectedColor == col) Color.White else Color.Transparent,
-                                        CircleShape
-                                    )
-                                    .clickable { selectedColor = col }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            if (newTitle.isNotBlank()) {
-                                events = events + CalendarEventItem(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    title = newTitle.trim(),
-                                    description = newDesc.trim(),
-                                    date = newDate.trim(),
-                                    time = newTime.trim(),
-                                    color = selectedColor
-                                )
-                                newTitle = ""
-                                newDesc = ""
-                                isAddingEvent = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Salvar Compromisso", fontWeight = FontWeight.Bold)
+                        newTitle = ""
+                        newDesc = ""
+                        isAddingEvent = false
                     }
                 }
-            }
+            )
         }
     }
 }
