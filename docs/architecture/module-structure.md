@@ -31,7 +31,7 @@ Keep persisted route keys, database identifiers, and public API names stable dur
 
 ## Verified Navigation Coverage
 
-**Inventory date:** 2026-11-11.
+**Inventory date:** 2026-11-20.
 
 This inventory records whether a client has a top-level route or overlay entry point. A route does not certify feature parity; the Qt feature comparison remains in the [native desktop parity matrix](../native-desktop-parity.md).
 
@@ -46,7 +46,7 @@ This inventory records whether a client has a top-level route or overlay entry p
 | Diagrams | Route | Route | Route | Hosts React app |
 | Calendar | Route | Route | Route | Hosts React app |
 | Culture | Route | Route | Route | Hosts React app |
-| Finance | Route | Route | Route | Hosts React app |
+| Finance | Route | Route | Native Compose route with typed core-backed SQLite persistence; no Firebase sync | Hosts React app |
 | Focus | Route | Route | Route | Hosts React app |
 | Habits | Editor widget/API; no standalone `Tab` or `ViewFactory` route | Editor widget/modal; no standalone sidebar route | Route | Hosts React app; no separate shell route |
 | Vault | Route | Route | Route | Hosts React app |
@@ -75,7 +75,7 @@ The React app intentionally keeps its top-level `components/`, `hooks/`, `store/
 
 Qt keeps QML in a feature-first tree and groups thin C++ controllers under the same module ID. Controllers expose `Q_PROPERTY` and signals to QML while delegating SQLite queries and domain calculations to `core/synapse-core/` via `bridges/bridge-qt/`. `src/synapse_controller.*`, `src/main.cpp`, media integration, and platform helpers remain at the shared app level because they compose or serve multiple modules.
 
-Android Compose groups feature screens under `features/<module>/ui/`. Add `domain/`, `data/`, or `viewmodel/` only when the module owns that responsibility; do not create empty placeholder packages. Theme, core bindings, and media primitives stay shared.
+Android Compose groups feature screens under `features/<module>/ui/`. The Finance module owns its `data/` repository and `ui/` ViewModel, both delegating domain rules and persistence to `core/synapse-core/` through UniFFI. See the [native Android Finance guide](../mobile-android-finance.md) for its implemented API and cloud-sync/encryption gaps. Add `domain/`, `data/`, or `viewmodel/` only when the module owns that responsibility; do not create empty placeholder packages. Theme, core bindings, and media primitives stay shared.
 
 The Expo WebView project is a host shell, not a second copy of the React product. Keep its navigation bridge, safe-area integration, and native capabilities in the shell; implement product features in the React app or in the fully native Android app.
 

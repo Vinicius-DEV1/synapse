@@ -13,7 +13,7 @@ This review compared the Android bridge declarations, Kotlin call sites, Rust br
 - **Locations:** `apps/mobile-android/app/build.gradle.kts`, `tools/scripts/build-android.sh`, `bridges/bridge-uniffi/src/lib.rs`, and the former manual declarations in `apps/mobile-android/app/src/main/java/com/synapse/core/SynapseCoreBindings.kt`
 - **Root cause:** The app declared raw JNA symbols that the UniFFI library did not export. The Qt bridge used another incompatible C ABI. The Android build helper only created empty `jniLibs` folders and still let the universal pipeline claim success.
 - **Resolution:** Removed the manual ABI declarations and generic raw-SQL Android wrapper. Gradle now invokes a pinned NDK/cargo-ndk build for all packaged ABIs, generates Kotlin from the same UniFFI library version, and packages only the required bridge library from ignored build output. Missing tools or ABI outputs now fail the build. A device-side FSRS test confirms generated Kotlin can call the Rust library.
-- **Status:** Resolved for bridge generation, packaging, and runtime loading. Android typed repositories, account authentication, key migration, and real Anki/video data flows remain separate open items.
+- **Status:** Resolved for bridge generation, packaging, and runtime loading. Finance now has a typed repository; other module repositories, account authentication, key migration, and real Anki/video data flows remain separate open items.
 
 ### ANDROID-02 — Encrypted video reader leaked when `open()` failed after native allocation
 
@@ -76,8 +76,8 @@ This review compared the Android bridge declarations, Kotlin call sites, Rust br
 - **Locations:** Android calendar, finance, habits, library, culture, diagrams, and trash screens; `apps/mobile-android/app/src/main/java/com/synapse/MainActivity.kt`
 - **Root cause:** Several screens mutate lists stored with Compose `remember` but do not call a repository or storage API. `MainActivity` replaces the active route, so navigating away disposes that state; process recreation also discards it. There is no typed Android module persistence or Firebase sync path to restore those changes.
 - **Risk scenario:** A user creates or edits an item and then changes routes or restarts the app; the screen returns empty and the edit is lost.
-- **Mitigation gate:** Implement module operations through typed `bridge-uniffi`/`synapse-core` repositories and verify local transactions before enabling real Android edits. Do not claim Android module persistence or sync until that path exists.
-- **Status:** Open. A generated UniFFI ABI is now packaged; typed Android repositories and Firebase sync still need to be implemented before module edits can persist.
+- **Mitigation gate:** Use typed `bridge-uniffi`/`synapse-core` repositories and verify local transactions before enabling real Android edits. Track Firebase synchronization and encryption as separate acceptance gates.
+- **Status:** Partially resolved. Finance now persists through a typed core-backed SQLite API and is covered by Rust and Android instrumentation checks. Other Android module mutations remain in-memory, and Finance does not sync to Firebase.
 
 ### ANDROID-08 — Quiz completion state was never presented
 
@@ -97,15 +97,26 @@ This review compared the Android bridge declarations, Kotlin call sites, Rust br
 - **Resolution:** The counter now starts at zero and completed focus minutes accumulate the actual selected preset duration.
 - **Status:** Resolved. `:app:assembleDebug` passed, and the `Medium_Phone_API_37.0` emulator showed `0 ciclos concluídos hoje (0 min)` on a fresh launch.
 
+### ANDROID-10 — Finance edits were not persisted and the screen displayed sample state
+
+- **Severity:** High
+- **Category:** Data integrity, persistence, domain integration
+- **Locations:** `apps/mobile-android/app/src/main/java/com/synapse/features/finance/`, `bridges/bridge-uniffi/src/finance/`, and `core/synapse-core/src/domain/finance/`
+- **Root cause:** Finance UI state was local to Compose and demo models/components did not call a real repository. The typed UniFFI surface did not expose the complete account, transaction, loan, wishlist, and summary operations required by the screen.
+- **Resolution:** Replaced the Android Finance demo with native Compose views backed by a lifecycle ViewModel and an IO-dispatched repository. Added typed UniFFI operations for Finance CRUD and core atomic operations for pending confirmation, loan payments/reopening, and wishlist acquisition. Added SQLite migrations for transaction update timestamps and loan person fields, and protected linked loan totals and the invariant that one active account remains.
+- **Status:** Resolved for local Android Finance persistence. Rust domain/migration tests, generated-binding Android instrumentation, debug build, and emulator screen launch passed. Firebase synchronization, account/key migration, and field encryption remain open; see the [Android Finance guide](../mobile-android-finance.md).
+
 ## Verification and Limits
 
 - `git diff --check` — passed.
-- [x] `cargo test --manifest-path bridges/bridge-uniffi/Cargo.toml --lib` — 2 bridge tests passed after FSRS input validation and crypto fixture correction.
+- [x] `cargo test -p synapse-bridge-uniffi --lib` — 3 bridge tests passed, including Finance operations through UniFFI.
+- [x] `cargo test -p synapse-core domain::finance::tests --lib` — 12 Finance domain tests passed.
+- [x] `cargo test -p synapse-core db::migrations::tests --lib` — 5 migration tests passed.
 - `apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug` — passed with Gradle 8.9, JDK 17, NDK `30.0.16248370`, and `cargo-ndk` 4.1.2. The build task compiles the bridge and generates version-matched Kotlin bindings.
-- `apps/mobile-android/gradlew -p apps/mobile-android :app:connectedDebugAndroidTest` — passed. The instrumented test constructed the generated `SynapseFsrs`, called the Rust review API, validated the result, and closed the native handle.
+- `apps/mobile-android/gradlew -p apps/mobile-android :app:connectedDebugAndroidTest :app:assembleDebug` — passed on `Medium_Phone_API_37.0`; both instrumentation tests passed, covering Finance CRUD, linked operations, SQLite reopen, and the FSRS binding.
 - `tools/scripts/build-all.sh` — passed for native Rust bridges, WebAssembly, Qt desktop, and Android NDK bridge/bindings.
-- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`, SHA-256 `6c917d09b7298d73c691684764c473c532f4bc5cf4af0e7fce085fb97ded6bc6`, package `com.synapse.app`, version `2.0.0` (version code `200`). The APK contains `libsynapse_bridge_uniffi.so` for `arm64-v8a`, `x86_64`, and `armeabi-v7a`; no unused `libsynapse_core.so` is packaged.
-- The final APK was installed and launched on the `Medium_Phone_API_37.0` emulator. Calendar, Finance, Habits, Library, Culture, Diagrams, and Video displayed their empty states. Quiz interaction showed the 3/3 completion result and reset to question 1. No fatal application exception appeared. These checks do not exercise real persisted records, Firebase sync, or encrypted video playback.
+- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`, SHA-256 `10c3ea007b5bdb52dbcb9259f081598627b9417b9777a7cf27ef9662e6454d3a`, package `com.synapse.app`, version `2.0.0` (version code `200`). The APK contains `libsynapse_bridge_uniffi.so` for `arm64-v8a`, `x86_64`, and `armeabi-v7a`; no unused `libsynapse_core.so` is packaged.
+- The current APK was installed and launched on the `Medium_Phone_API_37.0` emulator; Finance route navigation and a UI-created expense followed by archive were exercised, and the summary returned to zero without an app crash. Earlier route smoke checks for Calendar, Habits, Library, Culture, Diagrams, Video, and Quiz remain recorded above. Firebase sync and encrypted video playback were not exercised; see the [Android Finance guide](../mobile-android-finance.md).
 - Home, Notes, Anki, Trash, and Vault empty states were checked on the earlier debug APK after fabricated personal defaults were removed; those screens were not modified by the later UI extractions.
 - Native libraries and generated Kotlin sources live under ignored `apps/mobile-android/app/build/generated/`; no generated binary is committed under `app/src/main/jniLibs/`.
 - [x] Generate and consume UniFFI Kotlin bindings that match `bridges/bridge-uniffi`.
