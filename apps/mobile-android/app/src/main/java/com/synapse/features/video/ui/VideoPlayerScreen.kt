@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -50,12 +51,13 @@ import androidx.media3.ui.PlayerView
 import com.synapse.media.EncryptedChunkDataSource
 import com.synapse.ui.theme.*
 import kotlinx.coroutines.delay
+import java.io.File
 
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerScreen(
-    videoPath: String = "/data/user/0/com.synapse.app/files/media/aula01.mp4.enc",
-    keyHex: String = "0000000000000000000000000000000000000000000000000000000000000000"
+    videoPath: String,
+    keyHex: String,
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -70,8 +72,7 @@ fun VideoPlayerScreen(
 
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
-    // ExoPlayer initialized with EncryptedChunkDataSource for zero-copy hardware decoding
-    val exoPlayer = remember {
+    val exoPlayer = remember(context, videoPath, keyHex) {
         val dataSourceFactory = EncryptedChunkDataSource.Factory(keyHex)
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
 
@@ -79,7 +80,7 @@ fun VideoPlayerScreen(
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             .apply {
-                val uri = Uri.parse("synapse-enc://$videoPath?key=$keyHex")
+                val uri = Uri.fromFile(File(videoPath))
                 setMediaItem(MediaItem.fromUri(uri))
                 prepare()
                 playWhenReady = false
@@ -94,12 +95,16 @@ fun VideoPlayerScreen(
                             durationMs = duration.coerceAtLeast(1L)
                         }
                     }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        toastMessage = "Não foi possível reproduzir o vídeo: ${error.errorCodeName}"
+                    }
                 })
             }
     }
 
     // Auto-update playback progress
-    LaunchedEffect(isPlaying) {
+    LaunchedEffect(isPlaying, exoPlayer) {
         while (isPlaying) {
             currentPositionMs = exoPlayer.currentPosition
             delay(500)
@@ -115,7 +120,7 @@ fun VideoPlayerScreen(
     }
 
     // Cleanup ExoPlayer on dispose
-    DisposableEffect(Unit) {
+    DisposableEffect(exoPlayer) {
         onDispose {
             exoPlayer.release()
         }
@@ -125,7 +130,7 @@ fun VideoPlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(Unit) {
+            .pointerInput(exoPlayer) {
                 detectTapGestures(
                     onTap = { controlsVisible = !controlsVisible },
                     onDoubleTap = { offset ->
@@ -146,7 +151,7 @@ fun VideoPlayerScreen(
                     }
                 )
             }
-            .pointerInput(Unit) {
+            .pointerInput(exoPlayer) {
                 detectVerticalDragGestures { change, dragAmount ->
                     val screenWidth = size.width
                     if (change.position.x < screenWidth / 2) {

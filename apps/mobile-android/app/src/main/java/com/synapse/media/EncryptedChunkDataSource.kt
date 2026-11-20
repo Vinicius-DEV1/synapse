@@ -8,10 +8,9 @@ import androidx.media3.datasource.DataSpec
 import com.synapse.core.SynapseVideoReader
 import java.io.IOException
 
-/**
- * Custom Media3 / ExoPlayer DataSource for zero-copy streaming of encrypted .enc media
- * Directly backed by synapse-core Rust engine via JNI.
- */
+private val ENCRYPTION_KEY_HEX_PATTERN = Regex("[0-9a-fA-F]{64}")
+
+/** Custom Media3 data source for streaming encrypted media through the native Synapse bridge. */
 class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : BaseDataSource(/* isNetwork = */ false) {
 
     private var videoReader: SynapseVideoReader? = null
@@ -30,8 +29,14 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
         }
 
         val filePath = uri?.path ?: throw IOException("Invalid file path in URI: $uri")
+        if (filePath.isBlank()) {
+            throw IOException("Encrypted video path must not be blank.")
+        }
         val keyHex = uri?.getQueryParameter("key") ?: defaultKeyHex
             ?: throw IOException("No decryption key provided for encrypted video: $filePath")
+        if (!ENCRYPTION_KEY_HEX_PATTERN.matches(keyHex)) {
+            throw IOException("Encrypted video key must be a 32-byte hexadecimal value.")
+        }
 
         transferInitializing(dataSpec)
 

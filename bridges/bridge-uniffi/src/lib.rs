@@ -14,6 +14,8 @@ pub enum SynapseError {
     CryptoError { msg: String },
     #[error("IO error: {msg}")]
     IoError { msg: String },
+    #[error("Invalid input: {msg}")]
+    InvalidInput { msg: String },
 }
 
 #[derive(uniffi::Record)]
@@ -45,9 +47,7 @@ impl SynapseDatabase {
             .map_err(|e| SynapseError::DatabaseError { msg: e })?;
         let rows = conn
             .execute(&sql, [])
-            .map_err(|e| SynapseError::DatabaseError {
-                msg: e.to_string(),
-            })?;
+            .map_err(|e| SynapseError::DatabaseError { msg: e.to_string() })?;
         Ok(rows as u64)
     }
 
@@ -58,9 +58,7 @@ impl SynapseDatabase {
             .map_err(|e| SynapseError::DatabaseError { msg: e })?;
         let res: String = conn
             .query_row(&sql, [], |r| r.get(0))
-            .map_err(|e| SynapseError::DatabaseError {
-                msg: e.to_string(),
-            })?;
+            .map_err(|e| SynapseError::DatabaseError { msg: e.to_string() })?;
         Ok(res)
     }
 
@@ -75,9 +73,7 @@ impl SynapseDatabase {
                 [&table_name],
                 |r| r.get(0),
             )
-            .map_err(|e| SynapseError::DatabaseError {
-                msg: e.to_string(),
-            })?;
+            .map_err(|e| SynapseError::DatabaseError { msg: e.to_string() })?;
         Ok(count > 0)
     }
 }
@@ -132,20 +128,39 @@ impl SynapseFsrs {
         state: u8,
         rating: u8,
         elapsed_days: i32,
-    ) -> SrsCardResult {
+    ) -> Result<SrsCardResult, SynapseError> {
         let card_state = match state {
+            0 => State::New,
             1 => State::Learning,
             2 => State::Review,
             3 => State::Relearning,
-            _ => State::New,
+            _ => {
+                return Err(SynapseError::InvalidInput {
+                    msg: format!("Unknown FSRS card state: {state}"),
+                })
+            }
         };
         let rating_enum = match rating {
             1 => Rating::Again,
             2 => Rating::Hard,
             3 => Rating::Good,
             4 => Rating::Easy,
-            _ => Rating::Good,
+            _ => {
+                return Err(SynapseError::InvalidInput {
+                    msg: format!("Unknown FSRS rating: {rating}"),
+                })
+            }
         };
+        if elapsed_days < 0 {
+            return Err(SynapseError::InvalidInput {
+                msg: "Elapsed days must not be negative".to_string(),
+            });
+        }
+        if !stability.is_finite() || !difficulty.is_finite() {
+            return Err(SynapseError::InvalidInput {
+                msg: "FSRS stability and difficulty must be finite numbers".to_string(),
+            });
+        }
 
         let card = Card {
             stability,
@@ -171,13 +186,13 @@ impl SynapseFsrs {
             State::Relearning => 3,
         };
 
-        SrsCardResult {
+        Ok(SrsCardResult {
             stability: updated.stability,
             difficulty: updated.difficulty,
             scheduled_days: updated.scheduled_days,
             retrievability: r,
             state: state_val,
-        }
+        })
     }
 
     pub fn retrievability(&self, elapsed_days: f64, stability: f64) -> f64 {
@@ -202,7 +217,8 @@ pub fn hash_auth_password(password: String) -> String {
 
 #[uniffi::export]
 pub fn encrypt_module_key(module_key: String, password: String) -> Result<String, SynapseError> {
-    crypto::encrypt_module_key(&module_key, &password).map_err(|e| SynapseError::CryptoError { msg: e })
+    crypto::encrypt_module_key(&module_key, &password)
+        .map_err(|e| SynapseError::CryptoError { msg: e })
 }
 
 #[uniffi::export]
@@ -238,15 +254,20 @@ mod tests {
     #[test]
     fn test_uniffi_fsrs_and_crypto() {
         let fsrs = SynapseFsrs::new();
-        let result = fsrs.review(0.0, 0.0, 0, 3, 0); // Rating 3 = Good on New card
+        let result = fsrs.review(0.0, 0.0, 0, 3, 0).unwrap(); // Rating 3 = Good on New card
         assert!(result.stability > 0.0);
         assert!(result.scheduled_days > 0);
+
+        assert!(fsrs.review(0.0, 0.0, 0, 0, 0).is_err());
+        assert!(fsrs.review(0.0, 0.0, 4, 3, 0).is_err());
+        assert!(fsrs.review(0.0, 0.0, 0, 3, -1).is_err());
+        assert!(fsrs.review(f64::NAN, 0.0, 0, 3, 0).is_err());
 
         let pass = "minha_senha_super_secreta_123".to_string();
         let master_key_hex = derive_master_key(pass.clone());
         assert_eq!(master_key_hex.len(), 64);
 
-        let mod_key = "a1b2c3d4e5f60718293a4b5c6d7e8f90".to_string();
+        let mod_key = "a1".repeat(32);
         let enc = encrypt_module_key(mod_key.clone(), pass.clone()).unwrap();
         let dec = decrypt_module_key(enc, pass).unwrap();
         assert_eq!(dec, mod_key);
