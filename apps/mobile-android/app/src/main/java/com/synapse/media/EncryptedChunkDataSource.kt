@@ -44,7 +44,11 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
         try {
             val openedReader = SynapseVideoReader.open(filePath, keyHex)
             reader = openedReader
-            val totalSize = openedReader.size()
+            val nativeSize = openedReader.size()
+            if (nativeSize > Long.MAX_VALUE.toULong()) {
+                throw IOException("Encrypted video size exceeds the supported range.")
+            }
+            val totalSize = nativeSize.toLong()
 
             if (totalSize < 0) {
                 throw IOException("Encrypted video size is unavailable.")
@@ -96,6 +100,9 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        if (offset < 0 || length < 0 || offset > buffer.size || length > buffer.size - offset) {
+            throw IOException("Requested read range is outside the destination buffer.")
+        }
         if (length == 0) return 0
         if (bytesRemaining == 0L) return C.RESULT_END_OF_INPUT
 
@@ -103,7 +110,7 @@ class EncryptedChunkDataSource(private val defaultKeyHex: String? = null) : Base
         val bytesToRead = length.toLong().coerceAtMost(bytesRemaining).toInt()
 
         return try {
-            val decryptedData = reader.readAt(currentPosition, bytesToRead)
+            val decryptedData = reader.readAt(currentPosition.toULong(), bytesToRead.toUInt())
             if (decryptedData.isEmpty()) {
                 return C.RESULT_END_OF_INPUT
             }

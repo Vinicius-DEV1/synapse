@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use synapse_core::crypto;
-use synapse_core::db::Database;
 use synapse_core::fsrs::{Card, FsrsEngine, Rating, State};
 use synapse_core::video::EncryptedVideoReader;
 
@@ -8,8 +7,6 @@ uniffi::setup_scaffolding!();
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum SynapseError {
-    #[error("Database error: {msg}")]
-    DatabaseError { msg: String },
     #[error("Crypto error: {msg}")]
     CryptoError { msg: String },
     #[error("IO error: {msg}")]
@@ -25,57 +22,6 @@ pub struct SrsCardResult {
     pub scheduled_days: i32,
     pub retrievability: f64,
     pub state: u8,
-}
-
-#[derive(uniffi::Object)]
-pub struct SynapseDatabase {
-    inner: Database,
-}
-
-#[uniffi::export]
-impl SynapseDatabase {
-    #[uniffi::constructor]
-    pub fn open(path: String) -> Result<Arc<Self>, SynapseError> {
-        let db = Database::open(&path).map_err(|e| SynapseError::DatabaseError { msg: e })?;
-        Ok(Arc::new(Self { inner: db }))
-    }
-
-    pub fn execute(&self, sql: String) -> Result<u64, SynapseError> {
-        let conn = self
-            .inner
-            .lock()
-            .map_err(|e| SynapseError::DatabaseError { msg: e })?;
-        let rows = conn
-            .execute(&sql, [])
-            .map_err(|e| SynapseError::DatabaseError { msg: e.to_string() })?;
-        Ok(rows as u64)
-    }
-
-    pub fn query_single_string(&self, sql: String) -> Result<String, SynapseError> {
-        let conn = self
-            .inner
-            .lock()
-            .map_err(|e| SynapseError::DatabaseError { msg: e })?;
-        let res: String = conn
-            .query_row(&sql, [], |r| r.get(0))
-            .map_err(|e| SynapseError::DatabaseError { msg: e.to_string() })?;
-        Ok(res)
-    }
-
-    pub fn table_exists(&self, table_name: String) -> Result<bool, SynapseError> {
-        let conn = self
-            .inner
-            .lock()
-            .map_err(|e| SynapseError::DatabaseError { msg: e })?;
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?",
-                [&table_name],
-                |r| r.get(0),
-            )
-            .map_err(|e| SynapseError::DatabaseError { msg: e.to_string() })?;
-        Ok(count > 0)
-    }
 }
 
 #[derive(uniffi::Object)]
@@ -233,20 +179,27 @@ pub fn decrypt_module_key(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use synapse_core::Database;
     use tempfile::NamedTempFile;
 
     #[test]
-    fn test_uniffi_database_lifecycle() {
+    fn test_canonical_database_initialization() {
         let temp_file = NamedTempFile::new().unwrap();
-        let db_path = temp_file.path().to_str().unwrap().to_string();
+        let db = Database::open(temp_file.path()).expect("Failed to initialize core database");
+        let conn = db.lock().expect("Failed to acquire core database lock");
+        for table in ["pages", "keychain", "habits"] {
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?",
+                    [table],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1, "Canonical table {table} should exist");
+        }
 
-        let db = SynapseDatabase::open(db_path).expect("Failed to open db via uniffi");
-        assert!(db.table_exists("pages".to_string()).unwrap());
-        assert!(db.table_exists("keychain".to_string()).unwrap());
-        assert!(db.table_exists("habits".to_string()).unwrap());
-
-        let res = db
-            .query_single_string("PRAGMA journal_mode".to_string())
+        let res = conn
+            .query_row("PRAGMA journal_mode", [], |row| row.get::<_, String>(0))
             .unwrap();
         assert_eq!(res.to_lowercase(), "wal");
     }

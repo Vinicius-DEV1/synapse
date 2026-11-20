@@ -68,8 +68,8 @@ fun AnkiStudyScreen(
         checkNotNull(fsrs).review(
             stability = currentCard.stability,
             difficulty = currentCard.difficulty,
-            state = 0,
-            rating = rating,
+            state = 0u.toUByte(),
+            rating = rating.toUByte(),
             elapsedDays = 0
         )
 
