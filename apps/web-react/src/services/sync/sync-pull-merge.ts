@@ -48,14 +48,15 @@ export async function prepareRowForUpsert(
   freshRow: SyncRow | undefined
 ): Promise<PreparedUpsert> {
   const { docSnap, cloudData, parsed } = result;
+  const currentLocalRow = freshRow ?? localRow;
   const cloudTime = Math.max(
     parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0),
     parseDateSafe(cloudData.deletedAt || 0),
   );
-  const localTime = localRow
+  const localTime = currentLocalRow
     ? Math.max(
-      parseDateSafe(localRow.updated_at || localRow.created_at || 0),
-      parseDateSafe(localRow.deleted_at || 0),
+      parseDateSafe(currentLocalRow.updated_at || currentLocalRow.created_at || 0),
+      parseDateSafe(currentLocalRow.deleted_at || 0),
     )
     : -1;
 
@@ -83,7 +84,7 @@ export async function prepareRowForUpsert(
   // CRDT merge for pages (Yjs)
   if (
     table === 'pages' &&
-    typeof localRow?.crdt_state === 'string' &&
+    typeof currentLocalRow?.crdt_state === 'string' &&
     parsed &&
     typeof parsed.crdt_state === 'string'
   ) {
@@ -94,7 +95,7 @@ export async function prepareRowForUpsert(
       ]);
       Y = Yjs;
       yjsUtils = utils;
-      const localCrdtState = localRow.crdt_state;
+      const localCrdtState = currentLocalRow.crdt_state;
       const cloudCrdtState = parsed.crdt_state;
       if (typeof localCrdtState !== 'string' || typeof cloudCrdtState !== 'string') {
         throw new Error('Page CRDT state changed during merge preparation.');
@@ -115,8 +116,15 @@ export async function prepareRowForUpsert(
         }
 
         if (localTime > cloudTime) {
-          Object.assign(rowToUpsert, localRow);
+          Object.assign(rowToUpsert, currentLocalRow);
           rowToUpsert.crdt_state = mergedCrdtState;
+        }
+        if (mergedCrdtState !== cloudCrdtState) {
+          const localUpdatedAt = parseDateSafe(currentLocalRow.updated_at || currentLocalRow.created_at || 0);
+          const cloudUpdatedAt = parseDateSafe(cloudData.updatedAt || cloudData.createdAt || 0);
+          rowToUpsert.updated_at = new Date(
+            Math.max(Date.now(), localUpdatedAt, cloudUpdatedAt) + 1
+          ).toISOString();
         }
       } finally {
         ydoc.destroy();
@@ -130,8 +138,8 @@ export async function prepareRowForUpsert(
       (cloudData.deletedAt !== undefined && cloudData.deletedAt !== null) ||
       (parsed && parsed.deleted_at)
     );
-    if (isCloudDeleted && !localRow?.deleted_at) {
-      Object.assign(rowToUpsert, localRow);
+    if (isCloudDeleted && !currentLocalRow?.deleted_at) {
+      Object.assign(rowToUpsert, currentLocalRow);
       rowToUpsert.deleted_at = normalizeCloudTimestamp(cloudData.deletedAt, 'deletedAt')
         || normalizeCloudTimestamp(parsed?.deleted_at, 'deleted_at')
         || new Date().toISOString();
@@ -140,9 +148,9 @@ export async function prepareRowForUpsert(
         table === 'pages' &&
         parsed &&
         parsed.content &&
-        localRow &&
-        localRow.content &&
-        parsed.content !== localRow.content &&
+        currentLocalRow &&
+        currentLocalRow.content &&
+        parsed.content !== currentLocalRow.content &&
         typeof window !== 'undefined' &&
         window.api?.savePageHistory
       ) {
@@ -158,16 +166,16 @@ export async function prepareRowForUpsert(
   } else {
     if (
       table === 'pages' &&
-      localRow &&
-      localRow.content &&
+      currentLocalRow &&
+      currentLocalRow.content &&
       parsed &&
       parsed.content &&
-      localRow.content !== parsed.content &&
+      currentLocalRow.content !== parsed.content &&
       typeof window !== 'undefined' &&
       window.api?.savePageHistory
     ) {
       try {
-        await window.api.savePageHistory(result.docSnap.id, String(localRow.content));
+        await window.api.savePageHistory(result.docSnap.id, String(currentLocalRow.content));
       } catch (histErr) {
         console.warn('[Sync] Failed to archive conflicting local revision to history:', histErr);
         throw new Error(`Failed to preserve the cloud page revision for ${docSnap.id}.`, { cause: histErr });
@@ -182,7 +190,15 @@ export async function prepareRowForUpsert(
       parseDateSafe(freshRow.deleted_at || 0),
     );
     const isCloudDeleted = !TABLES_WITHOUT_DELETED_AT.has(table) && Boolean(rowToUpsert.deleted_at);
-    if (freshTime > cloudTime && (!isCloudDeleted || freshRow.deleted_at)) {
+    const preservesConcurrentPageState = table === 'pages'
+      && typeof freshRow.crdt_state === 'string'
+      && typeof rowToUpsert.crdt_state === 'string'
+      && rowToUpsert.crdt_state !== freshRow.crdt_state;
+    if (
+      freshTime > cloudTime
+      && (!isCloudDeleted || freshRow.deleted_at)
+      && !preservesConcurrentPageState
+    ) {
       return { rowToUpsert, isSkipped: true };
     }
   }

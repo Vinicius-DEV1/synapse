@@ -225,7 +225,8 @@ export async function pullAllFromCloud(
             const isLocalDeleted = Boolean(localRow?.deleted_at);
             if (isCloudDeleted !== isLocalDeleted) return true;
 
-            return cloudTime !== localTime;
+            // Yjs page states must be merged even when SQLite rounded both edits to the same second.
+            return table === 'pages' || cloudTime !== localTime;
           });
 
           const processedDocuments = await processCloudDocuments(

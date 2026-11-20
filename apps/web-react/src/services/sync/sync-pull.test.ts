@@ -10,6 +10,16 @@ import { importHexKey, encryptText } from '../crypto';
 import * as syncMonitor from './sync-monitor';
 import * as syncUtils from './sync-utils';
 import * as firestore from 'firebase/firestore';
+import * as Y from 'yjs';
+import { base64ToUint8Array, uint8ArrayToBase64 } from '../../utils/binary';
+
+function createPageState(text: string): string {
+  const document = new Y.Doc();
+  document.getText('content').insert(0, text);
+  const state = uint8ArrayToBase64(Y.encodeStateAsUpdate(document));
+  document.destroy();
+  return state;
+}
 
 describe('sync-pull service', () => {
   const testHexKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
@@ -122,6 +132,62 @@ describe('sync-pull service', () => {
     ]);
     expect(plan?.get('pages')?.checkpoint).toBe(new Date('2026-10-26T10:00:00.000Z').getTime());
     expect(plan?.get('pages')?.rowIds.has('cloud-newer')).toBe(false);
+  });
+
+  it('merges concurrent page states when local and cloud timestamps are equal', async () => {
+    const updatedAt = '2026-10-28T10:00:00.000Z';
+    const initialLocalState = createPageState('initial local edit');
+    const latestLocalState = createPageState('latest local edit');
+    const cloudState = createPageState('cloud edit');
+    const encrypted = await encryptText(JSON.stringify({
+      title: 'Cloud title',
+      content: 'cloud edit',
+      crdt_state: cloudState,
+    }), cryptoKey);
+    const initialLocalRow = {
+      id: 'concurrent-page',
+      title: 'Local title',
+      content: 'initial local edit',
+      crdt_state: initialLocalState,
+      updated_at: updatedAt,
+    };
+    const latestLocalRow = {
+      ...initialLocalRow,
+      content: 'latest local edit',
+      crdt_state: latestLocalState,
+      updated_at: updatedAt,
+    };
+    let pagesRead = 0;
+    mockApi.sync.getTable.mockImplementation(async (table: string) => {
+      if (table !== 'pages') return [];
+      pagesRead += 1;
+      return pagesRead === 1 ? [initialLocalRow] : [latestLocalRow];
+    });
+    mockApi.sync.getRowsByIds.mockImplementation(async (table: string, ids: string[]) =>
+      table === 'pages' && ids.includes(latestLocalRow.id) ? [latestLocalRow] : []
+    );
+    setFirestoreDocuments('pages', [{
+      id: latestLocalRow.id,
+      data: () => ({ encryptedData: encrypted, updatedAt }),
+    }]);
+
+    const plan = await pullAllFromCloud({ core: cryptoKey, notes: cryptoKey }, undefined, 'test-user');
+
+    expect(mockApi.sync.upsertRow).toHaveBeenCalledWith('pages', expect.objectContaining({
+      id: latestLocalRow.id,
+      crdt_state: expect.any(String),
+    }));
+    const mergedState = mockApi.sync.upsertRow.mock.calls[0]?.[1].crdt_state;
+    expect(typeof mergedState).toBe('string');
+    if (typeof mergedState !== 'string') throw new Error('Expected a merged page CRDT state.');
+    const mergedDocument = new Y.Doc();
+    Y.applyUpdate(mergedDocument, base64ToUint8Array(mergedState));
+    expect(mergedDocument.getText('content').toString()).toContain('latest local edit');
+    expect(mergedDocument.getText('content').toString()).toContain('cloud edit');
+    mergedDocument.destroy();
+    expect(Date.parse(String(mockApi.sync.upsertRow.mock.calls[0]?.[1].updated_at)))
+      .toBeGreaterThan(Date.parse(updatedAt));
+    expect(plan?.get('pages')?.rowIds.has(latestLocalRow.id)).toBe(true);
   });
 
   it('keeps the pull checkpoint unchanged when a local upsert fails', async () => {

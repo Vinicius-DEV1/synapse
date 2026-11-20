@@ -136,13 +136,14 @@ describe('sync-pull-merge service', () => {
     });
 
     it('merges Yjs CRDT states when table is pages and both have crdt_state', async () => {
-      // Create local YDoc with state
-      const localDoc = new Y.Doc();
-      const localText = localDoc.getText('content');
-      localText.insert(0, 'Local edit ');
-      const localCrdtBase64 = getYDocStateAsBase64(localDoc);
+      const initialLocalDoc = new Y.Doc();
+      initialLocalDoc.getText('content').insert(0, 'Initial local edit ');
+      const initialLocalCrdtBase64 = getYDocStateAsBase64(initialLocalDoc);
 
-      // Create cloud YDoc with state
+      const freshLocalDoc = new Y.Doc();
+      freshLocalDoc.getText('content').insert(0, 'Fresh local edit ');
+      const freshLocalCrdtBase64 = getYDocStateAsBase64(freshLocalDoc);
+
       const cloudDoc = new Y.Doc();
       const cloudText = cloudDoc.getText('content');
       cloudText.insert(0, 'Cloud edit');
@@ -156,12 +157,18 @@ describe('sync-pull-merge service', () => {
 
       const localRow = {
         id: 'page-crdt-1',
-        title: 'Collab Note Local',
-        crdt_state: localCrdtBase64,
+        title: 'Initial local title',
+        crdt_state: initialLocalCrdtBase64,
         updated_at: '2026-10-25T11:00:00.000Z',
       };
+      const freshRow = {
+        id: 'page-crdt-1',
+        title: 'Fresh local title',
+        crdt_state: freshLocalCrdtBase64,
+        updated_at: '2026-10-25T13:00:00.000Z',
+      };
 
-      const prepared = await prepareRowForUpsert(mockResult, 'pages', localRow, undefined);
+      const prepared = await prepareRowForUpsert(mockResult, 'pages', localRow, freshRow);
 
       expect(prepared.isSkipped).toBe(false);
       const mergedCrdtState = prepared.rowToUpsert.crdt_state;
@@ -172,7 +179,10 @@ describe('sync-pull-merge service', () => {
       const mergedDoc = new Y.Doc();
       const updateBytes = Uint8Array.from(atob(mergedCrdtState), c => c.charCodeAt(0));
       Y.applyUpdate(mergedDoc, updateBytes);
-      expect(mergedDoc.getText('content').toString()).toContain('Local edit');
+      expect(mergedDoc.getText('content').toString()).toContain('Fresh local edit');
+      expect(mergedDoc.getText('content').toString()).toContain('Cloud edit');
+      expect(Date.parse(String(prepared.rowToUpsert.updated_at)))
+        .toBeGreaterThan(Date.parse('2026-10-25T13:00:00.000Z'));
     });
 
     it('skips cloud update when local row is newer than cloud data', async () => {
