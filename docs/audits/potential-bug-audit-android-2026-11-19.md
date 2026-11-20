@@ -2,7 +2,7 @@
 
 ## Scope
 
-This review compared the Android JNA declarations, Kotlin call sites, Rust bridge exports, Gradle configuration, and native library packaging. It also reviewed encrypted-video reader ownership on open, read, and close paths, plus default personal data and in-memory mutation lifetimes across the Android routes.
+This review compared the Android bridge declarations, Kotlin call sites, Rust bridge exports, Gradle configuration, native library packaging, encrypted-video reader ownership, default personal data, and in-memory mutation lifetimes across Android routes. The 2026-11-20 follow-up built and exercised the generated UniFFI bridge on an emulator.
 
 ## Findings
 
@@ -10,10 +10,10 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 
 - **Severity:** Critical
 - **Category:** Platform integration, ABI safety
-- **Locations:** `apps/mobile-android/app/src/main/java/com/synapse/core/SynapseCoreBindings.kt`, `apps/mobile-android/app/build.gradle.kts`, `bridges/bridge-uniffi/src/lib.rs`, `bridges/bridge-qt/src/lib.rs`
-- **Root cause:** The app declares a JNA interface for raw symbols such as `synapse_fsrs_new`, `synapse_video_reader_read_at`, and `synapse_video_reader_free`. The UniFFI crate exposes generated UniFFI entry points, not those raw C symbols. The fallback Qt bridge exports a different C ABI, with different names and signatures. The Gradle source set points at `jniLibs`, but that directory contains no `.so` libraries and no build task produces them. Real Anki cards and explicitly selected encrypted video still require this unavailable native bridge; their empty states do not.
-- **Mitigation applied:** Removed the unsafe fallback to the Qt C ABI and made a missing Android bridge fail with a contextual error. This prevents JNA from invoking similarly named functions with incompatible argument layouts.
-- **Status:** Open. Complete the Android bridge by generating and using the version-matched UniFFI Kotlin bindings, wiring native library builds for every packaged ABI, and verifying each library's exports and runtime calls. Do not remove the Android crypto compatibility API until this replacement exists.
+- **Locations:** `apps/mobile-android/app/build.gradle.kts`, `tools/scripts/build-android.sh`, `bridges/bridge-uniffi/src/lib.rs`, and the former manual declarations in `apps/mobile-android/app/src/main/java/com/synapse/core/SynapseCoreBindings.kt`
+- **Root cause:** The app declared raw JNA symbols that the UniFFI library did not export. The Qt bridge used another incompatible C ABI. The Android build helper only created empty `jniLibs` folders and still let the universal pipeline claim success.
+- **Resolution:** Removed the manual ABI declarations and generic raw-SQL Android wrapper. Gradle now invokes a pinned NDK/cargo-ndk build for all packaged ABIs, generates Kotlin from the same UniFFI library version, and packages only the required bridge library from ignored build output. Missing tools or ABI outputs now fail the build. A device-side FSRS test confirms generated Kotlin can call the Rust library.
+- **Status:** Resolved for bridge generation, packaging, and runtime loading. Android typed repositories, account authentication, key migration, and real Anki/video data flows remain separate open items.
 
 ### ANDROID-02 — Encrypted video reader leaked when `open()` failed after native allocation
 
@@ -21,8 +21,8 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 - **Category:** Resource lifecycle, key material lifetime
 - **Location:** `apps/mobile-android/app/src/main/java/com/synapse/media/EncryptedChunkDataSource.kt`
 - **Root cause:** The native reader was stored before validating its size and requested range, while `close()` freed it only after the data source reached its opened state. An invalid range or size failure could leave the native reader allocated and retain its key past the failed open.
-- **Resolution:** The data source now closes any reader allocated during a failed open, resets its state, pairs transfer lifecycle callbacks, closes an existing reader before reopening, validates reader size and request bounds, and always releases the reader on close. `SynapseVideoReader` now rejects negative offsets and lengths and makes native close idempotent. Database, FSRS, and video native handles in the Kotlin wrappers also reject use after close and free at most once.
-- **Status:** Android Kotlin compilation and empty-state route smoke checks passed. Native open-failure cleanup and runtime bridge behavior remain unverified because no Android native library is packaged.
+- **Resolution:** The data source closes any reader allocated during a failed open, resets its state, pairs transfer lifecycle callbacks, closes an existing reader before reopening, validates reader size and request bounds, checks destination-buffer ranges, and always releases the UniFFI reader on close. UniFFI's unsigned offset/length contract prevents negative native ranges.
+- **Status:** Android compilation and FSRS bridge runtime tests passed. A real encrypted-video fixture has not yet been opened and read through the Android media pipeline, so playback and video-specific release behavior remain unverified.
 
 ### ANDROID-03 — Video keys leaked through media URIs and player state became stale
 
@@ -31,7 +31,7 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 - **Locations:** `apps/mobile-android/app/src/main/java/com/synapse/features/video/ui/VideoPlayerScreen.kt`, `apps/mobile-android/app/src/main/java/com/synapse/media/EncryptedChunkDataSource.kt`
 - **Root cause:** The player constructed a `MediaItem` URI with the decryption key in its query string, where player diagnostics or analytics could retain it. The composable also kept one player instance for its entire lifetime, so changing the path or key could continue using the previous media and key.
 - **Resolution:** Video paths now use a file URI and the key stays in the data-source factory. Placeholder path/key defaults were removed, key format is checked before native allocation, player errors use the existing notification surface, and player/effect/gesture lifetimes follow the current path, key, and player instance.
-- **Status:** Android Kotlin compilation passed. The empty video state ran in the emulator; encrypted playback, key isolation, and native reader lifecycle remain unverified because no Android native library is packaged.
+- **Status:** Android Kotlin compilation passed and the generated bridge loads in the emulator. The empty video state ran, but encrypted playback with a real file/key remains unverified. The key remains in the data-source factory and does not enter the media URI.
 
 ### BRIDGE-01 — Invalid FSRS values silently changed review semantics
 
@@ -77,7 +77,7 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 - **Root cause:** Several screens mutate lists stored with Compose `remember` but do not call a repository or storage API. `MainActivity` replaces the active route, so navigating away disposes that state; process recreation also discards it. There is no typed Android module persistence or Firebase sync path to restore those changes.
 - **Risk scenario:** A user creates or edits an item and then changes routes or restarts the app; the screen returns empty and the edit is lost.
 - **Mitigation gate:** Implement module operations through typed `bridge-uniffi`/`synapse-core` repositories and verify local transactions before enabling real Android edits. Do not claim Android module persistence or sync until that path exists.
-- **Status:** Open. The missing UniFFI ABI and native-library packaging in ANDROID-01 currently block the required core integration.
+- **Status:** Open. A generated UniFFI ABI is now packaged; typed Android repositories and Firebase sync still need to be implemented before module edits can persist.
 
 ### ANDROID-08 — Quiz completion state was never presented
 
@@ -92,19 +92,20 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 
 - `git diff --check` — passed.
 - [x] `cargo test --manifest-path bridges/bridge-uniffi/Cargo.toml --lib` — 2 bridge tests passed after FSRS input validation and crypto fixture correction.
-- `apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug` — passed with Gradle 8.9 and JDK 17. The wrapper pins the distribution SHA-256 and AndroidX is enabled in the checked-in Gradle properties.
-- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`, SHA-256 `c4b1b749e52a55cf6603dd72f653cd4c8389c14dd1f12ea80131d22e9ac46edc`, package `com.synapse.app`, version `2.0.0` (version code `200`).
-- The final APK was installed and launched on the `Medium_Phone_API_37.0` emulator. Calendar, Finance, Habits, Library, Culture, and Diagrams displayed their empty states. Quiz interaction showed the 3/3 completion result and reset to question 1. Video displayed its empty state. No fatal application exception appeared. These checks do not exercise native-backed data or encrypted playback.
+- `apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug` — passed with Gradle 8.9, JDK 17, NDK `30.0.16248370`, and `cargo-ndk` 4.1.2. The build task compiles the bridge and generates version-matched Kotlin bindings.
+- `apps/mobile-android/gradlew -p apps/mobile-android :app:connectedDebugAndroidTest` — passed. The instrumented test constructed the generated `SynapseFsrs`, called the Rust review API, validated the result, and closed the native handle.
+- `tools/scripts/build-all.sh` — passed for native Rust bridges, WebAssembly, Qt desktop, and Android NDK bridge/bindings.
+- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`, SHA-256 `4a6bc6b5aaf049800827f38268c53094b663b18eb6b500c9334c4cbefc3dac7c`, package `com.synapse.app`, version `2.0.0` (version code `200`). The APK contains `libsynapse_bridge_uniffi.so` for `arm64-v8a`, `x86_64`, and `armeabi-v7a`; no unused `libsynapse_core.so` is packaged.
+- The final APK was installed and launched on the `Medium_Phone_API_37.0` emulator. Calendar, Finance, Habits, Library, Culture, Diagrams, and Video displayed their empty states. Quiz interaction showed the 3/3 completion result and reset to question 1. No fatal application exception appeared. These checks do not exercise real persisted records, Firebase sync, or encrypted video playback.
 - Home, Notes, Anki, Trash, and Vault empty states were checked on the earlier debug APK after fabricated personal defaults were removed; those screens were not modified by the later UI extractions.
-- The installed SDK has no Android NDK directory, and `rustup target list --installed` contains only `wasm32-unknown-unknown` and `x86_64-unknown-linux-gnu`.
-- No `.so` files are present under `apps/mobile-android/app/src/main/jniLibs/`.
-- [ ] Generate and consume UniFFI Kotlin bindings that match `bridges/bridge-uniffi`.
-- [ ] Add reproducible Android native-library builds for `arm64-v8a`, `x86_64`, and `armeabi-v7a` (or explicitly revise supported ABIs with evidence).
-- [ ] Run Android unit/instrumentation tests for open-failure cleanup, repeated close, and use-after-close behavior.
-- [ ] Build and launch the Android package with the real native libraries.
-- [ ] Compile and exercise the video URI/key isolation and player lifecycle changes on Android with the real native library.
+- Native libraries and generated Kotlin sources live under ignored `apps/mobile-android/app/build/generated/`; no generated binary is committed under `app/src/main/jniLibs/`.
+- [x] Generate and consume UniFFI Kotlin bindings that match `bridges/bridge-uniffi`.
+- [x] Add reproducible Android native-library builds for `arm64-v8a`, `x86_64`, and `armeabi-v7a`.
+- [ ] Run Android instrumentation tests for encrypted-video open-failure cleanup, repeated close, and use-after-close behavior.
+- [x] Build and launch the Android package with the real native libraries.
+- [ ] Compile and exercise encrypted video URI/key isolation and playback using a real encrypted fixture.
 - [x] Verify empty Anki, video, and vault states on an installed Android debug build.
-- [ ] Wire Anki and video modules to real persisted records through the typed native bridge.
+- [ ] Wire Anki and video modules to real persisted records through typed core repositories and Firebase sync.
 - [ ] Wire credentials through typed, encrypted core APIs before accepting Android vault data.
 - [x] Review and remove the Android module sample datasets that were rendered as personal data.
 - [x] Fix the quiz completion flow and modularize the video and quiz screens; see the [UI modularization record](./android-ui-modularization-plan-2026-11-20.md).

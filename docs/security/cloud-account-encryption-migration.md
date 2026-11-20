@@ -10,7 +10,7 @@
 | Tauri desktop | Firebase email and password through the shared React client | Rust core verifies and transactionally rewraps SQLite module-key envelopes and the versioned verifier | Implemented; runs at the next successful sign-in |
 | Expo WebView | Uses the hosted React client | Same IndexedDB flow as React Web | Implemented when it loads this React client version |
 | Qt desktop | No Firebase authentication in the native shell | Separate local vault setup and credential-change flow still exists | Not migrated; the false-success cloud placeholder was replaced with an unavailable notice; legacy gate must remain until a verified account flow is implemented |
-| Native Android | No Firebase account gate or synced native keychain flow | No account-key migration is implemented | Not migrated; its JNA/UniFFI ABI and native-library packaging are also unresolved; see the [Android bug audit](../audits/potential-bug-audit-android-2026-11-19.md) |
+| Native Android | No Firebase account gate or synced native keychain flow | No account-key migration is implemented | Not migrated; its UniFFI bindings and three-ABI native packaging now build and load, but account/key migration and typed persistence remain open; see the [Android bug audit](../audits/potential-bug-audit-android-2026-11-19.md) |
 
 ## React, Tauri, and WebView Flow
 
@@ -44,7 +44,8 @@ The original migration implementation did not scan application collections. Afte
 - [ ] Verify the installed Expo WebView loads the migrated React build and completes an authenticated pull.
 - [x] Remove the Qt cloud-account placeholder's false “connected/sync scheduled” response and explain that no local credentials or data were changed.
 - [ ] Implement and verify Firebase account authentication and safe local key rewrap for Qt before deleting its master-password gate, QML modal, controller methods, and compatibility tests.
-- [ ] Repair Android's UniFFI binding generation and native-library packaging, then define and verify account authentication and keychain migration before removing or renaming any crypto binding used by that client.
+- [x] Generate version-matched Android UniFFI Kotlin bindings, build the Rust bridge for all packaged ABIs, and verify the FSRS call on an emulator.
+- [ ] Implement and verify Android Firebase account authentication, cloud key loading, safe keychain migration, and typed repository/sync operations before removing or renaming any legacy crypto API.
 - [ ] After every supported local database is migrated and backed up, remove the remaining legacy `masterHash` detection/deletion path and old-version compatibility code.
 
 ## Legacy Code Inventory
@@ -56,7 +57,7 @@ The original migration implementation did not scan application collections. Afte
 | Old auth verifier column and version upgrade | `apps/web-react/src-tauri/src/cmd_auth.rs`, SQLite `keychain.auth_hash` | Existing rows need a verifier upgrade after their envelope is successfully opened | Remove after local databases are version-migrated and backup/restore is verified |
 | Qt Master Password setup/unlock/change/removal | `apps/desktop-qt/qml/vault/`, `apps/desktop-qt/qml/settings/`, `apps/desktop-qt/src/controllers/vault/` | Qt still depends on this credential to open its separate local keychain and selected encrypted fields | Keep until Qt Firebase auth, key rewrap, recovery, lockout, and old-database tests all pass |
 | Qt password-based bridge compatibility | `core/synapse-core/src/crypto/`, `bridges/bridge-qt/` | The current Qt client still calls it; removing it now can lock users out of local data | Remove only in the same verified Qt account-key migration release |
-| Android password-to-key binding | `apps/mobile-android/app/src/main/java/com/synapse/core/SynapseCoreBindings.kt`, `bridges/bridge-uniffi/` | Native Android has no replacement account flow yet | Remove or rename after Android authentication and keychain ownership are implemented and tested |
+| Android password-to-key functions | `bridges/bridge-uniffi/src/lib.rs` and generated UniFFI Kotlin bindings under ignored `app/build/generated/` | The Android client has no replacement cloud-account flow; generated bindings still expose the compatibility crypto functions | Remove or rename after Android authentication and keychain ownership are implemented and tested |
 
 ## Verification Evidence
 
@@ -67,7 +68,7 @@ The original migration implementation did not scan application collections. Afte
 - `npm run tauri -- build --bundles deb` — passed, including the production React build and optimized Tauri Rust build; produced `target/release/bundle/deb/Caderno_1.0.0_amd64.deb` (about 94 MB).
 - `cmake --build apps/desktop-qt/build --config Release -j4` — passed for the separately implemented Qt desktop executable and native test targets. This build does not migrate Qt's local credential flow.
 - `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j4` and `QT_QPA_PLATFORM=offscreen ctest --test-dir apps/desktop-qt/build -R '^native-priority-modules$' --output-on-failure` — passed after replacing the Qt cloud-account placeholder's false success state.
-- Android `:app:assembleDebug` — passed with the checked-in Gradle 8.9 wrapper and JDK 17. The final APK installed and launched in an emulator; the affected module routes and quiz completion/restart flow were smoke-checked. It does not include the Synapse Rust bridge: there is no Android NDK/Rust Android target installed and no native `.so` is packaged under `app/src/main/jniLibs/`. Source review found the JNA declarations do not match either the UniFFI exports or the Qt C ABI. Android account authentication, keychain migration, and native-backed features remain unimplemented; details are in the [Android bug audit](../audits/potential-bug-audit-android-2026-11-19.md).
+- Android `:app:assembleDebug` — passed with Gradle 8.9, JDK 17, NDK `30.0.16248370`, and `cargo-ndk` 4.1.2. The APK contains the generated Rust bridge for `arm64-v8a`, `x86_64`, and `armeabi-v7a`; `:app:connectedDebugAndroidTest` passed an FSRS call through the generated Kotlin binding. No Firebase account gate, keychain migration, typed module persistence, or Android sync is implemented yet; details are in the [Android bug audit](../audits/potential-bug-audit-android-2026-11-19.md).
 - `npm run build:web` — passed; this is the bundle published to the configured Hosting sites.
 - `firebase deploy --only hosting --project fourth-cirrus-468923-h7 --non-interactive` — Hosting release completed for all four configured sites. Firestore rules and data were not deployed or modified.
 - Chromium headless through the Chrome DevTools Protocol signed into `https://synapse-dev.web.app` using the supplied local test credential and completed the initial pull/full sync. The app recorded 5,030 reads and 5 writes, emitted both completion and success events, and recorded no sync error or emergency stop. The temporary browser profile and Auth user export were deleted. No credential value was added to repository files or command output.

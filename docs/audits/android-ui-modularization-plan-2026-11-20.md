@@ -29,6 +29,6 @@ Reduce Android Compose screen files that exceed the repository's 300-line target
 ## Verification
 
 - `apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug` — passed with Gradle 8.9 and JDK 17.
-- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`; SHA-256 `c4b1b749e52a55cf6603dd72f653cd4c8389c14dd1f12ea80131d22e9ac46edc`.
+- Final debug APK: `apps/mobile-android/app/build/outputs/apk/debug/app-debug.apk`; SHA-256 `4a6bc6b5aaf049800827f38268c53094b663b18eb6b500c9334c4cbefc3dac7c`.
 - Emulator smoke checks on the final APK passed for Calendar, Finance, Habits, Library, Culture, Diagrams, Quiz, and Video. The quiz rendered the 3/3 result and reset to question 1 on restart.
-- These UI checks do not cover Android persistence, Firebase sync, the missing Rust bridge, or encrypted video playback.
+- These UI checks do not cover Android persistence, Firebase sync, or encrypted video playback.
