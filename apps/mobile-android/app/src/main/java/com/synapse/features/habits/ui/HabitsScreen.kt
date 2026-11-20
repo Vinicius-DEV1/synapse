@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.features.habits.ui.dialogs.CreateHabitDialog
 import com.synapse.ui.theme.*
 
 data class HabitItem(
@@ -257,67 +258,26 @@ fun HabitsScreen(
             }
         }
 
-        // Add Habit Dialog
         if (isAddingHabit) {
-            AlertDialog(
-                onDismissRequest = { isAddingHabit = false },
-                containerColor = DarkSurfaceElevated,
-                title = {
-                    Text("Novo Hábito", color = TextPrimary, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = newHabitName,
-                            onValueChange = { newHabitName = it },
-                            label = { Text("Nome do Hábito", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
+            CreateHabitDialog(
+                name = newHabitName,
+                category = newHabitCategory,
+                onNameChange = { newHabitName = it },
+                onCategoryChange = { newHabitCategory = it },
+                onDismiss = { isAddingHabit = false },
+                onCreate = {
+                    if (newHabitName.isNotBlank()) {
+                        habits = listOf(
+                            HabitItem(
+                                id = System.currentTimeMillis().toString(),
+                                name = newHabitName.trim(),
+                                category = newHabitCategory.trim(),
+                                currentStreak = 0,
+                                daysCompleted = listOf(false, false, false, false, false, false, false)
                             )
-                        )
-                        OutlinedTextField(
-                            value = newHabitCategory,
-                            onValueChange = { newHabitCategory = it },
-                            label = { Text("Categoria", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (newHabitName.isNotBlank()) {
-                                habits = listOf(
-                                    HabitItem(
-                                        id = System.currentTimeMillis().toString(),
-                                        name = newHabitName.trim(),
-                                        category = newHabitCategory.trim(),
-                                        currentStreak = 0,
-                                        daysCompleted = listOf(false, false, false, false, false, false, false)
-                                    )
-                                ) + habits
-                                newHabitName = ""
-                                isAddingHabit = false
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo)
-                    ) {
-                        Text("Criar", color = Color.White)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { isAddingHabit = false }) {
-                        Text("Cancelar", color = TextSecondary)
+                        ) + habits
+                        newHabitName = ""
+                        isAddingHabit = false
                     }
                 }
             )
