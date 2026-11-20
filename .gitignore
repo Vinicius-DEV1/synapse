@@ -12,6 +12,8 @@ dist-app/
 dist-ssr/
 build/
 target/
+.gradle/
+local.properties
 apps/web-react/src-tauri/target/
 apps/web-react/src-tauri/gen/
 benchmark-results.json

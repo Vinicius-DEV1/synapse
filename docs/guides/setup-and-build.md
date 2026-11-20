@@ -120,12 +120,13 @@ cmake --build apps/desktop-qt/build --config Release
 
 ### 3.4. Native Android App
 
-The Kotlin/Jetpack Compose app is in `apps/mobile-android/`. Open that directory in Android Studio or build with the Gradle wrapper after installing the Android SDK and NDK:
+The Kotlin/Jetpack Compose app is in `apps/mobile-android/`. It includes a pinned Gradle 8.9 wrapper and requires JDK 17 plus Android SDK Platform 35 to build the debug package:
 
 ```bash
-cd apps/mobile-android
-./gradlew assembleDebug
+apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug
 ```
+
+The debug APK is written to `apps/mobile-android/app/build/outputs/apk/debug/`. This task compiles and packages the Kotlin app; it does not build or package the Synapse Rust bridge. Native-backed Android features require matching generated UniFFI bindings, an Android NDK, Rust Android targets, and ABI-matched `.so` libraries under `app/src/main/jniLibs/`.
 
 ### 3.5. Android WebView Shell
 
