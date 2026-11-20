@@ -10,7 +10,7 @@
 | Tauri desktop | Firebase email and password through the shared React client | Rust core verifies and transactionally rewraps SQLite module-key envelopes and the versioned verifier | Implemented; runs at the next successful sign-in |
 | Expo WebView | Uses the hosted React client | Same IndexedDB flow as React Web | Implemented when it loads this React client version |
 | Qt desktop | No Firebase authentication in the native shell | Separate local vault setup and credential-change flow still exists | Not migrated; legacy gate must remain until a verified account flow is implemented |
-| Native Android | No Firebase account gate or synced native keychain flow | No account-key migration is implemented | Not migrated; do not remove crypto bindings or infer that the web flow covers it |
+| Native Android | No Firebase account gate or synced native keychain flow | No account-key migration is implemented | Not migrated; its JNA/UniFFI ABI and native-library packaging are also unresolved; see the [Android bug audit](../audits/potential-bug-audit-android-2026-11-19.md) |
 
 ## React, Tauri, and WebView Flow
 
@@ -43,7 +43,7 @@ The original migration implementation did not scan application collections. Afte
 - [ ] Validate sign-in and key rewrap in the installed Tauri package; the source shares the React account flow but the packaged client was not launched for this acceptance.
 - [ ] Verify the installed Expo WebView loads the migrated React build and completes an authenticated pull.
 - [ ] Implement and verify Firebase account authentication and safe local key rewrap for Qt before deleting its master-password gate, QML modal, controller methods, and compatibility tests.
-- [ ] Define and verify the native Android account/keychain flow before removing or renaming any crypto binding used by that client.
+- [ ] Repair Android's UniFFI binding generation and native-library packaging, then define and verify account authentication and keychain migration before removing or renaming any crypto binding used by that client.
 - [ ] After every supported local database is migrated and backed up, remove the remaining legacy `masterHash` detection/deletion path and old-version compatibility code.
 
 ## Legacy Code Inventory
@@ -65,7 +65,7 @@ The original migration implementation did not scan application collections. Afte
 - `cargo test -p synapse-core keychain::tests --lib` — 3 migration transaction tests passed.
 - `npm run tauri -- build --bundles deb` — passed, including the production React build and optimized Tauri Rust build; produced `target/release/bundle/deb/Caderno_1.0.0_amd64.deb` (about 94 MB).
 - `cmake --build apps/desktop-qt/build --config Release -j4` — passed for the separately implemented Qt desktop executable and native test targets. This build does not migrate Qt's local credential flow.
-- Android native build — not run: this checkout has no Gradle wrapper and the environment has no `gradle` executable. No Android crypto bindings were removed or renamed.
+- Android native build — not run: this checkout has no Gradle wrapper or `gradle` executable, no Android NDK or Rust Android target is installed, and no native `.so` is packaged under `app/src/main/jniLibs/`. Source review also found the JNA declarations do not match either the UniFFI exports or the Qt C ABI. No Android crypto bindings were removed or renamed; details are in the [Android bug audit](../audits/potential-bug-audit-android-2026-11-19.md).
 - `npm run build:web` — passed; this is the bundle published to the configured Hosting sites.
 - `firebase deploy --only hosting --project fourth-cirrus-468923-h7 --non-interactive` — Hosting release completed for all four configured sites. Firestore rules and data were not deployed or modified.
 - Chromium headless through the Chrome DevTools Protocol signed into `https://synapse-dev.web.app` using the supplied local test credential and completed the initial pull/full sync. The app recorded 5,030 reads and 5 writes, emitted both completion and success events, and recorded no sync error or emergency stop. The temporary browser profile and Auth user export were deleted. No credential value was added to repository files or command output.
