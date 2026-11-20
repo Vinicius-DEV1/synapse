@@ -27,7 +27,8 @@ fun FocusScreen() {
     var selectedPresetMinutes by remember { mutableStateOf(25) }
     var timeLeftSeconds by remember { mutableStateOf(25 * 60) }
     var isRunning by remember { mutableStateOf(false) }
-    var sessionsCompletedToday by remember { mutableStateOf(3) }
+    var sessionsCompletedToday by remember { mutableStateOf(0) }
+    var focusMinutesCompletedToday by remember { mutableStateOf(0) }
     var activeSound by remember { mutableStateOf<String?>("chuva") }
 
     LaunchedEffect(isRunning, timeLeftSeconds) {
@@ -37,6 +38,7 @@ fun FocusScreen() {
         } else if (timeLeftSeconds == 0 && isRunning) {
             isRunning = false
             sessionsCompletedToday++
+            focusMinutesCompletedToday += selectedPresetMinutes
             timeLeftSeconds = selectedPresetMinutes * 60
         }
     }
@@ -80,7 +82,7 @@ fun FocusScreen() {
                         color = TextPrimary
                     )
                     Text(
-                        text = "$sessionsCompletedToday ciclos concluídos hoje (${sessionsCompletedToday * 25} min)",
+                        text = "$sessionsCompletedToday ciclos concluídos hoje ($focusMinutesCompletedToday min)",
                         fontSize = 13.sp,
                         color = TextSecondary
                     )
