@@ -18,17 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.features.library.model.BookItem
+import com.synapse.features.library.ui.dialogs.NewBookDialog
 import com.synapse.ui.theme.*
-
-data class BookItem(
-    val id: String,
-    val title: String,
-    val author: String,
-    val currentPage: Int,
-    val totalPages: Int,
-    val status: String = "Lendo", // Lendo, Concluído, Na Fila
-    val coverEmoji: String = "📖"
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +63,6 @@ fun LibraryScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Title
             Text(
                 text = "Biblioteca & Leituras",
                 fontSize = 24.sp,
@@ -86,7 +77,6 @@ fun LibraryScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Filter Tabs
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -116,7 +106,6 @@ fun LibraryScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Books List
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -195,7 +184,6 @@ fun LibraryScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Progress Bar
                             LinearProgressIndicator(
                                 progress = { progressRatio.coerceIn(0f, 1f) },
                                 modifier = Modifier
@@ -208,7 +196,6 @@ fun LibraryScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Progress text and quick stepper buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -221,7 +208,6 @@ fun LibraryScreen(
                                 )
 
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    // -1 page
                                     Surface(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
@@ -234,7 +220,6 @@ fun LibraryScreen(
                                         Text("-1", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = TextSecondary)
                                     }
 
-                                    // +1 page
                                     Surface(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
@@ -253,7 +238,6 @@ fun LibraryScreen(
                                         Text("+1", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = BrandIndigoLight, fontWeight = FontWeight.Bold)
                                     }
 
-                                    // +5 pages
                                     Surface(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
@@ -279,82 +263,31 @@ fun LibraryScreen(
             }
         }
 
-        // Add Book Dialog
         if (isAddingBook) {
-            AlertDialog(
-                onDismissRequest = { isAddingBook = false },
-                containerColor = DarkSurfaceElevated,
-                title = {
-                    Text("Novo Livro", color = TextPrimary, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = newTitle,
-                            onValueChange = { newTitle = it },
-                            label = { Text("Título", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
+            NewBookDialog(
+                title = newTitle,
+                author = newAuthor,
+                totalPages = newTotalPages,
+                onTitleChange = { newTitle = it },
+                onAuthorChange = { newAuthor = it },
+                onTotalPagesChange = { newTotalPages = it },
+                onDismiss = { isAddingBook = false },
+                onAdd = {
+                    val pages = newTotalPages.toIntOrNull() ?: 100
+                    if (newTitle.isNotBlank()) {
+                        books = listOf(
+                            BookItem(
+                                id = System.currentTimeMillis().toString(),
+                                title = newTitle.trim(),
+                                author = newAuthor.trim(),
+                                currentPage = 0,
+                                totalPages = pages,
+                                status = "Lendo"
                             )
-                        )
-                        OutlinedTextField(
-                            value = newAuthor,
-                            onValueChange = { newAuthor = it },
-                            label = { Text("Autor", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-                        OutlinedTextField(
-                            value = newTotalPages,
-                            onValueChange = { newTotalPages = it },
-                            label = { Text("Total de Páginas", color = TextSecondary) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedBorderColor = BrandIndigo,
-                                unfocusedBorderColor = DarkBorder
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            val pages = newTotalPages.toIntOrNull() ?: 100
-                            if (newTitle.isNotBlank()) {
-                                books = listOf(
-                                    BookItem(
-                                        id = System.currentTimeMillis().toString(),
-                                        title = newTitle.trim(),
-                                        author = newAuthor.trim(),
-                                        currentPage = 0,
-                                        totalPages = pages,
-                                        status = "Lendo"
-                                    )
-                                ) + books
-                                newTitle = ""
-                                newAuthor = ""
-                                isAddingBook = false
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo)
-                    ) {
-                        Text("Adicionar", color = Color.White)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { isAddingBook = false }) {
-                        Text("Cancelar", color = TextSecondary)
+                        ) + books
+                        newTitle = ""
+                        newAuthor = ""
+                        isAddingBook = false
                     }
                 }
             )
