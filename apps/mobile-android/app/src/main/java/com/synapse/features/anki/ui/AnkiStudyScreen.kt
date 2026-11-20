@@ -35,11 +35,13 @@ fun AnkiStudyScreen(
 ) {
     var currentIndex by remember { mutableStateOf(0) }
     var isAnswerRevealed by remember { mutableStateOf(false) }
-    val fsrs = remember { SynapseFsrs() }
+    val fsrs = remember(cards.isEmpty()) {
+        if (cards.isEmpty()) null else SynapseFsrs()
+    }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(fsrs) {
         onDispose {
-            fsrs.close()
+            fsrs?.close()
         }
     }
 
@@ -63,7 +65,7 @@ fun AnkiStudyScreen(
 
     fun rateCard(rating: Byte) {
         // Calculate new FSRS interval
-        fsrs.review(
+        checkNotNull(fsrs).review(
             stability = currentCard.stability,
             difficulty = currentCard.difficulty,
             state = 0,

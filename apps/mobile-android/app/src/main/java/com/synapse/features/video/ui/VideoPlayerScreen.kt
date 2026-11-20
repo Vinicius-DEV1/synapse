@@ -56,9 +56,23 @@ import java.io.File
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerScreen(
-    videoPath: String,
-    keyHex: String,
+    videoPath: String? = null,
+    keyHex: String? = null,
 ) {
+    val activeVideoPath = videoPath?.takeIf(String::isNotBlank)
+    val activeKeyHex = keyHex?.takeIf(String::isNotBlank)
+    if (activeVideoPath == null || activeKeyHex == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Nenhum vídeo selecionado.", color = Color.White, fontSize = 16.sp)
+        }
+        return
+    }
+
     val context = LocalContext.current
     val activity = context as? Activity
     val haptic = LocalHapticFeedback.current
@@ -72,15 +86,15 @@ fun VideoPlayerScreen(
 
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
-    val exoPlayer = remember(context, videoPath, keyHex) {
-        val dataSourceFactory = EncryptedChunkDataSource.Factory(keyHex)
+    val exoPlayer = remember(context, activeVideoPath, activeKeyHex) {
+        val dataSourceFactory = EncryptedChunkDataSource.Factory(activeKeyHex)
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
 
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             .apply {
-                val uri = Uri.fromFile(File(videoPath))
+                val uri = Uri.fromFile(File(activeVideoPath))
                 setMediaItem(MediaItem.fromUri(uri))
                 prepare()
                 playWhenReady = false
@@ -192,36 +206,7 @@ fun VideoPlayerScreen(
             }
         )
 
-        // Subtitle Overlay with Interactive Words (Synapse Video Study)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = if (controlsVisible) 96.dp else 32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xD0000000))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val words = listOf("Curvas", "elípticas", "fornecem", "segurança", "criptográfica", "avançada.")
-                words.forEach { word ->
-                    Text(
-                        text = word,
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                toastMessage = "Vocábulo '$word' salvo para revisão no Anki!"
-                            }
-                            .padding(horizontal = 2.dp)
-                    )
-                }
-            }
-        }
-
-        // Word Saved Toast Notification
+        // Playback error notification
         toastMessage?.let { msg ->
             LaunchedEffect(msg) {
                 delay(2500)

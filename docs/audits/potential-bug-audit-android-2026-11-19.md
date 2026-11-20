@@ -2,7 +2,7 @@
 
 ## Scope
 
-This review compared the Android JNA declarations, Kotlin call sites, Rust bridge exports, Gradle configuration, and native library packaging. It also reviewed encrypted-video reader ownership on open, read, and close paths.
+This review compared the Android JNA declarations, Kotlin call sites, Rust bridge exports, Gradle configuration, and native library packaging. It also reviewed encrypted-video reader ownership on open, read, and close paths, plus the app's initial Anki and video route data.
 
 ## Findings
 
@@ -42,6 +42,24 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 - **Resolution:** The bridge now rejects unknown state/rating values, negative elapsed days, and non-finite inputs. Its crypto round-trip fixture now uses a valid 32-byte module key; the previous fixture caused the bridge test suite to fail before.
 - **Status:** Resolved and covered by the focused bridge test suite.
 
+### ANDROID-04 — Demo cards, subtitles, and a fabricated video key were presented as real module data
+
+- **Severity:** Medium
+- **Category:** Data integrity, unsafe defaults, startup lifecycle
+- **Locations:** `apps/mobile-android/app/src/main/java/com/synapse/MainActivity.kt`, `apps/mobile-android/app/src/main/java/com/synapse/features/anki/ui/AnkiStudyScreen.kt`, `apps/mobile-android/app/src/main/java/com/synapse/features/video/ui/VideoPlayerScreen.kt`
+- **Root cause:** The Anki route showed three hardcoded sample cards as if they belonged to the user's deck. The video route instantiated a player with a fabricated local path and an all-zero decryption key, and it overlaid invented subtitle words on every video. The Anki screen also created its native FSRS bridge before checking for an empty card list.
+- **Resolution:** The Anki route now starts with the existing empty state and does not allocate the native scheduler without cards. The video screen requires a real path and key to create a player, shows an empty state when either is absent, and no longer renders synthetic subtitle content. The synthetic sample records and fake key defaults were removed.
+- **Status:** Source change applied; Android compilation and acceptance remain unverified because the Android build toolchain is absent. Supplying real Anki data still requires the unresolved typed bridge and persistence integration.
+
+### ANDROID-05 — The native vault displayed fabricated password-like values by default
+
+- **Severity:** High
+- **Category:** Secret handling, data integrity
+- **Location:** `apps/mobile-android/app/src/main/java/com/synapse/features/vault/ui/VaultScreen.kt`
+- **Root cause:** The default screen state included hardcoded, secret-looking values such as a token-like string and service passwords. The vault route rendered these as saved credentials despite having no storage integration.
+- **Resolution:** The default credential list is empty. The screen now distinguishes an empty vault from a search with no matches. No credentials are copied or persisted by this change.
+- **Status:** Source change applied; Android build and runtime verification remain open.
+
 ## Verification and Limits
 
 - `git diff --check` — passed.
@@ -53,5 +71,8 @@ This review compared the Android JNA declarations, Kotlin call sites, Rust bridg
 - [ ] Run Android unit/instrumentation tests for open-failure cleanup, repeated close, and use-after-close behavior.
 - [ ] Build and launch the Android package with the real native libraries.
 - [ ] Compile and exercise the video URI/key isolation and player lifecycle changes on Android.
+- [ ] Verify empty Anki and video states on an installed Android build and wire both modules to real persisted records.
+- [ ] Verify the Android vault opens empty without native persistence and wire credentials through typed, encrypted core APIs before accepting user data.
+- [ ] Review the remaining Android module sample datasets and in-memory-only mutations, then connect each supported module to typed persisted core repositories.
 
 This review does not certify the Android app, account sign-in, keychain migration, or encrypted video at runtime. The cloud-account migration remains an independent open gate in the [migration audit](../security/cloud-account-encryption-migration.md).

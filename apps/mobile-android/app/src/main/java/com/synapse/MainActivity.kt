@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.synapse.features.anki.ui.AnkiStudyScreen
-import com.synapse.features.anki.ui.CardItem
 import com.synapse.features.calendar.ui.CalendarScreen
 import com.synapse.features.culture.ui.CultureScreen
 import com.synapse.features.diagrams.ui.DiagramsScreen
@@ -146,13 +145,7 @@ class MainActivity : ComponentActivity() {
                             )
                             NavItem.NOTES -> NotesScreen()
                             NavItem.DIAGRAMS -> DiagramsScreen()
-                            NavItem.ANKI -> AnkiStudyScreen(
-                                cards = listOf(
-                                    CardItem("1", "O que é FSRS v5?", "Free Spaced Repetition Scheduler v5, algoritmo moderno baseado em Estabilidade e Dificuldade."),
-                                    CardItem("2", "Qual a cifra AEAD do Caderno?", "AES-256-GCM com autenticação em Galois Field GF(2^128)."),
-                                    CardItem("3", "Qual a latência da ponte Rust?", "Zero overhead com C-ABI e UniFFI FFI direta sem serialização JSON.")
-                                )
-                            )
+                            NavItem.ANKI -> AnkiStudyScreen(cards = emptyList())
                             NavItem.QUIZ -> ZenQuizScreen()
                             NavItem.HABITS -> HabitsScreen()
                             NavItem.CALENDAR -> CalendarScreen()

@@ -40,12 +40,7 @@ data class VaultCredential(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VaultScreen(
-    initialCredentials: List<VaultCredential> = listOf(
-        VaultCredential("1", "Geral", "GitHub", "vini-synapse", "ghp_secureToken123456", "https://github.com"),
-        VaultCredential("2", "Geral", "Google Cloud", "vini@gmail.com", "P@ssw0rdGCP2026!", "https://console.cloud.google.com"),
-        VaultCredential("3", "Servidores", "AWS Production", "admin", "AWS#Prod*Vault99", "https://aws.amazon.com"),
-        VaultCredential("4", "Pessoal", "ProtonMail", "vini.vault@proton.me", "Pr0t0n!E2EE#2026", "https://mail.proton.me")
-    )
+    initialCredentials: List<VaultCredential> = emptyList()
 ) {
     val context = LocalContext.current
     var credentials by remember { mutableStateOf(initialCredentials) }
@@ -141,6 +136,21 @@ fun VaultScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (filteredCredentials.isEmpty()) {
+                item {
+                    Text(
+                        text = if (credentials.isEmpty()) {
+                            "Nenhuma credencial disponível neste dispositivo."
+                        } else {
+                            "Nenhuma credencial encontrada."
+                        },
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    )
+                }
+            }
+
             items(filteredCredentials) { item ->
                 val isRevealed = revealedPasswords.contains(item.id)
                 Surface(
