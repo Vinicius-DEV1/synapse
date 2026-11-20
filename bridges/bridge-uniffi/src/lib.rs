@@ -3,6 +3,8 @@ use synapse_core::crypto;
 use synapse_core::fsrs::{Card, FsrsEngine, Rating, State};
 use synapse_core::video::EncryptedVideoReader;
 
+pub mod finance;
+
 uniffi::setup_scaffolding!();
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -224,5 +226,82 @@ mod tests {
         let enc = encrypt_module_key(mod_key.clone(), pass.clone()).unwrap();
         let dec = decrypt_module_key(enc, pass).unwrap();
         assert_eq!(dec, mod_key);
+    }
+
+    #[test]
+    fn test_uniffi_finance_store_persists_crud_and_loan_payments() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let store =
+            finance::SynapseFinanceStore::open(temp_file.path().to_string_lossy().to_string())
+                .unwrap();
+        let account = store.get_accounts().unwrap().remove(0);
+        let loan = store
+            .create_transaction(finance::FinanceTransaction {
+                id: String::new(),
+                description: "Bridge loan".to_owned(),
+                amount: 20.0,
+                expected_amount: Some(25.0),
+                type_: "loan_made".to_owned(),
+                category: "Personal".to_owned(),
+                date: "2026-11-20".to_owned(),
+                status: Some("in_progress".to_owned()),
+                is_paid: Some(0),
+                paid_amount: Some(0.0),
+                is_recurring: Some(0),
+                recurrence_period: None,
+                due_date: None,
+                account_id: Some(account.id.clone()),
+                destination_account_id: None,
+                linked_loan_id: None,
+                person: Some("Morgan".to_owned()),
+                created_at: None,
+                updated_at: None,
+            })
+            .unwrap();
+        let payment = store
+            .record_loan_payment(loan.id.clone(), Some(10.0), account.id.clone(), None)
+            .unwrap();
+        assert_eq!(payment.linked_loan_id.as_deref(), Some(loan.id.as_str()));
+        let saved_loan = store
+            .get_transactions(None, None)
+            .unwrap()
+            .into_iter()
+            .find(|item| item.id == loan.id)
+            .unwrap();
+        assert_eq!(saved_loan.paid_amount, Some(10.0));
+
+        let wish = store
+            .create_wishlist_item(finance::FinanceWishlistItem {
+                id: String::new(),
+                title: "Tablet".to_owned(),
+                price: 300.0,
+                priority: "medium".to_owned(),
+                category: Some("Electronics".to_owned()),
+                expected_date: None,
+                description: None,
+                link: None,
+                created_at: None,
+                updated_at: None,
+            })
+            .unwrap();
+        store
+            .acquire_wishlist_item(
+                wish.id.clone(),
+                "Tablet".to_owned(),
+                280.0,
+                account.id.clone(),
+                "Electronics".to_owned(),
+                "2026-11-20".to_owned(),
+                true,
+            )
+            .unwrap();
+        assert!(store.get_wishlist().unwrap().is_empty());
+        assert_eq!(
+            store
+                .get_summary_for(Some(account.id.clone()), Some("2026-11".to_owned()))
+                .unwrap()
+                .income,
+            10.0
+        );
     }
 }
