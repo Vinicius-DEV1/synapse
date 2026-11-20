@@ -33,14 +33,7 @@ data class TransactionItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
-    initialTransactions: List<TransactionItem> = listOf(
-        TransactionItem("1", "Salário / Proventos", 8500.0, true, "Trabalho", "05/11"),
-        TransactionItem("2", "Freelance Rust & Qt 6", 3200.0, true, "Serviços", "07/11"),
-        TransactionItem("3", "Aluguel & Condomínio", 2400.0, false, "Moradia", "05/11"),
-        TransactionItem("4", "Supermercado Mensal", 850.0, false, "Alimentação", "06/11"),
-        TransactionItem("5", "Assinatura Servidor Cloud", 120.0, false, "Tecnologia", "08/11"),
-        TransactionItem("6", "Rendimento Fundos / CDB", 450.0, true, "Investimentos", "08/11")
-    )
+    initialTransactions: List<TransactionItem> = emptyList()
 ) {
     var transactions by remember { mutableStateOf(initialTransactions) }
     var filterType by remember { mutableStateOf("Todos") }
@@ -118,10 +111,14 @@ fun FinanceScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "R$ %,.2f".format(netBalance),
+                        text = if (transactions.isEmpty()) "—" else "R$ %,.2f".format(netBalance),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (netBalance >= 0) CorrectEmeraldText else IncorrectRoseText
+                        color = when {
+                            transactions.isEmpty() -> TextMuted
+                            netBalance >= 0 -> CorrectEmeraldText
+                            else -> IncorrectRoseText
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -151,7 +148,7 @@ fun FinanceScreen(
                                 Column {
                                     Text("Receitas", fontSize = 10.sp, color = CorrectEmeraldText)
                                     Text(
-                                        "R$ %,.2f".format(totalIncome),
+                                        if (transactions.isEmpty()) "—" else "R$ %,.2f".format(totalIncome),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = CorrectEmeraldText
@@ -180,7 +177,7 @@ fun FinanceScreen(
                                 Column {
                                     Text("Despesas", fontSize = 10.sp, color = IncorrectRoseText)
                                     Text(
-                                        "R$ %,.2f".format(totalExpense),
+                                        if (transactions.isEmpty()) "—" else "R$ %,.2f".format(totalExpense),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = IncorrectRoseText
@@ -229,6 +226,19 @@ fun FinanceScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (filteredTransactions.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Nenhuma transação disponível neste dispositivo.",
+                            color = TextMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 32.dp)
+                        )
+                    }
+                }
+
                 items(filteredTransactions, key = { it.id }) { item ->
                     Surface(
                         modifier = Modifier

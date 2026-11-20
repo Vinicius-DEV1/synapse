@@ -34,14 +34,7 @@ data class HabitItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitsScreen(
-    initialHabits: List<HabitItem> = listOf(
-        HabitItem("1", "Meditação Matinal", "🧘", "Mente", 12, listOf(true, true, true, true, true, true, true)),
-        HabitItem("2", "Revisão Anki (100 cartões)", "🧠", "Estudos", 28, listOf(true, true, true, true, true, true, false)),
-        HabitItem("3", "Leitura Técnica (30 min)", "📚", "Estudos", 14, listOf(true, true, true, true, false, true, true)),
-        HabitItem("4", "Exercício Físico / Caminhada", "🏃", "Saúde", 5, listOf(false, true, true, true, true, true, false)),
-        HabitItem("5", "Beber 2.5L de Água", "💧", "Saúde", 31, listOf(true, true, true, true, true, true, true)),
-        HabitItem("6", "Zero Açúcar Refinado", "🥗", "Saúde", 8, listOf(true, false, true, true, true, true, true))
-    )
+    initialHabits: List<HabitItem> = emptyList()
 ) {
     var habits by remember { mutableStateOf(initialHabits) }
     var selectedCategory by remember { mutableStateOf("Todos") }
@@ -140,6 +133,19 @@ fun HabitsScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (filteredHabits.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Nenhum hábito disponível neste dispositivo.",
+                            color = TextMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 32.dp)
+                        )
+                    }
+                }
+
                 items(filteredHabits, key = { it.id }) { habit ->
                     Surface(
                         modifier = Modifier

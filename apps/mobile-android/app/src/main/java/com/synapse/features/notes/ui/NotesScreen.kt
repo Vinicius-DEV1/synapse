@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -34,15 +34,7 @@ data class NoteItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
-    initialNotes: List<NoteItem> = listOf(
-        NoteItem("1", "MURAL", "# Mural Principal\n\nBem-vindo ao Caderno Synapse.", "📌", true, "Hoje"),
-        NoteItem("2", "CURSOS", "Anotações e roadmap de estudos.", "🎓", true, "Ontem"),
-        NoteItem("3", "PROGRAMACAO", "Arquitetura Rust, Kotlin e Qt 6 C++.", "💻", true, "08/11"),
-        NoteItem("4", "ENGLISH", "Daily vocabulary and idiomatic phrases.", "🇬🇧", true, "07/11"),
-        NoteItem("5", "FINANCAS", "Controle de despesas, investimentos e wishlist.", "💰", true, "06/11"),
-        NoteItem("6", "Criptografia E2EE", "Especificação Two-Tier Keychain com AES-256-GCM.", "🔒", false, "05/11"),
-        NoteItem("7", "Algoritmo FSRS v5", "Variáveis DSR (Dificuldade, Estabilidade, Retenção).", "🧠", false, "04/11")
-    )
+    initialNotes: List<NoteItem> = emptyList()
 ) {
     var notes by remember { mutableStateOf(initialNotes) }
     var selectedNote by remember { mutableStateOf<NoteItem?>(null) }
@@ -68,7 +60,7 @@ fun NotesScreen(
             ) {
                 IconButton(onClick = { selectedNote = null }) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Voltar",
                         tint = TextPrimary
                     )
@@ -159,6 +151,19 @@ fun NotesScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (filteredNotes.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Nenhuma nota disponível neste dispositivo.",
+                            color = TextMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 32.dp)
+                        )
+                    }
+                }
+
                 if (pinnedNotes.isNotEmpty()) {
                     item {
                         Text(

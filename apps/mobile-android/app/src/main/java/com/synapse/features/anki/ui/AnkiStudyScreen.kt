@@ -163,7 +163,7 @@ fun AnkiStudyScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(24.dp))
-                        Divider(color = Color(0x1AFFFFFF), thickness = 1.dp)
+                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 1.dp)
                         Spacer(modifier = Modifier.height(20.dp))
 
                         Text(

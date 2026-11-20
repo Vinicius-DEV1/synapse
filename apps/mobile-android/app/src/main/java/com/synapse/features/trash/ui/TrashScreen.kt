@@ -31,12 +31,7 @@ data class TrashedItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrashScreen(
-    initialItems: List<TrashedItem> = listOf(
-        TrashedItem("1", "Rascunho de Redes Neurais", "page", "08/11/2026"),
-        TrashedItem("2", "Baralho Obsoleto - Python 2.7", "anki_deck", "06/11/2026"),
-        TrashedItem("3", "Assinatura Antiga Streaming", "finance", "04/11/2026"),
-        TrashedItem("4", "Manual do Usuário v1", "page", "01/11/2026")
-    )
+    initialItems: List<TrashedItem> = emptyList()
 ) {
     var items by remember { mutableStateOf(initialItems) }
     var selectedFilter by remember { mutableStateOf("Todos") }

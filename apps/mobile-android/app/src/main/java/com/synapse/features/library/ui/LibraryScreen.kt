@@ -33,13 +33,7 @@ data class BookItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    initialBooks: List<BookItem> = listOf(
-        BookItem("1", "Clean Architecture", "Robert C. Martin", 210, 350, "Lendo", "📘"),
-        BookItem("2", "Designing Data-Intensive Applications", "Martin Kleppmann", 480, 600, "Lendo", "📙"),
-        BookItem("3", "Rust in Action", "Tim McNamara", 320, 320, "Concluído", "📗"),
-        BookItem("4", "Kotlin Coroutines by Tutorials", "Raywenderlich Team", 120, 280, "Lendo", "📕"),
-        BookItem("5", "Structure and Interpretation of Computer Programs", "Abelson & Sussman", 0, 650, "Na Fila", "📓")
-    )
+    initialBooks: List<BookItem> = emptyList()
 ) {
     var books by remember { mutableStateOf(initialBooks) }
     var selectedFilter by remember { mutableStateOf("Todos") }
@@ -127,6 +121,19 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (filteredBooks.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Nenhum livro disponível neste dispositivo.",
+                            color = TextMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 32.dp)
+                        )
+                    }
+                }
+
                 items(filteredBooks, key = { it.id }) { book ->
                     val progressRatio = if (book.totalPages > 0) book.currentPage.toFloat() / book.totalPages else 0f
                     val percentage = (progressRatio * 100).toInt()

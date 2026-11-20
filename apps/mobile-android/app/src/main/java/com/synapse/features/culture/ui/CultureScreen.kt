@@ -35,14 +35,7 @@ data class CultureMediaItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CultureScreen(
-    initialItems: List<CultureMediaItem> = listOf(
-        CultureMediaItem("1", "Oppenheimer", "movie", "completed", 9.2, 1, 1, "Direção impecável de Nolan e montagem magistral."),
-        CultureMediaItem("2", "Severance (Ruptura)", "series", "watching", 9.5, 7, 9, "Excelente comentário sobre alienação no trabalho."),
-        CultureMediaItem("3", "Frieren: Beyond Journey's End", "anime", "completed", 9.8, 28, 28, "Melhor anime da década sobre tempo e memória."),
-        CultureMediaItem("4", "Duna: Parte 2", "movie", "completed", 9.0, 1, 1, "Espetáculo audiovisual sem precedentes."),
-        CultureMediaItem("5", "Cyberpunk: Edgerunners", "anime", "completed", 9.1, 10, 10, "Trilha sonora e ritmo frenético do Studio Trigger."),
-        CultureMediaItem("6", "Dark", "series", "completed", 9.4, 26, 26, "Trama temporal amarrada com maestria cirúrgica.")
-    )
+    initialItems: List<CultureMediaItem> = emptyList()
 ) {
     var itemsList by remember { mutableStateOf(initialItems) }
     var selectedTypeFilter by remember { mutableStateOf("Todos") }
@@ -144,7 +137,7 @@ fun CultureScreen(
                 MetricPill("Catálogo", totalItems.toString(), BrandIndigo, Modifier.weight(1f))
                 MetricPill("Assistindo", totalWatching.toString(), AmberWarning, Modifier.weight(1f))
                 MetricPill("Concluídos", totalCompleted.toString(), CorrectEmerald, Modifier.weight(1f))
-                MetricPill("Média", String.format("%.1f", avgScore), BrandPurple, Modifier.weight(1f))
+                MetricPill("Média", if (itemsList.isEmpty()) "—" else String.format("%.1f", avgScore), BrandPurple, Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -184,6 +177,19 @@ fun CultureScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (filteredItems.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Nenhum título disponível neste dispositivo.",
+                            color = TextMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 32.dp)
+                        )
+                    }
+                }
+
                 items(filteredItems, key = { it.id }) { item ->
                     Surface(
                         modifier = Modifier

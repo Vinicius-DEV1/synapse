@@ -7,11 +7,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,12 +48,7 @@ data class DrawPath(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiagramsScreen(
-    initialDiagrams: List<DiagramItem> = listOf(
-        DiagramItem("1", "Arquitetura FFI & Rust Core", "🎨", "Hoje"),
-        DiagramItem("2", "Fluxo E2EE Two-Tier Keychain", "🔒", "08/11/2026"),
-        DiagramItem("3", "Mapa Mental - Redes Neurais", "🧠", "06/11/2026"),
-        DiagramItem("4", "Diagrama de Classes SQLite WAL", "📊", "02/11/2026")
-    )
+    initialDiagrams: List<DiagramItem> = emptyList()
 ) {
     var diagrams by remember { mutableStateOf(initialDiagrams) }
     var activeDiagram by remember { mutableStateOf<DiagramItem?>(null) }
@@ -83,7 +80,7 @@ fun DiagramsScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IconButton(onClick = { activeDiagram = null }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = TextPrimary)
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextPrimary)
                             }
                             Text(
                                 text = activeDiagram?.title ?: "Diagrama",
@@ -193,6 +190,23 @@ fun DiagramsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.weight(1f)
                 ) {
+                    if (diagrams.isEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Nenhum diagrama disponível neste dispositivo.",
+                                    color = TextMuted,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+
                     items(diagrams, key = { it.id }) { item ->
                         Surface(
                             modifier = Modifier

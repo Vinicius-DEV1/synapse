@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +41,7 @@ import com.synapse.features.video.ui.VideoPlayerScreen
 
 enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Boolean = true) {
     HOME("Início", Icons.Default.Home, true),
-    NOTES("Notas", Icons.Default.Assignment, true),
+    NOTES("Notas", Icons.AutoMirrored.Filled.Assignment, true),
     ANKI("Anki", Icons.Default.Psychology, true),
     QUIZ("Quiz", Icons.Default.Quiz, true),
     DIAGRAMS("Diagramas", Icons.Default.Brush, false),
@@ -48,7 +50,7 @@ enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Bool
     CULTURE("Cultura", Icons.Default.Movie, false),
     FOCUS("Foco", Icons.Default.HourglassTop, false),
     FINANCE("Finanças", Icons.Default.ShoppingCart, false),
-    LIBRARY("Livros", Icons.Default.MenuBook, false),
+    LIBRARY("Livros", Icons.AutoMirrored.Filled.MenuBook, false),
     VAULT("Cofre", Icons.Default.Lock, false),
     VIDEO("Vídeo", Icons.Default.PlayCircle, false),
     TRASH("Lixeira", Icons.Default.Delete, false)

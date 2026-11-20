@@ -38,12 +38,7 @@ data class CalendarEventItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
-    initialEvents: List<CalendarEventItem> = listOf(
-        CalendarEventItem("1", "Revisão Geral de Algoritmos", "Foco em Grafos e Programação Dinâmica", "Hoje", "14:00", BrandIndigo, false),
-        CalendarEventItem("2", "Simulado Completo de Redes", "Battery de 50 questões no ZenQuiz", "Amanhã", "10:00", CorrectEmerald, false),
-        CalendarEventItem("3", "Reunião de Alinhamento Synapse", "Revisão dos contratos FFI e IPC Tauri", "12 Nov", "16:30", AmberWarning, true),
-        CalendarEventItem("4", "Backup Semanal do Cofre E2EE", "Verificar exportação offline no pendrive", "15 Nov", "20:00", BrandPurple, false)
-    )
+    initialEvents: List<CalendarEventItem> = emptyList()
 ) {
     var events by remember { mutableStateOf(initialEvents) }
     var selectedTab by remember { mutableStateOf("Todos") }
