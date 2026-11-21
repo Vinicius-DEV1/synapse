@@ -397,8 +397,14 @@ pub async fn video_save_local(
     let path = videos_dir.join(&filename_enc);
     let temp_path = videos_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
 
-    fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
-    fs::rename(&temp_path, &path).map_err(|e| e.to_string())?;
+    let path_clone = path.clone();
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
+        fs::rename(&temp_path, &path_clone).map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     Ok(path.to_string_lossy().to_string())
 }
@@ -483,8 +489,14 @@ pub async fn video_process_upload(
         let preset_str = conversion_preset.as_str();
 
         if web_quality == "remux" {
-            let v_codec = video_probe_codec(&source_path, "v:0")?;
-            let a_codec = video_probe_codec(&source_path, "a:0").unwrap_or_default();
+            let probe_source = source_path.clone();
+            let (v_codec, a_codec) = tokio::task::spawn_blocking(move || -> Result<(String, String), String> {
+                let v = video_probe_codec(&probe_source, "v:0")?;
+                let a = video_probe_codec(&probe_source, "a:0").unwrap_or_default();
+                Ok((v, a))
+            })
+            .await
+            .map_err(|e| format!("Task join error: {}", e))??;
 
             if v_codec != "h264" {
                 return Err(format!(
@@ -601,12 +613,19 @@ pub async fn video_process_upload(
             "[DEBUG] Starting encryption for web-optimized video ({:?})...",
             temp_web_mp4
         );
-        let enc_res = crate::crypto_stream::encrypt_file_chunked_cancellable(
-            &temp_web_mp4,
-            &web_full_path,
-            &master_key,
-            Some(&VIDEO_CANCEL_FLAG),
-        );
+        let temp_clone = temp_web_mp4.clone();
+        let web_full_clone = web_full_path.clone();
+        let master_key_for_web = master_key.clone();
+        let enc_res = tokio::task::spawn_blocking(move || {
+            crate::crypto_stream::encrypt_file_chunked_cancellable(
+                &temp_clone,
+                &web_full_clone,
+                &master_key_for_web,
+                Some(&VIDEO_CANCEL_FLAG),
+            )
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
         let _ = fs::remove_file(&temp_web_mp4);
         enc_res?;
         println!("[DEBUG] Web video encryption complete.");

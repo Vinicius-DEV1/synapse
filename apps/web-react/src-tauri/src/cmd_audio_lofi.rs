@@ -75,31 +75,31 @@ pub async fn lofi_save_local(
     let path = lofi_dir.join(&filename_enc);
     let temp_path = lofi_dir.join(format!("{}.tmp", uuid::Uuid::new_v4()));
 
-    fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
-
     let master_key = {
         let keys_guard = db_state.lock_keys()?;
         if let Some(keys) = keys_guard.as_ref() {
             if let Some(ref k) = keys.focus {
                 k.clone()
             } else {
-                let _ = fs::remove_file(&temp_path);
                 return Err("Focus key not found".into());
             }
         } else {
-            let _ = fs::remove_file(&temp_path);
             return Err("Keys not unlocked".into());
         }
     };
 
-    if let Err(e) =
-        crate::crypto_stream::encrypt_file_chunked(&temp_path, &path, &master_key)
-    {
+    let path_clone = path.clone();
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
+        if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &path_clone, &master_key) {
+            let _ = fs::remove_file(&temp_path);
+            return Err(e);
+        }
         let _ = fs::remove_file(&temp_path);
-        return Err(e);
-    }
-
-    let _ = fs::remove_file(&temp_path);
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     Ok(path.to_string_lossy().to_string())
 }
@@ -138,7 +138,12 @@ pub async fn lofi_copy_local(
         }
     };
 
-    crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_path, &master_key)?;
+    let dest_clone = dest_path.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_clone, &master_key)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     Ok(dest_path.to_string_lossy().to_string())
 }

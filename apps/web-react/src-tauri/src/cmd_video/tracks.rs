@@ -13,7 +13,10 @@ pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Val
     let videos_dir = get_videos_dir(&app)?;
 
     let input_path = if is_file_encrypted(&videos_dir.join(&local_path)) {
-        let port = app.state::<crate::cmd_stream::StreamPortState>().0;
+        let port = app
+            .try_state::<crate::cmd_stream::StreamPortState>()
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -27,22 +30,26 @@ pub async fn video_scan_tracks(local_path: String, app: AppHandle) -> Result<Val
         local_path.clone()
     };
 
-    let mut cmd = Command::new(ffprobe_path);
-    cmd.args([
-        "-v",
-        "quiet",
-        "-print_format",
-        "json",
-        "-show_format",
-        "-show_streams",
-        &input_path,
-    ]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| {
-        println!("[DEBUG] video_scan_tracks - ffprobe command failed: {}", e);
-        e.to_string()
-    })?;
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ffprobe_path);
+        cmd.args([
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            &input_path,
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| {
+            println!("[DEBUG] video_scan_tracks - ffprobe command failed: {}", e);
+            e.to_string()
+        })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() {
         let json_str = String::from_utf8_lossy(&output.stdout);
@@ -72,7 +79,10 @@ pub async fn video_extract_subtitles(
     let full_path = videos_dir.join(&local_path);
 
     let input_path = if is_file_encrypted(&full_path) {
-        let port = app.state::<crate::cmd_stream::StreamPortState>().0;
+        let port = app
+            .try_state::<crate::cmd_stream::StreamPortState>()
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -88,24 +98,29 @@ pub async fn video_extract_subtitles(
 
     println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 📝 \x1b[1;33mExtraindo legenda:\x1b[0m Faixa \x1b[35m{}\x1b[0m", track_index);
 
-    let mut cmd = Command::new(ffmpeg_path);
-    cmd.args([
-        "-y", // overwrite
-        "-i",
-        &input_path,
-        "-map",
-        &format!("0:s:{}", track_index.replace("0:s:", "")), // Ensure clean stream mapping
-        "-c:s",
-        "webvtt",
-        &vtt_out_path.to_string_lossy().to_string(),
-    ]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    
-    let output = cmd.output().map_err(|e| {
-        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao executar FFmpeg para legenda: {}", e);
-        e.to_string()
-    })?;
+    let vtt_out_clone = vtt_out_path.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.args([
+            "-y", // overwrite
+            "-i",
+            &input_path,
+            "-map",
+            &format!("0:s:{}", track_index.replace("0:s:", "")), // Ensure clean stream mapping
+            "-c:s",
+            "webvtt",
+            &vtt_out_clone.to_string_lossy().to_string(),
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+
+        cmd.output().map_err(|e| {
+            println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao executar FFmpeg para legenda: {}", e);
+            e.to_string()
+        })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() || vtt_out_path.exists() {
         let content = fs::read(&vtt_out_path)
@@ -140,7 +155,10 @@ pub async fn video_extract_audio(
     let final_enc = videos_dir.join(format!("{}_{}.m4a.enc", uuid::Uuid::new_v4(), track_clean));
 
     let input_path = if is_file_encrypted(&videos_dir.join(&local_path)) {
-        let port = app.state::<crate::cmd_stream::StreamPortState>().0;
+        let port = app
+            .try_state::<crate::cmd_stream::StreamPortState>()
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let filename = std::path::Path::new(&local_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -156,43 +174,59 @@ pub async fn video_extract_audio(
 
     println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 🎵 \x1b[1;33mExtraindo áudio secundário:\x1b[0m Faixa \x1b[35m{}\x1b[0m (Forçando estéreo -ac 2)", track_index);
 
-    let mut cmd = Command::new(ffmpeg_path);
-    cmd.args([
-        "-y",
-        "-i",
-        &input_path,
-        "-map",
-        &track_index,
-        "-c:a",
-        "aac",
-        "-ac",
-        "2",
-        "-b:a",
-        "128k",
-        &temp_audio.to_string_lossy().to_string(),
-    ]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    let temp_audio_for_cmd = temp_audio.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.args([
+            "-y",
+            "-i",
+            &input_path,
+            "-map",
+            &track_index,
+            "-c:a",
+            "aac",
+            "-ac",
+            "2",
+            "-b:a",
+            "128k",
+            &temp_audio_for_cmd.to_string_lossy().to_string(),
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
 
-    let output = cmd.output().map_err(|e| {
-        println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao executar FFmpeg para extrair áudio: {}", e);
-        e.to_string()
-    })?;
+        cmd.output().map_err(|e| {
+            println!("\x1b[1;31m[CADERNO VIDEO ERROR]\x1b[0m Falha ao executar FFmpeg para extrair áudio: {}", e);
+            e.to_string()
+        })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() || temp_audio.exists() {
-        let keys_guard = db_state.lock_keys()?;
-        let master_key = if let Some(keys) = keys_guard.as_ref() {
-            if let Some(ref k) = keys.culture {
-                k.clone()
+        let master_key = {
+            let keys_guard = db_state.lock_keys()?;
+            if let Some(keys) = keys_guard.as_ref() {
+                if let Some(ref k) = keys.culture {
+                    k.clone()
+                } else {
+                    let _ = fs::remove_file(&temp_audio);
+                    return Err("Culture key not found".into());
+                }
             } else {
-                return Err("Culture key not found".into());
+                let _ = fs::remove_file(&temp_audio);
+                return Err("Keys not unlocked".into());
             }
-        } else {
-            return Err("Keys not unlocked".into());
         };
 
-        crate::crypto_stream::encrypt_file_chunked(&temp_audio, &final_enc, &master_key)?;
+        let temp_clone = temp_audio.clone();
+        let final_clone = final_enc.clone();
+        let enc_res = tokio::task::spawn_blocking(move || {
+            crate::crypto_stream::encrypt_file_chunked(&temp_clone, &final_clone, &master_key)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
         let _ = fs::remove_file(&temp_audio);
+        enc_res?;
 
         println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m ✅ \x1b[1;32mÁudio secundário extraído e criptografado com sucesso!\x1b[0m");
         Ok(final_enc.to_string_lossy().to_string())
@@ -220,7 +254,10 @@ pub async fn video_remux_default_track(
     let final_dest = videos_dir.join(format!("{}.enc", safe_filename));
 
     let input_path = if is_file_encrypted(&videos_dir.join(&source_path)) {
-        let port = app.state::<crate::cmd_stream::StreamPortState>().0;
+        let port = app
+            .try_state::<crate::cmd_stream::StreamPortState>()
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let fname = std::path::Path::new(&source_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -234,41 +271,57 @@ pub async fn video_remux_default_track(
         source_path.clone()
     };
 
-    let mut cmd = Command::new(ffmpeg_path);
-    cmd.args([
-        "-y",
-        "-i",
-        &input_path,
-        "-map",
-        "0:v",
-        "-map",
-        &track_index,
-        "-map",
-        "0:a",
-        "-map",
-        "0:s?",
-        "-c",
-        "copy",
-        &temp_dest.to_string_lossy().to_string(),
-    ]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let temp_dest_for_cmd = temp_dest.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.args([
+            "-y",
+            "-i",
+            &input_path,
+            "-map",
+            "0:v",
+            "-map",
+            &track_index,
+            "-map",
+            "0:a",
+            "-map",
+            "0:s?",
+            "-c",
+            "copy",
+            &temp_dest_for_cmd.to_string_lossy().to_string(),
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() || temp_dest.exists() {
-        let keys_guard = db_state.lock_keys()?;
-        let master_key = if let Some(keys) = keys_guard.as_ref() {
-            if let Some(ref k) = keys.culture {
-                k.clone()
+        let master_key = {
+            let keys_guard = db_state.lock_keys()?;
+            if let Some(keys) = keys_guard.as_ref() {
+                if let Some(ref k) = keys.culture {
+                    k.clone()
+                } else {
+                    let _ = fs::remove_file(&temp_dest);
+                    return Err("Culture key not found".into());
+                }
             } else {
-                return Err("Culture key not found".into());
+                let _ = fs::remove_file(&temp_dest);
+                return Err("Keys not unlocked".into());
             }
-        } else {
-            return Err("Keys not unlocked".into());
         };
 
-        crate::crypto_stream::encrypt_file_chunked(&temp_dest, &final_dest, &master_key)?;
+        let temp_clone = temp_dest.clone();
+        let final_clone = final_dest.clone();
+        let enc_res = tokio::task::spawn_blocking(move || {
+            crate::crypto_stream::encrypt_file_chunked(&temp_clone, &final_clone, &master_key)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
         let _ = fs::remove_file(&temp_dest);
+        enc_res?;
 
         Ok(final_dest.to_string_lossy().to_string())
     } else {

@@ -57,10 +57,11 @@ pub fn drive_save_credentials(data: Value, db_state: State<'_, DbState>) -> Resu
         other => serde_json::to_string(other).map_err(|e| e.to_string())?,
     };
 
+    let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO config (id, data, updated_at) VALUES ('drive_credentials', ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![&str_data]
+        "INSERT INTO config (id, data, updated_at) VALUES ('drive_credentials', ?1, ?2)
+         ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+        rusqlite::params![&str_data, &now]
     ).map_err(|e| e.to_string())?;
 
     Ok(())

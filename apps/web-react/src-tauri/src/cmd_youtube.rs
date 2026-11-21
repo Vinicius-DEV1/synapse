@@ -181,7 +181,7 @@ pub async fn youtube_download(
                         let parts: Vec<&str> = pct_str.split_whitespace().collect();
                         if let Some(last) = parts.last() {
                             if let Ok(pct) = last.parse::<f64>() {
-                                let _ = app_clone.emit("youtube-download-progress", pct);
+                                let _ = app_clone.emit("youtube_download_progress", pct);
                             }
                         }
                     }

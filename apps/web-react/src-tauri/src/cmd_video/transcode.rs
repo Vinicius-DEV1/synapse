@@ -94,8 +94,14 @@ pub async fn video_generate_web(
     let preset_str = conversion_preset.as_str();
 
     if web_quality == "remux" {
-        let v_codec = video_probe_codec(&input_path, "v:0").unwrap_or_else(|_| "unknown".to_string());
-        let a_codec = video_probe_codec(&input_path, "a:0").unwrap_or_default();
+        let probe_input = input_path.clone();
+        let (v_codec, a_codec) = tokio::task::spawn_blocking(move || {
+            let v = video_probe_codec(&probe_input, "v:0").unwrap_or_else(|_| "unknown".to_string());
+            let a = video_probe_codec(&probe_input, "a:0").unwrap_or_default();
+            (v, a)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
 
         if v_codec != "h264" {
             return Err(format!(
@@ -199,12 +205,18 @@ pub async fn video_generate_web(
         return Err(format!("Failed to transcode web video: {}", error_log));
     }
 
-    let enc_res = crate::crypto_stream::encrypt_file_chunked_cancellable(
-        &temp_web_mp4,
-        &web_full_path,
-        &master_key,
-        Some(&VIDEO_CANCEL_FLAG),
-    );
+    let temp_clone = temp_web_mp4.clone();
+    let web_full_clone = web_full_path.clone();
+    let enc_res = tokio::task::spawn_blocking(move || {
+        crate::crypto_stream::encrypt_file_chunked_cancellable(
+            &temp_clone,
+            &web_full_clone,
+            &master_key,
+            Some(&VIDEO_CANCEL_FLAG),
+        )
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?;
     let _ = fs::remove_file(&temp_web_mp4);
     enc_res?;
 
