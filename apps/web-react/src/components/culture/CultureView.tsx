@@ -150,7 +150,7 @@ export default function CultureView() {
       )}
 
       {/* ── Content ── */}
-      <div className="flex-1 overflow-y-auto p-6 scrollbar-custom">
+      <div className="flex-1 overflow-y-auto p-6 scrollbar-custom smooth-scroll-container">
         {/* Recommendations Tab: preserved in DOM to ensure zero-latency switching and uninterrupted async AI generation */}
         <div className={activeFilter === 'recommendations' ? 'block' : 'hidden'}>
           <CultureRecommendationsView onLibraryUpdated={loadData} />

@@ -6,6 +6,7 @@ vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(() => ({
     dispatch: vi.fn(),
   })),
+  useStoreDispatch: vi.fn(() => vi.fn()),
 }));
 
 describe('useTrash Hook', () => {

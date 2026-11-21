@@ -34,12 +34,13 @@ vi.mock('epubjs', () => ({
   })),
 }));
 
-vi.mock('../../../store/useStore', () => ({
-  useStore: vi.fn(() => ({
-    state: { moduleKeys: {} },
-    dispatch: vi.fn(),
-  })),
-}));
+vi.mock('../../../store/useStore', () => {
+  const state = { moduleKeys: {} };
+  return {
+    useStore: vi.fn(() => ({ state, dispatch: vi.fn() })),
+    useStoreSelector: vi.fn((sel: (s: typeof state) => unknown) => sel(state)),
+  };
+});
 
 let currentScrollMode = false;
 

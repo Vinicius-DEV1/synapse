@@ -106,7 +106,7 @@ export const FilesTable: React.FC<FilesTableProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto p-4 md:p-6 min-w-0 select-none"
+      className="flex-1 overflow-y-auto smooth-scroll-container p-4 md:p-6 min-w-0 select-none"
       onContextMenu={(e) => {
         if (onCanvasContextMenu) {
           e.preventDefault();

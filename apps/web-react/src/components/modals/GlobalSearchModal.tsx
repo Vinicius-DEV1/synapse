@@ -4,7 +4,12 @@ import { HighlightedText } from './search/SearchHighlight';
 import { useGlobalSearch } from './search/useGlobalSearch';
 import { GlobalSearchItem } from './search/GlobalSearchItem';
 
-export default function GlobalSearchModal() {
+interface GlobalSearchModalProps {
+  initialOpen?: boolean;
+  onRequestClose?: () => void;
+}
+
+export default function GlobalSearchModal({ initialOpen = false, onRequestClose }: GlobalSearchModalProps = {}) {
   const {
     isOpen,
     setIsOpen,
@@ -20,7 +25,7 @@ export default function GlobalSearchModal() {
     results,
     handleSelect,
     handleKeyDownList,
-  } = useGlobalSearch();
+  } = useGlobalSearch({ initialOpen, onRequestClose });
 
   /** Generates safe contextual snippet highlighting matched terms */
   const getSnippet = useCallback((content: string | undefined, queryStr: string) => {

@@ -34,7 +34,7 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
   } = useVaultSecurityAnalysis({ items });
 
   return (
-    <div className="flex-1 flex flex-col bg-dark-bg overflow-y-auto p-8 animate-fade-in relative pb-32">
+    <div className="flex-1 flex flex-col bg-dark-bg overflow-y-auto smooth-scroll-container p-8 animate-fade-in relative pb-32">
       <div className="max-w-4xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -66,14 +66,14 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
         )}
 
         {analyzing && (
-          <div className="bg-dark-card/40 border border-brand-500/20 rounded-2xl p-8 text-center shadow-xl backdrop-blur-sm mb-8 animate-pulse">
+          <div className="bg-dark-card/90 border border-brand-500/20 rounded-2xl p-8 text-center shadow-xl mb-8 animate-pulse">
             <ShieldCheck size={48} className="mx-auto text-brand-400 mb-4 animate-bounce" />
             <h2 className="text-xl font-semibold text-dark-text mb-2">
               {t('vault.security.checkingItems', 'Verificando {{count}} itens...', { count: items.length })}
             </h2>
             <div className="w-full max-w-md mx-auto bg-black/30 rounded-full h-2.5 mb-2 overflow-hidden">
               <div
-                className="bg-brand-500 h-2.5 rounded-full transition-all duration-300"
+                className="bg-brand-500 h-2.5 rounded-full transition-[width] duration-300"
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
@@ -114,20 +114,20 @@ export function VaultSecurityDashboard({ items, onEditItem }: VaultSecurityDashb
 
               <div className="flex gap-4 z-10 flex-wrap">
                 {googleItems.length > 0 && (
-                  <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
+                  <div className="bg-black/60 border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
                     <span className="text-3xl font-bold text-brand-400 mb-1">{googleItems.length}</span>
                     <span className="text-xs text-dark-subtext uppercase tracking-wider">Google SSO</span>
                   </div>
                 )}
-                <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
+                <div className="bg-black/60 border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
                   <span className="text-3xl font-bold text-red-400 mb-1">{breachedItems.length}</span>
                   <span className="text-xs text-dark-subtext uppercase tracking-wider">{t('vault.security.breached', 'Vazadas')}</span>
                 </div>
-                <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
+                <div className="bg-black/60 border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
                   <span className="text-3xl font-bold text-orange-400 mb-1">{reusedItems.length}</span>
                   <span className="text-xs text-dark-subtext uppercase tracking-wider">{t('vault.security.reused', 'Reutilizadas')}</span>
                 </div>
-                <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
+                <div className="bg-black/60 border border-white/10 rounded-2xl p-4 w-32 flex flex-col items-center justify-center text-center">
                   <span className="text-3xl font-bold text-yellow-400 mb-1">{weakItems.length}</span>
                   <span className="text-xs text-dark-subtext uppercase tracking-wider">{t('vault.security.weak', 'Fracas')}</span>
                 </div>

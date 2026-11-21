@@ -17,8 +17,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { UserMembershipPointer, WorkspaceRole } from '../../types/workspace';
-import { listUserWorkspaces } from '../../services/workspace/workspace-service';
-import { getCurrentAuthUser } from '../../services/auth/firebase-auth';
 
 interface WorkspaceSwitcherProps {
   currentWorkspaceId?: string;
@@ -37,17 +35,33 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<UserMembershipPointer[]>([]);
-  const user = getCurrentAuthUser();
+  const [hasAuthUser, setHasAuthUser] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    listUserWorkspaces(user.uid).then((list) => {
-      setWorkspaces(list);
-    }).catch(console.error);
-  }, [user, currentWorkspaceId]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getCurrentAuthUser } = await import('../../services/auth/firebase-auth');
+        const currentUser = getCurrentAuthUser();
+        if (cancelled) return;
+        setHasAuthUser(Boolean(currentUser));
+        if (!currentUser) return;
+        const { listUserWorkspaces } = await import('../../services/workspace/workspace-service');
+        const list = await listUserWorkspaces(currentUser.uid);
+        if (!cancelled) {
+          setWorkspaces(list);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentWorkspaceId]);
 
   const activePointer = workspaces.find((w) => w.workspaceId === currentWorkspaceId) || workspaces[0];
-  const activeName = activePointer?.name || (user ? 'Workspace Pessoal' : 'Espaço Pessoal (Local)');
+  const activeName = activePointer?.name || (hasAuthUser ? 'Workspace Pessoal' : 'Espaço Pessoal (Local)');
   const activeIcon = activePointer?.icon || '📁';
   const role = activePointer?.role || currentRole;
 
@@ -117,7 +131,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
 
             {workspaces.length === 0 && (
               <div className="px-2.5 py-2 text-zinc-400 text-[11px] italic">
-                {user ? 'Nenhum workspace encontrado.' : 'Espaço local ativo (usuário único).'}
+                {hasAuthUser ? 'Nenhum workspace encontrado.' : 'Espaço local ativo (usuário único).'}
               </div>
             )}
 
@@ -145,7 +159,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               );
             })}
 
-            {!user && (
+            {!hasAuthUser && (
               <button
                 onClick={() => {
                   setIsOpen(false);

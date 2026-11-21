@@ -14,7 +14,7 @@ export function RootDroppable({ children }: RootDroppableProps) {
   return (
     <div
       ref={setNodeRef}
-      className="flex-1 overflow-y-auto px-2 py-1 pb-20"
+      className="flex-1 overflow-y-auto smooth-scroll-container px-2 py-1 pb-20"
       id="sidebar-page-tree"
     >
       {children}

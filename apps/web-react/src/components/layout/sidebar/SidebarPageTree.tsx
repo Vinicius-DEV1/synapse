@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, Pin, Plus, Upload } from 'lucide-react';
-import { useStore } from '../../../store/useStore';
+import { usePages, useStoreSelector, useStoreDispatch } from '../../../store/useStore';
 import SidebarItem from './SidebarItem';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
@@ -20,20 +20,22 @@ interface SidebarPageTreeProps {
 }
 
 export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
-  const { state, dispatch } = useStore();
+  const pages = usePages();
+  const expandedNodes = useStoreSelector((s) => s.expandedNodes);
+  const dispatch = useStoreDispatch();
   const { t } = useI18n();
   const { handleImportPage } = usePageActions();
   const [visiblePinnedCount, setVisiblePinnedCount] = useState(10);
   const [visiblePagesCount, setVisiblePagesCount] = useState(10);
 
-  const expandedSet = useMemo(() => new Set(state.expandedNodes), [state.expandedNodes]);
+  const expandedSet = useMemo(() => new Set(expandedNodes), [expandedNodes]);
 
   const { pinnedPages, rootPages, childrenMap } = useMemo(() => {
     const pinned: Page[] = [];
     const roots: Page[] = [];
     const map = new Map<string, Page[]>();
 
-    for (const p of state.pages) {
+    for (const p of pages) {
       if (p.is_pinned) {
         pinned.push(p);
       } else if (p.parent_id === null) {
@@ -58,7 +60,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     }
 
     return { pinnedPages: pinned, rootPages: roots, childrenMap: map };
-  }, [state.pages]);
+  }, [pages]);
 
   const handleDropPinned = (draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
@@ -116,7 +118,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       const draggedId = active.data.current.page.id;
       const targetId = over.data.current?.page?.id || over.data.current?.pageId;
       if (draggedId && targetId && draggedId !== targetId) {
-        if (isValidHierarchyMove(state.pages, draggedId, targetId)) {
+        if (isValidHierarchyMove(pages, draggedId, targetId)) {
           onUpdatePage(draggedId, { parent_id: targetId })
             .then(() => {
               dispatch({ type: 'EXPAND_NODE', nodeId: targetId });

@@ -91,7 +91,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
 
       <div className="space-y-6">
         {/* Credenciais Base */}
-        <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
+        <div className="bg-dark-card/85 border border-white/[0.07] rounded-2xl p-6 shadow-xl space-y-4">
           <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">{t('vault.credentials', 'Credenciais')}</h3>
 
           {isGoogle && (
@@ -189,7 +189,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
 
         {/* Campos Personalizados */}
         {parsedCustomFields.length > 0 && (
-          <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
+          <div className="bg-dark-card/85 border border-white/[0.07] rounded-2xl p-6 shadow-xl space-y-4">
             <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-2">{t('vault.customFields', 'Campos Adicionais')}</h3>
             <div className="grid grid-cols-2 gap-4">
               {parsedCustomFields.map((field, idx: number) => (
@@ -218,7 +218,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
 
         {/* Notas */}
         {item.notes && (
-          <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+          <div className="bg-dark-card/85 border border-white/[0.07] rounded-2xl p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-3">{t('vault.secureNotes', 'Anotações Seguras')}</h3>
             <div className="whitespace-pre-wrap text-sm text-dark-subtext/90 leading-relaxed font-mono bg-black/20 p-4 rounded-xl border border-white/5">
               {item.notes}
@@ -228,7 +228,7 @@ export function VaultItemDetails({ item, onEdit, onDelete }: VaultItemDetailsPro
 
         {/* Histórico de Senhas */}
         {(!isGoogle || Boolean(item.password)) && (
-          <div className="bg-dark-card/40 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+          <div className="bg-dark-card/85 border border-white/[0.07] rounded-2xl p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-dark-subtext uppercase tracking-wider mb-4 flex items-center gap-2">
               <History size={16} /> {t('vault.passwordHistory', 'Histórico de Senhas')}
             </h3>

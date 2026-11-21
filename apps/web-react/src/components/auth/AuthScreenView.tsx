@@ -13,6 +13,9 @@ export function AuthScreenView({ model }: { model: AuthScreenModel }) {
     intimidatingPhrase,
     cloudMode,
     email,
+    maskedEmail,
+    isEmailMasked,
+    rememberEmail,
     cloudPassword,
     previousPassword,
     cloudMessage,
@@ -22,6 +25,8 @@ export function AuthScreenView({ model }: { model: AuthScreenModel }) {
     migrationRequired,
     recoveryWarning,
     setEmail,
+    toggleRememberEmail,
+    switchToCustomEmail,
     setCloudPassword,
     setPreviousPassword,
     changeCloudMode,
@@ -88,18 +93,49 @@ export function AuthScreenView({ model }: { model: AuthScreenModel }) {
                     <label className="block text-[11px] font-medium text-dark-subtext mb-1 ml-1 uppercase tracking-wider">Email</label>
                     <div className="relative">
                       <Mail size={14} className="absolute left-3.5 top-3.5 text-zinc-500" />
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        disabled={loading}
-                        autoFocus
-                        autoComplete="username"
-                        className="w-full bg-dark-bg border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50"
-                        placeholder={t('auth.emailPlaceholder')}
-                      />
+                      {cloudMode === 'login' && isEmailMasked ? (
+                        <>
+                          <input
+                            type="text"
+                            readOnly
+                            aria-label="Email"
+                            value={maskedEmail}
+                            disabled={loading}
+                            className="w-full bg-dark-bg border border-white/[0.08] rounded-xl pl-9 pr-20 py-2.5 text-sm text-white/90 tracking-wide focus:outline-none focus:border-brand-500/50 cursor-default"
+                          />
+                          <button
+                            type="button"
+                            onClick={switchToCustomEmail}
+                            disabled={loading}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-brand-400 hover:text-brand-300 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+                          >
+                            {t('auth.changeEmail')}
+                          </button>
+                        </>
+                      ) : (
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          disabled={loading}
+                          autoFocus
+                          autoComplete="username"
+                          className="w-full bg-dark-bg border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50"
+                          placeholder={t('auth.emailPlaceholder')}
+                        />
+                      )}
                     </div>
+                    <label className="mt-2 ml-1 inline-flex items-center gap-2 text-xs text-dark-subtext hover:text-white/90 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberEmail}
+                        onChange={(event) => toggleRememberEmail(event.target.checked)}
+                        disabled={loading}
+                        className="h-3.5 w-3.5 rounded border-white/20 bg-dark-bg text-brand-500 focus:ring-brand-500/40 focus:ring-offset-0"
+                      />
+                      <span>{t('auth.rememberEmail')}</span>
+                    </label>
                   </div>
 
                   <div>
@@ -119,6 +155,7 @@ export function AuthScreenView({ model }: { model: AuthScreenModel }) {
                         value={cloudPassword}
                         onChange={(event) => setCloudPassword(event.target.value)}
                         disabled={loading}
+                        autoFocus={cloudMode === 'login' && isEmailMasked}
                         autoComplete={cloudMode === 'register' ? 'new-password' : 'current-password'}
                         className="w-full bg-dark-bg border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50"
                         placeholder={t('auth.accountPasswordPlaceholder')}

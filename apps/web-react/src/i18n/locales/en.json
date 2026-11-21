@@ -384,6 +384,8 @@
     "createAccount": "Create Account",
     "signInToAccount": "Sign In and Unlock",
     "emailPlaceholder": "you@example.com",
+    "rememberEmail": "Remember email",
+    "changeEmail": "Change",
     "accountPassword": "Cloud Account Password",
     "accountPasswordPlaceholder": "Enter your account password",
     "cloudRequiredFields": "Enter your Cloud Account email and password.",

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'error' | 'cancelled';
 
@@ -12,8 +12,7 @@ export interface BackgroundTask {
   timeoutMs?: number;
 }
 
-interface TaskContextType {
-  tasks: BackgroundTask[];
+export interface TaskActionsContextType {
   addTask: (id: string, title: string, abortController?: AbortController, timeoutMs?: number) => void;
   updateTaskProgress: (id: string, progress: number, phase?: string) => void;
   completeTask: (id: string) => void;
@@ -22,6 +21,12 @@ interface TaskContextType {
   removeTask: (id: string) => void;
 }
 
+interface TaskContextType extends TaskActionsContextType {
+  tasks: BackgroundTask[];
+}
+
+const TaskStateContext = createContext<BackgroundTask[] | null>(null);
+const TaskActionsContext = createContext<TaskActionsContextType | null>(null);
 const TaskContext = createContext<TaskContextType | null>(null);
 
 export function TaskProvider({ children }: { children: React.ReactNode }) {
@@ -30,7 +35,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const removalTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Sync ref with state for callbacks
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
@@ -71,7 +75,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'completed', progress: 100 } : t))
     );
-    // Auto-remove after 5 seconds
     const removalTimer = setTimeout(() => {
       removalTimeoutsRef.current.delete(id);
       removeTask(id);
@@ -89,7 +92,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'cancelled' } : t))
     );
-    // Auto-remove after a few seconds
     const removalTimer = setTimeout(() => {
       removalTimeoutsRef.current.delete(id);
       removeTask(id);
@@ -105,7 +107,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       { id, title, progress: 0, status: 'running', abortController, timeoutMs },
     ]);
 
-    // Safety watchdog: default 15 minutes or custom timeout
     const effectiveTimeout = timeoutMs || 15 * 60 * 1000;
     const timer = setTimeout(() => {
       console.warn(`[Caderno:TaskWatchdog] Task ${id} (${title}) timed out after ${effectiveTimeout}ms`);
@@ -135,28 +136,54 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const actionsValue = useMemo<TaskActionsContextType>(() => ({
+    addTask,
+    updateTaskProgress,
+    completeTask,
+    failTask,
+    cancelTask,
+    removeTask,
+  }), [addTask, updateTaskProgress, completeTask, failTask, cancelTask, removeTask]);
+
+  const combinedValue = useMemo<TaskContextType>(() => ({
+    tasks,
+    ...actionsValue,
+  }), [tasks, actionsValue]);
+
   return (
-    <TaskContext.Provider
-      value={{
-        tasks,
-        addTask,
-        updateTaskProgress,
-        completeTask,
-        failTask,
-        cancelTask,
-        removeTask,
-      }}
-    >
-      {children}
-    </TaskContext.Provider>
+    <TaskActionsContext.Provider value={actionsValue}>
+      <TaskStateContext.Provider value={tasks}>
+        <TaskContext.Provider value={combinedValue}>
+          {children}
+        </TaskContext.Provider>
+      </TaskStateContext.Provider>
+    </TaskActionsContext.Provider>
   );
 }
 
-export function useTasks() {
+/**
+ * Zero-rerender task dispatchers. Never re-renders when task progress ticks.
+ */
+export function useTaskActions(): TaskActionsContextType {
+  const context = useContext(TaskActionsContext);
+  if (!context) {
+    throw new Error('useTaskActions must be used within a TaskProvider');
+  }
+  return context;
+}
+
+export function useTaskState(): BackgroundTask[] {
+  const context = useContext(TaskStateContext);
+  if (context === null) {
+    throw new Error('useTaskState must be used within a TaskProvider');
+  }
+  return context;
+}
+
+export function useTasks(): TaskContextType {
   const context = useContext(TaskContext);
   if (!context) {
     throw new Error('useTasks must be used within a TaskProvider');
   }
   return context;
 }
-

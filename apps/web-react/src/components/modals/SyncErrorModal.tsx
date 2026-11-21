@@ -2,28 +2,49 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, DatabaseBackup } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 
-export default function SyncErrorModal() {
-  const [errorDetails, setErrorDetails] = useState<{ message: string; isQuota: boolean } | null>(null);
+export interface SyncErrorDetails {
+  message: string;
+  isQuota: boolean;
+}
+
+interface SyncErrorModalProps {
+  initialError?: SyncErrorDetails | null;
+  onDismiss?: () => void;
+}
+
+export function parseSyncErrorEvent(detail?: { message?: string; code?: string }): SyncErrorDetails | null {
+  if (!detail?.message) return null;
+  const { message, code } = detail;
+  const lower = message.toLowerCase();
+  const isQuota =
+    code === 'resource-exhausted' || lower.includes('quota') || lower.includes('exceeded');
+  if (isQuota) {
+    return { message, isQuota: true };
+  }
+  if (lower.includes('permission-denied')) {
+    return {
+      message: 'Acesso negado ao Firebase. Verifique suas credenciais.',
+      isQuota: false,
+    };
+  }
+  return null;
+}
+
+export default function SyncErrorModal({ initialError = null, onDismiss }: SyncErrorModalProps = {}) {
+  const [errorDetails, setErrorDetails] = useState<SyncErrorDetails | null>(initialError);
 
   useEffect(() => {
-    const handleSyncError = (e: CustomEvent<{ message: string; code?: string }>) => {
-      const { message, code } = e.detail;
-      // Explicitly handles quota exceeded or critical storage errors
-      const isQuota = code === 'resource-exhausted' || 
-                      message.toLowerCase().includes('quota') || 
-                      message.toLowerCase().includes('exceeded');
-      
-      // Ignore non-critical offline/transient errors here.
-      // Show modal only for critical quota errors.
-      if (isQuota) {
-        setErrorDetails({ message, isQuota: true });
-      } else if (message.toLowerCase().includes('permission-denied')) {
-        setErrorDetails({ message: 'Acesso negado ao Firebase. Verifique suas credenciais.', isQuota: false });
-      }
-    };
+    if (initialError) {
+      setErrorDetails(initialError);
+    }
+  }, [initialError]);
 
+  useEffect(() => {
     const listener: EventListener = (e: Event) => {
-      handleSyncError(e as CustomEvent<{ message: string; code?: string }>);
+      const parsed = parseSyncErrorEvent((e as CustomEvent<{ message?: string; code?: string }>).detail);
+      if (parsed) {
+        setErrorDetails(parsed);
+      }
     };
 
     window.addEventListener('caderno-sync-error', listener);
@@ -31,6 +52,11 @@ export default function SyncErrorModal() {
   }, []);
 
   if (!errorDetails) return null;
+
+  const handleClose = () => {
+    setErrorDetails(null);
+    onDismiss?.();
+  };
 
   return (
     <Portal>
@@ -64,7 +90,7 @@ export default function SyncErrorModal() {
           </div>
 
           <button
-            onClick={() => setErrorDetails(null)}
+            onClick={handleClose}
             className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/90 font-medium transition-colors"
           >
             Entendido, manter meus dados locais

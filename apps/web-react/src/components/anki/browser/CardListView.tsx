@@ -28,9 +28,11 @@ export function CardListView({
         return (
           <div
             key={card.note_id}
-            style={{ contain: 'layout style' }}
-            className={`bg-dark-card border rounded-2xl p-5 flex flex-col shadow-xs transition-colors duration-150 ${isSelected ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/5 hover:border-white/20'}`}
+            className="cv-auto-compact p-3 -m-3 pointer-events-none flex flex-col"
           >
+            <div
+              className={`pointer-events-auto bg-dark-card border rounded-2xl p-5 flex flex-col shadow-xs transition-colors duration-150 ${isSelected ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/5 hover:border-white/20'}`}
+            >
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
               <div className="flex flex-wrap gap-2 items-center">
@@ -83,6 +85,7 @@ export function CardListView({
                 <div className="text-[10px] text-dark-subtext uppercase tracking-widest mb-2 opacity-70">Verso</div>
                 <HtmlRenderer html={card.back} className="text-sm text-dark-subtext whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar block" />
               </div>
+            </div>
             </div>
           </div>
         );

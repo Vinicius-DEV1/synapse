@@ -9,7 +9,7 @@ import {
   getAvailableParentOptions,
   getBatteryBreadcrumb,
 } from '../../services/quiz/quizHierarchy';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector, useStoreDispatch, getStoreState } from '../../store/useStore';
 import type { BatteryWithQuestions } from '../../types/quiz';
 import type { QuestionItem } from '../editor-extensions/quiz/types';
 
@@ -20,8 +20,10 @@ interface QuestionsViewProps {
 }
 
 export default function QuestionsView({ tabId }: QuestionsViewProps) {
-  const { dispatch, state } = useStore();
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const dispatch = useStoreDispatch();
+  const activeTab = useStoreSelector(
+    (s) => s.tabs.find((t) => t.id === (tabId || s.activeTabId)) || s.tabs[0]
+  );
 
   const [activeTabSection, setActiveTabSection] = useState<'explorer' | 'dashboard' | 'playlists'>('explorer');
 
@@ -113,13 +115,13 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     [dispatch, tabId, activeTab]
   );
 
-  // Resolve live page title from store
+  // Resolve live page title from store without subscribing QuestionsView to every page list mutation
   const getPageTitle = useCallback(
     (pageId: string) => {
-      const page = state.pages.find((p) => p.id === pageId);
+      const page = getStoreState().pages.find((p) => p.id === pageId);
       return page?.title || null;
     },
-    [state.pages]
+    []
   );
 
   // Close Question Editor page and return to Explorer or origin Note

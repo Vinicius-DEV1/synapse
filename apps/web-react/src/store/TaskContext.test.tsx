@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { TaskProvider, useTasks } from './TaskContext';
+import { render, renderHook, act } from '@testing-library/react';
+import { TaskProvider, useTasks, useTaskActions } from './TaskContext';
 
 describe('TaskContext (store/TaskContext)', () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -101,6 +101,34 @@ describe('TaskContext (store/TaskContext)', () => {
     expect(abortSpy).toHaveBeenCalled();
 
     vi.useRealTimers();
+  });
+
+  it('keeps useTaskActions consumers from re-rendering during frequent progress updates', () => {
+    let actionConsumerRenders = 0;
+    let actionsRef: ReturnType<typeof useTaskActions> | null = null;
+
+    function ActionsOnlyConsumer() {
+      actionConsumerRenders += 1;
+      actionsRef = useTaskActions();
+      return null;
+    }
+
+    render(
+      <TaskProvider>
+        <ActionsOnlyConsumer />
+      </TaskProvider>
+    );
+
+    expect(actionConsumerRenders).toBe(1);
+
+    act(() => {
+      actionsRef?.addTask('t1', 'Converting');
+      actionsRef?.updateTaskProgress('t1', 25);
+      actionsRef?.updateTaskProgress('t1', 75);
+      actionsRef?.completeTask('t1');
+    });
+
+    expect(actionConsumerRenders).toBe(1);
   });
 });
 

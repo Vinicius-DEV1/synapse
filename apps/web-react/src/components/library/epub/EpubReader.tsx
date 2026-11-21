@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
 import { ArrowLeft, CloudDownload } from 'lucide-react';
 import type { LibraryBook, ReadingMode } from '../../../types';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector, useStoreDispatch } from '../../../store/useStore';
 
 import { EpubProvider, useEpub } from './EpubContext';
 import EpubTopBar from './EpubTopBar';
@@ -48,7 +48,8 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     setCurrentSectionHref,
   } = useEpub();
 
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const isReadingModeFullScreen = useStoreSelector((s) => s.isReadingModeFullScreen);
 
   useTimeTracker({
     itemId: book.id,
@@ -124,10 +125,10 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     }
   };
 
-  const isFullScreenRef = useRef(state.isReadingModeFullScreen);
+  const isFullScreenRef = useRef(isReadingModeFullScreen);
   useEffect(() => {
-    isFullScreenRef.current = state.isReadingModeFullScreen;
-  }, [state.isReadingModeFullScreen]);
+    isFullScreenRef.current = isReadingModeFullScreen;
+  }, [isReadingModeFullScreen]);
 
   const lastPageTurnTimeRef = useRef<number>(0);
 
@@ -364,7 +365,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
         className={`
         transition-all duration-300 z-30
         ${showMobileTools ? 'translate-y-[46px] md:translate-y-0' : '-translate-y-full md:translate-y-0'}
-        ${state.isReadingModeFullScreen ? 'md:hidden' : ''}
+        ${isReadingModeFullScreen ? 'md:hidden' : ''}
         absolute md:relative top-0 left-0 right-0
       `}
       >

@@ -21,14 +21,14 @@ let mockSelectedBook: any = null;
 let mockLoading = false;
 let mockBooks: any[] = [];
 
-vi.mock('../../store/useStore', () => ({
-  useStore: vi.fn(() => ({
-    state: {
-      tabs: [{ id: 'tab-1', module: 'library', bookId: null }],
-    },
-    dispatch: mockDispatch,
-  })),
-}));
+vi.mock('../../store/useStore', () => {
+  const state = { tabs: [{ id: 'tab-1', module: 'library', bookId: null }] };
+  return {
+    useStore: vi.fn(() => ({ state, dispatch: mockDispatch })),
+    useStoreDispatch: vi.fn(() => mockDispatch),
+    useStoreSelector: vi.fn((sel: (s: typeof state) => unknown) => sel(state)),
+  };
+});
 
 vi.mock('./hooks/useLibraryData', () => ({
   useLibraryData: vi.fn(() => ({

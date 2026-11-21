@@ -10,13 +10,13 @@ const renderWithI18n = (ui: React.ReactElement) => {
   return render(<I18nProvider initialLanguage="pt-BR">{ui}</I18nProvider>);
 };
 
-vi.mock('../../store/useStore', () => ({
-  useStore: () => ({
-    state: {
-      moduleKeys: {},
-    },
-  }),
-}));
+vi.mock('../../store/useStore', () => {
+  const state = { moduleKeys: {} };
+  return {
+    useStore: () => ({ state }),
+    useStoreSelector: (sel: (s: typeof state) => unknown) => sel(state),
+  };
+});
 
 vi.mock('../../utils/file-fetcher', () => ({
   getDecryptedFileUrl: vi.fn(),

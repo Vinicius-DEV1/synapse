@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, X, Volume2, VolumeX, Rewind, FastForward } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 import { useTranslation } from '../../i18n';
 
@@ -13,7 +13,6 @@ interface AudioPlayerModalProps {
 
 export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProps) {
   const { t } = useTranslation();
-  const { state } = useStore();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +25,7 @@ export default function AudioPlayerModal({ item, onClose }: AudioPlayerModalProp
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const objectUrlRef = useRef<string | null>(null);
-  const filesMasterKey = state.moduleKeys['files'];
+  const filesMasterKey = useStoreSelector((s) => s.moduleKeys['files']);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

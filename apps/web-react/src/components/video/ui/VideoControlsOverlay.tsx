@@ -84,14 +84,14 @@ export function VideoControlsOverlay({
         onChange={handleSubFileChange}
       />
       <div 
-        className={`absolute top-0 left-0 right-0 p-6 flex items-center justify-between transition-all ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        className={`absolute top-0 left-0 right-0 p-6 flex items-center justify-between transition-opacity ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}
         onMouseEnter={() => setIsHoveringControls(true)}
         onMouseLeave={() => setIsHoveringControls(false)}
       >
         <div className="flex items-center gap-4 min-w-0">
           <button 
             onClick={onClose}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors shrink-0"
+            className="p-2 bg-black/70 hover:bg-black/85 rounded-full text-white transition-colors shrink-0 border border-white/10"
           >
             <ArrowLeft size={20} />
           </button>
@@ -109,7 +109,7 @@ export function VideoControlsOverlay({
           {audioTracks.length > 0 && (
             <button
               onClick={() => setActiveAudioIndex(prev => prev >= audioTracks.length - 1 ? -1 : prev + 1)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08]"
+              className="flex items-center gap-2 px-3 py-1.5 bg-black/75 hover:bg-black/90 rounded-lg text-white transition-colors border border-white/10"
               title="Trocar Idioma (A)"
             >
               <Languages size={16} className="text-brand-400" />
@@ -119,7 +119,7 @@ export function VideoControlsOverlay({
             </button>
           )}
 
-          <div className="flex items-center bg-black/40 hover:bg-black/60 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08] overflow-hidden">
+          <div className="flex items-center bg-black/75 hover:bg-black/90 rounded-lg text-white transition-colors border border-white/10 overflow-hidden">
             <button
               onClick={() => {
                 if (subtitleTracks.length > 1) {
@@ -164,12 +164,12 @@ export function VideoControlsOverlay({
                 clearLoop();
               }
             }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08] ${loopA !== null || loopB !== null ? 'bg-brand-500/30 hover:bg-brand-500/50 border-brand-500/50' : 'bg-black/40 hover:bg-white/20'}`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white transition-colors border border-white/10 ${loopA !== null || loopB !== null ? 'bg-brand-600/80 hover:bg-brand-500/90 border-brand-400/60' : 'bg-black/75 hover:bg-white/20'}`}
             title={loopA !== null || loopB !== null ? 'Remover Loop A-B (P)' : 'Loop A-B (I, O)'}
           >
-            <Repeat size={16} className={loopA !== null || loopB !== null ? "text-brand-300" : "text-white/70"} />
+            <Repeat size={16} className={loopA !== null || loopB !== null ? "text-brand-200" : "text-white/75"} />
             {(loopA !== null || loopB !== null) && (
-              <span className="text-xs font-bold text-brand-300">
+              <span className="text-xs font-bold text-brand-200">
                 {loopA !== null ? 'A' : ''}{loopA !== null && loopB !== null ? '-' : ''}{loopB !== null ? 'B' : ''}
               </span>
             )}
@@ -180,7 +180,7 @@ export function VideoControlsOverlay({
               const newRate = playbackRate >= 2 ? 0.25 : playbackRate + 0.25;
               changePlaybackRate(newRate);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-white/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08]"
+            className="flex items-center gap-2 px-3 py-1.5 bg-black/75 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10"
             title="Velocidade (Shift + >)"
           >
             <Gauge size={16} className="text-brand-400" />
@@ -192,7 +192,7 @@ export function VideoControlsOverlay({
               setShowVocabDrawer(true);
               onPauseForDrawer();
             }}
-            className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-brand-500/20 rounded-lg text-white backdrop-blur-md transition-colors border border-white/[0.08]"
+            className="flex items-center gap-2 px-3 py-1.5 bg-black/75 hover:bg-brand-500/30 rounded-lg text-white transition-colors border border-white/10"
             title="Palavras Salvas"
           >
             <BookOpen size={16} className={videoWordsCount > 0 ? "text-yellow-400" : "text-white/70"} />
@@ -206,7 +206,7 @@ export function VideoControlsOverlay({
               setShowHelpModal(true);
               onPauseForDrawer();
             }}
-            className="flex items-center justify-center p-2 bg-black/40 hover:bg-white/20 rounded-full text-white/70 hover:text-white backdrop-blur-md transition-colors border border-white/[0.08]"
+            className="flex items-center justify-center p-2 bg-black/75 hover:bg-white/20 rounded-full text-white/75 hover:text-white transition-colors border border-white/10"
             title="Ajuda e Atalhos"
           >
             <HelpCircle size={18} />
@@ -218,7 +218,7 @@ export function VideoControlsOverlay({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button 
             onClick={togglePlay}
-            className="bg-black/50 p-6 rounded-full text-white pointer-events-auto hover:bg-brand-500/80 hover:scale-110 transition-all duration-300"
+            className="bg-black/65 p-6 rounded-full text-white pointer-events-auto hover:bg-brand-500/85 hover:scale-110 transition-[transform,background-color] duration-200"
           >
             {isPlaying ? <Pause size={48} /> : <Play size={48} className="ml-2" />}
           </button>
@@ -226,7 +226,7 @@ export function VideoControlsOverlay({
       )}
 
       <div 
-        className={`absolute bottom-0 left-0 right-0 p-6 transition-all ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}
         onMouseEnter={() => setIsHoveringControls(true)}
         onMouseLeave={() => setIsHoveringControls(false)}
       >
@@ -269,7 +269,7 @@ export function VideoControlsOverlay({
           >
             {hoverTime !== null && (
               <div 
-                className="absolute -top-8 left-0 -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded backdrop-blur-md pointer-events-none whitespace-nowrap z-10"
+                className="absolute -top-8 left-0 -translate-x-1/2 bg-black/90 text-white text-xs py-1 px-2 rounded border border-white/10 pointer-events-none whitespace-nowrap z-10"
                 style={{ left: `${hoverPos * 100}%` }}
               >
                 {formatTime(hoverTime)}

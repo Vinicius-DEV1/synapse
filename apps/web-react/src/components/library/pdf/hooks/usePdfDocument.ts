@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { useStore } from '../../../../store/useStore';
+import { useStoreSelector } from '../../../../store/useStore';
 import { resolveCanonicalBuffer } from '../../../../services/storage/canonical-resolver';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../../types';
 import type { TocItem } from '../components/AnnotationPanel';
@@ -20,7 +20,9 @@ export function usePdfDocument(
   onUpdateBook: (updates: Partial<LibraryBook>) => void,
   currentPage: number
 ) {
-  const { state } = useStore();
+  const isAvulso = book.author === 'Arquivo Avulso';
+  const moduleName = isAvulso ? 'files' : 'library';
+  const masterKey = useStoreSelector((s) => s.moduleKeys[moduleName]);
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -54,10 +56,6 @@ export function usePdfDocument(
       try {
         setLoading(true);
         setPdfError(null);
-
-        const isAvulso = book.author === 'Arquivo Avulso';
-        const moduleName = isAvulso ? 'files' : 'library';
-        const masterKey = state.moduleKeys[moduleName];
 
         const fileData = await resolveCanonicalBuffer({
           moduleName,
@@ -220,7 +218,7 @@ export function usePdfDocument(
       }
       pdfDocRef.current = null;
     };
-  }, [book.id, book.file_path, book.drive_file_id, state.moduleKeys, reloadCounter]);
+  }, [book.id, book.file_path, book.drive_file_id, masterKey, reloadCounter]);
 
   // Teardown reading session cleanly only on component unmount
   useEffect(() => {

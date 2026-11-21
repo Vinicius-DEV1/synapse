@@ -38,6 +38,8 @@ vi.mock('../../../store/useStore', () => ({
   useStore: vi.fn(() => ({
     dispatch: mockDispatch,
   })),
+  useStoreDispatch: vi.fn(() => mockDispatch),
+  useStoreSelector: vi.fn((sel: (s: { moduleKeys: Record<string, never> }) => unknown) => sel({ moduleKeys: {} })),
 }));
 
 vi.mock('../../../utils/settings', () => ({

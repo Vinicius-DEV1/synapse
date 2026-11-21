@@ -4,8 +4,8 @@ import VideoGrid from './VideoGrid';
 import VideoPlayer from './VideoPlayer';
 import type { UploadOptions } from './VideoUploadModal';
 import { resolveVideoUrl, revokeVideoStreamLink, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video';
-import { useStore } from '../../store/useStore';
-import { useTasks } from '../../store/TaskContext';
+import { useStoreSelector } from '../../store/useStore';
+import { useTaskActions } from '../../store/TaskContext';
 import { useVideoFolders } from './hooks/useVideoFolders';
 import { VideoViewHeader } from './ui/VideoViewHeader';
 import { VideoViewModals } from './ui/VideoViewModals';
@@ -34,11 +34,11 @@ export default function VideoView({ tabId }: { tabId?: string }) {
   const [isDownloadingId, setIsDownloadingId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
-  const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
+  const { addTask, updateTaskProgress, completeTask, failTask } = useTaskActions();
   
-  const { state } = useStore();
-  const activeTab = state.tabs.find(t => t.id === tabId) || state.tabs[0];
-  const pendingVideoId = activeTab?.moduleState?.videoId;
+  const pendingVideoId = useStoreSelector(
+    (s) => (s.tabs.find((t) => t.id === tabId) || s.tabs[0])?.moduleState?.videoId
+  );
 
   const loadVideos = useCallback(async () => {
     try {
@@ -295,7 +295,7 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       )}
 
       {/* Grid / List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto smooth-scroll-container">
         <VideoGrid 
           videos={videos} 
           viewMode={viewMode} 

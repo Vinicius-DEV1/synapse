@@ -317,7 +317,7 @@ export default function HighlightToolbar({
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="p-2 rounded-xl text-white/75 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                  className="p-2 rounded-xl text-white/75 hover:text-white hover:bg-white/10 active:scale-90 transition-[color,background-color,border-color,transform,box-shadow]"
                   title="Copiar texto"
                   aria-label="Copiar texto"
                 >
@@ -333,7 +333,7 @@ export default function HighlightToolbar({
                     if (selectedText) onDictionary?.(selectedText);
                     onDismiss();
                   }}
-                  className="p-2 rounded-xl text-white/75 hover:text-brand-400 hover:bg-white/10 active:scale-90 transition-all"
+                  className="p-2 rounded-xl text-white/75 hover:text-brand-400 hover:bg-white/10 active:scale-90 transition-[color,background-color,border-color,transform,box-shadow]"
                   title="Dicionário / Traduzir"
                   aria-label="Dicionário / Traduzir"
                 >
@@ -345,7 +345,7 @@ export default function HighlightToolbar({
               <button
                 type="button"
                 onClick={handleNoteToggle}
-                className={`p-2 rounded-xl active:scale-90 transition-all ${
+                className={`p-2 rounded-xl active:scale-90 transition-[color,background-color,border-color,transform,box-shadow] ${
                   showNoteInput
                     ? 'bg-brand-500/20 text-brand-400'
                     : 'text-white/75 hover:text-brand-400 hover:bg-white/10'
@@ -364,7 +364,7 @@ export default function HighlightToolbar({
                     onDeleteHighlight(existingHighlight.id);
                     onDismiss();
                   }}
-                  className="p-2 rounded-xl text-white/75 hover:text-red-400 hover:bg-red-500/10 active:scale-90 transition-all"
+                  className="p-2 rounded-xl text-white/75 hover:text-red-400 hover:bg-red-500/10 active:scale-90 transition-[color,background-color,border-color,transform,box-shadow]"
                   title="Excluir marcação"
                   aria-label="Excluir marcação"
                 >
@@ -377,7 +377,7 @@ export default function HighlightToolbar({
                 <button
                   type="button"
                   onClick={onDismiss}
-                  className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                  className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 active:scale-90 transition-[color,background-color,border-color,transform,box-shadow]"
                   title="Fechar"
                   aria-label="Fechar"
                 >
@@ -417,7 +417,7 @@ export default function HighlightToolbar({
               key={color}
               type="button"
               onClick={() => handleColorClick(color)}
-              className={`w-5 h-5 rounded-full transition-all duration-150 hover:scale-125 active:scale-90 flex items-center justify-center ${
+              className={`w-5 h-5 rounded-full transition-[color,background-color,border-color,transform,box-shadow] duration-150 hover:scale-125 active:scale-90 flex items-center justify-center ${
                 selectedColor === color
                   ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-dark-card scale-110'
                   : 'hover:ring-2 hover:ring-white/30 hover:ring-offset-1 hover:ring-offset-dark-card'
@@ -438,7 +438,7 @@ export default function HighlightToolbar({
             <button
               type="button"
               onClick={handleCopy}
-              className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-white transition-all active:scale-90"
+              className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-white transition-[color,background-color,border-color,transform,box-shadow] active:scale-90"
               title="Copiar texto"
               aria-label="Copiar texto"
             >
@@ -454,7 +454,7 @@ export default function HighlightToolbar({
                 if (selectedText) onDictionary?.(selectedText);
                 onDismiss();
               }}
-              className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-brand-400 transition-all active:scale-90"
+              className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-brand-400 transition-[color,background-color,border-color,transform,box-shadow] active:scale-90"
               title="Dicionário / Traduzir"
               aria-label="Dicionário / Traduzir"
             >
@@ -466,7 +466,7 @@ export default function HighlightToolbar({
           <button
             type="button"
             onClick={handleNoteToggle}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform,box-shadow] active:scale-90 ${
               showNoteInput
                 ? 'bg-brand-500/20 text-brand-400'
                 : 'text-dark-subtext hover:bg-white/10 hover:text-brand-400'
@@ -484,7 +484,7 @@ export default function HighlightToolbar({
                 onDeleteHighlight(existingHighlight.id);
                 onDismiss();
               }}
-              className="p-1.5 rounded-lg text-dark-subtext hover:bg-red-500/20 hover:text-red-400 transition-all active:scale-90"
+              className="p-1.5 rounded-lg text-dark-subtext hover:bg-red-500/20 hover:text-red-400 transition-[color,background-color,border-color,transform,box-shadow] active:scale-90"
               title="Excluir marcação"
               aria-label="Excluir marcação"
             >
@@ -496,7 +496,7 @@ export default function HighlightToolbar({
           <button
             type="button"
             onClick={onDismiss}
-            className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-white transition-all active:scale-90"
+            className="p-1.5 rounded-lg text-dark-subtext hover:bg-white/10 hover:text-white transition-[color,background-color,border-color,transform,box-shadow] active:scale-90"
             title="Fechar (Esc)"
             aria-label="Fechar"
           >

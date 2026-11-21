@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Download, File, Bookmark, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 import type { FileItem } from '../../types';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import { getDecryptedFileUrl, fetchTextFromUrl } from '../../utils/file-fetcher';
 import { useFileReadingProgress } from './hooks/useFileReadingProgress';
 import { TextPreviewer } from './viewer/TextPreviewer';
@@ -21,7 +21,7 @@ interface FileViewerProps {
 
 function FileViewerContent({ item, onClose }: FileViewerProps) {
   const { t } = useTranslation();
-  const { state } = useStore();
+  const filesMasterKey = useStoreSelector((s) => s.moduleKeys['files']);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>('');
   const [darkMode, setDarkMode] = useState<boolean>(false);
@@ -39,7 +39,6 @@ function FileViewerContent({ item, onClose }: FileViewerProps) {
   const isText = item.file_type === 'text' || isMd || item.name.toLowerCase().endsWith('.txt');
   const isPdf = item.file_type === 'pdf' || item.name.toLowerCase().endsWith('.pdf');
 
-  const filesMasterKey = state.moduleKeys['files'];
   const itemId = item.id;
   const itemLocalPath = item.local_path;
   const itemDriveId = item.drive_file_id;

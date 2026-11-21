@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useStore } from '../../store/useStore';
+import { usePages, useStoreSelector, getStoreState } from '../../store/useStore';
 import { getPageAndDescendants } from '../../utils/content-extractor';
 
 export interface AttachedPage {
@@ -13,14 +13,19 @@ export function usePageMentions(
   prompt: string,
   setPrompt: (p: string) => void
 ) {
-  const { state } = useStore();
+  const pages = usePages();
+  const activePageId = useStoreSelector(
+    (s) => s.tabs.find((t) => t.id === s.activeTabId)?.pageId ?? null
+  );
   const [attachedPages, setAttachedPages] = useState<AttachedPage[]>([]);
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
 
-  const activeTab = state.tabs.find(t => t.id === state.activeTabId);
-  const currentPage = activeTab?.pageId ? state.pages.find(p => p.id === activeTab.pageId) : undefined;
+  const currentPage = useMemo(
+    () => (activePageId ? pages.find((p) => p.id === activePageId) : undefined),
+    [activePageId, pages]
+  );
 
   const handleAttachPage = useCallback(async (page: { id: string; title: string; content?: string }) => {
     if (!attachedPages.some(p => p.id === page.id)) {
@@ -30,6 +35,8 @@ export function usePageMentions(
       });
 
       let content = page.content;
+      const latest = getStoreState();
+      const activeTab = latest.tabs.find((t) => t.id === latest.activeTabId);
       if (activeTab?.pageId === page.id && activeTab?.unsavedContent) {
         content = activeTab.unsavedContent;
       }
@@ -50,23 +57,23 @@ export function usePageMentions(
       setPrompt(newPrompt);
       setShowMentionMenu(false);
     }
-  }, [attachedPages, activeTab, showMentionMenu, prompt, setPrompt]);
+  }, [attachedPages, showMentionMenu, prompt, setPrompt]);
 
   const handleAttachPageTree = useCallback(async (rootPage: { id: string; title: string; content?: string }) => {
-    const pagesToAttach = getPageAndDescendants(rootPage.id, state.pages);
+    const pagesToAttach = getPageAndDescendants(rootPage.id, pages);
     for (const p of pagesToAttach) {
       await handleAttachPage(p);
     }
-  }, [state.pages, handleAttachPage]);
+  }, [pages, handleAttachPage]);
 
   const filteredPages = useMemo(() => {
     const query = mentionQuery.toLowerCase().trim();
-    let list = state.pages.filter(p => p.title.toLowerCase().includes(query));
+    let list = pages.filter(p => p.title.toLowerCase().includes(query));
     if (currentPage && currentPage.title.toLowerCase().includes(query)) {
       list = [currentPage, ...list.filter(p => p.id !== currentPage.id)];
     }
     return list.slice(0, 6);
-  }, [state.pages, mentionQuery, currentPage]);
+  }, [pages, mentionQuery, currentPage]);
 
   const handlePromptChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

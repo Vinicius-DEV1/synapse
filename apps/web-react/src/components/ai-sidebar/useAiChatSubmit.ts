@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector, useStoreDispatch, getStoreState } from '../../store/useStore';
 import { promptGemini } from '../../services/gemini';
 import { stripHtml, extractImagesFromHtml } from '../../utils/content-extractor';
 import { triggerToast } from '../ui/ToastContext';
@@ -22,15 +22,18 @@ export function useAiChatSubmit({
   setAttachedPages,
   setShowMentionMenu,
 }: UseAiChatSubmitProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const activeSession = useStoreSelector(
+    (s) => (s.activeAiChatId ? s.aiChatSessions[s.activeAiChatId] ?? null : null)
+  );
   const [loading, setLoading] = useState(false);
-
-  const activeTab = state.tabs.find(t => t.id === state.activeTabId);
-  const activeSession = state.activeAiChatId ? state.aiChatSessions[state.activeAiChatId] : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!prompt.trim() && attachedPages.length === 0) || !activeSession) return;
+
+    const currentStore = getStoreState();
+    const activeTab = currentStore.tabs.find((t) => t.id === currentStore.activeTabId);
 
     const promptText = prompt.trim() || 'Faça um resumo com os principais pontos das páginas anexadas.';
 

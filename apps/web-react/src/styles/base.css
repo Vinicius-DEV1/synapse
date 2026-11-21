@@ -37,6 +37,29 @@
   transform: translateZ(0);
 }
 
+/* Native CSS Virtualization & Containment for Dense Grids and Lists */
+.cv-auto-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+  contain: layout style;
+}
+
+.cv-auto-compact {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+  contain: layout style;
+}
+
+.cv-auto-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+  contain: layout style;
+}
+
+.contain-list-item {
+  contain: layout style;
+}
+
 /* Scrollbar None Utility */
 .scrollbar-none {
   -ms-overflow-style: none;

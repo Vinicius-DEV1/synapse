@@ -91,7 +91,7 @@ const TabItem = memo(function TabItem({
         onContextMenu(e, tab);
       }}
       style={!tab.isPinned ? { maxWidth: `${tabMaxWidth}px` } : undefined}
-      className={`group relative flex items-center px-3 py-2 text-xs font-medium rounded-t-xl transition-all duration-300 ease-out overflow-hidden ${
+      className={`group relative flex items-center px-3 py-2 text-xs font-medium rounded-t-xl transition-[color,background-color,border-color,transform,opacity] duration-300 ease-out overflow-hidden ${
         tab.isPinned 
           ? compactPinnedTabs 
             ? 'w-10 min-w-[40px] max-w-[40px] !px-0 justify-center gap-0' 
@@ -125,7 +125,7 @@ const TabItem = memo(function TabItem({
           <span
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => onClose(e, tab.id)}
-            className={`p-0.5 rounded-md transition-all flex-shrink-0 ${
+            className={`p-0.5 rounded-md transition-[color,background-color,border-color,transform,opacity] flex-shrink-0 ${
               isActive
                 ? 'hover:bg-white/10 text-dark-subtext hover:text-dark-text'
                 : 'opacity-0 group-hover:opacity-100 hover:bg-white/10 text-dark-subtext hover:text-dark-text'
@@ -379,7 +379,7 @@ export default function TabBar() {
             triggerHaptic('light');
             dispatch({ type: 'TOGGLE_SIDEBAR' });
           }}
-          className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-all active:scale-95 mb-0.5"
+          className="md:hidden flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-white hover:bg-white/5 transition-[color,background-color,border-color,transform,opacity] active:scale-95 mb-0.5"
           title={t('tabBar.openMenu')}
           data-no-drag
         >
@@ -394,7 +394,7 @@ export default function TabBar() {
               <button
                 type="button"
                 onClick={() => tabStripRef.current?.scrollBy({ left: -220, behavior: 'smooth' })}
-                className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-all active:scale-95 ml-0.5 mb-0.5"
+                className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-[color,background-color,border-color,transform,opacity] active:scale-95 ml-0.5 mb-0.5"
                 title={t('tabBar.scrollLeft')}
                 data-no-drag
               >
@@ -438,7 +438,7 @@ export default function TabBar() {
             {/* New Tab Button */}
             <button
               onClick={handleNewTab}
-              className="flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-brand-400 hover:bg-white/5 transition-all active:scale-95 mb-0.5"
+              className="flex-shrink-0 p-2 rounded-lg text-dark-subtext hover:text-brand-400 hover:bg-white/5 transition-[color,background-color,border-color,transform,opacity] active:scale-95 mb-0.5"
               title={t('tabBar.newTab')}
               data-no-drag
             >
@@ -452,7 +452,7 @@ export default function TabBar() {
               <button
                 type="button"
                 onClick={() => tabStripRef.current?.scrollBy({ left: 220, behavior: 'smooth' })}
-                className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-all active:scale-95 mr-0.5 mb-0.5"
+                className="pointer-events-auto p-1.5 rounded-lg text-dark-subtext hover:text-white bg-dark-card/90 border border-white/10 hover:border-brand-500 shadow-md transition-[color,background-color,border-color,transform,opacity] active:scale-95 mr-0.5 mb-0.5"
                 title={t('tabBar.scrollRight')}
                 data-no-drag
               >

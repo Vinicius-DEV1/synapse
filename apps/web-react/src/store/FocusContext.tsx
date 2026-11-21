@@ -8,7 +8,10 @@ import { useFocusTimer } from './focus/useFocusTimer';
 
 type ViewState = 'dashboard' | 'setup' | 'timer' | 'cancel' | 'success' | 'settings' | 'alarms' | 'lofi' | 'stats';
 
-export interface FocusStateContextType {
+/**
+ * Non-ticking Focus state (excludes 1Hz `timeLeft` updates so subscribers never re-render every second).
+ */
+export interface FocusStableStateContextType {
   view: ViewState;
   sessions: Session[];
   alarms: Alarm[];
@@ -17,12 +20,15 @@ export interface FocusStateContextType {
   triggeredAlarm: Alarm | null;
   showAlarmSetup: boolean;
   toastMessage: string | null;
-  timeLeft: number;
   isPaused: boolean;
   lofis: LofiItem[];
   activeLofi: LofiItem | null;
   isPlayingLofi: boolean;
   lofiVolume: number;
+}
+
+export interface FocusStateContextType extends FocusStableStateContextType {
+  timeLeft: number;
 }
 
 export interface FocusActionsContextType {
@@ -76,13 +82,14 @@ export interface FocusOverlayContextType {
   handleSaveCancel: (justification: string) => Promise<void>;
 }
 
-const FocusStateContext = createContext<FocusStateContextType | null>(null);
+const FocusStableStateContext = createContext<FocusStableStateContextType | null>(null);
+const FocusTimerTickContext = createContext<number>(0);
 const FocusActionsContext = createContext<FocusActionsContextType | null>(null);
 const FocusContext = createContext<FocusContextType | null>(null);
 const FocusLofiContext = createContext<FocusLofiContextType | null>(null);
 const FocusOverlayContext = createContext<FocusOverlayContextType | null>(null);
 
-const defaultFocusState: FocusStateContextType = {
+const defaultFocusStableState: FocusStableStateContextType = {
   view: 'dashboard',
   sessions: [],
   alarms: [],
@@ -91,7 +98,6 @@ const defaultFocusState: FocusStateContextType = {
   triggeredAlarm: null,
   showAlarmSetup: false,
   toastMessage: null,
-  timeLeft: 0,
   isPaused: false,
   lofis: [],
   activeLofi: null,
@@ -128,13 +134,45 @@ const defaultFocusActions: FocusActionsContextType = {
 };
 
 const defaultFocusContext: FocusContextType = {
-  ...defaultFocusState,
+  ...defaultFocusStableState,
+  timeLeft: 0,
   ...defaultFocusActions,
 };
 
-export const useFocusState = (): FocusStateContextType => {
-  const ctx = useContext(FocusStateContext);
-  return ctx || defaultFocusState;
+const defaultFocusLofi: FocusLofiContextType = {
+  activeLofi: null,
+  setActiveLofi: defaultFocusActions.setActiveLofi,
+  isPlayingLofi: false,
+  setIsPlayingLofi: defaultFocusActions.setIsPlayingLofi,
+  lofiVolume: 0.5,
+  setLofiVolume: defaultFocusActions.setLofiVolume,
+};
+
+const defaultFocusOverlays: FocusOverlayContextType = {
+  triggeredAlarm: null,
+  setTriggeredAlarm: defaultFocusActions.setTriggeredAlarm,
+  view: 'dashboard',
+  setView: defaultFocusActions.setView,
+  currentSession: null,
+  setCurrentSession: defaultFocusActions.setCurrentSession,
+  handleSaveSuccess: defaultFocusActions.handleSaveSuccess,
+  handleAddTimeFromSuccess: defaultFocusActions.handleAddTimeFromSuccess,
+  handleSaveCancel: defaultFocusActions.handleSaveCancel,
+};
+
+/**
+ * Subscribes only to non-ticking Focus state (immune to 1Hz `timeLeft` ticks).
+ */
+export const useFocusState = (): FocusStableStateContextType => {
+  const ctx = useContext(FocusStableStateContext);
+  return ctx || defaultFocusStableState;
+};
+
+/**
+ * Isolated 1Hz timer tick context. Use only in components that visually render `timeLeft`.
+ */
+export const useFocusTimerTick = (): number => {
+  return useContext(FocusTimerTickContext);
 };
 
 export const useFocusActions = (): FocusActionsContextType => {
@@ -147,37 +185,20 @@ export const useFocusContext = (): FocusContextType => {
   return ctx || defaultFocusContext;
 };
 
+/**
+ * Subscribes strictly to Lofi audio state without subscribing to the full FocusContext.
+ */
 export const useFocusLofi = (): FocusLofiContextType => {
   const ctx = useContext(FocusLofiContext);
-  const fallback = useContext(FocusContext);
-  if (ctx) return ctx;
-  const src = fallback || defaultFocusContext;
-  return {
-    activeLofi: src.activeLofi,
-    setActiveLofi: src.setActiveLofi,
-    isPlayingLofi: src.isPlayingLofi,
-    setIsPlayingLofi: src.setIsPlayingLofi,
-    lofiVolume: src.lofiVolume,
-    setLofiVolume: src.setLofiVolume,
-  };
+  return ctx || defaultFocusLofi;
 };
 
+/**
+ * Subscribes strictly to Focus overlay/alarm modal state without subscribing to 1Hz timer ticks.
+ */
 export const useFocusOverlays = (): FocusOverlayContextType => {
   const ctx = useContext(FocusOverlayContext);
-  const fallback = useContext(FocusContext);
-  if (ctx) return ctx;
-  const src = fallback || defaultFocusContext;
-  return {
-    triggeredAlarm: src.triggeredAlarm,
-    setTriggeredAlarm: src.setTriggeredAlarm,
-    view: src.view,
-    setView: src.setView,
-    currentSession: src.currentSession,
-    setCurrentSession: src.setCurrentSession,
-    handleSaveSuccess: src.handleSaveSuccess,
-    handleAddTimeFromSuccess: src.handleAddTimeFromSuccess,
-    handleSaveCancel: src.handleSaveCancel,
-  };
+  return ctx || defaultFocusOverlays;
 };
 
 export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -243,7 +264,7 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const handleStartSetup = useCallback(() => setView('setup'), []);
 
-  const stateValue = useMemo<FocusStateContextType>(() => ({
+  const stableStateValue = useMemo<FocusStableStateContextType>(() => ({
     view,
     sessions,
     alarms: alarmControls.alarms,
@@ -252,7 +273,6 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     triggeredAlarm: alarmControls.triggeredAlarm,
     showAlarmSetup: alarmControls.showAlarmSetup,
     toastMessage: alarmControls.toastMessage,
-    timeLeft: timerControls.timeLeft,
     isPaused: timerControls.isPaused,
     lofis,
     activeLofi,
@@ -267,7 +287,6 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     alarmControls.triggeredAlarm,
     alarmControls.showAlarmSetup,
     alarmControls.toastMessage,
-    timerControls.timeLeft,
     timerControls.isPaused,
     lofis,
     activeLofi,
@@ -359,19 +378,22 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   ]);
 
   const combinedValue = useMemo<FocusContextType>(() => ({
-    ...stateValue,
+    ...stableStateValue,
+    timeLeft: timerControls.timeLeft,
     ...actionsValue
-  }), [stateValue, actionsValue]);
+  }), [stableStateValue, timerControls.timeLeft, actionsValue]);
 
   return (
     <FocusActionsContext.Provider value={actionsValue}>
       <FocusLofiContext.Provider value={lofiValue}>
         <FocusOverlayContext.Provider value={overlayValue}>
-          <FocusStateContext.Provider value={stateValue}>
-            <FocusContext.Provider value={combinedValue}>
-              {children}
-            </FocusContext.Provider>
-          </FocusStateContext.Provider>
+          <FocusStableStateContext.Provider value={stableStateValue}>
+            <FocusTimerTickContext.Provider value={timerControls.timeLeft}>
+              <FocusContext.Provider value={combinedValue}>
+                {children}
+              </FocusContext.Provider>
+            </FocusTimerTickContext.Provider>
+          </FocusStableStateContext.Provider>
         </FocusOverlayContext.Provider>
       </FocusLofiContext.Provider>
     </FocusActionsContext.Provider>

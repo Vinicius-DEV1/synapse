@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { X, Bell, Calendar, Clock, BookOpen, Check, Trash2 } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { usePages, useStoreDispatch } from '../../store/useStore';
 import type { AppNotification } from '../../types/core';
 import type { CalendarEvent } from '../../types/calendar';
 import { useI18n } from '../../i18n';
@@ -18,7 +18,8 @@ export default function NotificationCenterModal({
   onMarkRead,
   onDelete
 }: NotificationCenterModalProps) {
-  const { dispatch, state } = useStore();
+  const dispatch = useStoreDispatch();
+  const pages = usePages();
   const { t, language } = useI18n();
 
   useEffect(() => {
@@ -160,7 +161,7 @@ export default function NotificationCenterModal({
             </div>
           ) : (
             notifications.map((notif) => {
-              const linkedPage = state.pages.find(p => p.id === notif.target_page_id);
+              const linkedPage = pages.find(p => p.id === notif.target_page_id);
               return (
                 <div
                   key={notif.id}

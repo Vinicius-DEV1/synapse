@@ -9,12 +9,14 @@ vi.mock('epubjs', () => ({
 
 const mockDispatch = vi.fn();
 
-vi.mock('../../../store/useStore', () => ({
-  useStore: vi.fn(() => ({
-    state: { isReadingModeFullScreen: false },
-    dispatch: mockDispatch,
-  })),
-}));
+vi.mock('../../../store/useStore', () => {
+  const state = { isReadingModeFullScreen: false, showAiSidebar: false, moduleKeys: {} };
+  return {
+    useStore: vi.fn(() => ({ state, dispatch: mockDispatch })),
+    useStoreDispatch: vi.fn(() => mockDispatch),
+    useStoreSelector: vi.fn((sel: (s: typeof state) => unknown) => sel(state)),
+  };
+});
 
 vi.mock('../../../services/platform', () => ({
   isMobileScreen: vi.fn(() => false),

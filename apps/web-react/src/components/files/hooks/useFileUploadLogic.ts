@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector } from '../../../store/useStore';
 import type { FileItem } from '../../../types';
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { encryptFile } from '../../../services/storage';
@@ -19,8 +19,7 @@ export function useFileUploadLogic({
   onUploadComplete,
   onUploaded,
 }: UseFileUploadLogicParams) {
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['files'];
+  const masterKey = useStoreSelector((s) => s.moduleKeys['files']);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>(initialFiles);
   const [groupAsBundle, setGroupAsBundle] = useState(true);

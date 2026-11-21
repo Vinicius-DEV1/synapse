@@ -122,4 +122,60 @@ describe('useStore & StoreProvider (store/useStore)', () => {
     expect(pagesResult.current).toEqual([]);
     expect(tabsResult.current.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('does not overwrite persisted DB appLayoutState or aiChatSessions with initial defaults on mount', () => {
+    vi.useFakeTimers();
+    try {
+      const mockSet = vi.fn().mockResolvedValue(undefined);
+      (window as any).api = {
+        config: {
+          get: vi.fn().mockResolvedValue(null),
+          set: mockSet,
+        },
+      };
+
+      renderHook(() => useStore(), { wrapper });
+
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
+
+      expect(mockSet).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('syncLayoutFromDb honors an explicitly cleared empty aiChatSessions map instead of resurrecting legacy sessions', async () => {
+    (window as any).api = {
+      config: {
+        get: vi.fn().mockImplementation((key: string) => {
+          if (key === 'appLayoutState') {
+            return Promise.resolve({
+              sidebarCollapsed: true,
+              aiChatSessions: {
+                stale_chat: { id: 'stale_chat', title: 'Old', messages: [], createdAt: 1, updatedAt: 1 },
+              },
+            });
+          }
+          if (key === 'aiChatSessions') {
+            return Promise.resolve({});
+          }
+          return Promise.resolve(null);
+        }),
+        set: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    const mockDispatch = vi.fn();
+    await syncLayoutFromDb(mockDispatch);
+
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: 'MERGE_DB_STATE',
+      payload: {
+        sidebarCollapsed: true,
+        aiChatSessions: {},
+      },
+    });
+  });
 });

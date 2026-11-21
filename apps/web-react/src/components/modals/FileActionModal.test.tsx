@@ -8,6 +8,8 @@ vi.mock('../../store/useStore', () => ({
     state: { activeTabId: 'tab_current' },
     dispatch: mockDispatch,
   }),
+  useStoreDispatch: () => mockDispatch,
+  getStoreState: () => ({ activeTabId: 'tab_current' }),
 }));
 
 describe('FileActionModal', () => {

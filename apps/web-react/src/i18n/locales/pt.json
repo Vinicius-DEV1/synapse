@@ -384,6 +384,8 @@
     "createAccount": "Criar Conta",
     "signInToAccount": "Entrar e desbloquear",
     "emailPlaceholder": "seu.email@exemplo.com",
+    "rememberEmail": "Memorizar email",
+    "changeEmail": "Alterar",
     "accountPassword": "Senha da Conta Nuvem",
     "accountPasswordPlaceholder": "Digite a senha da sua conta",
     "cloudRequiredFields": "Informe o email e a senha da Conta Nuvem.",

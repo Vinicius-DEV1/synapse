@@ -13,7 +13,7 @@ import {
   LibraryCreateCollectionModal,
 } from './modals';
 import { LibraryReaderHost } from './LibraryReaderHost';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector, useStoreDispatch } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
 import { triggerToast } from '../ui/ToastContext';
@@ -21,9 +21,14 @@ import { useI18n } from '../../i18n';
 
 export default function LibraryView({ tabId }: { tabId?: string }) {
   const { t } = useI18n();
-  const { state, dispatch } = useStore();
-  const activeTab = state.tabs.find((t) => t.id === tabId) || state.tabs[0];
-  const selectedBookId = activeTab.module === 'library' ? activeTab.bookId : null;
+  const dispatch = useStoreDispatch();
+  const activeTabId = useStoreSelector(
+    (s) => (s.tabs.find((item) => item.id === tabId) || s.tabs[0])?.id ?? ''
+  );
+  const selectedBookId = useStoreSelector((s) => {
+    const tab = s.tabs.find((item) => item.id === tabId) || s.tabs[0];
+    return tab?.module === 'library' ? tab.bookId : null;
+  });
 
   const {
     books,
@@ -310,7 +315,9 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
   };
 
   const handleBackFromReader = () => {
-    dispatch({ type: 'CLOSE_LIBRARY_BOOK', tabId: activeTab.id });
+    if (activeTabId) {
+      dispatch({ type: 'CLOSE_LIBRARY_BOOK', tabId: activeTabId });
+    }
     loadData();
   };
 
@@ -389,7 +396,7 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
         />
       )}
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto smooth-scroll-container">
         {viewMode === 'books' && filteredAndSorted.length > 0 && (
           <div className="px-6 pt-3 flex items-center justify-between">
             <button

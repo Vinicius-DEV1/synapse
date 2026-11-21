@@ -7,17 +7,19 @@ import AlarmsList from './AlarmsList';
 import AlarmSetupModal from './AlarmSetupModal';
 import { LofiView } from './LofiView';
 import FocusStatsView from './FocusStatsView';
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusState, useFocusActions } from '../../store/FocusContext';
 
 export default function FocusApp() {
   const {
-    view, setView, sessions, alarms, currentSession,
-    showAlarmSetup, setShowAlarmSetup,
-    toastMessage, loadData, handleStartSetup, handleStartTimer,
+    view, sessions, alarms, currentSession,
+    showAlarmSetup, toastMessage
+  } = useFocusState();
+  const {
+    setView, setShowAlarmSetup, loadData, handleStartSetup, handleStartTimer,
     handleDeleteSession, handleSaveAlarm,
     handleToggleAlarm, handleDeleteAlarm,
     handleSaveCancel, handleAbortSetup
-  } = useFocusContext();
+  } = useFocusActions();
 
   const uniqueTags = Array.from(new Set(sessions.map(s => s.tag)));
 

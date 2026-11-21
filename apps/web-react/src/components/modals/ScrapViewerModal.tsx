@@ -15,7 +15,7 @@ import {
   Monitor
 } from 'lucide-react';
 import { getDecryptedScrap } from '../../services/scrap/scrap-storage';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 
 export interface ScrapViewerModalProps {
   isOpen: boolean;
@@ -38,8 +38,7 @@ export function ScrapViewerModal({
   onClose,
   scrapData,
 }: ScrapViewerModalProps) {
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['notes'] || state.moduleKeys['files'];
+  const masterKey = useStoreSelector((s) => s.moduleKeys['notes'] || s.moduleKeys['files']);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

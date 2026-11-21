@@ -270,20 +270,23 @@ export default function LibraryGrid({
         return (
           <div
             key={book.id}
-            className={`group relative flex flex-col rounded-xl border bg-dark-card transition-all duration-300 hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-400/40 cursor-pointer ${
-              isSelected ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-white/5'
-            }`}
-            style={{
-              animation: `fade-in 0.3s ease-out ${index * 50}ms both`,
-            }}
-            onClick={() => {
-              if (!isLocal && !isSynced && !hasExplicitFilePath) {
-                triggerToast(`O arquivo "${book.title}" não foi encontrado localmente nem na nuvem. Use o menu do livro para reanexar o arquivo.`, 'error');
-              } else {
-                onSelectBook(book);
-              }
-            }}
+            className="cv-auto-card p-4 -m-4 pointer-events-none flex flex-col"
           >
+            <div
+              className={`pointer-events-auto flex-1 group relative flex flex-col rounded-xl border bg-dark-card transition-[border-color,box-shadow] duration-200 hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-400/40 cursor-pointer ${
+                isSelected ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-white/5'
+              }`}
+              style={{
+                animation: `fade-in 0.25s ease-out ${Math.min(index, 12) * 30}ms both`,
+              }}
+              onClick={() => {
+                if (!isLocal && !isSynced && !hasExplicitFilePath) {
+                  triggerToast(`O arquivo "${book.title}" não foi encontrado localmente nem na nuvem. Use o menu do livro para reanexar o arquivo.`, 'error');
+                } else {
+                  onSelectBook(book);
+                }
+              }}
+            >
             {/* Cover */}
             <div className="relative aspect-[3/4] overflow-hidden rounded-t-xl">
               {/* Checkbox (multi-select) */}
@@ -312,23 +315,23 @@ export default function LibraryGrid({
               <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10 group-hover:opacity-0 transition-opacity duration-200 pointer-events-none">
                 {/* Format Badge (PDF / EPUB) */}
                 <span
-                  className={`px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm ${
+                  className={`px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border shadow-sm ${
                     isEpub
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                      ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-950/90 text-rose-300 border-rose-500/40'
                   }`}
                 >
                   {isEpub ? 'EPUB' : 'PDF'}
                 </span>
 
                 {book.is_archived && (
-                  <span className="px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border backdrop-blur-md shadow-sm bg-amber-500/20 text-amber-300 border-amber-500/30">
+                  <span className="px-1.5 py-0.5 rounded-[5px] text-[9px] font-bold tracking-wider uppercase border shadow-sm bg-amber-950/90 text-amber-300 border-amber-500/40">
                     {t('library.archivedBadge')}
                   </span>
                 )}
                 
                 {/* Storage & Cloud Status Badge */}
-                <div className="px-1.5 py-0.5 rounded-[5px] bg-black/50 backdrop-blur-md border border-white/[0.06] text-white shadow-sm flex items-center gap-1">
+                <div className="px-1.5 py-0.5 rounded-[5px] bg-black/80 border border-white/10 text-white shadow-sm flex items-center gap-1">
                   {isLocal && isSynced ? (
                     <>
                       <HardDrive size={11} className="text-emerald-400" />
@@ -357,7 +360,7 @@ export default function LibraryGrid({
                   setMenuBookId(menuBookId === book.id ? null : book.id);
                   setConfirmDeleteId(null);
                 }}
-                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/80 text-white/80 hover:text-white hover:bg-black/95 border border-white/10 opacity-0 group-hover:opacity-100 transition-[opacity,background-color,color] duration-200 z-10"
               >
                 <MoreVertical size={16} />
               </button>
@@ -366,7 +369,7 @@ export default function LibraryGrid({
               {progress > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
                   <div
-                    className="h-full bg-brand-400 transition-all duration-500"
+                    className="h-full bg-brand-400 transition-[width] duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -565,6 +568,7 @@ export default function LibraryGrid({
                   )}
                 </div>
               )}
+            </div>
             </div>
           </div>
         );

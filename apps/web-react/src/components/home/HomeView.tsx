@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useStore } from '../../store/useStore';
+import { usePages, useStoreDispatch } from '../../store/useStore';
 import { useHomeDashboard } from './hooks/useHomeDashboard';
 import { HomeQuickActions } from './ui/HomeQuickActions';
 import { HomeAgendaSection } from './ui/HomeAgendaSection';
@@ -7,8 +7,9 @@ import { HomePagesSection } from './ui/HomePagesSection';
 import { useI18n } from '../../i18n';
 import type { Page } from '../../types';
 
-export default function HomeView({ tabId }: { tabId: string }) {
-  const { state, dispatch } = useStore();
+export default function HomeView({ tabId, isActive = true }: { tabId: string; isActive?: boolean }) {
+  const pages = usePages();
+  const dispatch = useStoreDispatch();
   const { t, language } = useI18n();
   const {
     greeting,
@@ -16,13 +17,13 @@ export default function HomeView({ tabId }: { tabId: string }) {
     tomorrowEvents,
     isEventLive,
     dueCardsCount
-  } = useHomeDashboard();
+  } = useHomeDashboard(isActive);
 
   const { pinnedPages, recentPages } = useMemo(() => {
     const pinned: Page[] = [];
     const unpinned: Page[] = [];
 
-    for (const p of state.pages) {
+    for (const p of pages) {
       if (p.is_pinned) {
         pinned.push(p);
       } else if (p.title && p.title !== 'Nova Página' && p.title !== 'New Page') {
@@ -37,7 +38,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
       pinnedPages: pinned,
       recentPages: unpinned.slice(0, 5),
     };
-  }, [state.pages]);
+  }, [pages]);
 
   const handleOpenPage = (pageId: string) => {
     dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
@@ -57,7 +58,7 @@ export default function HomeView({ tabId }: { tabId: string }) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-dark-bg p-4 sm:p-6 md:p-8">
+    <div className="flex-1 overflow-y-auto bg-dark-bg p-4 sm:p-6 md:p-8 smooth-scroll-container">
       <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">

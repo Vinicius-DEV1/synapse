@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CalendarEvent } from '../../../types/core';
 import { parseEventDate } from '../../../utils/date-utils';
 import { useI18n } from '../../../i18n';
 
-export function useHomeDashboard() {
+const FOCUS_REFRESH_COOLDOWN_MS = 10_000;
+
+export function useHomeDashboard(isActive = true) {
   const { t } = useI18n();
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [tomorrowEvents, setTomorrowEvents] = useState<CalendarEvent[]>([]);
   const [dueCardsCount, setDueCardsCount] = useState(0);
   const [nowTs, setNowTs] = useState(Date.now());
   const [greeting, setGreeting] = useState('');
+  const lastFocusRefreshRef = useRef(0);
 
   const computeGreeting = useCallback(() => {
     const hour = new Date().getHours();
@@ -78,7 +81,6 @@ export function useHomeDashboard() {
             }
           }
         } catch (err) {
-          // Anki module not available or failed to load decks
           console.warn('[HomeDashboard] Anki service not available:', err);
         }
       }
@@ -89,19 +91,27 @@ export function useHomeDashboard() {
 
   useEffect(() => {
     setGreeting(computeGreeting());
+    if (!isActive) return;
     const id = setInterval(() => setGreeting(computeGreeting()), 60_000);
     return () => clearInterval(id);
-  }, [computeGreeting]);
+  }, [computeGreeting, isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
+    setNowTs(Date.now());
     const id = setInterval(() => setNowTs(Date.now()), 30_000);
     return () => clearInterval(id);
-  }, []);
+  }, [isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
+
     const onFocus = () => {
+      const now = Date.now();
+      if (now - lastFocusRefreshRef.current < FOCUS_REFRESH_COOLDOWN_MS) return;
+      lastFocusRefreshRef.current = now;
       setGreeting(computeGreeting());
-      setNowTs(Date.now());
+      setNowTs(now);
       loadDashboardData();
     };
     const onVisibilityChange = () => {
@@ -115,13 +125,14 @@ export function useHomeDashboard() {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [computeGreeting, loadDashboardData]);
+  }, [computeGreeting, loadDashboardData, isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     loadDashboardData();
     window.addEventListener('calendar-event-updated', loadDashboardData);
     return () => window.removeEventListener('calendar-event-updated', loadDashboardData);
-  }, [loadDashboardData]);
+  }, [loadDashboardData, isActive]);
 
   const isEventLive = useCallback((ev: CalendarEvent) => {
     if (ev.status === 'completed' || !ev.start_date) return false;

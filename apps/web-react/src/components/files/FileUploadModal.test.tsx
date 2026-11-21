@@ -3,15 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FileUploadModal from './FileUploadModal';
 import { I18nProvider } from '../../i18n';
 
-vi.mock('../../store/useStore', () => ({
-  useStore: () => ({
-    state: {
-      moduleKeys: {
-        files: 'test-master-key',
-      },
-    },
-  }),
-}));
+vi.mock('../../store/useStore', () => {
+  const state = { moduleKeys: { files: 'test-master-key' } };
+  return {
+    useStore: () => ({ state }),
+    useStoreSelector: (sel: (s: typeof state) => unknown) => sel(state),
+  };
+});
 
 vi.mock('../../services/drive', () => ({
   getValidAccessToken: vi.fn().mockResolvedValue(null),

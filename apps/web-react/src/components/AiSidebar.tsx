@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useStore, useStoreSelector } from '../store/useStore';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useStoreDispatch, useStoreSelector, usePages, useActiveTab } from '../store/useStore';
 import { X, ChevronRight, FileText, ExternalLink, Sparkles, Send, Plus, Minimize2, AtSign, Check, Paperclip } from 'lucide-react';
 import { useAiSidebarResize } from './ai-sidebar/useAiSidebarResize';
 import { usePageMentions } from './ai-sidebar/usePageMentions';
@@ -10,12 +10,18 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { triggerToast } from './ui/ToastContext';
 
 function AiSidebarContent() {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const pages = usePages();
+  const activeTab = useActiveTab();
+  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
+  const activeAiChatId = useStoreSelector((s) => s.activeAiChatId);
+  const aiChatSessions = useStoreSelector((s) => s.aiChatSessions);
+
   const [prompt, setPrompt] = useState('');
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { width, handleMouseDown, handleResetWidth } = useAiSidebarResize();
+  const { width, containerRef, handleMouseDown, handleResetWidth } = useAiSidebarResize();
   
   const {
     attachedPages,
@@ -38,10 +44,26 @@ function AiSidebarContent() {
     setShowMentionMenu,
   });
 
-  const activeTab = state.tabs.find(t => t.id === state.activeTabId);
-  const currentPage = activeTab?.pageId ? state.pages.find(p => p.id === activeTab.pageId) : undefined;
-  const activeSession = state.activeAiChatId ? state.aiChatSessions[state.activeAiChatId] : null;
-  const sessions = Object.values(state.aiChatSessions).sort((a, b) => b.updatedAt - a.updatedAt);
+  const currentPage = useMemo(
+    () => (activeTab?.pageId ? pages.find((p) => p.id === activeTab.pageId) : undefined),
+    [activeTab?.pageId, pages]
+  );
+  const activeSession = activeAiChatId ? aiChatSessions[activeAiChatId] : null;
+  const sessions = useMemo(
+    () => Object.values(aiChatSessions).sort((a, b) => b.updatedAt - a.updatedAt),
+    [aiChatSessions]
+  );
+
+  // Pre-compute O(1) child count lookup for mention dropdown
+  const childCountByParent = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of pages) {
+      if (p.parent_id) {
+        counts.set(p.parent_id, (counts.get(p.parent_id) || 0) + 1);
+      }
+    }
+    return counts;
+  }, [pages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,12 +71,12 @@ function AiSidebarContent() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [state.activeAiChatId, state.aiChatSessions, loading]);
+  }, [activeAiChatId, aiChatSessions, loading]);
 
   useEffect(() => {
-    if (!state.showAiSidebar) return;
+    if (!showAiSidebar) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDownWindow = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showMentionMenu) {
           e.preventDefault();
@@ -68,7 +90,7 @@ function AiSidebarContent() {
         }
         e.preventDefault();
         e.stopPropagation();
-        if (state.activeAiChatId) {
+        if (activeAiChatId) {
           dispatch({ type: 'OPEN_AI_CHAT', chatId: null });
         } else {
           dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
@@ -91,29 +113,27 @@ function AiSidebarContent() {
       }
       e.preventDefault();
       e.stopPropagation();
-      if (state.activeAiChatId) {
+      if (activeAiChatId) {
         dispatch({ type: 'OPEN_AI_CHAT', chatId: null });
       } else {
         dispatch({ type: 'TOGGLE_AI_SIDEBAR' });
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDownWindow);
     window.addEventListener('caderno-back-press', handleBackPress);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDownWindow);
       window.removeEventListener('caderno-back-press', handleBackPress);
     };
-  }, [state.showAiSidebar, state.activeAiChatId, showMentionMenu, setShowMentionMenu, sessionToDelete, dispatch]);
+  }, [showAiSidebar, activeAiChatId, showMentionMenu, setShowMentionMenu, sessionToDelete, dispatch]);
 
-  if (!state.showAiSidebar) return null;
+  if (!showAiSidebar) return null;
 
   const handleNavigate = (pageId: string, contextText?: string) => {
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
     if (contextText) {
       setTimeout(() => {
-        // window.find is a legacy non-standard API (supported in Firefox/Safari/Chromium),
-        // absent from TypeScript DOM type definitions.
         const legacyWindow = window as Window & {
           find?: (
             searchString: string,
@@ -145,7 +165,6 @@ function AiSidebarContent() {
     dispatch({ type: 'OPEN_AI_CHAT', chatId: id });
   };
 
-
   const handleInsert = (text: string) => {
     if (!activeSession) return;
     handleNavigate(activeSession.pageId);
@@ -157,6 +176,7 @@ function AiSidebarContent() {
 
   return (
     <div 
+      ref={containerRef}
       className="bg-dark-card border-l border-white/5 flex flex-col h-full absolute right-0 top-0 z-50 shadow-2xl animate-slide-in-right w-full sm:w-auto max-w-full"
       style={{ width: isSmallScreen ? '100%' : width }}
     >
@@ -175,7 +195,7 @@ function AiSidebarContent() {
           <span>Chats Ativos</span>
         </div>
         <div className="flex items-center gap-1">
-          {!state.activeAiChatId && (
+          {!activeAiChatId && (
             <button 
               onClick={handleNewQuickChat}
               className="p-1.5 text-brand-400 hover:bg-brand-500/20 rounded-lg transition-colors"
@@ -202,7 +222,7 @@ function AiSidebarContent() {
         </div>
       </div>
 
-      {!state.activeAiChatId ? (
+      {!activeAiChatId ? (
         <AiChatSessionList
           sessions={sessions}
           onOpenSession={(id) => dispatch({ type: 'OPEN_AI_CHAT', chatId: id })}
@@ -235,7 +255,7 @@ function AiSidebarContent() {
           </div>
           
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar smooth-scroll-container">
             {activeSession?.messages.map((msg, idx) => (
               <AiChatMessageItem
                 key={idx}
@@ -269,7 +289,7 @@ function AiSidebarContent() {
                     const isCurrent = currentPage && page.id === currentPage.id;
                     const isSelected = index === mentionSelectedIndex;
                     const isAlreadyAttached = attachedPages.some(p => p.id === page.id);
-                    const childCount = state.pages.filter(p => p.parent_id === page.id).length;
+                    const childCount = childCountByParent.get(page.id) || 0;
                     return (
                       <button
                         key={page.id}
@@ -414,4 +434,3 @@ export default function AiSidebar() {
 
   return <AiSidebarContent />;
 }
-

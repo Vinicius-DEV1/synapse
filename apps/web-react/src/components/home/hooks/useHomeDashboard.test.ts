@@ -63,4 +63,13 @@ describe('useHomeDashboard Hook', () => {
     expect(getTotalDueCount).toHaveBeenCalledTimes(1);
     expect(window.api?.anki?.getDecks).not.toHaveBeenCalled();
   });
+
+  it('pauses background polling and focus listeners when inactive', async () => {
+    renderHook(() => useHomeDashboard(false));
+
+    window.dispatchEvent(new Event('focus'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(window.api?.calendar?.getEvents).not.toHaveBeenCalled();
+  });
 });

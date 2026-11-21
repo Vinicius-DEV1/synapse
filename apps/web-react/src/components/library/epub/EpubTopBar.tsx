@@ -1,7 +1,7 @@
 import { ArrowLeft, Menu, Bookmark, Search, FileText, Type, Sparkles, Info } from 'lucide-react';
 import { useEpub } from './EpubContext';
 import { useEpubBookmark } from './hooks/useEpubBookmark';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector, useStoreDispatch } from '../../../store/useStore';
 
 interface EpubTopBarProps {
   onBack: () => void;
@@ -9,7 +9,8 @@ interface EpubTopBarProps {
 }
 
 export default function EpubTopBar({ onBack, onShowInfo }: EpubTopBarProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
   const {
     book, readingMode, showToc, setShowToc, showNotebook, setShowNotebook,
     showSearch, setShowSearch, showSettings, setShowSettings,
@@ -61,7 +62,7 @@ export default function EpubTopBar({ onBack, onShowInfo }: EpubTopBarProps) {
         <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="Tipografia">
           <Type size={18} />
         </button>
-        <button onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })} className={`p-2 rounded-lg transition-colors ${state.showAiSidebar ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="IA">
+        <button onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })} className={`p-2 rounded-lg transition-colors ${showAiSidebar ? 'bg-brand-500/20 text-brand-500' : (isDark ? 'hover:bg-gray-800' : 'hover:bg-black/5')}`} title="IA">
           <Sparkles size={18} />
         </button>
       </div>

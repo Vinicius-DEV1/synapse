@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ePub from 'epubjs';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector } from '../../../store/useStore';
 import { resolveCanonicalBuffer } from '../../../services/storage/canonical-resolver';
 import { useEpub } from './EpubContext';
 import type { LibraryBook, LibraryHighlight, LibraryBookmark } from '../../../types';
@@ -31,10 +31,9 @@ export function useEpubLoader(
     ? (setLoadProgress as (p: { percent: number, stage: string } | null) => void)
     : undefined;
 
-  const { state } = useStore();
   const isAvulso = book.author === 'Arquivo Avulso';
   const moduleName = isAvulso ? 'files' : 'library';
-  const masterKey = state.moduleKeys[moduleName];
+  const masterKey = useStoreSelector((s) => s.moduleKeys[moduleName]);
 
   const {
     scrollMode, setEpubBook, setRendition,

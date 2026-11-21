@@ -26,7 +26,10 @@ const mocks = vi.hoisted(() => ({
   setMasterKey: vi.fn(),
 }));
 
-vi.mock('../store/useStore', () => ({ useStore: () => ({ dispatch: mocks.dispatch }) }));
+vi.mock('../store/useStore', () => ({
+  useStore: () => ({ dispatch: mocks.dispatch }),
+  useStoreDispatch: () => mocks.dispatch,
+}));
 vi.mock('./auth/useAuthLockout', () => ({
   useAuthLockout: () => ({ lockoutTime: 0, intimidatingPhrase: '', triggerImmediateLockout: vi.fn() }),
 }));
@@ -64,6 +67,7 @@ describe('cloud account unlock screen', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    localStorage.clear();
     accountKey = await crypto.subtle.importKey(
       'raw',
       new Uint8Array(32),
@@ -127,5 +131,53 @@ describe('cloud account unlock screen', () => {
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
     expect(migrateLegacyVaultToAccountPassword).toHaveBeenCalledWith('account-password', 'previous-password');
+  });
+
+  it('remembers email on opt-in, renders only masked start/end on reopen, and submits real email', async () => {
+    const onSuccess = vi.fn();
+    const { unmount } = render(<AuthScreen status="encrypted" onSuccess={onSuccess} />);
+
+    fireEvent.change(screen.getByPlaceholderText('auth.emailPlaceholder'), {
+      target: { value: 'abcdef@example.com' },
+    });
+    fireEvent.click(screen.getByLabelText('auth.rememberEmail'));
+    fireEvent.change(screen.getByPlaceholderText('auth.accountPasswordPlaceholder'), {
+      target: { value: 'account-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'auth.signInToAccount' }));
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
+    expect(localStorage.getItem('synapse_remembered_email')).toBe('abcdef@example.com');
+    unmount();
+
+    // Reopen unlock screen: full email must NOT appear, only masked format abc*****.com
+    const onReopenSuccess = vi.fn();
+    render(<AuthScreen status="encrypted" onSuccess={onReopenSuccess} />);
+
+    const emailInput = screen.getByLabelText('Email') as HTMLInputElement;
+    expect(emailInput.value).toBe('abc*****.com');
+    expect(screen.queryByDisplayValue('abcdef@example.com')).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText('auth.accountPasswordPlaceholder'), {
+      target: { value: 'account-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'auth.signInToAccount' }));
+
+    await waitFor(() => expect(onReopenSuccess).toHaveBeenCalledOnce());
+    expect(signInWithFirebase).toHaveBeenLastCalledWith('abcdef@example.com', 'account-password');
+  });
+
+  it('allows switching away from masked email without revealing full address and clears when unchecked', () => {
+    localStorage.setItem('synapse_remembered_email', 'abcdef@example.com');
+    render(<AuthScreen status="encrypted" onSuccess={vi.fn()} />);
+
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('abc*****.com');
+    fireEvent.click(screen.getByRole('button', { name: 'auth.changeEmail' }));
+
+    const editableEmail = screen.getByPlaceholderText('auth.emailPlaceholder') as HTMLInputElement;
+    expect(editableEmail.value).toBe('');
+
+    fireEvent.click(screen.getByLabelText('auth.rememberEmail'));
+    expect(localStorage.getItem('synapse_remembered_email')).toBeNull();
   });
 });

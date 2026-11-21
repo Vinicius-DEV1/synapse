@@ -114,7 +114,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 select-none"
+      className="flex-1 overflow-y-auto smooth-scroll-container p-4 md:p-6 space-y-6 select-none"
       onContextMenu={(e) => {
         if (onCanvasContextMenu) {
           e.preventDefault();
@@ -158,7 +158,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
                     e.stopPropagation();
                     onContextMenu(e, folder, true);
                   }}
-                  className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                  className={`contain-list-item group relative flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${
                     isDragTarget
                       ? 'border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/40'
                       : isSelected || isFocused
@@ -222,28 +222,31 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
               return (
                 <div
                   key={file.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, file, false)}
-                  onDragEnd={handleDragEnd}
-                  onClick={(e) => {
-                    if (onItemClick) {
-                      onItemClick(file.id, e, file, false);
-                    } else {
-                      onFocusItem({ item: file, isFolder: false });
-                    }
-                  }}
-                  onDoubleClick={() => onViewFile(file)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onContextMenu(e, file, false);
-                  }}
-                  className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                    isSelected || isFocused
-                      ? 'border-brand-500/60 bg-brand-500/10 shadow-md ring-1 ring-brand-500/30'
-                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12]'
-                  }`}
+                  className="cv-auto-compact p-3 -m-3 pointer-events-none flex flex-col"
                 >
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, file, false)}
+                    onDragEnd={handleDragEnd}
+                    onClick={(e) => {
+                      if (onItemClick) {
+                        onItemClick(file.id, e, file, false);
+                      } else {
+                        onFocusItem({ item: file, isFolder: false });
+                      }
+                    }}
+                    onDoubleClick={() => onViewFile(file)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onContextMenu(e, file, false);
+                    }}
+                    className={`pointer-events-auto flex-1 group relative flex flex-col justify-between p-3 rounded-xl border transition-colors cursor-pointer ${
+                      isSelected || isFocused
+                        ? 'border-brand-500/60 bg-brand-500/10 shadow-md ring-1 ring-brand-500/30'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12]'
+                    }`}
+                  >
                   {/* Top Bar inside Card: Selection Checkbox & Options Menu */}
                   <div className="flex items-center justify-between mb-2">
                     <button
@@ -252,7 +255,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
                         e.stopPropagation();
                         onToggleSelect(file.id);
                       }}
-                      className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                      className={`w-5 h-5 rounded-md flex items-center justify-center border transition-[opacity,background-color,border-color] ${
                         isSelected
                           ? 'bg-brand-500 border-brand-400 text-white'
                           : 'border-white/20 bg-dark-bg/60 opacity-0 group-hover:opacity-100 hover:border-white/40'
@@ -303,6 +306,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
                       <span>{formatBytes(file.file_size)}</span>
                       <span>{new Date(file.updated_at || Date.now()).toLocaleDateString()}</span>
                     </div>
+                  </div>
                   </div>
                 </div>
               );

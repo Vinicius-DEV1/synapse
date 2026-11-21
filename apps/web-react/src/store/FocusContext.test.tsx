@@ -1,7 +1,14 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { FocusProvider, useFocusContext, useFocusActions } from './FocusContext';
+import { render, renderHook, act } from '@testing-library/react';
+import {
+  FocusProvider,
+  useFocusContext,
+  useFocusActions,
+  useFocusLofi,
+  useFocusOverlays,
+  useFocusTimerTick,
+} from './FocusContext';
 
 describe('FocusContext (store/FocusContext)', () => {
   beforeEach(() => {
@@ -88,5 +95,55 @@ describe('FocusContext (store/FocusContext)', () => {
     expect(typeof result.current.handleStartTimer).toBe('function');
     expect(typeof result.current.loadData).toBe('function');
     expect(typeof result.current.handleSaveAlarm).toBe('function');
+  });
+
+  it('does not re-render useFocusLofi or useFocusOverlays on 1Hz timer ticks', () => {
+    vi.useFakeTimers();
+    let lofiRenders = 0;
+    let overlayRenders = 0;
+    let tickValue = 0;
+    let startTimerFn: ((tag: string, desc: string, mins: number) => void) | null = null;
+
+    function LofiObserver() {
+      lofiRenders += 1;
+      useFocusLofi();
+      return null;
+    }
+    function OverlayObserver() {
+      overlayRenders += 1;
+      useFocusOverlays();
+      return null;
+    }
+    function TickObserver() {
+      tickValue = useFocusTimerTick();
+      const { handleStartTimer } = useFocusActions();
+      startTimerFn = handleStartTimer;
+      return null;
+    }
+
+    render(
+      <FocusProvider>
+        <LofiObserver />
+        <OverlayObserver />
+        <TickObserver />
+      </FocusProvider>
+    );
+
+    act(() => {
+      startTimerFn?.('Deep Work', 'Test', 5);
+    });
+
+    const lofiAfterStart = lofiRenders;
+    const overlayAfterStart = overlayRenders;
+    const initialTick = tickValue;
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(tickValue).toBeLessThan(initialTick);
+    expect(lofiRenders).toBe(lofiAfterStart);
+    expect(overlayRenders).toBe(overlayAfterStart);
+    vi.useRealTimers();
   });
 });

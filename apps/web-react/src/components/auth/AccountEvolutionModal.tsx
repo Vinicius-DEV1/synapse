@@ -22,7 +22,7 @@ import {
   signInWithFirebase,
 } from '../../services/auth/firebase-auth';
 import { migrateLegacyUserToWorkspace } from '../../services/migration/legacy-migrator';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch } from '../../store/useStore';
 
 interface AccountEvolutionModalProps {
   isOpen: boolean;
@@ -37,7 +37,7 @@ export const AccountEvolutionModal: React.FC<AccountEvolutionModalProps> = ({
   moduleKeys,
   masterKey,
 }) => {
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const [mode, setMode] = useState<'register' | 'login'>('register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

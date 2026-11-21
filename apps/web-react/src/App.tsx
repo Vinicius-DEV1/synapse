@@ -1,17 +1,22 @@
-import { useEffect, useCallback, useState, useRef, memo, useMemo } from 'react';
+import { useEffect, useCallback, useState, useRef, memo, useMemo, lazy, Suspense } from 'react';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ToastProvider } from './components/ui/ToastContext';
-import { StoreProvider, useStore, syncLayoutFromDb } from './store/useStore';
+import {
+  StoreProvider,
+  useStoreDispatch,
+  useStoreSelector,
+  useTabs,
+  usePages,
+  getStoreState,
+  syncLayoutFromDb,
+} from './store/useStore';
 import { FocusProvider, useFocusActions } from './store/FocusContext';
 import Sidebar from './components/layout/sidebar/Sidebar';
 import TabBar from './components/layout/TabBar';
 import { AppContextMenu } from './components/layout/AppContextMenu';
-import AuthScreen from './components/AuthScreen';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import { getSettings, syncSettingsFromDb } from './utils/settings';
-import AiSidebar from './components/AiSidebar';
-import { SyncCoordinator } from './hooks/useSync';
 import { ViewFactory } from './components/ViewFactory';
 import { usePageActions } from './hooks/usePageActions';
 import { useAppAuth } from './hooks/useAppAuth';
@@ -28,6 +33,12 @@ import WindowControls from './components/layout/WindowControls';
 import { I18nProvider } from './i18n';
 import type { Page } from './types';
 
+// Lazy-load heavy boot-deferred chunks (AiSidebar, AuthScreen, Firebase SyncCoordinator) (P2 + P6)
+const AiSidebar = lazy(() => import('./components/AiSidebar'));
+const AuthScreen = lazy(() => import('./components/AuthScreen'));
+const SyncCoordinator = lazy(() =>
+  import('./hooks/useSync').then((m) => ({ default: m.SyncCoordinator }))
+);
 
 interface TabContentItemProps {
   tab: import('./types').Tab;
@@ -77,9 +88,7 @@ const TabContentItem = memo(function TabContentItem({
     </div>
   );
 }, (prev, next) => {
-  // If active state transitioned (active -> inactive or inactive -> active), re-render immediately
   if (prev.isActive !== next.isActive) return false;
-  // If actively visible, update whenever content, page, navigation or tab attributes change
   if (next.isActive) {
     return (
       prev.tab === next.tab &&
@@ -91,28 +100,91 @@ const TabContentItem = memo(function TabContentItem({
       prev.onUpdatePage === next.onUpdatePage
     );
   }
-  // While inactive, freeze intermediate re-renders to liberate the JS thread.
-  // The tab re-renders instantly with fresh state when the user selects it.
   return true;
 });
 
+/** Isolated boundary so opening/closing the AI sidebar never re-renders the main App shell */
+const AiSidebarHost = memo(function AiSidebarHost() {
+  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
+  const isReadingModeFullScreen = useStoreSelector((s) => s.isReadingModeFullScreen);
+
+  if (!showAiSidebar || isReadingModeFullScreen) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <AiSidebar />
+    </Suspense>
+  );
+});
+
+/** Isolated boundary so right-click context menus never re-render AppContent or open tabs */
+const AppContextMenuHost = memo(function AppContextMenuHost({
+  handleCreatePage,
+  handleImportPage,
+  handleExportPage,
+  handleUpdatePage,
+  setRenamePageId,
+  setMovePageId,
+}: {
+  handleCreatePage: (parentId: string | null) => Promise<void>;
+  handleImportPage: (parentId: string | null) => Promise<void>;
+  handleExportPage: (pageId: string) => Promise<void>;
+  handleUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  setRenamePageId: (id: string | null) => void;
+  setMovePageId: (id: string | null) => void;
+}) {
+  const contextMenu = useStoreSelector((s) => s.contextMenu);
+  const dispatch = useStoreDispatch();
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => dispatch({ type: 'HIDE_CONTEXT_MENU' });
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [contextMenu, dispatch]);
+
+  if (!contextMenu) return null;
+
+  return (
+    <AppContextMenu
+      contextMenu={contextMenu}
+      pages={getStoreState().pages}
+      dispatch={dispatch}
+      handleCreatePage={handleCreatePage}
+      handleImportPage={handleImportPage}
+      handleExportPage={handleExportPage}
+      handleUpdatePage={handleUpdatePage}
+      setRenamePageId={setRenamePageId}
+      setMovePageId={setMovePageId}
+    />
+  );
+});
+
 function AppContent() {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const tabs = useTabs();
+  const activeTabId = useStoreSelector((s) => s.activeTabId);
+  const pages = usePages();
+  const isReadingModeFullScreen = useStoreSelector((s) => s.isReadingModeFullScreen);
+  const navDirection = useStoreSelector((s) => s.navDirection);
+  const moduleKeys = useStoreSelector((s) => s.moduleKeys);
+  const activeWorkspaceId = useStoreSelector((s) => s.activeWorkspaceId);
+
   const { isAuth, setIsAuth, authStatus, setAuthStatus } = useAppAuth(dispatch);
   const platform = usePlatform();
   const [settings, setSettings] = useState(getSettings);
   const [isMobile, setIsMobile] = useState(() => isMobileScreen() || platform.platform === 'mobile-webview');
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
+  const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId) || tabs[0], [tabs, activeTabId]);
   const activeModule = activeTab?.module;
   const isReadingBook = activeTab?.module === 'library' && Boolean(activeTab?.bookTitle);
 
   const pagesMap = useMemo(() => {
     const map = new Map<string, Page>();
-    for (const p of state.pages) {
+    for (const p of pages) {
       map.set(p.id, p);
     }
     return map;
-  }, [state.pages]);
+  }, [pages]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -141,7 +213,7 @@ function AppContent() {
     };
   }, []);
   
-  useAppShortcuts(state, dispatch);
+  useAppShortcuts(getStoreState, dispatch);
   useAppTitle(activeModule, activeTab?.bookTitle);
   useGarbageCollection(isAuth);
   const { handleCreatePage, handleUpdatePage, handleDeletePage, handleUpdateContent, handleCreateLinkedPage, handleExportPage, handleImportPage } = usePageActions();
@@ -164,14 +236,14 @@ function AppContent() {
           getValidAccessToken().then(token => {
             navigator.serviceWorker.controller?.postMessage({
               type: 'SET_KEYS',
-              keys: state.moduleKeys,
+              keys: moduleKeys,
               token: token
             });
           });
         });
       }
     }
-  }, [isAuth, loadFocusData, state.moduleKeys]);
+  }, [isAuth, loadFocusData, moduleKeys]);
 
   // Lock on inactivity
   useActivityTracker({
@@ -191,15 +263,20 @@ function AppContent() {
   const loadPages = useCallback(async () => {
     if (window.api) {
       try {
-        const pages = await window.api.getAllPages();
-        const pagesWithCrdt = pages.filter((p: Page) => !!p.crdt_state).length;
-        console.log(`[Caderno:LoadPages] SET_PAGES with ${pages.length} pages (${pagesWithCrdt} have crdt_state)`);
-        dispatch({ type: 'SET_PAGES', pages });
+        const loadedPages = await window.api.getAllPages();
+        dispatch({ type: 'SET_PAGES', pages: loadedPages });
       } catch (err) {
         console.error('Failed to load pages', err);
       }
     }
   }, [dispatch]);
+
+  // Load local pages immediately upon authentication instead of waiting for cloud pull.
+  useEffect(() => {
+    if (isAuth) {
+      void loadPages();
+    }
+  }, [isAuth, loadPages]);
 
   // Sync appSettings from DB once initial sync is successful (e.g. for incognito logins)
   const hasSyncedInitialLayoutRef = useRef(false);
@@ -218,48 +295,36 @@ function AppContent() {
   // Expose moduleKeys on window for TipTap handlePaste access
   // (ProseMirror handlers cannot access React context)
   useEffect(() => {
-    window.__cadernoModuleKeys = state.moduleKeys;
-  }, [state.moduleKeys]);
+    window.__cadernoModuleKeys = moduleKeys;
+  }, [moduleKeys]);
 
-  // Close context menu on click outside
+  // Failsafe: self-correct activeTabId if detached from available tabs
   useEffect(() => {
-    const handler = () => {
-      if (state.contextMenu) dispatch({ type: 'HIDE_CONTEXT_MENU' });
-    };
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [state.contextMenu, dispatch]);
-
-  // Open Floating Page handled by useAppEvents
-
-  // Failsafe: If activeTabId is completely detached from the available tabs (e.g. from a broken localStorage state),
-  // self-correct to the first available tab so actions like NAVIGATE_IN_TAB don't silently fail.
-  useEffect(() => {
-    if (state.tabs.length > 0 && !state.tabs.some(t => t.id === state.activeTabId)) {
-      dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[0].id });
+    if (tabs.length > 0 && !tabs.some(t => t.id === activeTabId)) {
+      dispatch({ type: 'SET_ACTIVE_TAB', tabId: tabs[0].id });
     }
-  }, [state.tabs, state.activeTabId, dispatch]);
+  }, [tabs, activeTabId, dispatch]);
 
   // Flush pending editor changes whenever the active tab changes
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
-  }, [state.activeTabId]);
+  }, [activeTabId]);
 
   // If user switches away from a book in the library, ensure reading mode fullscreen is exited
   useEffect(() => {
-    const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+    const currentTab = tabs.find(t => t.id === activeTabId);
     if (!currentTab || currentTab.module !== 'library' || !currentTab.bookTitle) {
-      if (state.isReadingModeFullScreen) {
+      if (isReadingModeFullScreen) {
         dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
       }
     }
-  }, [state.activeTabId, state.tabs, state.isReadingModeFullScreen, dispatch]);
+  }, [activeTabId, tabs, isReadingModeFullScreen, dispatch]);
 
   const pageHistoryRef = useRef<string[]>([]);
   const lastPageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const currentTab = state.tabs.find(t => t.id === state.activeTabId);
+    const currentTab = tabs.find(t => t.id === activeTabId);
     const currentPageId = currentTab?.pageId || null;
     if (currentPageId && lastPageIdRef.current && lastPageIdRef.current !== currentPageId) {
       pageHistoryRef.current.push(lastPageIdRef.current);
@@ -268,9 +333,9 @@ function AppContent() {
       }
     }
     lastPageIdRef.current = currentPageId;
-  }, [state.activeTabId, state.tabs]);
+  }, [activeTabId, tabs]);
 
-  useAppBackPress(state, dispatch, floatingPageId, setFloatingPageId, pageHistoryRef);
+  useAppBackPress(getStoreState, dispatch, floatingPageId, setFloatingPageId, pageHistoryRef);
 
   if (authStatus === null) {
     return (
@@ -296,13 +361,17 @@ function AppContent() {
   }
 
   if (!isAuth) {
-    return <AuthScreen status={authStatus} onSuccess={() => setIsAuth(true)} />;
+    return (
+      <Suspense fallback={<div className="w-full h-full bg-dark-bg" style={{ height: '100dvh' }} />}>
+        <AuthScreen status={authStatus} onSuccess={() => setIsAuth(true)} />
+      </Suspense>
+    );
   }
 
   return (
     <div className="w-full max-w-full h-full flex bg-dark-bg text-dark-text overflow-hidden" style={{ height: '100dvh' }}>
       {/* Sidebar */}
-      {!state.isReadingModeFullScreen && (
+      {!isReadingModeFullScreen && (
         <Sidebar
           onCreatePage={handleCreatePage}
           onUpdatePage={handleUpdatePage}
@@ -316,8 +385,8 @@ function AppContent() {
           <div
             className={
               isReadingBook && isMobile
-                ? `absolute top-0 left-0 right-0 z-40 transition-transform duration-300 ${state.isReadingModeFullScreen ? '-translate-y-full pointer-events-none' : 'translate-y-0'}`
-                : state.isReadingModeFullScreen ? 'hidden' : ''
+                ? `absolute top-0 left-0 right-0 z-40 transition-transform duration-300 ${isReadingModeFullScreen ? '-translate-y-full pointer-events-none' : 'translate-y-0'}`
+                : isReadingModeFullScreen ? 'hidden' : ''
             }
           >
             <TabBar />
@@ -326,8 +395,8 @@ function AppContent() {
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
-          {state.tabs.map((tab) => {
-            const isActive = tab.id === state.activeTabId;
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTabId;
             const page = tab.pageId ? pagesMap.get(tab.pageId) || null : null;
             
             return (
@@ -336,7 +405,7 @@ function AppContent() {
                 tab={tab}
                 isActive={isActive}
                 page={page}
-                navDirection={state.navDirection}
+                navDirection={navDirection}
                 onUpdateContent={handleUpdateContent}
                 onCreatePage={handleCreatePage}
                 onCreateLinkedPage={handleCreateLinkedPage}
@@ -347,32 +416,28 @@ function AppContent() {
         </div>
       </div>
 
-      {/* AI Sidebar */}
-      {!state.isReadingModeFullScreen && <AiSidebar />}
+      {/* Lazy-mounted AI Sidebar */}
+      <AiSidebarHost />
 
       {/* Context Menu */}
-      {state.contextMenu && (
-        <AppContextMenu
-          contextMenu={state.contextMenu}
-          pages={state.pages}
-          dispatch={dispatch}
-          handleCreatePage={handleCreatePage}
-          handleImportPage={handleImportPage}
-          handleExportPage={handleExportPage}
-          handleUpdatePage={handleUpdatePage}
-          setRenamePageId={setRenamePageId}
-          setMovePageId={setMovePageId}
-        />
-      )}
-
-
-      {/* Background Sync Coordinator (isolated render boundary) */}
-      <SyncCoordinator
-        isAuth={isAuth}
-        masterKey={state.moduleKeys}
-        loadPages={loadPages}
-        workspaceId={state.activeWorkspaceId || undefined}
+      <AppContextMenuHost
+        handleCreatePage={handleCreatePage}
+        handleImportPage={handleImportPage}
+        handleExportPage={handleExportPage}
+        handleUpdatePage={handleUpdatePage}
+        setRenamePageId={setRenamePageId}
+        setMovePageId={setMovePageId}
       />
+
+      {/* Background Sync Coordinator (lazy-loaded post-auth so Firebase SDK stays off initial boot chunk) */}
+      <Suspense fallback={null}>
+        <SyncCoordinator
+          isAuth={isAuth}
+          masterKey={moduleKeys}
+          loadPages={loadPages}
+          workspaceId={activeWorkspaceId || undefined}
+        />
+      </Suspense>
 
       {/* Global Modals & Overlays Host */}
       <GlobalModals

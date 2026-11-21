@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppNotification, CalendarEvent } from '../../types/core';
 import { playZenChime } from '../../utils/audio';
 
+const FOCUS_CHECK_COOLDOWN_MS = 15_000;
+
 export function useNotificationScheduler() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const isCheckingRef = useRef(false);
+  const lastFocusCheckRef = useRef(0);
 
   const fetchNotifications = useCallback(async () => {
     if (typeof window === 'undefined' || !window.api?.notifications) return;
@@ -149,8 +152,11 @@ export function useNotificationScheduler() {
 
     const handleFocusOrVisible = () => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        const now = Date.now();
+        if (now - lastFocusCheckRef.current < FOCUS_CHECK_COOLDOWN_MS) return;
+        lastFocusCheckRef.current = now;
+        // checkReminders already refreshes notifications upon completion
         checkReminders();
-        fetchNotifications();
       }
     };
 

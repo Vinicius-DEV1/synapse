@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { X, Search, Check, LayoutGrid, FolderInput } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, usePages } from '../../store/useStore';
 import { isValidHierarchyMove, getPageBreadcrumbString } from '../../utils/hierarchy';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
@@ -17,18 +17,19 @@ interface MovePageModalProps {
 }
 
 export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: MovePageModalProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const pages = usePages();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTargetId, setSelectedTargetId] = useState<string | null | 'UNSET'>('UNSET');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const activePages = useMemo(() => filterActivePages(state.pages), [state.pages]);
+  const activePages = useMemo(() => filterActivePages(pages), [pages]);
 
   const sourcePage = useMemo(() => {
-    return state.pages.find((p) => p.id === pageId) || null;
-  }, [state.pages, pageId]);
+    return pages.find((p) => p.id === pageId) || null;
+  }, [pages, pageId]);
 
   // Initialize selected target with current page parent
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function MovePageModal({ isOpen, pageId, onClose, onMovePage }: M
         dispatch({ type: 'EXPAND_NODE', nodeId: effectiveSelectedId });
       }
       const destName = effectiveSelectedId
-        ? state.pages.find((p) => p.id === effectiveSelectedId)?.title || 'Página'
+        ? pages.find((p) => p.id === effectiveSelectedId)?.title || 'Página'
         : 'Raiz';
       triggerToast(`Página movida para "${destName}" com sucesso!`, 'success');
       onClose();

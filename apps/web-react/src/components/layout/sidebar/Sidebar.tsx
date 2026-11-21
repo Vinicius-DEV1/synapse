@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Home, PanelLeftClose, PanelLeft, Shield, ChevronUp, ChevronDown, LayoutDashboard, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector, useStoreDispatch, useActiveTab } from '../../../store/useStore';
 import type { Tab, Page } from '../../../types';
 import { SidebarModuleList } from './SidebarModuleList';
 import { SidebarPageTree } from './SidebarPageTree';
@@ -28,7 +28,12 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const activeTab = useActiveTab();
+  const sidebarCollapsed = useStoreSelector((s) => s.sidebarCollapsed);
+  const activeWorkspaceId = useStoreSelector((s) => s.activeWorkspaceId);
+  const activeWorkspaceRole = useStoreSelector((s) => s.activeWorkspaceRole);
+  const masterKey = useStoreSelector((s) => s.moduleKeys['notes'] || s.moduleKeys['core'] || null);
   const { t } = useI18n();
   const [isCreateWsOpen, setIsCreateWsOpen] = useState(false);
   const [isMembersWsOpen, setIsMembersWsOpen] = useState(false);
@@ -47,8 +52,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     }
   }, []);
 
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
-  const activeModule = activeTab.module as ModuleId;
+  const activeModule = (activeTab?.module || 'home') as ModuleId;
 
   const handleHeaderMouseDown = (e: React.MouseEvent) => {
     if (!isDesktopApp()) return;
@@ -66,7 +70,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     windowService.toggleMaximize();
   };
 
-  if (state.sidebarCollapsed) {
+  if (sidebarCollapsed) {
     return (
       <div 
         className="hidden md:flex w-12 h-full bg-dark-card/50 border-r border-white/5 flex-col items-center py-2.5 z-20 select-none cursor-default"
@@ -133,21 +137,21 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
         </div>
 
         <WorkspaceSwitcher
-          currentWorkspaceId={state.activeWorkspaceId || undefined}
+          currentWorkspaceId={activeWorkspaceId || undefined}
           onSelectWorkspace={(wsId) => dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId })}
           onOpenCreateModal={() => setIsCreateWsOpen(true)}
           onOpenMembersModal={() => setIsMembersWsOpen(true)}
-          currentRole={state.activeWorkspaceRole || 'owner'}
+          currentRole={activeWorkspaceRole || 'owner'}
         />
 
         {activeModule === 'notes' ? (
           <SidebarPageTree 
             onCreatePage={onCreatePage} 
             onUpdatePage={onUpdatePage} 
-            activeTab={activeTab} 
+            activeTab={activeTab ?? null} 
           />
         ) : activeModule === 'settings' ? (
-          <div className="flex flex-col gap-1 mt-2 flex-1 overflow-y-auto custom-scrollbar pb-2">
+          <div className="flex flex-col gap-1 mt-2 flex-1 overflow-y-auto custom-scrollbar smooth-scroll-container pb-2">
             <div className="px-3 py-2 text-xs text-dark-subtext uppercase tracking-wider shrink-0">{t('sidebar.dashboard')}</div>
             
             {[
@@ -165,8 +169,8 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
               <button
                 key={tab.id}
                 onClick={() => dispatch({ type: 'NAVIGATE_IN_TAB', pageId: tab.id })}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mx-2 shrink-0 ${
-                  (activeTab.pageId || 'general') === tab.id
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mx-2 shrink-0 ${
+                  (activeTab?.pageId || 'general') === tab.id
                     ? 'bg-brand-500/10 text-brand-400'
                     : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
                 }`}
@@ -197,7 +201,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           </button>
           
           {isModulesExpanded && (
-            <div className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto max-h-[40vh] custom-scrollbar">
+            <div className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto max-h-[40vh] custom-scrollbar smooth-scroll-container">
               <SidebarModuleList 
                 isCollapsedView={false} 
                 onModuleSelect={() => {
@@ -216,7 +220,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <CreateWorkspaceModal
             isOpen={isCreateWsOpen}
             onClose={() => setIsCreateWsOpen(false)}
-            masterKey={state.moduleKeys['notes'] || state.moduleKeys['core'] || null}
+            masterKey={masterKey}
             onWorkspaceCreated={(wsId) => {
               dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId });
               setIsCreateWsOpen(false);
@@ -224,11 +228,11 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           />
         )}
 
-        {state.activeWorkspaceId && isMembersWsOpen && (
+        {activeWorkspaceId && isMembersWsOpen && (
           <WorkspaceMembersModal
             isOpen={isMembersWsOpen}
             onClose={() => setIsMembersWsOpen(false)}
-            workspaceId={state.activeWorkspaceId}
+            workspaceId={activeWorkspaceId}
             onWorkspaceDeleted={() => {
               dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: null });
               setIsMembersWsOpen(false);

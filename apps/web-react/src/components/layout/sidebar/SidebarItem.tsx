@@ -92,12 +92,12 @@ function SidebarItemComponent({
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="contain-list-item">
       <div
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className={`group flex items-center gap-1 px-2 py-[5px] rounded-lg cursor-pointer transition-all text-[13px] ${
+        className={`group flex items-center gap-1 px-2 py-[5px] rounded-lg cursor-pointer transition-colors text-[13px] ${
           isOver
             ? 'bg-brand-500/20 ring-1 ring-brand-500 text-brand-300'
             : isActive

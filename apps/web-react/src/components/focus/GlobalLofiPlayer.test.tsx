@@ -27,12 +27,15 @@ const mockContext: {
 
 vi.mock('../../store/FocusContext', () => ({
   useFocusContext: () => mockContext,
+  useFocusLofi: () => mockContext,
 }));
 
 vi.mock('../../store/useStore', () => ({
   useStore: () => ({
     state: { moduleKeys: { focus: 'dummy-key' } },
   }),
+  useStoreSelector: (sel: (s: { moduleKeys: { focus: string } }) => unknown) =>
+    sel({ moduleKeys: { focus: 'dummy-key' } }),
 }));
 
 vi.mock('../../hooks/useTimeTracker', () => ({

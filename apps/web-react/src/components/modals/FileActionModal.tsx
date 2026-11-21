@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { FileText, X, ExternalLink, ArrowRight, Maximize2 } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, getStoreState } from '../../store/useStore';
 
 interface FileActionModalProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface FileActionModalProps {
 }
 
 export default function FileActionModal({ isOpen, fileId, title, onClose, onOpenViewer }: FileActionModalProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -28,7 +28,7 @@ export default function FileActionModal({ isOpen, fileId, title, onClose, onOpen
     onClose();
     dispatch({ 
       type: 'UPDATE_TAB_MODULE', 
-      tabId: state.activeTabId, 
+      tabId: getStoreState().activeTabId, 
       module: 'library',
       bookId: fileId,
       moduleState: { bookId: fileId }

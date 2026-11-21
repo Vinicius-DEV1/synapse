@@ -1,6 +1,6 @@
 import { CheckCircle2, XCircle, Cloud } from 'lucide-react';
 import { useI18n } from '../../i18n';
-import { useSyncStatus, type SyncStatus } from '../../hooks/useSync';
+import { useSyncStatus, type SyncStatus } from '../../hooks/sync/sync-status';
 
 interface SyncStatusToastProps {
   status?: SyncStatus;

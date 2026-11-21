@@ -150,7 +150,7 @@ export const TransactionList = React.memo(({
           <div className="flex bg-dark-bg/80 p-0.5 rounded-lg border border-white/5 text-xs">
             <button
               onClick={() => setFilterType('all')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 filterType === 'all'
                   ? 'bg-brand-500/20 text-brand-300 font-medium border border-brand-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
@@ -160,7 +160,7 @@ export const TransactionList = React.memo(({
             </button>
             <button
               onClick={() => setFilterType('income')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 filterType === 'income'
                   ? 'bg-emerald-500/20 text-emerald-300 font-medium border border-emerald-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
@@ -170,7 +170,7 @@ export const TransactionList = React.memo(({
             </button>
             <button
               onClick={() => setFilterType('expense')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 filterType === 'expense'
                   ? 'bg-rose-500/20 text-rose-300 font-medium border border-rose-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
@@ -180,7 +180,7 @@ export const TransactionList = React.memo(({
             </button>
             <button
               onClick={() => setFilterType('transfer')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 filterType === 'transfer'
                   ? 'bg-indigo-500/20 text-indigo-300 font-medium border border-indigo-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
@@ -190,7 +190,7 @@ export const TransactionList = React.memo(({
             </button>
             <button
               onClick={() => setFilterType('loan')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 filterType === 'loan'
                   ? 'bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30'
                   : 'text-dark-subtext hover:text-dark-text'
@@ -344,7 +344,7 @@ export const TransactionList = React.memo(({
           )}
 
           {Object.entries(groupedTransactions).map(([month, monthTxs]) => (
-            <div key={month} className="bg-dark-card border border-white/[0.06] rounded-xl p-4 sm:p-5 flex flex-col gap-2.5 shadow-sm">
+            <div key={month} className="cv-auto-card bg-dark-card border border-white/[0.06] rounded-xl p-4 sm:p-5 flex flex-col gap-2.5 shadow-sm">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <h3 className="text-sm font-semibold text-dark-text tracking-tight">{month}</h3>
                 <span className="text-xs font-normal text-dark-subtext">

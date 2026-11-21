@@ -29,9 +29,9 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
   const hasChildren = Boolean(deck.children && deck.children.length > 0);
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full contain-list-item">
       <div
-        className="bg-dark-card p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group"
+        className="bg-dark-card p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-colors duration-200 group"
         style={{ marginLeft: `${depth * 24}px`, marginTop: depth > 0 ? '8px' : '16px' }}
       >
         <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">

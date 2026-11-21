@@ -2,6 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
+function resolveBuildTarget(platform: string | undefined): string {
+  if (platform === 'windows') return 'chrome105';
+  if (platform === 'darwin' || platform === 'ios') return 'safari13';
+  return 'es2022';
+}
+
 export default defineConfig({
   plugins: [react()],
   base: process.env.TAURI_ENV_PLATFORM ? './' : '/',
@@ -16,7 +22,7 @@ export default defineConfig({
     exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
   },
   build: {
-    target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : process.env.TAURI_ENV_PLATFORM ? 'safari13' : 'es2022',
+    target: resolveBuildTarget(process.env.TAURI_ENV_PLATFORM),
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
@@ -24,6 +30,9 @@ export default defineConfig({
       },
       output: {
         manualChunks: (id) => {
+          if (id.includes('/src/i18n/locales/')) {
+            return 'i18n-locales';
+          }
           if (id.includes('node_modules')) {
             if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) {
               return 'react-vendor';

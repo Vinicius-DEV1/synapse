@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Film, BookOpen, X, ExternalLink, ArrowRight } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, getStoreState } from '../../store/useStore';
 
 interface MediaActionModalProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface MediaActionModalProps {
 }
 
 export default function MediaActionModal({ isOpen, mediaId, mediaType, title, onClose }: MediaActionModalProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -28,7 +28,7 @@ export default function MediaActionModal({ isOpen, mediaId, mediaType, title, on
     onClose();
     dispatch({ 
       type: 'UPDATE_TAB_MODULE', 
-      tabId: state.activeTabId, 
+      tabId: getStoreState().activeTabId, 
       module: mediaType === 'video' ? 'video' : 'library',
       bookId: mediaId,
       moduleState: { videoId: mediaId }

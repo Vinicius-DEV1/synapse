@@ -8,6 +8,8 @@ vi.mock('../../store/useStore', () => ({
     state: { activeTabId: 'tab_media_active' },
     dispatch: mockDispatch,
   }),
+  useStoreDispatch: () => mockDispatch,
+  getStoreState: () => ({ activeTabId: 'tab_media_active' }),
 }));
 
 describe('MediaActionModal', () => {

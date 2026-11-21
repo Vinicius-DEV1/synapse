@@ -14,6 +14,7 @@ vi.mock('../../store/useStore', () => ({
   useStore: () => ({
     dispatch: mockDispatch,
   }),
+  useStoreDispatch: () => mockDispatch,
 }));
 
 vi.mock('../../services/auth/firebase-auth', () => ({

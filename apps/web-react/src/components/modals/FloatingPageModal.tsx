@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, lazy, Suspense } from 'react';
 import { Maximize2, X } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import type { Page } from '../../types';
 import { Portal } from '../ui/Portal';
 
@@ -25,10 +25,9 @@ export default function FloatingPageModal({
   onCreateLinkedPage,
   onUpdatePage,
 }: FloatingPageModalProps) {
-  const { state } = useStore();
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const page = state.pages.find((p: Page) => p.id === pageId && !p.deleted_at) || null;
+  const page = useStoreSelector((s) => s.pages.find((p: Page) => p.id === pageId && !p.deleted_at) || null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

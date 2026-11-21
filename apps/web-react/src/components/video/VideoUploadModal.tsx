@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileVideo, FileText, Loader2, CloudOff, Cloud } from 'lucide-react';
 import { processSubtitleFile } from '../../utils/subtitles';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import { Portal } from '../ui/Portal';
 import { TrackSelectionSection } from './ui/TrackSelectionSection';
 import { VideoUploadSuccess } from './ui/VideoUploadSuccess';
@@ -20,8 +20,7 @@ interface VideoUploadModalProps {
 }
 
 export default function VideoUploadModal({ collectionId, collectionName, onClose, onUpload }: VideoUploadModalProps) {
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['culture'];
+  const masterKey = useStoreSelector((s) => s.moduleKeys['culture']);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [subtitleFile, setSubtitleFile] = useState<File | null>(null);

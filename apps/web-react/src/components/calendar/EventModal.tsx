@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { CalendarEvent } from '../../types';
 import { X, Clock, Type, Palette, BookOpen } from 'lucide-react';
 import { Portal } from '../ui/Portal';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, useStoreSelector } from '../../store/useStore';
 import { useTranslation } from '../../i18n';
 import { useEventForm, CALENDAR_EVENT_COLORS } from './hooks/useEventForm';
 import { EventFormDateTimes } from './ui/EventFormDateTimes';
@@ -19,8 +19,8 @@ interface EventModalProps {
 
 export default function EventModal({ event, onSave, onClose, onDelete, initialDate }: EventModalProps) {
   const { t } = useTranslation();
-  const { state, dispatch } = useStore();
-  const linkedPage = state.pages.find(p => p.id === event?.page_id);
+  const dispatch = useStoreDispatch();
+  const linkedPage = useStoreSelector((s) => (event?.page_id ? s.pages.find((p) => p.id === event.page_id) : undefined));
 
   // Keyboard Escape & Android Hardware Back navigation
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuthLockout } from './useAuthLockout';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch } from '../../store/useStore';
 import { getVaultKeyHash } from '../../services/vault-crypto';
 import { setDriveMasterKey } from '../../services/drive';
 import { setWebVaultKey } from '../../api/web/vault';
@@ -19,6 +19,12 @@ import {
 } from '../../services/auth/account-vault';
 import { clearFailedAttempts, recordFailedAttempt } from '../../services/sync';
 import { useI18n } from '../../i18n';
+import {
+  clearRememberedEmail,
+  loadRememberedEmail,
+  maskEmailAddress,
+  saveRememberedEmail,
+} from './emailMask';
 
 type CloudMode = 'login' | 'register';
 
@@ -28,6 +34,9 @@ export interface AuthScreenModel {
   intimidatingPhrase: string;
   cloudMode: CloudMode;
   email: string;
+  maskedEmail: string;
+  isEmailMasked: boolean;
+  rememberEmail: boolean;
   cloudPassword: string;
   previousPassword: string;
   cloudMessage: string;
@@ -37,6 +46,8 @@ export interface AuthScreenModel {
   migrationRequired: boolean;
   recoveryWarning: boolean;
   setEmail: (value: string) => void;
+  toggleRememberEmail: (checked: boolean) => void;
+  switchToCustomEmail: () => void;
   setCloudPassword: (value: string) => void;
   setPreviousPassword: (value: string) => void;
   changeCloudMode: (mode: CloudMode) => void;
@@ -51,11 +62,17 @@ export function useAuthScreenController(
   onSuccess: () => void,
 ): AuthScreenModel {
   const { t } = useI18n();
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const isSetup = status === 'new' || status === 'unencrypted';
   const { lockoutTime, intimidatingPhrase, triggerImmediateLockout } = useAuthLockout(isSetup);
+  const initialRememberedRef = useRef<string | null>(null);
+  if (initialRememberedRef.current === null) {
+    initialRememberedRef.current = loadRememberedEmail();
+  }
   const [cloudMode, setCloudMode] = useState<CloudMode>('login');
-  const [email, setEmail] = useState(() => getCurrentAuthUser()?.email ?? '');
+  const [rememberEmail, setRememberEmail] = useState(() => Boolean(initialRememberedRef.current));
+  const [email, setEmail] = useState(() => initialRememberedRef.current ?? '');
+  const [isEmailMasked, setIsEmailMasked] = useState(() => Boolean(initialRememberedRef.current));
   const [cloudPassword, setCloudPassword] = useState('');
   const [previousPassword, setPreviousPassword] = useState('');
   const [cloudMessage, setCloudMessage] = useState('');
@@ -64,6 +81,7 @@ export function useAuthScreenController(
   const [shake, setShake] = useState(false);
   const [migrationRequired, setMigrationRequired] = useState(false);
   const [recoveryWarning, setRecoveryWarning] = useState(false);
+  const rememberedEmailRef = useRef(initialRememberedRef.current ?? '');
   const accountPasswordRef = useRef<string | null>(null);
   const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -80,6 +98,14 @@ export function useAuthScreenController(
   };
 
   const finishUnlock = async (session: AccountVaultSession, accountPassword: string): Promise<void> => {
+    const trimmedEmail = email.trim();
+    if (rememberEmail && trimmedEmail) {
+      saveRememberedEmail(trimmedEmail);
+      rememberedEmailRef.current = trimmedEmail;
+    } else {
+      clearRememberedEmail();
+      rememberedEmailRef.current = '';
+    }
     const vaultKeyHash = await getVaultKeyHash(accountPassword);
     setWebVaultKey(session.rawModuleKeys.vault || vaultKeyHash);
     dispatch({ type: 'SET_MODULE_KEYS', keys: session.moduleKeys });
@@ -207,6 +233,27 @@ export function useAuthScreenController(
     setCloudMode(mode);
     setError('');
     setCloudMessage('');
+    if (mode === 'register' && isEmailMasked) {
+      setIsEmailMasked(false);
+      setEmail('');
+    } else if (mode === 'login' && !email.trim() && rememberEmail && rememberedEmailRef.current) {
+      setEmail(rememberedEmailRef.current);
+      setIsEmailMasked(true);
+    }
+  };
+
+  const toggleRememberEmail = (checked: boolean): void => {
+    setRememberEmail(checked);
+    if (!checked) {
+      clearRememberedEmail();
+      rememberedEmailRef.current = '';
+    }
+  };
+
+  const switchToCustomEmail = (): void => {
+    setIsEmailMasked(false);
+    setEmail('');
+    setError('');
   };
 
   return {
@@ -215,6 +262,9 @@ export function useAuthScreenController(
     intimidatingPhrase,
     cloudMode,
     email,
+    maskedEmail: maskEmailAddress(email),
+    isEmailMasked,
+    rememberEmail,
     cloudPassword,
     previousPassword,
     cloudMessage,
@@ -224,6 +274,8 @@ export function useAuthScreenController(
     migrationRequired,
     recoveryWarning,
     setEmail,
+    toggleRememberEmail,
+    switchToCustomEmail,
     setCloudPassword,
     setPreviousPassword,
     changeCloudMode,

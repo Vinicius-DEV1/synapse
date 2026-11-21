@@ -1,12 +1,14 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import { useStoreDispatch, useStoreSelector } from '../../store/useStore';
+import { useState, useEffect, lazy, Suspense, useCallback } from 'react';
+import { getStoreState, useStoreDispatch, useStoreSelector } from '../../store/useStore';
 import { useI18n } from '../../i18n';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
 import { SyncStatusToast } from './SyncStatusToast';
 import type { Page } from '../../types';
+import type { SyncErrorDetails } from '../modals/SyncErrorModal';
+import type { UploadProgressData } from '../library/ui/UploadProgressModal';
 
-// Lazy load heavy and conditional modals to keep initial bundle ultra-light
+// Lazy load heavy and conditional modals — mounted ONLY when activated/open
 const GlobalSearchModal = lazy(() => import('../modals/GlobalSearchModal'));
 const SyncErrorModal = lazy(() => import('../modals/SyncErrorModal'));
 const RenamePageModal = lazy(() => import('../modals/RenamePageModal'));
@@ -25,6 +27,22 @@ const AccountEvolutionModal = lazy(() => import('../auth/AccountEvolutionModal')
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ShareAccessRequestToast } from '../sharing/ShareAccessRequestToast';
 import { useShareAccessRequests } from '../../hooks/useShareAccessRequests';
+
+function parseSyncError(detail?: { message?: string; code?: string }): SyncErrorDetails | null {
+  if (!detail?.message) return null;
+  const { message, code } = detail;
+  const lower = message.toLowerCase();
+  if (code === 'resource-exhausted' || lower.includes('quota') || lower.includes('exceeded')) {
+    return { message, isQuota: true };
+  }
+  if (lower.includes('permission-denied')) {
+    return {
+      message: 'Acesso negado ao Firebase. Verifique suas credenciais.',
+      isQuota: false,
+    };
+  }
+  return null;
+}
 
 interface GlobalConfirmData {
   isOpen: boolean;
@@ -79,12 +97,16 @@ export function GlobalModals({
   handleCreateLinkedPage,
 }: GlobalModalsProps) {
   const dispatch = useStoreDispatch();
+  // Subscribe ONLY to narrow flags — NEVER to the entire `pages` array at top level.
   const confirmDelete = useStoreSelector((s) => s.confirmDelete);
-  const pages = useStoreSelector((s) => s.pages);
-  const moduleKeys = useStoreSelector((s) => s.moduleKeys);
-  const masterKey = useStoreSelector((s) => s.masterKey);
-  const state = { confirmDelete, pages, moduleKeys, masterKey };
   const { t } = useI18n();
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [syncError, setSyncError] = useState<SyncErrorDetails | null>(null);
+  const [uploadState, setUploadState] = useState<{ active: boolean; progress: UploadProgressData | null }>({
+    active: false,
+    progress: null,
+  });
 
   const [scrapActionData, setScrapActionData] = useState<ScrapModalData | null>(null);
   const [scrapViewerData, setScrapViewerData] = useState<ScrapModalData | null>(null);
@@ -105,6 +127,62 @@ export function GlobalModals({
 
   const [shareModalPageId, setShareModalPageId] = useState<string | null>(null);
   const [isAccountEvolutionOpen, setIsAccountEvolutionOpen] = useState(false);
+
+  // Lightweight shell listeners kept outside lazy chunks so Ctrl+K / sync errors / uploads work on demand
+  useEffect(() => {
+    let uploadEndTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearUploadEndTimer = () => {
+      if (uploadEndTimer !== null) {
+        clearTimeout(uploadEndTimer);
+        uploadEndTimer = null;
+      }
+    };
+
+    const handleOpenSearch = () => setIsSearchOpen(true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    const handleSyncError = (e: Event) => {
+      const parsed = parseSyncError((e as CustomEvent<{ message?: string; code?: string }>).detail);
+      if (parsed) setSyncError(parsed);
+    };
+    const handleUploadStart = () => {
+      clearUploadEndTimer();
+      setUploadState({ active: true, progress: null });
+    };
+    const handleUploadProgress = (e: Event) => {
+      clearUploadEndTimer();
+      const detail = (e as CustomEvent<UploadProgressData>).detail;
+      setUploadState({ active: true, progress: detail });
+    };
+    const handleUploadEnd = () => {
+      clearUploadEndTimer();
+      // Mirrors UploadProgressModal's 1s dismissal so fast uploads finishing before lazy chunk mount still close cleanly
+      uploadEndTimer = setTimeout(() => {
+        uploadEndTimer = null;
+        setUploadState({ active: false, progress: null });
+      }, 1000);
+    };
+
+    window.addEventListener('open-global-search', handleOpenSearch);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('caderno-sync-error', handleSyncError);
+    window.addEventListener('library-upload-start', handleUploadStart);
+    window.addEventListener('library-upload-progress', handleUploadProgress);
+    window.addEventListener('library-upload-end', handleUploadEnd);
+    return () => {
+      clearUploadEndTimer();
+      window.removeEventListener('open-global-search', handleOpenSearch);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('caderno-sync-error', handleSyncError);
+      window.removeEventListener('library-upload-start', handleUploadStart);
+      window.removeEventListener('library-upload-progress', handleUploadProgress);
+      window.removeEventListener('library-upload-end', handleUploadEnd);
+    };
+  }, []);
 
   useEffect(() => {
     const handleOpenShare = (e: Event) => {
@@ -188,131 +266,20 @@ export function GlobalModals({
     };
   }, []);
 
+  const handleCloseSearch = useCallback(() => setIsSearchOpen(false), []);
+  const handleDismissSyncError = useCallback(() => setSyncError(null), []);
+  const handleUploadFinished = useCallback(() => setUploadState({ active: false, progress: null }), []);
+
+  const storeSnapshot = confirmDelete || renamePageId || shareModalPageId || isAccountEvolutionOpen
+    ? getStoreState()
+    : null;
+
   return (
-    <Suspense fallback={null}>
-      {/* Confirm Delete Modal */}
-      {state.confirmDelete && (
-        <ConfirmModal
-          pageId={state.confirmDelete}
-          pageName={state.pages.find((p) => p.id === state.confirmDelete)?.title || t('modals.confirm.thisPage')}
-          onConfirm={() => handleDeletePage(state.confirmDelete!)}
-          onCancel={() => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null })}
-        />
-      )}
-
-      {/* Rename Page Modal */}
-      {renamePageId && (
-        <RenamePageModal
-          isOpen={!!renamePageId}
-          onClose={() => setRenamePageId(null)}
-          currentTitle={state.pages.find((p) => p.id === renamePageId)?.title || ''}
-          onRename={(newTitle) => handleUpdatePage(renamePageId, { title: newTitle })}
-        />
-      )}
-
-      {/* Move Page Modal */}
-      {movePageId && (
-        <MovePageModal
-          isOpen={!!movePageId}
-          pageId={movePageId}
-          onClose={() => setMovePageId(null)}
-          onMovePage={async (sourceId, targetParentId) => {
-            await handleUpdatePage(sourceId, { parent_id: targetParentId });
-          }}
-        />
-      )}
-
-      {/* Sync Status Toast */}
+    <>
+      {/* Always-mounted lightweight overlays kept outside Suspense so lazy modal chunks never hide active toasts/alarms */}
       <SyncStatusToast status={syncStatus} />
-
-      {/* Sync Error Modal */}
-      <SyncErrorModal />
-
-      {/* Focus Overlays */}
       <GlobalFocusOverlays />
-
-      {/* Floating Page Modal */}
-      {floatingPageId && (
-        <FloatingPageModal
-          pageId={floatingPageId}
-          onClose={() => setFloatingPageId(null)}
-          onExpand={(id) => {
-            setFloatingPageId(null);
-            dispatch({ type: 'NAVIGATE_IN_TAB', pageId: id });
-          }}
-          onUpdateContent={handleUpdateContent}
-          onCreatePage={handleCreatePage}
-          onCreateLinkedPage={handleCreateLinkedPage}
-          onUpdatePage={handleUpdatePage}
-        />
-      )}
-
-      {/* Global Search Modal */}
-      <GlobalSearchModal />
-
-      {/* Drive Auth Modal */}
-      {isDriveAuthModalOpen && (
-        <DriveAuthModal
-          onClose={() => setIsDriveAuthModalOpen(false)}
-          onSuccess={() => setIsDriveAuthModalOpen(false)}
-        />
-      )}
-
-      {/* Background Tasks Widget */}
       <BackgroundTaskWidget />
-
-      {/* Scrap Modals (Mount only when data is present) */}
-      {scrapActionData && (
-        <ScrapActionModal
-          isOpen={true}
-          onClose={() => setScrapActionData(null)}
-          onOpenViewer={() => {
-            setScrapViewerData(scrapActionData);
-            setScrapActionData(null);
-          }}
-          scrapData={scrapActionData}
-        />
-      )}
-
-      {scrapViewerData && (
-        <ScrapViewerModal
-          isOpen={true}
-          onClose={() => setScrapViewerData(null)}
-          scrapData={scrapViewerData}
-        />
-      )}
-
-      {scrapDeleteData && (
-        <ScrapDeleteModal
-          isOpen={true}
-          onClose={() => setScrapDeleteData(null)}
-          onConfirmDelete={() => {
-            if (scrapDeleteData?.onConfirm) {
-              scrapDeleteData.onConfirm();
-            }
-            setScrapDeleteData(null);
-          }}
-          scrapData={scrapDeleteData}
-        />
-      )}
-
-      {scrapInputData?.isOpen && (
-        <ScrapInputModal
-          isOpen={true}
-          initialUrl={scrapInputData?.initialUrl}
-          onClose={() => setScrapInputData(null)}
-          onConfirm={(url) => {
-            if (scrapInputData?.onConfirm) {
-              scrapInputData.onConfirm(url);
-            }
-            setScrapInputData(null);
-          }}
-        />
-      )}
-
-      <UploadProgressModal />
-
-      {/* Real-time Gated Access Toasts & Inspection Modal */}
       <ShareAccessRequestToast
         requests={pendingRequests}
         onApprove={(req) => approveRequest(req, true)}
@@ -320,29 +287,6 @@ export function GlobalModals({
         onInspect={(req) => setActiveModalRequest(req)}
       />
 
-      {activeModalRequest && (
-        <ShareAccessRequestModal
-          request={activeModalRequest}
-          onClose={() => setActiveModalRequest(null)}
-          onApprove={(req, trust) => approveRequest(req, trust)}
-          onDeny={(id) => denyRequest(id)}
-        />
-      )}
-
-      {/* Share Configuration Modal triggered via ContextMenu or Events */}
-      {shareModalPageId && (() => {
-        const sharePage = state.pages.find((p) => p.id === shareModalPageId);
-        return sharePage ? (
-          <ShareModal
-            page={sharePage}
-            isOpen={true}
-            onClose={() => setShareModalPageId(null)}
-            masterKey={state.moduleKeys?.notes}
-          />
-        ) : null;
-      })()}
-
-      {/* Global In-App Confirmation Dialog */}
       {globalConfirmData?.isOpen && (
         <ConfirmDialog
           isOpen={true}
@@ -362,13 +306,163 @@ export function GlobalModals({
         />
       )}
 
-      {/* Account Evolution Modal (Single-User -> Multi-User Workspace) */}
-      <AccountEvolutionModal
-        isOpen={isAccountEvolutionOpen}
-        onClose={() => setIsAccountEvolutionOpen(false)}
-        moduleKeys={state.moduleKeys}
-        masterKey={state.masterKey}
-      />
-    </Suspense>
+      <Suspense fallback={null}>
+        {/* Confirm Delete Modal */}
+        {confirmDelete && (
+          <ConfirmModal
+            pageId={confirmDelete}
+            pageName={storeSnapshot?.pages.find((p) => p.id === confirmDelete)?.title || t('modals.confirm.thisPage')}
+            onConfirm={() => handleDeletePage(confirmDelete)}
+            onCancel={() => dispatch({ type: 'SET_CONFIRM_DELETE', pageId: null })}
+          />
+        )}
+
+        {/* Rename Page Modal */}
+        {renamePageId && (
+          <RenamePageModal
+            isOpen={true}
+            onClose={() => setRenamePageId(null)}
+            currentTitle={storeSnapshot?.pages.find((p) => p.id === renamePageId)?.title || ''}
+            onRename={(newTitle) => handleUpdatePage(renamePageId, { title: newTitle })}
+          />
+        )}
+
+        {/* Move Page Modal */}
+        {movePageId && (
+          <MovePageModal
+            isOpen={true}
+            pageId={movePageId}
+            onClose={() => setMovePageId(null)}
+            onMovePage={async (sourceId, targetParentId) => {
+              await handleUpdatePage(sourceId, { parent_id: targetParentId });
+            }}
+          />
+        )}
+
+        {/* Sync Error Modal — mounted only on actual sync error */}
+        {syncError && (
+          <SyncErrorModal initialError={syncError} onDismiss={handleDismissSyncError} />
+        )}
+
+        {/* Floating Page Modal */}
+        {floatingPageId && (
+          <FloatingPageModal
+            pageId={floatingPageId}
+            onClose={() => setFloatingPageId(null)}
+            onExpand={(id) => {
+              setFloatingPageId(null);
+              dispatch({ type: 'NAVIGATE_IN_TAB', pageId: id });
+            }}
+            onUpdateContent={handleUpdateContent}
+            onCreatePage={handleCreatePage}
+            onCreateLinkedPage={handleCreateLinkedPage}
+            onUpdatePage={handleUpdatePage}
+          />
+        )}
+
+        {/* Global Search Modal — mounted only when opened via Ctrl+K or event */}
+        {isSearchOpen && (
+          <GlobalSearchModal initialOpen={true} onRequestClose={handleCloseSearch} />
+        )}
+
+        {/* Drive Auth Modal */}
+        {isDriveAuthModalOpen && (
+          <DriveAuthModal
+            onClose={() => setIsDriveAuthModalOpen(false)}
+            onSuccess={() => setIsDriveAuthModalOpen(false)}
+          />
+        )}
+
+        {/* Scrap Modals (Mount only when data is present) */}
+        {scrapActionData && (
+          <ScrapActionModal
+            isOpen={true}
+            onClose={() => setScrapActionData(null)}
+            onOpenViewer={() => {
+              setScrapViewerData(scrapActionData);
+              setScrapActionData(null);
+            }}
+            scrapData={scrapActionData}
+          />
+        )}
+
+        {scrapViewerData && (
+          <ScrapViewerModal
+            isOpen={true}
+            onClose={() => setScrapViewerData(null)}
+            scrapData={scrapViewerData}
+          />
+        )}
+
+        {scrapDeleteData && (
+          <ScrapDeleteModal
+            isOpen={true}
+            onClose={() => setScrapDeleteData(null)}
+            onConfirmDelete={() => {
+              if (scrapDeleteData?.onConfirm) {
+                scrapDeleteData.onConfirm();
+              }
+              setScrapDeleteData(null);
+            }}
+            scrapData={scrapDeleteData}
+          />
+        )}
+
+        {scrapInputData?.isOpen && (
+          <ScrapInputModal
+            isOpen={true}
+            initialUrl={scrapInputData?.initialUrl}
+            onClose={() => setScrapInputData(null)}
+            onConfirm={(url) => {
+              if (scrapInputData?.onConfirm) {
+                scrapInputData.onConfirm(url);
+              }
+              setScrapInputData(null);
+            }}
+          />
+        )}
+
+        {/* Upload Progress Modal — mounted only during active upload */}
+        {uploadState.active && (
+          <UploadProgressModal
+            initialVisible={true}
+            initialProgress={uploadState.progress}
+            onFinished={handleUploadFinished}
+          />
+        )}
+
+        {activeModalRequest && (
+          <ShareAccessRequestModal
+            request={activeModalRequest}
+            onClose={() => setActiveModalRequest(null)}
+            onApprove={(req, trust) => approveRequest(req, trust)}
+            onDeny={(id) => denyRequest(id)}
+          />
+        )}
+
+        {/* Share Configuration Modal triggered via ContextMenu or Events */}
+        {shareModalPageId && (() => {
+          const sharePage = storeSnapshot?.pages.find((p) => p.id === shareModalPageId);
+          return sharePage ? (
+            <ShareModal
+              page={sharePage}
+              isOpen={true}
+              onClose={() => setShareModalPageId(null)}
+              masterKey={storeSnapshot?.moduleKeys?.notes}
+            />
+          ) : null;
+        })()}
+
+        {/* Account Evolution Modal — mounted only when explicitly opened */}
+        {isAccountEvolutionOpen && (
+          <AccountEvolutionModal
+            isOpen={true}
+            onClose={() => setIsAccountEvolutionOpen(false)}
+            moduleKeys={storeSnapshot?.moduleKeys || {}}
+            masterKey={storeSnapshot?.masterKey || null}
+          />
+        )}
+      </Suspense>
+    </>
   );
 }

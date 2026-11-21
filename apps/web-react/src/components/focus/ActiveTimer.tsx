@@ -1,19 +1,14 @@
 import React from 'react';
 import { XSquare, Play, Pause } from 'lucide-react';
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusState, useFocusTimerTick, useFocusActions } from '../../store/FocusContext';
 import type { Session } from './types';
 import { useTranslation } from '../../i18n';
 
 const ActiveTimer: React.FC = () => {
   const { t } = useTranslation();
-  const { 
-    currentSession, 
-    timeLeft, 
-    isPaused, 
-    setIsPaused,
-    handleAddQuickTime,
-    handleTimerCancel
-  } = useFocusContext();
+  const { currentSession, isPaused } = useFocusState();
+  const timeLeft = useFocusTimerTick();
+  const { setIsPaused, handleAddQuickTime, handleTimerCancel } = useFocusActions();
 
   if (!currentSession) return null;
 

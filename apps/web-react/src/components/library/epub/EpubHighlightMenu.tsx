@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import DictionaryModal from '../modals/DictionaryModal';
 import { useEpub } from './EpubContext';
-import { useStore } from '../../../store/useStore';
+import { useStoreDispatch } from '../../../store/useStore';
 import { useEpubHighlightActions } from './hooks/useEpubHighlightActions';
 import { EpubHighlightColorBar } from './ui/EpubHighlightColorBar';
 import { EpubHighlightNoteEditor } from './ui/EpubHighlightNoteEditor';
@@ -14,7 +14,7 @@ const getIsMobile = () => typeof window !== 'undefined' && (isMobileScreen() || 
 
 export default function EpubHighlightMenu() {
   const isMobile = getIsMobile();
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const { readingMode } = useEpub();
   const {
     selection,

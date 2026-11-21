@@ -1,5 +1,6 @@
 import {
   createContext,
+  use,
   useContext,
   useReducer,
   useEffect,
@@ -12,6 +13,11 @@ import {
 import type { AppState, Action, Tab } from '../types';
 import type { Page } from '../types/notes';
 import { appReducer as reducer } from './commands';
+import { getSettings } from '../utils/settings';
+
+const AI_CHAT_SESSIONS_STORAGE_KEY = 'aiChatSessions';
+const LAYOUT_DB_DEBOUNCE_MS = 400;
+const AI_SESSIONS_PERSIST_DEBOUNCE_MS = 500;
 
 function generateTabId(): string {
   return 'tab_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
@@ -26,13 +32,28 @@ const initialTab: Tab = {
   scrollY: 0,
 };
 
-import { getSettings } from '../utils/settings';
+function loadSavedAiChatSessions(legacySessions?: AppState['aiChatSessions']): AppState['aiChatSessions'] {
+  try {
+    const raw = localStorage.getItem(AI_CHAT_SESSIONS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as AppState['aiChatSessions'];
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load AI chat sessions from localStorage:', e);
+  }
+  return legacySessions || {};
+}
 
 function loadSavedState(): Partial<AppState> {
   try {
     const settings = getSettings();
     if (!settings.restoreTabsOnStartup) {
-      return {}; // Do not restore anything if user opted out
+      return {
+        aiChatSessions: loadSavedAiChatSessions(),
+      };
     }
     
     const s = localStorage.getItem('appLayoutState');
@@ -50,14 +71,16 @@ function loadSavedState(): Partial<AppState> {
         activeTabId: parsed.activeTabId,
         sidebarCollapsed: parsed.sidebarCollapsed,
         expandedNodes: parsed.expandedNodes,
-        aiChatSessions: parsed.aiChatSessions || {},
+        aiChatSessions: loadSavedAiChatSessions(parsed.aiChatSessions),
         aiSidebarWidth: parsed.aiSidebarWidth || 340,
       };
     }
   } catch (e) {
     console.error('Failed to load state', e);
   }
-  return {};
+  return {
+    aiChatSessions: loadSavedAiChatSessions(),
+  };
 }
 
 const saved = loadSavedState();
@@ -91,6 +114,7 @@ interface StoreContextType {
 export const StoreContext = createContext<StoreContextType | null>(null);
 export const StateContext = createContext<AppState | null>(null);
 export const DispatchContext = createContext<React.Dispatch<Action> | null>(null);
+const ManagedByStoreProviderContext = createContext<boolean>(false);
 
 // Global imperative reference to access state and dispatch without forcing re-renders in ProseMirror node views
 let _storeStateRef: AppState = initialState;
@@ -139,60 +163,142 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     notifyStoreSubscribers();
   }, [state, dispatch]);
 
-  const lastSavedRef = useRef<string | null>(null);
-  const lastSavedDbRef = useRef<string | null>(null);
+  const lastSavedLayoutRef = useRef<string | null>(null);
+  const lastSavedDbLayoutRef = useRef<string | null>(null);
+  const lastSavedAiSessionsRef = useRef<string | null>(null);
+  const lastSavedDbAiSessionsRef = useRef<string | null>(null);
+  const hasMountedLayoutDbRef = useRef(false);
+  const hasMountedAiSessionsRef = useRef(false);
+  const pendingDbLayoutFlushRef = useRef<(() => void) | null>(null);
+  const pendingAiSessionsFlushRef = useRef<(() => void) | null>(null);
 
+  // Persist lightweight layout state (tabs, activeTabId, sidebar, width) WITHOUT giant aiChatSessions.
+  // SQLite/IndexedDB config persistence is debounced to coalesce rapid layout updates and
+  // skipped on initial mount so AuthScreen never overwrites persisted DB layout before syncLayoutFromDb().
   useEffect(() => {
-    const stateToSave = {
-      tabs: state.tabs.map(t => ({ ...t, unsavedContent: null })), // don't persist huge unsaved text
+    const layoutToSave = {
+      tabs: state.tabs.map((t) => ({ ...t, unsavedContent: null })),
       activeTabId: state.activeTabId,
       sidebarCollapsed: state.sidebarCollapsed,
       expandedNodes: state.expandedNodes,
-      aiChatSessions: state.aiChatSessions,
       aiSidebarWidth: state.aiSidebarWidth,
     };
-    
+
     try {
-      const stringified = JSON.stringify(stateToSave);
-      if (lastSavedRef.current === stringified) {
-        return; // Skip save if state hasn't actually changed
+      const stringified = JSON.stringify(layoutToSave);
+      if (lastSavedLayoutRef.current !== stringified) {
+        lastSavedLayoutRef.current = stringified;
+        localStorage.setItem('appLayoutState', stringified);
       }
-      lastSavedRef.current = stringified;
-      
-      localStorage.setItem('appLayoutState', stringified);
     } catch (e) {
       console.warn('Failed to save layout state to localStorage:', e);
     }
-    
-    if (window.api?.config) {
-      const dbState = {
-        sidebarCollapsed: state.sidebarCollapsed,
-        expandedNodes: state.expandedNodes,
-        aiChatSessions: state.aiChatSessions,
-        aiSidebarWidth: state.aiSidebarWidth,
-      };
+
+    const dbLayout = {
+      sidebarCollapsed: state.sidebarCollapsed,
+      expandedNodes: state.expandedNodes,
+      aiSidebarWidth: state.aiSidebarWidth,
+    };
+
+    if (!hasMountedLayoutDbRef.current) {
+      hasMountedLayoutDbRef.current = true;
       try {
-        const dbStringified = JSON.stringify(dbState);
-        if (lastSavedDbRef.current !== dbStringified) {
-          lastSavedDbRef.current = dbStringified;
-          window.api.config.set('appLayoutState', dbState).catch(console.error);
+        lastSavedDbLayoutRef.current = JSON.stringify(dbLayout);
+      } catch (e) {
+        console.warn('Failed to serialize initial DB layout state:', e);
+      }
+      return;
+    }
+
+    if (!window.api?.config) return;
+
+    const flushDbLayout = () => {
+      pendingDbLayoutFlushRef.current = null;
+      if (!window.api?.config) return;
+      try {
+        const dbStringified = JSON.stringify(dbLayout);
+        if (lastSavedDbLayoutRef.current !== dbStringified) {
+          lastSavedDbLayoutRef.current = dbStringified;
+          window.api.config.set('appLayoutState', dbLayout).catch(console.error);
         }
       } catch (e) {
         console.warn('Failed to serialize DB layout state:', e);
       }
+    };
+
+    pendingDbLayoutFlushRef.current = flushDbLayout;
+    const timer = setTimeout(flushDbLayout, LAYOUT_DB_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiSidebarWidth]);
+
+  // Persist aiChatSessions in its own isolated debounced effect so tab switches never JSON.stringify chat histories.
+  // Skips writing initial mount snapshot to DB so empty defaults never wipe DB history prior to syncLayoutFromDb().
+  useEffect(() => {
+    const sessions = state.aiChatSessions;
+    if (!hasMountedAiSessionsRef.current) {
+      hasMountedAiSessionsRef.current = true;
+      try {
+        const initialSerialized = JSON.stringify(sessions);
+        lastSavedAiSessionsRef.current = initialSerialized;
+        lastSavedDbAiSessionsRef.current = initialSerialized;
+      } catch (e) {
+        console.warn('Failed to serialize initial AI chat sessions:', e);
+      }
+      return;
     }
-  }, [state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions, state.aiSidebarWidth]);
+
+    const flushAiSessions = () => {
+      pendingAiSessionsFlushRef.current = null;
+      try {
+        const serialized = JSON.stringify(sessions);
+        if (lastSavedAiSessionsRef.current !== serialized) {
+          lastSavedAiSessionsRef.current = serialized;
+          localStorage.setItem(AI_CHAT_SESSIONS_STORAGE_KEY, serialized);
+        }
+        if (window.api?.config && lastSavedDbAiSessionsRef.current !== serialized) {
+          lastSavedDbAiSessionsRef.current = serialized;
+          window.api.config.set(AI_CHAT_SESSIONS_STORAGE_KEY, sessions).catch(console.error);
+        }
+      } catch (e) {
+        console.warn('Failed to persist AI chat sessions:', e);
+      }
+    };
+
+    pendingAiSessionsFlushRef.current = flushAiSessions;
+    const timer = setTimeout(flushAiSessions, AI_SESSIONS_PERSIST_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [state.aiChatSessions]);
+
+  // Flush any pending debounced persistence before page unload/hide
+  useEffect(() => {
+    const flushAll = () => {
+      pendingDbLayoutFlushRef.current?.();
+      pendingAiSessionsFlushRef.current?.();
+    };
+    window.addEventListener('pagehide', flushAll);
+    window.addEventListener('beforeunload', flushAll);
+    return () => {
+      window.removeEventListener('pagehide', flushAll);
+      window.removeEventListener('beforeunload', flushAll);
+    };
+  }, []);
 
   const contextValue = useMemo(() => ({ state, dispatch }), [state]);
 
   return (
-    <DispatchContext.Provider value={dispatch}>
-      <StateContext.Provider value={state}>
-        <StoreContext.Provider value={contextValue}>
-          {children}
-        </StoreContext.Provider>
-      </StateContext.Provider>
-    </DispatchContext.Provider>
+    <ManagedByStoreProviderContext.Provider value={true}>
+      <DispatchContext.Provider value={dispatch}>
+        <StateContext.Provider value={state}>
+          <StoreContext.Provider value={contextValue}>
+            {children}
+          </StoreContext.Provider>
+        </StateContext.Provider>
+      </DispatchContext.Provider>
+    </ManagedByStoreProviderContext.Provider>
   );
 }
 
@@ -210,8 +316,13 @@ export function useStore(): StoreContextType {
  * Zero-rerender dispatch hook. Never triggers re-renders when state changes.
  */
 export function useStoreDispatch(): React.Dispatch<Action> {
+  const isManaged = useContext(ManagedByStoreProviderContext);
   const ctx = useContext(DispatchContext);
-  return ctx || _storeDispatchRef || (() => {});
+  if (isManaged) {
+    return ctx || _storeDispatchRef || (() => {});
+  }
+  const legacyCtx = use(StoreContext);
+  return ctx || legacyCtx?.dispatch || _storeDispatchRef || (() => {});
 }
 
 /**
@@ -222,15 +333,18 @@ export function useStoreSelector<T>(
   selector: (state: AppState) => T,
   equalityFn: (prev: T, next: T) => boolean = Object.is
 ): T {
-  const currentSelectionRef = useRef<T>(selector(_storeStateRef));
+  const isManaged = useContext(ManagedByStoreProviderContext);
+  const fallbackState = isManaged ? null : (use(StoreContext)?.state ?? null);
+  const currentSelectionRef = useRef<T>(selector(fallbackState ?? _storeStateRef));
 
   const getSnapshot = useCallback(() => {
-    const nextSelection = selector(_storeStateRef);
+    const source = fallbackState ?? _storeStateRef;
+    const nextSelection = selector(source);
     if (!equalityFn(currentSelectionRef.current, nextSelection)) {
       currentSelectionRef.current = nextSelection;
     }
     return currentSelectionRef.current;
-  }, [selector, equalityFn]);
+  }, [selector, equalityFn, fallbackState]);
 
   return useSyncExternalStore(subscribeToStore, getSnapshot);
 }
@@ -258,12 +372,35 @@ export function useTabs(): Tab[] {
   return useStoreSelector((s) => s.tabs);
 }
 
+function isAiChatSessionsMap(value: unknown): value is AppState['aiChatSessions'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const entries = Object.values(value as Record<string, unknown>);
+  return entries.every(
+    (entry) =>
+      entry !== null &&
+      typeof entry === 'object' &&
+      !Array.isArray(entry) &&
+      Array.isArray((entry as { messages?: unknown }).messages)
+  );
+}
+
 export async function syncLayoutFromDb(dispatch: React.Dispatch<Action>) {
   if (!window.api?.config) return;
   try {
     const dbState = await window.api.config.get('appLayoutState');
-    if (dbState && typeof dbState === 'object') {
-      dispatch({ type: 'MERGE_DB_STATE', payload: dbState as Partial<AppState> });
+    let mergedPayload: Partial<AppState> | null =
+      dbState && typeof dbState === 'object' ? { ...(dbState as Partial<AppState>) } : null;
+
+    const dbAiSessions = await window.api.config.get(AI_CHAT_SESSIONS_STORAGE_KEY).catch(() => null);
+    if (isAiChatSessionsMap(dbAiSessions)) {
+      mergedPayload = {
+        ...(mergedPayload || {}),
+        aiChatSessions: dbAiSessions,
+      };
+    }
+
+    if (mergedPayload) {
+      dispatch({ type: 'MERGE_DB_STATE', payload: mergedPayload });
     }
   } catch (err) {
     console.error('Failed to load layout from DB:', err);

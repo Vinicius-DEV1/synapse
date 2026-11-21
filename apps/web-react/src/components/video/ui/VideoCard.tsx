@@ -29,17 +29,24 @@ export const VideoCard = React.memo(({
   const isCompact = viewMode === 'compact';
 
   return (
-    <div 
-      className={`group relative bg-white/5 border border-white/[0.06] rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-300 ${(isDeleting || isDownloading) ? 'opacity-50 pointer-events-none' : (isList ? 'hover:bg-white/10 cursor-pointer' : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1')} ${isList ? 'flex items-center p-2 gap-4' : 'flex-col'}`}
-      onClick={(e) => {
-        const target = e.target as HTMLElement;
-        if (!target.closest('button')) {
-          onPlayVideo(video);
-        }
-      }}
+    <div
+      className={
+        isList
+          ? 'cv-auto-row'
+          : 'cv-auto-card p-4 -m-4 pointer-events-none flex flex-col'
+      }
     >
+      <div 
+        className={`group relative bg-white/5 border border-white/[0.06] rounded-xl overflow-hidden hover:bg-white/10 transition-[background-color,transform,box-shadow] duration-200 ${(isDeleting || isDownloading) ? 'opacity-50 pointer-events-none' : `pointer-events-auto ${isList ? 'hover:bg-white/10 cursor-pointer' : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1'}`} ${isList ? 'flex items-center p-2 gap-4' : 'flex-1 flex-col'}`}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (!target.closest('button')) {
+            onPlayVideo(video);
+          }
+        }}
+      >
       {isDeleting && (
-        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-xs font-medium mt-2 text-white shadow-black drop-shadow-md">Excluindo...</span>
@@ -47,7 +54,7 @@ export const VideoCard = React.memo(({
         </div>
       )}
       {isDownloading && (
-        <div className={`absolute inset-0 z-50 bg-black/60 flex items-center justify-center backdrop-blur-sm ${isList ? 'flex-row gap-4 px-4' : 'flex-col'}`}>
+        <div className={`absolute inset-0 z-50 bg-black/85 flex items-center justify-center ${isList ? 'flex-row gap-4 px-4' : 'flex-col'}`}>
           <div className={`flex items-center justify-center ${isList ? 'flex-row gap-3' : 'flex-col'}`}>
             {!isList && <Download className="text-brand-400 mb-2 animate-bounce" size={24} />}
             <div className="relative flex items-center justify-center">
@@ -72,18 +79,18 @@ export const VideoCard = React.memo(({
             onPlayVideo(video);
           }}
         >
-          <div className="w-10 h-10 rounded-full bg-brand-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300 shadow-lg">
+          <div className="w-10 h-10 rounded-full bg-brand-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-[opacity,transform] duration-200 shadow-lg">
             <Play fill="currentColor" size={20} className="ml-1" />
           </div>
           
           <div className="absolute top-2 right-2 flex gap-1 z-10">
             {(video.drive_file_id || video.drive_web_file_id) && (
-              <div className="bg-blue-500/80 backdrop-blur-md border border-blue-400/50 text-white p-1 rounded-md shadow-lg" title="No Drive (Nuvem)">
+              <div className="bg-blue-600/90 border border-blue-400/50 text-white p-1 rounded-md shadow-lg" title="No Drive (Nuvem)">
                 <Cloud size={12} />
               </div>
             )}
             {video.is_local && (
-              <div className="bg-emerald-500/80 backdrop-blur-md border border-emerald-400/50 text-white p-1 rounded-md shadow-lg" title="Baixado (Local)">
+              <div className="bg-emerald-600/90 border border-emerald-400/50 text-white p-1 rounded-md shadow-lg" title="Baixado (Local)">
                 <HardDrive size={12} />
               </div>
             )}
@@ -268,6 +275,7 @@ export const VideoCard = React.memo(({
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
+      </div>
       </div>
     </div>
   );

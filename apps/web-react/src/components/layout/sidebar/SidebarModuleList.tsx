@@ -1,6 +1,6 @@
 import { MAIN_MODULES, SPECIAL_MODULES } from './modules.config';
 import type { ModuleConfig } from './modules.config';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector, useStoreDispatch } from '../../../store/useStore';
 import type { Action, Tab } from '../../../types';
 import { Settings } from 'lucide-react';
 import { useI18n } from '../../../i18n';
@@ -15,14 +15,18 @@ interface SidebarModuleListProps {
 type ModuleId = Tab['module'] | 'settings';
 
 export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarModuleListProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const { t } = useI18n();
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
-  const activeModule = activeTab?.module as ModuleId | undefined;
+  const activeTabId = useStoreSelector(
+    (s) => (s.tabs.find((tab) => tab.id === s.activeTabId) || s.tabs[0])?.id ?? null
+  );
+  const activeModule = useStoreSelector(
+    (s) => ((s.tabs.find((tab) => tab.id === s.activeTabId) || s.tabs[0])?.module as ModuleId | undefined)
+  );
 
   const handleModuleClick = (moduleId: ModuleId) => {
-    if (activeTab) {
-      dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTab.id, module: moduleId } as Extract<Action, { type: 'UPDATE_TAB_MODULE' }>);
+    if (activeTabId) {
+      dispatch({ type: 'UPDATE_TAB_MODULE', tabId: activeTabId, module: moduleId } as Extract<Action, { type: 'UPDATE_TAB_MODULE' }>);
     }
     if (onModuleSelect) {
       onModuleSelect();
@@ -49,7 +53,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
         <button
           key={mod.id}
           onClick={() => handleModuleClick(mod.id as ModuleId)}
-          className={`p-2 rounded-lg transition-all active:scale-95 ${
+          className={`p-2 rounded-lg transition-colors active:scale-95 ${
             isActive ? activeClass : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
           title={label}
@@ -67,7 +71,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
       <button
         key={mod.id}
         onClick={() => handleModuleClick(mod.id as ModuleId)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
           mod.isSpecial ? 'mt-2' : ''
         } ${
           isActive
@@ -92,7 +96,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
       {isCollapsedView ? (
         <button
           onClick={() => handleModuleClick('settings')}
-          className={`p-2 rounded-lg transition-all active:scale-95 mt-auto ${
+          className={`p-2 rounded-lg transition-colors active:scale-95 mt-auto ${
             activeModule === 'settings' ? 'bg-brand-500/20 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
           title={settingsLabel}
@@ -102,7 +106,7 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
       ) : (
         <button
           onClick={() => handleModuleClick('settings')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all mt-2 ${
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mt-2 ${
             activeModule === 'settings' ? 'bg-brand-500/10 text-brand-400' : 'text-dark-subtext hover:text-dark-text hover:bg-white/5'
           }`}
         >

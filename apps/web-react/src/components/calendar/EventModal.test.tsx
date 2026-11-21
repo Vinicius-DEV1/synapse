@@ -12,6 +12,8 @@ vi.mock('../../store/useStore', () => ({
     state: { pages: [] },
     dispatch: vi.fn(),
   })),
+  useStoreDispatch: vi.fn(() => vi.fn()),
+  useStoreSelector: vi.fn((sel: (s: { pages: never[] }) => unknown) => sel({ pages: [] })),
 }));
 
 vi.mock('./ui/EventFormDateTimes', () => ({

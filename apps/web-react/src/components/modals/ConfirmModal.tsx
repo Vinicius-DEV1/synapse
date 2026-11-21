@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Calendar, Clock, BookOpen } from 'lucide-react';
 import { Portal } from '../ui/Portal';
-import { useStore } from '../../store/useStore';
+import { usePages } from '../../store/useStore';
 import type { CalendarEvent } from '../../types/core';
 import { useI18n } from '../../i18n';
 
@@ -23,7 +23,7 @@ function isEventExpired(ev: CalendarEvent): boolean {
 
 export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: ConfirmModalProps) {
   const { t, language } = useI18n();
-  const { state } = useStore();
+  const pages = usePages();
   const [activeEvents, setActiveEvents] = useState<CalendarEvent[]>([]);
   const [_isLoadingEvents, setIsLoadingEvents] = useState(true);
 
@@ -32,13 +32,13 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
     const ids = new Set<string>();
     const collect = (parentId: string) => {
       ids.add(parentId);
-      state.pages
+      pages
         .filter(p => p.parent_id === parentId)
         .forEach(p => collect(p.id));
     };
     if (pageId) collect(pageId);
     return Array.from(ids);
-  }, [pageId, state.pages]);
+  }, [pageId, pages]);
 
   // 2. Find calendar events linked to any of the target pages
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
           } else {
             // Check if any inline widget in the page references this event
             for (const pId of targetPageIds) {
-              const pageObj = state.pages.find(p => p.id === pId);
+              const pageObj = pages.find(p => p.id === pId);
               if (pageObj?.content && pageObj.content.includes(`data-event-id="${ev.id}"`)) {
                 isLinked = true;
                 break;
@@ -91,7 +91,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
     return () => {
       isMounted = false;
     };
-  }, [targetPageIds, state.pages]);
+  }, [targetPageIds, pages]);
 
   const hasActiveEvents = activeEvents.length > 0;
   const [isDeleting, setIsDeleting] = useState(false);
@@ -161,7 +161,7 @@ export default function ConfirmModal({ pageId, pageName, onConfirm, onCancel }: 
               <div className="max-h-32 overflow-y-auto space-y-1.5 pt-2 border-t border-amber-500/20">
                 {activeEvents.map(ev => {
                   const pageTitle =
-                    state.pages.find(p => p.id === ev.page_id)?.title || pageName;
+                    pages.find(p => p.id === ev.page_id)?.title || pageName;
                   return (
                     <div
                       key={ev.id}

@@ -6,14 +6,18 @@ vi.mock('../ui/Portal', () => ({
   Portal: ({ children }) => <div data-testid="yt-portal">{children}</div>,
 }));
 
-vi.mock('../../store/TaskContext', () => ({
-  useTasks: vi.fn(() => ({
+vi.mock('../../store/TaskContext', () => {
+  const actions = {
     addTask: vi.fn(),
     updateTaskProgress: vi.fn(),
     completeTask: vi.fn(),
     failTask: vi.fn(),
-  })),
-}));
+  };
+  return {
+    useTasks: vi.fn(() => actions),
+    useTaskActions: vi.fn(() => actions),
+  };
+});
 
 vi.mock('../../services/video', () => ({
   downloadYouTubeAndSync: vi.fn(),

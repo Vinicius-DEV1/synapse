@@ -37,13 +37,14 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
   onEdit,
 }: CultureCardGridProps) {
   return (
-    <div
-      onClick={onClick}
-      onContextMenu={onContextMenu}
-      className={`group relative overflow-hidden rounded-xl cursor-pointer transition-transform duration-200 ease-out transform hover:-translate-y-1 hover:shadow-xl ${
-        item.is_goal ? 'ring-2 ring-brand-500 shadow-[0_0_15px_rgba(var(--brand-500),0.3)]' : 'ring-1 ring-white/5 border border-white/5'
-      } bg-zinc-900/60`}
-    >
+    <div className="cv-auto-card p-5 -m-5 pointer-events-none flex flex-col">
+      <div
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        className={`pointer-events-auto flex-1 group relative overflow-hidden rounded-xl cursor-pointer transition-transform duration-200 ease-out transform hover:-translate-y-1 hover:shadow-xl ${
+          item.is_goal ? 'ring-2 ring-brand-500 shadow-[0_0_15px_rgba(var(--brand-500),0.3)]' : 'ring-1 ring-white/5 border border-white/5'
+        } bg-zinc-900/60`}
+      >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-dark-bg/50">
         {item.cover_image ? (
           <img
@@ -70,7 +71,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
                 onEdit();
               }}
               title="Editar Obra"
-              className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:text-white hover:bg-brand-500 transition-colors shadow"
+              className="p-2 rounded-full bg-black/80 text-white/85 hover:text-white hover:bg-brand-500 transition-colors shadow border border-white/10"
             >
               <Pencil size={14} />
             </button>
@@ -79,7 +80,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
             <button
               onClick={onFinish}
               title="Marcar como Visto / Finalizado"
-              className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:text-white hover:bg-emerald-600 transition-colors shadow"
+              className="p-2 rounded-full bg-black/80 text-white/85 hover:text-white hover:bg-emerald-600 transition-colors shadow border border-white/10"
             >
               <CheckCircle size={14} />
             </button>
@@ -87,27 +88,27 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
           <button
             onClick={onToggleGoal}
             title={item.is_goal ? 'Remover dos Objetivos' : 'Marcar como Objetivo'}
-            className={`p-2 rounded-full backdrop-blur-md transition-colors ${
-              item.is_goal ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/50' : 'bg-black/60 text-white/70 hover:text-white hover:bg-brand-500/80'
+            className={`p-2 rounded-full transition-colors border border-white/10 ${
+              item.is_goal ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/50' : 'bg-black/80 text-white/75 hover:text-white hover:bg-brand-500/90'
             }`}
           >
             <Target size={14} />
           </button>
           {item.access_link && (
-            <button onClick={onOpenLink} title="Abrir Link" className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+            <button onClick={onOpenLink} title="Abrir Link" className="p-2 rounded-full bg-black/80 text-white/75 hover:text-white hover:bg-white/20 transition-colors border border-white/10">
               <ExternalLink size={14} />
             </button>
           )}
         </div>
 
         {/* Type badge */}
-        <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider">
+        <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/80 border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider">
           {item.type}
         </div>
 
         {/* New release badge */}
         {hasNewRelease && (
-          <div className="absolute top-2 left-16 px-2 py-1 rounded bg-red-500/90 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-red-500/50 animate-pulse">
+          <div className="absolute top-2 left-16 px-2 py-1 rounded bg-red-600/95 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-red-500/50 animate-pulse">
             <span className="w-1.5 h-1.5 bg-white rounded-full" />
             Novo
           </div>
@@ -140,7 +141,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
           </div>
           <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
+              className={`h-full rounded-full transition-[width] duration-300 ${
                 isFinished ? 'bg-emerald-400' : item.is_goal ? 'bg-brand-400 shadow-[0_0_10px_rgba(var(--brand-400),0.8)]' : 'bg-brand-500/70'
               }`}
               style={{ width: `${percent}%` }}
@@ -150,13 +151,13 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
 
         <div className="mt-1 flex justify-end">
           {hasEpisodes ? (
-            <button onClick={onOpenEpisodes} className="flex items-center justify-center gap-1 bg-brand-500/20 hover:bg-brand-500/30 text-brand-400 active:scale-95 text-xs font-medium py-1.5 px-3 rounded-lg transition-all">
+            <button onClick={onOpenEpisodes} className="flex items-center justify-center gap-1 bg-brand-500/20 hover:bg-brand-500/30 text-brand-400 active:scale-95 text-xs font-medium py-1.5 px-3 rounded-lg transition-colors">
               <List size={14} /><span>Episódios</span>
             </button>
           ) : item.type === 'filme' ? (
             <button
               onClick={isFinished ? onClick : (onFinish || onIncrement)}
-              className={`flex items-center justify-center gap-1.5 active:scale-95 text-xs font-medium py-1.5 px-3 rounded-lg transition-all ${
+              className={`flex items-center justify-center gap-1.5 active:scale-95 text-xs font-medium py-1.5 px-3 rounded-lg transition-colors ${
                 isFinished
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30'
@@ -166,11 +167,12 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
               <span>{isFinished ? 'Visto' : 'Marcar Visto'}</span>
             </button>
           ) : (
-            <button onClick={onIncrement} disabled={isFinished} className="flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-50 disabled:active:scale-100 text-xs font-medium text-dark-text py-1.5 px-3 rounded-lg transition-all">
+            <button onClick={onIncrement} disabled={isFinished} className="flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-50 disabled:active:scale-100 text-xs font-medium text-dark-text py-1.5 px-3 rounded-lg transition-colors">
               {isFinished ? <><CheckCircle size={14} className="text-green-400" /><span>Concluído</span></> : <><Plus size={14} /><span>Progresso</span></>}
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

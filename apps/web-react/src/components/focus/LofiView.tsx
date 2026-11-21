@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Plus, Music, Trash2, DownloadCloud, Loader2 } from 'lucide-react';
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusState, useFocusActions } from '../../store/FocusContext';
 import { updateLofiOrder } from '../../services/lofi-manager';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import { SortableLofiItem } from './lofi/SortableLofiItem';
 import { useLofiViewActions } from './hooks/useLofiViewActions';
 import { formatDuration } from '../../utils/format';
@@ -26,10 +26,10 @@ import {
 
 export const LofiView: React.FC = () => {
   const { t } = useTranslation();
-  const { view, setView, lofis, activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, loadLofis } = useFocusContext();
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['focus'];
-  const fallbackKey = state.moduleKeys['core'];
+  const { view, lofis, activeLofi, isPlayingLofi } = useFocusState();
+  const { setView, setActiveLofi, setIsPlayingLofi, loadLofis } = useFocusActions();
+  const masterKey = useStoreSelector((s) => s.moduleKeys['focus']);
+  const fallbackKey = useStoreSelector((s) => s.moduleKeys['core']);
   const [sortMode, setSortMode] = useState<'manual' | 'date' | 'alpha'>('manual');
 
   const {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '../store/useStore';
+import { usePages } from '../store/useStore';
 import { filterActivePages } from '../utils/page-filter';
 import { useI18n } from '../i18n';
 
@@ -13,7 +13,7 @@ interface PageSearchMenuProps {
 }
 
 export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, onClose }: PageSearchMenuProps) {
-  const { state } = useStore();
+  const pages = usePages();
   const { t } = useI18n();
   const [localQuery, setLocalQuery] = useState(query || '');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -21,7 +21,7 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
 
   const filteredPages = useMemo(() => {
     const q = localQuery.toLowerCase();
-    return filterActivePages(state.pages).filter(p => {
+    return filterActivePages(pages).filter(p => {
       if (p.title.toLowerCase().includes(q)) return true;
       // Search plain text representation to avoid matching HTML tags
       if (p.content) {
@@ -30,7 +30,7 @@ export default function PageSearchMenu({ x, y, query, mode = 'link', onSelect, o
       }
       return false;
     });
-  }, [state.pages, localQuery]);
+  }, [pages, localQuery]);
 
   const effectiveTitle = localQuery.trim() || t('notes.untitled');
 

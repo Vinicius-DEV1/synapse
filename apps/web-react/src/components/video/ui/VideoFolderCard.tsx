@@ -40,7 +40,7 @@ export function VideoFolderCard({
 
   return (
     <div
-      className={`cursor-pointer group relative bg-white/5 border border-white/[0.06] rounded-xl overflow-hidden transition-all duration-300 ${
+      className={`contain-list-item cursor-pointer group relative bg-white/5 border border-white/[0.06] rounded-xl overflow-hidden transition-[background-color,transform,box-shadow] duration-200 ${
         isList
           ? 'hover:bg-white/10 flex items-center p-2 gap-4'
           : 'hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1 flex-col'
@@ -58,7 +58,7 @@ export function VideoFolderCard({
             size={32}
             className="text-brand-400 opacity-80 group-hover:scale-110 transition-transform relative z-10"
           />
-          <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider backdrop-blur-md z-10 border border-white/[0.08]">
+          <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-medium text-white tracking-wider z-10 border border-white/10">
             {col.count} {col.count === 1 ? 'vídeo' : 'vídeos'}
           </div>
         </div>

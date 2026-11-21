@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector } from '../../../store/useStore';
 import { getValidAccessToken, uploadToDrive } from '../../../services/drive';
 import { encryptFile } from '../../../services/storage';
 import { detectFileType } from '../../../utils/file-type-detector';
@@ -22,8 +22,7 @@ interface UseFolderUploadProps {
 }
 
 export function useFolderUpload({ currentFolderId, onUploadComplete }: UseFolderUploadProps) {
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['files'];
+  const masterKey = useStoreSelector((s) => s.moduleKeys['files']);
   const [tasks, setTasks] = useState<UploadTask[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

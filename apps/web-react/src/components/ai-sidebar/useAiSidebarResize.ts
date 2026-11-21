@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, useStoreSelector } from '../../store/useStore';
 
 export function useAiSidebarResize() {
-  const { state, dispatch } = useStore();
+  const width = useStoreSelector((s) => s.aiSidebarWidth);
+  const dispatch = useStoreDispatch();
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -16,42 +18,72 @@ export function useAiSidebarResize() {
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
+
     const startX = e.clientX;
-    const startWidth = state.aiSidebarWidth;
+    const startWidth = width;
+    let latestWidth = startWidth;
+    let rafId: number | null = null;
+
+    const applyVisualWidth = () => {
+      rafId = null;
+      if (containerRef.current) {
+        containerRef.current.style.width = `${latestWidth}px`;
+      }
+    };
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = startX - moveEvent.clientX;
       let newWidth = startWidth + deltaX;
-      
+
       if (newWidth < 300) newWidth = 300;
       if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
 
-      dispatch({ type: 'SET_AI_SIDEBAR_WIDTH', width: newWidth });
+      latestWidth = Math.round(newWidth);
+      if (rafId === null) {
+        rafId = requestAnimationFrame(applyVisualWidth);
+      }
     };
 
-    const handleMouseUp = () => {
+    const stopResize = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('blur', handleMouseUp);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       cleanupRef.current = null;
     };
 
-    cleanupRef.current = () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+    const handleMouseUp = () => {
+      stopResize();
+      if (latestWidth !== startWidth) {
+        dispatch({ type: 'SET_AI_SIDEBAR_WIDTH', width: latestWidth });
+      }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    cleanupRef.current = stopResize;
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('mouseup', handleMouseUp);
-  }, [state.aiSidebarWidth, dispatch]);
+    window.addEventListener('blur', handleMouseUp);
+  }, [width, dispatch]);
 
   const handleResetWidth = useCallback(() => {
+    if (containerRef.current) {
+      containerRef.current.style.width = '340px';
+    }
     dispatch({ type: 'SET_AI_SIDEBAR_WIDTH', width: 340 });
   }, [dispatch]);
 
   return {
-    width: state.aiSidebarWidth,
+    width,
+    containerRef,
     handleMouseDown,
-    handleResetWidth
+    handleResetWidth,
   };
 }
-

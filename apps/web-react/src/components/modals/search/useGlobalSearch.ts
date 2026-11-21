@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useStore } from '../../../store/useStore';
+import { usePages, useStoreDispatch } from '../../../store/useStore';
 import { getPageAncestorsWithMap, type HierarchyNode } from '../../../utils/hierarchy';
 import type { Page } from '../../../types';
 import {
@@ -16,25 +16,40 @@ interface IndexedPageRecord {
   fullPathLower: string;
 }
 
-export function useGlobalSearch() {
-  const { state, dispatch } = useStore();
-  const [isOpen, setIsOpen] = useState(false);
+export interface UseGlobalSearchOptions {
+  initialOpen?: boolean;
+  onRequestClose?: () => void;
+}
+
+export function useGlobalSearch(options?: UseGlobalSearchOptions) {
+  const pages = usePages();
+  const dispatch = useStoreDispatch();
+  const [isOpen, setIsOpenState] = useState(Boolean(options?.initialOpen));
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scope, setScope] = useState<SearchScope>('all');
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const onRequestCloseRef = useRef(options?.onRequestClose);
+  onRequestCloseRef.current = options?.onRequestClose;
+
+  const setIsOpen = useCallback((next: boolean) => {
+    setIsOpenState(next);
+    if (!next && onRequestCloseRef.current) {
+      onRequestCloseRef.current();
+    }
+  }, []);
 
   // Pre-indexed page list for instant O(1) attribute access without allocations during keystrokes
   const indexedPages: IndexedPageRecord[] = useMemo(() => {
     if (!isOpen) return [];
     const pageMap = new Map<string, Page>();
-    for (const p of state.pages) {
+    for (const p of pages) {
       pageMap.set(p.id, p);
     }
 
-    return state.pages.map((p) => {
+    return pages.map((p) => {
       const pageTitle = (p.title || 'Sem título').trim();
       const pageTitleLower = pageTitle.toLowerCase();
       const ancestors = getPageAncestorsWithMap(pageMap, p.id);
@@ -48,7 +63,7 @@ export function useGlobalSearch() {
         fullPathLower,
       };
     });
-  }, [state.pages, isOpen]);
+  }, [pages, isOpen]);
 
   // Open/close keyboard shortcut listeners
   useEffect(() => {

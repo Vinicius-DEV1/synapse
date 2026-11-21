@@ -568,7 +568,7 @@ async function main() {
   }
 
   // Output JSON report
-  const reportPath = path.resolve('docs/benchmark-scroll-report.json');
+  const reportPath = path.resolve('benchmark-scroll-report.json');
   fs.writeFileSync(reportPath, JSON.stringify(fullReport, null, 2));
   console.log(`\n✅ Raw scroll benchmark report saved to: ${reportPath}`);
 

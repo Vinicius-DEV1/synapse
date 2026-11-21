@@ -4,15 +4,23 @@ import { GlobalModals } from './GlobalModals';
 import { I18nProvider } from '../../i18n';
 
 // Mock store
+const mockStoreState = {
+  pages: [],
+  moduleKeys: {},
+  user: null,
+  confirmDelete: null,
+};
+const mockDispatch = vi.fn();
+
 vi.mock('../../store/useStore', () => ({
   useStore: vi.fn(() => ({
-    state: {
-      pages: [],
-      moduleKeys: {},
-      user: null,
-    },
-    dispatch: vi.fn(),
+    state: mockStoreState,
+    dispatch: mockDispatch,
   })),
+  useStoreDispatch: vi.fn(() => mockDispatch),
+  useStoreSelector: vi.fn((selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState)),
+  getStoreState: vi.fn(() => mockStoreState),
+  usePages: vi.fn(() => mockStoreState.pages),
 }));
 
 // Mock BackgroundTaskWidget

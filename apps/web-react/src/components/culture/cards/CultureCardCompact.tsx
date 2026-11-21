@@ -34,13 +34,14 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
   onEdit,
 }: CultureCardCompactProps) {
   return (
-    <div
-      onClick={onClick}
-      onContextMenu={onContextMenu}
-      className={`group relative overflow-hidden rounded-lg cursor-pointer transition-[transform,box-shadow] duration-150 transform hover:scale-[1.02] hover:shadow-lg ${
-        item.is_goal ? 'ring-2 ring-brand-500/60' : 'ring-1 ring-white/5'
-      } bg-zinc-900/60`}
-    >
+    <div className="cv-auto-compact p-4 -m-4 pointer-events-none flex flex-col">
+      <div
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        className={`pointer-events-auto flex-1 group relative overflow-hidden rounded-lg cursor-pointer transition-[transform,box-shadow] duration-150 transform hover:scale-[1.02] hover:shadow-lg ${
+          item.is_goal ? 'ring-2 ring-brand-500/60' : 'ring-1 ring-white/5'
+        } bg-zinc-900/60`}
+      >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-dark-bg/50">
         {item.cover_image ? (
           <img
@@ -85,7 +86,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
 
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/40">
           <div
-            className={`h-full transition-all duration-500 ${
+            className={`h-full transition-[width] duration-300 ${
               isFinished ? 'bg-emerald-400' : item.is_goal ? 'bg-brand-400' : 'bg-brand-500/80'
             }`}
             style={{ width: `${percent}%` }}
@@ -116,7 +117,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
               onEdit();
             }}
             title="Editar Obra"
-            className="p-1 rounded-md bg-black/75 hover:bg-brand-500 text-white/80 hover:text-white backdrop-blur-sm transition-colors shadow"
+            className="p-1 rounded-md bg-black/85 hover:bg-brand-500 text-white/85 hover:text-white transition-colors shadow border border-white/10"
           >
             <Pencil size={11} />
           </button>
@@ -128,7 +129,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
         {hasEpisodes ? (
           <button
             onClick={onOpenEpisodes}
-            className="flex items-center gap-1 px-2 py-1 bg-brand-500 hover:bg-brand-600 rounded-md shadow-lg text-white text-[11px] font-semibold active:scale-95 transition-all"
+            className="flex items-center gap-1 px-2 py-1 bg-brand-500 hover:bg-brand-600 rounded-md shadow-lg text-white text-[11px] font-semibold active:scale-95 transition-colors"
             title="Ver Episódios"
           >
             <List size={12} />
@@ -140,7 +141,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
               if (onFinish) onFinish(e);
               else onIncrement(e);
             }}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold shadow-lg active:scale-95 transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold shadow-lg active:scale-95 transition-colors ${
               isFinished
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white'
@@ -155,7 +156,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
             <button
               onClick={onIncrement}
               disabled={isFinished}
-              className="flex items-center gap-0.5 px-2 py-1 bg-white/20 hover:bg-white/30 rounded-md text-white text-[11px] font-semibold disabled:opacity-50 transition-all active:scale-95"
+              className="flex items-center gap-0.5 px-2 py-1 bg-white/20 hover:bg-white/30 rounded-md text-white text-[11px] font-semibold disabled:opacity-50 transition-colors active:scale-95"
               title="Avançar progresso (+1)"
             >
               <Plus size={11} />
@@ -164,7 +165,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
             {onFinish && !isFinished && (
               <button
                 onClick={onFinish}
-                className="p-1 bg-emerald-600 hover:bg-emerald-500 rounded-md text-white transition-all active:scale-95"
+                className="p-1 bg-emerald-600 hover:bg-emerald-500 rounded-md text-white transition-colors active:scale-95"
                 title="Marcar como Concluído"
               >
                 <CheckCircle size={12} />
@@ -172,6 +173,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

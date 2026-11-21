@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FileFolder, FileItem } from '../../../types';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector } from '../../../store/useStore';
 import { getValidAccessToken } from '../../../services/drive';
 import { getDecryptedFileUrl } from '../../../utils/file-fetcher';
 import { triggerToast } from '../../ui/ToastContext';
 
 export function useFilesData() {
-  const { state } = useStore();
+  const filesKey = useStoreSelector((s) => s.moduleKeys['files']);
   const [folders, setFolders] = useState<FileFolder[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function useFilesData() {
 
   const handleDownload = useCallback(async (item: FileItem) => {
     try {
-      const url = await getDecryptedFileUrl(item, state.moduleKeys['files']);
+      const url = await getDecryptedFileUrl(item, filesKey);
       
       if (url && typeof url === 'string') {
         const a = document.createElement('a');
@@ -54,7 +54,7 @@ export function useFilesData() {
       const msg = err instanceof Error ? err.message : "Erro ao tentar baixar o arquivo.";
       triggerToast(msg, "error");
     }
-  }, [state.moduleKeys]);
+  }, [filesKey]);
 
   const renameItem = useCallback(async (id: string, newName: string, isFolder: boolean) => {
     if (window.api && window.api.files) {

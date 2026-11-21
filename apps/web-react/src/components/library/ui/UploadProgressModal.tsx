@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Portal } from '../../ui/Portal';
 import { UploadCloud, FileText, Loader2, CheckCircle2 } from 'lucide-react';
 
-interface ProgressData {
+export interface UploadProgressData {
   filename: string;
   progress: number;
   stage: 'encrypting' | 'uploading';
@@ -10,26 +10,48 @@ interface ProgressData {
   total?: number;
 }
 
-export function UploadProgressModal() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [progressData, setProgressData] = useState<ProgressData | null>(null);
+interface UploadProgressModalProps {
+  initialVisible?: boolean;
+  initialProgress?: UploadProgressData | null;
+  onFinished?: () => void;
+}
+
+export function UploadProgressModal({
+  initialVisible = false,
+  initialProgress = null,
+  onFinished,
+}: UploadProgressModalProps = {}) {
+  const [isVisible, setIsVisible] = useState(initialVisible || Boolean(initialProgress));
+  const [progressData, setProgressData] = useState<UploadProgressData | null>(initialProgress);
 
   useEffect(() => {
+    if (initialProgress) {
+      setIsVisible(true);
+      setProgressData(initialProgress);
+    }
+  }, [initialProgress]);
+
+  useEffect(() => {
+    let endTimer: ReturnType<typeof setTimeout> | null = null;
+
     const onStart = () => {
+      if (endTimer) clearTimeout(endTimer);
       setIsVisible(true);
       setProgressData(null);
     };
 
     const onEnd = () => {
-      // Pequeno delay para exibir conclusão antes de sumir
-      setTimeout(() => {
+      if (endTimer) clearTimeout(endTimer);
+      endTimer = setTimeout(() => {
         setIsVisible(false);
         setProgressData(null);
+        onFinished?.();
       }, 1000);
     };
 
     const onProgress = (e: Event) => {
-      const customEvent = e as CustomEvent<ProgressData>;
+      if (endTimer) clearTimeout(endTimer);
+      const customEvent = e as CustomEvent<UploadProgressData>;
       setIsVisible(true);
       setProgressData(customEvent.detail);
     };
@@ -39,11 +61,12 @@ export function UploadProgressModal() {
     window.addEventListener('library-upload-progress', onProgress);
 
     return () => {
+      if (endTimer) clearTimeout(endTimer);
       window.removeEventListener('library-upload-start', onStart);
       window.removeEventListener('library-upload-end', onEnd);
       window.removeEventListener('library-upload-progress', onProgress);
     };
-  }, []);
+  }, [onFinished]);
 
   if (!isVisible) return null;
 
@@ -87,7 +110,7 @@ export function UploadProgressModal() {
           <div className="flex flex-col gap-1.5">
             <div className="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-white/5">
               <div 
-                className={`h-full transition-all duration-300 ease-out rounded-full ${
+                className={`h-full transition-[width] duration-300 ease-out rounded-full ${
                   isCompleted ? 'bg-emerald-500' : progressData?.stage === 'encrypting' ? 'bg-brand-500' : 'bg-blue-500'
                 }`}
                 style={{ width: `${Math.max(5, progressData?.progress || 0)}%` }}

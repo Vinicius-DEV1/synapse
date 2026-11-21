@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useTasks } from '../../../store/TaskContext';
+import { useTaskActions } from '../../../store/TaskContext';
 import { downloadYouTubeAndSync } from '../../../services/video';
 import { triggerToast } from '../../ui/ToastContext';
 import { getValidAccessToken } from '../../../services/drive';
@@ -43,7 +43,7 @@ export function useYouTubeDownload({ onClose, onSuccess }: UseYouTubeDownloadPro
   const [selectedSubs, setSelectedSubs] = useState<string[]>([]);
   const [subSearch, setSubSearch] = useState('');
 
-  const { addTask, updateTaskProgress, completeTask, failTask } = useTasks();
+  const { addTask, updateTaskProgress, completeTask, failTask } = useTaskActions();
 
   useEffect(() => {
     isMountedRef.current = true;

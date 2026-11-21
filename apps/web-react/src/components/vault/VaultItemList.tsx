@@ -200,7 +200,7 @@ export function VaultItemList({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 overscroll-contain">
+      <div className="flex-1 overflow-y-auto smooth-scroll-container p-2 overscroll-contain">
         {isLoading ? (
           <div className="text-center py-10 text-dark-subtext text-sm">{t('vault.loading', 'Carregando...')}</div>
         ) : filteredItems.length === 0 ? (

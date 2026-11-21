@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotificationScheduler } from './useNotificationScheduler';
-import NotificationCenterModal from './NotificationCenterModal';
 import { useI18n } from '../../i18n';
+
+const NotificationCenterModal = lazy(() => import('./NotificationCenterModal'));
 
 export default function NotificationBell() {
   const { t } = useI18n();
@@ -37,12 +38,14 @@ export default function NotificationBell() {
       </button>
 
       {showModal && (
-        <NotificationCenterModal
-          notifications={notifications}
-          onClose={() => setShowModal(false)}
-          onMarkRead={markRead}
-          onDelete={deleteNotification}
-        />
+        <Suspense fallback={null}>
+          <NotificationCenterModal
+            notifications={notifications}
+            onClose={() => setShowModal(false)}
+            onMarkRead={markRead}
+            onDelete={deleteNotification}
+          />
+        </Suspense>
       )}
     </>
   );

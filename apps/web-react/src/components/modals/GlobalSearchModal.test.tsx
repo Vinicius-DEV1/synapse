@@ -47,14 +47,20 @@ const mockPages = [
   },
 ];
 
+const mockStoreState = {
+  pages: mockPages,
+  activePageId: 'child_1_1',
+};
+
 vi.mock('../../store/useStore', () => ({
   useStore: () => ({
-    state: {
-      pages: mockPages,
-      activePageId: 'child_1_1',
-    },
+    state: mockStoreState,
     dispatch: mockDispatch,
   }),
+  usePages: () => mockStoreState.pages,
+  useStoreDispatch: () => mockDispatch,
+  useStoreSelector: (selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState),
+  getStoreState: () => mockStoreState,
 }));
 
 describe('GlobalSearchModal Component', () => {

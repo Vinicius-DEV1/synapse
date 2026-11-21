@@ -66,7 +66,7 @@ export const ViewFactory = memo(function ViewFactory({
   const renderModule = () => {
     switch (module) {
       case 'home':
-        return <HomeView tabId={id} />;
+        return <HomeView tabId={id} isActive={isActive} />;
       case 'notes':
         return (
           <PageView
