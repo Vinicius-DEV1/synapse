@@ -55,9 +55,32 @@ export interface FocusActionsContextType {
 
 export type FocusContextType = FocusStateContextType & FocusActionsContextType;
 
+export interface FocusLofiContextType {
+  activeLofi: LofiItem | null;
+  setActiveLofi: (lofi: LofiItem | null) => void;
+  isPlayingLofi: boolean;
+  setIsPlayingLofi: (play: boolean) => void;
+  lofiVolume: number;
+  setLofiVolume: (vol: number) => void;
+}
+
+export interface FocusOverlayContextType {
+  triggeredAlarm: Alarm | null;
+  setTriggeredAlarm: (a: Alarm | null) => void;
+  view: ViewState;
+  setView: (v: ViewState) => void;
+  currentSession: Partial<Session> | null;
+  setCurrentSession: (s: Partial<Session> | null) => void;
+  handleSaveSuccess: (summary: string) => Promise<void>;
+  handleAddTimeFromSuccess: (minutes: number) => void;
+  handleSaveCancel: (justification: string) => Promise<void>;
+}
+
 const FocusStateContext = createContext<FocusStateContextType | null>(null);
 const FocusActionsContext = createContext<FocusActionsContextType | null>(null);
 const FocusContext = createContext<FocusContextType | null>(null);
+const FocusLofiContext = createContext<FocusLofiContextType | null>(null);
+const FocusOverlayContext = createContext<FocusOverlayContextType | null>(null);
 
 const defaultFocusState: FocusStateContextType = {
   view: 'dashboard',
@@ -122,6 +145,39 @@ export const useFocusActions = (): FocusActionsContextType => {
 export const useFocusContext = (): FocusContextType => {
   const ctx = useContext(FocusContext);
   return ctx || defaultFocusContext;
+};
+
+export const useFocusLofi = (): FocusLofiContextType => {
+  const ctx = useContext(FocusLofiContext);
+  const fallback = useContext(FocusContext);
+  if (ctx) return ctx;
+  const src = fallback || defaultFocusContext;
+  return {
+    activeLofi: src.activeLofi,
+    setActiveLofi: src.setActiveLofi,
+    isPlayingLofi: src.isPlayingLofi,
+    setIsPlayingLofi: src.setIsPlayingLofi,
+    lofiVolume: src.lofiVolume,
+    setLofiVolume: src.setLofiVolume,
+  };
+};
+
+export const useFocusOverlays = (): FocusOverlayContextType => {
+  const ctx = useContext(FocusOverlayContext);
+  const fallback = useContext(FocusContext);
+  if (ctx) return ctx;
+  const src = fallback || defaultFocusContext;
+  return {
+    triggeredAlarm: src.triggeredAlarm,
+    setTriggeredAlarm: src.setTriggeredAlarm,
+    view: src.view,
+    setView: src.setView,
+    currentSession: src.currentSession,
+    setCurrentSession: src.setCurrentSession,
+    handleSaveSuccess: src.handleSaveSuccess,
+    handleAddTimeFromSuccess: src.handleAddTimeFromSuccess,
+    handleSaveCancel: src.handleSaveCancel,
+  };
 };
 
 export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -272,6 +328,36 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     timerControls.handleAddQuickTime
   ]);
 
+  const lofiValue = useMemo<FocusLofiContextType>(() => ({
+    activeLofi,
+    setActiveLofi,
+    isPlayingLofi,
+    setIsPlayingLofi,
+    lofiVolume,
+    setLofiVolume,
+  }), [activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume]);
+
+  const overlayValue = useMemo<FocusOverlayContextType>(() => ({
+    triggeredAlarm: alarmControls.triggeredAlarm,
+    setTriggeredAlarm: alarmControls.setTriggeredAlarm,
+    view,
+    setView,
+    currentSession: timerControls.currentSession,
+    setCurrentSession: timerControls.setCurrentSession,
+    handleSaveSuccess: timerControls.handleSaveSuccess,
+    handleAddTimeFromSuccess: timerControls.handleAddTimeFromSuccess,
+    handleSaveCancel: timerControls.handleSaveCancel,
+  }), [
+    alarmControls.triggeredAlarm,
+    alarmControls.setTriggeredAlarm,
+    view,
+    timerControls.currentSession,
+    timerControls.setCurrentSession,
+    timerControls.handleSaveSuccess,
+    timerControls.handleAddTimeFromSuccess,
+    timerControls.handleSaveCancel,
+  ]);
+
   const combinedValue = useMemo<FocusContextType>(() => ({
     ...stateValue,
     ...actionsValue
@@ -279,11 +365,15 @@ export const FocusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <FocusActionsContext.Provider value={actionsValue}>
-      <FocusStateContext.Provider value={stateValue}>
-        <FocusContext.Provider value={combinedValue}>
-          {children}
-        </FocusContext.Provider>
-      </FocusStateContext.Provider>
+      <FocusLofiContext.Provider value={lofiValue}>
+        <FocusOverlayContext.Provider value={overlayValue}>
+          <FocusStateContext.Provider value={stateValue}>
+            <FocusContext.Provider value={combinedValue}>
+              {children}
+            </FocusContext.Provider>
+          </FocusStateContext.Provider>
+        </FocusOverlayContext.Provider>
+      </FocusLofiContext.Provider>
     </FocusActionsContext.Provider>
   );
 };

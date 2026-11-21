@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useStore, getStoreState } from '../store/useStore';
+import { useStoreDispatch, getStoreState } from '../store/useStore';
 import type { Page } from '../types';
 import { getEditorBackupMap } from '../components/notes/hooks/editorBackupStore';
 import { triggerToast } from '../components/ui/ToastContext';
@@ -7,7 +7,7 @@ import { broadcastPageSaved } from '../services/page-broadcast';
 import { exportPageFile, importPageFile } from '../utils/pageTransferUtils';
 
 export function usePageActions() {
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
 
   const handleCreatePage = useCallback(async (parentId: string | null) => {
     if (window.api) {

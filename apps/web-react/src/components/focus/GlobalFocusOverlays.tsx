@@ -1,4 +1,4 @@
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusOverlays } from '../../store/FocusContext';
 import AlarmTriggerModal from './AlarmTriggerModal';
 import SuccessModal from './SuccessModal';
 import CancelModal from './CancelModal';
@@ -16,7 +16,7 @@ export default function GlobalFocusOverlays() {
     handleSaveSuccess,
     handleAddTimeFromSuccess,
     handleSaveCancel
-  } = useFocusContext();
+  } = useFocusOverlays();
 
   return (
     <>

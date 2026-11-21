@@ -140,6 +140,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [state, dispatch]);
 
   const lastSavedRef = useRef<string | null>(null);
+  const lastSavedDbRef = useRef<string | null>(null);
 
   useEffect(() => {
     const stateToSave = {
@@ -170,7 +171,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         aiChatSessions: state.aiChatSessions,
         aiSidebarWidth: state.aiSidebarWidth,
       };
-      window.api.config.set('appLayoutState', dbState).catch(console.error);
+      try {
+        const dbStringified = JSON.stringify(dbState);
+        if (lastSavedDbRef.current !== dbStringified) {
+          lastSavedDbRef.current = dbStringified;
+          window.api.config.set('appLayoutState', dbState).catch(console.error);
+        }
+      } catch (e) {
+        console.warn('Failed to serialize DB layout state:', e);
+      }
     }
   }, [state.tabs, state.activeTabId, state.sidebarCollapsed, state.expandedNodes, state.aiChatSessions, state.aiSidebarWidth]);
 

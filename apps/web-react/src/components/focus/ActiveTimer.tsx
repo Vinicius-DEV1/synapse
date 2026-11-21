@@ -29,7 +29,7 @@ const ActiveTimer: React.FC = () => {
       {/* Background Progress Ring (Optional visual enhancement) */}
       <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
         <div 
-          className="w-[80vmin] h-[80vmin] rounded-full border-[40px] border-brand-500 transition-all duration-1000"
+          className="w-[80vmin] h-[80vmin] rounded-full border-[40px] border-brand-500"
           style={{ clipPath: `polygon(50% 50%, 50% 0, ${progress > 12.5 ? '100% 0' : `${50 + progress * 4}% 0`}, ${progress > 37.5 ? '100% 100%' : progress > 12.5 ? `100% ${ (progress-12.5)*4 }%` : ''} )` }}
         />
       </div>
@@ -48,7 +48,7 @@ const ActiveTimer: React.FC = () => {
         <div className="relative flex items-center justify-center mb-6 sm:mb-12 group w-[min(55vmin,280px)] h-[min(55vmin,280px)] sm:w-[min(60vmin,320px)] sm:h-[min(60vmin,320px)] mx-auto shrink-0">
           <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="48" fill="none" className="stroke-dark-card" strokeWidth="3" />
-            <circle cx="50" cy="50" r="48" fill="none" className="stroke-brand-500 transition-all duration-1000 ease-linear" strokeWidth="3" strokeDasharray={`${progress * 3.01} 301`} strokeLinecap="round" />
+            <circle cx="50" cy="50" r="48" fill="none" className="stroke-brand-500 transition-[stroke-dasharray] duration-1000 ease-linear" strokeWidth="3" strokeDasharray={`${progress * 3.01} 301`} strokeLinecap="round" />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className={`text-[min(12vmin,64px)] sm:text-7xl font-light font-mono tabular-nums leading-none tracking-tight ${timeLeft <= 60 && timeLeft > 0 ? 'text-red-500' : 'text-white'}`}>

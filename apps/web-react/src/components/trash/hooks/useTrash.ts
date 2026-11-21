@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useStore } from '../../../store/useStore';
+import { useStoreDispatch } from '../../../store/useStore';
 import { hardDeleteLofiPermanently } from '../../../services/lofi-manager';
 import type { LofiItem } from '../../../types';
 import { triggerToast } from '../../ui/ToastContext';
@@ -12,7 +12,7 @@ export interface TrashItem {
 }
 
 export function useTrash() {
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const [items, setItems] = useState<TrashItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');

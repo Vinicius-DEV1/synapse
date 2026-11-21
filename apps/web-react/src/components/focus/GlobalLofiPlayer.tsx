@@ -1,17 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Volume2, Play, Pause, VolumeX, X } from 'lucide-react';
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusLofi } from '../../store/FocusContext';
 import { resolveLofiUrl } from '../../services/lofi-manager';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import { useTimeTracker } from '../../hooks/useTimeTracker';
 import { formatDuration } from '../../utils/format';
 import { triggerToast } from '../ui/ToastContext';
 
 export const GlobalLofiPlayer: React.FC = () => {
-  const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusContext();
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['focus'];
-  const fallbackKey = state.moduleKeys['core'];
+  const { activeLofi, setActiveLofi, isPlayingLofi, setIsPlayingLofi, lofiVolume, setLofiVolume } = useFocusLofi();
+  const masterKey = useStoreSelector((s) => s.moduleKeys['focus']);
+  const fallbackKey = useStoreSelector((s) => s.moduleKeys['core']);
   const [isExpanded, setIsExpanded] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -121,7 +120,11 @@ export const GlobalLofiPlayer: React.FC = () => {
           ref={audioRef} 
           src={src} 
           loop={false}
-          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onTimeUpdate={(e) => {
+            if (!isExpanded) return;
+            const nextSec = Math.floor(e.currentTarget.currentTime);
+            setCurrentTime((prev) => (prev === nextSec ? prev : nextSec));
+          }}
           onEnded={() => {
             if (audioRef.current) {
               audioRef.current.currentTime = 0;

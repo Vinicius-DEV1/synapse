@@ -1,6 +1,6 @@
 import { memo, useMemo, useCallback, useState, useEffect, useRef, Fragment } from 'react';
 import { Plus, X, FileText, Library, Settings, PanelLeft, Pin, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, useStoreSelector } from '../../store/useStore';
 import type { Tab, Page } from '../../types';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { MODULE_CONFIG_MAP } from './sidebar/modules.config';
@@ -141,9 +141,15 @@ const TabItem = memo(function TabItem({
 });
 
 export default function TabBar() {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const tabs = useStoreSelector((s) => s.tabs);
+  const activeTabId = useStoreSelector((s) => s.activeTabId);
+  const pages = useStoreSelector((s) => s.pages);
+  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
+  const state = { tabs, activeTabId, pages, showAiSidebar };
   const { t } = useI18n();
   const tabStripRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
   const [tabContextMenu, setTabContextMenu] = useState<{
     x: number;
     y: number;
@@ -165,10 +171,16 @@ export default function TabBar() {
   }, []);
 
   const checkScroll = useCallback(() => {
-    const el = tabStripRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+    if (scrollRafRef.current !== null) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = tabStripRef.current;
+      if (!el) return;
+      const nextLeft = el.scrollLeft > 2;
+      const nextRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 2;
+      setCanScrollLeft((prev) => (prev === nextLeft ? prev : nextLeft));
+      setCanScrollRight((prev) => (prev === nextRight ? prev : nextRight));
+    });
   }, []);
 
   useEffect(() => {
@@ -180,6 +192,10 @@ export default function TabBar() {
     return () => {
       el.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
     };
   }, [checkScroll, state.tabs.length]);
 

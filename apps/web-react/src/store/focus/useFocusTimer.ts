@@ -57,18 +57,13 @@ export function useFocusTimer(
     };
   }, [currentSession, isPaused, setView]);
 
-  // Tray icon manager
+  // Tray icon manager: reactively update icon on state transition without 10s polling
+  const isTimerActive = view === 'timer' && Boolean(currentSession) && !isPaused;
   useEffect(() => {
-    const int = setInterval(() => {
-      const focusApi = window.api?.focus;
-      if (view === 'timer' && currentSession && !isPaused) {
-        if (focusApi?.setAppIcon) focusApi.setAppIcon('normal');
-      } else {
-        if (focusApi?.setAppIcon) focusApi.setAppIcon('zzz');
-      }
-    }, 10000);
-    return () => clearInterval(int);
-  }, [view, currentSession, isPaused]);
+    const focusApi = window.api?.focus;
+    if (!focusApi?.setAppIcon) return;
+    focusApi.setAppIcon(isTimerActive ? 'normal' : 'zzz');
+  }, [isTimerActive]);
 
   const currentSessionRef = useRef(currentSession);
   currentSessionRef.current = currentSession;

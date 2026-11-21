@@ -48,7 +48,7 @@ export default function HighlightToolbar({
   // Keep mobile state in sync on resize
   useEffect(() => {
     const handleResize = () => setIsMobile(checkIsMobile());
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 

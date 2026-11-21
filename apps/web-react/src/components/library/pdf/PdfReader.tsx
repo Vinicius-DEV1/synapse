@@ -10,7 +10,7 @@ import AnnotationPanel from './components/AnnotationPanel';
 import PdfSearchBar from './components/PdfSearchBar';
 import DictionaryModal from '../modals/DictionaryModal';
 import { getSettings, saveSettings } from '../../../utils/settings';
-import { useStore } from '../../../store/useStore';
+import { useStoreDispatch } from '../../../store/useStore';
 import { PdfPage } from './PdfPage';
 import { PdfToolbar } from './PdfToolbar';
 import { PdfErrorState } from './PdfErrorState';
@@ -35,7 +35,7 @@ interface PdfReaderProps {
 }
 
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const settings = getSettings();
 
   useTimeTracker({

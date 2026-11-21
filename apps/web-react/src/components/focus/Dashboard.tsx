@@ -160,7 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
             <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center mt-1">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="42" fill="none" className="stroke-dark-bg" strokeWidth="8" />
-                <circle cx="50" cy="50" r="42" fill="none" className="stroke-brand-500 transition-all duration-1000" strokeWidth="8" strokeDasharray={`${goalProgress * 2.64} 264`} strokeLinecap="round" />
+                <circle cx="50" cy="50" r="42" fill="none" className="stroke-brand-500 transition-[stroke-dasharray] duration-1000" strokeWidth="8" strokeDasharray={`${goalProgress * 2.64} 264`} strokeLinecap="round" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-lg font-bold text-white leading-none">{todayTime}</span>

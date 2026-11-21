@@ -152,7 +152,11 @@ export function usePdfRenderer({
         return { start: windowStart, end: windowEnd };
       });
 
-      setRenderedPages(() => {
+      setRenderedPages((prev) => {
+        const expectedSize = windowEnd - windowStart + 1;
+        if (prev.size === expectedSize && prev.has(windowStart) && prev.has(windowEnd)) {
+          return prev;
+        }
         const next = new Set<number>();
         for (let i = windowStart; i <= windowEnd; i++) {
           next.add(i);

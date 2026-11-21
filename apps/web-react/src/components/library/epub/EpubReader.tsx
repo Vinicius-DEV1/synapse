@@ -186,7 +186,7 @@ function EpubCore({ onBack, onUpdateBook, book }: Omit<EpubReaderProps, 'book'> 
     };
 
     handleSyncFullscreen();
-    window.addEventListener('resize', handleSyncFullscreen);
+    window.addEventListener('resize', handleSyncFullscreen, { passive: true });
     return () => {
       window.removeEventListener('resize', handleSyncFullscreen);
     };

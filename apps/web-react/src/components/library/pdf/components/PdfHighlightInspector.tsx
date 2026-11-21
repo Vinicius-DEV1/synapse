@@ -54,7 +54,7 @@ export const PdfHighlightInspector: React.FC<PdfHighlightInspectorProps> = ({
 
   useEffect(() => {
     const handleResize = () => setIsMobile(checkIsMobile());
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 

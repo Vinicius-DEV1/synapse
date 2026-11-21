@@ -118,7 +118,7 @@ function AppContent() {
     const handleResize = () => {
       setIsMobile(isMobileScreen() || platform.platform === 'mobile-webview');
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, [platform.platform]);
 

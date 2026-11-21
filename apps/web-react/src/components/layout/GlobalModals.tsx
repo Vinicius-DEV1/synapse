@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { useStore } from '../../store/useStore';
+import { useStoreDispatch, useStoreSelector } from '../../store/useStore';
 import { useI18n } from '../../i18n';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
 import BackgroundTaskWidget from './BackgroundTaskWidget';
@@ -78,7 +78,12 @@ export function GlobalModals({
   handleCreatePage,
   handleCreateLinkedPage,
 }: GlobalModalsProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const confirmDelete = useStoreSelector((s) => s.confirmDelete);
+  const pages = useStoreSelector((s) => s.pages);
+  const moduleKeys = useStoreSelector((s) => s.moduleKeys);
+  const masterKey = useStoreSelector((s) => s.masterKey);
+  const state = { confirmDelete, pages, moduleKeys, masterKey };
   const { t } = useI18n();
 
   const [scrapActionData, setScrapActionData] = useState<ScrapModalData | null>(null);
