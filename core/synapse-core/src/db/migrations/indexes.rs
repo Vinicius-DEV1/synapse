@@ -1,5 +1,7 @@
 //! Indexes are created after the canonical columns exist.
 
+use rusqlite::Connection;
+
 pub(super) const INDEXES_SQL: &str = r##"
 CREATE INDEX IF NOT EXISTS idx_activity_logs_date ON activity_logs (date, module);
 CREATE INDEX IF NOT EXISTS idx_anki_cards_deck ON anki_cards (deck_id, deleted_at);
@@ -42,3 +44,136 @@ CREATE INDEX IF NOT EXISTS idx_vault_items_group ON vault_items (group_id, delet
 CREATE INDEX IF NOT EXISTS idx_vault_items_position ON vault_items (position);
 CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id);
 "##;
+
+/// Sync tables whose timestamp columns (`updated_at`, `created_at`, `deleted_at`)
+/// should be indexed for fast incremental `sync_get_modified_rows` range scans.
+const SYNC_INDEXED_TABLES: &[&str] = &[
+    "config",
+    "ai_prompts",
+    "pages",
+    "page_history",
+    "transactions",
+    "wishlist",
+    "finance_accounts",
+    "library_books",
+    "library_highlights",
+    "library_bookmarks",
+    "library_collections",
+    "library_book_collections",
+    "library_reading_sessions",
+    "culture_items",
+    "culture_episodes",
+    "culture_disliked_items",
+    "culture_ignored_items",
+    "videos",
+    "video_words",
+    "youtube_watched",
+    "calendar_events",
+    "vault_groups",
+    "vault_items",
+    "vault_password_history",
+    "tutor_sessions",
+    "tutor_messages",
+    "tutor_memories",
+    "focus_sessions",
+    "alarms",
+    "lofis",
+    "activity_logs",
+    "anki_decks",
+    "anki_notes",
+    "anki_cards",
+    "anki_srs_state",
+    "anki_reviews",
+    "anki_deck_settings",
+    "files",
+    "file_folders",
+    "file_page_links",
+    "diagrams",
+    "quiz_batteries",
+    "quiz_questions",
+    "quiz_attempts",
+    "quiz_page_links",
+    "notifications",
+    "link_metadata_cache",
+    "youtube_summaries",
+    "habits",
+    "habit_logs",
+    "shared_page_keys",
+];
+
+/// Idempotently creates B-tree timestamp indexes on sync tables present in the database
+/// so incremental delta sync (`updated_at >= ?`, `created_at >= ?`, `deleted_at >= ?`) uses index scans.
+pub(super) fn ensure_sync_timestamp_indexes(conn: &Connection) -> Result<(), String> {
+    let mut existing_tables: std::collections::HashSet<String> = std::collections::HashSet::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+            .map_err(|e| format!("Failed to inspect SQLite tables for sync indexes: {e}"))?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| format!("Failed to read SQLite tables for sync indexes: {e}"))?;
+        for table in rows.flatten() {
+            existing_tables.insert(table);
+        }
+    }
+
+    let mut existing_indexes: std::collections::HashSet<String> = std::collections::HashSet::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'index'")
+            .map_err(|e| format!("Failed to inspect SQLite indexes: {e}"))?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| format!("Failed to read SQLite indexes: {e}"))?;
+        for idx in rows.flatten() {
+            existing_indexes.insert(idx);
+        }
+    }
+
+    for &table in SYNC_INDEXED_TABLES {
+        if !existing_tables.contains(table) {
+            continue;
+        }
+
+        let updated_idx = format!("idx_sync_{table}_updated");
+        let created_idx = format!("idx_sync_{table}_created");
+        let deleted_idx = format!("idx_sync_{table}_deleted");
+
+        if existing_indexes.contains(&updated_idx)
+            && existing_indexes.contains(&created_idx)
+            && existing_indexes.contains(&deleted_idx)
+        {
+            continue;
+        }
+
+        let cols: std::collections::HashSet<String> = {
+            let mut stmt = conn
+                .prepare("SELECT name FROM pragma_table_info(?1)")
+                .map_err(|e| format!("Failed to inspect columns of {table}: {e}"))?;
+            let rows = stmt
+                .query_map([table], |row| row.get::<_, String>(0))
+                .map_err(|e| format!("Failed to read columns of {table}: {e}"))?;
+            rows.flatten().collect()
+        };
+
+        if cols.contains("updated_at") && !existing_indexes.contains(&updated_idx) {
+            let sql = format!("CREATE INDEX IF NOT EXISTS {updated_idx} ON {table}(updated_at)");
+            conn.execute(&sql, [])
+                .map_err(|e| format!("Failed to create index {updated_idx}: {e}"))?;
+        }
+        if cols.contains("created_at") && !existing_indexes.contains(&created_idx) {
+            let sql = format!("CREATE INDEX IF NOT EXISTS {created_idx} ON {table}(created_at)");
+            conn.execute(&sql, [])
+                .map_err(|e| format!("Failed to create index {created_idx}: {e}"))?;
+        }
+        if cols.contains("deleted_at") && !existing_indexes.contains(&deleted_idx) {
+            let sql = format!(
+                "CREATE INDEX IF NOT EXISTS {deleted_idx} ON {table}(deleted_at) WHERE deleted_at IS NOT NULL"
+            );
+            conn.execute(&sql, [])
+                .map_err(|e| format!("Failed to create index {deleted_idx}: {e}"))?;
+        }
+    }
+
+    Ok(())
+}

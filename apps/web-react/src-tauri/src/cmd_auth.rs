@@ -3,7 +3,7 @@ pub use crate::cmd_auth_keys::{AuthStatus, LoginResponse, UnlockedKeys};
 use crate::crypto::{
     decrypt_module_key_with_key, derive_key_from_password, encrypt_module_key, generate_module_key,
 };
-use crate::db::DbState;
+use crate::db::{run_blocking, DbState};
 use std::collections::HashMap;
 use synapse_core::crypto::hash_auth_password_v2;
 use synapse_core::db::keychain::{replace_keychain_module_keys, rewrap_keychain_for_account};
@@ -32,61 +32,66 @@ pub fn get_base_dir() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn auth_status(db_state: State<'_, DbState>) -> Result<AuthStatus, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = match &*guard {
-        Some(c) => c,
-        None => {
-            return Ok(AuthStatus {
+pub async fn auth_status(db_state: State<'_, DbState>) -> Result<AuthStatus, String> {
+    let state = db_state.inner().clone();
+    run_blocking(move || {
+        let reader = match state.acquire_reader() {
+            Ok(r) => r,
+            Err(_) => {
+                return Ok(AuthStatus {
+                    status: "new".into(),
+                })
+            }
+        };
+
+        let mut stmt = reader
+            .prepare("SELECT count(*) as count FROM keychain")
+            .map_err(|e| e.to_string())?;
+
+        let count: i64 = stmt.query_row([], |row| row.get(0)).unwrap_or(0);
+
+        if count == 0 {
+            Ok(AuthStatus {
                 status: "new".into(),
             })
+        } else {
+            Ok(AuthStatus {
+                status: "encrypted".into(),
+            })
         }
-    };
-
-    let mut stmt = conn
-        .prepare("SELECT count(*) as count FROM keychain")
-        .map_err(|e| e.to_string())?;
-
-    let count: i64 = stmt.query_row([], |row| row.get(0)).unwrap_or(0);
-
-    if count == 0 {
-        Ok(AuthStatus {
-            status: "new".into(),
-        })
-    } else {
-        Ok(AuthStatus {
-            status: "encrypted".into(),
-        })
-    }
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn auth_wipe_local_data(
+pub async fn auth_wipe_local_data(
     app: tauri::AppHandle,
     db_state: tauri::State<'_, crate::db::DbState>,
 ) -> Result<(), String> {
-    {
-        let mut guard = db_state.lock_conn()?;
-        *guard = None; // Drop SQLite connection
-    }
+    let state = db_state.inner().clone();
+    run_blocking(move || {
+        state.close_all()?;
 
-    let app_data_dir = crate::get_app_data_dir();
+        let app_data_dir = crate::get_app_data_dir();
 
-    if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
-        for entry in entries {
-            if let Ok(e) = entry {
-                let path = e.path();
-                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-                if file_name != "bin" {
-                    if path.is_dir() {
-                        let _ = std::fs::remove_dir_all(&path);
-                    } else {
-                        let _ = std::fs::remove_file(&path);
+        if let Ok(entries) = std::fs::read_dir(&app_data_dir) {
+            for entry in entries {
+                if let Ok(e) = entry {
+                    let path = e.path();
+                    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                    if file_name != "bin" {
+                        if path.is_dir() {
+                            let _ = std::fs::remove_dir_all(&path);
+                        } else {
+                            let _ = std::fs::remove_file(&path);
+                        }
                     }
                 }
             }
         }
-    }
+        Ok(())
+    })
+    .await?;
 
     app.restart();
 }
@@ -96,22 +101,14 @@ pub async fn auth_login(
     password: String,
     db_state: State<'_, DbState>,
 ) -> Result<LoginResponse, String> {
-    // 1. Read keychain row in isolated block to drop conn mutex before decryption & keys acquisition
-    let keychain_row = {
-        let guard = db_state.lock_conn()?;
-        let conn = match &*guard {
-            Some(c) => c,
-            None => {
-                return Ok(LoginResponse {
-                    success: false,
-                    error: Some("Banco não inicializado".into()),
-                    modules: vec![],
-                    keys: None,
-                })
-            }
+    let state = db_state.inner().clone();
+    let keychain_row = run_blocking(move || -> Result<Option<KeychainRow>, String> {
+        let reader = match state.acquire_reader() {
+            Ok(r) => r,
+            Err(_) => return Ok(None),
         };
 
-        let mut stmt = conn.prepare("SELECT id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1")
+        let mut stmt = reader.prepare("SELECT id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc FROM keychain LIMIT 1")
             .map_err(|e| e.to_string())?;
 
         match stmt.query_row([], |row| {
@@ -131,11 +128,12 @@ pub async fn auth_login(
                 core_enc: row.get::<_, Option<String>>(12).unwrap_or(None),
             })
         }) {
-            Ok(r) => Some(r),
-            Err(rusqlite::Error::QueryReturnedNoRows) => None,
-            Err(e) => return Err(e.to_string()),
+            Ok(r) => Ok(Some(r)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.to_string()),
         }
-    }; // guard dropped here
+    })
+    .await?;
 
     let keychain_row = match keychain_row {
         Some(r) => r,
@@ -150,29 +148,43 @@ pub async fn auth_login(
         }
     };
 
-    let auth_hash_v2 = hash_auth_password_v2(&password);
-    let modern_key = derive_key_from_password(&password);
+    // Offload 600,000-iteration PBKDF2 and envelope decryption onto the blocking pool.
+    let (is_valid, auth_hash_v2, resolved) = run_blocking(move || {
+        let password = Zeroizing::new(password);
+        let auth_hash_v2 = hash_auth_password_v2(password.as_str());
+        let modern_key = derive_key_from_password(password.as_str());
 
-    let mut is_valid = false;
-    let envelopes = [
-        &keychain_row.library_enc,
-        &keychain_row.finance_enc,
-        &keychain_row.notes_enc,
-        &keychain_row.culture_enc,
-        &keychain_row.anki_enc,
-        &keychain_row.focus_enc,
-        &keychain_row.files_enc,
-        &keychain_row.vault_enc,
-        &keychain_row.calendar_enc,
-        &keychain_row.practice_enc,
-        &keychain_row.core_enc,
-    ];
-    for envelope in envelopes.into_iter().flatten() {
-        if decrypt_module_key_with_key(envelope, &modern_key).is_ok() {
-            is_valid = true;
-            break;
+        let envelopes = [
+            &keychain_row.library_enc,
+            &keychain_row.finance_enc,
+            &keychain_row.notes_enc,
+            &keychain_row.culture_enc,
+            &keychain_row.anki_enc,
+            &keychain_row.focus_enc,
+            &keychain_row.files_enc,
+            &keychain_row.vault_enc,
+            &keychain_row.calendar_enc,
+            &keychain_row.practice_enc,
+            &keychain_row.core_enc,
+        ];
+        let is_valid = envelopes
+            .into_iter()
+            .flatten()
+            .any(|envelope| decrypt_module_key_with_key(envelope, &modern_key).is_ok());
+
+        if !is_valid {
+            return Ok((false, auth_hash_v2, None));
         }
-    }
+
+        let (keys_to_return, modules) = resolve_unlocked_keys(&keychain_row, &modern_key);
+        let needs_hash_upgrade = keychain_row.auth_hash != auth_hash_v2;
+        Ok((
+            true,
+            auth_hash_v2,
+            Some((keys_to_return, modules, keychain_row.id, needs_hash_upgrade)),
+        ))
+    })
+    .await?;
 
     if !is_valid {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -184,19 +196,22 @@ pub async fn auth_login(
         });
     }
 
-    let (keys_to_return, modules) = resolve_unlocked_keys(&keychain_row, &modern_key);
+    let (keys_to_return, modules, keychain_id, needs_hash_upgrade) =
+        resolved.expect("validated login must resolve unlocked keys");
 
-    if keychain_row.auth_hash != auth_hash_v2 {
-        let guard = db_state.lock_conn()?;
-        let conn = guard.as_ref().ok_or("Database not initialized")?;
-        conn.execute(
-            "UPDATE keychain SET auth_hash = ?1 WHERE id = ?2",
-            rusqlite::params![auth_hash_v2, keychain_row.id],
-        )
-        .map_err(|e| e.to_string())?;
+    if needs_hash_upgrade {
+        db_state
+            .write(move |conn| {
+                conn.execute(
+                    "UPDATE keychain SET auth_hash = ?1 WHERE id = ?2",
+                    rusqlite::params![auth_hash_v2, keychain_id],
+                )
+                .map_err(|e| e.to_string())?;
+                Ok(())
+            })
+            .await?;
     }
 
-    // Persist to AppState with safe mutex recovery
     {
         let mut keys_guard = db_state.lock_keys()?;
         *keys_guard = Some(keys_to_return.clone());
@@ -216,20 +231,10 @@ pub async fn auth_setup(
     existing_keys: Option<HashMap<String, String>>,
     db_state: State<'_, DbState>,
 ) -> Result<LoginResponse, String> {
-    {
-        let guard = db_state.lock_conn()?;
-        let conn = match &*guard {
-            Some(c) => c,
-            None => {
-                return Ok(LoginResponse {
-                    success: false,
-                    error: Some("Banco não inicializado".into()),
-                    modules: vec![],
-                    keys: None,
-                })
-            }
-        };
-
+    let setup_password = password.clone();
+    let state = db_state.inner().clone();
+    let initialized = run_blocking(move || -> Result<bool, String> {
+        let setup_password = Zeroizing::new(setup_password);
         let get_key = |module: &str| -> String {
             if let Some(keys) = &existing_keys {
                 if let Some(k) = keys.get(module) {
@@ -239,25 +244,43 @@ pub async fn auth_setup(
             generate_module_key()
         };
 
-        let library_enc = encrypt_module_key(&get_key("library"), &password)?;
-        let finance_enc = encrypt_module_key(&get_key("finance"), &password)?;
-        let notes_enc = encrypt_module_key(&get_key("notes"), &password)?;
-        let culture_enc = encrypt_module_key(&get_key("culture"), &password)?;
-        let anki_enc = encrypt_module_key(&get_key("anki"), &password)?;
-        let focus_enc = encrypt_module_key(&get_key("focus"), &password)?;
-        let files_enc = encrypt_module_key(&get_key("files"), &password)?;
-        let vault_enc = encrypt_module_key(&get_key("vault"), &password)?;
-        let calendar_enc = encrypt_module_key(&get_key("calendar"), &password)?;
-        let practice_enc = encrypt_module_key(&get_key("practice"), &password)?;
-        let core_enc = encrypt_module_key(&get_key("core"), &password)?;
+        // Encrypt all module keys before acquiring the SQLite writer lock.
+        let library_enc = encrypt_module_key(&get_key("library"), setup_password.as_str())?;
+        let finance_enc = encrypt_module_key(&get_key("finance"), setup_password.as_str())?;
+        let notes_enc = encrypt_module_key(&get_key("notes"), setup_password.as_str())?;
+        let culture_enc = encrypt_module_key(&get_key("culture"), setup_password.as_str())?;
+        let anki_enc = encrypt_module_key(&get_key("anki"), setup_password.as_str())?;
+        let focus_enc = encrypt_module_key(&get_key("focus"), setup_password.as_str())?;
+        let files_enc = encrypt_module_key(&get_key("files"), setup_password.as_str())?;
+        let vault_enc = encrypt_module_key(&get_key("vault"), setup_password.as_str())?;
+        let calendar_enc = encrypt_module_key(&get_key("calendar"), setup_password.as_str())?;
+        let practice_enc = encrypt_module_key(&get_key("practice"), setup_password.as_str())?;
+        let core_enc = encrypt_module_key(&get_key("core"), setup_password.as_str())?;
 
-        let auth_hash = hash_auth_password_v2(&password);
+        let auth_hash = hash_auth_password_v2(setup_password.as_str());
         let id = uuid::Uuid::new_v4().to_string();
+
+        let guard = state.lock_conn()?;
+        let conn = match &*guard {
+            Some(c) => c,
+            None => return Ok(false),
+        };
 
         conn.execute(
             "INSERT INTO keychain (id, auth_hash, library_key_enc, finance_key_enc, notes_key_enc, culture_key_enc, anki_key_enc, focus_key_enc, files_key_enc, vault_key_enc, calendar_key_enc, practice_key_enc, core_key_enc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rusqlite::params![&id, &auth_hash, &library_enc, &finance_enc, &notes_enc, &culture_enc, &anki_enc, &focus_enc, &files_enc, &vault_enc, &calendar_enc, &practice_enc, &core_enc],
         ).map_err(|e| e.to_string())?;
+        Ok(true)
+    })
+    .await?;
+
+    if !initialized {
+        return Ok(LoginResponse {
+            success: false,
+            error: Some("Banco não inicializado".into()),
+            modules: vec![],
+            keys: None,
+        });
     }
 
     auth_login(password, db_state).await
@@ -278,37 +301,41 @@ pub async fn auth_force_update_keychain(
     keys: HashMap<String, String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let password = Zeroizing::new(password);
-    let keys = SensitiveKeys(keys);
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    replace_keychain_module_keys(conn, password.as_str(), keys.into_inner())?;
-    Ok(true)
+    db_state
+        .write(move |conn| {
+            let password = Zeroizing::new(password);
+            let keys = SensitiveKeys(keys);
+            replace_keychain_module_keys(conn, password.as_str(), keys.into_inner())?;
+            Ok(true)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn auth_rewrap_keychain(
+pub async fn auth_rewrap_keychain(
     previous_password: String,
     account_password: String,
     keys: HashMap<String, String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let previous_password = Zeroizing::new(previous_password);
-    let account_password = Zeroizing::new(account_password);
-    let keys = SensitiveKeys(keys);
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    rewrap_keychain_for_account(
-        conn,
-        previous_password.as_str(),
-        account_password.as_str(),
-        keys.into_inner(),
-    )?;
-    Ok(true)
+    db_state
+        .write(move |conn| {
+            let previous_password = Zeroizing::new(previous_password);
+            let account_password = Zeroizing::new(account_password);
+            let keys = SensitiveKeys(keys);
+            rewrap_keychain_for_account(
+                conn,
+                previous_password.as_str(),
+                account_password.as_str(),
+                keys.into_inner(),
+            )?;
+            Ok(true)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn auth_lock(db_state: State<'_, DbState>) -> Result<bool, String> {
+pub async fn auth_lock(db_state: State<'_, DbState>) -> Result<bool, String> {
     let mut keys_guard = db_state.lock_keys()?;
     *keys_guard = None;
     Ok(true)

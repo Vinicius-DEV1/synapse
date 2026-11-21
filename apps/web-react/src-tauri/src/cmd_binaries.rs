@@ -122,21 +122,28 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn check_binaries_status(_app: AppHandle) -> Result<bool, String> {
-    Ok(get_bin_path("yt-dlp").exists()
-        && get_bin_path("ffmpeg").exists()
-        && get_bin_path("ffprobe").exists())
+pub async fn check_binaries_status(_app: AppHandle) -> Result<bool, String> {
+    crate::db::run_blocking(|| {
+        Ok(get_bin_path("yt-dlp").exists()
+            && get_bin_path("ffmpeg").exists()
+            && get_bin_path("ffprobe").exists())
+    })
+    .await
 }
 
 #[tauri::command]
 pub async fn force_download_binaries(app: AppHandle) -> Result<(), String> {
-    let app_data_dir = crate::get_app_data_dir();
-    let bin_dir = app_data_dir.join("bin");
-    
-    // Forces directory removal to ensure clean re-download in ensure_binaries
-    if bin_dir.exists() {
-        let _ = fs::remove_dir_all(&bin_dir);
-    }
-    
+    crate::db::run_blocking(|| {
+        let app_data_dir = crate::get_app_data_dir();
+        let bin_dir = app_data_dir.join("bin");
+
+        // Forces directory removal to ensure clean re-download in ensure_binaries
+        if bin_dir.exists() {
+            let _ = fs::remove_dir_all(&bin_dir);
+        }
+        Ok(())
+    })
+    .await?;
+
     ensure_binaries(&app).await
 }

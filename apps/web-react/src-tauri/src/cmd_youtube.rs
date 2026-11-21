@@ -262,74 +262,85 @@ pub async fn youtube_fetch_playlist_info(
 
 
 #[tauri::command]
-pub fn youtube_get_watched(
+pub async fn youtube_get_watched(
     video_ids: Vec<String>,
-    db_state: tauri::State<crate::db::DbState>,
+    db_state: tauri::State<'_, crate::db::DbState>,
 ) -> Result<Vec<String>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-
     if video_ids.is_empty() {
         return Ok(Vec::new());
     }
 
-    let placeholders = vec!["?"; video_ids.len()].join(",");
-    let query = format!(
-        "SELECT video_id FROM youtube_watched WHERE deleted_at IS NULL AND video_id IN ({})",
-        placeholders
-    );
+    db_state
+        .read(move |conn| {
+            let placeholders = vec!["?"; video_ids.len()].join(",");
+            let query = format!(
+                "SELECT video_id FROM youtube_watched WHERE deleted_at IS NULL AND video_id IN ({})",
+                placeholders
+            );
 
-    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+            let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
 
-    let params_iter = rusqlite::params_from_iter(video_ids.iter());
-    let iter = stmt
-        .query_map(params_iter, |row| row.get::<_, String>(0))
-        .map_err(|e| e.to_string())?;
+            let params_iter = rusqlite::params_from_iter(video_ids.iter());
+            let iter = stmt
+                .query_map(params_iter, |row| row.get::<_, String>(0))
+                .map_err(|e| e.to_string())?;
 
-    let mut watched = Vec::new();
-    for id in iter.flatten() {
-        watched.push(id);
-    }
-    Ok(watched)
+            let mut watched = Vec::new();
+            for id in iter.flatten() {
+                watched.push(id);
+            }
+            Ok(watched)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn youtube_set_watched(
+pub async fn youtube_set_watched(
     video_id: String,
     is_watched: bool,
     title: Option<String>,
     channel: Option<String>,
-    db_state: tauri::State<crate::db::DbState>,
+    db_state: tauri::State<'_, crate::db::DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let now = chrono::Utc::now().to_rfc3339();
+    db_state
+        .write(move |conn| {
+            let now = chrono::Utc::now().to_rfc3339();
 
-    if is_watched {
-        let mut stmt = conn
-            .prepare("SELECT id FROM youtube_watched WHERE video_id = ?")
-            .map_err(|e| e.to_string())?;
-        let existing_id: Option<String> = stmt.query_row([&video_id], |row| row.get(0)).ok();
+            if is_watched {
+                let mut stmt = conn
+                    .prepare("SELECT id FROM youtube_watched WHERE video_id = ?")
+                    .map_err(|e| e.to_string())?;
+                let existing_id: Option<String> = stmt.query_row([&video_id], |row| row.get(0)).ok();
 
-        if let Some(eid) = existing_id {
-            conn.execute(
-                "UPDATE youtube_watched SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2",
-                rusqlite::params![now, eid]
-            ).map_err(|e| e.to_string())?;
-        } else {
-            let id = uuid::Uuid::new_v4().to_string();
-            conn.execute(
-                "INSERT INTO youtube_watched (id, video_id, title, channel_name) VALUES (?, ?, ?, ?)",
-                rusqlite::params![id, video_id, title.unwrap_or_default(), channel.unwrap_or_default()]
-            ).map_err(|e| e.to_string())?;
-        }
-    } else {
-        conn.execute(
-            "UPDATE youtube_watched SET deleted_at = ?1, updated_at = ?1 WHERE video_id = ?2",
-            rusqlite::params![now, video_id]
-        ).map_err(|e| e.to_string())?;
-    }
-    Ok(true)
+                if let Some(eid) = existing_id {
+                    conn.execute(
+                        "UPDATE youtube_watched SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2",
+                        rusqlite::params![now, eid],
+                    )
+                    .map_err(|e| e.to_string())?;
+                } else {
+                    let id = uuid::Uuid::new_v4().to_string();
+                    conn.execute(
+                        "INSERT INTO youtube_watched (id, video_id, title, channel_name) VALUES (?, ?, ?, ?)",
+                        rusqlite::params![
+                            id,
+                            video_id,
+                            title.unwrap_or_default(),
+                            channel.unwrap_or_default()
+                        ],
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+            } else {
+                conn.execute(
+                    "UPDATE youtube_watched SET deleted_at = ?1, updated_at = ?1 WHERE video_id = ?2",
+                    rusqlite::params![now, video_id],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+            Ok(true)
+        })
+        .await
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -632,62 +643,67 @@ pub async fn youtube_fetch_transcript(
 }
 
 #[tauri::command]
-pub fn youtube_get_summary(
+pub async fn youtube_get_summary(
     video_id: String,
-    db_state: tauri::State<crate::db::DbState>,
+    db_state: tauri::State<'_, crate::db::DbState>,
 ) -> Result<Option<YouTubeSummaryRecord>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    db_state
+        .read(move |conn| {
+            let mut stmt = conn
+                .prepare("SELECT id, video_id, title, channel_name, summary, raw_transcript, created_at, updated_at FROM youtube_summaries WHERE video_id = ?")
+                .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare("SELECT id, video_id, title, channel_name, summary, raw_transcript, created_at, updated_at FROM youtube_summaries WHERE video_id = ?")
-        .map_err(|e| e.to_string())?;
+            let mut rows = stmt
+                .query(rusqlite::params![video_id])
+                .map_err(|e| e.to_string())?;
 
-    let mut rows = stmt.query(rusqlite::params![video_id]).map_err(|e| e.to_string())?;
-
-    if let Some(row) = rows.next().map_err(|e| e.to_string())? {
-        Ok(Some(YouTubeSummaryRecord {
-            id: row.get(0).map_err(|e| e.to_string())?,
-            video_id: row.get(1).map_err(|e| e.to_string())?,
-            title: row.get(2).map_err(|e| e.to_string())?,
-            channel_name: row.get(3).map_err(|e| e.to_string())?,
-            summary: row.get(4).map_err(|e| e.to_string())?,
-            raw_transcript: row.get(5).map_err(|e| e.to_string())?,
-            created_at: row.get(6).map_err(|e| e.to_string())?,
-            updated_at: row.get(7).map_err(|e| e.to_string())?,
-        }))
-    } else {
-        Ok(None)
-    }
+            if let Some(row) = rows.next().map_err(|e| e.to_string())? {
+                Ok(Some(YouTubeSummaryRecord {
+                    id: row.get(0).map_err(|e| e.to_string())?,
+                    video_id: row.get(1).map_err(|e| e.to_string())?,
+                    title: row.get(2).map_err(|e| e.to_string())?,
+                    channel_name: row.get(3).map_err(|e| e.to_string())?,
+                    summary: row.get(4).map_err(|e| e.to_string())?,
+                    raw_transcript: row.get(5).map_err(|e| e.to_string())?,
+                    created_at: row.get(6).map_err(|e| e.to_string())?,
+                    updated_at: row.get(7).map_err(|e| e.to_string())?,
+                }))
+            } else {
+                Ok(None)
+            }
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn youtube_save_summary(
+pub async fn youtube_save_summary(
     video_id: String,
     title: Option<String>,
     channel: Option<String>,
     summary: String,
     raw_transcript: Option<String>,
-    db_state: tauri::State<crate::db::DbState>,
+    db_state: tauri::State<'_, crate::db::DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    db_state
+        .write(move |conn| {
+            let id = uuid::Uuid::new_v4().to_string();
+            let now = chrono::Utc::now().to_rfc3339();
+            conn.execute(
+                "INSERT INTO youtube_summaries (id, video_id, title, channel_name, summary, raw_transcript, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+                 ON CONFLICT(video_id) DO UPDATE SET
+                     title = excluded.title,
+                     channel_name = excluded.channel_name,
+                     summary = excluded.summary,
+                     raw_transcript = excluded.raw_transcript,
+                     updated_at = excluded.updated_at",
+                rusqlite::params![id, video_id, title, channel, summary, raw_transcript, now],
+            )
+            .map_err(|e| e.to_string())?;
 
-    let id = uuid::Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().to_rfc3339();
-    conn.execute(
-        "INSERT INTO youtube_summaries (id, video_id, title, channel_name, summary, raw_transcript, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
-         ON CONFLICT(video_id) DO UPDATE SET
-             title = excluded.title,
-             channel_name = excluded.channel_name,
-             summary = excluded.summary,
-             raw_transcript = excluded.raw_transcript,
-             updated_at = excluded.updated_at",
-        rusqlite::params![id, video_id, title, channel, summary, raw_transcript, now],
-    ).map_err(|e| e.to_string())?;
-
-    Ok(true)
+            Ok(true)
+        })
+        .await
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

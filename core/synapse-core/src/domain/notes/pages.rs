@@ -4,8 +4,45 @@ use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use uuid::Uuid;
 
-use super::models::PageRecord;
+use super::models::{PageMetaRecord, PageRecord};
 use crate::error::Result;
+
+/// Retrieves lightweight metadata for all non-deleted pages without reading content, encrypted_content, or crdt_state blobs.
+pub fn get_page_metas(conn: &Connection) -> Result<Vec<PageMetaRecord>> {
+    let sql = "SELECT id, parent_id, title, icon, sort_order, created_at, updated_at, \
+               deleted_at, cover_image, description, is_pinned, pinned_order, is_locked \
+               FROM pages WHERE deleted_at IS NULL \
+               ORDER BY updated_at DESC";
+    let mut stmt = conn.prepare(sql)?;
+    let mut rows = stmt.query([])?;
+
+    let mut pages = Vec::new();
+    while let Some(row) = rows.next()? {
+        let sort_order = match row.get_ref(4)? {
+            rusqlite::types::ValueRef::Integer(value) => value as f64,
+            rusqlite::types::ValueRef::Real(value) => value,
+            _ => 0.0,
+        };
+        pages.push(PageMetaRecord {
+            id: row.get(0)?,
+            parent_id: row.get(1)?,
+            title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            icon: row
+                .get::<_, Option<String>>(3)?
+                .unwrap_or_else(|| "📄".to_string()),
+            sort_order,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+            deleted_at: row.get(7)?,
+            cover_image: row.get(8)?,
+            description: row.get(9)?,
+            is_pinned: row.get::<_, Option<i32>>(10)?.unwrap_or(0),
+            pinned_order: row.get::<_, Option<f64>>(11)?.unwrap_or(0.0),
+            is_locked: row.get::<_, Option<i32>>(12)?.unwrap_or(0),
+        });
+    }
+    Ok(pages)
+}
 
 /// Retrieves pages matching an optional title filter, ordered by updated_at descending.
 pub fn get_pages(conn: &Connection, filter: Option<&str>) -> Result<Vec<PageRecord>> {
@@ -17,6 +54,7 @@ pub fn get_pages(conn: &Connection, filter: Option<&str>) -> Result<Vec<PageReco
     );
 
     let mut param_values = Vec::new();
+    let has_filter = filter.map(|f| !f.trim().is_empty()).unwrap_or(false);
     if let Some(f) = filter {
         let trimmed = f.trim();
         if !trimmed.is_empty() {
@@ -25,7 +63,10 @@ pub fn get_pages(conn: &Connection, filter: Option<&str>) -> Result<Vec<PageReco
         }
     }
 
-    sql.push_str("ORDER BY updated_at DESC LIMIT 150");
+    sql.push_str("ORDER BY updated_at DESC");
+    if has_filter {
+        sql.push_str(" LIMIT 150");
+    }
 
     let mut stmt = conn.prepare(&sql)?;
     let mut rows = if param_values.is_empty() {
@@ -254,13 +295,18 @@ pub fn restore_page(conn: &Connection, page_id: &str) -> Result<bool> {
 }
 
 fn map_page_row(row: &rusqlite::Row) -> rusqlite::Result<PageRecord> {
+    let sort_order = match row.get_ref(5)? {
+        rusqlite::types::ValueRef::Integer(value) => value as i32,
+        rusqlite::types::ValueRef::Real(value) => value as i32,
+        _ => 0,
+    };
     Ok(PageRecord {
         id: row.get(0)?,
         parent_id: row.get(1)?,
-        title: row.get(2)?,
-        content: row.get(3)?,
-        icon: row.get(4)?,
-        sort_order: row.get(5)?,
+        title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+        content: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+        icon: row.get::<_, Option<String>>(4)?.unwrap_or_else(|| "📄".to_string()),
+        sort_order,
         created_at: row.get(6)?,
         updated_at: row.get(7)?,
         deleted_at: row.get(8)?,

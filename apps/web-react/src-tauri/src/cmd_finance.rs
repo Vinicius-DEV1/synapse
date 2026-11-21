@@ -3,109 +3,135 @@ use synapse_core::domain::finance::{Account, FinanceRepository, Transaction, Wis
 use tauri::State;
 
 #[tauri::command]
-pub fn finance_get_accounts(db_state: State<'_, DbState>) -> Result<Vec<Account>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::get_accounts_conn(conn).map_err(|e| e.to_string())
+pub async fn finance_get_accounts(db_state: State<'_, DbState>) -> Result<Vec<Account>, String> {
+    db_state
+        .read(|conn| FinanceRepository::get_accounts_conn(conn).map_err(|e| e.to_string()))
+        .await
 }
 
 #[tauri::command]
-pub fn finance_add_account(
+pub async fn finance_add_account(
     account: Account,
     db_state: State<'_, DbState>,
 ) -> Result<Account, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::create_account_struct(conn, account).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::create_account_struct(conn, account).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_update_account(
+pub async fn finance_update_account(
     account: Account,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::update_account_struct(conn, account).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::update_account_struct(conn, account).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_delete_account(
+pub async fn finance_delete_account(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::delete_account_conn(conn, &id).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::delete_account_conn(conn, &id).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_get_transactions(db_state: State<'_, DbState>) -> Result<Vec<Transaction>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::get_transactions_conn(conn, None, None).map_err(|e| e.to_string())
+pub async fn finance_get_transactions(
+    db_state: State<'_, DbState>,
+) -> Result<Vec<Transaction>, String> {
+    db_state
+        .read(|conn| {
+            FinanceRepository::get_transactions_conn(conn, None, None).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_add_transaction(
+pub async fn finance_add_transaction(
     transaction: Transaction,
     db_state: State<'_, DbState>,
 ) -> Result<Transaction, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::add_transaction_struct(conn, transaction).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::add_transaction_struct(conn, transaction).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_update_transaction(
+pub async fn finance_update_transaction(
     transaction: Transaction,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::update_transaction_struct(conn, transaction).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::update_transaction_struct(conn, transaction)
+                .map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_delete_transaction(
+pub async fn finance_delete_transaction(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::delete_transaction_conn(conn, &id).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::delete_transaction_conn(conn, &id).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_get_wishlist(db_state: State<'_, DbState>) -> Result<Vec<WishlistItem>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::get_wishlist_conn(conn).map_err(|e| e.to_string())
+pub async fn finance_get_wishlist(db_state: State<'_, DbState>) -> Result<Vec<WishlistItem>, String> {
+    db_state
+        .read(|conn| FinanceRepository::get_wishlist_conn(conn).map_err(|e| e.to_string()))
+        .await
 }
 
 #[tauri::command]
-pub fn finance_add_wishlist(
+pub async fn finance_add_wishlist(
     item: WishlistItem,
     db_state: State<'_, DbState>,
 ) -> Result<WishlistItem, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::add_wishlist_struct(conn, item).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::add_wishlist_struct(conn, item).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_update_wishlist(
+pub async fn finance_update_wishlist(
     item: WishlistItem,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::update_wishlist_struct(conn, item).map_err(|e| e.to_string())
+    db_state
+        .write(move |conn| {
+            FinanceRepository::update_wishlist_struct(conn, item).map_err(|e| e.to_string())
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn finance_delete_wishlist(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    FinanceRepository::delete_wishlist_conn(conn, &id).map_err(|e| e.to_string())
+pub async fn finance_delete_wishlist(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    db_state
+        .write(move |conn| {
+            FinanceRepository::delete_wishlist_conn(conn, &id).map_err(|e| e.to_string())
+        })
+        .await
 }

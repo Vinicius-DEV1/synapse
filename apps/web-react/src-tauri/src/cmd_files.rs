@@ -1,4 +1,4 @@
-use crate::db::DbState;
+use crate::db::{run_blocking, DbState};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -20,11 +20,6 @@ pub struct FileRecord {
     pub deleted_at: Option<String>,
 }
 
-fn get_files_key(db_state: &DbState) -> Result<Option<String>, String> {
-    let keys_guard = db_state.lock_keys()?;
-    Ok(keys_guard.as_ref().and_then(|k| k.files.clone()))
-}
-
 fn encrypt_opt(val: &Option<String>, key: &Option<String>) -> Option<String> {
     if let (Some(v), Some(k)) = (val, key) {
         crate::crypto::encrypt_content(k, v).ok()
@@ -44,185 +39,241 @@ fn decrypt_opt(val: &Option<String>, key: &Option<String>) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn files_get_all(
+pub async fn files_get_all(
     folder_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<FileRecord>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state)?;
+    db_state
+        .read_with_keys(move |conn, keys| {
+            let enc_key = keys.and_then(|k| k.files);
 
-    let mut query = String::from("SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE deleted_at IS NULL");
+            let mut query = String::from("SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE deleted_at IS NULL");
 
-    let mut stmt = if let Some(ref _f_id) = folder_id {
-        query.push_str(" AND folder_id = ?");
-        conn.prepare(&query).map_err(|e| e.to_string())?
-    } else {
-        conn.prepare(&query).map_err(|e| e.to_string())?
-    };
+            let mut stmt = if folder_id.is_some() {
+                query.push_str(" AND folder_id = ?");
+                conn.prepare(&query).map_err(|e| e.to_string())?
+            } else {
+                conn.prepare(&query).map_err(|e| e.to_string())?
+            };
 
-    let map_fn = |row: &rusqlite::Row| -> Result<FileRecord, rusqlite::Error> {
-        let mut rec = FileRecord {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            file_type: row.get(2)?,
-            file_size: row.get(3)?,
-            local_path: row.get(4)?,
-            drive_file_id: row.get(5)?,
-            folder_id: row.get(6)?,
-            mime_type: row.get(7)?,
-            created_at: row.get(8)?,
-            updated_at: row.get(9)?,
-            deleted_at: row.get(10)?,
-        };
-        rec.local_path = decrypt_opt(&rec.local_path, &enc_key);
-        rec.drive_file_id = decrypt_opt(&rec.drive_file_id, &enc_key);
-        Ok(rec)
-    };
+            let map_fn = |row: &rusqlite::Row| -> Result<FileRecord, rusqlite::Error> {
+                let mut rec = FileRecord {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    file_type: row.get(2)?,
+                    file_size: row.get(3)?,
+                    local_path: row.get(4)?,
+                    drive_file_id: row.get(5)?,
+                    folder_id: row.get(6)?,
+                    mime_type: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                    deleted_at: row.get(10)?,
+                };
+                rec.local_path = decrypt_opt(&rec.local_path, &enc_key);
+                rec.drive_file_id = decrypt_opt(&rec.drive_file_id, &enc_key);
+                Ok(rec)
+            };
 
-    let iter = if let Some(f_id) = folder_id {
-        stmt.query_map([f_id], map_fn).map_err(|e| e.to_string())?
-    } else {
-        stmt.query_map([], map_fn).map_err(|e| e.to_string())?
-    };
+            let iter = if let Some(f_id) = folder_id {
+                stmt.query_map([f_id], map_fn).map_err(|e| e.to_string())?
+            } else {
+                stmt.query_map([], map_fn).map_err(|e| e.to_string())?
+            };
 
-    let mut items = Vec::new();
-    for i in iter {
-        if let Ok(item) = i {
-            items.push(item);
-        }
-    }
-    Ok(items)
+            let mut items = Vec::new();
+            for i in iter {
+                if let Ok(item) = i {
+                    items.push(item);
+                }
+            }
+            Ok(items)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn files_get_by_id(
+pub async fn files_get_by_id(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Option<FileRecord>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state)?;
+    db_state
+        .read_with_keys(move |conn, keys| {
+            let enc_key = keys.and_then(|k| k.files);
 
-    let result = conn.query_row(
-        "SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE id = ? AND deleted_at IS NULL",
-        [&id],
-        |row| {
-            let mut rec = FileRecord {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                file_type: row.get(2)?,
-                file_size: row.get(3)?,
-                local_path: row.get(4)?,
-                drive_file_id: row.get(5)?,
-                folder_id: row.get(6)?,
-                mime_type: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-                deleted_at: row.get(10)?,
-            };
-            rec.local_path = decrypt_opt(&rec.local_path, &enc_key);
-            rec.drive_file_id = decrypt_opt(&rec.drive_file_id, &enc_key);
-            Ok(rec)
-        }
-    );
+            let result = conn.query_row(
+                "SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE id = ? AND deleted_at IS NULL",
+                [&id],
+                |row| {
+                    let mut rec = FileRecord {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        file_type: row.get(2)?,
+                        file_size: row.get(3)?,
+                        local_path: row.get(4)?,
+                        drive_file_id: row.get(5)?,
+                        folder_id: row.get(6)?,
+                        mime_type: row.get(7)?,
+                        created_at: row.get(8)?,
+                        updated_at: row.get(9)?,
+                        deleted_at: row.get(10)?,
+                    };
+                    rec.local_path = decrypt_opt(&rec.local_path, &enc_key);
+                    rec.drive_file_id = decrypt_opt(&rec.drive_file_id, &enc_key);
+                    Ok(rec)
+                },
+            );
 
-    match result {
-        Ok(res) => Ok(Some(res)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e.to_string()),
-    }
+            match result {
+                Ok(res) => Ok(Some(res)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(e.to_string()),
+            }
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn files_create(
+pub async fn files_create(
     mut file: FileRecord,
     db_state: State<'_, DbState>,
 ) -> Result<FileRecord, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state)?;
+    let enc_key = db_state.clone_keys()?.and_then(|k| k.files);
+    let state = db_state.inner().clone();
 
-    if file.id.is_empty() {
-        file.id = Uuid::new_v4().to_string();
-    }
-    let now = chrono::Utc::now().to_rfc3339();
-    if file.created_at.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
-        file.created_at = Some(now.clone());
-    }
-    file.updated_at = Some(now.clone());
+    run_blocking(move || {
+        if file.id.is_empty() {
+            file.id = Uuid::new_v4().to_string();
+        }
+        let now = chrono::Utc::now().to_rfc3339();
+        if file
+            .created_at
+            .as_ref()
+            .map(|s| s.is_empty())
+            .unwrap_or(true)
+        {
+            file.created_at = Some(now.clone());
+        }
+        file.updated_at = Some(now.clone());
 
-    let enc_path = encrypt_opt(&file.local_path, &enc_key);
-    let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
+        let enc_path = encrypt_opt(&file.local_path, &enc_key);
+        let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
 
-    conn.execute(
-        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            file_type = excluded.file_type,
-            file_size = excluded.file_size,
-            local_path = excluded.local_path,
-            drive_file_id = excluded.drive_file_id,
-            folder_id = excluded.folder_id,
-            mime_type = excluded.mime_type,
-            deleted_at = NULL,
-            updated_at = excluded.updated_at",
-        params![file.id, file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type, file.created_at, now]
-    ).map_err(|e| e.to_string())?;
+        let guard = state.lock_conn()?;
+        let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    Ok(file)
-}
-
-#[tauri::command]
-pub fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Result<i32, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let enc_key = get_files_key(&db_state)?;
-    let now = chrono::Utc::now().to_rfc3339();
-
-    let enc_path = encrypt_opt(&file.local_path, &enc_key);
-    let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
-
-    let count = conn.execute(
-        "UPDATE files SET name = ?, file_type = ?, file_size = ?, local_path = ?, drive_file_id = ?, folder_id = ?, mime_type = ?, updated_at = ? WHERE id = ?",
-        params![file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type, now, file.id]
-    ).map_err(|e| e.to_string())?;
-
-    Ok(count as i32)
-}
-
-#[tauri::command]
-pub fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let now = chrono::Utc::now().to_rfc3339();
-
-    conn.execute("UPDATE files SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2", [&now, &id])
+        conn.execute(
+            "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                file_type = excluded.file_type,
+                file_size = excluded.file_size,
+                local_path = excluded.local_path,
+                drive_file_id = excluded.drive_file_id,
+                folder_id = excluded.folder_id,
+                mime_type = excluded.mime_type,
+                deleted_at = NULL,
+                updated_at = excluded.updated_at",
+            params![
+                file.id,
+                file.name,
+                file.file_type,
+                file.file_size,
+                enc_path,
+                enc_drive,
+                file.folder_id,
+                file.mime_type,
+                file.created_at,
+                now
+            ],
+        )
         .map_err(|e| e.to_string())?;
 
-    // Clean up annotations when standalone file is removed (Soft Delete)
-    let _ = conn.execute("UPDATE library_highlights SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2", [&now, &id]);
-    let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2", [&now, &id]);
-
-    Ok(true)
+        Ok(file)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn files_move(
+pub async fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Result<i32, String> {
+    let enc_key = db_state.clone_keys()?.and_then(|k| k.files);
+    let state = db_state.inner().clone();
+
+    run_blocking(move || {
+        let now = chrono::Utc::now().to_rfc3339();
+        let enc_path = encrypt_opt(&file.local_path, &enc_key);
+        let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
+
+        let guard = state.lock_conn()?;
+        let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+
+        let count = conn
+            .execute(
+                "UPDATE files SET name = ?, file_type = ?, file_size = ?, local_path = ?, drive_file_id = ?, folder_id = ?, mime_type = ?, updated_at = ? WHERE id = ?",
+                params![
+                    file.name,
+                    file.file_type,
+                    file.file_size,
+                    enc_path,
+                    enc_drive,
+                    file.folder_id,
+                    file.mime_type,
+                    now,
+                    file.id
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+
+        Ok(count as i32)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+    db_state
+        .write(move |conn| {
+            let now = chrono::Utc::now().to_rfc3339();
+
+            conn.execute(
+                "UPDATE files SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+                [&now, &id],
+            )
+            .map_err(|e| e.to_string())?;
+
+            // Clean up annotations when standalone file is removed (Soft Delete)
+            let _ = conn.execute(
+                "UPDATE library_highlights SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2",
+                [&now, &id],
+            );
+            let _ = conn.execute(
+                "UPDATE library_bookmarks SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2",
+                [&now, &id],
+            );
+
+            Ok(true)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn files_move(
     id: String,
     folder_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
-    let now = chrono::Utc::now().to_rfc3339();
+    db_state
+        .write(move |conn| {
+            let now = chrono::Utc::now().to_rfc3339();
 
-    conn.execute(
-        "UPDATE files SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
-        params![folder_id, now, id],
-    )
-    .map_err(|e| e.to_string())?;
+            conn.execute(
+                "UPDATE files SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
+                params![folder_id, now, id],
+            )
+            .map_err(|e| e.to_string())?;
 
-    Ok(true)
+            Ok(true)
+        })
+        .await
 }

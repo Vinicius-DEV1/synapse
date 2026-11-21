@@ -10,7 +10,7 @@ pub mod tests;
 
 use crate::db::Database;
 use crate::error::{Result, SynapseError};
-pub use models::{LinkMetadata, PageNode, PageRecord, PageRevision};
+pub use models::{LinkMetadata, PageMetaRecord, PageNode, PageRecord, PageRevision};
 
 pub struct NotesRepository;
 
@@ -22,6 +22,10 @@ impl NotesRepository {
 
     pub fn get_pages_conn(conn: &rusqlite::Connection, filter: Option<&str>) -> Result<Vec<PageRecord>> {
         pages::get_pages(conn, filter)
+    }
+
+    pub fn get_page_metas_conn(conn: &rusqlite::Connection) -> Result<Vec<PageMetaRecord>> {
+        pages::get_page_metas(conn)
     }
 
     pub fn get_pinned_pages(db: &Database) -> Result<Vec<PageRecord>> {

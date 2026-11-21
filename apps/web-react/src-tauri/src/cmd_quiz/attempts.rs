@@ -32,73 +32,74 @@ pub fn map_attempt_row(row: &rusqlite::Row) -> rusqlite::Result<QuizAttemptDto> 
 }
 
 #[tauri::command]
-pub fn quiz_save_attempt(
+pub async fn quiz_save_attempt(
     attempt: QuizAttemptDto,
     db_state: State<'_, DbState>,
 ) -> Result<QuizAttemptDto, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    db_state
+        .write(move |conn| {
+            let id = if attempt.id.trim().is_empty() {
+                uuid::Uuid::new_v4().to_string()
+            } else {
+                attempt.id.clone()
+            };
+            let created_at = if attempt.created_at.trim().is_empty() {
+                Utc::now().to_rfc3339()
+            } else {
+                attempt.created_at.clone()
+            };
+            let a_type = if attempt.type_.trim().is_empty() {
+                "multiple_choice".to_string()
+            } else {
+                attempt.type_.clone()
+            };
+            let user_typed = attempt.user_typed_answer.clone().unwrap_or_default();
+            let ai_feedback_str = attempt
+                .ai_feedback
+                .as_ref()
+                .and_then(|v| serde_json::to_string(v).ok());
+            let duration_ms = attempt.duration_ms.unwrap_or(0);
+            let is_correct_int = if attempt.is_correct { 1 } else { 0 };
 
-    let id = if attempt.id.trim().is_empty() {
-        uuid::Uuid::new_v4().to_string()
-    } else {
-        attempt.id.clone()
-    };
-    let created_at = if attempt.created_at.trim().is_empty() {
-        Utc::now().to_rfc3339()
-    } else {
-        attempt.created_at.clone()
-    };
-    let a_type = if attempt.type_.trim().is_empty() {
-        "multiple_choice".to_string()
-    } else {
-        attempt.type_.clone()
-    };
-    let user_typed = attempt.user_typed_answer.clone().unwrap_or_default();
-    let ai_feedback_str = attempt
-        .ai_feedback
-        .as_ref()
-        .and_then(|v| serde_json::to_string(v).ok());
-    let duration_ms = attempt.duration_ms.unwrap_or(0);
-    let is_correct_int = if attempt.is_correct { 1 } else { 0 };
+            conn.execute(
+                "INSERT INTO quiz_attempts (id, question_id, battery_id, type, selected_index, user_typed_answer, user_answer, is_correct, ai_feedback, duration_ms, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, ?8, ?9, ?10)
+                 ON CONFLICT(id) DO UPDATE SET
+                    selected_index = excluded.selected_index,
+                    user_typed_answer = excluded.user_typed_answer,
+                    is_correct = excluded.is_correct,
+                    ai_feedback = excluded.ai_feedback,
+                    duration_ms = excluded.duration_ms,
+                    created_at = excluded.created_at",
+                params![
+                    id,
+                    attempt.question_id,
+                    attempt.battery_id,
+                    a_type,
+                    attempt.selected_index,
+                    user_typed,
+                    is_correct_int,
+                    ai_feedback_str,
+                    duration_ms,
+                    created_at
+                ],
+            )
+            .map_err(|e| e.to_string())?;
 
-    conn.execute(
-        "INSERT INTO quiz_attempts (id, question_id, battery_id, type, selected_index, user_typed_answer, user_answer, is_correct, ai_feedback, duration_ms, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, ?8, ?9, ?10)
-         ON CONFLICT(id) DO UPDATE SET
-            selected_index = excluded.selected_index,
-            user_typed_answer = excluded.user_typed_answer,
-            is_correct = excluded.is_correct,
-            ai_feedback = excluded.ai_feedback,
-            duration_ms = excluded.duration_ms,
-            created_at = excluded.created_at",
-        params![
-            id,
-            attempt.question_id,
-            attempt.battery_id,
-            a_type,
-            attempt.selected_index,
-            user_typed,
-            is_correct_int,
-            ai_feedback_str,
-            duration_ms,
-            created_at
-        ],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(QuizAttemptDto {
-        id,
-        question_id: attempt.question_id,
-        battery_id: attempt.battery_id,
-        type_: a_type,
-        selected_index: attempt.selected_index,
-        user_typed_answer: Some(user_typed),
-        is_correct: attempt.is_correct,
-        ai_feedback: attempt.ai_feedback,
-        duration_ms: Some(duration_ms),
-        created_at,
-    })
+            Ok(QuizAttemptDto {
+                id,
+                question_id: attempt.question_id,
+                battery_id: attempt.battery_id,
+                type_: a_type,
+                selected_index: attempt.selected_index,
+                user_typed_answer: Some(user_typed),
+                is_correct: attempt.is_correct,
+                ai_feedback: attempt.ai_feedback,
+                duration_ms: Some(duration_ms),
+                created_at,
+            })
+        })
+        .await
 }
 
 pub fn load_latest_attempts_conn(
@@ -142,47 +143,52 @@ pub fn load_latest_attempts_conn(
 }
 
 #[tauri::command]
-pub fn quiz_get_latest_attempts(
+pub async fn quiz_get_latest_attempts(
     battery_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<HashMap<String, QuizAttemptDto>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-    load_latest_attempts_conn(conn, battery_id.as_deref())
+    db_state
+        .read(move |conn| load_latest_attempts_conn(conn, battery_id.as_deref()))
+        .await
 }
 
 #[tauri::command]
-pub fn quiz_get_attempts_by_question(
+pub async fn quiz_get_attempts_by_question(
     question_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<QuizAttemptDto>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    db_state
+        .read(move |conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, question_id, battery_id, type, selected_index, user_typed_answer, is_correct, ai_feedback, duration_ms, created_at
+                     FROM quiz_attempts
+                     WHERE question_id = ?1
+                     ORDER BY created_at DESC, rowid DESC",
+                )
+                .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, question_id, battery_id, type, selected_index, user_typed_answer, is_correct, ai_feedback, duration_ms, created_at
-             FROM quiz_attempts
-             WHERE question_id = ?1
-             ORDER BY created_at DESC, rowid DESC",
-        )
-        .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![question_id], map_attempt_row)
+                .map_err(|e| e.to_string())?;
 
-    let rows = stmt
-        .query_map(params![question_id], map_attempt_row)
-        .map_err(|e| e.to_string())?;
-
-    let mut list = Vec::new();
-    for r in rows.flatten() {
-        list.push(r);
-    }
-    Ok(list)
+            let mut list = Vec::new();
+            for r in rows.flatten() {
+                list.push(r);
+            }
+            Ok(list)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn quiz_get_wrong_attempts(db_state: State<'_, DbState>) -> Result<Vec<QuizAttemptDto>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-    let latest = load_latest_attempts_conn(conn, None)?;
-    Ok(latest.into_values().filter(|a| !a.is_correct).collect())
+pub async fn quiz_get_wrong_attempts(
+    db_state: State<'_, DbState>,
+) -> Result<Vec<QuizAttemptDto>, String> {
+    db_state
+        .read(|conn| {
+            let latest = load_latest_attempts_conn(conn, None)?;
+            Ok(latest.into_values().filter(|a| !a.is_correct).collect())
+        })
+        .await
 }

@@ -64,6 +64,8 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
             })?;
     }
 
+    indexes::ensure_sync_timestamp_indexes(&transaction)?;
+
     transaction
         .commit()
         .map_err(|error| format!("Failed to commit SQLite schema migration: {error}"))

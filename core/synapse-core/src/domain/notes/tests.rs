@@ -159,3 +159,27 @@ fn test_history_and_link_metadata() {
     let after_del = get_link_metadata(&conn, "https://example.com/rust").expect("get meta");
     assert!(after_del.is_none());
 }
+
+#[test]
+fn test_get_pages_unfiltered_returns_more_than_150_and_handles_legacy_column_types() {
+    let (db, _temp) = setup_test_db();
+    let conn = db.lock().expect("lock db");
+
+    for index in 0..165 {
+        let id = format!("page-{index}");
+        conn.execute(
+            "INSERT INTO pages (id, title, content, icon, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, NULL, NULL, ?3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+            rusqlite::params![id, format!("Page {index}"), index as f64],
+        )
+        .expect("insert legacy page");
+    }
+
+    let all_pages = get_pages(&conn, None).expect("get all unfiltered pages");
+    assert_eq!(all_pages.len(), 165);
+    assert!(all_pages.iter().any(|page| page.sort_order == 164));
+
+    let metas = get_page_metas(&conn).expect("get lightweight page metas");
+    assert_eq!(metas.len(), 165);
+    assert!(metas.iter().any(|meta| (meta.sort_order - 164.0).abs() < f64::EPSILON));
+}

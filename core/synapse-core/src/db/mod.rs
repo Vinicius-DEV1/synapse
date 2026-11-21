@@ -12,17 +12,33 @@ pub struct Database {
     path: PathBuf,
 }
 
-/// Configures and initializes the canonical schema on a platform-owned connection.
+/// Configures and initializes the canonical schema on a platform-owned writer connection.
 pub fn initialize_connection(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
          PRAGMA secure_delete = ON;
          PRAGMA foreign_keys = ON;
-         PRAGMA busy_timeout = 5000;",
+         PRAGMA busy_timeout = 5000;
+         PRAGMA cache_size = -64000;
+         PRAGMA temp_store = MEMORY;
+         PRAGMA mmap_size = 268435456;",
     )
     .map_err(|error| format!("Failed to configure SQLite connection: {error}"))?;
     migrations::run_migrations(conn)
+}
+
+/// Configures a read-only SQLite connection for concurrent WAL reads.
+pub fn configure_read_connection(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "PRAGMA query_only = ON;
+         PRAGMA foreign_keys = ON;
+         PRAGMA busy_timeout = 5000;
+         PRAGMA cache_size = -16000;
+         PRAGMA temp_store = MEMORY;
+         PRAGMA mmap_size = 268435456;",
+    )
+    .map_err(|error| format!("Failed to configure SQLite read connection: {error}"))
 }
 
 impl Database {

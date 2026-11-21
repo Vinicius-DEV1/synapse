@@ -1,6 +1,6 @@
 use crate::db::DbState;
 use chrono::{Datelike, Duration, NaiveDate, Utc};
-use rusqlite::params;
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use synapse_core::domain::habits::{Habit, HabitLog};
@@ -124,47 +124,7 @@ fn calculate_habit_stats(logs: &[HabitLog]) -> HabitStats {
     }
 }
 
-#[tauri::command]
-pub fn habits_get_all(db_state: State<'_, DbState>) -> Result<Vec<Habit>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at
-             FROM habits
-             WHERE deleted_at IS NULL
-             ORDER BY title COLLATE NOCASE ASC",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let rows = stmt
-        .query_map([], |row| {
-            Ok(Habit {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                color: row.get(2)?,
-                icon: row.get(3)?,
-                target_days_per_week: row.get(4).unwrap_or(7),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-                deleted_at: row.get(7)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut items = Vec::new();
-    for r in rows.flatten() {
-        items.push(r);
-    }
-    Ok(items)
-}
-
-#[tauri::command]
-pub fn habits_get_by_id(id: String, db_state: State<'_, DbState>) -> Result<Option<Habit>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
+fn fetch_habit_by_id(conn: &Connection, id: &str) -> Result<Option<Habit>, String> {
     let res = conn.query_row(
         "SELECT id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at
          FROM habits
@@ -191,109 +151,7 @@ pub fn habits_get_by_id(id: String, db_state: State<'_, DbState>) -> Result<Opti
     }
 }
 
-#[tauri::command]
-pub fn habits_create(
-    data: CreateHabitPayload,
-    db_state: State<'_, DbState>,
-) -> Result<Habit, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
-    let id = data
-        .id
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    let now = Utc::now().to_rfc3339();
-    let title = data.title.trim().to_string();
-    let color = data.color.unwrap_or_else(|| "emerald".to_string());
-    let icon = data.icon.unwrap_or_else(|| "Flame".to_string());
-    let target = data.target_days_per_week.unwrap_or(7);
-
-    conn.execute(
-        "INSERT INTO habits (id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, NULL)
-         ON CONFLICT(id) DO UPDATE SET
-            title = excluded.title,
-            color = excluded.color,
-            icon = excluded.icon,
-            target_days_per_week = excluded.target_days_per_week,
-            updated_at = excluded.updated_at,
-            deleted_at = NULL",
-        params![id, title, color, icon, target, now],
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(Habit {
-        id,
-        title,
-        color: Some(color),
-        icon: Some(icon),
-        target_days_per_week: target,
-        created_at: Some(now.clone()),
-        updated_at: Some(now),
-        deleted_at: None,
-    })
-}
-
-#[tauri::command]
-pub fn habits_update(
-    id: String,
-    data: UpdateHabitPayload,
-    db_state: State<'_, DbState>,
-) -> Result<UpdateHabitResponse, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
-    let now = Utc::now().to_rfc3339();
-    let count = conn
-        .execute(
-            "UPDATE habits SET
-                title = COALESCE(?1, title),
-                color = COALESCE(?2, color),
-                icon = COALESCE(?3, icon),
-                target_days_per_week = COALESCE(?4, target_days_per_week),
-                updated_at = ?5
-             WHERE id = ?6 AND deleted_at IS NULL",
-            params![
-                data.title.map(|t| t.trim().to_string()),
-                data.color,
-                data.icon,
-                data.target_days_per_week,
-                now,
-                id
-            ],
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(UpdateHabitResponse {
-        success: count > 0,
-    })
-}
-
-#[tauri::command]
-pub fn habits_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-    let now = Utc::now().to_rfc3339();
-
-    let count = conn
-        .execute(
-            "UPDATE habits SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-            params![now, id],
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(count > 0)
-}
-
-#[tauri::command]
-pub fn habits_get_logs(
-    habit_id: String,
-    db_state: State<'_, DbState>,
-) -> Result<Vec<HabitLog>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
+fn fetch_habit_logs(conn: &Connection, habit_id: &str) -> Result<Vec<HabitLog>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT id, habit_id, date, completed_at, notes, created_at, updated_at, deleted_at
@@ -326,80 +184,260 @@ pub fn habits_get_logs(
 }
 
 #[tauri::command]
-pub fn habits_get_all_logs(db_state: State<'_, DbState>) -> Result<Vec<HabitLog>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
+pub async fn habits_get_all(db_state: State<'_, DbState>) -> Result<Vec<Habit>, String> {
+    db_state
+        .read(|conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at
+                     FROM habits
+                     WHERE deleted_at IS NULL
+                     ORDER BY title COLLATE NOCASE ASC",
+                )
+                .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, habit_id, date, completed_at, notes, created_at, updated_at, deleted_at
-             FROM habit_logs
-             WHERE deleted_at IS NULL
-             ORDER BY date ASC",
-        )
-        .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map([], |row| {
+                    Ok(Habit {
+                        id: row.get(0)?,
+                        title: row.get(1)?,
+                        color: row.get(2)?,
+                        icon: row.get(3)?,
+                        target_days_per_week: row.get(4).unwrap_or(7),
+                        created_at: row.get(5)?,
+                        updated_at: row.get(6)?,
+                        deleted_at: row.get(7)?,
+                    })
+                })
+                .map_err(|e| e.to_string())?;
 
-    let rows = stmt
-        .query_map([], |row| {
-            Ok(HabitLog {
-                id: row.get(0)?,
-                habit_id: row.get(1)?,
-                date: row.get(2)?,
-                completed_at: row.get(3)?,
-                notes: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-                deleted_at: row.get(7)?,
-            })
+            let mut items = Vec::new();
+            for r in rows.flatten() {
+                items.push(r);
+            }
+            Ok(items)
         })
-        .map_err(|e| e.to_string())?;
-
-    let mut list = Vec::new();
-    for r in rows.flatten() {
-        list.push(r);
-    }
-    Ok(list)
+        .await
 }
 
 #[tauri::command]
-pub fn habits_toggle_day_log(
+pub async fn habits_get_by_id(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Option<Habit>, String> {
+    db_state
+        .read(move |conn| fetch_habit_by_id(conn, &id))
+        .await
+}
+
+#[tauri::command]
+pub async fn habits_create(
+    data: CreateHabitPayload,
+    db_state: State<'_, DbState>,
+) -> Result<Habit, String> {
+    db_state
+        .write(move |conn| {
+            let id = data
+                .id
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+            let now = Utc::now().to_rfc3339();
+            let title = data.title.trim().to_string();
+            let color = data.color.unwrap_or_else(|| "emerald".to_string());
+            let icon = data.icon.unwrap_or_else(|| "Flame".to_string());
+            let target = data.target_days_per_week.unwrap_or(7);
+
+            conn.execute(
+                "INSERT INTO habits (id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, NULL)
+                 ON CONFLICT(id) DO UPDATE SET
+                    title = excluded.title,
+                    color = excluded.color,
+                    icon = excluded.icon,
+                    target_days_per_week = excluded.target_days_per_week,
+                    updated_at = excluded.updated_at,
+                    deleted_at = NULL",
+                params![id, title, color, icon, target, now],
+            )
+            .map_err(|e| e.to_string())?;
+
+            Ok(Habit {
+                id,
+                title,
+                color: Some(color),
+                icon: Some(icon),
+                target_days_per_week: target,
+                created_at: Some(now.clone()),
+                updated_at: Some(now),
+                deleted_at: None,
+            })
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn habits_update(
+    id: String,
+    data: UpdateHabitPayload,
+    db_state: State<'_, DbState>,
+) -> Result<UpdateHabitResponse, String> {
+    db_state
+        .write(move |conn| {
+            let now = Utc::now().to_rfc3339();
+            let count = conn
+                .execute(
+                    "UPDATE habits SET
+                        title = COALESCE(?1, title),
+                        color = COALESCE(?2, color),
+                        icon = COALESCE(?3, icon),
+                        target_days_per_week = COALESCE(?4, target_days_per_week),
+                        updated_at = ?5
+                     WHERE id = ?6 AND deleted_at IS NULL",
+                    params![
+                        data.title.map(|t| t.trim().to_string()),
+                        data.color,
+                        data.icon,
+                        data.target_days_per_week,
+                        now,
+                        id
+                    ],
+                )
+                .map_err(|e| e.to_string())?;
+
+            Ok(UpdateHabitResponse {
+                success: count > 0,
+            })
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn habits_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+    db_state
+        .write(move |conn| {
+            let now = Utc::now().to_rfc3339();
+
+            let count = conn
+                .execute(
+                    "UPDATE habits SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
+                    params![now, id],
+                )
+                .map_err(|e| e.to_string())?;
+
+            Ok(count > 0)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn habits_get_logs(
+    habit_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<Vec<HabitLog>, String> {
+    db_state
+        .read(move |conn| fetch_habit_logs(conn, &habit_id))
+        .await
+}
+
+#[tauri::command]
+pub async fn habits_get_all_logs(db_state: State<'_, DbState>) -> Result<Vec<HabitLog>, String> {
+    db_state
+        .read(|conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, habit_id, date, completed_at, notes, created_at, updated_at, deleted_at
+                     FROM habit_logs
+                     WHERE deleted_at IS NULL
+                     ORDER BY date ASC",
+                )
+                .map_err(|e| e.to_string())?;
+
+            let rows = stmt
+                .query_map([], |row| {
+                    Ok(HabitLog {
+                        id: row.get(0)?,
+                        habit_id: row.get(1)?,
+                        date: row.get(2)?,
+                        completed_at: row.get(3)?,
+                        notes: row.get(4)?,
+                        created_at: row.get(5)?,
+                        updated_at: row.get(6)?,
+                        deleted_at: row.get(7)?,
+                    })
+                })
+                .map_err(|e| e.to_string())?;
+
+            let mut list = Vec::new();
+            for r in rows.flatten() {
+                list.push(r);
+            }
+            Ok(list)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn habits_toggle_day_log(
     habit_id: String,
     date: String,
     db_state: State<'_, DbState>,
 ) -> Result<ToggleDayLogResponse, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    db_state
+        .write(move |conn| {
+            let composite_id = format!("{}_{}", habit_id, date);
+            let now = Utc::now().to_rfc3339();
 
-    let composite_id = format!("{}_{}", habit_id, date);
-    let now = Utc::now().to_rfc3339();
+            let existing: Option<(String, Option<String>)> = conn
+                .query_row(
+                    "SELECT id, deleted_at FROM habit_logs WHERE id = ?1 OR (habit_id = ?2 AND date = ?3) LIMIT 1",
+                    params![composite_id, habit_id, date],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .ok();
 
-    let existing: Option<(String, Option<String>)> = conn
-        .query_row(
-            "SELECT id, deleted_at FROM habit_logs WHERE id = ?1 OR (habit_id = ?2 AND date = ?3) LIMIT 1",
-            params![composite_id, habit_id, date],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .ok();
+            if let Some((row_id, deleted_at)) = existing {
+                if deleted_at.is_none() {
+                    conn.execute(
+                        "UPDATE habit_logs SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+                        params![now, row_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                    return Ok(ToggleDayLogResponse {
+                        completed: false,
+                        log: None,
+                    });
+                } else {
+                    conn.execute(
+                        "UPDATE habit_logs SET deleted_at = NULL, completed_at = ?1, updated_at = ?1 WHERE id = ?2",
+                        params![now, row_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                    let log = HabitLog {
+                        id: row_id,
+                        habit_id,
+                        date,
+                        completed_at: Some(now.clone()),
+                        notes: None,
+                        created_at: Some(now.clone()),
+                        updated_at: Some(now),
+                        deleted_at: None,
+                    };
+                    return Ok(ToggleDayLogResponse {
+                        completed: true,
+                        log: Some(log),
+                    });
+                }
+            }
 
-    if let Some((row_id, deleted_at)) = existing {
-        if deleted_at.is_none() {
             conn.execute(
-                "UPDATE habit_logs SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
-                params![now, row_id],
+                "INSERT INTO habit_logs (id, habit_id, date, completed_at, created_at, updated_at, deleted_at)
+                 VALUES (?1, ?2, ?3, ?4, ?4, ?4, NULL)",
+                params![composite_id, habit_id, date, now],
             )
             .map_err(|e| e.to_string())?;
-            return Ok(ToggleDayLogResponse {
-                completed: false,
-                log: None,
-            });
-        } else {
-            conn.execute(
-                "UPDATE habit_logs SET deleted_at = NULL, completed_at = ?1, updated_at = ?1 WHERE id = ?2",
-                params![now, row_id],
-            )
-            .map_err(|e| e.to_string())?;
+
             let log = HabitLog {
-                id: row_id,
+                id: composite_id,
                 habit_id,
                 date,
                 completed_at: Some(now.clone()),
@@ -408,48 +446,30 @@ pub fn habits_toggle_day_log(
                 updated_at: Some(now),
                 deleted_at: None,
             };
-            return Ok(ToggleDayLogResponse {
+
+            Ok(ToggleDayLogResponse {
                 completed: true,
                 log: Some(log),
-            });
-        }
-    }
-
-    conn.execute(
-        "INSERT INTO habit_logs (id, habit_id, date, completed_at, created_at, updated_at, deleted_at)
-         VALUES (?1, ?2, ?3, ?4, ?4, ?4, NULL)",
-        params![composite_id, habit_id, date, now],
-    )
-    .map_err(|e| e.to_string())?;
-
-    let log = HabitLog {
-        id: composite_id,
-        habit_id,
-        date,
-        completed_at: Some(now.clone()),
-        notes: None,
-        created_at: Some(now.clone()),
-        updated_at: Some(now),
-        deleted_at: None,
-    };
-
-    Ok(ToggleDayLogResponse {
-        completed: true,
-        log: Some(log),
-    })
+            })
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn habits_get_with_stats(
+pub async fn habits_get_with_stats(
     habit_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Option<HabitWithLogs>, String> {
-    let habit = match habits_get_by_id(habit_id.clone(), db_state.clone())? {
-        Some(h) => h,
-        None => return Ok(None),
-    };
-    let logs = habits_get_logs(habit_id, db_state)?;
-    let stats = calculate_habit_stats(&logs);
+    db_state
+        .read(move |conn| {
+            let habit = match fetch_habit_by_id(conn, &habit_id)? {
+                Some(h) => h,
+                None => return Ok(None),
+            };
+            let logs = fetch_habit_logs(conn, &habit_id)?;
+            let stats = calculate_habit_stats(&logs);
 
-    Ok(Some(HabitWithLogs { habit, logs, stats }))
+            Ok(Some(HabitWithLogs { habit, logs, stats }))
+        })
+        .await
 }

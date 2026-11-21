@@ -637,26 +637,29 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
 
 #[tauri::command]
 pub async fn scrap_delete_local(scrap_id: String) -> Result<bool, String> {
-    let clean_id: String = std::path::Path::new(scrap_id.trim())
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("")
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if clean_id.is_empty() {
-        return Ok(true);
-    }
-    let app_dir = crate::get_app_data_dir();
-    let scraps_dir = app_dir.join("scraps");
-    let html_path = scraps_dir.join(format!("{}.html", clean_id));
-    let enc_path = scraps_dir.join(format!("{}.enc", clean_id));
+    crate::db::run_blocking(move || {
+        let clean_id: String = std::path::Path::new(scrap_id.trim())
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+            .collect();
+        if clean_id.is_empty() {
+            return Ok(true);
+        }
+        let app_dir = crate::get_app_data_dir();
+        let scraps_dir = app_dir.join("scraps");
+        let html_path = scraps_dir.join(format!("{}.html", clean_id));
+        let enc_path = scraps_dir.join(format!("{}.enc", clean_id));
 
-    if html_path.exists() {
-        let _ = std::fs::remove_file(html_path);
-    }
-    if enc_path.exists() {
-        let _ = std::fs::remove_file(enc_path);
-    }
-    Ok(true)
+        if html_path.exists() {
+            let _ = std::fs::remove_file(html_path);
+        }
+        if enc_path.exists() {
+            let _ = std::fs::remove_file(enc_path);
+        }
+        Ok(true)
+    })
+    .await
 }

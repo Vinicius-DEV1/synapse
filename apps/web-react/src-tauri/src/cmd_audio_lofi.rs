@@ -38,28 +38,34 @@ fn verify_path_confinement(base_dir: &Path, target_path: &Path) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn lofi_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
-    let lofi_dir = get_lofi_dir(&app)?;
-    let safe_filename = sanitize_filename(&filename);
-    let path = lofi_dir.join(&safe_filename);
-    verify_path_confinement(&lofi_dir, &path)?;
-    if path.exists() {
-        Ok(path.to_string_lossy().to_string())
-    } else {
-        Ok("".to_string())
-    }
+pub async fn lofi_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
+    crate::db::run_blocking(move || {
+        let lofi_dir = get_lofi_dir(&app)?;
+        let safe_filename = sanitize_filename(&filename);
+        let path = lofi_dir.join(&safe_filename);
+        verify_path_confinement(&lofi_dir, &path)?;
+        if path.exists() {
+            Ok(path.to_string_lossy().to_string())
+        } else {
+            Ok("".to_string())
+        }
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn lofi_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
-    let lofi_dir = get_lofi_dir(&app)?;
-    let safe_filename = sanitize_filename(&filename);
-    let path = lofi_dir.join(&safe_filename);
-    verify_path_confinement(&lofi_dir, &path)?;
-    if path.exists() {
-        fs::remove_file(path).map_err(|e| e.to_string())?;
-    }
-    Ok(true)
+pub async fn lofi_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
+    crate::db::run_blocking(move || {
+        let lofi_dir = get_lofi_dir(&app)?;
+        let safe_filename = sanitize_filename(&filename);
+        let path = lofi_dir.join(&safe_filename);
+        verify_path_confinement(&lofi_dir, &path)?;
+        if path.exists() {
+            fs::remove_file(path).map_err(|e| e.to_string())?;
+        }
+        Ok(true)
+    })
+    .await
 }
 
 #[tauri::command]

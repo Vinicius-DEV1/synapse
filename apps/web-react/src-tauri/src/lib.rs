@@ -41,7 +41,7 @@ mod db;
 mod legacy_data_migration;
 pub mod protocol_encrypted;
 pub mod protocol_encrypted_utils;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use tauri::Manager;
 
 static APP_DATA_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
@@ -145,8 +145,12 @@ pub fn run() {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .register_uri_scheme_protocol("encrypted", |ctx, req| {
-            protocol_encrypted::handle_encrypted_protocol(ctx.app_handle(), req)
+        .register_asynchronous_uri_scheme_protocol("encrypted", |ctx, req, responder| {
+            let app_handle = ctx.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let response = protocol_encrypted::handle_encrypted_protocol(&app_handle, req);
+                responder.respond(response);
+            });
         })
         .setup(|app| {
             let app_data_dir = init_app_data_dir(app.handle());
@@ -161,15 +165,12 @@ pub fn run() {
 
             let db_path = app_data_dir.join("caderno.sqlite");
 
-            let conn = db::init_db(db_path).map_err(|error| {
+            let db_state = db::DbState::open(db_path).map_err(|error| {
                 log::error!("Failed to initialize the SQLite database: {error}");
                 std::io::Error::other(error)
             })?;
 
-            app.manage(db::DbState {
-                conn: Mutex::new(Some(conn)),
-                keys: Mutex::new(None),
-            });
+            app.manage(db_state);
 
             let app_handle = app.handle().clone();
             let stream_app_handle = app.handle().clone();
@@ -318,6 +319,7 @@ pub fn run() {
             cmd_sync::sync_get_row,
             cmd_sync::sync_delete_row,
             cmd_sync::sync_upsert_row,
+            cmd_sync::sync_upsert_rows_batch,
             cmd_sync::sync_get_rows_by_ids,
             cmd_sync::sync_get_modified_rows,
             cmd_binaries::check_binaries_status,

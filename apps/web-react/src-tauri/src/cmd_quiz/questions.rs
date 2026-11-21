@@ -31,54 +31,56 @@ pub fn map_question_row(row: &rusqlite::Row) -> rusqlite::Result<QuizQuestionDto
 }
 
 #[tauri::command]
-pub fn quiz_get_questions_by_battery(
+pub async fn quiz_get_questions_by_battery(
     battery_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<QuizQuestionDto>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    db_state
+        .read(move |conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, battery_id, type, question, options, correct_index, expected_answer, explanation, tags, sort_order, created_at, updated_at, deleted_at
+                     FROM quiz_questions
+                     WHERE battery_id = ?1 AND deleted_at IS NULL
+                     ORDER BY sort_order ASC, created_at ASC",
+                )
+                .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, battery_id, type, question, options, correct_index, expected_answer, explanation, tags, sort_order, created_at, updated_at, deleted_at
-             FROM quiz_questions
-             WHERE battery_id = ?1 AND deleted_at IS NULL
-             ORDER BY sort_order ASC, created_at ASC",
-        )
-        .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![battery_id], map_question_row)
+                .map_err(|e| e.to_string())?;
 
-    let rows = stmt
-        .query_map(params![battery_id], map_question_row)
-        .map_err(|e| e.to_string())?;
-
-    let mut list = Vec::new();
-    for r in rows.flatten() {
-        list.push(r);
-    }
-    Ok(list)
+            let mut list = Vec::new();
+            for r in rows.flatten() {
+                list.push(r);
+            }
+            Ok(list)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn quiz_get_question_by_id(
+pub async fn quiz_get_question_by_id(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Option<QuizQuestionDto>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    db_state
+        .read(move |conn| {
+            let res = conn.query_row(
+                "SELECT id, battery_id, type, question, options, correct_index, expected_answer, explanation, tags, sort_order, created_at, updated_at, deleted_at
+                 FROM quiz_questions
+                 WHERE id = ?1 AND deleted_at IS NULL",
+                params![id],
+                map_question_row,
+            );
 
-    let res = conn.query_row(
-        "SELECT id, battery_id, type, question, options, correct_index, expected_answer, explanation, tags, sort_order, created_at, updated_at, deleted_at
-         FROM quiz_questions
-         WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
-        map_question_row,
-    );
-
-    match res {
-        Ok(q) => Ok(Some(q)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e.to_string()),
-    }
+            match res {
+                Ok(q) => Ok(Some(q)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(e.to_string()),
+            }
+        })
+        .await
 }
 
 fn upsert_question_conn(
@@ -236,42 +238,47 @@ fn upsert_question_conn(
 }
 
 #[tauri::command]
-pub fn quiz_save_question(
+pub async fn quiz_save_question(
     question: QuizQuestionDto,
     db_state: State<'_, DbState>,
 ) -> Result<QuizQuestionDto, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-    upsert_question_conn(conn, question, 0)
+    db_state
+        .write(move |conn| upsert_question_conn(conn, question, 0))
+        .await
 }
 
 #[tauri::command]
-pub fn quiz_save_questions_batch(
+pub async fn quiz_save_questions_batch(
     questions: Vec<QuizQuestionDto>,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<QuizQuestionDto>, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
-    let mut saved = Vec::with_capacity(questions.len());
-    for (idx, q) in questions.into_iter().enumerate() {
-        saved.push(upsert_question_conn(conn, q, idx as i32)?);
-    }
-    Ok(saved)
+    db_state
+        .write(move |conn| {
+            let tx = conn.transaction().map_err(|e| e.to_string())?;
+            let mut saved = Vec::with_capacity(questions.len());
+            for (idx, q) in questions.into_iter().enumerate() {
+                saved.push(upsert_question_conn(&tx, q, idx as i32)?);
+            }
+            tx.commit().map_err(|e| e.to_string())?;
+            Ok(saved)
+        })
+        .await
 }
 
 #[tauri::command]
-pub fn quiz_delete_question(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.lock_conn()?;
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-    let now = Utc::now().to_rfc3339();
+pub async fn quiz_delete_question(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+    db_state
+        .write(move |conn| {
+            let now = Utc::now().to_rfc3339();
 
-    let count = conn
-        .execute(
-            "UPDATE quiz_questions SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-            params![now, id],
-        )
-        .map_err(|e| e.to_string())?;
+            let count = conn
+                .execute(
+                    "UPDATE quiz_questions SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
+                    params![now, id],
+                )
+                .map_err(|e| e.to_string())?;
 
-    Ok(count > 0)
+            Ok(count > 0)
+        })
+        .await
 }

@@ -23,326 +23,326 @@ pub struct VideoStorageStats {
 
 /// Retrieves the absolute filesystem path for a locally stored video file (with enc and debug fallback).
 #[tauri::command]
-pub fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
-    let videos_dir = get_videos_dir(&app)?;
-    let safe_filename = sanitize_filename(&filename);
+pub async fn video_get_local_path(filename: String, app: AppHandle) -> Result<String, String> {
+    crate::db::run_blocking(move || {
+        let videos_dir = get_videos_dir(&app)?;
+        let safe_filename = sanitize_filename(&filename);
 
-    // 1. Direct match
-    let path = videos_dir.join(&safe_filename);
-    if path.exists() {
-        return Ok(path.to_string_lossy().to_string());
-    }
-
-    // 2. Encrypted variant
-    let enc_path = videos_dir.join(format!("{}.enc", safe_filename));
-    if enc_path.exists() {
-        return Ok(enc_path.to_string_lossy().to_string());
-    }
-
-    // 3. Stripped enc variant
-    if safe_filename.ends_with(".enc") {
-        let stripped = safe_filename.trim_end_matches(".enc");
-        let p = videos_dir.join(stripped);
-        if p.exists() {
-            return Ok(p.to_string_lossy().to_string());
+        let path = videos_dir.join(&safe_filename);
+        if path.exists() {
+            return Ok(path.to_string_lossy().to_string());
         }
-    }
 
-    // 4. Web version variant
-    let stem = std::path::Path::new(&safe_filename)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(&safe_filename);
-    let web_enc = videos_dir.join(format!("{}_web.mp4.enc", stem));
-    if web_enc.exists() {
-        return Ok(web_enc.to_string_lossy().to_string());
-    }
-    let web_path = videos_dir.join(format!("{}_web.mp4", stem));
-    if web_path.exists() {
-        return Ok(web_path.to_string_lossy().to_string());
-    }
+        let enc_path = videos_dir.join(format!("{}.enc", safe_filename));
+        if enc_path.exists() {
+            return Ok(enc_path.to_string_lossy().to_string());
+        }
 
-    // 5. Fallback: Search release folder when executing in debug mode
-    if let Some(parent) = videos_dir.parent() {
-        if let Some(grandparent) = parent.parent() {
-            if let Some(greatgrandparent) = grandparent.parent() {
-                let release_path = greatgrandparent
-                    .join("release")
-                    .join("data")
-                    .join("videos")
-                    .join(&safe_filename);
-                if release_path.exists() {
-                    return Ok(release_path.to_string_lossy().to_string());
-                }
-                let release_enc = greatgrandparent
-                    .join("release")
-                    .join("data")
-                    .join("videos")
-                    .join(format!("{}.enc", safe_filename));
-                if release_enc.exists() {
-                    return Ok(release_enc.to_string_lossy().to_string());
+        if safe_filename.ends_with(".enc") {
+            let stripped = safe_filename.trim_end_matches(".enc");
+            let p = videos_dir.join(stripped);
+            if p.exists() {
+                return Ok(p.to_string_lossy().to_string());
+            }
+        }
+
+        let stem = std::path::Path::new(&safe_filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(&safe_filename);
+        let web_enc = videos_dir.join(format!("{}_web.mp4.enc", stem));
+        if web_enc.exists() {
+            return Ok(web_enc.to_string_lossy().to_string());
+        }
+        let web_path = videos_dir.join(format!("{}_web.mp4", stem));
+        if web_path.exists() {
+            return Ok(web_path.to_string_lossy().to_string());
+        }
+
+        if let Some(parent) = videos_dir.parent() {
+            if let Some(grandparent) = parent.parent() {
+                if let Some(greatgrandparent) = grandparent.parent() {
+                    let release_path = greatgrandparent
+                        .join("release")
+                        .join("data")
+                        .join("videos")
+                        .join(&safe_filename);
+                    if release_path.exists() {
+                        return Ok(release_path.to_string_lossy().to_string());
+                    }
+                    let release_enc = greatgrandparent
+                        .join("release")
+                        .join("data")
+                        .join("videos")
+                        .join(format!("{}.enc", safe_filename));
+                    if release_enc.exists() {
+                        return Ok(release_enc.to_string_lossy().to_string());
+                    }
                 }
             }
         }
-    }
 
-    Ok("".to_string())
+        Ok("".to_string())
+    })
+    .await
 }
 
 /// Computes accurate file sizes on disk for all variants of a video (original, web, audios, subtitles).
 #[tauri::command]
-pub fn video_get_storage_stats(
+pub async fn video_get_storage_stats(
     filename: String,
     audio_tracks: Option<Vec<String>>,
     subtitle_tracks: Option<Vec<String>>,
     app: AppHandle,
 ) -> Result<VideoStorageStats, String> {
-    let videos_dir = get_videos_dir(&app)?;
-    let safe_filename = sanitize_filename(&filename);
+    crate::db::run_blocking(move || {
+        let videos_dir = get_videos_dir(&app)?;
+        let safe_filename = sanitize_filename(&filename);
 
-    let mut total_size = 0u64;
+        let mut total_size = 0u64;
 
-    // 1. Original file
-    let mut original_path = None;
-    let mut original_size = None;
-    let direct_orig = videos_dir.join(&safe_filename);
-    let enc_orig = videos_dir.join(format!("{}.enc", safe_filename));
-    if direct_orig.exists() {
-        if let Ok(meta) = fs::metadata(&direct_orig) {
-            original_size = Some(meta.len());
-            total_size += meta.len();
-            original_path = Some(direct_orig.to_string_lossy().to_string());
+        let mut original_path = None;
+        let mut original_size = None;
+        let direct_orig = videos_dir.join(&safe_filename);
+        let enc_orig = videos_dir.join(format!("{}.enc", safe_filename));
+        if direct_orig.exists() {
+            if let Ok(meta) = fs::metadata(&direct_orig) {
+                original_size = Some(meta.len());
+                total_size += meta.len();
+                original_path = Some(direct_orig.to_string_lossy().to_string());
+            }
+        } else if enc_orig.exists() {
+            if let Ok(meta) = fs::metadata(&enc_orig) {
+                original_size = Some(meta.len());
+                total_size += meta.len();
+                original_path = Some(enc_orig.to_string_lossy().to_string());
+            }
         }
-    } else if enc_orig.exists() {
-        if let Ok(meta) = fs::metadata(&enc_orig) {
-            original_size = Some(meta.len());
-            total_size += meta.len();
-            original_path = Some(enc_orig.to_string_lossy().to_string());
-        }
-    }
 
-    // 2. Web version
-    let mut web_path = None;
-    let mut web_size = None;
-    let stem = std::path::Path::new(&safe_filename)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(&safe_filename);
-    let direct_web = videos_dir.join(format!("{}_web.mp4", stem));
-    let enc_web = videos_dir.join(format!("{}_web.mp4.enc", stem));
-    if direct_web.exists() {
-        if let Ok(meta) = fs::metadata(&direct_web) {
-            web_size = Some(meta.len());
-            total_size += meta.len();
-            web_path = Some(direct_web.to_string_lossy().to_string());
+        let mut web_path = None;
+        let mut web_size = None;
+        let stem = std::path::Path::new(&safe_filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(&safe_filename);
+        let direct_web = videos_dir.join(format!("{}_web.mp4", stem));
+        let enc_web = videos_dir.join(format!("{}_web.mp4.enc", stem));
+        if direct_web.exists() {
+            if let Ok(meta) = fs::metadata(&direct_web) {
+                web_size = Some(meta.len());
+                total_size += meta.len();
+                web_path = Some(direct_web.to_string_lossy().to_string());
+            }
+        } else if enc_web.exists() {
+            if let Ok(meta) = fs::metadata(&enc_web) {
+                web_size = Some(meta.len());
+                total_size += meta.len();
+                web_path = Some(enc_web.to_string_lossy().to_string());
+            }
         }
-    } else if enc_web.exists() {
-        if let Ok(meta) = fs::metadata(&enc_web) {
-            web_size = Some(meta.len());
-            total_size += meta.len();
-            web_path = Some(enc_web.to_string_lossy().to_string());
-        }
-    }
 
-    // 3. Audio track sizes
-    let mut audio_sizes = std::collections::HashMap::new();
-    if let Some(audios) = audio_tracks {
-        for a in audios {
-            let a_safe = sanitize_filename(&a);
-            let a_file = videos_dir.join(&a_safe);
-            let a_enc = videos_dir.join(format!("{}.enc", a_safe));
-            if a_file.exists() {
-                if let Ok(m) = fs::metadata(&a_file) {
-                    audio_sizes.insert(a.clone(), m.len());
-                    total_size += m.len();
-                }
-            } else if a_enc.exists() {
-                if let Ok(m) = fs::metadata(&a_enc) {
-                    audio_sizes.insert(a.clone(), m.len());
-                    total_size += m.len();
+        let mut audio_sizes = std::collections::HashMap::new();
+        if let Some(audios) = audio_tracks {
+            for a in audios {
+                let a_safe = sanitize_filename(&a);
+                let a_file = videos_dir.join(&a_safe);
+                let a_enc = videos_dir.join(format!("{}.enc", a_safe));
+                if a_file.exists() {
+                    if let Ok(m) = fs::metadata(&a_file) {
+                        audio_sizes.insert(a.clone(), m.len());
+                        total_size += m.len();
+                    }
+                } else if a_enc.exists() {
+                    if let Ok(m) = fs::metadata(&a_enc) {
+                        audio_sizes.insert(a.clone(), m.len());
+                        total_size += m.len();
+                    }
                 }
             }
         }
-    }
 
-    // 4. Subtitle track sizes
-    let mut subtitle_sizes = std::collections::HashMap::new();
-    if let Some(subs) = subtitle_tracks {
-        for s in subs {
-            let s_safe = sanitize_filename(&s);
-            let s_file = videos_dir.join(&s_safe);
-            let s_enc = videos_dir.join(format!("{}.enc", s_safe));
-            if s_file.exists() {
-                if let Ok(m) = fs::metadata(&s_file) {
-                    subtitle_sizes.insert(s.clone(), m.len());
-                    total_size += m.len();
-                }
-            } else if s_enc.exists() {
-                if let Ok(m) = fs::metadata(&s_enc) {
-                    subtitle_sizes.insert(s.clone(), m.len());
-                    total_size += m.len();
+        let mut subtitle_sizes = std::collections::HashMap::new();
+        if let Some(subs) = subtitle_tracks {
+            for s in subs {
+                let s_safe = sanitize_filename(&s);
+                let s_file = videos_dir.join(&s_safe);
+                let s_enc = videos_dir.join(format!("{}.enc", s_safe));
+                if s_file.exists() {
+                    if let Ok(m) = fs::metadata(&s_file) {
+                        subtitle_sizes.insert(s.clone(), m.len());
+                        total_size += m.len();
+                    }
+                } else if s_enc.exists() {
+                    if let Ok(m) = fs::metadata(&s_enc) {
+                        subtitle_sizes.insert(s.clone(), m.len());
+                        total_size += m.len();
+                    }
                 }
             }
         }
-    }
 
-    Ok(VideoStorageStats {
-        original_path,
-        original_size,
-        web_path,
-        web_size,
-        audio_sizes,
-        subtitle_sizes,
-        total_local_size: total_size,
+        Ok(VideoStorageStats {
+            original_path,
+            original_size,
+            web_path,
+            web_size,
+            audio_sizes,
+            subtitle_sizes,
+            total_local_size: total_size,
+        })
     })
+    .await
 }
 
 /// Reveals a file or directory in the native desktop file manager.
 #[tauri::command]
-pub fn os_show_in_folder(path: String, app: AppHandle) -> Result<bool, String> {
-    let mut target_path = std::path::PathBuf::from(&path);
+pub async fn os_show_in_folder(path: String, app: AppHandle) -> Result<bool, String> {
+    crate::db::run_blocking(move || {
+        let mut target_path = std::path::PathBuf::from(&path);
 
-    // If given just a filename, resolve against videos_dir
-    if !target_path.exists() {
-        if let Ok(videos_dir) = get_videos_dir(&app) {
-            let direct = videos_dir.join(&path);
-            let enc = videos_dir.join(format!("{}.enc", path));
-            if direct.exists() {
-                target_path = direct;
-            } else if enc.exists() {
-                target_path = enc;
+        if !target_path.exists() {
+            if let Ok(videos_dir) = get_videos_dir(&app) {
+                let direct = videos_dir.join(&path);
+                let enc = videos_dir.join(format!("{}.enc", path));
+                if direct.exists() {
+                    target_path = direct;
+                } else if enc.exists() {
+                    target_path = enc;
+                }
             }
         }
-    }
 
-    if !target_path.exists() {
-        return Err(format!("Caminho não encontrado: {}", path));
-    }
+        if !target_path.exists() {
+            return Err(format!("Caminho não encontrado: {}", path));
+        }
 
-    let folder = if target_path.is_dir() {
-        target_path.clone()
-    } else {
-        target_path.parent().unwrap_or(&target_path).to_path_buf()
-    };
-
-    #[cfg(target_os = "windows")]
-    {
-        if target_path.is_file() {
-            std::process::Command::new("explorer")
-                .args(["/select,", &target_path.to_string_lossy()])
-                .spawn()
-                .map_err(|e| e.to_string())?;
+        let folder = if target_path.is_dir() {
+            target_path.clone()
         } else {
-            std::process::Command::new("explorer")
+            target_path.parent().unwrap_or(&target_path).to_path_buf()
+        };
+
+        #[cfg(target_os = "windows")]
+        {
+            if target_path.is_file() {
+                std::process::Command::new("explorer")
+                    .args(["/select,", &target_path.to_string_lossy()])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            } else {
+                std::process::Command::new("explorer")
+                    .arg(&folder)
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            if target_path.is_file() {
+                std::process::Command::new("open")
+                    .args(["-R", &target_path.to_string_lossy()])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            } else {
+                std::process::Command::new("open")
+                    .arg(&folder)
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("xdg-open")
                 .arg(&folder)
                 .spawn()
                 .map_err(|e| e.to_string())?;
         }
-    }
-    #[cfg(target_os = "macos")]
-    {
-        if target_path.is_file() {
-            std::process::Command::new("open")
-                .args(["-R", &target_path.to_string_lossy()])
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        } else {
-            std::process::Command::new("open")
-                .arg(&folder)
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-    }
-    #[cfg(target_os = "linux")]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(&folder)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
 
-    Ok(true)
+        Ok(true)
+    })
+    .await
 }
 
 /// Reads a local video or subtitle file into memory with a 50MB safety limit to avoid WebView IPC OOM.
 #[tauri::command]
-pub fn video_read_file(path: String, app: AppHandle) -> Result<Vec<u8>, String> {
-    let videos_dir = get_videos_dir(&app)?;
-    let app_data_dir = crate::get_app_data_dir();
+pub async fn video_read_file(path: String, app: AppHandle) -> Result<Vec<u8>, String> {
+    crate::db::run_blocking(move || {
+        let videos_dir = get_videos_dir(&app)?;
+        let app_data_dir = crate::get_app_data_dir();
 
-    let mut file_path = std::path::PathBuf::from(&path);
-    if !file_path.exists() {
-        let direct = videos_dir.join(&path);
-        let enc = videos_dir.join(format!("{}.enc", path));
-        if direct.exists() {
-            file_path = direct;
-        } else if enc.exists() {
-            file_path = enc;
+        let mut file_path = std::path::PathBuf::from(&path);
+        if !file_path.exists() {
+            let direct = videos_dir.join(&path);
+            let enc = videos_dir.join(format!("{}.enc", path));
+            if direct.exists() {
+                file_path = direct;
+            } else if enc.exists() {
+                file_path = enc;
+            }
         }
-    }
 
-    let canonical = file_path
-        .canonicalize()
-        .map_err(|e| format!("Arquivo não encontrado ({:?}): {}", file_path, e))?;
+        let canonical = file_path
+            .canonicalize()
+            .map_err(|e| format!("Arquivo não encontrado ({:?}): {}", file_path, e))?;
 
-    let canonical_videos = videos_dir.canonicalize().unwrap_or(videos_dir);
-    let canonical_app_data = app_data_dir.canonicalize().unwrap_or(app_data_dir);
+        let canonical_videos = videos_dir.canonicalize().unwrap_or(videos_dir);
+        let canonical_app_data = app_data_dir.canonicalize().unwrap_or(app_data_dir);
 
-    if !canonical.starts_with(&canonical_videos) && !canonical.starts_with(&canonical_app_data) {
-        return Err("Acesso negado: o arquivo está fora dos diretórios autorizados".into());
-    }
+        if !canonical.starts_with(&canonical_videos) && !canonical.starts_with(&canonical_app_data) {
+            return Err("Acesso negado: o arquivo está fora dos diretórios autorizados".into());
+        }
 
-    if !canonical.is_file() {
-        return Err("O caminho especificado não é um arquivo válido".into());
-    }
+        if !canonical.is_file() {
+            return Err("O caminho especificado não é um arquivo válido".into());
+        }
 
-    // Safety: limit to 50 MB to prevent OOM crash via IPC for large video files
-    let metadata = fs::metadata(&canonical).map_err(|e| e.to_string())?;
-    if metadata.len() > 50 * 1024 * 1024 {
-        return Err(
-            "File too large to read via IPC. Use video_upload_file_to_drive instead.".into(),
-        );
-    }
-    fs::read(&canonical).map_err(|e| e.to_string())
+        let metadata = fs::metadata(&canonical).map_err(|e| e.to_string())?;
+        if metadata.len() > 50 * 1024 * 1024 {
+            return Err(
+                "File too large to read via IPC. Use video_upload_file_to_drive instead.".into(),
+            );
+        }
+        fs::read(&canonical).map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Deletes a local video file from the application's video storage directory.
 #[tauri::command]
-pub fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
-    let videos_dir = get_videos_dir(&app)?;
-    let safe_filename = sanitize_filename(&filename);
-    
-    // 1. Direct path
-    let path = videos_dir.join(&safe_filename);
-    if path.exists() {
-        let _ = fs::remove_file(&path);
-    }
+pub async fn video_delete_local(filename: String, app: AppHandle) -> Result<bool, String> {
+    crate::db::run_blocking(move || {
+        let videos_dir = get_videos_dir(&app)?;
+        let safe_filename = sanitize_filename(&filename);
 
-    // 2. Encrypted variant (.enc)
-    if !safe_filename.ends_with(".enc") {
-        let enc_path = videos_dir.join(format!("{}.enc", safe_filename));
-        if enc_path.exists() {
-            let _ = fs::remove_file(&enc_path);
+        let path = videos_dir.join(&safe_filename);
+        if path.exists() {
+            let _ = fs::remove_file(&path);
         }
-    }
 
-    // 3. Web version variants (e.g. video_web.mp4 and video_web.mp4.enc)
-    let stem = std::path::Path::new(&safe_filename)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(&safe_filename);
-    let web_name = format!("{}_web.mp4", stem);
-    let web_path = videos_dir.join(&web_name);
-    if web_path.exists() {
-        let _ = fs::remove_file(&web_path);
-    }
-    let web_enc_path = videos_dir.join(format!("{}.enc", web_name));
-    if web_enc_path.exists() {
-        let _ = fs::remove_file(&web_enc_path);
-    }
+        if !safe_filename.ends_with(".enc") {
+            let enc_path = videos_dir.join(format!("{}.enc", safe_filename));
+            if enc_path.exists() {
+                let _ = fs::remove_file(&enc_path);
+            }
+        }
 
-    println!("\x1b[1;36m[CADERNO VIDEO]\x1b[0m 🗑️  \x1b[1;33mArquivos locais excluídos para:\x1b[0m {}", safe_filename);
-    Ok(true)
+        let stem = std::path::Path::new(&safe_filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(&safe_filename);
+        let web_name = format!("{}_web.mp4", stem);
+        let web_path = videos_dir.join(&web_name);
+        if web_path.exists() {
+            let _ = fs::remove_file(&web_path);
+        }
+        let web_enc_path = videos_dir.join(format!("{}.enc", web_name));
+        if web_enc_path.exists() {
+            let _ = fs::remove_file(&web_enc_path);
+        }
+
+        Ok(true)
+    })
+    .await
 }
 
 /// Imports an external video file, encrypts it with the Culture key and stores it locally.

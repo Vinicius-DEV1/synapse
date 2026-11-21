@@ -24,6 +24,24 @@ pub struct PageRecord {
     pub is_locked: i32,
 }
 
+/// Lightweight page metadata record excluding heavy content, encrypted_content, and crdt_state blobs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PageMetaRecord {
+    pub id: String,
+    pub parent_id: Option<String>,
+    pub title: String,
+    pub icon: String,
+    pub sort_order: f64,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+    pub deleted_at: Option<String>,
+    pub cover_image: Option<String>,
+    pub description: Option<String>,
+    pub is_pinned: i32,
+    pub pinned_order: f64,
+    pub is_locked: i32,
+}
+
 /// Enriched page node for hierarchical navigation trees.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageNode {
