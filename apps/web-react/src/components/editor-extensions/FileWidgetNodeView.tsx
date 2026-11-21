@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import type { Node as PMNode } from '@tiptap/pm/model';
@@ -6,15 +6,16 @@ import { File, FileText, Image as ImageIcon, Film, X, Folder, ArrowUp, ArrowDown
 import { getStoreState, getStoreDispatch } from '../../store/useStore';
 import { getValidAccessToken, deleteFromDrive } from '../../services/drive';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
-import FileViewer from '../files/FileViewer';
-import FloatingPdfViewer from './FloatingPdfViewer';
 import ColorPalettePicker from './ColorPalettePicker';
 import { triggerToast } from '../ui/ToastContext';
 import type { FileItem } from '../../types/files';
-import AudioPlayerModal from '../files/AudioPlayerModal';
 import { playUiClickSound, playUiDeleteSound } from '../../utils/uiSounds';
 import { FileWidgetDeletedNoticeModal } from './ui/FileWidgetDeletedNoticeModal';
 import { FileWidgetDeleteConfirmModal } from './ui/FileWidgetDeleteConfirmModal';
+
+const FileViewer = lazy(() => import('../files/FileViewer'));
+const FloatingPdfViewer = lazy(() => import('./FloatingPdfViewer'));
+const AudioPlayerModal = lazy(() => import('../files/AudioPlayerModal'));
 
 export default function FileWidgetNodeView(props: NodeViewProps) {
   const { node, deleteNode, updateAttributes } = props;
@@ -507,30 +508,32 @@ export default function FileWidgetNodeView(props: NodeViewProps) {
         />
       )}
 
-      {showViewer && fileItem && (
-        <FileViewer 
-          item={fileItem} 
-          onClose={() => setShowViewer(false)} 
-        />
-      )}
-      
-      {showFloatingViewer && fileItem && fileType === 'pdf' && (
-        <FloatingPdfViewer
-          item={fileItem}
-          onClose={() => setShowFloatingViewer(false)}
-          onExpand={() => {
-            setShowFloatingViewer(false);
-            setShowViewer(true);
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showViewer && fileItem && (
+          <FileViewer 
+            item={fileItem} 
+            onClose={() => setShowViewer(false)} 
+          />
+        )}
+        
+        {showFloatingViewer && fileItem && fileType === 'pdf' && (
+          <FloatingPdfViewer
+            item={fileItem}
+            onClose={() => setShowFloatingViewer(false)}
+            onExpand={() => {
+              setShowFloatingViewer(false);
+              setShowViewer(true);
+            }}
+          />
+        )}
 
-      {showAudioPlayer && fileItem && (
-        <AudioPlayerModal
-          item={fileItem}
-          onClose={() => setShowAudioPlayer(false)}
-        />
-      )}
+        {showAudioPlayer && fileItem && (
+          <AudioPlayerModal
+            item={fileItem}
+            onClose={() => setShowAudioPlayer(false)}
+          />
+        )}
+      </Suspense>
     </NodeViewWrapper>
   );
 }

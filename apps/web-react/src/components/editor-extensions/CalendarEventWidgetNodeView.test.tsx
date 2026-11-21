@@ -11,6 +11,8 @@ vi.mock('../../store/useStore', () => ({
     state: { activeTabId: 'tab_1' },
     dispatch: vi.fn(),
   }),
+  useStoreDispatch: () => vi.fn(),
+  getStoreState: () => ({ activeTabId: 'tab_1' }),
 }));
 
 describe('CalendarEventWidgetNodeView Component', () => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import {
   Globe,
   Clock,
@@ -12,10 +12,6 @@ import {
   Sparkles,
   Hourglass,
 } from 'lucide-react';
-import YouTubePlaylistModal from '../YouTubePlaylistModal';
-import YouTubeSummaryModal from '../youtube/YouTubeSummaryModal';
-import YouTubeWatchModal from '../youtube/YouTubeWatchModal';
-import LinkInfoModal from './components/LinkInfoModal';
 import { formatDuration, formatDate, isYouTubeUrl } from './youtubeUtils';
 import LinkNotesDrawer from './LinkNotesDrawer';
 import LinkDragControls from './components/LinkDragControls';
@@ -26,6 +22,11 @@ import {
   hasExistingVideoSummary,
   extractYouTubeVideoId,
 } from '../../../services/youtube/youtubeSummaryService';
+
+const YouTubePlaylistModal = lazy(() => import('../YouTubePlaylistModal'));
+const YouTubeSummaryModal = lazy(() => import('../youtube/YouTubeSummaryModal'));
+const YouTubeWatchModal = lazy(() => import('../youtube/YouTubeWatchModal'));
+const LinkInfoModal = lazy(() => import('./components/LinkInfoModal'));
 
 interface LinkPreviewCardProps {
   url: string;
@@ -485,50 +486,52 @@ export default function LinkPreviewCard({
         onOpenScrap={onOpenScrap}
       />
 
-      {showPlaylistModal && (
-        <YouTubePlaylistModal
-          url={url}
-          title={title || 'Playlist'}
-          onClose={() => setShowPlaylistModal(false)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showPlaylistModal && (
+          <YouTubePlaylistModal
+            url={url}
+            title={title || 'Playlist'}
+            onClose={() => setShowPlaylistModal(false)}
+          />
+        )}
 
-      {showSummaryModal && (
-        <YouTubeSummaryModal
-          url={url}
-          title={title || 'Vídeo do YouTube'}
-          channel={channel || ''}
-          onClose={() => setShowSummaryModal(false)}
-        />
-      )}
+        {showSummaryModal && (
+          <YouTubeSummaryModal
+            url={url}
+            title={title || 'Vídeo do YouTube'}
+            channel={channel || ''}
+            onClose={() => setShowSummaryModal(false)}
+          />
+        )}
 
-      {showWatchModal && (
-        <YouTubeWatchModal
-          url={url}
-          title={title || 'Vídeo do YouTube'}
-          channel={channel || ''}
-          onClose={() => setShowWatchModal(false)}
-        />
-      )}
+        {showWatchModal && (
+          <YouTubeWatchModal
+            url={url}
+            title={title || 'Vídeo do YouTube'}
+            channel={channel || ''}
+            onClose={() => setShowWatchModal(false)}
+          />
+        )}
 
-      {showInfoModal && (
-        <LinkInfoModal
-          isOpen={showInfoModal}
-          onClose={() => setShowInfoModal(false)}
-          url={url}
-          title={title}
-          scrapId={scrapId}
-          scrapDriveFileId={scrapDriveFileId}
-          scrapLocalPath={scrapLocalPath}
-          masterKey={masterKey}
-          initialSummary={aiSummary}
-          onSaveSummary={onSaveSummary}
-          onInsertIntoNotes={(summaryText) => {
-            const nextNotes = notes ? `${notes}\n\n${summaryText}` : summaryText;
-            onChangeNotes(nextNotes);
-          }}
-        />
-      )}
+        {showInfoModal && (
+          <LinkInfoModal
+            isOpen={showInfoModal}
+            onClose={() => setShowInfoModal(false)}
+            url={url}
+            title={title}
+            scrapId={scrapId}
+            scrapDriveFileId={scrapDriveFileId}
+            scrapLocalPath={scrapLocalPath}
+            masterKey={masterKey}
+            initialSummary={aiSummary}
+            onSaveSummary={onSaveSummary}
+            onInsertIntoNotes={(summaryText) => {
+              const nextNotes = notes ? `${notes}\n\n${summaryText}` : summaryText;
+              onChangeNotes(nextNotes);
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

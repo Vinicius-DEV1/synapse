@@ -43,7 +43,8 @@ export interface BlockHandleState {
  */
 export function useBlockHandle(
   editor: Editor | null,
-  containerRef: React.RefObject<HTMLElement | null>
+  containerRef: React.RefObject<HTMLElement | null>,
+  isActive: boolean = true
 ): BlockHandleState {
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const posRef = useRef<number | null>(null);
@@ -67,6 +68,10 @@ export function useBlockHandle(
   }, []);
 
   useEffect(() => {
+    if (!isActive) {
+      forceHide();
+      return;
+    }
     const container = containerRef.current;
     if (!editor || !container) return;
 
@@ -185,6 +190,7 @@ export function useBlockHandle(
     };
 
     const hideUnlessDragging = () => {
+      if (posRef.current === null && hideTimer === null && rafId === null) return;
       clearHideTimer();
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
@@ -193,9 +199,12 @@ export function useBlockHandle(
       if (!draggingRef.current) hide();
     };
 
+    const scrollTarget =
+      container.closest('#page-view-scroll, .smooth-scroll-container') ?? window;
+
     container.addEventListener('mousemove', onMouseMove, { passive: true });
     container.addEventListener('mouseleave', onMouseLeave, { passive: true });
-    window.addEventListener('scroll', hideUnlessDragging, { capture: true, passive: true });
+    scrollTarget.addEventListener('scroll', hideUnlessDragging, { passive: true });
     editor.on('update', hideUnlessDragging);
 
     return () => {
@@ -205,10 +214,10 @@ export function useBlockHandle(
       }
       container.removeEventListener('mousemove', onMouseMove);
       container.removeEventListener('mouseleave', onMouseLeave);
-      window.removeEventListener('scroll', hideUnlessDragging, true);
+      scrollTarget.removeEventListener('scroll', hideUnlessDragging);
       editor.off('update', hideUnlessDragging);
     };
-  }, [editor, containerRef, hide]);
+  }, [editor, containerRef, hide, forceHide, isActive]);
 
   const onDragStart = useCallback(
     (event: React.DragEvent) => {

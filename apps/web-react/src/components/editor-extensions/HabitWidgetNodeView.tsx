@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Flame, Check, Activity, AlertCircle } from 'lucide-react';
 import { getStoreState } from '../../store/useStore';
@@ -7,9 +7,12 @@ import {
   broadcastHabitUpdate,
 } from '../../utils/habitUtils';
 import { playUiToggleSound } from '../../utils/uiSounds';
-import { HabitHeatmapModal } from '../habits/HabitHeatmapModal';
 import { Portal } from '../ui/Portal';
 import { useTranslation } from '../../i18n';
+
+const HabitHeatmapModal = lazy(() =>
+  import('../habits/HabitHeatmapModal').then((m) => ({ default: m.HabitHeatmapModal }))
+);
 
 export default function HabitWidgetNodeView({ node, updateAttributes }: NodeViewProps) {
   const { t } = useTranslation();
@@ -186,12 +189,14 @@ export default function HabitWidgetNodeView({ node, updateAttributes }: NodeView
       {/* Heatmap Modal Portal */}
       {showModal && (
         <Portal>
-          <HabitHeatmapModal
-            habitId={habitId}
-            initialDate={effectiveDate}
-            onClose={() => setShowModal(false)}
-            onHabitUpdated={loadStatus}
-          />
+          <Suspense fallback={null}>
+            <HabitHeatmapModal
+              habitId={habitId}
+              initialDate={effectiveDate}
+              onClose={() => setShowModal(false)}
+              onHabitUpdated={loadStatus}
+            />
+          </Suspense>
         </Portal>
       )}
     </NodeViewWrapper>

@@ -1,10 +1,67 @@
+import { useEffect, useState } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import hljs from 'highlight.js';
 import DOMPurify from 'dompurify';
 import { ScrollablePre } from '../../utils/scroll-forwarding';
-import { getErrorMessage } from '../../utils/error';
+import {
+  highlightCodeAsync,
+  highlightCodeSyncIfLoaded,
+  normalizeCodeLanguage,
+} from '../../utils/syntax-highlighter';
+
+function sanitizeHighlightedHtml(raw: string): string {
+  return DOMPurify.sanitize(raw, { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'] });
+}
+
+function AiHighlightedCode({
+  codeText,
+  language,
+  className,
+}: {
+  codeText: string;
+  language: string | null;
+  className?: string;
+}) {
+  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(() => {
+    const sync = highlightCodeSyncIfLoaded(codeText, language);
+    return sync ? sanitizeHighlightedHtml(sync) : null;
+  });
+
+  useEffect(() => {
+    const sync = highlightCodeSyncIfLoaded(codeText, language);
+    if (sync) {
+      setHighlightedHtml(sanitizeHighlightedHtml(sync));
+      return;
+    }
+    if (!normalizeCodeLanguage(language)) {
+      setHighlightedHtml(null);
+      return;
+    }
+
+    let cancelled = false;
+    setHighlightedHtml(null);
+    highlightCodeAsync(codeText, language).then((raw) => {
+      if (!cancelled && raw) {
+        setHighlightedHtml(sanitizeHighlightedHtml(raw));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [codeText, language]);
+
+  if (highlightedHtml) {
+    return (
+      <code
+        className={`${className || ''} hljs`}
+        dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+      />
+    );
+  }
+
+  return <code className={className}>{codeText}</code>;
+}
 
 export const mdRenderers: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>,
@@ -18,43 +75,17 @@ export const mdRenderers: Components = {
   li: ({ children }) => <li>{children}</li>,
   blockquote: ({ children }) => <blockquote className="border-l-2 border-brand-500 pl-3 my-2 text-brand-50/80 italic">{children}</blockquote>,
   code: ({ className, children, ...props }) => {
-    const match = /language-(\w+)/.exec(className || '');
+    const match = /language-([\w#+.-]+)/.exec(className || '');
     const isBlock = Boolean(match || String(children).includes('\n'));
-    
+
     if (isBlock) {
       const codeText = String(children).replace(/\n$/, '');
-      let highlightedHtml: string | null = null;
-      
-      if (match && hljs.getLanguage(match[1])) {
-        try {
-          const raw = hljs.highlight(codeText, { language: match[1] }).value;
-          highlightedHtml = DOMPurify.sanitize(raw, { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'] });
-        } catch (e: unknown) {
-          console.debug('[AiChatMarkdown] Syntax highlight fallback:', getErrorMessage(e));
-        }
-      } else {
-        try {
-          const raw = hljs.highlightAuto(codeText).value;
-          highlightedHtml = DOMPurify.sanitize(raw, { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'] });
-        } catch (e: unknown) {
-          console.debug('[AiChatMarkdown] Auto highlight fallback:', getErrorMessage(e));
-        }
-      }
-
-      if (highlightedHtml) {
-        return (
-          <code
-            className={`${className || ''} hljs`}
-            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-            {...props}
-          />
-        );
-      }
-
       return (
-        <code className={className} {...props}>
-          {children}
-        </code>
+        <AiHighlightedCode
+          codeText={codeText}
+          language={match ? match[1] : null}
+          className={className}
+        />
       );
     }
 

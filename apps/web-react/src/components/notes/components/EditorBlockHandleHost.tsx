@@ -6,13 +6,15 @@ import BlockHandle from './BlockHandle';
 export interface EditorBlockHandleHostProps {
   editor: TipTapEditor | null;
   wrapperRef: React.RefObject<HTMLDivElement | null>;
+  isActive?: boolean;
 }
 
 export function EditorBlockHandleHost({
   editor,
   wrapperRef,
+  isActive = true,
 }: EditorBlockHandleHostProps) {
-  const blockHandle = useBlockHandle(editor, wrapperRef);
+  const blockHandle = useBlockHandle(editor, wrapperRef, isActive);
   if (!blockHandle.anchor) return null;
 
   return (

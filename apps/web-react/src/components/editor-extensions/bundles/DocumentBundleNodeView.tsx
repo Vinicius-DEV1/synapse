@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import {
@@ -14,12 +14,13 @@ import {
 } from 'lucide-react';
 import ColorPalettePicker from '../ColorPalettePicker';
 import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
-import DocumentBundleModal from './DocumentBundleModal';
 import { Portal } from '../../ui/Portal';
 import { triggerToast } from '../../ui/ToastContext';
 import { getValidAccessToken, deleteFromDrive } from '../../../services/drive';
 import type { BundledFileItem } from './types';
 import { playUiClickSound, playUiToggleSound, playUiDeleteSound } from '../../../utils/uiSounds';
+
+const DocumentBundleModal = lazy(() => import('./DocumentBundleModal'));
 
 export default function DocumentBundleNodeView(props: NodeViewProps) {
   const { node, deleteNode, updateAttributes, editor } = props;
@@ -361,22 +362,24 @@ export default function DocumentBundleNodeView(props: NodeViewProps) {
 
       {/* Modal de Gestão Completa */}
       {isModalOpen && (
-        <DocumentBundleModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            // Reset picker flag so re-opening normally doesn't auto-expand it.
-            setOpenPickerOnMount(false);
-          }}
-          editor={editor}
-          getPos={props.getPos}
-          bundleId={bundleId}
-          initialTitle={title}
-          initialItems={items}
-          color={color}
-          onUpdateBundle={handleUpdateBundle}
-          initialShowLooseFilesPicker={openPickerOnMount}
-        />
+        <Suspense fallback={null}>
+          <DocumentBundleModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              // Reset picker flag so re-opening normally doesn't auto-expand it.
+              setOpenPickerOnMount(false);
+            }}
+            editor={editor}
+            getPos={props.getPos}
+            bundleId={bundleId}
+            initialTitle={title}
+            initialItems={items}
+            color={color}
+            onUpdateBundle={handleUpdateBundle}
+            initialShowLooseFilesPicker={openPickerOnMount}
+          />
+        </Suspense>
       )}
 
       {/* Modal de Confirmação de Exclusão do Agrupamento */}

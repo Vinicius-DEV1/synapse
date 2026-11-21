@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import type { Page } from '../../../types';
-import { useStore } from '../../../store/useStore';
+import { usePages, useStoreDispatch } from '../../../store/useStore';
 import {
   DndContext,
   DragOverlay,
@@ -46,14 +46,15 @@ const customCollisionDetection: CollisionDetection = (args) => {
 };
 
 export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdatePage }: SubPageGridProps) {
-  const { state, dispatch } = useStore();
+  const allPages = usePages();
+  const dispatch = useStoreDispatch();
   const [activeDragData, setActiveDragData] = useState<{ type: string; page: Page; isNested?: boolean } | null>(null);
 
   const visibleParentIds = useMemo(() => new Set(pages.map((p) => p.id)), [pages]);
 
   const childrenMap = useMemo(() => {
     const map = new Map<string, Page[]>();
-    for (const p of state.pages) {
+    for (const p of allPages) {
       if (p.parent_id && visibleParentIds.has(p.parent_id) && !p.deleted_at) {
         const list = map.get(p.parent_id);
         if (list) list.push(p);
@@ -64,7 +65,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
       list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     }
     return map;
-  }, [state.pages, visibleParentIds]);
+  }, [allPages, visibleParentIds]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -95,7 +96,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
       const draggedId = active.id.toString();
       const targetId = over.data.current?.page?.id;
       if (draggedId && targetId && draggedId !== targetId) {
-        if (isValidHierarchyMove(state.pages, draggedId, targetId)) {
+        if (isValidHierarchyMove(allPages, draggedId, targetId)) {
           onUpdatePage(draggedId, { parent_id: targetId })
             .then(() => {
               dispatch({ type: 'EXPAND_NODE', nodeId: targetId });
@@ -117,7 +118,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
       const overPage = over.data.current?.page;
        
       if (activePage && overPage && activePage.parent_id === overPage.parent_id) {
-        const siblings = state.pages
+        const siblings = allPages
           .filter((p: Page) => p.parent_id === activePage.parent_id && !p.deleted_at)
           .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
              

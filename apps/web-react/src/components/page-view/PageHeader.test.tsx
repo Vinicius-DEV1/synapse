@@ -5,10 +5,17 @@ import { useStore } from '../../store/useStore';
 import { I18nProvider } from '../../i18n';
 import type { Page } from '../../types';
 
-vi.mock('../../store/useStore', () => ({
-  useStore: vi.fn(),
-  getNotesKey: vi.fn(() => undefined),
-}));
+vi.mock('../../store/useStore', () => {
+  const storeMock = vi.fn();
+  return {
+    useStore: storeMock,
+    usePages: () => storeMock().state.pages,
+    useStoreDispatch: () => storeMock().dispatch,
+    useStoreSelector: (sel: (s: unknown) => unknown) => sel(storeMock().state),
+    getStoreState: () => storeMock().state,
+    getNotesKey: vi.fn(() => undefined),
+  };
+});
 
 describe('PageHeader Component', () => {
   const mockDispatch = vi.fn();

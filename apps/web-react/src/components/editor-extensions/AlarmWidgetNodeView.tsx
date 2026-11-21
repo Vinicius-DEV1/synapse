@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/core';
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusState, useFocusActions } from '../../store/FocusContext';
 import { XSquare } from 'lucide-react';
 import { Portal } from '../ui/Portal';
 
 export default function AlarmWidgetNodeView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const { alarmId, timeStr, label, status } = node.attrs;
-  const { alarms, handleToggleAlarm } = useFocusContext();
+  const { alarms } = useFocusState();
+  const { handleToggleAlarm } = useFocusActions();
 
   const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);

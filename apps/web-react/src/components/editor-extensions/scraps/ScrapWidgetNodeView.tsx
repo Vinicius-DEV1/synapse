@@ -13,7 +13,7 @@ import {
   Loader2,
   HardDrive
 } from 'lucide-react';
-import { useStore } from '../../../store/useStore';
+import { useStoreSelector } from '../../../store/useStore';
 import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
 import { captureWebScrap } from '../../../services/scrap/scrap-service';
 import { platform } from '../../../services/platform';
@@ -29,8 +29,7 @@ function formatBytes(bytes?: number | null): string {
 export function ScrapWidgetNodeView(props: NodeViewProps) {
   const { node, updateAttributes, deleteNode, selected } = props;
   const { id, url, title, favicon, drive_file_id, local_path, file_size, status, error_reason, created_at } = node.attrs;
-  const { state } = useStore();
-  const masterKey = state.moduleKeys['notes'] || state.moduleKeys['files'];
+  const masterKey = useStoreSelector((s) => s.moduleKeys['notes'] || s.moduleKeys['files']);
 
   const [isRetrying, setIsRetrying] = useState(false);
 

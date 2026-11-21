@@ -3,10 +3,20 @@ import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react
 import { NodeViewWrapper } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import type { NodeViewProps } from '@tiptap/core';
-import { useFocusContext } from '../../store/FocusContext';
+import { useFocusState, useFocusActions, useFocusTimerTick } from '../../store/FocusContext';
 import { Play, Pause, XSquare, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { Portal } from '../ui/Portal';
+
+function RunningFocusTimeDisplay() {
+  const timeLeft = useFocusTimerTick();
+  return (
+    <>
+      {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:
+      {(timeLeft % 60).toString().padStart(2, '0')}
+    </>
+  );
+}
 
 export default function FocusWidgetNodeView({ node, updateAttributes, editor, getPos, selected }: NodeViewProps) {
   const { sessionId, duration, tag,  status } = node.attrs;
@@ -18,14 +28,8 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
     typeof pos === 'number' &&
     editor.state.selection.from === pos
   );
-  const { 
-    currentSession, 
-    timeLeft, 
-    isPaused, 
-    setIsPaused, 
-    handleAddQuickTime,
-    handleTimerCancel
-  } = useFocusContext();
+  const { currentSession, isPaused } = useFocusState();
+  const { setIsPaused, handleAddQuickTime, handleTimerCancel } = useFocusActions();
 
   const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -69,11 +73,6 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
   }, [status, currentSession, sessionId, updateAttributes]);
 
   const isMySessionRunning = status === 'running' && currentSession?.id === sessionId;
-
-  // Format tempo
-  const displayTime = isMySessionRunning 
-    ? `${Math.floor(timeLeft / 60).toString().padStart(2, '0')}:${(timeLeft % 60).toString().padStart(2, '0')}`
-    : `${duration}m`;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -137,7 +136,9 @@ export default function FocusWidgetNodeView({ node, updateAttributes, editor, ge
           Foco{tag ? `: ${tag}` : ''}
         </span>
         <span className="opacity-50">-</span>
-        <span className="font-mono">{displayTime}</span>
+        <span className="font-mono">
+          {isMySessionRunning ? <RunningFocusTimeDisplay /> : `${duration}m`}
+        </span>
         <span className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 ml-1">
           <button
             onClick={(e) => {

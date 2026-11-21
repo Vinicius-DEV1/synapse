@@ -1,10 +1,11 @@
 import { NodeViewWrapper, NodeViewContent, type NodeViewProps } from '@tiptap/react';
 import { Palette, X, ListTree, Copy, Sparkles } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { DOMSerializer } from 'prosemirror-model';
 import { BG_COLORS } from '../../utils/colors';
 import { useBlockAiModal } from './hooks/useBlockAiModal';
-import AiPromptModal from '../modals/AiPromptModal';
+
+const AiPromptModal = lazy(() => import('../modals/AiPromptModal'));
 
 export default function ColorBlockquoteComponent(props: NodeViewProps) {
   const [showColors, setShowColors] = useState(false);
@@ -232,24 +233,26 @@ export default function ColorBlockquoteComponent(props: NodeViewProps) {
       </div>
 
       {aiModal.isOpen && aiModal.anchorPos && (
-        <AiPromptModal
-          x={aiModal.anchorPos.x}
-          y={aiModal.anchorPos.y}
-          chatId={aiModal.chatId}
-          messages={aiModal.messages}
-          contextText={aiModal.contextText}
-          systemInstruction={aiModal.systemInstruction}
-          originalContent={aiModal.originalContent}
-          blockBadge={aiModal.blockBadge}
-          blockTitle={aiModal.blockTitle}
-          targetType={aiModal.targetType}
-          onMessageAdd={aiModal.handleMessageAdd}
-          onClear={aiModal.handleClearChat}
-          onClose={aiModal.handleCloseAi}
-          onApplyReplacement={aiModal.handleApplyReplacement}
-          onInsertContent={aiModal.handleInsertContent}
-          anchorRef={aiModal.aiButtonRef}
-        />
+        <Suspense fallback={null}>
+          <AiPromptModal
+            x={aiModal.anchorPos.x}
+            y={aiModal.anchorPos.y}
+            chatId={aiModal.chatId}
+            messages={aiModal.messages}
+            contextText={aiModal.contextText}
+            systemInstruction={aiModal.systemInstruction}
+            originalContent={aiModal.originalContent}
+            blockBadge={aiModal.blockBadge}
+            blockTitle={aiModal.blockTitle}
+            targetType={aiModal.targetType}
+            onMessageAdd={aiModal.handleMessageAdd}
+            onClear={aiModal.handleClearChat}
+            onClose={aiModal.handleCloseAi}
+            onApplyReplacement={aiModal.handleApplyReplacement}
+            onInsertContent={aiModal.handleInsertContent}
+            anchorRef={aiModal.aiButtonRef}
+          />
+        </Suspense>
       )}
 
       <NodeViewContent />

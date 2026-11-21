@@ -1,7 +1,7 @@
 import { ChevronDown, GripVertical } from 'lucide-react';
 import { useState, memo } from 'react';
 import type { Page } from '../../../../types';
-import { useStore } from '../../../../store/useStore';
+import { useStoreSelector, useStoreDispatch } from '../../../../store/useStore';
 import { useDroppable } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -25,7 +25,8 @@ export const SubPageItem = memo(function SubPageItem({
   isNested = false,
   childrenMap,
 }: SubPageItemProps) {
-  const { state, dispatch } = useStore();
+  const dispatch = useStoreDispatch();
+  const fallbackPages = useStoreSelector((s) => (childrenMap ? null : s.pages));
   const [expanded, setExpanded] = useState(false);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -59,7 +60,7 @@ export const SubPageItem = memo(function SubPageItem({
 
   const childPages = childrenMap
     ? (childrenMap.get(page.id) || [])
-    : state.pages
+    : (fallbackPages || [])
         .filter((p: Page) => p.parent_id === page.id && !p.deleted_at)
         .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
 

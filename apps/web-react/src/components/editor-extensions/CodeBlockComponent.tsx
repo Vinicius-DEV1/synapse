@@ -1,13 +1,20 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { GripVertical, Plus, ArrowUp, ArrowDown, Copy, Check, Trash2, Code2, ChevronDown, Sparkles } from 'lucide-react';
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
 import { selectNodeForDrag } from './group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from './moveBlockCommands';
 import { Portal } from '../ui/Portal';
 import { handleScrollableWheel } from '../../utils/scroll-forwarding';
 import { useBlockAiModal } from './hooks/useBlockAiModal';
-import AiPromptModal from '../modals/AiPromptModal';
+import { SUPPORTED_CODE_LANGUAGES } from '../../utils/syntax-highlighter';
+import {
+  ensureLowlightLanguage,
+  isLowlightLanguageRegistered,
+  LOWLIGHT_LANGUAGE_LOADED_META,
+} from '../notes/hooks/useEditorExtensions';
+
+const AiPromptModal = lazy(() => import('../modals/AiPromptModal'));
 
 export default function CodeBlockComponent(props: NodeViewProps) {
   const { node, updateAttributes, extension, editor, getPos, deleteNode } = props;
@@ -117,7 +124,32 @@ export default function CodeBlockComponent(props: NodeViewProps) {
       });
   };
 
-  const languages = extension.options.lowlight?.listLanguages?.().sort() || [];
+  // Lazy-load the highlight.js grammar for this code block's language on demand
+  useEffect(() => {
+    if (!defaultLanguage) return;
+    let cancelled = false;
+    const wasRegistered = isLowlightLanguageRegistered(defaultLanguage);
+    ensureLowlightLanguage(defaultLanguage).then((newlyRegistered) => {
+      if (
+        !cancelled &&
+        (newlyRegistered || (!wasRegistered && isLowlightLanguageRegistered(defaultLanguage))) &&
+        editor &&
+        !editor.isDestroyed
+      ) {
+        editor.view.dispatch(
+          editor.state.tr.setMeta(LOWLIGHT_LANGUAGE_LOADED_META, defaultLanguage)
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultLanguage, editor]);
+
+  const registeredLanguages = extension.options.lowlight?.listLanguages?.() || [];
+  const languages = Array.from(
+    new Set([...SUPPORTED_CODE_LANGUAGES, ...registeredLanguages])
+  ).sort();
   const isEditable = editor?.isEditable !== false;
 
   return (
@@ -318,24 +350,26 @@ export default function CodeBlockComponent(props: NodeViewProps) {
       </div>
 
         {aiModal.isOpen && aiModal.anchorPos && (
-          <AiPromptModal
-            x={aiModal.anchorPos.x}
-            y={aiModal.anchorPos.y}
-            chatId={aiModal.chatId}
-            messages={aiModal.messages}
-            contextText={aiModal.contextText}
-            systemInstruction={aiModal.systemInstruction}
-            originalContent={aiModal.originalContent}
-            blockBadge={aiModal.blockBadge}
-            blockTitle={aiModal.blockTitle}
-            targetType={aiModal.targetType}
-            onMessageAdd={aiModal.handleMessageAdd}
-            onClear={aiModal.handleClearChat}
-            onClose={aiModal.handleCloseAi}
-            onApplyReplacement={aiModal.handleApplyReplacement}
-            onInsertContent={aiModal.handleInsertContent}
-            anchorRef={aiModal.aiButtonRef}
-          />
+          <Suspense fallback={null}>
+            <AiPromptModal
+              x={aiModal.anchorPos.x}
+              y={aiModal.anchorPos.y}
+              chatId={aiModal.chatId}
+              messages={aiModal.messages}
+              contextText={aiModal.contextText}
+              systemInstruction={aiModal.systemInstruction}
+              originalContent={aiModal.originalContent}
+              blockBadge={aiModal.blockBadge}
+              blockTitle={aiModal.blockTitle}
+              targetType={aiModal.targetType}
+              onMessageAdd={aiModal.handleMessageAdd}
+              onClear={aiModal.handleClearChat}
+              onClose={aiModal.handleCloseAi}
+              onApplyReplacement={aiModal.handleApplyReplacement}
+              onInsertContent={aiModal.handleInsertContent}
+              anchorRef={aiModal.aiButtonRef}
+            />
+          </Suspense>
         )}
 
         {/* Área de Código */}

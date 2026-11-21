@@ -210,7 +210,7 @@ function Editor({
   }, [editor]);
 
   // Cell validation: applies visual CSS classes for typed columns (number, date, select, checkbox)
-  useTableCellValidation(editor);
+  useTableCellValidation(editor, isActive);
 
   useEffect(() => {
     if (editor && !editor.isDestroyed && !hasInitializedContentRef.current) {
@@ -237,10 +237,10 @@ function Editor({
 
       <div className="editor-container relative z-0">
         <EditorContent editor={editor} />
-        <TableExcelGrips editor={editor} wrapperRef={wrapperRef} />
+        <TableExcelGrips editor={editor} wrapperRef={wrapperRef} isActive={isActive} />
       </div>
 
-      <EditorBlockHandleHost editor={editor} wrapperRef={wrapperRef} />
+      <EditorBlockHandleHost editor={editor} wrapperRef={wrapperRef} isActive={isActive} />
 
       <EditorModalHost
         editor={editor}

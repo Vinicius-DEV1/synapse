@@ -3,12 +3,18 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import PageView from './PageView';
 import type { Page } from '../../types';
 
+const mockPageViewDispatch = vi.fn();
+const mockPageViewState = { pages: [], expandedNodes: [] };
+
 vi.mock('../../store/useStore', () => ({
   useStore: () => ({
-    state: { pages: [], expandedNodes: [] },
-    dispatch: vi.fn(),
+    state: mockPageViewState,
+    dispatch: mockPageViewDispatch,
   }),
-  usePages: () => [],
+  usePages: () => mockPageViewState.pages,
+  useStoreDispatch: () => mockPageViewDispatch,
+  useStoreSelector: (selector: (s: typeof mockPageViewState) => unknown) => selector(mockPageViewState),
+  getStoreState: () => mockPageViewState,
 }));
 
 vi.mock('../Editor', () => ({

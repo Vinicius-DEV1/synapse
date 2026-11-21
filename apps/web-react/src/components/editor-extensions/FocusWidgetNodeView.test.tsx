@@ -6,16 +6,27 @@ vi.mock('@tiptap/react', () => ({
   NodeViewWrapper: ({ children, className }: any) => <span className={className}>{children}</span>,
 }));
 
-vi.mock('../../store/FocusContext', () => ({
-  useFocusContext: () => ({
+vi.mock('../../store/FocusContext', () => {
+  const mockState = {
     currentSession: null,
-    timeLeft: 1500,
     isPaused: false,
+  };
+  const mockActions = {
     setIsPaused: vi.fn(),
     handleAddQuickTime: vi.fn(),
     handleTimerCancel: vi.fn(),
-  }),
-}));
+  };
+  return {
+    useFocusContext: () => ({
+      ...mockState,
+      timeLeft: 1500,
+      ...mockActions,
+    }),
+    useFocusState: () => mockState,
+    useFocusActions: () => mockActions,
+    useFocusTimerTick: () => 1500,
+  };
+});
 
 describe('FocusWidgetNodeView Component', () => {
   it('renders duration and tag properly', () => {

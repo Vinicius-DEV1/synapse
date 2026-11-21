@@ -10,6 +10,7 @@ import { PageCover } from './PageCover';
 import { PageHeader } from './PageHeader';
 import { PageUnlockForm } from './PageUnlockForm';
 import { getEditorBackupMap } from '../notes/hooks/editorBackupStore';
+import { fetchPageContentDedup, invalidatePageContentFetch } from './pageContentFetcher';
 import { useI18n } from '../../i18n';
 
 import { LruMap } from '../../utils/lru-cache';
@@ -17,6 +18,8 @@ import { LruMap } from '../../utils/lru-cache';
 export interface PageContentData {
   content: string;
   encrypted_content: string | null;
+  crdt_state?: string | null;
+  updated_at?: string | null;
 }
 
 const pageContentCache = new LruMap<string, PageContentData>(30);
@@ -24,7 +27,11 @@ const pageContentCache = new LruMap<string, PageContentData>(30);
 function getCachedPageContent(pageId: string): PageContentData | null {
   const backup = getEditorBackupMap().get(pageId);
   if (backup?.html) {
-    return { content: backup.html, encrypted_content: null };
+    return {
+      content: backup.html,
+      encrypted_content: null,
+      crdt_state: backup.crdt || null,
+    };
   }
   return pageContentCache.get(pageId) || null;
 }
@@ -66,47 +73,60 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
       .sort((a: Page, b: Page) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [activePageId, pages]);
 
-  useEffect(() => {
-    let mounted = true;
+  const fetchPageContent = useCallback(
+    (targetPageId: string, isBackground: boolean, isMounted: () => boolean) => {
+      const request = fetchPageContentDedup(targetPageId);
+      if (!request) return;
 
-    const fetchContent = (isBackground = false) => {
-      if (!page?.id || !window.api?.getPageContent) return;
-      const targetPageId = page.id;
-
-      window.api.getPageContent(targetPageId).then((data: PageContentData) => {
-        if (!mounted || !data) return;
-        pageContentCache.set(targetPageId, data);
-        if (isBackground) {
+      request
+        .then((data: PageContentData) => {
+          if (!isMounted() || !data) return;
+          pageContentCache.set(targetPageId, data);
           setLoadedData((prev) => {
             if (
               prev &&
               prev.pageId === targetPageId &&
               prev.data.content === data.content &&
-              prev.data.encrypted_content === data.encrypted_content
+              prev.data.encrypted_content === data.encrypted_content &&
+              prev.data.crdt_state === data.crdt_state
             ) {
               return prev;
             }
             return { pageId: targetPageId, data };
           });
-        } else {
-          setLoadedData({ pageId: targetPageId, data });
-        }
-      }).catch(err => {
-        if (mounted) {
-          console.error(`[Caderno:PageView] Failed to load content for ${targetPageId}:`, err);
-        }
-      });
+        })
+        .catch((err) => {
+          if (isMounted()) {
+            const label = isBackground ? 'background refresh' : 'initial load';
+            console.error(`[Caderno:PageView] Failed ${label} for ${targetPageId}:`, err);
+          }
+        });
+    },
+    []
+  );
+
+  // Initial / page-change content load (does NOT re-fire merely when switching away from a tab)
+  useEffect(() => {
+    if (!page?.id) return;
+    let mounted = true;
+    fetchPageContent(page.id, false, () => mounted);
+    return () => {
+      mounted = false;
     };
+  }, [page?.id, page?.is_locked, fetchPageContent]);
 
-    fetchContent(false);
-
+  // Background revalidation on window focus/visibility strictly while this tab is active
+  useEffect(() => {
+    if (!isActive || !page?.id) return;
+    const targetPageId = page.id;
+    let mounted = true;
     let lastFocusTime = 0;
+
     const handleFocusCheck = () => {
-      if (!isActive) return;
       const now = Date.now();
       if (document.visibilityState === 'visible' && now - lastFocusTime > 2000) {
         lastFocusTime = now;
-        fetchContent(true);
+        fetchPageContent(targetPageId, true, () => mounted);
       }
     };
 
@@ -118,11 +138,12 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
       document.removeEventListener('visibilitychange', handleFocusCheck);
       window.removeEventListener('focus', handleFocusCheck);
     };
-  }, [page?.id, page?.is_locked, isActive]);
+  }, [page?.id, isActive, fetchPageContent]);
 
   const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[], senderInstanceId?: string) => {
     if (page?.id) {
-      const data: PageContentData = { content, encrypted_content: null };
+      invalidatePageContentFetch(page.id);
+      const data: PageContentData = { content, encrypted_content: null, crdt_state: crdtState };
       pageContentCache.set(page.id, data);
       // Bail out if already loaded for this page to prevent re-rendering PageView and Editor on every autosave keystroke
       setLoadedData((prev) => (prev?.pageId === page.id ? prev : { pageId: page.id, data }));
@@ -143,7 +164,7 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
   };
 
   return (
-    <div className="h-full overflow-y-auto relative bg-dark-bg" id="page-view-scroll">
+    <div className="h-full overflow-y-auto relative bg-dark-bg smooth-scroll-container" id="page-view-scroll">
       <PageCover page={page} onUpdatePage={onUpdatePage} />
 
       <div className={`max-w-5xl mx-auto px-4 sm:px-8 md:px-12 pb-12 animate-fade-in ${page.cover_image ? 'pt-8' : ''}`}>
@@ -178,6 +199,7 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
                    const newData: PageContentData = {
                      content: decrypted,
                      encrypted_content: contentData?.encrypted_content || null,
+                     crdt_state: contentData?.crdt_state ?? null,
                    };
                    pageContentCache.set(page.id, newData);
                    setLoadedData({ pageId: page.id, data: newData });
@@ -190,7 +212,7 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
             key={page.id}
             pageId={page.id}
             initialContent={contentData.content}
-            initialCrdtState={page.crdt_state}
+            initialCrdtState={contentData.crdt_state ?? page.crdt_state ?? null}
             onSave={handleSave}
             onCreateLinkedPage={handleCreateLinked}
             isActive={isActive}

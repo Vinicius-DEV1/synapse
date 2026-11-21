@@ -150,35 +150,35 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
         <>
           <button
             onClick={() => handleFormat('bold')}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.bold ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.bold ? activeClass : inactiveClass}`}
             title={t('notes.toolbar.bold')}
           >
             <Bold size={15} />
           </button>
           <button
             onClick={() => handleFormat('italic')}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.italic ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.italic ? activeClass : inactiveClass}`}
             title={t('notes.toolbar.italic')}
           >
             <Italic size={15} />
           </button>
           <button
             onClick={() => handleFormat('strike')}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.strike ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.strike ? activeClass : inactiveClass}`}
             title={t('notes.toolbar.strike')}
           >
             <Strikethrough size={15} />
           </button>
           <button
             onClick={() => handleFormat('underline')}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.underline ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.underline ? activeClass : inactiveClass}`}
             title={t('notes.toolbar.underline')}
           >
             <Underline size={15} />
           </button>
           <button
             onClick={() => handleFormat('code')}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.code ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.code ? activeClass : inactiveClass}`}
             title={t('notes.toolbar.code')}
           >
             <Code size={15} />
@@ -193,7 +193,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
               }
               setShowLinkInput(true);
             }}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.link ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.link ? activeClass : inactiveClass}`}
             title={formatState?.link ? t('notes.toolbar.editLink') : t('notes.toolbar.link')}
           >
             <LinkIcon size={15} />
@@ -202,7 +202,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
           <div className="relative">
             <button
               onClick={() => setShowColors(!showColors)}
-              className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.highlight || !!formatState?.textColor ? activeClass : inactiveClass}`}
+              className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.highlight || !!formatState?.textColor ? activeClass : inactiveClass}`}
               title={t('notes.toolbar.colors')}
             >
               <Palette size={15} />
@@ -241,7 +241,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                           handleFormat('color', c.value);
                           setShowColors(false);
                         }}
-                        className="w-6 h-6 rounded-full border border-white/15 hover:scale-110 hover:border-brand-400 transition-all flex items-center justify-center text-[10px] font-bold"
+                        className="w-6 h-6 rounded-full border border-white/15 hover:scale-110 hover:border-brand-400 transition-[color,background-color,border-color,transform] flex items-center justify-center text-[10px] font-bold"
                         style={{
                           backgroundColor: c.value === 'inherit' ? '#262533' : c.hex,
                           color: '#fff',
@@ -289,7 +289,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
                           }
                           setShowColors(false);
                         }}
-                        className="w-6 h-6 rounded-md border border-white/15 hover:scale-110 hover:border-brand-400 transition-all flex items-center justify-center text-xs font-bold"
+                        className="w-6 h-6 rounded-md border border-white/15 hover:scale-110 hover:border-brand-400 transition-[color,background-color,border-color,transform] flex items-center justify-center text-xs font-bold"
                         style={{
                           backgroundColor: color.value === 'transparent' ? '#262533' : color.hex,
                           color: color.hex === 'transparent' ? 'rgba(255,255,255,0.4)' : '#fff',
@@ -307,7 +307,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
 
           <button
             onClick={() => handleFormat('spoiler')}
-            className={`p-1.5 rounded-lg transition-all active:scale-90 ${formatState?.spoiler ? activeClass : inactiveClass}`}
+            className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${formatState?.spoiler ? activeClass : inactiveClass}`}
             title={t('notes.toolbar.spoiler')}
           >
             <EyeOff size={15} />
@@ -316,7 +316,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
           {onAiClick && (
             <button
               onClick={onAiClick}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-all active:scale-90 ml-1 group"
+              className="p-1.5 rounded-lg hover:bg-white/10 text-dark-subtext hover:text-brand-400 transition-[color,background-color,border-color,transform] active:scale-90 ml-1 group"
               title={t('notes.toolbar.aiAssistant')}
             >
               <Sparkles size={15} className="group-hover:animate-pulse text-brand-400" />

@@ -1,10 +1,65 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import hljs from 'highlight.js';
 import DOMPurify from 'dompurify';
 import { ScrollablePre, ScrollableDiv } from '../../../utils/scroll-forwarding';
+import {
+  highlightCodeAsync,
+  highlightCodeSyncIfLoaded,
+  normalizeCodeLanguage,
+} from '../../../utils/syntax-highlighter';
+
+function PreviewHighlightedCodeBlock({
+  codeString,
+  language,
+}: {
+  codeString: string;
+  language: string;
+}) {
+  const [highlighted, setHighlighted] = useState<string | null>(() => {
+    const sync = highlightCodeSyncIfLoaded(codeString, language);
+    return sync ? DOMPurify.sanitize(sync) : null;
+  });
+
+  useEffect(() => {
+    const sync = highlightCodeSyncIfLoaded(codeString, language);
+    if (sync) {
+      setHighlighted(DOMPurify.sanitize(sync));
+      return;
+    }
+    if (!normalizeCodeLanguage(language)) {
+      setHighlighted(null);
+      return;
+    }
+
+    let cancelled = false;
+    setHighlighted(null);
+    highlightCodeAsync(codeString, language).then((raw) => {
+      if (!cancelled && raw) {
+        setHighlighted(DOMPurify.sanitize(raw));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [codeString, language]);
+
+  return (
+    <div className="relative group my-5">
+      <div className="absolute top-2.5 right-3 text-[10px] uppercase font-mono text-zinc-400 bg-black/50 px-2 py-0.5 rounded border border-white/5 tracking-wider">
+        {language}
+      </div>
+      <ScrollablePre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm border border-white/5 font-mono leading-relaxed">
+        {highlighted ? (
+          <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
+        ) : (
+          <code className="text-zinc-300">{codeString}</code>
+        )}
+      </ScrollablePre>
+    </div>
+  );
+}
 
 interface TextPreviewerProps {
   textContent: string;
@@ -76,26 +131,12 @@ const mdRenderers: Components = {
   ),
   code: ({ className, children, ...props }) => {
     const inline = !className;
-    const match = /language-(\w+)/.exec(className || '');
+    const match = /language-([\w#+.-]+)/.exec(className || '');
     const language = match ? match[1] : '';
     const codeString = String(children).replace(/\n$/, '');
 
     if (!inline && language) {
-      try {
-        const highlighted = hljs.highlight(codeString, { language }).value;
-        return (
-          <div className="relative group my-5">
-            <div className="absolute top-2.5 right-3 text-[10px] uppercase font-mono text-zinc-400 bg-black/50 px-2 py-0.5 rounded border border-white/5 tracking-wider">
-              {language}
-            </div>
-            <ScrollablePre className="bg-[#141416] p-4 sm:p-5 rounded-xl overflow-x-auto text-sm border border-white/5 font-mono leading-relaxed">
-              <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
-            </ScrollablePre>
-          </div>
-        );
-      } catch {
-        // Fallback if language syntax is unsupported by highlight.js
-      }
+      return <PreviewHighlightedCodeBlock codeString={codeString} language={language} />;
     }
 
     if (!inline) {

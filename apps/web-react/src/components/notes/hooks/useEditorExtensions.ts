@@ -2,7 +2,9 @@ import { useMemo } from 'react';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { createLowlight, common } from 'lowlight';
+import { createLowlight } from 'lowlight';
+import { loadLanguageGrammar, normalizeCodeLanguage } from '../../../utils/syntax-highlighter';
+import { createLazyLowlightPlugin, LOWLIGHT_LANGUAGE_LOADED_META } from './lazyLowlightPlugin';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Highlight } from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
@@ -67,7 +69,36 @@ const CustomBold = Bold.extend({
   },
 });
 
-const sharedLowlight = createLowlight(common);
+// Start with an empty lowlight registry; grammars load dynamically on demand when a code block uses them.
+export const sharedLowlight = createLowlight();
+export { LOWLIGHT_LANGUAGE_LOADED_META };
+
+export function isLowlightLanguageRegistered(rawLang?: string | null): boolean {
+  if (!rawLang) return false;
+  const cleaned = rawLang.trim().toLowerCase();
+  if (!cleaned) return false;
+  if (sharedLowlight.registered(cleaned)) return true;
+  const canonical = normalizeCodeLanguage(cleaned);
+  return Boolean(canonical && sharedLowlight.registered(canonical));
+}
+
+export async function ensureLowlightLanguage(rawLang?: string | null): Promise<boolean> {
+  if (!rawLang) return false;
+  const loaded = await loadLanguageGrammar(rawLang);
+  if (!loaded) return false;
+
+  let added = false;
+  if (!sharedLowlight.registered(loaded.name)) {
+    sharedLowlight.register(loaded.name, loaded.grammar);
+    added = true;
+  }
+  const cleaned = rawLang.trim().toLowerCase();
+  if (cleaned !== loaded.name && !sharedLowlight.registered(cleaned)) {
+    sharedLowlight.register(cleaned, loaded.grammar);
+    added = true;
+  }
+  return added;
+}
 
 export function useEditorExtensions(ydoc: Y.Doc | null) {
   return useMemo(() => {
@@ -90,6 +121,22 @@ export function useEditorExtensions(ydoc: Y.Doc | null) {
         draggable: true,
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockComponent);
+        },
+        addProseMirrorPlugins() {
+          const parentPlugins = (typeof this.parent === 'function' ? this.parent() : []).filter(
+            (plugin) => {
+              const pluginKey = plugin.spec.key as { key?: string } | undefined;
+              return !pluginKey?.key?.startsWith('lowlight');
+            }
+          );
+          return [
+            ...parentPlugins,
+            createLazyLowlightPlugin({
+              name: this.name,
+              lowlight: this.options.lowlight,
+              defaultLanguage: this.options.defaultLanguage,
+            }),
+          ];
         },
         addKeyboardShortcuts() {
           const parentShortcuts = typeof this.parent === 'function' ? this.parent() : {};

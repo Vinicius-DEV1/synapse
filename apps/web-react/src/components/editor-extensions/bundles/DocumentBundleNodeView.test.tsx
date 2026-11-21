@@ -52,7 +52,7 @@ describe('DocumentBundleNodeView Component', () => {
     expect(screen.getByText('.pdf')).toBeInTheDocument();
   });
 
-  it('opens DocumentBundleModal when clicking the widget', () => {
+  it('opens DocumentBundleModal when clicking the widget', async () => {
     render(
       <DocumentBundleNodeView
         node={mockNode}
@@ -64,7 +64,7 @@ describe('DocumentBundleNodeView Component', () => {
     const widget = screen.getByText('Apostilas POO').closest('div');
     fireEvent.click(widget!);
 
-    expect(screen.getByTestId('bundle-modal-mock')).toBeInTheDocument();
+    expect(await screen.findByTestId('bundle-modal-mock')).toBeInTheDocument();
     expect(screen.getByText('Modal Mock: Apostilas POO')).toBeInTheDocument();
   });
 

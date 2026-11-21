@@ -1,13 +1,18 @@
-import { useState, useCallback, useMemo, useRef, memo } from 'react';
+import { useState, useCallback, useMemo, useRef, memo, lazy, Suspense } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
-import { QuizSequentialFocusModal } from './components/sequential/QuizSequentialFocusModal';
 import { QuestionBlockGutterControls } from './components/QuestionBlockGutterControls';
 import { QuestionBlockDeleteModal } from './components/QuestionBlockDeleteModal';
 import { QuestionBlockCard } from './components/QuestionBlockCard';
 import { useQuestionBlockSync } from './hooks/useQuestionBlockSync';
 import { useQuestionBlockAttempt } from './hooks/useQuestionBlockAttempt';
-import { useStore } from '../../../store/useStore';
+import { useStoreDispatch, getStoreState } from '../../../store/useStore';
+
+const QuizSequentialFocusModal = lazy(() =>
+  import('./components/sequential/QuizSequentialFocusModal').then((m) => ({
+    default: m.QuizSequentialFocusModal,
+  }))
+);
 
 function QuestionBlockNodeViewInner(props: NodeViewProps) {
   const {
@@ -20,7 +25,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     questions: rawQuestions,
   } = props.node.attrs;
 
-  const { dispatch, state } = useStore();
+  const dispatch = useStoreDispatch();
 
   const title = cachedTitle || legacyTitle || 'Bateria de Exercícios';
   const description = legacyDesc || '';
@@ -46,7 +51,6 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
     cachedCount,
     cachedTags,
     updateAttributes: props.updateAttributes,
-    state,
   });
 
   const {
@@ -57,6 +61,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
 
   // Navigate to dedicated Questions Module
   const handleNavigateToQuestionsModule = useCallback(() => {
+    const state = getStoreState();
     const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
     if (activeTab) {
       dispatch({
@@ -66,12 +71,13 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         moduleState: { selectedBatteryId: batteryId || rawBatteryId },
       });
     }
-  }, [state.tabs, state.activeTabId, dispatch, batteryId, rawBatteryId]);
+  }, [dispatch, batteryId, rawBatteryId]);
 
   // Navigate to Question Editor page in Quiz Module (preserving TabBar and Sidebar)
   const handleOpenEditorPage = useCallback(
     async (initialShowAi = false) => {
       let bId = batteryId || rawBatteryId;
+      const state = getStoreState();
       const currentTab = state.tabs.find((t) => t.id === state.activeTabId);
 
       // If not yet persisted to database, create battery first
@@ -108,7 +114,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         });
       }
     },
-    [batteryId, rawBatteryId, state.tabs, state.activeTabId, title, description, cachedTags, dispatch, setBatteryId]
+    [batteryId, rawBatteryId, title, description, cachedTags, dispatch, setBatteryId]
   );
 
   // Stats computation for the embed card
@@ -169,38 +175,42 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
       />
 
       {/* Zen Full-Canvas Focus Modal */}
-      <QuizSequentialFocusModal
-        isOpen={isFocusModeOpen}
-        onClose={() => {
-          setIsFocusModeOpen(false);
-          loadBatteryData();
-        }}
-        title={title}
-        questions={questions}
-        onUpdateQuestions={setQuestions}
-        onUpdateSingleQuestion={updateSingleQuestion}
-        onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
-        evaluatingIds={evaluatingIds}
-        onDiscussInChat={() => {}}
-        activeIndex={activeIndex}
-        onActiveIndexChange={setActiveIndex}
-        onEditQuestion={() => {
-          setIsFocusModeOpen(false);
-          handleOpenEditorPage(false);
-        }}
-        onDeleteQuestion={async (qId) => {
-          setQuestions((prev) => prev.filter((q) => q.id !== qId));
-          const bId = batteryId || rawBatteryId;
-          if (bId && window.api?.quiz) {
-            try {
-              await window.api.quiz.deleteQuestion(qId);
-              await loadBatteryData();
-            } catch (err) {
-              console.error('[QuestionBlockNodeView] Falha ao excluir questão no banco:', err);
-            }
-          }
-        }}
-      />
+      {isFocusModeOpen && (
+        <Suspense fallback={null}>
+          <QuizSequentialFocusModal
+            isOpen={isFocusModeOpen}
+            onClose={() => {
+              setIsFocusModeOpen(false);
+              loadBatteryData();
+            }}
+            title={title}
+            questions={questions}
+            onUpdateQuestions={setQuestions}
+            onUpdateSingleQuestion={updateSingleQuestion}
+            onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
+            evaluatingIds={evaluatingIds}
+            onDiscussInChat={() => {}}
+            activeIndex={activeIndex}
+            onActiveIndexChange={setActiveIndex}
+            onEditQuestion={() => {
+              setIsFocusModeOpen(false);
+              handleOpenEditorPage(false);
+            }}
+            onDeleteQuestion={async (qId) => {
+              setQuestions((prev) => prev.filter((q) => q.id !== qId));
+              const bId = batteryId || rawBatteryId;
+              if (bId && window.api?.quiz) {
+                try {
+                  await window.api.quiz.deleteQuestion(qId);
+                  await loadBatteryData();
+                } catch (err) {
+                  console.error('[QuestionBlockNodeView] Falha ao excluir questão no banco:', err);
+                }
+              }
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <QuestionBlockDeleteModal
@@ -209,6 +219,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
         onConfirm={async () => {
           setShowDeleteConfirm(false);
           const bId = batteryId || rawBatteryId;
+          const state = getStoreState();
           const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
           if (bId && activeTab?.pageId && window.api?.quiz) {
             try {

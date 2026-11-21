@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, lazy, Suspense } from 'react';
 import { NodeViewWrapper, NodeViewContent, type NodeViewProps } from '@tiptap/react';
 import { ChevronDown, ChevronRight, GripVertical, Plus, ArrowUp, ArrowDown, FileText, Copy, Trash2, Sparkles } from 'lucide-react';
 import { DOMSerializer } from 'prosemirror-model';
@@ -6,7 +6,8 @@ import { selectNodeForDrag } from '../group-layout/DragToGroup';
 import { moveBlockUp, moveBlockDown } from '../moveBlockCommands';
 import { convertToggleNodeToPage } from './togglePageConverter';
 import { useBlockAiModal } from '../hooks/useBlockAiModal';
-import AiPromptModal from '../../modals/AiPromptModal';
+
+const AiPromptModal = lazy(() => import('../../modals/AiPromptModal'));
 
 export const ToggleBlockComponent = (props: NodeViewProps) => {
   const isEditable = props.editor?.isEditable ?? true;
@@ -289,24 +290,26 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
       )}
 
       {isEditable && aiModal.isOpen && aiModal.anchorPos && (
-        <AiPromptModal
-          x={aiModal.anchorPos.x}
-          y={aiModal.anchorPos.y}
-          chatId={aiModal.chatId}
-          messages={aiModal.messages}
-          contextText={aiModal.contextText}
-          systemInstruction={aiModal.systemInstruction}
-          originalContent={aiModal.originalContent}
-          blockBadge={aiModal.blockBadge}
-          blockTitle={aiModal.blockTitle}
-          targetType={aiModal.targetType}
-          onMessageAdd={aiModal.handleMessageAdd}
-          onClear={aiModal.handleClearChat}
-          onClose={aiModal.handleCloseAi}
-          onApplyReplacement={aiModal.handleApplyReplacement}
-          onInsertContent={aiModal.handleInsertContent}
-          anchorRef={aiModal.aiButtonRef}
-        />
+        <Suspense fallback={null}>
+          <AiPromptModal
+            x={aiModal.anchorPos.x}
+            y={aiModal.anchorPos.y}
+            chatId={aiModal.chatId}
+            messages={aiModal.messages}
+            contextText={aiModal.contextText}
+            systemInstruction={aiModal.systemInstruction}
+            originalContent={aiModal.originalContent}
+            blockBadge={aiModal.blockBadge}
+            blockTitle={aiModal.blockTitle}
+            targetType={aiModal.targetType}
+            onMessageAdd={aiModal.handleMessageAdd}
+            onClear={aiModal.handleClearChat}
+            onClose={aiModal.handleCloseAi}
+            onApplyReplacement={aiModal.handleApplyReplacement}
+            onInsertContent={aiModal.handleInsertContent}
+            anchorRef={aiModal.aiButtonRef}
+          />
+        </Suspense>
       )}
 
       <div 

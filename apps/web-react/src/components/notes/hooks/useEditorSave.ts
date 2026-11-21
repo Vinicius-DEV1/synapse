@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { MutableRefObject } from 'react';
-import { getYDocStateAsBase64 } from '../../../utils/yjs-utils';
+import { getCompactedYDocStateAsBase64 } from '../../../utils/yjs-utils';
 import * as Y from 'yjs';
 import { Editor } from '@tiptap/core';
 import { getEditorBackupMap } from './editorBackupStore';
@@ -29,9 +29,21 @@ export function useEditorSave({
   instanceId,
 }: UseEditorSaveProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleCallbackRef = useRef<number | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const hasPendingChangesRef = useRef(false);
   const lastSavedHtmlRef = useRef<string | null>(null);
+
+  const cancelScheduledSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (idleCallbackRef.current !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(idleCallbackRef.current);
+      idleCallbackRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     lastSavedHtmlRef.current = null;
@@ -51,7 +63,7 @@ export function useEditorSave({
       }
       lastSavedHtmlRef.current = html;
 
-      const crdtState = getYDocStateAsBase64(ydocRef.current);
+      const crdtState = getCompactedYDocStateAsBase64(ydocRef.current);
       latestContentRef.current = { html, crdt: crdtState };
 
       if (pageId) {
@@ -81,22 +93,30 @@ export function useEditorSave({
       editorRef.current = editor;
       hasPendingChangesRef.current = true;
 
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      cancelScheduledSave();
 
       saveTimeoutRef.current = setTimeout(() => {
-        flushSave();
+        saveTimeoutRef.current = null;
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+          idleCallbackRef.current = window.requestIdleCallback(
+            () => {
+              idleCallbackRef.current = null;
+              flushSave();
+            },
+            { timeout: 400 }
+          );
+        } else {
+          flushSave();
+        }
       }, 1000);
     },
-    [ydocRef, flushSave]
+    [ydocRef, flushSave, cancelScheduledSave]
   );
 
   const cleanupSave = useCallback(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-    }
+    cancelScheduledSave();
     flushSave();
-  }, [flushSave]);
+  }, [flushSave, cancelScheduledSave]);
 
   // Save immediately on browser tab switch, window blur, or internal tab change
   useEffect(() => {

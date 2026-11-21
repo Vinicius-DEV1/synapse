@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, memo } from 'react';
 import { ChevronLeft, ChevronRight, Clock, FolderInput } from 'lucide-react';
-import { useStore, getNotesKey } from '../../store/useStore';
+import { usePages, useStoreDispatch, getNotesKey } from '../../store/useStore';
 import type { Page } from '../../types';
 import { getPagePath } from '../../utils/hierarchy';
 import { getSiblingPageNavigation } from '../../utils/page-navigation';
@@ -15,7 +15,8 @@ interface PageHeaderProps {
 }
 
 export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowHistory }: PageHeaderProps) {
-  const { state, dispatch } = useStore();
+  const pages = usePages();
+  const dispatch = useStoreDispatch();
   const { t } = useI18n();
   const isEditingTitleRef = useRef(false);
   const isEditingDescRef = useRef(false);
@@ -42,12 +43,12 @@ export const PageHeader = memo(function PageHeader({ page, onUpdatePage, onShowH
 
   const breadcrumbs = useMemo(() => {
     if (!page) return [];
-    return getPagePath(state.pages, page.id) as Page[];
-  }, [page?.id, page?.parent_id, state.pages]);
+    return getPagePath(pages, page.id) as Page[];
+  }, [page?.id, page?.parent_id, pages]);
 
   const { prevPage, nextPage } = useMemo(() => {
-    return getSiblingPageNavigation(state, page);
-  }, [state.pages, page]);
+    return getSiblingPageNavigation({ pages }, page);
+  }, [pages, page]);
 
   const isNested = Boolean(page?.parent_id);
   const prevTooltip = prevPage

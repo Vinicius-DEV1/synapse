@@ -4,8 +4,7 @@ import * as Y from 'yjs';
 import { applyBase64StateToYDoc } from '../../../utils/yjs-utils';
 import { getEditorBackupMap } from './editorBackupStore';
 import { onPageSaved } from '../../../services/page-broadcast';
-import { getStoreState } from '../../../store/useStore';
-import type { Page } from '../../../types';
+import { fetchPageContentDedup } from '../../page-view/pageContentFetcher';
 import type { EditorSaveCallback } from './useEditorSave';
 
 interface UseEditorSyncProps {
@@ -23,6 +22,10 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
   // Track if CRDT application failed so Editor can fall back to HTML
   const [crdtFailed, setCrdtFailed] = useState(false);
 
+  const lastAppliedCrdtRef = useRef<string | null>(
+    hasMeaningfulCrdt ? initialCrdtState! : null
+  );
+
   const [ydoc] = React.useState(() => {
     let doc = new Y.Doc();
     doc.guid = pageId || 'temp';
@@ -30,7 +33,6 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
     if (hasMeaningfulCrdt) {
       try {
         applyBase64StateToYDoc(doc, initialCrdtState!);
-        // Quick sanity check: the doc should have content
         const xmlFragment = doc.get('default', Y.XmlFragment);
         if (!xmlFragment) throw new Error('CRDT produced empty XmlFragment');
       } catch (err) {
@@ -46,6 +48,7 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
     if (backup?.crdt && backup.crdt.length > 8) {
       try {
         applyBase64StateToYDoc(doc, backup.crdt);
+        lastAppliedCrdtRef.current = backup.crdt;
       } catch (err) {
         console.warn('[Caderno:Sync] Falha ao aplicar backup CRDT:', err);
       }
@@ -60,7 +63,9 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
     const handleRemoteUpdate = (e: CustomEvent) => {
       const { pageId: syncPageId, crdtState } = e.detail;
       if (syncPageId === pageId && ydocRef.current && crdtState) {
+        if (crdtState === lastAppliedCrdtRef.current) return;
         applyBase64StateToYDoc(ydocRef.current, crdtState);
+        lastAppliedCrdtRef.current = crdtState;
       }
     };
     window.addEventListener('caderno-sync-update', handleRemoteUpdate as EventListener);
@@ -73,19 +78,22 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
   // 2. Listen to page save broadcasts across browser and internal tabs (BroadcastChannel + Local Event)
   useEffect(() => {
     const unsubscribe = onPageSaved((msg) => {
-      // Update in-memory backup with latest version
       if (msg.pageId) {
         getEditorBackupMap().set(msg.pageId, { html: msg.html, crdt: msg.crdtState || '' });
       }
 
-      // If message originated from this editor, no need to re-apply CRDT to self
       if (instanceId && msg.senderInstanceId === instanceId) {
+        if (msg.pageId === pageId && msg.crdtState) {
+          lastAppliedCrdtRef.current = msg.crdtState;
+        }
         return;
       }
 
-      // If saved page is currently open in this editor, sync YDoc immediately
       if (msg.pageId === pageId && ydocRef.current && msg.crdtState && msg.crdtState.length > 8) {
-        applyBase64StateToYDoc(ydocRef.current, msg.crdtState);
+        if (msg.crdtState !== lastAppliedCrdtRef.current) {
+          applyBase64StateToYDoc(ydocRef.current, msg.crdtState);
+          lastAppliedCrdtRef.current = msg.crdtState;
+        }
         if (latestContentRef.current) {
           latestContentRef.current = { html: msg.html, crdt: msg.crdtState };
         }
@@ -98,53 +106,69 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
   }, [pageId, latestContentRef, instanceId]);
 
   // 3. Protection fallback when gaining focus / returning to visibility
-  // Validates persistent storage state to avoid applying stale in-memory CRDT snapshots over external edits
+  // Queries only the current page (coalesced with PageView) and applies CRDT only on real divergence.
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || !pageId) return;
 
+    let cancelled = false;
     let lastFocusCheckTime = 0;
     const handleFocusCheck = async () => {
-      if (!pageId || !ydocRef.current || !isActive) return;
+      if (cancelled || !pageId || !ydocRef.current || !isActive) return;
       const now = Date.now();
       if (now - lastFocusCheckTime < 2000) return;
       lastFocusCheckTime = now;
 
-      if (document.visibilityState === 'visible' && window.api?.getAllPages) {
-        try {
-          const pages = await window.api.getAllPages();
-          const currentPage = pages?.find((p: Page) => p.id === pageId);
-          if (currentPage) {
+      if (document.visibilityState === 'visible') {
+        const request = fetchPageContentDedup(pageId);
+        if (request) {
+          try {
+            const pageData = await request;
+            if (cancelled || !pageData) return;
+
+            const remoteCrdt = pageData.crdt_state;
             // If the database row has no CRDT state, it was updated externally (e.g. by native Qt).
             // Clear any stale in-memory CRDT backup so it does not overwrite the newer HTML.
-            if (!currentPage.crdt_state || currentPage.crdt_state.length <= 8) {
+            if (!remoteCrdt || remoteCrdt.length <= 8) {
               getEditorBackupMap().delete(pageId);
+              lastAppliedCrdtRef.current = null;
               return;
             }
 
-            if (currentPage.crdt_state && currentPage.crdt_state.length > 8 && ydocRef.current) {
-              applyBase64StateToYDoc(ydocRef.current, currentPage.crdt_state);
-              getEditorBackupMap().set(pageId, {
-                html: latestContentRef.current?.html || '',
-                crdt: currentPage.crdt_state,
-              });
+            // Skip redundant Yjs merge if the remote CRDT matches our current local snapshot.
+            const localCrdt = latestContentRef.current?.crdt || lastAppliedCrdtRef.current;
+            if (remoteCrdt === localCrdt || remoteCrdt === lastAppliedCrdtRef.current) {
               return;
             }
+
+            if (!cancelled && ydocRef.current) {
+              applyBase64StateToYDoc(ydocRef.current, remoteCrdt);
+              lastAppliedCrdtRef.current = remoteCrdt;
+              getEditorBackupMap().set(pageId, {
+                html: pageData.content || latestContentRef.current?.html || '',
+                crdt: remoteCrdt,
+              });
+            }
+            return;
+          } catch (err) {
+            if (!cancelled) {
+              console.warn('[Caderno:Sync] Erro ao verificar estado da página ao focar:', err);
+            }
           }
-        } catch (err) {
-          console.warn('[Caderno:Sync] Erro ao verificar estado da página ao focar:', err);
         }
       }
 
-      // In-memory fallback if storage query was not performed
-      const backup = getEditorBackupMap().get(pageId);
-      if (backup?.crdt && backup.crdt.length > 8) {
-        applyBase64StateToYDoc(ydocRef.current, backup.crdt);
-        return;
-      }
+      if (cancelled || !ydocRef.current) return;
 
-      const storePage = getStoreState().pages.find((p) => p.id === pageId);
-      if (storePage?.crdt_state && storePage.crdt_state.length > 8) {
-        applyBase64StateToYDoc(ydocRef.current, storePage.crdt_state);
+      // In-memory fallback only if storage API is unavailable and backup diverges
+      const backup = getEditorBackupMap().get(pageId);
+      if (
+        backup?.crdt &&
+        backup.crdt.length > 8 &&
+        backup.crdt !== lastAppliedCrdtRef.current &&
+        backup.crdt !== latestContentRef.current?.crdt
+      ) {
+        applyBase64StateToYDoc(ydocRef.current, backup.crdt);
+        lastAppliedCrdtRef.current = backup.crdt;
       }
     };
 
@@ -152,6 +176,7 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
     window.addEventListener('focus', handleFocusCheck);
 
     return () => {
+      cancelled = true;
       document.removeEventListener('visibilitychange', handleFocusCheck);
       window.removeEventListener('focus', handleFocusCheck);
     };
@@ -175,7 +200,6 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
   useEffect(() => {
     if (hasMeaningfulCrdt) {
       const xmlFragment = ydocRef.current.get('default', Y.XmlFragment);
-      // If the fragment has no children after applying CRDT, treat as failed
       if (!xmlFragment || xmlFragment.length === 0) {
         setCrdtFailed(true);
       }

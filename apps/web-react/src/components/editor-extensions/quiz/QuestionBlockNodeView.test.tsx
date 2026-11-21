@@ -61,8 +61,8 @@ describe('QuestionBlockNodeView (Embed Card)', () => {
     expect(getByText('Iniciar no Modo Foco')).toBeDefined();
   });
 
-  it('opens focus mode modal upon clicking "Iniciar no Modo Foco"', () => {
-    const { getByText } = render(
+  it('opens focus mode modal upon clicking "Iniciar no Modo Foco"', async () => {
+    const { getByText, findByText } = render(
       <I18nProvider initialLanguage="pt-BR">
         <QuestionBlockNodeView {...mockProps} />
       </I18nProvider>
@@ -71,8 +71,8 @@ describe('QuestionBlockNodeView (Embed Card)', () => {
     const launchButton = getByText('Iniciar no Modo Foco');
     fireEvent.click(launchButton);
 
-    // Modal opens and shows focus mode banner
-    expect(getByText('Modo Foco')).toBeDefined();
+    // Modal opens and shows focus mode banner (loaded lazily via React.lazy)
+    expect(await findByText('Modo Foco', {}, { timeout: 4000 })).toBeDefined();
   });
 
   it('opens delete confirmation dialog and calls deleteNode when confirmed', () => {

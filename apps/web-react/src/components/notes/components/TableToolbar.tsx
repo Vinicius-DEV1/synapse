@@ -88,7 +88,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('bold')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isBold ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isBold ? activeClass : inactiveClass}`}
           title="Negrito (Ctrl+B)"
         >
           <Bold size={15} />
@@ -97,7 +97,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('italic')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isItalic ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isItalic ? activeClass : inactiveClass}`}
           title="Itálico (Ctrl+I)"
         >
           <Italic size={15} />
@@ -106,7 +106,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('underline')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isUnderline ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isUnderline ? activeClass : inactiveClass}`}
           title="Sublinhado (Ctrl+U)"
         >
           <Underline size={15} />
@@ -115,7 +115,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('strike')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isStrike ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isStrike ? activeClass : inactiveClass}`}
           title="Tachado"
         >
           <Strikethrough size={15} />
@@ -124,7 +124,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('code')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isCode ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isCode ? activeClass : inactiveClass}`}
           title="Código inline"
         >
           <Code size={15} />
@@ -133,7 +133,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('spoiler')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isSpoiler ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isSpoiler ? activeClass : inactiveClass}`}
           title="Ocultar com Fumaça / Spoiler (Ctrl+Shift+S)"
         >
           <EyeOff size={15} />
@@ -142,7 +142,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => setActiveColorMode(activeColorMode === 'textColor' ? null : 'textColor')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${activeColorMode === 'textColor' ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${activeColorMode === 'textColor' ? activeClass : inactiveClass}`}
           title="Cor do Texto"
         >
           <Palette size={15} />
@@ -151,7 +151,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => setActiveColorMode(activeColorMode === 'highlight' ? null : 'highlight')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${isHighlight || activeColorMode === 'highlight' ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${isHighlight || activeColorMode === 'highlight' ? activeClass : inactiveClass}`}
           title="Destaque do Texto"
         >
           <Highlighter size={15} />
@@ -160,7 +160,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => handleFormat('clearFormatting')}
-          className="p-1.5 rounded-lg transition-all text-dark-subtext hover:bg-white/10 hover:text-white active:scale-90"
+          className="p-1.5 rounded-lg transition-[color,background-color,border-color,transform] text-dark-subtext hover:bg-white/10 hover:text-white active:scale-90"
           title="Limpar Formatação"
         >
           <RemoveFormatting size={15} />
@@ -174,7 +174,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => selectCurrentColumn(editor)}
-          className={`flex items-center gap-1 px-1.5 py-1 rounded-lg transition-all text-[11px] font-medium active:scale-95 ${
+          className={`flex items-center gap-1 px-1.5 py-1 rounded-lg transition-[color,background-color,border-color,transform] text-[11px] font-medium active:scale-95 ${
             scope.type === 'col' ? 'bg-brand-500/20 text-brand-400 border border-brand-500/40' : inactiveClass
           }`}
           title="Selecionar Coluna (Excel)"
@@ -186,7 +186,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => selectCurrentRow(editor)}
-          className={`flex items-center gap-1 px-1.5 py-1 rounded-lg transition-all text-[11px] font-medium active:scale-95 ${
+          className={`flex items-center gap-1 px-1.5 py-1 rounded-lg transition-[color,background-color,border-color,transform] text-[11px] font-medium active:scale-95 ${
             scope.type === 'row' ? 'bg-brand-500/20 text-brand-400 border border-brand-500/40' : inactiveClass
           }`}
           title="Selecionar Linha (Excel)"
@@ -198,7 +198,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => selectEntireTable(editor)}
-          className={`p-1.5 rounded-lg transition-all active:scale-95 ${
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-95 ${
             scope.type === 'table' ? 'bg-brand-500/20 text-brand-400 border border-brand-500/40' : inactiveClass
           }`}
           title="Selecionar Tabela Inteira (Excel)"
@@ -214,7 +214,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => setActiveColorMode(activeColorMode === 'cellBg' ? null : 'cellBg')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${activeColorMode === 'cellBg' ? activeClass : inactiveClass}`}
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${activeColorMode === 'cellBg' ? activeClass : inactiveClass}`}
           title="Cor da célula"
         >
           <PaintBucket size={15} />
@@ -223,7 +223,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().addRowBefore().run()}
-          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-all active:scale-90"
+          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-[color,background-color,border-color,transform] active:scale-90"
           title="Adicionar linha acima"
         >
           <ArrowUpFromLine size={15} />
@@ -232,7 +232,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().addRowAfter().run()}
-          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-all active:scale-90"
+          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-[color,background-color,border-color,transform] active:scale-90"
           title="Adicionar linha abaixo"
         >
           <ArrowDownFromLine size={15} />
@@ -242,7 +242,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
           type="button"
           onClick={() => moveCurrentRow(editor, 'up')}
           disabled={!canMoveCurrentRow(editor, 'up')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${
             canMoveCurrentRow(editor, 'up')
               ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
               : 'text-dark-subtext/25 cursor-not-allowed'
@@ -256,7 +256,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
           type="button"
           onClick={() => moveCurrentRow(editor, 'down')}
           disabled={!canMoveCurrentRow(editor, 'down')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${
             canMoveCurrentRow(editor, 'down')
               ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
               : 'text-dark-subtext/25 cursor-not-allowed'
@@ -269,7 +269,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().deleteRow().run()}
-          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-all active:scale-90"
+          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-[color,background-color,border-color,transform] active:scale-90"
           title="Excluir linha"
         >
           <Trash2 size={15} />
@@ -280,7 +280,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().addColumnBefore().run()}
-          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-all active:scale-90"
+          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-[color,background-color,border-color,transform] active:scale-90"
           title="Adicionar coluna à esquerda"
         >
           <ArrowLeftFromLine size={15} />
@@ -289,7 +289,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().addColumnAfter().run()}
-          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-all active:scale-90"
+          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-[color,background-color,border-color,transform] active:scale-90"
           title="Adicionar coluna à direita"
         >
           <ArrowRightFromLine size={15} />
@@ -299,7 +299,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
           type="button"
           onClick={() => moveCurrentColumn(editor, 'left')}
           disabled={!canMoveCurrentColumn(editor, 'left')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${
             canMoveCurrentColumn(editor, 'left')
               ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
               : 'text-dark-subtext/25 cursor-not-allowed'
@@ -313,7 +313,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
           type="button"
           onClick={() => moveCurrentColumn(editor, 'right')}
           disabled={!canMoveCurrentColumn(editor, 'right')}
-          className={`p-1.5 rounded-lg transition-all active:scale-90 ${
+          className={`p-1.5 rounded-lg transition-[color,background-color,border-color,transform] active:scale-90 ${
             canMoveCurrentColumn(editor, 'right')
               ? 'hover:bg-white/10 text-dark-subtext hover:text-white'
               : 'text-dark-subtext/25 cursor-not-allowed'
@@ -326,7 +326,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().deleteColumn().run()}
-          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-all active:scale-90"
+          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-[color,background-color,border-color,transform] active:scale-90"
           title="Excluir coluna"
         >
           <Trash2 size={15} />
@@ -335,7 +335,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().mergeOrSplit().run()}
-          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-all active:scale-90"
+          className="p-1.5 hover:bg-white/10 rounded-lg text-dark-subtext hover:text-white transition-[color,background-color,border-color,transform] active:scale-90"
           title="Mesclar ou Dividir Células"
         >
           <Combine size={15} />
@@ -346,7 +346,7 @@ export default function TableToolbar({ editor }: TableToolbarProps) {
         <button
           type="button"
           onClick={() => editor.chain().focus().deleteTable().run()}
-          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-500 hover:text-red-400 transition-all active:scale-90"
+          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-500 hover:text-red-400 transition-[color,background-color,border-color,transform] active:scale-90"
           title="Excluir tabela inteira"
         >
           <X size={15} />

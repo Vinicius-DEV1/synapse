@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { X, Maximize2, Loader2 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
-import { useStore } from '../../store/useStore';
+import { useStoreSelector } from '../../store/useStore';
 import { getDecryptedFileUrl } from '../../utils/file-fetcher';
 import type { FileItem } from '../../types';
 
@@ -12,12 +12,11 @@ interface FloatingPdfViewerProps {
 }
 
 function FloatingPdfViewerContent({ item, onClose, onExpand }: FloatingPdfViewerProps) {
-  const { state } = useStore();
+  const filesMasterKey = useStoreSelector((s) => s.moduleKeys['files']);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const filesMasterKey = state.moduleKeys['files'];
   const itemId = item.id;
   const itemUpdatedAt = item.updated_at;
   const itemLocalPath = item.local_path;

@@ -20,6 +20,7 @@ describe('LinkPreviewBlock Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (window as any).api;
 
     mockProps = {
       node: {
@@ -289,8 +290,8 @@ describe('LinkPreviewBlock Component', () => {
 
     fireEvent.click(summaryButton);
 
-    // YouTubeSummaryModal should be rendered
-    expect(await findByText('RESUMO IA')).toBeDefined();
+    // YouTubeSummaryModal should be rendered (loaded lazily via React.lazy)
+    expect(await findByText('RESUMO IA', {}, { timeout: 5000 })).toBeDefined();
   });
 
   it('does not render summary hover pill when video has no summary, but renders it when summary exists', async () => {
@@ -389,8 +390,14 @@ describe('LinkPreviewBlock Component', () => {
 
     fireEvent.click(infoButton);
 
-    // LinkInfoModal header or loading indicator should be rendered
-    expect(await findByText(/Analisando recurso web.../i)).toBeDefined();
+    // LinkInfoModal header and loading indicator should be rendered (loaded lazily via React.lazy)
+    expect(
+      await findByText(
+        /Analisando recurso web...|Conectando e obtendo o conteúdo da página.../i,
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeDefined();
   });
 });
 

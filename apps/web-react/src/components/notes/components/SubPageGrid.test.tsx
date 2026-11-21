@@ -4,9 +4,16 @@ import SubPageGrid from './SubPageGrid';
 import { useStore } from '../../../store/useStore';
 import type { Page } from '../../../types';
 
-vi.mock('../../../store/useStore', () => ({
-  useStore: vi.fn(),
-}));
+vi.mock('../../../store/useStore', () => {
+  const storeMock = vi.fn();
+  return {
+    useStore: storeMock,
+    usePages: () => storeMock().state.pages,
+    useStoreDispatch: () => storeMock().dispatch,
+    useStoreSelector: (sel: (s: unknown) => unknown) => sel(storeMock().state),
+    getStoreState: () => storeMock().state,
+  };
+});
 
 describe('SubPageGrid Component', () => {
   const mockDispatch = vi.fn();

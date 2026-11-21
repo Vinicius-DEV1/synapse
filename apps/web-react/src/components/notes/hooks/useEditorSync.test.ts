@@ -184,12 +184,17 @@ describe('useEditorSync Hook', () => {
     expect(yjsUtils.applyBase64StateToYDoc).not.toHaveBeenCalled();
   });
 
-  it('checks DB and applies state on window focus / visibility visible', async () => {
-    const mockGetAllPages = vi.fn().mockResolvedValue([
-      { id: 'page_123', crdt_state: 'new_crdt_from_db_123456' },
-    ]);
-    (window as unknown as { api: { getAllPages: typeof mockGetAllPages } }).api = {
+  it('queries only current page via getPageContent (never getAllPages) and applies CRDT on divergence', async () => {
+    const mockGetAllPages = vi.fn();
+    const mockGetPageContent = vi.fn().mockResolvedValue({
+      content: '<p>From DB</p>',
+      encrypted_content: null,
+      crdt_state: 'new_crdt_from_db_123456',
+      updated_at: '2026-11-13T12:00:00.000Z',
+    });
+    (window as unknown as { api: { getAllPages: typeof mockGetAllPages; getPageContent: typeof mockGetPageContent } }).api = {
       getAllPages: mockGetAllPages,
+      getPageContent: mockGetPageContent,
     };
 
     renderHook(() =>
@@ -205,11 +210,40 @@ describe('useEditorSync Hook', () => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    expect(mockGetAllPages).toHaveBeenCalled();
+    expect(mockGetAllPages).not.toHaveBeenCalled();
+    expect(mockGetPageContent).toHaveBeenCalledWith('page_123');
     expect(yjsUtils.applyBase64StateToYDoc).toHaveBeenCalledWith(
       expect.anything(),
       'new_crdt_from_db_123456'
     );
+  });
+
+  it('skips applyBase64StateToYDoc on focus when remote crdt_state matches current local snapshot', async () => {
+    const mockGetPageContent = vi.fn().mockResolvedValue({
+      content: '<p>Texto salvo</p>',
+      encrypted_content: null,
+      crdt_state: 'crdt_data_payload_long_enough',
+      updated_at: '2026-11-13T12:00:00.000Z',
+    });
+    (window as unknown as { api: { getPageContent: typeof mockGetPageContent } }).api = {
+      getPageContent: mockGetPageContent,
+    };
+
+    renderHook(() =>
+      useEditorSync({
+        pageId: 'page_123',
+        initialCrdtState: null,
+        onSaveRef,
+        latestContentRef,
+      })
+    );
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(mockGetPageContent).toHaveBeenCalledWith('page_123');
+    expect(yjsUtils.applyBase64StateToYDoc).not.toHaveBeenCalled();
   });
 
   it('clears stale in-memory backup and does not apply CRDT when DB page has null crdt_state (external native Qt edit)', async () => {
@@ -218,11 +252,14 @@ describe('useEditorSync Hook', () => {
       crdt: 'stale_crdt_payload_12345678',
     });
 
-    const mockGetAllPages = vi.fn().mockResolvedValue([
-      { id: 'page_123', crdt_state: null, updated_at: '2026-11-13T12:00:00.000Z' },
-    ]);
-    (window as unknown as { api: { getAllPages: typeof mockGetAllPages } }).api = {
-      getAllPages: mockGetAllPages,
+    const mockGetPageContent = vi.fn().mockResolvedValue({
+      content: '<p>Updated in Qt</p>',
+      encrypted_content: null,
+      crdt_state: null,
+      updated_at: '2026-11-13T12:00:00.000Z',
+    });
+    (window as unknown as { api: { getPageContent: typeof mockGetPageContent } }).api = {
+      getPageContent: mockGetPageContent,
     };
 
     renderHook(() =>
@@ -238,7 +275,7 @@ describe('useEditorSync Hook', () => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    expect(mockGetAllPages).toHaveBeenCalled();
+    expect(mockGetPageContent).toHaveBeenCalledWith('page_123');
     expect(getEditorBackupMap().has('page_123')).toBe(false);
   });
 

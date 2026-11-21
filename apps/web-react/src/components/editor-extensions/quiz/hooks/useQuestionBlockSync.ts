@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { normalizeQuizQuestions } from '../utils/quizNormalizer';
 import type { QuestionItem } from '../types';
 import type { QuizQuestion } from '../../../../types/quiz';
-import type { AppState, Tab } from '../../../../types';
+import type { Tab } from '../../../../types';
+import { useStoreSelector, getStoreState } from '../../../../store/useStore';
 
 interface UseQuestionBlockSyncProps {
   rawBatteryId?: string;
@@ -13,7 +14,6 @@ interface UseQuestionBlockSyncProps {
   cachedCount?: number;
   cachedTags?: string[];
   updateAttributes: (attrs: Record<string, unknown>) => void;
-  state: AppState;
 }
 
 export function useQuestionBlockSync({
@@ -25,7 +25,6 @@ export function useQuestionBlockSync({
   cachedCount,
   cachedTags,
   updateAttributes,
-  state,
 }: UseQuestionBlockSyncProps) {
   const [batteryId, setBatteryId] = useState<string | null>(rawBatteryId || null);
   const [questions, setQuestions] = useState<QuestionItem[]>(() => {
@@ -60,6 +59,7 @@ export function useQuestionBlockSync({
         const normalized = normalizeQuizQuestions(rawQuestions as QuestionItem[]);
         const tags = Array.from(new Set(normalized.flatMap((q) => q.tags || [])));
 
+        const state = getStoreState();
         const activeTab = state.tabs.find((t: Tab) => t.id === state.activeTabId);
         const currentPageId = activeTab?.pageId;
 
@@ -113,7 +113,7 @@ export function useQuestionBlockSync({
     return () => {
       isMounted = false;
     };
-  }, [rawBatteryId, rawQuestions, title, description, state.tabs, state.activeTabId]);
+  }, [rawBatteryId, rawQuestions, title, description]);
 
   // SWR: Load fresh battery & questions from DB silently in background
   const cachedTitleRef = useRef(cachedTitle);
@@ -178,8 +178,10 @@ export function useQuestionBlockSync({
     }
   }, [batteryId, rawBatteryId]);
 
-  const activeTab = state.tabs.find((t: Tab) => t.id === state.activeTabId);
-  const activeModule = activeTab?.module;
+  const activeModule = useStoreSelector((s) => {
+    const activeTab = s.tabs.find((t: Tab) => t.id === s.activeTabId);
+    return activeTab?.module ?? null;
+  });
 
   useEffect(() => {
     if (activeModule === 'notes') {
