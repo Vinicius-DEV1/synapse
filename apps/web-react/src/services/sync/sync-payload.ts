@@ -3,10 +3,12 @@ import { uint8ArrayToBase64 } from '../../utils/binary';
 import { encodeSyncDocumentId, parseDateSafe, type SyncRow } from './sync-utils';
 import { prepareEncryptedSyncChunks, type PreparedSyncChunk } from './sync-chunked-payload';
 import { normalizeSyncPayloadRow } from './sync-payload-normalization';
+import { yieldToMain } from '../../utils/yieldToMain';
 
 /** Individual Firestore documents are kept below the platform's 1 MiB limit. */
 const MAX_PAYLOAD_BYTES = 600_000;
 const MAX_ENCRYPTED_PAYLOAD_CHARACTERS = 900_000;
+const PUSH_PREPARE_BATCH_SIZE = 20;
 
 export interface PreparedDoc {
   id: string;
@@ -36,8 +38,9 @@ export async function prepareRowsForPush(
   table: string
 ): Promise<PreparedRows> {
   const skippedLarge: string[] = [];
+  const prepared: PreparedDoc[] = [];
 
-  const promises = rows.map(async (sourceRow): Promise<PreparedDoc | null> => {
+  const prepareSingleRow = async (sourceRow: SyncRow): Promise<PreparedDoc | null> => {
     const row = normalizeSyncPayloadRow(sourceRow, table);
     const { id, updated_at, created_at, ...sensitiveData } = row;
     const idVal = id ?? row.shareId ?? row.url;
@@ -112,11 +115,21 @@ export async function prepareRowsForPush(
       table,
       idEncodingVersion: encodedId.encodingVersion,
     };
-  });
+  };
 
-  const results = await Promise.all(promises);
+  for (let i = 0; i < rows.length; i += PUSH_PREPARE_BATCH_SIZE) {
+    const chunk = rows.slice(i, i + PUSH_PREPARE_BATCH_SIZE);
+    const chunkResults = await Promise.all(chunk.map(prepareSingleRow));
+    for (const doc of chunkResults) {
+      if (doc !== null) prepared.push(doc);
+    }
+    if (i + PUSH_PREPARE_BATCH_SIZE < rows.length) {
+      await yieldToMain();
+    }
+  }
+
   return {
-    prepared: results.filter((row): row is PreparedDoc => row !== null),
+    prepared,
     skippedLarge,
   };
 }

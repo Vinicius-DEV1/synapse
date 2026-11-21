@@ -17,11 +17,13 @@ describe('createWebNotesApi (IndexedDB)', () => {
     expect(page.title).toBe('Calculus Notes');
     expect(page.icon).toBe('📐');
 
-    // getAllPages should return page without content/encrypted_content
+    // getAllPages should return page without content/encrypted_content/crdt_state
+    await api.updatePage({ id: page.id, crdt_state: 'base64_crdt_state_blob' });
     const all = await api.getAllPages();
     expect(all).toHaveLength(1);
     expect(all[0].id).toBe(page.id);
     expect(all[0].content).toBeUndefined();
+    expect(all[0].crdt_state).toBeUndefined();
 
     // updatePage
     const updatedRows = await api.updatePage({ id: page.id, title: 'Advanced Calculus' });
@@ -29,6 +31,8 @@ describe('createWebNotesApi (IndexedDB)', () => {
 
     const contentRes = await api.getPageContent(page.id);
     expect(contentRes.content).toBe('');
+    expect(contentRes.crdt_state).toBe('base64_crdt_state_blob');
+    expect(contentRes.updated_at).toBeTruthy();
 
     // deletePage (soft delete)
     const deleted = await api.deletePage(page.id);

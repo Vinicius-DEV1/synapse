@@ -1,20 +1,21 @@
 import { useEffect, useRef } from 'react';
 import type { AppState, Action } from '../types/store';
+import { getStoreState } from '../store/useStore';
 
 export function useAppBackPress(
-  state: AppState,
+  stateOrGetter: AppState | (() => AppState) | null,
   dispatch: React.Dispatch<Action>,
   floatingPageId: string | null,
   setFloatingPageId: (id: string | null) => void,
   pageHistoryRef: React.MutableRefObject<string[]>
 ) {
-  const stateRef = useRef(state);
+  const stateOrGetterRef = useRef(stateOrGetter);
   const dispatchRef = useRef(dispatch);
   const floatingPageIdRef = useRef(floatingPageId);
   const setFloatingPageIdRef = useRef(setFloatingPageId);
 
   useEffect(() => {
-    stateRef.current = state;
+    stateOrGetterRef.current = stateOrGetter;
     dispatchRef.current = dispatch;
     floatingPageIdRef.current = floatingPageId;
     setFloatingPageIdRef.current = setFloatingPageId;
@@ -22,7 +23,9 @@ export function useAppBackPress(
 
   useEffect(() => {
     const handleBack = (): boolean => {
-      const curState = stateRef.current;
+      const source = stateOrGetterRef.current;
+      const curState =
+        typeof source === 'function' ? source() : source || getStoreState();
       const curDispatch = dispatchRef.current;
       const curFloatingId = floatingPageIdRef.current;
       const curSetFloating = setFloatingPageIdRef.current;

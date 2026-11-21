@@ -178,4 +178,93 @@ describe('webSyncApi (Persistence & Sync Storage Adapter)', () => {
       expect(originalDelete).toHaveBeenCalledWith('pages', 'p1');
     });
   });
+
+  describe('upsertRowsBatch', () => {
+    it('returns early for empty batches without opening a transaction', async () => {
+      const api = webSyncApi(mockDb, originalDelete, originalPut);
+      const res = await api.upsertRowsBatch!('pages', []);
+      expect(res).toEqual({ success: true });
+      expect(mockDb.transaction).not.toHaveBeenCalled();
+    });
+
+    it('merges and commits multiple rows in a single readwrite transaction', async () => {
+      const putCalls: Array<Record<string, unknown>> = [];
+      const bookFileDeletes: string[] = [];
+      const mainStore = {
+        get: vi.fn((id: string) =>
+          id === 'b1' ? Promise.resolve({ id: 'b1', title: 'Old', local_path: '/keep.pdf' }) : Promise.resolve(undefined)
+        ),
+        put: vi.fn((row: Record<string, unknown>) => {
+          putCalls.push(row);
+          return Promise.resolve();
+        }),
+      };
+      const bookFilesStore = {
+        delete: vi.fn((id: string) => {
+          bookFileDeletes.push(id);
+          return Promise.resolve();
+        }),
+      };
+      mockDb.transaction.mockReturnValue({
+        objectStore: (name: string) => (name === 'library_book_files' ? bookFilesStore : mainStore),
+        done: Promise.resolve(),
+      });
+
+      const api = webSyncApi(mockDb, originalDelete, originalPut);
+      await api.upsertRowsBatch!('library_books', [
+        { id: 'b1', title: 'Updated' },
+        { id: 'b2', title: 'Deleted Book', deleted_at: '2026-10-25T12:00:00.000Z' },
+      ]);
+
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(putCalls).toEqual([
+        { id: 'b1', title: 'Updated', local_path: '/keep.pdf' },
+        { id: 'b2', title: 'Deleted Book', deleted_at: '2026-10-25T12:00:00.000Z' },
+      ]);
+      expect(bookFileDeletes).toEqual(['b2']);
+    });
+  });
+
+  describe('getModifiedRows indexed fast path', () => {
+    it('queries the updated_at index instead of scanning db.getAll when all rows are indexed', async () => {
+      const thresholdMs = Date.parse('2026-10-20T00:00:00.000Z');
+      const indexedGetAll = vi
+        .fn()
+        .mockResolvedValueOnce([
+          { id: 'p-new', updated_at: '2026-10-21T12:00:00.000Z' },
+          { id: 'p-old-floor', updated_at: '2026-10-19T12:00:00.000Z' },
+        ])
+        .mockResolvedValueOnce([]);
+      const deletedGetAll = vi.fn().mockResolvedValue([]);
+
+      const originalKeyRange = globalThis.IDBKeyRange;
+      Reflect.set(globalThis, 'IDBKeyRange', {
+        lowerBound: (v: unknown) => ({ lower: v }),
+        bound: (l: unknown, u: unknown) => ({ lower: l, upper: u }),
+      });
+
+      try {
+        mockDb.transaction.mockReturnValue({
+          store: {
+            indexNames: { contains: (n: string) => n === 'updated_at' || n === 'deleted_at' },
+            count: vi.fn().mockResolvedValue(2),
+            index: (name: string) =>
+              name === 'updated_at'
+                ? { count: vi.fn().mockResolvedValue(2), getAll: indexedGetAll }
+                : { count: vi.fn().mockResolvedValue(0), getAll: deletedGetAll },
+          },
+          done: Promise.resolve(),
+        });
+
+        const api = webSyncApi(mockDb, originalDelete, originalPut);
+        const rows = await api.getModifiedRows!('pages', thresholdMs);
+
+        expect(mockDb.getAll).not.toHaveBeenCalled();
+        expect(indexedGetAll).toHaveBeenCalledTimes(2);
+        expect(rows.map((r) => (r as Record<string, unknown>).id)).toEqual(['p-new']);
+      } finally {
+        Reflect.set(globalThis, 'IDBKeyRange', originalKeyRange);
+      }
+    });
+  });
 });

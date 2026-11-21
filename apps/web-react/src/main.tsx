@@ -61,6 +61,27 @@ async function init() {
     let syncTimeout: ReturnType<typeof setTimeout> | null = null;
     const pendingDirtyTables = new Set<string>();
     const proxyCache = new WeakMap<object, unknown>();
+    let isDispatchingProxySync = false;
+
+    // Deduplicate proxy-queued sync triggers when a caller (e.g. usePageActions)
+    // already explicitly dispatched app-sync-trigger / app-sync-trigger-immediate.
+    const cancelQueuedTableSync = (ev: Event) => {
+      if (isDispatchingProxySync) return;
+      const table = (ev as CustomEvent<{ table?: string }>).detail?.table;
+      if (table) {
+        pendingDirtyTables.delete(table);
+        if (pendingDirtyTables.size === 0 && syncTimeout) {
+          clearTimeout(syncTimeout);
+          syncTimeout = null;
+        }
+      } else if (syncTimeout) {
+        pendingDirtyTables.clear();
+        clearTimeout(syncTimeout);
+        syncTimeout = null;
+      }
+    };
+    window.addEventListener('app-sync-trigger', cancelQueuedTableSync);
+    window.addEventListener('app-sync-trigger-immediate', cancelQueuedTableSync);
 
     function inferTableFromPath(path: string, prop: string): string | undefined {
       if (path === 'notes') return 'pages';
@@ -107,6 +128,8 @@ async function init() {
                   // Exclude local-only UI layout keys from triggering expensive network sync
                   const isLocalOnlyConfig = path === 'config' && typeof args[0] === 'string' && [
                     'appLayoutState',
+                    'aiChatSessions',
+                    'caderno_modules_expanded',
                     'security_lock',
                     'lastActiveTab',
                     'sync_manifest',
@@ -121,13 +144,18 @@ async function init() {
                     if (syncTimeout) clearTimeout(syncTimeout);
                     syncTimeout = setTimeout(() => {
                       syncTimeout = null;
-                      if (pendingDirtyTables.size > 0) {
-                        for (const tbl of pendingDirtyTables) {
-                          window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: tbl } }));
+                      isDispatchingProxySync = true;
+                      try {
+                        if (pendingDirtyTables.size > 0) {
+                          for (const tbl of pendingDirtyTables) {
+                            window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: tbl } }));
+                          }
+                          pendingDirtyTables.clear();
+                        } else {
+                          window.dispatchEvent(new Event('app-sync-trigger'));
                         }
-                        pendingDirtyTables.clear();
-                      } else {
-                        window.dispatchEvent(new Event('app-sync-trigger'));
+                      } finally {
+                        isDispatchingProxySync = false;
                       }
                     }, 500); // 500ms debounce
                   }

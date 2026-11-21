@@ -38,16 +38,30 @@ export const createWebNotesApi = (
     return all
       .filter((p) => !p.deleted_at)
       .map((p) => {
-        const { content: _content, encrypted_content: _encrypted, ...rest } = p;
+        const {
+          content: _content,
+          encrypted_content: _encrypted,
+          crdt_state: _crdt,
+          ...rest
+        } = p;
         if (rest.parent_id === undefined) rest.parent_id = null;
         if (rest.is_pinned === undefined) rest.is_pinned = 0;
         return rest as Page;
       });
   },
 
-  getPageContent: async (id: string): Promise<{ content: string; encrypted_content: string | null }> => {
+  getPageContent: async (
+    id: string
+  ): Promise<{
+    content: string;
+    encrypted_content: string | null;
+    crdt_state: string | null;
+    updated_at: string | null;
+  }> => {
     const page = (await db.get('pages', id)) as Page | undefined;
-    if (!page || page.deleted_at) return { content: '', encrypted_content: null };
+    if (!page || page.deleted_at) {
+      return { content: '', encrypted_content: null, crdt_state: null, updated_at: null };
+    }
 
     let content = page.content || '';
     if (!content && page.encrypted_content && !page.is_locked) {
@@ -61,7 +75,12 @@ export const createWebNotesApi = (
       }
     }
 
-    return { content, encrypted_content: page.encrypted_content || null };
+    return {
+      content,
+      encrypted_content: page.encrypted_content || null,
+      crdt_state: page.crdt_state ?? null,
+      updated_at: page.updated_at ?? null,
+    };
   },
 
   createPage: async ({ parentId, title, icon }: { parentId: string | null; title?: string; icon?: string }): Promise<Page> => {
@@ -185,7 +204,11 @@ export const createWebNotesApi = (
     const all = (await db.getAll('pages')) as Page[];
     return all
       .filter((p): p is Page & { deleted_at: string } => Boolean(p.deleted_at))
-      .sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
+      .map((p) => {
+        const { content: _c, encrypted_content: _e, crdt_state: _crdt, ...rest } = p;
+        return rest as PageMeta;
+      })
+      .sort((a, b) => new Date(b.deleted_at!).getTime() - new Date(a.deleted_at!).getTime());
   },
 
   restorePage: async (id: string): Promise<boolean> => {

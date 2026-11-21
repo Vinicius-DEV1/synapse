@@ -1,18 +1,21 @@
 import { useEffect, useRef } from 'react';
 import type { AppState, Action } from '../types';
+import { getStoreState } from '../store/useStore';
 
-export function useAppShortcuts(state: AppState, dispatch: React.Dispatch<Action>) {
-  const stateRef = useRef(state);
+export function useAppShortcuts(stateOrGetter: AppState | (() => AppState) | null, dispatch: React.Dispatch<Action>) {
+  const stateOrGetterRef = useRef(stateOrGetter);
   const dispatchRef = useRef(dispatch);
 
   useEffect(() => {
-    stateRef.current = state;
+    stateOrGetterRef.current = stateOrGetter;
     dispatchRef.current = dispatch;
   });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const currentState = stateRef.current;
+      const source = stateOrGetterRef.current;
+      const currentState =
+        typeof source === 'function' ? source() : source || getStoreState();
       const currentDispatch = dispatchRef.current;
 
       // Switch tabs with Alt + Number

@@ -6,12 +6,6 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type { ShareAccessRequest, SharedPageConfig } from '../types/sharing';
-import {
-  listenToPendingRequests,
-  approveAccessRequest,
-  denyAccessRequest,
-} from '../services/sharing/share-access-gate';
-import { listShares } from '../services/sharing/share-manager';
 import { getWebShareKey } from '../services/db-web';
 import { importShareKeyFromBase64 } from '../services/sharing/share-crypto';
 
@@ -51,9 +45,10 @@ export function useShareAccessRequests() {
   const [activeModalRequest, setActiveModalRequest] = useState<ShareAccessRequest | null>(null);
   const previousPendingCountRef = useRef<number>(0);
 
-  // Load owned shares to know which share IDs to listen for
+  // Load owned shares lazily so Firebase Firestore SDK is not pulled into the initial boot bundle
   const reloadShares = useCallback(async () => {
     try {
+      const { listShares } = await import('../services/sharing/share-manager');
       const activeShares = await listShares();
       setShares(activeShares.filter((s) => s.isActive && s.requireOwnerApproval));
     } catch {
@@ -68,24 +63,37 @@ export function useShareAccessRequests() {
     return () => window.removeEventListener('caderno-share-created', handleShareCreated);
   }, [reloadShares]);
 
-  // Register real-time Firestore listener on pending requests
+  // Register real-time Firestore listener on pending requests only when owner-approved shares exist
   useEffect(() => {
     if (shares.length === 0) {
       setPendingRequests([]);
       return;
     }
 
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
     const shareIds = shares.map((s) => s.id);
-    const unsubscribe = listenToPendingRequests(shareIds, (requests) => {
-      // If a new request arrived, chime!
-      if (requests.length > previousPendingCountRef.current) {
-        playAccessChime();
-      }
-      previousPendingCountRef.current = requests.length;
-      setPendingRequests(requests);
-    });
 
-    return () => unsubscribe();
+    import('../services/sharing/share-access-gate')
+      .then(({ listenToPendingRequests }) => {
+        if (cancelled) return;
+        unsubscribe = listenToPendingRequests(shareIds, (requests) => {
+          // If a new request arrived, chime!
+          if (requests.length > previousPendingCountRef.current) {
+            playAccessChime();
+          }
+          previousPendingCountRef.current = requests.length;
+          setPendingRequests(requests);
+        });
+      })
+      .catch((err) => {
+        console.debug('[ShareAccess] Failed to load access gate listener:', err);
+      });
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [shares]);
 
   // Handle owner approve action
@@ -97,6 +105,7 @@ export function useShareAccessRequests() {
           throw new Error('Local share key not found on this device');
         }
         const shareKey = await importShareKeyFromBase64(cached.shareKeyBase64);
+        const { approveAccessRequest } = await import('../services/sharing/share-access-gate');
         await approveAccessRequest(request, shareKey, trustDevice);
 
         setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
@@ -118,6 +127,7 @@ export function useShareAccessRequests() {
       try {
         const request = pendingRequests.find((candidate) => candidate.id === requestId);
         if (!request) return false;
+        const { denyAccessRequest } = await import('../services/sharing/share-access-gate');
         await denyAccessRequest(request);
         setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
         if (activeModalRequest?.id === requestId) {

@@ -30,7 +30,7 @@ export function comparePages(a: Page, b: Page): number {
  * Returns all sibling pages that belong to the same level/folder as the given page,
  * ordered predictably by sort_order and natural title alphanumeric comparison.
  */
-export function getSiblingPages(state: AppState, page: Page | null): Page[] {
+export function getSiblingPages(state: Pick<AppState, 'pages'>, page: Page | null): Page[] {
   if (!page) return [];
 
   const activePages = filterActivePages(state.pages);
@@ -61,7 +61,7 @@ export function getSiblingPages(state: AppState, page: Page | null): Page[] {
  * Returns the immediate previous and next sibling pages within the same folder/level.
  */
 export function getSiblingPageNavigation(
-  state: AppState,
+  state: Pick<AppState, 'pages'>,
   page: Page | null
 ): { prevPage: Page | null; nextPage: Page | null } {
   if (!page) return { prevPage: null, nextPage: null };

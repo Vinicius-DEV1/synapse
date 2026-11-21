@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useGarbageCollection } from './useGarbageCollection';
 import * as imageGc from '../services/image-gc';
 import * as linkGc from '../services/link-vault/link-gc';
@@ -16,21 +16,28 @@ describe('useGarbageCollection Hook', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  it('runs garbage collection when isAuth is true and last run was > 7 days ago', async () => {
+  it('defers garbage collection after boot and runs when > 7 days elapsed', async () => {
     renderHook(() => useGarbageCollection(true));
 
-    // Allow dynamic import to resolve
-    await vi.waitFor(() => {
-      expect(imageGc.runImageGarbageCollector).toHaveBeenCalledTimes(1);
-      expect(linkGc.runLinkGarbageCollector).toHaveBeenCalledTimes(1);
+    // Must NOT execute synchronously on boot
+    expect(imageGc.runImageGarbageCollector).not.toHaveBeenCalled();
+    expect(linkGc.runLinkGarbageCollector).not.toHaveBeenCalled();
+
+    // Advance past 30s boot defer + fallback idle timer
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
     });
 
+    expect(imageGc.runImageGarbageCollector).toHaveBeenCalledTimes(1);
+    expect(linkGc.runLinkGarbageCollector).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem('last_gc_run')).toBeDefined();
   });
 
@@ -40,15 +47,20 @@ describe('useGarbageCollection Hook', () => {
 
     renderHook(() => useGarbageCollection(true));
 
-    // Wait a bit to ensure it is not called
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(35_000);
+    });
+
     expect(imageGc.runImageGarbageCollector).not.toHaveBeenCalled();
   });
 
   it('does nothing when isAuth is false', async () => {
     renderHook(() => useGarbageCollection(false));
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(35_000);
+    });
+
     expect(imageGc.runImageGarbageCollector).not.toHaveBeenCalled();
   });
 });

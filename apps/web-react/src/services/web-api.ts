@@ -42,7 +42,7 @@ export const createWebApiMock = async () => {
     const optimizedVal = PayloadOptimizer.optimize(val);
     const res = await originalPut<Name>(storeName, optimizedVal, key);
     const isLocalConfig = storeName === 'config' && (
-      ['sync_signal', 'auth_validator', 'module_keys', 'appLayoutState', 'security_lock', 'sync_manifest', 'lastActiveTab', 'sidebar_collapsed'].includes(val?.id)
+      ['sync_signal', 'auth_validator', 'module_keys', 'appLayoutState', 'aiChatSessions', 'caderno_modules_expanded', 'security_lock', 'sync_manifest', 'lastActiveTab', 'sidebar_collapsed'].includes(val?.id)
     );
     if (!isLocalConfig) {
       triggerSync(storeName as string);
@@ -53,7 +53,7 @@ export const createWebApiMock = async () => {
   db.delete = (async <Name extends StoreNames<CadernoDBSchema>>(storeName: Name, key: IDBKeyRange | StoreKey<CadernoDBSchema, Name>) => {
     const res = await originalDelete<Name>(storeName, key);
     const isLocalConfig = storeName === 'config' && (
-      ['sync_signal', 'auth_validator', 'module_keys', 'appLayoutState', 'security_lock', 'sync_manifest', 'lastActiveTab', 'sidebar_collapsed'].includes(key as string)
+      ['sync_signal', 'auth_validator', 'module_keys', 'appLayoutState', 'aiChatSessions', 'caderno_modules_expanded', 'security_lock', 'sync_manifest', 'lastActiveTab', 'sidebar_collapsed'].includes(key as string)
     );
     if (!isLocalConfig) {
       triggerSync(storeName as string);

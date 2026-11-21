@@ -10,6 +10,7 @@ import {
 } from './linkVaultService';
 import { runLinkGarbageCollector, collectActivePageUrls } from './link-gc';
 import * as scrapStorage from '../scrap/scrap-storage';
+import * as platformModule from '../platform';
 
 // Mock platform
 vi.mock('../platform', () => ({
@@ -185,5 +186,58 @@ describe('LinkVaultService & LinkGC', () => {
     expect(activeCheck).not.toBeNull();
     const recentCheck = await getLinkEntity('https://recent-orphan.com');
     expect(recentCheck).not.toBeNull();
+  });
+
+  it('decrypts encrypted desktop pages during LinkGC instead of falsely marking links orphaned', async () => {
+    vi.mocked(platformModule.isDesktopApp).mockReturnValue(true);
+    const expiredDate = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString();
+    const saved = await saveLinkEntity({
+      url: 'https://desktop-encrypted.dev',
+      notes: 'Used inside encrypted note',
+    });
+    if (saved) {
+      saved.orphanedAt = expiredDate;
+      mockTables.config.set(`link_entity:${saved.canonicalUrl}`, {
+        id: `link_entity:${saved.canonicalUrl}`,
+        data: JSON.stringify(saved),
+      });
+    }
+
+    const deleteRowMock = vi.fn(async () => ({ success: true }));
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: {
+        getPageContent: vi.fn(async () => ({
+          content: '<p>Check https://desktop-encrypted.dev</p>',
+          encrypted_content: 'ciphertext',
+        })),
+        sync: {
+          getTable: vi.fn(async (table: string) => {
+            if (table === 'pages') {
+              return [{ id: 'enc-page-1', content: '', encrypted_content: 'ciphertext', deleted_at: null }];
+            }
+            if (table === 'config') {
+              return Array.from(mockTables.config.values());
+            }
+            return [];
+          }),
+          getRow: vi.fn(async (_table: string, id: string) => mockTables.config.get(id) ?? null),
+          upsertRow: vi.fn(async (_table: string, row: { id: string }) => {
+            mockTables.config.set(row.id, row);
+            return { success: true };
+          }),
+          deleteRow: deleteRowMock,
+        },
+      },
+    });
+
+    const gcResult = await runLinkGarbageCollector();
+    expect(gcResult.purgedCount).toBe(0);
+    expect(gcResult.activeCount).toBe(1);
+    expect(deleteRowMock).not.toHaveBeenCalled();
+
+    const restored = await getLinkEntity('https://desktop-encrypted.dev');
+    expect(restored?.orphanedAt).toBeNull();
+    vi.mocked(platformModule.isDesktopApp).mockReturnValue(false);
   });
 });

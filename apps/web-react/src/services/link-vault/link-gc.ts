@@ -20,20 +20,63 @@ export interface LinkGCResult {
   purgedEntities: string[];
 }
 
-/**
- * Extracts all unique canonical URLs currently referenced in active, non-deleted pages.
- */
-export async function collectActivePageUrls(): Promise<Set<string>> {
+interface ActivePageUrlCollection {
+  activeUrls: Set<string>;
+  canSafelyUpdateOrphans: boolean;
+}
+
+async function resolveReadablePageContent(page: Page): Promise<{ content: string; unreadable: boolean }> {
+  if (typeof page.content === 'string' && page.content.length > 0) {
+    return { content: page.content, unreadable: false };
+  }
+
+  // Lightweight page metadata from getAllPages()/store omits content & encrypted_content.
+  // Always hydrate on demand via getPageContent before concluding a page has no links.
+  const needsContentFetch = page.content === undefined || Boolean(page.encrypted_content);
+  if (needsContentFetch && window.api?.getPageContent) {
+    try {
+      const decrypted = await window.api.getPageContent(page.id);
+      if (typeof decrypted?.content === 'string' && decrypted.content.length > 0) {
+        return { content: decrypted.content, unreadable: false };
+      }
+      // Still ciphertext without plaintext means notes key is unavailable.
+      if (decrypted?.encrypted_content) {
+        return { content: '', unreadable: true };
+      }
+      return { content: '', unreadable: false };
+    } catch (err) {
+      console.warn(`[LinkGC] Failed to load/decrypt content for page ${page.id}:`, err);
+      return { content: '', unreadable: true };
+    }
+  }
+
+  // If content is still absent and no API can read it, mark unreadable rather than falsely purging links.
+  if (page.content === undefined || page.encrypted_content) {
+    return { content: '', unreadable: true };
+  }
+
+  return { content: '', unreadable: false };
+}
+
+async function collectActivePageUrlsInternal(): Promise<ActivePageUrlCollection> {
   const activeUrls = new Set<string>();
-
-  // 1. Gather all pages across platform storage
   let pages: Page[] = [];
+  let loadFailed = false;
 
-  if (isDesktopApp() && window.api?.getAllPages) {
+  if (isDesktopApp() && window.api?.sync?.getTable) {
+    try {
+      pages = (await window.api.sync.getTable<Page>('pages')) || [];
+    } catch (err) {
+      console.warn('[LinkGC] Failed to list pages via sync.getTable, falling back to store state:', err);
+      loadFailed = true;
+      pages = getStoreState().pages || [];
+    }
+  } else if (isDesktopApp() && window.api?.getAllPages) {
     try {
       pages = await window.api.getAllPages();
     } catch (err) {
       console.warn('[LinkGC] Failed to list pages via IPC, falling back to store state:', err);
+      loadFailed = true;
       pages = getStoreState().pages || [];
     }
   } else {
@@ -43,6 +86,7 @@ export async function collectActivePageUrls(): Promise<Set<string>> {
         pages = (await db.getAll('pages')) as Page[];
       }
     } catch {
+      loadFailed = true;
       pages = getStoreState().pages || [];
     }
   }
@@ -51,12 +95,17 @@ export async function collectActivePageUrls(): Promise<Set<string>> {
     pages = getStoreState().pages || [];
   }
 
-  // 2. Scan content of each non-deleted page
+  let hasUnreadableEncryptedPage = false;
   for (const page of pages) {
     if (page.deleted_at) continue;
 
-    const content = page.content;
-    if (typeof content === 'string' && content.length > 0) {
+    const { content, unreadable } = await resolveReadablePageContent(page);
+    if (unreadable) {
+      hasUnreadableEncryptedPage = true;
+      continue;
+    }
+
+    if (content.length > 0) {
       const urls = extractUrlsFromContent(content);
       for (const u of urls) {
         const canonical = normalizeLinkUrl(u);
@@ -67,6 +116,17 @@ export async function collectActivePageUrls(): Promise<Set<string>> {
     }
   }
 
+  return {
+    activeUrls,
+    canSafelyUpdateOrphans: !loadFailed && !hasUnreadableEncryptedPage,
+  };
+}
+
+/**
+ * Extracts all unique canonical URLs currently referenced in active, non-deleted pages.
+ */
+export async function collectActivePageUrls(): Promise<Set<string>> {
+  const { activeUrls } = await collectActivePageUrlsInternal();
   return activeUrls;
 }
 
@@ -76,7 +136,11 @@ export async function collectActivePageUrls(): Promise<Set<string>> {
  * Links completely missing from all pages are stamped with orphanedAt = now.
  */
 export async function syncLinkOrphanStatus(): Promise<{ newlyOrphaned: number; restored: number }> {
-  const activeUrls = await collectActivePageUrls();
+  const { activeUrls, canSafelyUpdateOrphans } = await collectActivePageUrlsInternal();
+  if (!canSafelyUpdateOrphans) {
+    console.warn('[LinkGC] Skipping orphan marking because some pages could not be decrypted or read.');
+    return { newlyOrphaned: 0, restored: 0 };
+  }
   return await markOrphanedLinks(activeUrls);
 }
 
@@ -94,7 +158,17 @@ export async function runLinkGarbageCollector(
   console.log('[LinkGC] Starting Link Garbage Collector...');
 
   // 1. Update orphan status with fresh active references
-  await syncLinkOrphanStatus();
+  const { activeUrls, canSafelyUpdateOrphans } = await collectActivePageUrlsInternal();
+  if (!canSafelyUpdateOrphans) {
+    console.warn('[LinkGC] Aborting Link Garbage Collector because some pages could not be read.');
+    return {
+      activeCount: 0,
+      orphanedCount: 0,
+      purgedCount: 0,
+      purgedEntities: [],
+    };
+  }
+  await markOrphanedLinks(activeUrls);
 
   // 2. Inspect all entities
   const allEntities = await getAllLinkEntities();

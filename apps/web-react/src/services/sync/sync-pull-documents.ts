@@ -6,6 +6,7 @@ import { prepareRowForUpsert, upsertRowWithoutDroppingFields } from './sync-pull
 import { prepareRowsForPush } from './sync-payload';
 import { getErrorMessage } from '../../utils/error';
 import { commitPreparedSyncDocuments } from './sync-push-documents';
+import { yieldToMain } from '../../utils/yieldToMain';
 
 const DECRYPT_BATCH_SIZE = 20;
 
@@ -43,6 +44,8 @@ export async function processCloudDocuments(
     );
     const freshRowsById = new Map(freshRows.map((row) => [row.id, row]));
     const decryptedResults = await decryptCloudBatch(batch, key, moduleKeys, table);
+
+    const pendingBatchUpserts: Array<{ rowId: string; rowToUpsert: SyncRow }> = [];
 
     for (const decrypted of decryptedResults) {
       const cloudDocument = decrypted.docSnap;
@@ -124,15 +127,49 @@ export async function processCloudDocuments(
         continue;
       }
 
-      try {
-        await upsertRowWithoutDroppingFields(table, rowToUpsert);
-        localRowsById.set(rowId, rowToUpsert);
-        result.pulledDocsCount++;
-      } catch (upsertError: unknown) {
-        const message = `PULL erro doc ${rowId} (${table}): ${getErrorMessage(upsertError)}`;
-        console.warn(message, upsertError);
-        result.errors.push(message);
+      pendingBatchUpserts.push({ rowId, rowToUpsert });
+    }
+
+    if (pendingBatchUpserts.length > 0) {
+      const batchFn = window.api?.sync?.upsertRowsBatch;
+      let batchCommitted = false;
+
+      if (typeof batchFn === 'function') {
+        try {
+          await batchFn(
+            table,
+            pendingBatchUpserts.map((item) => item.rowToUpsert)
+          );
+          for (const item of pendingBatchUpserts) {
+            localRowsById.set(item.rowId, item.rowToUpsert);
+            result.pulledDocsCount++;
+          }
+          batchCommitted = true;
+        } catch (batchErr: unknown) {
+          console.warn(
+            `[Sync] Batch upsert failed for ${table}, falling back to per-row isolation:`,
+            batchErr
+          );
+        }
       }
+
+      if (!batchCommitted) {
+        for (const item of pendingBatchUpserts) {
+          try {
+            await upsertRowWithoutDroppingFields(table, item.rowToUpsert);
+            localRowsById.set(item.rowId, item.rowToUpsert);
+            result.pulledDocsCount++;
+          } catch (upsertError: unknown) {
+            const message = `PULL erro doc ${item.rowId} (${table}): ${getErrorMessage(upsertError)}`;
+            console.warn(message, upsertError);
+            result.errors.push(message);
+          }
+        }
+      }
+    }
+
+    if (i + DECRYPT_BATCH_SIZE < docs.length) {
+      await yieldToMain();
     }
   }
 

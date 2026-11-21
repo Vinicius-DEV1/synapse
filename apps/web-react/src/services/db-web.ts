@@ -5,11 +5,18 @@ import type { CadernoDBSchema, SharedPageKeyRecord } from './db-web-schema';
 export type { CadernoDBSchema, SharedPageKeyRecord } from './db-web-schema';
 
 
+const LOCAL_ONLY_IDB_STORES = new Set([
+  'share_visitor_keys',
+  'image_cache',
+  'library_book_files',
+  'link_metadata_cache',
+]);
+
 let dbPromise: Promise<IDBPDatabase<CadernoDBSchema>> | null = null;
 
 export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 28, {
+    dbPromise = openDB<CadernoDBSchema>('caderno-web-db', 29, {
       upgrade(db, _oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('share_visitor_keys')) {
           db.createObjectStore('share_visitor_keys', { keyPath: 'id' });
@@ -236,6 +243,22 @@ export function getWebDb(): Promise<IDBPDatabase<CadernoDBSchema>> {
         }
         if (!db.objectStoreNames.contains('culture_recommendations_cache')) {
           db.createObjectStore('culture_recommendations_cache', { keyPath: 'id' });
+        }
+
+        // v29: Ensure updated_at, created_at, and deleted_at indexes exist on all synced stores
+        // so incremental sync (getModifiedRows) runs in O(log N + K) across both mutable and append-only stores.
+        for (const storeName of Array.from(db.objectStoreNames)) {
+          if (LOCAL_ONLY_IDB_STORES.has(storeName)) continue;
+          const store = transaction.objectStore(storeName) as unknown as IDBObjectStore;
+          if (!store.indexNames.contains('updated_at')) {
+            store.createIndex('updated_at', 'updated_at');
+          }
+          if (!store.indexNames.contains('created_at')) {
+            store.createIndex('created_at', 'created_at');
+          }
+          if (!store.indexNames.contains('deleted_at')) {
+            store.createIndex('deleted_at', 'deleted_at');
+          }
         }
       },
     }).catch((err: unknown) => {

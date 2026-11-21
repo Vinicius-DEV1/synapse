@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { pullAllFromCloud, pushAllToCloud, syncPdfsToCloud } from '../services/sync';
-import { runSerializedSyncOperation } from '../services/sync/sync-operation-queue';
+import { runSerializedSyncOperation, SyncTimeoutError } from '../services/sync/sync-operation-queue';
 import { bindSyncEventListeners } from './sync/sync-event-bindings';
 import { handleSyncError, isPromiseSettledResult } from './sync/sync-error-utils';
 import { setGlobalSyncStatus, type SyncStatus } from './sync/sync-status';
@@ -145,6 +145,9 @@ export function useSync(
             checkPendingOperations();
           });
           if (!isClosed) {
+            if (fullSyncStage === 'pull' && !(err instanceof SyncTimeoutError)) {
+              loadPages();
+            }
             handleSyncError(err, 'doFullSync');
             finishSync(false);
           }

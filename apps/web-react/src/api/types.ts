@@ -129,6 +129,7 @@ export interface LibraryApi {
 export interface SyncApi {
   getTable: <T = Record<string, unknown>>(tableName: string) => Promise<T[]>;
   upsertRow: <T extends object = Record<string, unknown>>(tableName: string, row: T) => Promise<{ success: boolean }>;
+  upsertRowsBatch?: <T extends object = Record<string, unknown>>(tableName: string, rows: T[]) => Promise<{ success: boolean; count?: number }>;
   deleteRow: (tableName: string, id: string) => Promise<{ success: boolean }>;
   /** Fetches table rows by ID list. Present in runtime implementations. */
   getRowsByIds: <T = Record<string, unknown>>(tableName: string, ids: string[]) => Promise<T[]>;
@@ -196,7 +197,7 @@ export interface ICadernoAPI {
   _setMasterKey?: (key: CryptoKey | null) => void;
   onSyncTrigger?: (callback: (table?: string) => void) => () => void;
   getAllPages: () => Promise<Page[]>;
-  getPageContent: (id: string) => Promise<{ content: string; encrypted_content: string | null }>;
+  getPageContent: (id: string) => Promise<{ content: string; encrypted_content: string | null; crdt_state?: string | null; updated_at?: string | null }>;
   createPage: (page: { parentId: string | null; title?: string; icon?: string }) => Promise<Page>;
   updatePage: (page: { id: string; title?: string; icon?: string; content?: string; crdt_state?: string | null; is_locked?: number; password_salt?: string | null; encrypted_content?: string | null; parent_id?: string | null; cover_image?: string | null; description?: string | null }) => Promise<number>;
   deletePage: (id: string) => Promise<boolean>;

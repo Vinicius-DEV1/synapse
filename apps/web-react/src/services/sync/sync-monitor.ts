@@ -2,6 +2,8 @@ export type FirebaseOpType = 'read' | 'write' | 'delete';
 
 const SYNC_READ_BURN_LIMIT_PER_MINUTE = 10_000;
 const SYNC_WRITE_BURN_LIMIT_PER_MINUTE = 8_000;
+const SYNC_MONITOR_FLUSH_DEBOUNCE_MS = 1000;
+const SYNC_EVENTS_STORAGE_KEY = 'caderno_sync_events';
 
 export interface SyncStats {
   date: string;
@@ -21,24 +23,89 @@ export interface SyncEventLog {
   bytes?: number;
 }
 
+// In-memory write-behind caches to eliminate synchronous JSON.parse/stringify
+// and localStorage thrashing on every Firebase read/write/log during sync.
+const statsMemoryCache = new Map<string, SyncStats>();
+const dirtyStatsKeys = new Set<string>();
+let eventsMemoryCache: SyncEventLog[] | null = null;
+let eventsDirty = false;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let unloadListenersAttached = false;
+
 function getTodayKey(): string {
   return `sync_stats_${new Date().toISOString().split('T')[0]}`;
+}
+
+function loadStatsForKey(key: string): SyncStats {
+  const cached = statsMemoryCache.get(key);
+  if (cached) return cached;
+
+  let stats: SyncStats;
+  try {
+    const raw = localStorage.getItem(key);
+    stats = raw ? JSON.parse(raw) : { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
+  } catch {
+    stats = { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
+  }
+  statsMemoryCache.set(key, stats);
+  return stats;
+}
+
+function loadEvents(): SyncEventLog[] {
+  if (eventsMemoryCache !== null) return eventsMemoryCache;
+  try {
+    const raw = localStorage.getItem(SYNC_EVENTS_STORAGE_KEY);
+    eventsMemoryCache = raw ? JSON.parse(raw) : [];
+  } catch (err: unknown) {
+    console.debug('[sync-monitor] Failed to parse caderno_sync_events:', err);
+    eventsMemoryCache = [];
+  }
+  return eventsMemoryCache!;
+}
+
+/** Flushes buffered sync telemetry/events to localStorage immediately. */
+export function flushSyncMonitor(): void {
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+
+  for (const key of dirtyStatsKeys) {
+    const stats = statsMemoryCache.get(key);
+    if (stats) {
+      try {
+        localStorage.setItem(key, JSON.stringify(stats));
+      } catch (err) {
+        console.debug('[sync-monitor] Failed to persist sync stats:', err);
+      }
+    }
+  }
+  dirtyStatsKeys.clear();
+
+  if (eventsDirty && eventsMemoryCache !== null) {
+    try {
+      localStorage.setItem(SYNC_EVENTS_STORAGE_KEY, JSON.stringify(eventsMemoryCache));
+    } catch (err) {
+      console.debug('[sync-monitor] Failed to persist sync events:', err);
+    }
+    eventsDirty = false;
+  }
+}
+
+function scheduleFlush(): void {
+  if (typeof window !== 'undefined' && !unloadListenersAttached) {
+    unloadListenersAttached = true;
+    window.addEventListener('pagehide', flushSyncMonitor);
+    window.addEventListener('beforeunload', flushSyncMonitor);
+  }
+  if (flushTimer !== null) return;
+  flushTimer = setTimeout(flushSyncMonitor, SYNC_MONITOR_FLUSH_DEBOUNCE_MS);
 }
 
 export function logFirebaseOp(type: FirebaseOpType, count: number): void {
   if (count <= 0) return;
   const key = getTodayKey();
-  let stats: SyncStats;
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      stats = JSON.parse(raw);
-    } else {
-      stats = { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
-    }
-  } catch {
-    stats = { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
-  }
+  const stats = loadStatsForKey(key);
 
   if (!stats.hourly) stats.hourly = {};
   const hour = new Date().getHours().toString();
@@ -57,7 +124,8 @@ export function logFirebaseOp(type: FirebaseOpType, count: number): void {
     stats.hourly[hour].deletes += count;
   }
 
-  localStorage.setItem(key, JSON.stringify(stats));
+  dirtyStatsKeys.add(key);
+  scheduleFlush();
 
   checkBurnRate(type, count);
 }
@@ -65,17 +133,7 @@ export function logFirebaseOp(type: FirebaseOpType, count: number): void {
 export function logFirebaseTraffic(bytesDown: number, bytesUp: number): void {
   if (bytesDown <= 0 && bytesUp <= 0) return;
   const key = getTodayKey();
-  let stats: SyncStats;
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      stats = JSON.parse(raw);
-    } else {
-      stats = { date: key, reads: 0, writes: 0, deletes: 0, bytesDownloaded: 0, bytesUploaded: 0, hourly: {} };
-    }
-  } catch {
-    stats = { date: key, reads: 0, writes: 0, deletes: 0, bytesDownloaded: 0, bytesUploaded: 0, hourly: {} };
-  }
+  const stats = loadStatsForKey(key);
 
   if (!stats.bytesDownloaded) stats.bytesDownloaded = 0;
   if (!stats.bytesUploaded) stats.bytesUploaded = 0;
@@ -93,42 +151,39 @@ export function logFirebaseTraffic(bytesDown: number, bytesUp: number): void {
   stats.hourly[hour].bytesDownloaded! += bytesDown;
   stats.hourly[hour].bytesUploaded! += bytesUp;
 
-  localStorage.setItem(key, JSON.stringify(stats));
+  dirtyStatsKeys.add(key);
+  scheduleFlush();
 }
 
 export function logSyncEvent(type: SyncEventLog['type'], message: string, bytes?: number): void {
   try {
-    const raw = localStorage.getItem('caderno_sync_events');
-    let logs: SyncEventLog[] = raw ? JSON.parse(raw) : [];
-    
+    const logs = loadEvents();
+
     logs.unshift({
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       type,
       message,
-      bytes
+      bytes,
     });
 
     // Limit to 50 items
     if (logs.length > 50) {
-      logs = logs.slice(0, 50);
+      logs.length = 50;
     }
 
-    localStorage.setItem('caderno_sync_events', JSON.stringify(logs));
-    window.dispatchEvent(new CustomEvent('caderno-sync-events-updated'));
+    eventsDirty = true;
+    scheduleFlush();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('caderno-sync-events-updated'));
+    }
   } catch (err) {
     console.error('Failed to log sync event', err);
   }
 }
 
 export function getSyncEvents(): SyncEventLog[] {
-  try {
-    const raw = localStorage.getItem('caderno_sync_events');
-    if (raw) return JSON.parse(raw);
-  } catch (err: unknown) {
-    console.debug('[sync-monitor] Failed to parse cuaderno_sync_events:', err);
-  }
-  return [];
+  return [...loadEvents()];
 }
 
 let burnAccumulator = {
@@ -163,13 +218,8 @@ function checkBurnRate(type: FirebaseOpType, count: number) {
 
 export function getTodayStats(): SyncStats {
   const key = getTodayKey();
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw);
-  } catch (err: unknown) {
-    console.debug('[sync-monitor] Failed to parse today sync stats:', err);
-  }
-  return { date: key, reads: 0, writes: 0, deletes: 0, hourly: {} };
+  const stats = loadStatsForKey(key);
+  return { ...stats, hourly: stats.hourly ? { ...stats.hourly } : {} };
 }
 
 export function getWeeklyStats(): SyncStats[] {
@@ -178,6 +228,11 @@ export function getWeeklyStats(): SyncStats[] {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = `sync_stats_${d.toISOString().split('T')[0]}`;
+    const cached = statsMemoryCache.get(key);
+    if (cached) {
+      stats.push({ ...cached, hourly: cached.hourly ? { ...cached.hourly } : {} });
+      continue;
+    }
     try {
       const raw = localStorage.getItem(key);
       if (raw) {

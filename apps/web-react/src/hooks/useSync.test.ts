@@ -283,5 +283,17 @@ describe('useSync Hook', () => {
       );
     });
   });
+
+  it('still refreshes local pages when cloud pull fails with a partial non-timeout error', async () => {
+    vi.mocked(syncService.pullAllFromCloud).mockRejectedValueOnce(new Error('Cloud pull incomplete'));
+    const loadPages = vi.fn();
+
+    const { result } = renderHook(() => useSync(true, mockMasterKeys, loadPages));
+
+    await vi.waitFor(() => {
+      expect(result.current.syncStatus).toBe('error');
+    });
+    expect(loadPages).toHaveBeenCalled();
+  });
 });
 

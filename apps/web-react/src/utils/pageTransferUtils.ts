@@ -16,11 +16,15 @@ export async function exportPageFile(id: string) {
       return;
     }
 
+    const pageData = window.api.getPageContent
+      ? await window.api.getPageContent(id)
+      : { content: page.content || '', crdt_state: page.crdt_state ?? null };
+
     // Remove non-exportable fields
     const exportData = {
       title: page.title,
-      content: page.content,
-      crdt_state: page.crdt_state,
+      content: pageData.content,
+      crdt_state: pageData.crdt_state ?? page.crdt_state ?? null,
       icon: page.icon,
       is_pinned: page.is_pinned,
       _type: 'caderno_page_export',

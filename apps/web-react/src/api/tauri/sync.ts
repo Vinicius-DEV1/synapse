@@ -8,6 +8,8 @@ export const tauriSyncApi: SyncApi = {
     await invoke<{ success: boolean }>('sync_delete_row', { tableName, id }),
   upsertRow: async <T extends object = Record<string, unknown>>(tableName: string, row: T): Promise<{ success: boolean }> =>
     await invoke<{ success: boolean }>('sync_upsert_row', { tableName, row }),
+  upsertRowsBatch: async <T extends object = Record<string, unknown>>(tableName: string, rows: T[]): Promise<{ success: boolean }> =>
+    await invoke<{ success: boolean }>('sync_upsert_rows_batch', { tableName, rows }),
   getRow: async <T = Record<string, unknown>>(tableName: string, id: string): Promise<T | null> =>
     await invoke<T | null>('sync_get_row', { tableName, id }),
   // Fetches only rows with specific IDs to prevent loading entire tables into memory
