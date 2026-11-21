@@ -95,6 +95,8 @@ export const createWebNotesApi = (
       'pinned_order',
       'cover_image',
       'description',
+      'is_locked',
+      'password_salt',
     ];
     let hasChanges = false;
 

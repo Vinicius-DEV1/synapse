@@ -129,23 +129,114 @@ pub fn image_cache_delete(
 pub fn notes_cleanup_orphaned_images(
     db_state: State<'_, DbState>,
 ) -> Result<usize, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-    let query = "
-        DELETE FROM image_cache 
-        WHERE id NOT IN (
-            SELECT DISTINCT substr(id, 1) FROM image_cache
-            WHERE EXISTS (
-                SELECT 1 FROM pages WHERE content LIKE '%' || image_cache.id || '%'
-            )
-            OR EXISTS (
-                SELECT 1 FROM page_history WHERE content LIKE '%' || image_cache.id || '%'
-            )
+    // Check if there are any encrypted pages or history rows
+    let has_encrypted: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM pages WHERE encrypted_content IS NOT NULL AND encrypted_content != '')
+                 OR EXISTS(SELECT 1 FROM page_history WHERE encrypted_content IS NOT NULL AND encrypted_content != '')",
+            [],
+            |row| row.get(0),
         )
-    ";
+        .unwrap_or(true);
 
-    let deleted_count = conn.execute(query, []).map_err(|e| e.to_string())?;
+    let notes_key = {
+        let keys_guard = db_state.lock_keys()?;
+        keys_guard.as_ref().and_then(|k| k.notes.clone())
+    };
+
+    // Never purge image_cache if encrypted pages exist and the notes key is locked,
+    // because encrypted_content cannot be inspected via SQL LIKE and would cause false-positive deletions.
+    if has_encrypted && notes_key.is_none() {
+        return Ok(0);
+    }
+
+    let mut stmt_imgs = conn
+        .prepare("SELECT id FROM image_cache")
+        .map_err(|e| e.to_string())?;
+    let all_image_ids: Vec<String> = stmt_imgs
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .collect();
+
+    if all_image_ids.is_empty() {
+        return Ok(0);
+    }
+
+    let mut corpus = String::new();
+
+    let mut stmt_pages = conn
+        .prepare("SELECT content, encrypted_content FROM pages")
+        .map_err(|e| e.to_string())?;
+    let page_rows = stmt_pages
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, Option<String>>(0).unwrap_or(None),
+                row.get::<_, Option<String>>(1).unwrap_or(None),
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    for r in page_rows.flatten() {
+        if let Some(c) = r.0 {
+            if !c.is_empty() {
+                corpus.push_str(&c);
+                corpus.push('\n');
+            }
+        }
+        if let (Some(enc), Some(key)) = (r.1, &notes_key) {
+            if !enc.is_empty() {
+                if let Ok(dec) = crate::crypto::decrypt_content(key, &enc) {
+                    corpus.push_str(&dec);
+                    corpus.push('\n');
+                } else {
+                    // Abort cleanup if any encrypted page fails decryption to guarantee zero data loss
+                    return Ok(0);
+                }
+            }
+        }
+    }
+
+    let mut stmt_hist = conn
+        .prepare("SELECT content, encrypted_content FROM page_history")
+        .map_err(|e| e.to_string())?;
+    let hist_rows = stmt_hist
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, Option<String>>(0).unwrap_or(None),
+                row.get::<_, Option<String>>(1).unwrap_or(None),
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    for r in hist_rows.flatten() {
+        if let Some(c) = r.0 {
+            if !c.is_empty() {
+                corpus.push_str(&c);
+                corpus.push('\n');
+            }
+        }
+        if let (Some(enc), Some(key)) = (r.1, &notes_key) {
+            if !enc.is_empty() {
+                if let Ok(dec) = crate::crypto::decrypt_content(key, &enc) {
+                    corpus.push_str(&dec);
+                    corpus.push('\n');
+                }
+            }
+        }
+    }
+
+    let mut deleted_count = 0;
+    for img_id in all_image_ids {
+        if !corpus.contains(&img_id) {
+            deleted_count += conn
+                .execute("DELETE FROM image_cache WHERE id = ?1", [&img_id])
+                .map_err(|e| e.to_string())?;
+        }
+    }
 
     Ok(deleted_count)
 }

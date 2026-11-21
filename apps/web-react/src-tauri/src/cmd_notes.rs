@@ -154,6 +154,13 @@ pub fn notes_create_page(
     Ok(map_record_to_meta(record))
 }
 
+fn deserialize_optional_nullable<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Some(Option::<String>::deserialize(deserializer)?))
+}
+
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct UpdatePagePayload {
@@ -161,12 +168,24 @@ pub struct UpdatePagePayload {
     pub title: Option<String>,
     pub icon: Option<String>,
     pub content: Option<String>,
+    pub encrypted_content: Option<String>,
     pub crdt_state: Option<String>,
-    pub parent_id: Option<serde_json::Value>,
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    pub parent_id: Option<Option<String>>,
     pub is_pinned: Option<i32>,
     pub pinned_order: Option<f64>,
-    pub cover_image: Option<serde_json::Value>,
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    pub cover_image: Option<Option<String>>,
     pub description: Option<String>,
+    pub is_locked: Option<i32>,
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    pub password_salt: Option<Option<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct PageOrderUpdate {
+    pub id: String,
+    pub sort_order: f64,
 }
 
 #[tauri::command]
@@ -246,19 +265,14 @@ pub fn notes_update_page(
         params_vec.push(crdt.into());
         has_updates = true;
     }
-    if let Some(pid_val) = page.parent_id {
+    if let Some(pid_opt) = page.parent_id {
         if has_updates {
             query.push_str(",");
         }
         query.push_str(" parent_id = ?");
-        if pid_val.is_null() {
-            params_vec.push(rusqlite::types::Value::Null);
-        } else if let Some(s) = pid_val.as_str() {
-            if s.is_empty() {
-                params_vec.push(rusqlite::types::Value::Null);
-            } else {
-                params_vec.push(s.to_string().into());
-            }
+        match pid_opt {
+            Some(s) if !s.trim().is_empty() => params_vec.push(s.into()),
+            _ => params_vec.push(rusqlite::types::Value::Null),
         }
         has_updates = true;
     }
@@ -278,17 +292,14 @@ pub fn notes_update_page(
         params_vec.push(order.into());
         has_updates = true;
     }
-    if let Some(cover_val) = page.cover_image {
+    if let Some(cover_opt) = page.cover_image {
         if has_updates {
             query.push_str(",");
         }
         query.push_str(" cover_image = ?");
-        if cover_val.is_null() {
-            params_vec.push(rusqlite::types::Value::Null);
-        } else if let Some(s) = cover_val.as_str() {
-            params_vec.push(s.to_string().into());
-        } else {
-            params_vec.push(rusqlite::types::Value::Null);
+        match cover_opt {
+            Some(s) if !s.is_empty() => params_vec.push(s.into()),
+            _ => params_vec.push(rusqlite::types::Value::Null),
         }
         has_updates = true;
     }
@@ -298,6 +309,37 @@ pub fn notes_update_page(
         }
         query.push_str(" description = ?");
         params_vec.push(desc.into());
+        has_updates = true;
+    }
+    if let Some(locked) = page.is_locked {
+        if has_updates {
+            query.push_str(",");
+        }
+        query.push_str(" is_locked = ?");
+        params_vec.push(locked.into());
+        has_updates = true;
+    }
+    if let Some(salt_opt) = page.password_salt {
+        if has_updates {
+            query.push_str(",");
+        }
+        query.push_str(" password_salt = ?");
+        match salt_opt {
+            Some(s) if !s.is_empty() => params_vec.push(s.into()),
+            _ => params_vec.push(rusqlite::types::Value::Null),
+        }
+        has_updates = true;
+    }
+    if let Some(enc_explicit) = page.encrypted_content {
+        if has_updates {
+            query.push_str(",");
+        }
+        query.push_str(" encrypted_content = ?");
+        if enc_explicit.is_empty() {
+            params_vec.push(rusqlite::types::Value::Null);
+        } else {
+            params_vec.push(enc_explicit.into());
+        }
         has_updates = true;
     }
 
@@ -403,8 +445,30 @@ pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageM
 
 #[tauri::command]
 pub fn notes_restore_page(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     pages::restore_page(conn, &id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn notes_reorder_pages(
+    updates: Vec<PageOrderUpdate>,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    if updates.is_empty() {
+        return Ok(true);
+    }
+    let guard = db_state.lock_conn()?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    for u in updates {
+        conn.execute(
+            "UPDATE pages SET sort_order = ?1, updated_at = ?2 WHERE id = ?3",
+            params![u.sort_order, now, u.id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(true)
 }

@@ -10,7 +10,8 @@ export const tauriNotesApi = {
   deletePages: async (ids: string[]): Promise<boolean> => await invoke('notes_delete_pages', { ids }),
   getDeletedPages: async () => await invoke('notes_get_deleted_pages'),
   restorePage: async (id: string) => await invoke('notes_restore_page', { id }),
-  reorderPages: async (_updates: { id: string; sort_order: number }[]): Promise<boolean> => true,
+  reorderPages: async (updates: { id: string; sort_order: number }[]): Promise<boolean> =>
+    await invoke<boolean>('notes_reorder_pages', { updates }),
   getPageHistory: async (pageId: string) => await invoke('notes_get_page_history', { pageId }),
   savePageHistory: async (pageId: string, content: string) => {
     await invoke('notes_update_page', { page: { id: pageId, content } });
