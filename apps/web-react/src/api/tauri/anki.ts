@@ -7,7 +7,7 @@ import type {
   AnkiDeckSettings,
   AnkiReviewRecord,
 } from '../../types/anki';
-import { processReview } from '../../services/fsrs';
+import { processReview, parseState } from '../../services/fsrs';
 
 export const tauriAnkiApi = {
   getDecks: async (): Promise<{ success: boolean; decks: AnkiDeckRecord[]; error?: string }> => {
@@ -74,7 +74,7 @@ export const tauriAnkiApi = {
     let reviewCards: AnkiCard[] = [];
 
     for (const c of allCards) {
-      const state = Number(c.state) || 0;
+      const state = parseState(c.state);
       if (state === 0) {
         newCards.push(c);
       } else if (state === 1 || state === 3) {
@@ -200,7 +200,10 @@ export const tauriAnkiApi = {
     return { success: true };
   },
 
-  moveCards: async (): Promise<{ success: boolean }> => ({ success: true }),
+  moveCards: async (cardIds: string[], newDeckId: string): Promise<{ success: boolean }> => {
+    await invoke('anki_move_cards', { cardIds, newDeckId });
+    return { success: true };
+  },
 
   updateDeck: async (
     deckId: string,

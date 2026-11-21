@@ -65,15 +65,39 @@ pub fn get_due_cards(conn: &rusqlite::Connection, deck_id: &str) -> Result<Vec<C
     }
 
     let mut target_deck_ids = Vec::new();
-    fn collect(did: &str, map: &HashMap<String, Vec<String>>, out: &mut Vec<String>) {
-        out.push(did.to_string());
-        if let Some(children) = map.get(did) {
+    if deck_id.trim().is_empty() {
+        for (parent, children) in &children_map {
+            target_deck_ids.push(parent.clone());
             for c in children {
-                collect(c, map, out);
+                target_deck_ids.push(c.clone());
             }
         }
+        let mut all_stmt = conn.prepare("SELECT id FROM anki_decks WHERE deleted_at IS NULL")?;
+        let all_rows = all_stmt.query_map([], |row| row.get::<_, String>(0))?;
+        for r in all_rows.flatten() {
+            if !target_deck_ids.contains(&r) {
+                target_deck_ids.push(r);
+            }
+        }
+        // Also include any cards whose deck_id might not be in anki_decks
+        let mut c_stmt = conn.prepare("SELECT DISTINCT deck_id FROM anki_cards WHERE deleted_at IS NULL")?;
+        let c_rows = c_stmt.query_map([], |row| row.get::<_, String>(0))?;
+        for r in c_rows.flatten() {
+            if !target_deck_ids.contains(&r) {
+                target_deck_ids.push(r);
+            }
+        }
+    } else {
+        fn collect(did: &str, map: &HashMap<String, Vec<String>>, out: &mut Vec<String>) {
+            out.push(did.to_string());
+            if let Some(children) = map.get(did) {
+                for c in children {
+                    collect(c, map, out);
+                }
+            }
+        }
+        collect(deck_id, &children_map, &mut target_deck_ids);
     }
-    collect(deck_id, &children_map, &mut target_deck_ids);
 
     if target_deck_ids.is_empty() {
         return Ok(Vec::new());

@@ -106,7 +106,13 @@ pub fn get_total_due_count(conn: &rusqlite::Connection) -> Result<i64> {
     for r in rows.flatten() {
         let (deck_id, state_str, due_date, new_limit, review_limit) = r;
         let entry = deck_counts.entry(deck_id).or_insert((0, 0, 0, new_limit, review_limit));
-        let state: i32 = state_str.parse().unwrap_or(0);
+        let state: i32 = match state_str.trim().to_lowercase().as_str() {
+            "0" | "new" | "" => 0,
+            "1" | "learning" => 1,
+            "2" | "review" => 2,
+            "3" | "relearning" => 3,
+            _ => 0,
+        };
         if state == 0 {
             entry.0 += 1;
         } else if state == 1 || state == 3 {

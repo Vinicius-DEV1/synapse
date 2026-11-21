@@ -1,3 +1,5 @@
+import { parseState } from '../../../services/fsrs';
+
 export interface AnkiStatsSummary {
   studiedToday: number;
   newCardsLearnedToday: number;
@@ -102,7 +104,7 @@ export function computeAnkiStats(reviews: any[], cards: any[]) {
     }
 
     // Maturity
-    const state = Number(c.state) || 0;
+    const state = parseState(c.state);
     const stability = Number(c.stability) || 0;
 
     if (state === 0) newCards++;
@@ -163,7 +165,7 @@ export function computeAnkiStats(reviews: any[], cards: any[]) {
     if (!c.due_date) return;
     const dueDateStr = c.due_date.split('T')[0];
     if (dueDateStr <= todayStr) {
-      if (c.state > 0) {
+      if (parseState(c.state) > 0) {
         forecastMap.set(todayStr, forecastMap.get(todayStr)! + 1);
       }
     } else if (forecastMap.has(dueDateStr)) {

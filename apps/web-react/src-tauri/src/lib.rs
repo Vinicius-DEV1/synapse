@@ -296,6 +296,8 @@ pub fn run() {
             cmd_anki::anki_save_card,
             cmd_anki::anki_get_all_cards,
             cmd_anki::anki_get_card,
+            cmd_anki::anki_get_reviews,
+            cmd_anki::anki_move_cards,
             anki_fsrs::anki_review_card_fsrs,
             cmd_anki::anki_delete_card,
             cmd_anki::anki_update_card,

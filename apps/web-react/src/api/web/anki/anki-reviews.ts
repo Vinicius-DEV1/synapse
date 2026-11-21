@@ -1,7 +1,7 @@
 import type { IDBPDatabase } from 'idb';
 import type { CadernoDBSchema } from '../../../services/db-web-schema';
 import type { AnkiReviewRecord, AnkiCard } from '../../../types/anki';
-import { processReview, previewIntervals } from '../../../services/fsrs';
+import { processReview, previewIntervals, parseState } from '../../../services/fsrs';
 import { collectDescendantDeckIds } from './utils/deck-tree';
 import { joinCardsWithNotes } from './utils/card-note-join';
 
@@ -40,7 +40,7 @@ export async function getDueCards(
   let reviewCards: AnkiCard[] = [];
 
   for (const c of joinedCards) {
-    const state = Number(c.state) || 0;
+    const state = parseState(c.state);
     if (state === 0) {
       newCards.push(c);
     } else if (state === 1 || state === 3) {
@@ -154,7 +154,7 @@ export async function getTotalDueCount(db: IDBPDatabase<CadernoDBSchema>): Promi
       deckCounts.set(deckId, entry);
     }
 
-    const state = Number(c.state) || 0;
+    const state = parseState(c.state);
     if (state === 0) {
       entry.news++;
     } else if (state === 1 || state === 3) {

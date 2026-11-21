@@ -37,8 +37,34 @@ pub struct AnkiCard {
     pub created_at: Option<String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct AnkiReviewRecord {
+    pub id: String,
+    pub card_id: String,
+    pub rating: i32,
+    pub reviewed_at: String,
+    pub deleted_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+fn normalize_state_str(state: Option<String>) -> Option<String> {
+    state.map(|s| match s.trim().to_lowercase().as_str() {
+        "new" | "0" => "0".to_string(),
+        "learning" | "1" => "1".to_string(),
+        "review" | "2" => "2".to_string(),
+        "relearning" | "3" => "3".to_string(),
+        _ => "0".to_string(),
+    })
+}
+
 fn map_card_to_anki_card(c: Card) -> AnkiCard {
-    let parsed_tags = c.tags.as_ref().and_then(|t| serde_json::from_str::<Vec<String>>(t).ok());
+    let parsed_tags = c.tags.as_ref().and_then(|t| {
+        if t.trim().is_empty() {
+            Some(Vec::new())
+        } else {
+            serde_json::from_str::<Vec<String>>(t).ok()
+        }
+    });
     AnkiCard {
         id: c.id,
         deck_id: c.deck_id,
@@ -52,7 +78,7 @@ fn map_card_to_anki_card(c: Card) -> AnkiCard {
         validation_mode: c.validation_mode.unwrap_or_else(|| "default".to_string()),
         tags: parsed_tags,
         due_date: c.due_date,
-        state: c.state,
+        state: normalize_state_str(c.state),
         stability: c.stability,
         difficulty: c.difficulty,
         elapsed_days: None,
@@ -155,37 +181,117 @@ pub fn anki_get_all_cards(
 
 #[tauri::command]
 pub fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Result<AnkiCard, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let mut stmt = conn
-        .prepare("SELECT id, deck_id, front, back, tags, card_type, validation_mode, extra_note, media_url, created_at FROM anki_cards WHERE id = ? AND deleted_at IS NULL")
+        .prepare(
+            "SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, c.validation_mode, c.extra_note, c.media_url, c.created_at,
+                    s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.state, s.due_date, s.last_review
+             FROM anki_cards c
+             LEFT JOIN anki_srs_state s ON c.id = s.id
+             WHERE c.id = ? AND c.deleted_at IS NULL",
+        )
         .map_err(|e| e.to_string())?;
 
-    let card = stmt
+    let anki_card = stmt
         .query_row([&card_id], |row| {
-            Ok(Card {
+            let tags_raw: Option<String> = row.get(4)?;
+            let parsed_tags = tags_raw.as_ref().and_then(|t| {
+                if t.trim().is_empty() {
+                    Some(Vec::new())
+                } else {
+                    serde_json::from_str::<Vec<String>>(t).ok()
+                }
+            });
+            let raw_state: Option<String> = row.get(16).ok().flatten();
+            Ok(AnkiCard {
                 id: row.get(0)?,
                 deck_id: row.get(1)?,
                 front: row.get(2)?,
                 back: row.get(3)?,
-                tags: row.get(4)?,
-                card_type: row.get(5)?,
-                validation_mode: row.get(6)?,
+                tags: parsed_tags,
+                card_type: row
+                    .get::<_, Option<String>>(5)?
+                    .unwrap_or_else(|| "reading".to_string()),
+                validation_mode: row
+                    .get::<_, Option<String>>(6)?
+                    .unwrap_or_else(|| "default".to_string()),
                 extra_note: row.get(7)?,
                 media_url: row.get(8)?,
-                stability: None,
-                difficulty: None,
-                reps: None,
-                lapses: None,
-                state: None,
-                due_date: None,
+                source_module: None,
+                source_id: None,
                 created_at: row.get(9)?,
-                updated_at: None,
+                stability: row.get(10).ok().flatten(),
+                difficulty: row.get(11).ok().flatten(),
+                elapsed_days: row.get(12).ok().flatten(),
+                scheduled_days: row.get(13).ok().flatten(),
+                reps: row.get(14).ok().flatten(),
+                lapses: row.get(15).ok().flatten(),
+                state: normalize_state_str(raw_state),
+                due_date: row.get(17).ok().flatten(),
+                last_review: row.get(18).ok().flatten(),
             })
         })
         .map_err(|e| e.to_string())?;
 
-    Ok(map_card_to_anki_card(card))
+    Ok(anki_card)
+}
+
+#[tauri::command]
+pub fn anki_get_reviews(db_state: State<'_, DbState>) -> Result<Vec<AnkiReviewRecord>, String> {
+    let guard = db_state.lock_conn()?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, card_id, rating, COALESCE(review_time, created_at) as reviewed_at, deleted_at, updated_at
+             FROM anki_reviews
+             WHERE deleted_at IS NULL
+             ORDER BY reviewed_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(AnkiReviewRecord {
+                id: row.get(0)?,
+                card_id: row.get(1)?,
+                rating: row.get(2)?,
+                reviewed_at: row
+                    .get::<_, Option<String>>(3)?
+                    .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
+                deleted_at: row.get(4).ok().flatten(),
+                updated_at: row.get(5).ok().flatten(),
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for r in rows.flatten() {
+        list.push(r);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn anki_move_cards(
+    card_ids: Vec<String>,
+    new_deck_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    if card_ids.is_empty() || new_deck_id.trim().is_empty() {
+        return Ok(true);
+    }
+    let guard = db_state.lock_conn()?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
+    for cid in card_ids {
+        conn.execute(
+            "UPDATE anki_cards SET deck_id = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![new_deck_id, now, cid],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(true)
 }
 
 #[tauri::command]
