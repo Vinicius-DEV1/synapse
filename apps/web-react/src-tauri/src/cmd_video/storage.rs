@@ -358,22 +358,27 @@ pub async fn video_import_and_encrypt(
     let dest_filename_enc = format!("{}.enc", safe_dest_filename);
     let dest_full_path = videos_dir.join(&dest_filename_enc);
 
-    let keys_guard = db_state.keys.lock().unwrap();
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.culture {
-            k.clone()
+    let master_key = {
+        let keys_guard = db_state.lock_keys()?;
+        if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.culture {
+                k.clone()
+            } else {
+                return Err("Culture key not found".into());
+            }
         } else {
-            return Err("Culture key not found".into());
+            return Err("Keys not unlocked".into());
         }
-    } else {
-        return Err("Keys not unlocked".into());
     };
 
     let actual_source = std::path::PathBuf::from(&source_path);
+    let dest_clone = dest_full_path.clone();
 
-    let enc_res =
-        crate::crypto_stream::encrypt_file_chunked(&actual_source, &dest_full_path, &master_key);
-    enc_res?;
+    tokio::task::spawn_blocking(move || {
+        crate::crypto_stream::encrypt_file_chunked(&actual_source, &dest_clone, &master_key)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     Ok(dest_full_path.to_string_lossy().to_string())
 }
@@ -419,7 +424,7 @@ pub async fn video_process_upload(
     let dest_full_path = videos_dir.join(&dest_filename_enc);
 
     let master_key = {
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         if let Some(keys) = keys_guard.as_ref() {
             if let Some(ref k) = keys.culture {
                 k.clone()

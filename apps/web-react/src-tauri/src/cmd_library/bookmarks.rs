@@ -9,7 +9,7 @@ pub fn library_get_bookmarks(
     book_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<Bookmark>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let marks = core_reader::get_bookmarks(conn, &book_id)
@@ -34,7 +34,7 @@ pub fn library_create_bookmark(
     bookmark: Bookmark,
     db_state: State<'_, DbState>,
 ) -> Result<Bookmark, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let created = core_reader::add_bookmark(
@@ -62,7 +62,7 @@ pub fn library_update_bookmark(
     bookmark: Bookmark,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let id = bookmark.id.ok_or("Bookmark id is required")?;
@@ -79,7 +79,7 @@ pub fn library_delete_bookmark(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_reader::delete_bookmark(conn, &id).map_err(|e| e.to_string())

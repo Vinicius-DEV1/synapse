@@ -92,7 +92,7 @@ fn map_card_to_anki_card(c: Card) -> AnkiCard {
 
 #[tauri::command]
 pub fn anki_get_decks(db_state: State<'_, DbState>) -> Result<Vec<AnkiDeck>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let decks = AnkiRepository::get_decks_conn(conn).map_err(|e| e.to_string())?;
     Ok(decks
@@ -113,7 +113,7 @@ pub fn anki_create_deck(
     parent_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<String, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let id = AnkiRepository::create_deck_conn(conn, &name, description.as_deref(), None, parent_id.as_deref())
         .map_err(|e| e.to_string())?;
@@ -128,14 +128,14 @@ pub fn anki_get_deck_settings(
     deck_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<AnkiDeckSettings, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     AnkiRepository::get_deck_settings_conn(conn, &deck_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<String, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let tags_json = card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
 
@@ -170,7 +170,7 @@ pub fn anki_get_all_cards(
     deck_id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<AnkiCard>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let cards = match deck_id {
         Some(did) => AnkiRepository::get_due_cards_conn(conn, &did).map_err(|e| e.to_string())?,
@@ -296,7 +296,7 @@ pub fn anki_move_cards(
 
 #[tauri::command]
 pub fn anki_delete_card(card_id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     AnkiRepository::delete_card_conn(conn, &card_id).map_err(|e| e.to_string())
 }
@@ -307,7 +307,7 @@ pub fn anki_update_card(
     card: AnkiCard,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let tags_json = card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
     AnkiRepository::update_card_conn(
@@ -329,7 +329,7 @@ pub fn anki_update_deck(
     description: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     AnkiRepository::update_deck_conn(conn, &deck_id, &name, description.as_deref(), None)
         .map_err(|e| e.to_string())
@@ -337,7 +337,7 @@ pub fn anki_update_deck(
 
 #[tauri::command]
 pub fn anki_delete_deck(deck_id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     AnkiRepository::delete_deck_conn(conn, &deck_id).map_err(|e| e.to_string())
 }
@@ -348,14 +348,14 @@ pub fn anki_update_deck_settings(
     settings: AnkiDeckSettings,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     AnkiRepository::update_deck_settings_conn(conn, &deck_id, settings).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn anki_get_total_due_count(db_state: State<'_, DbState>) -> Result<i64, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     AnkiRepository::get_total_due_count_conn(conn).map_err(|e| e.to_string())
 }

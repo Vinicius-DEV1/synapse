@@ -20,7 +20,7 @@ pub fn file_links_get_by_page(
     page_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<FilePageLink>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn
@@ -53,7 +53,7 @@ pub fn file_links_get_by_file(
     file_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<FilePageLink>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn
@@ -86,7 +86,7 @@ pub fn file_links_create(
     mut link: FilePageLink,
     db_state: State<'_, DbState>,
 ) -> Result<FilePageLink, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     if link.id.is_empty() {

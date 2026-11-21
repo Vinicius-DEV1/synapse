@@ -25,7 +25,7 @@ pub fn library_get_ocr_cache(
     page_number: i32,
     db_state: State<'_, DbState>,
 ) -> Result<Option<OcrCache>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let result = conn.query_row(
@@ -52,7 +52,7 @@ pub fn library_save_ocr_cache(
     cache: OcrCache,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let id = cache.id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -108,7 +108,7 @@ pub fn library_start_reading_session(
     session: ReadingSession,
     db_state: State<'_, DbState>,
 ) -> Result<ReadingSession, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let id = session
@@ -133,7 +133,7 @@ pub fn library_end_reading_session(
     session: ReadingSession,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let now = chrono::Utc::now().to_rfc3339();
@@ -174,7 +174,7 @@ pub struct ReadingStats {
 
 #[tauri::command]
 pub fn library_get_reading_stats(db_state: State<'_, DbState>) -> Result<ReadingStats, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let started: i32 = conn.query_row(

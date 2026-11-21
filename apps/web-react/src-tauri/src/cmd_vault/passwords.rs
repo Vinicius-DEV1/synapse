@@ -11,7 +11,7 @@ pub fn vault_get_password_history(
     db_state: State<'_, DbState>,
 ) -> Result<Vec<VaultPasswordHistoryEntry>, String> {
     let vault_key = get_vault_key(&db_state)?;
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut stmt = conn

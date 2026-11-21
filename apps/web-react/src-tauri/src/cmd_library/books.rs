@@ -6,7 +6,7 @@ use crate::db::DbState;
 /// Retrieves all active (non-deleted) books from the library.
 #[tauri::command]
 pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut stmt = conn
@@ -86,7 +86,7 @@ pub fn library_get_books(db_state: State<'_, DbState>) -> Result<Vec<Book>, Stri
 /// Inserts a new book entry into the library.
 #[tauri::command]
 pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let id = if book.id.is_empty() {
@@ -113,7 +113,7 @@ pub fn library_add_book(book: Book, db_state: State<'_, DbState>) -> Result<Book
 /// Updates an existing book metadata and reading progress with safe field merging.
 #[tauri::command]
 pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     // 1. Fetch existing book from database to preserve non-specified fields
@@ -212,7 +212,7 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
 /// Soft-deletes a book by setting deleted_at timestamp.
 #[tauri::command]
 pub fn library_delete_book(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     synapse_core::domain::library::books::soft_delete_book(conn, &id).map_err(|e| e.to_string())
@@ -344,7 +344,7 @@ pub fn library_evict_book_local_cache(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let file_path: Option<String> = conn
@@ -400,7 +400,7 @@ pub fn library_evict_book_local_cache(
 /// Retrieves a single active book by its ID.
 #[tauri::command]
 pub fn library_get_book(id: String, db_state: State<'_, DbState>) -> Result<Option<Book>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut stmt = conn

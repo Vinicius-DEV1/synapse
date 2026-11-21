@@ -9,7 +9,7 @@ pub fn library_get_highlights(
     book_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<Highlight>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let list = core_reader::get_highlights(conn, &book_id)
@@ -38,7 +38,7 @@ pub fn library_create_highlight(
     highlight: Highlight,
     db_state: State<'_, DbState>,
 ) -> Result<Highlight, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let text = highlight.text_content.unwrap_or_default();
@@ -75,7 +75,7 @@ pub fn library_update_highlight(
     highlight: Highlight,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let id = highlight.id.ok_or("Highlight id required")?;
@@ -101,7 +101,7 @@ pub fn library_update_highlight_note(
     note: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_reader::update_highlight_note(conn, &id, Some(&note)).map_err(|e| e.to_string())
@@ -113,7 +113,7 @@ pub fn library_delete_highlight(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_reader::delete_highlight(conn, &id).map_err(|e| e.to_string())

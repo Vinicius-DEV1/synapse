@@ -37,7 +37,7 @@ pub async fn video_generate_web(
     let norm_filename = normalize_to_mp4_name(&dest_filename);
 
     let master_key = {
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         if let Some(keys) = keys_guard.as_ref() {
             if let Some(ref k) = keys.culture {
                 k.clone()

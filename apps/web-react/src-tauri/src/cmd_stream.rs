@@ -159,7 +159,16 @@ async fn stream_handler(
     // Pega a chave mestre do App State
     let db_state = state.app_handle.state::<DbState>();
     let master_key = {
-        let guard = db_state.keys.lock().unwrap();
+        let guard = match db_state.lock_keys() {
+            Ok(g) => g,
+            Err(_) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Keys mutex lock poisoned",
+                )
+                    .into_response()
+            }
+        };
         match &*guard {
             Some(keys) => match module_name {
                 "library" => keys.library.clone(),

@@ -11,7 +11,7 @@ pub struct DiagramContent {
 
 #[tauri::command]
 pub fn diagrams_get_all(db_state: State<'_, DbState>) -> Result<Vec<DiagramMeta>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     DiagramsRepository::get_diagrams_conn(conn).map_err(|e| e.to_string())
 }
@@ -21,7 +21,7 @@ pub fn diagrams_get_content(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<DiagramContent, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let record = DiagramsRepository::get_diagram_conn(conn, &id)
@@ -35,7 +35,7 @@ pub fn diagrams_get_content(
 
     // On-the-fly decryption (defaults to notes module key)
     if let Some(enc) = &content.encrypted_content {
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         if let Some(keys) = keys_guard.as_ref() {
             if let Some(notes_key) = &keys.notes {
                 if let Ok(decrypted) = crate::crypto::decrypt_content(notes_key, enc) {
@@ -59,7 +59,7 @@ pub fn diagrams_create(
     payload: CreateDiagramPayload,
     db_state: State<'_, DbState>,
 ) -> Result<DiagramMeta, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -103,7 +103,7 @@ pub fn diagrams_update(
     payload: UpdateDiagramPayload,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let existing = DiagramsRepository::get_diagram_conn(conn, &payload.id)
@@ -115,7 +115,7 @@ pub fn diagrams_update(
 
     let (content, encrypted_content) = if let Some(c) = payload.content {
         let mut enc = None;
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         if let Some(keys) = keys_guard.as_ref() {
             if let Some(notes_key) = &keys.notes {
                 if let Ok(encrypted) = crate::crypto::encrypt_content(notes_key, &c) {
@@ -147,7 +147,7 @@ pub fn diagrams_update(
 
 #[tauri::command]
 pub fn diagrams_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     DiagramsRepository::delete_diagram_conn(conn, &id).map_err(|e| e.to_string())
 }

@@ -180,7 +180,7 @@ pub async fn video_extract_audio(
     })?;
 
     if output.status.success() || temp_audio.exists() {
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         let master_key = if let Some(keys) = keys_guard.as_ref() {
             if let Some(ref k) = keys.culture {
                 k.clone()
@@ -256,7 +256,7 @@ pub async fn video_remux_default_track(
     let output = cmd.output().map_err(|e| e.to_string())?;
 
     if output.status.success() || temp_dest.exists() {
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         let master_key = if let Some(keys) = keys_guard.as_ref() {
             if let Some(ref k) = keys.culture {
                 k.clone()

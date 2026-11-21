@@ -266,7 +266,7 @@ pub fn youtube_get_watched(
     video_ids: Vec<String>,
     db_state: tauri::State<crate::db::DbState>,
 ) -> Result<Vec<String>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     if video_ids.is_empty() {
@@ -301,8 +301,9 @@ pub fn youtube_set_watched(
     channel: Option<String>,
     db_state: tauri::State<crate::db::DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Banco no inicializado")?;
+    let guard = db_state.lock_conn()?;
+    let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
 
     if is_watched {
         let mut stmt = conn
@@ -312,8 +313,8 @@ pub fn youtube_set_watched(
 
         if let Some(eid) = existing_id {
             conn.execute(
-                "UPDATE youtube_watched SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                rusqlite::params![eid]
+                "UPDATE youtube_watched SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2",
+                rusqlite::params![now, eid]
             ).map_err(|e| e.to_string())?;
         } else {
             let id = uuid::Uuid::new_v4().to_string();
@@ -324,8 +325,8 @@ pub fn youtube_set_watched(
         }
     } else {
         conn.execute(
-            "UPDATE youtube_watched SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE video_id = ?",
-            rusqlite::params![video_id]
+            "UPDATE youtube_watched SET deleted_at = ?1, updated_at = ?1 WHERE video_id = ?2",
+            rusqlite::params![now, video_id]
         ).map_err(|e| e.to_string())?;
     }
     Ok(true)
@@ -497,11 +498,15 @@ pub async fn youtube_fetch_transcript(
         return Err("Binário do yt-dlp não encontrado. Por favor, instale o yt-dlp nas configurações.".into());
     }
 
-    let mut cmd = Command::new(ytdlp_path);
-    cmd.args(["-j", "--no-playlist", "--", &url]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ytdlp_path);
+        cmd.args(["-j", "--no-playlist", "--", &url]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if !output.status.success() {
         return Err(sanitize_ytdlp_error(&String::from_utf8_lossy(&output.stderr)));
@@ -631,7 +636,7 @@ pub fn youtube_get_summary(
     video_id: String,
     db_state: tauri::State<crate::db::DbState>,
 ) -> Result<Option<YouTubeSummaryRecord>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn
@@ -665,20 +670,21 @@ pub fn youtube_save_summary(
     raw_transcript: Option<String>,
     db_state: tauri::State<crate::db::DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO youtube_summaries (id, video_id, title, channel_name, summary, raw_transcript, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP)
+        "INSERT INTO youtube_summaries (id, video_id, title, channel_name, summary, raw_transcript, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
          ON CONFLICT(video_id) DO UPDATE SET
              title = excluded.title,
              channel_name = excluded.channel_name,
              summary = excluded.summary,
              raw_transcript = excluded.raw_transcript,
-             updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![id, video_id, title, channel, summary, raw_transcript],
+             updated_at = excluded.updated_at",
+        rusqlite::params![id, video_id, title, channel, summary, raw_transcript, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(true)
@@ -704,27 +710,31 @@ pub async fn youtube_get_stream(url: String, _app: AppHandle) -> Result<YouTubeS
         return Err("yt-dlp binary not found".into());
     }
 
-    let mut cmd = Command::new(ytdlp_path);
-    cmd.args([
-        "--no-playlist",
-        "--no-warnings",
-        "-f",
-        "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best",
-        "--print",
-        "%(title)s",
-        "--print",
-        "%(resolution)s",
-        "--print",
-        "%(duration)s",
-        "-g",
-        "--",
-        &url,
-    ]);
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ytdlp_path);
+        cmd.args([
+            "--no-playlist",
+            "--no-warnings",
+            "-f",
+            "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+            "--print",
+            "%(title)s",
+            "--print",
+            "%(resolution)s",
+            "--print",
+            "%(duration)s",
+            "-g",
+            "--",
+            &url,
+        ]);
 
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
 
-    let output = cmd.output().map_err(|e| e.to_string())?;
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if !output.status.success() {
         let err_msg = sanitize_ytdlp_error(&String::from_utf8_lossy(&output.stderr));
@@ -817,47 +827,51 @@ pub async fn youtube_extract_frames(
         return Ok(Vec::new());
     }
 
-    let mut results = Vec::new();
+    let results = tokio::task::spawn_blocking(move || {
+        let mut list = Vec::new();
+        for sec in valid_timestamps {
+            let mut cmd = Command::new(&ffmpeg_path);
+            cmd.args([
+                "-ss",
+                &format!("{:.2}", sec),
+                "-user_agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "-i",
+                &stream_url,
+                "-vframes",
+                "1",
+                "-q:v",
+                "3",
+                "-vf",
+                "scale='min(1280,iw)':-2",
+                "-f",
+                "image2",
+                "-",
+            ]);
 
-    for sec in valid_timestamps {
-        let mut cmd = Command::new(&ffmpeg_path);
-        cmd.args([
-            "-ss",
-            &format!("{:.2}", sec),
-            "-user_agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "-i",
-            &stream_url,
-            "-vframes",
-            "1",
-            "-q:v",
-            "3",
-            "-vf",
-            "scale='min(1280,iw)':-2",
-            "-f",
-            "image2",
-            "-",
-        ]);
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(CREATE_NO_WINDOW);
 
-        #[cfg(target_os = "windows")]
-        cmd.creation_flags(CREATE_NO_WINDOW);
+            if let Ok(output) = cmd.output() {
+                if output.status.success() && !output.stdout.is_empty() {
+                    let b64 = format!("data:image/jpeg;base64,{}", BASE64.encode(&output.stdout));
+                    let total_secs = sec.floor() as u64;
+                    let mins = total_secs / 60;
+                    let s = total_secs % 60;
+                    let formatted_time = format!("{:02}:{:02}", mins, s);
 
-        if let Ok(output) = cmd.output() {
-            if output.status.success() && !output.stdout.is_empty() {
-                let b64 = format!("data:image/jpeg;base64,{}", BASE64.encode(&output.stdout));
-                let total_secs = sec.floor() as u64;
-                let mins = total_secs / 60;
-                let s = total_secs % 60;
-                let formatted_time = format!("{:02}:{:02}", mins, s);
-
-                results.push(YouTubeFrameResult {
-                    timestamp: formatted_time,
-                    seconds: sec,
-                    data_url: b64,
-                });
+                    list.push(YouTubeFrameResult {
+                        timestamp: formatted_time,
+                        seconds: sec,
+                        data_url: b64,
+                    });
+                }
             }
         }
-    }
+        list
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?;
 
     Ok(results)
 }

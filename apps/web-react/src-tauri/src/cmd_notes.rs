@@ -85,7 +85,7 @@ pub struct PageContent {
 
 #[tauri::command]
 pub fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let records = NotesRepository::get_pages_conn(conn, None)
@@ -99,7 +99,7 @@ pub fn notes_get_page_content(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<PageContent, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let page_opt = NotesRepository::get_page_conn(conn, &id)
@@ -115,7 +115,7 @@ pub fn notes_get_page_content(
 
     // Descriptografar on-the-fly
     if let Some(enc) = &content.encrypted_content {
-        let keys_guard = db_state.keys.lock().unwrap();
+        let keys_guard = db_state.lock_keys()?;
         if let Some(keys) = keys_guard.as_ref() {
             if let Some(notes_key) = &keys.notes {
                 if let Ok(decrypted) = crate::crypto::decrypt_content(notes_key, enc) {
@@ -142,7 +142,7 @@ pub fn notes_create_page(
     page: CreatePagePayload,
     db_state: State<'_, DbState>,
 ) -> Result<PageMeta, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let title = page.title.unwrap_or_else(|| "Nova Página".into());
@@ -193,7 +193,7 @@ pub fn notes_update_page(
     page: UpdatePagePayload,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut query = String::from("UPDATE pages SET");
@@ -217,7 +217,7 @@ pub fn notes_update_page(
         let mut encrypted = None;
 
         {
-            let keys_guard = db_state.keys.lock().unwrap();
+            let keys_guard = db_state.lock_keys()?;
             if let Some(keys) = keys_guard.as_ref() {
                 if let Some(notes_key) = &keys.notes {
                     if let Ok(enc) = crate::crypto::encrypt_content(notes_key, &c) {
@@ -365,7 +365,7 @@ pub fn notes_update_page(
 
 #[tauri::command]
 pub fn notes_delete_page(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     pages::soft_delete_page_subtree(conn, &id).map_err(|e| e.to_string())
@@ -376,7 +376,7 @@ pub fn notes_delete_pages(ids: Vec<String>, db_state: State<'_, DbState>) -> Res
     if ids.is_empty() {
         return Ok(true);
     }
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let now = chrono::Utc::now().to_rfc3339();
@@ -408,7 +408,7 @@ pub fn notes_delete_pages(ids: Vec<String>, db_state: State<'_, DbState>) -> Res
 
 #[tauri::command]
 pub fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn.prepare("SELECT id, parent_id, title, icon, sort_order, crdt_state, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order, cover_image, description FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")

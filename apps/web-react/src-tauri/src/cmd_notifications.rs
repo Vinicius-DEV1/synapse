@@ -4,7 +4,7 @@ use tauri::State;
 
 #[tauri::command]
 pub fn notifications_get_all(db_state: State<'_, DbState>) -> Result<Vec<AppNotification>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     NotificationsRepository::get_notifications_conn(conn).map_err(|e| e.to_string())
 }
@@ -14,7 +14,7 @@ pub fn notifications_add(
     notif: serde_json::Value,
     db_state: State<'_, DbState>,
 ) -> Result<AppNotification, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let notif_obj = notif.as_object().ok_or("Parâmetro notif inválido")?;
@@ -47,14 +47,14 @@ pub fn notifications_mark_read(
     id: Option<String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     NotificationsRepository::mark_read_conn(conn, id.as_deref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn notifications_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     NotificationsRepository::delete_notification_conn(conn, &id).map_err(|e| e.to_string())
 }

@@ -6,7 +6,7 @@ use synapse_core::domain::library::collections as core_cols;
 /// Retrieves all active library collections.
 #[tauri::command]
 pub fn library_get_collections(db_state: State<'_, DbState>) -> Result<Vec<Collection>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let items = core_cols::get_collections(conn)
@@ -27,7 +27,7 @@ pub fn library_add_collection(
     collection: Collection,
     db_state: State<'_, DbState>,
 ) -> Result<Collection, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let color = collection.color.as_deref().unwrap_or("#3b82f6");
@@ -57,7 +57,7 @@ pub fn library_update_collection(
     collection: Collection,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let color = collection.color.as_deref().unwrap_or("#3b82f6");
@@ -73,7 +73,7 @@ pub fn library_delete_collection(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_cols::delete_collection(conn, &id).map_err(|e| e.to_string())
@@ -86,7 +86,7 @@ pub fn library_add_book_to_collection(
     collection_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_cols::add_book_to_collection(conn, &book_id, &collection_id).map_err(|e| e.to_string())
@@ -99,7 +99,7 @@ pub fn library_remove_book_from_collection(
     collection_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_cols::remove_book_from_collection(conn, &book_id, &collection_id).map_err(|e| e.to_string())
@@ -111,7 +111,7 @@ pub fn library_get_book_collections(
     book_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<Collection>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut stmt = conn
@@ -146,7 +146,7 @@ pub fn library_set_book_collections(
     collection_ids: Vec<String>,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_cols::set_book_collections(conn, &book_id, &collection_ids).map_err(|e| e.to_string())
@@ -157,7 +157,7 @@ pub fn library_set_book_collections(
 pub fn library_get_all_book_collections(
     db_state: State<'_, DbState>,
 ) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut stmt = conn

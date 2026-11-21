@@ -13,7 +13,7 @@ fn value_to_string_or_default(v: &Option<serde_json::Value>, default_str: &str) 
 
 #[tauri::command]
 pub fn calendar_get_events(db_state: State<'_, DbState>) -> Result<Vec<CalendarEvent>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     CalendarRepository::get_events_conn(conn).map_err(|e| e.to_string())
 }
@@ -23,7 +23,7 @@ pub fn calendar_add_event(
     event: serde_json::Value,
     db_state: State<'_, DbState>,
 ) -> Result<CalendarEvent, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let event_obj = event.as_object().ok_or("Parâmetro event inválido")?;
@@ -168,14 +168,14 @@ pub fn calendar_update_event(
 
 #[tauri::command]
 pub fn calendar_delete_event(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     CalendarRepository::delete_event_conn(conn, &id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn calendar_get_event(id: String, db_state: State<'_, DbState>) -> Result<Option<CalendarEvent>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     CalendarRepository::get_event_conn(conn, &id).map_err(|e| e.to_string())
 }

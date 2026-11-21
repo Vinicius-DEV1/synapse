@@ -23,7 +23,7 @@ pub fn notes_get_page_history(
     page_id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<PageHistoryEntry>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn
@@ -42,7 +42,7 @@ pub fn notes_get_page_history(
         .map_err(|e| e.to_string())?;
 
     let mut history = Vec::new();
-    let keys_guard = db_state.keys.lock().unwrap();
+    let keys_guard = db_state.lock_keys()?;
     let notes_key = keys_guard.as_ref().and_then(|k| k.notes.clone());
 
     for (id, pid, mut cont, created, enc_opt) in history_iter.flatten() {
@@ -69,7 +69,7 @@ pub fn image_cache_get(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Option<ImageCacheResult>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let mut stmt = conn
@@ -99,7 +99,7 @@ pub fn image_cache_put(
     mime_type: String,
     db_state: State<'_, DbState>,
 ) -> Result<(), String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     conn.execute(
@@ -116,7 +116,7 @@ pub fn image_cache_delete(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     conn.execute("DELETE FROM image_cache WHERE id = ?", [&id])
