@@ -156,17 +156,22 @@ pub fn notes_cleanup_orphaned_images(
     let mut stmt_imgs = conn
         .prepare("SELECT id FROM image_cache")
         .map_err(|e| e.to_string())?;
-    let all_image_ids: Vec<String> = stmt_imgs
+    let mut unreferenced_ids: std::collections::HashSet<String> = stmt_imgs
         .query_map([], |row| row.get(0))
         .map_err(|e| e.to_string())?
         .flatten()
         .collect();
 
-    if all_image_ids.is_empty() {
+    if unreferenced_ids.is_empty() {
         return Ok(0);
     }
 
-    let mut corpus = String::new();
+    // Stream-check each row and prune matched IDs immediately without allocating a huge corpus String
+    fn prune_referenced(unreferenced: &mut std::collections::HashSet<String>, text: &str) {
+        if !text.is_empty() && !unreferenced.is_empty() {
+            unreferenced.retain(|img_id| !text.contains(img_id.as_str()));
+        }
+    }
 
     let mut stmt_pages = conn
         .prepare("SELECT content, encrypted_content FROM pages")
@@ -182,21 +187,20 @@ pub fn notes_cleanup_orphaned_images(
 
     for r in page_rows.flatten() {
         if let Some(c) = r.0 {
-            if !c.is_empty() {
-                corpus.push_str(&c);
-                corpus.push('\n');
-            }
+            prune_referenced(&mut unreferenced_ids, &c);
         }
         if let (Some(enc), Some(key)) = (r.1, &notes_key) {
             if !enc.is_empty() {
                 if let Ok(dec) = crate::crypto::decrypt_content(key, &enc) {
-                    corpus.push_str(&dec);
-                    corpus.push('\n');
+                    prune_referenced(&mut unreferenced_ids, &dec);
                 } else {
                     // Abort cleanup if any encrypted page fails decryption to guarantee zero data loss
                     return Ok(0);
                 }
             }
+        }
+        if unreferenced_ids.is_empty() {
+            return Ok(0);
         }
     }
 
@@ -214,28 +218,25 @@ pub fn notes_cleanup_orphaned_images(
 
     for r in hist_rows.flatten() {
         if let Some(c) = r.0 {
-            if !c.is_empty() {
-                corpus.push_str(&c);
-                corpus.push('\n');
-            }
+            prune_referenced(&mut unreferenced_ids, &c);
         }
         if let (Some(enc), Some(key)) = (r.1, &notes_key) {
             if !enc.is_empty() {
                 if let Ok(dec) = crate::crypto::decrypt_content(key, &enc) {
-                    corpus.push_str(&dec);
-                    corpus.push('\n');
+                    prune_referenced(&mut unreferenced_ids, &dec);
                 }
             }
+        }
+        if unreferenced_ids.is_empty() {
+            return Ok(0);
         }
     }
 
     let mut deleted_count = 0;
-    for img_id in all_image_ids {
-        if !corpus.contains(&img_id) {
-            deleted_count += conn
-                .execute("DELETE FROM image_cache WHERE id = ?1", [&img_id])
-                .map_err(|e| e.to_string())?;
-        }
+    for img_id in unreferenced_ids {
+        deleted_count += conn
+            .execute("DELETE FROM image_cache WHERE id = ?1", [&img_id])
+            .map_err(|e| e.to_string())?;
     }
 
     Ok(deleted_count)
