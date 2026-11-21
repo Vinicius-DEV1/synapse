@@ -33,12 +33,16 @@ pub async fn youtube_fetch_info(url: String, _app: AppHandle) -> Result<Value, S
         return Err("yt-dlp binary not found".into());
     }
 
-    // spawning yt-dlp -j to get JSON info
-    let mut cmd = Command::new(ytdlp_path);
-    cmd.args(["-j", "--", &url]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    // Spawn yt-dlp -j inside spawn_blocking so it never blocks Tokio async workers
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ytdlp_path);
+        cmd.args(["-j", "--", &url]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() {
         let json_str = String::from_utf8_lossy(&output.stdout);
@@ -119,7 +123,7 @@ pub async fn youtube_download(
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     let ffmpeg_dir = crate::cmd_binaries::get_bin_path("ffmpeg")
         .parent()
-        .unwrap()
+        .ok_or("Invalid ffmpeg path")?
         .to_path_buf();
     let videos_dir = get_videos_dir(&app)?;
 
@@ -159,48 +163,60 @@ pub async fn youtube_download(
     args.push("--".to_string());
     args.push(url.clone());
 
-    let mut child = Command::new(ytdlp_path);
-    child.args(&args).stdout(Stdio::piped());
-    #[cfg(target_os = "windows")]
-    child.creation_flags(CREATE_NO_WINDOW);
-    let mut child = child.spawn().map_err(|e| e.to_string())?;
+    let app_clone = app.clone();
+    let status = tokio::task::spawn_blocking(move || -> Result<std::process::ExitStatus, String> {
+        let mut child = Command::new(ytdlp_path);
+        child.args(&args).stdout(Stdio::piped());
+        #[cfg(target_os = "windows")]
+        child.creation_flags(CREATE_NO_WINDOW);
+        let mut child = child.spawn().map_err(|e| e.to_string())?;
 
-    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
-    let reader = BufReader::new(stdout);
+        let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+        let reader = BufReader::new(stdout);
 
-    for line in reader.lines() {
-        if let Ok(line_str) = line {
-            // Progress parser (e.g. "[download] 45.0% of ...")
-            if line_str.contains("[download]") && line_str.contains("%") {
-                if let Some(pct_str) = line_str.split('%').next() {
-                    let parts: Vec<&str> = pct_str.split_whitespace().collect();
-                    if let Some(last) = parts.last() {
-                        if let Ok(pct) = last.parse::<f64>() {
-                            let _ = app.emit("youtube-download-progress", pct);
+        for line in reader.lines() {
+            if let Ok(line_str) = line {
+                if line_str.contains("[download]") && line_str.contains('%') {
+                    if let Some(pct_str) = line_str.split('%').next() {
+                        let parts: Vec<&str> = pct_str.split_whitespace().collect();
+                        if let Some(last) = parts.last() {
+                            if let Ok(pct) = last.parse::<f64>() {
+                                let _ = app_clone.emit("youtube-download-progress", pct);
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    let status = child.wait().map_err(|e| e.to_string())?;
+        child.wait().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if status.success() {
-        let keys_guard = db_state.keys.lock().unwrap();
-        let master_key = if let Some(keys) = keys_guard.as_ref() {
-            if let Some(ref k) = keys.culture {
-                k.clone()
+        let master_key = {
+            let keys_guard = db_state.lock_keys()?;
+            if let Some(keys) = keys_guard.as_ref() {
+                if let Some(ref k) = keys.culture {
+                    k.clone()
+                } else {
+                    return Err("Culture key not found".into());
+                }
             } else {
-                return Err("Culture key not found".into());
+                return Err("Keys not unlocked".into());
             }
-        } else {
-            return Err("Keys not unlocked".into());
         };
 
         // Securely use sanitized filename to prevent path traversal outside videos directory
         let enc_dest_path = videos_dir.join(format!("{}.enc", safe_filename));
-        crate::crypto_stream::encrypt_file_chunked(&temp_path, &enc_dest_path, &master_key)?;
+        let temp_clone = temp_path.clone();
+        let enc_clone = enc_dest_path.clone();
+        tokio::task::spawn_blocking(move || {
+            crate::crypto_stream::encrypt_file_chunked(&temp_clone, &enc_clone, &master_key)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))??;
         let _ = fs::remove_file(&temp_path);
 
         Ok(enc_dest_path.to_string_lossy().to_string())
@@ -224,11 +240,15 @@ pub async fn youtube_fetch_playlist_info(
         return Err("yt-dlp binary not found".into());
     }
 
-    let mut cmd = std::process::Command::new(ytdlp_path);
-    cmd.args(["-J", "--flat-playlist", "--no-warnings", "--", &url]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = std::process::Command::new(ytdlp_path);
+        cmd.args(["-J", "--flat-playlist", "--no-warnings", "--", &url]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() {
         let json_str = String::from_utf8_lossy(&output.stdout);

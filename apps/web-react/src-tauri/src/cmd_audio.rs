@@ -70,43 +70,56 @@ pub async fn audio_extract_clip(
         canonical.to_string_lossy().to_string()
     };
 
-    let mut cmd = Command::new(ffmpeg_path);
-    cmd.args([
-        "-y",
-        "-i",
-        &input_path,
-        "-ss",
-        &start_sec.to_string(),
-        "-t",
-        &duration_sec.to_string(),
-        "-vn",
-        "-c:a",
-        "libmp3lame",
-        "-q:a",
-        "2",
-        &temp_path.to_string_lossy().to_string(),
-    ]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let temp_path_for_cmd = temp_path.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.args([
+            "-y",
+            "-i",
+            &input_path,
+            "-ss",
+            &start_sec.to_string(),
+            "-t",
+            &duration_sec.to_string(),
+            "-vn",
+            "-c:a",
+            "libmp3lame",
+            "-q:a",
+            "2",
+            &temp_path_for_cmd.to_string_lossy().to_string(),
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() || temp_path.exists() {
-        let keys_guard = db_state.lock_keys()?;
-        let master_key = if let Some(keys) = keys_guard.as_ref() {
-            if let Some(ref k) = keys.anki {
-                k.clone()
+        let master_key = {
+            let keys_guard = db_state.lock_keys()?;
+            if let Some(keys) = keys_guard.as_ref() {
+                if let Some(ref k) = keys.anki {
+                    k.clone()
+                } else {
+                    let _ = fs::remove_file(&temp_path);
+                    return Err("Anki key not found".into());
+                }
             } else {
                 let _ = fs::remove_file(&temp_path);
-                return Err("Anki key not found".into());
+                return Err("Keys not unlocked".into());
             }
-        } else {
-            let _ = fs::remove_file(&temp_path);
-            return Err("Keys not unlocked".into());
         };
 
-        if let Err(e) =
-            crate::crypto_stream::encrypt_file_chunked(&temp_path, &final_enc, &master_key)
-        {
+        let temp_clone = temp_path.clone();
+        let final_clone = final_enc.clone();
+        let enc_res = tokio::task::spawn_blocking(move || {
+            crate::crypto_stream::encrypt_file_chunked(&temp_clone, &final_clone, &master_key)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
+
+        if let Err(e) = enc_res {
             let _ = fs::remove_file(&temp_path);
             return Err(e);
         }

@@ -256,33 +256,47 @@ pub async fn video_convert_mp4(
         source_path.clone()
     };
 
-    let mut cmd = Command::new(ffmpeg_path);
-    cmd.args([
-        "-y",
-        "-i",
-        &input_path,
-        "-c",
-        "copy",
-        &temp_dest.to_string_lossy().to_string(),
-    ]);
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let temp_dest_for_cmd = temp_dest.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.args([
+            "-y",
+            "-i",
+            &input_path,
+            "-c",
+            "copy",
+            &temp_dest_for_cmd.to_string_lossy().to_string(),
+        ]);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.output().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     if output.status.success() || temp_dest.exists() {
-        let keys_guard = db_state.keys.lock().unwrap();
-        let master_key = if let Some(keys) = keys_guard.as_ref() {
-            if let Some(ref k) = keys.culture {
-                k.clone()
+        let master_key = {
+            let keys_guard = db_state.lock_keys()?;
+            if let Some(keys) = keys_guard.as_ref() {
+                if let Some(ref k) = keys.culture {
+                    k.clone()
+                } else {
+                    return Err("Culture key not found".into());
+                }
             } else {
-                return Err("Culture key not found".into());
+                return Err("Keys not unlocked".into());
             }
-        } else {
-            return Err("Keys not unlocked".into());
         };
 
-        crate::crypto_stream::encrypt_file_chunked(&temp_dest, &final_dest, &master_key)?;
+        let temp_clone = temp_dest.clone();
+        let final_clone = final_dest.clone();
+        let enc_res = tokio::task::spawn_blocking(move || {
+            crate::crypto_stream::encrypt_file_chunked(&temp_clone, &final_clone, &master_key)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
         let _ = fs::remove_file(&temp_dest);
+        enc_res?;
 
         Ok(dest_path_str)
     } else {

@@ -44,22 +44,19 @@ export function usePracticePrompts(session: TutorSession) {
         ...session,
         custom_prompt: val,
       });
-      try {
-        session.custom_prompt = val;
-      } catch {
-        // Safe fallback if session is a frozen object
-      }
     } catch (err) {
       console.error('Failed to update session prompt', err);
     }
   };
 
-  const saveAsNewPreset = async () => {
+  const saveAsNewPreset = async (presetName?: string) => {
     if (!window.api?.config) return;
-    const name = window.prompt('Nome para este novo Preset de Instruções:');
-    if (!name || name.trim() === '') return;
+    const rawName =
+      typeof presetName === 'string' && presetName.trim() !== ''
+        ? presetName.trim()
+        : `Preset #${presets.length + 1}`;
 
-    const newPreset = { id: Date.now().toString(), name, prompt: customPrompt };
+    const newPreset = { id: Date.now().toString(), name: rawName, prompt: customPrompt };
     const newPresets = [...presets, newPreset];
     try {
       await window.api.config.set('practice_presets', newPresets);

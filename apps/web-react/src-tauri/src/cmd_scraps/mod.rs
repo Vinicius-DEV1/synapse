@@ -64,24 +64,75 @@ fn create_browser_client() -> Result<reqwest::Client, String> {
         .map_err(|e| format!("Falha ao inicializar cliente de rede: {}", e))
 }
 
+fn is_private_or_local_url(raw_url: &str) -> bool {
+    let Ok(parsed) = reqwest::Url::parse(raw_url) else {
+        return true;
+    };
+    let Some(host) = parsed.host_str() else {
+        return true;
+    };
+    let lower = host.trim().trim_matches(|c| c == '[' || c == ']').to_lowercase();
+    if lower == "localhost"
+        || lower.ends_with(".localhost")
+        || lower == "0.0.0.0"
+        || lower == "::1"
+        || lower == "0:0:0:0:0:0:0:1"
+    {
+        return true;
+    }
+
+    if let Ok(ip) = lower.parse::<std::net::IpAddr>() {
+        return match ip {
+            std::net::IpAddr::V4(v4) => {
+                v4.is_loopback()
+                    || v4.is_private()
+                    || v4.is_link_local()
+                    || v4.is_broadcast()
+                    || v4.is_unspecified()
+                    || v4.octets()[0] == 100 && (v4.octets()[1] & 0b1100_0000) == 64
+            }
+            std::net::IpAddr::V6(v6) => {
+                v6.is_loopback()
+                    || v6.is_unspecified()
+                    || (v6.segments()[0] & 0xfe00) == 0xfc00
+                    || (v6.segments()[0] & 0xffc0) == 0xfe80
+            }
+        };
+    }
+
+    false
+}
+
 fn resolve_url(base: &str, relative: &str) -> Option<String> {
     let clean_rel = relative.trim().trim_matches('\'').trim_matches('"');
     if clean_rel.starts_with("data:") || clean_rel.starts_with("javascript:") || clean_rel.is_empty() {
         return None;
     }
     if clean_rel.starts_with("//") {
-        if let Ok(base_url) = reqwest::Url::parse(base) {
-            return Some(format!("{}:{}", base_url.scheme(), clean_rel));
+        let candidate = if let Ok(base_url) = reqwest::Url::parse(base) {
+            format!("{}:{}", base_url.scheme(), clean_rel)
+        } else {
+            format!("https:{}", clean_rel)
+        };
+        if is_private_or_local_url(&candidate) {
+            return None;
         }
-        return Some(format!("https:{}", clean_rel));
+        return Some(candidate);
     }
     if clean_rel.starts_with("http://") || clean_rel.starts_with("https://") {
+        if is_private_or_local_url(clean_rel) {
+            return None;
+        }
         return Some(clean_rel.to_string());
     }
 
     if let Ok(base_url) = reqwest::Url::parse(base) {
         if let Ok(joined) = base_url.join(clean_rel) {
-            return Some(joined.to_string());
+            let joined_str = joined.to_string();
+            if is_private_or_local_url(&joined_str) {
+                return None;
+            }
+            return Some(joined_str);
         }
     }
     None
@@ -333,6 +384,9 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
     if !clean_url.starts_with("http://") && !clean_url.starts_with("https://") {
         return Err("URL inválida. O endereço deve começar com http:// ou https://".to_string());
     }
+    if is_private_or_local_url(clean_url) {
+        return Err("Captura de endereços locais ou de rede interna não é permitida.".to_string());
+    }
 
     let client = create_browser_client()?;
 
@@ -583,13 +637,20 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
 
 #[tauri::command]
 pub async fn scrap_delete_local(scrap_id: String) -> Result<bool, String> {
-    let clean_id = scrap_id.trim();
+    let clean_id: String = std::path::Path::new(scrap_id.trim())
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
     if clean_id.is_empty() {
         return Ok(true);
     }
     let app_dir = crate::get_app_data_dir();
-    let html_path = app_dir.join("scraps").join(format!("{}.html", clean_id));
-    let enc_path = app_dir.join("scraps").join(format!("{}.enc", clean_id));
+    let scraps_dir = app_dir.join("scraps");
+    let html_path = scraps_dir.join(format!("{}.html", clean_id));
+    let enc_path = scraps_dir.join(format!("{}.enc", clean_id));
 
     if html_path.exists() {
         let _ = std::fs::remove_file(html_path);

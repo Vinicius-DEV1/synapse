@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { X, FileText } from 'lucide-react';
 import type { TutorSession } from '../../../types';
 
@@ -10,12 +10,14 @@ interface ChatSessionSettingsModalProps {
   setCustomPrompt: (val: string) => void;
   presets: {id: string, name: string, prompt: string}[];
   saveCustomPrompt: () => void;
-  saveAsNewPreset: () => void;
+  saveAsNewPreset: (presetName?: string) => void;
 }
 
 export function ChatSessionSettingsModal({
   isOpen, onClose, session, customPrompt, setCustomPrompt, presets, saveCustomPrompt, saveAsNewPreset
 }: ChatSessionSettingsModalProps) {
+  const [isNamingPreset, setIsNamingPreset] = useState(false);
+  const [presetNameInput, setPresetNameInput] = useState('');
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -100,13 +102,60 @@ export function ChatSessionSettingsModal({
               >
                 Salvar na Sessão Atual
               </button>
-              <button 
-                onClick={saveAsNewPreset}
-                disabled={!customPrompt.trim()}
-                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm disabled:opacity-50 disabled:hover:bg-white/5"
-              >
-                Salvar como Novo Preset
-              </button>
+              {isNamingPreset ? (
+                <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/[0.08]">
+                  <input
+                    type="text"
+                    value={presetNameInput}
+                    onChange={(e) => setPresetNameInput(e.target.value)}
+                    placeholder="Nome do novo preset..."
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && presetNameInput.trim()) {
+                        saveAsNewPreset(presetNameInput.trim());
+                        setPresetNameInput('');
+                        setIsNamingPreset(false);
+                      } else if (e.key === 'Escape') {
+                        setIsNamingPreset(false);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand-500/50"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!presetNameInput.trim()) return;
+                        saveAsNewPreset(presetNameInput.trim());
+                        setPresetNameInput('');
+                        setIsNamingPreset(false);
+                      }}
+                      disabled={!presetNameInput.trim()}
+                      className="flex-1 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsNamingPreset(false);
+                        setPresetNameInput('');
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dark-subtext hover:text-white text-xs font-medium transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsNamingPreset(true)}
+                  disabled={!customPrompt.trim()}
+                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm disabled:opacity-50 disabled:hover:bg-white/5"
+                >
+                  Salvar como Novo Preset
+                </button>
+              )}
             </div>
           </div>
         </div>
