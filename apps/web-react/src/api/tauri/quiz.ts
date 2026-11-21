@@ -19,9 +19,62 @@ async function getFallbackApi(): Promise<IQuizApi> {
   return fallbackApiPromise;
 }
 
+const QUIZ_IDB_MIGRATED_KEY = 'caderno_tauri_quiz_idb_migrated_v1';
+let migrationPromise: Promise<void> | null = null;
+
+async function ensureLegacyIdbQuizMigrated(): Promise<void> {
+  if (typeof localStorage !== 'undefined' && localStorage.getItem(QUIZ_IDB_MIGRATED_KEY) === 'true') {
+    return;
+  }
+  if (migrationPromise) return migrationPromise;
+
+  migrationPromise = (async () => {
+    try {
+      const db = await getWebDb();
+      const [batteries, questions, attempts, links] = await Promise.all([
+        db.getAll('quiz_batteries').catch(() => []),
+        db.getAll('quiz_questions').catch(() => []),
+        db.getAll('quiz_attempts').catch(() => []),
+        db.getAll('quiz_page_links').catch(() => []),
+      ]);
+
+      for (const b of batteries || []) {
+        if (b && b.id) {
+          await invoke('quiz_save_battery', { battery: b });
+        }
+      }
+      if (Array.isArray(questions) && questions.length > 0) {
+        await invoke('quiz_save_questions_batch', { questions });
+      }
+      for (const a of attempts || []) {
+        if (a && a.id) {
+          await invoke('quiz_save_attempt', { attempt: a });
+        }
+      }
+      for (const l of links || []) {
+        if (l && l.battery_id && l.page_id && !l.deleted_at) {
+          await invoke('quiz_link_battery_to_page', {
+            batteryId: l.battery_id,
+            pageId: l.page_id,
+          });
+        }
+      }
+
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(QUIZ_IDB_MIGRATED_KEY, 'true');
+      }
+    } catch (err) {
+      console.warn('[tauriQuizApi] Legacy IndexedDB to SQLite migration skipped:', err);
+    }
+  })();
+
+  return migrationPromise;
+}
+
 export const tauriQuizApi: IQuizApi = {
   async getAllBatteries(): Promise<QuizBattery[]> {
     try {
+      await ensureLegacyIdbQuizMigrated();
       return await invoke('quiz_get_all_batteries');
     } catch {
       const fallback = await getFallbackApi();
@@ -217,6 +270,7 @@ export const tauriQuizApi: IQuizApi = {
 
   async getAllBatteriesEnriched(): Promise<BatteryWithQuestions[]> {
     try {
+      await ensureLegacyIdbQuizMigrated();
       return await invoke('quiz_get_all_batteries_enriched');
     } catch {
       const fallback = await getFallbackApi();

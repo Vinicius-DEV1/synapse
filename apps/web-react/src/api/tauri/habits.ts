@@ -11,9 +11,47 @@ async function getFallbackApi(): Promise<IHabitsApi> {
   return fallbackApiPromise;
 }
 
+const HABITS_IDB_MIGRATED_KEY = 'caderno_tauri_habits_idb_migrated_v1';
+let migrationPromise: Promise<void> | null = null;
+
+async function ensureLegacyIdbHabitsMigrated(): Promise<void> {
+  if (typeof localStorage !== 'undefined' && localStorage.getItem(HABITS_IDB_MIGRATED_KEY) === 'true') {
+    return;
+  }
+  if (migrationPromise) return migrationPromise;
+
+  migrationPromise = (async () => {
+    try {
+      const db = await getWebDb();
+      const idbHabits = (await db.getAll('habits')) || [];
+      const idbLogs = (await db.getAll('habit_logs')) || [];
+
+      for (const h of idbHabits) {
+        if (h && h.id) {
+          await invoke('sync_upsert_row', { tableName: 'habits', row: h });
+        }
+      }
+      for (const l of idbLogs) {
+        if (l && l.id) {
+          await invoke('sync_upsert_row', { tableName: 'habit_logs', row: l });
+        }
+      }
+
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(HABITS_IDB_MIGRATED_KEY, 'true');
+      }
+    } catch (err) {
+      console.warn('[tauriHabitsApi] Legacy IndexedDB to SQLite migration skipped:', err);
+    }
+  })();
+
+  return migrationPromise;
+}
+
 export const tauriHabitsApi: IHabitsApi = {
   async getHabits(): Promise<Habit[]> {
     try {
+      await ensureLegacyIdbHabitsMigrated();
       return await invoke('habits_get_all');
     } catch {
       const fallback = await getFallbackApi();

@@ -15,10 +15,12 @@ pub mod cmd_files_folders;
 pub mod cmd_files_storage;
 mod cmd_finance;
 mod cmd_focus;
+mod cmd_habits;
 mod cmd_library;
 mod cmd_notes;
 mod cmd_notifications;
 mod cmd_practice;
+mod cmd_quiz;
 mod cmd_stream;
 mod cmd_sync;
 mod cmd_trash;
@@ -426,7 +428,38 @@ pub fn run() {
             cmd_backup::backup_start,
             cmd_backup::backup_cancel,
             cmd_scraps::scrap_capture_page,
-            cmd_scraps::scrap_delete_local
+            cmd_scraps::scrap_delete_local,
+            cmd_habits::habits_get_all,
+            cmd_habits::habits_get_by_id,
+            cmd_habits::habits_create,
+            cmd_habits::habits_update,
+            cmd_habits::habits_delete,
+            cmd_habits::habits_get_logs,
+            cmd_habits::habits_get_all_logs,
+            cmd_habits::habits_toggle_day_log,
+            cmd_habits::habits_get_with_stats,
+            cmd_quiz::quiz_get_all_batteries,
+            cmd_quiz::quiz_get_battery_by_id,
+            cmd_quiz::quiz_get_batteries_by_page,
+            cmd_quiz::quiz_save_battery,
+            cmd_quiz::quiz_delete_battery,
+            cmd_quiz::quiz_restore_battery,
+            cmd_quiz::quiz_get_questions_by_battery,
+            cmd_quiz::quiz_get_question_by_id,
+            cmd_quiz::quiz_save_question,
+            cmd_quiz::quiz_save_questions_batch,
+            cmd_quiz::quiz_delete_question,
+            cmd_quiz::quiz_save_attempt,
+            cmd_quiz::quiz_get_latest_attempts,
+            cmd_quiz::quiz_get_attempts_by_question,
+            cmd_quiz::quiz_get_wrong_attempts,
+            cmd_quiz::quiz_get_links_by_battery,
+            cmd_quiz::quiz_get_links_by_page,
+            cmd_quiz::quiz_link_battery_to_page,
+            cmd_quiz::quiz_unlink_battery_from_page,
+            cmd_quiz::quiz_get_stats,
+            cmd_quiz::quiz_get_battery_with_questions,
+            cmd_quiz::quiz_get_all_batteries_enriched
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
