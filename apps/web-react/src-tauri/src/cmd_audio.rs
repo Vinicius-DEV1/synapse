@@ -41,7 +41,9 @@ pub async fn audio_extract_clip(
     let final_enc = anki_dir.join(format!("{}.enc", out_filename));
 
     let input_path = if video_path.ends_with(".enc") {
-        let port = tauri::Manager::state::<crate::cmd_stream::StreamPortState>(&app).0;
+        let port = tauri::Manager::try_state::<crate::cmd_stream::StreamPortState>(&app)
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let fname = Path::new(&video_path)
             .file_name()
             .ok_or("Invalid video path")?

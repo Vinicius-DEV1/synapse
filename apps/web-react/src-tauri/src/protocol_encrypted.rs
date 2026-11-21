@@ -131,6 +131,16 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
         }
     };
 
+    if total_size == 0 {
+        let mime_type = get_mime_type(&abs_path);
+        let builder = Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, mime_type)
+            .header(header::CONTENT_LENGTH, "0")
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin);
+        return safe_response(builder, Vec::new());
+    }
+
     if let Some(range) = range_header {
         if range.starts_with("bytes=") {
             let parts: Vec<&str> = range.trim_start_matches("bytes=").split('-').collect();
@@ -141,10 +151,22 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                 total_size - 1
             };
 
+            if start >= total_size {
+                let builder = Response::builder()
+                    .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                    .header(header::CONTENT_RANGE, format!("bytes */{}", total_size))
+                    .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, &cors_origin);
+                return safe_response(builder, Vec::new());
+            }
+
             // Read decrypted byte range
             match read_chunked_range(&abs_path, &master_key, start, end) {
                 Ok(DecryptedRange { data, .. }) => {
-                    let actual_end = start + data.len() as u64 - 1;
+                    let actual_end = if data.is_empty() {
+                        start
+                    } else {
+                        start + (data.len() as u64) - 1
+                    };
                     let mime_type = get_mime_type(&abs_path);
 
                     let builder = Response::builder()

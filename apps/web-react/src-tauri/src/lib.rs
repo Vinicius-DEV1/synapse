@@ -170,19 +170,22 @@ pub fn run() {
             });
 
             let app_handle = app.handle().clone();
+            let stream_app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = cmd_binaries::ensure_binaries(&app_handle).await {
-                    println!("Erro ao baixar binários: {}", e);
-                }
-
-                match cmd_stream::start_stream_server(app_handle.clone()).await {
+                match cmd_stream::start_stream_server(stream_app_handle.clone()).await {
                     Ok(port) => {
                         println!("Stream server rodando na porta {}", port);
-                        app_handle.manage(cmd_stream::StreamPortState(port));
+                        stream_app_handle.manage(cmd_stream::StreamPortState(port));
                     }
                     Err(e) => {
                         println!("Erro ao iniciar stream server: {}", e);
                     }
+                }
+            });
+
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = cmd_binaries::ensure_binaries(&app_handle).await {
+                    println!("Erro ao baixar binários: {}", e);
                 }
             });
 

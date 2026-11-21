@@ -15,6 +15,15 @@ pub fn encrypt_file_chunked<P: AsRef<Path>, Q: AsRef<Path>>(
     output_path: Q,
     key_hex: &str,
 ) -> Result<(), String> {
+    encrypt_file_chunked_cancellable(input_path, output_path, key_hex, None)
+}
+
+pub fn encrypt_file_chunked_cancellable<P: AsRef<Path>, Q: AsRef<Path>>(
+    input_path: P,
+    output_path: Q,
+    key_hex: &str,
+    cancel_flag: Option<&std::sync::atomic::AtomicBool>,
+) -> Result<(), String> {
     let key_bytes = hex::decode(key_hex).map_err(|_| "Invalid Key Hex")?;
     if key_bytes.len() != 32 {
         return Err("Key must be 32 bytes".into());
@@ -46,8 +55,10 @@ pub fn encrypt_file_chunked<P: AsRef<Path>, Q: AsRef<Path>>(
     let mut buffer = vec![0u8; CHUNK_SIZE as usize];
 
     loop {
-        if crate::cmd_video::VIDEO_CANCEL_FLAG.load(std::sync::atomic::Ordering::SeqCst) {
-            return Err("Criptografia cancelada pelo usuário.".into());
+        if let Some(flag) = cancel_flag {
+            if flag.load(std::sync::atomic::Ordering::SeqCst) {
+                return Err("Criptografia cancelada pelo usuário.".into());
+            }
         }
         
         // Ensure exact chunk buffer sizing to prevent truncation

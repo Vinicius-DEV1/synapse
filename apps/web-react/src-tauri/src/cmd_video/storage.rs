@@ -440,10 +440,11 @@ pub async fn video_process_upload(
 
     println!("[DEBUG] Starting background encryption task for original video file...");
     let encrypt_task = tokio::task::spawn_blocking(move || {
-        crate::crypto_stream::encrypt_file_chunked(
+        crate::crypto_stream::encrypt_file_chunked_cancellable(
             &actual_source_clone,
             &dest_full_path_clone,
             &master_key_clone,
+            Some(&VIDEO_CANCEL_FLAG),
         )
     });
 
@@ -595,9 +596,15 @@ pub async fn video_process_upload(
             "[DEBUG] Starting encryption for web-optimized video ({:?})...",
             temp_web_mp4
         );
-        crate::crypto_stream::encrypt_file_chunked(&temp_web_mp4, &web_full_path, &master_key)?;
-        println!("[DEBUG] Web video encryption complete.");
+        let enc_res = crate::crypto_stream::encrypt_file_chunked_cancellable(
+            &temp_web_mp4,
+            &web_full_path,
+            &master_key,
+            Some(&VIDEO_CANCEL_FLAG),
+        );
         let _ = fs::remove_file(&temp_web_mp4);
+        enc_res?;
+        println!("[DEBUG] Web video encryption complete.");
 
         Some(web_full_path.to_string_lossy().to_string())
     } else {

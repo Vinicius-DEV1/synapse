@@ -59,7 +59,10 @@ pub async fn video_generate_web(
     }
 
     let input_path = if is_file_encrypted(&full_source_path) {
-        let port = app_handle.state::<crate::cmd_stream::StreamPortState>().0;
+        let port = app_handle
+            .try_state::<crate::cmd_stream::StreamPortState>()
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let filename = std::path::Path::new(&source_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -196,8 +199,14 @@ pub async fn video_generate_web(
         return Err(format!("Failed to transcode web video: {}", error_log));
     }
 
-    crate::crypto_stream::encrypt_file_chunked(&temp_web_mp4, &web_full_path, &master_key)?;
+    let enc_res = crate::crypto_stream::encrypt_file_chunked_cancellable(
+        &temp_web_mp4,
+        &web_full_path,
+        &master_key,
+        Some(&VIDEO_CANCEL_FLAG),
+    );
     let _ = fs::remove_file(&temp_web_mp4);
+    enc_res?;
 
     let web_size = fs::metadata(&web_full_path).map(|m| m.len()).unwrap_or(0);
 
@@ -230,7 +239,10 @@ pub async fn video_convert_mp4(
     }
 
     let input_path = if is_file_encrypted(&videos_dir.join(&source_path)) {
-        let port = app.state::<crate::cmd_stream::StreamPortState>().0;
+        let port = app
+            .try_state::<crate::cmd_stream::StreamPortState>()
+            .ok_or_else(|| "Stream server is not initialized yet".to_string())?
+            .0;
         let fname = std::path::Path::new(&source_path)
             .file_name()
             .and_then(|n| n.to_str())

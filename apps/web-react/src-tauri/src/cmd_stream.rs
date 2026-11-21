@@ -186,11 +186,11 @@ async fn stream_handler(
         crate::crypto_stream::read_chunked_range(&path_clone, &key_clone, 0, 0)
     })
     .await
-    .unwrap();
+    .map_err(|e| format!("Stream spawn_blocking error: {}", e));
 
     let total_size = match info_res {
-        Ok(res) => res.total_original_size,
-        Err(e) => {
+        Ok(Ok(res)) => res.total_original_size,
+        Ok(Err(e)) | Err(e) => {
             println!("[STREAM] Aviso: Falha ao ler cabecalho criptografado ({}). Usando tamanho do arquivo no disco.", e);
             match std::fs::metadata(&abs_path) {
                 Ok(m) => m.len(),
@@ -208,6 +208,20 @@ async fn stream_handler(
             }
         }
     };
+
+    if total_size == 0 {
+        return axum::response::Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "video/mp4")
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CONTENT_LENGTH, "0")
+            .header(
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                get_stream_cors_origin(&headers),
+            )
+            .body(axum::body::Body::empty())
+            .unwrap();
+    }
 
     let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
     println!(
@@ -304,8 +318,10 @@ async fn stream_handler(
 
 #[tauri::command]
 pub fn video_get_stream_port(app: AppHandle) -> Result<u16, String> {
-    // Retrieve stored AppState
-    let port_state = app.state::<StreamPortState>();
+    // Retrieve stored AppState safely without panicking if stream server is still initializing
+    let port_state = app
+        .try_state::<StreamPortState>()
+        .ok_or_else(|| "Stream server is not initialized yet".to_string())?;
     Ok(port_state.0)
 }
 
@@ -322,7 +338,16 @@ async fn stream_drive_handler(
 ) -> impl IntoResponse {
     let db_state = state.app_handle.state::<DbState>();
     let master_key = {
-        let guard = db_state.keys.lock().unwrap();
+        let guard = match db_state.lock_keys() {
+            Ok(g) => g,
+            Err(_) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Keys mutex lock poisoned",
+                )
+                    .into_response()
+            }
+        };
         match &*guard {
             Some(keys) => match params.module.as_str() {
                 "library" => keys.library.clone(),
@@ -360,6 +385,20 @@ async fn stream_drive_handler(
                 .into_response();
         }
     };
+
+    if total_size == 0 {
+        return axum::response::Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "video/mp4")
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CONTENT_LENGTH, "0")
+            .header(
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                get_stream_cors_origin(&headers),
+            )
+            .body(axum::body::Body::empty())
+            .unwrap();
+    }
 
     let mut start = 0;
     let mut end = total_size - 1;
