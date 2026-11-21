@@ -17,6 +17,7 @@ local.properties
 apps/web-react/src-tauri/target/
 apps/web-react/src-tauri/gen/
 benchmark-results.json
+benchmark-scroll-report.json
 
 # Logs
 logs/

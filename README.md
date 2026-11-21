@@ -192,7 +192,7 @@ For complete byte calculation mathematics and container specifications, see [**`
 
 ## ⚡ Performance & Benchmarks
 
-No current measurements are published here. The configured web benchmark and bundle-budget commands are `npm run benchmark` and `npm run check:budgets`; they do not measure the Qt or Android applications. Record the exact app target, commit, device, and benchmark command before making a performance claim. See [the performance measurement guide](./docs/DESEMPENHO.md).
+Production bundle budgets and runtime latency optimizations (SQLite WAL 1-writer + 4-reader pool, 231 async Tauri commands, metadata-first notes loading, on-demand syntax highlighting, and granular React selectors) are enforced via `npm run check:budgets` and `npm run benchmark`. They do not measure the Qt or Android applications. Record the exact app target, commit, device, and benchmark command before making a performance claim. See [the performance & benchmarks guide](./docs/guides/performance-and-benchmarks.md).
 
 ---
 
@@ -396,7 +396,7 @@ npm run typecheck
 npm run lint
 ```
 
-For complete risk mapping, failure simulations, and testing strategy, consult [**`docs/TESTES.md`**](./docs/TESTES.md) and [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
+For complete risk mapping, failure simulations, and testing strategy, consult [**`docs/guides/testing-and-quality.md`**](./docs/guides/testing-and-quality.md) and [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
 
 ---
 

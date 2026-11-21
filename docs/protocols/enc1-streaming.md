@@ -35,7 +35,7 @@ The current format does not include a versioned authenticated header or addition
 
 - Shared Rust range reader: `core/synapse-core/src/crypto/stream.rs`.
 - Qt C ABI: `bridges/bridge-qt/src/lib.rs`; native Qt playback uses the encrypted video stream adapter and libmpv callbacks.
-- Tauri custom protocol: `apps/web-react/src-tauri/src/protocol_encrypted.rs` and `crypto_stream.rs`.
+- Tauri custom protocol: `apps/web-react/src-tauri/src/protocol_encrypted.rs` (`register_asynchronous_uri_scheme_protocol` via `tokio::task::spawn_blocking`, supporting `Range` requests, strong `ETag` / `304 Not Modified` after verifying unlocked keys, `Cache-Control: private, no-cache, must-revalidate`, and `Cache-Control: no-store` on locked/error responses) and `crypto_stream.rs`.
 - React web playback: app-specific service-worker and media adapters under `apps/web-react/public/` and `apps/web-react/src/`.
 
 The Tauri protocol uses a custom `encrypted://` URI and handles HTTP range requests; the Qt player uses native callbacks. Do not describe all clients as sharing one HTTP server or one zero-copy path.
@@ -55,4 +55,4 @@ cargo test -p synapse-core crypto::stream::tests --lib
 cargo test -p synapse-bridge-qt test_crypto_ffi_roundtrips --lib
 ```
 
-Qt setup and recovery behavior is covered by the native priority-module suite described in the [testing guide](../TESTES.md). These targeted tests do not certify every platform reader or every encrypted-media integration.
+Qt setup and recovery behavior is covered by the native priority-module suite described in the [testing guide](../guides/testing-and-quality.md). These targeted tests do not certify every platform reader or every encrypted-media integration.

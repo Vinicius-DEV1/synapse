@@ -40,6 +40,7 @@ The Kotlin/Compose client groups screens under `apps/mobile-android/app/src/main
 - [Notes](./notes.md)
 - [Vault](./vault.md)
 - [Anki and FSRS](./anki-fsrs.md)
+- [Native Android Finance](./mobile-android-finance.md)
 - [ENC1 media protocol](../protocols/enc1-streaming.md)
 - [Native desktop parity](../native-desktop-parity.md)
 - [Native encryption coverage](../security/native-encryption-audit.md)

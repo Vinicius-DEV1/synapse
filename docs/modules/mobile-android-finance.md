@@ -47,7 +47,7 @@ Payment and acquisition flows use SQLite transactions so the associated parent r
 - Native Android Finance does **not** authenticate with Firebase, load the Conta Nuvem keychain, or synchronize Finance records to Firestore. No Firebase reads or writes are made by this module.
 - The Android Finance SQLite database currently stores Finance columns in plaintext. App-private storage does not constitute field-level encryption.
 - The account/password migration and encrypted local key ownership for Android remain open. Do not describe native Finance data as cloud-backed, cross-device, or encrypted at rest.
-- Other Android module APIs and persistence are outside this implementation and remain tracked in the [Android audit](./audits/potential-bug-audit-android-2026-11-19.md).
+- Other Android module APIs and persistence are outside this implementation and remain tracked in the [Android audit](../audits/potential-bug-audit-android-2026-11-19.md).
 
 ## Verification
 

@@ -78,14 +78,16 @@ window.dispatchEvent(new CustomEvent('app-sync-trigger', { detail: { table: 'pag
 Large document files (PDFs, EPUBs, and video media) use separate Google Drive encryption/sync flows where implemented. Running `syncPdfsToCloud` inside the 3-second text autosave debounce caused severe network locking in the implementation described by this snapshot.
 - **Resolution**: `syncPdfsToCloud` is decoupled from `doPushOnlySync` and runs exclusively during `doFullSync` (startup, window refocus, manual sync, and network reconnection). Fast text edits complete in under 100ms.
 
-### 2.5. Native Engine-Level Push Filtering (`cmd_sync.rs` & `sync-push.ts`)
+### 2.5. Native Engine-Level Push Filtering & Transactional Batch Pulls (`cmd_sync.rs`, `sync-push.ts` & `sync-pull-documents.ts`)
 Previously, push synchronization loaded entire tables into JavaScript memory (`SELECT *`) and performed timestamp filtering in the JS main thread via `.filter(r => r.updated_at > cutoff)`. On vaults with thousands of pages, this caused high IPC serialization overhead, RAM spikes, and Garbage Collection stutter.
-- **SQLite Engine Filtering**: The Rust backend command `sync_get_modified_rows` accepts an optional `since` parameter and delegates filtering directly to SQLite's C-engine:
+- **SQLite Index-Pruned Filtering**: All synchronized tables carry `updated_at` indexes (`core/synapse-core/src/db/migrations/indexes.rs`). The Rust backend command `sync_get_modified_rows` uses an index-pruned lower bound combined with epoch comparison:
   ```sql
-  SELECT * FROM {table} WHERE CAST(strftime('%s', updated_at) AS INTEGER) > ?
+  SELECT * FROM {table} WHERE updated_at >= ? AND CAST(strftime('%s', updated_at) AS INTEGER) > ?
   ```
-- **IndexedDB Querying**: `web/sync.ts` queries indexed timestamp keys or filters rows efficiently via `parseDateSafe` to handle both ISO and SQLite space-separated timestamps.
-- **Result**: Zero excess IPC transfer and immediate $O(K)$ row retrieval where $K$ is the number of dirty records, eliminating GC pauses entirely.
+- **IndexedDB v29 Indexed Delta Queries**: `web/sync.ts` and `db-web.ts` maintain `updated_at`, `created_at`, and `deleted_at` indexes on all sync stores, querying modified rows via `IDBKeyRange.lowerBound` with a safe cursor fallback for legacy timestamp strings.
+- **Transactional Batch Upserts (`sync_upsert_rows_batch` / `upsertRowsBatch`)**: During cloud pulls, decrypted documents are persisted in a single SQLite `BEGIN IMMEDIATE` or IndexedDB `readwrite` transaction per batch rather than issuing individual per-row IPC/transaction round-trips, yielding to the main thread between batches (`yieldToMain`).
+- **Buffered Telemetry (`sync-monitor.ts`)**: Sync read/write telemetry counters and diagnostic events are buffered in memory and flushed to `localStorage` on a 1-second debounce (plus `pagehide`/`beforeunload`).
+- **Result**: Zero excess IPC transfer, $O(K)$ indexed delta retrieval, and non-blocking pull ingestion.
 
 ### 2.6. Decoupled Sync Status & Leaf Toast Isolation (`SyncCoordinator.ts` & `useSyncStatus.ts`)
 Previously, `syncStatus` was tracked as state inside the root `App.tsx` component. Every synchronization cycle (`idle` → `syncing` → `idle`) triggered an application-wide virtual DOM re-render of sidebars, navigation tabs, editor containers, and floating panels.

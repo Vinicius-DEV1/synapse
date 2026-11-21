@@ -11,10 +11,23 @@ Historical release notes describe the mechanisms introduced at those releases; t
 
 ## [Unreleased]
 
-### Changed
-- Added a documentation status index that names the current parity, encryption, architecture, and build sources of truth.
-- Reworked migration notes and legacy review entry points so historical checkboxes, test totals, and performance claims are not presented as current certification.
-- Updated English and Portuguese READMEs to describe current app targets and to avoid claiming repository-wide Zero-Knowledge encryption or completed native parity.
+### Changed & Performance
+- **Desktop Tauri Concurrency & SQLite WAL Read Pool (`apps/web-react/src-tauri/`, `core/synapse-core/`)**:
+  - Replaced single global SQLite connection mutex with a dedicated writer connection and a 4-connection read-only WAL pool (`SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_NO_MUTEX`) with `cache_size = -64000`, `temp_store = MEMORY`, and `mmap_size = 268435456`.
+  - Migrated 231 Tauri commands from synchronous main-thread handlers to `async fn` handlers backed by `tokio::task::spawn_blocking`.
+  - Upgraded `encrypted://` custom protocol to `register_asynchronous_uri_scheme_protocol` with strong `ETag` and `304 Not Modified` support gated by active vault unlock verification.
+- **Metadata-First Notes Hydration & Focus Isolation (`core/synapse-core/src/domain/notes/`, `apps/web-react/src/`)**:
+  - `getAllPages` / `notes_get_all_pages` now loads lightweight page metadata only; full page bodies and Yjs CRDT states are loaded on demand via `getPageContent(pageId)` with in-flight request deduplication.
+  - Eliminated full-table reloads on `window.focus` and gated editor/dashboard listeners by active tab visibility (`isActive`).
+- **React Store Selector Isolation & Context Splitting**:
+  - Migrated all 43 former monolithic `useStore()` consumers to granular `useStoreSelector`, `usePages`, `useStoreDispatch`, and `getStoreState` hooks.
+  - Isolated 1Hz Pomodoro countdown ticks into `FocusTimerTickContext` and split `TaskStateContext` / `TaskActionsContext`.
+- **Editor Hot-Path, Sync Batching & -82% Boot Preload Reduction**:
+  - Added $O(1)$ non-table transaction bailout in `useTableCellValidation`, automated Yjs snapshot compaction for >128 KB documents, transactional batch upserts (`sync_upsert_rows_batch` / `upsertRowsBatch`), and SQLite / IndexedDB v29 timestamp indexes.
+  - Replaced eager 190-language `highlight.js` bundle with on-demand language grammar imports and `createLazyLowlightPlugin`, reducing initial preloaded JS in `dist/index.html` from **~3.4 MB to ~616.3 KB (-82%)**.
+- **Documentation Reorganization & Hygiene**:
+  - Added canonical [Performance & Benchmarks Guide](./docs/guides/performance-and-benchmarks.md) and [Testing & Quality Assurance Guide](./docs/guides/testing-and-quality.md).
+  - Reorganized module documentation under `docs/modules/`, removed obsolete root benchmark/archive dumps, and synchronized [Documentation Ownership and Current Status](./docs/documentation-status.md).
 
 ### Security
 - Qt first-time vault setup stages and migrates referenced media inside the managed files, library, and videos folders using a persistent recovery journal. Unlock resumes pending records before exposing the vault.

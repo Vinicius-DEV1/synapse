@@ -71,7 +71,7 @@ The unified architecture establishes `core/synapse-core/` as the **Single Source
 
 ### React and Tauri
 
-React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands and acts as a thin wrapper delegating persistence and domain calculations directly to `core/synapse-core/`. Web browser flows consume pure domain logic compiled via `bridges/bridge-wasm/` and store local data in `IndexedDB`.
+React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands as non-blocking `async fn` handlers (`tokio::task::spawn_blocking`) backed by a dedicated SQLite WAL writer connection and a 4-connection read-only pool (`apps/web-react/src-tauri/src/db.rs`), delegating persistence and domain calculations directly to `core/synapse-core/`. Web browser flows consume pure domain logic compiled via `bridges/bridge-wasm/` and store local data in `IndexedDB`.
 
 ### Qt Desktop
 

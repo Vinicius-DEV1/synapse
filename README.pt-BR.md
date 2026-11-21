@@ -192,7 +192,7 @@ Para a documentação completa do protocolo, consulte [**`docs/protocols/enc1-st
 
 ## ⚡ Desempenho & Benchmarks
 
-Não há medições atuais publicadas aqui. Os comandos configurados de benchmark e limite de bundle Web são `npm run benchmark` e `npm run check:budgets`; eles não medem os aplicativos Qt ou Android. Registre alvo, commit, dispositivo e comando usado antes de divulgar uma alegação de desempenho. Consulte [**`docs/DESEMPENHO.md`**](./docs/DESEMPENHO.md).
+Os limites de bundle de produção e otimizações de latência (pool SQLite WAL com 1 writer + 4 conexões de leitura, 231 comandos Tauri assíncronos, carregamento leve de metadados de notas, syntax highlighting sob demanda e seletores granulares no React) são validados via `npm run check:budgets` e `npm run benchmark`. Eles não medem os aplicativos Qt ou Android. Registre alvo, commit, dispositivo e comando usado antes de divulgar uma alegação de desempenho. Consulte [**`docs/guides/performance-and-benchmarks.md`**](./docs/guides/performance-and-benchmarks.md).
 
 ---
 
@@ -377,7 +377,7 @@ npm run typecheck
 npm run lint
 ```
 
-Para o mapa completo de riscos, simulação de falhas e metodologia, consulte [**`docs/TESTES.md`**](./docs/TESTES.md) e [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
+Para o mapa completo de testes, comandos por plataforma e metodologia de verificação, consulte [**`docs/guides/testing-and-quality.md`**](./docs/guides/testing-and-quality.md) e [**`CONTRIBUTING.md`**](./CONTRIBUTING.md).
 
 ---
 

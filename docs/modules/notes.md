@@ -26,9 +26,10 @@
 
 - **Source Code Locations**:
   - Editor Component: `apps/web-react/src/components/Editor.tsx`
+  - On-Demand Page Content Hydrator: `apps/web-react/src/components/page-view/pageContentFetcher.ts`
   - Custom Nodes & Extensions: `apps/web-react/src/components/editor-extensions/`
-  - Editor Hooks & Autosave: `apps/web-react/src/components/notes/`
-  - Real-time Collaboration Engine: `apps/web-react/src/utils/yjs-utils.ts`
+  - Editor Hooks, Lazy Lowlight & Table Validation: `apps/web-react/src/components/notes/hooks/`
+  - Real-time Collaboration & Compaction Engine: `apps/web-react/src/utils/yjs-utils.ts`
 
 ---
 
@@ -39,10 +40,10 @@ Synapse Notes extends the standard ProseMirror document model with dedicated nod
 | Extension Node | Purpose | Technical Implementation |
 | :------------- | :------ | :----------------------- |
 | **Callout Node** | Visual emphasis blocks with customizable icons and color palettes | Custom node view with dynamic icon picker and Radix UI integration. |
-| **Code Block Lowlight** | Blazing-fast client-side syntax highlighting across 50+ languages | Lowlight v3 paired with Highlight.js and language selector popovers. |
+| **Code Block Lowlight** | Blazing-fast client-side syntax highlighting with zero boot overhead | On-demand grammar loading (`highlight.js/lib/core` + `createLazyLowlightPlugin`) refreshing decorations asynchronously via ProseMirror metadata transactions. |
 | **Dynamic LaTeX Math** | Real-time mathematical and scientific formula rendering | KaTeX-driven inline and block math nodes with instant live preview. |
 | **Interactive Task Lists** | Checklists with nested hierarchical states | Custom ProseMirror task item schema with keyboard indentation (`Tab` / `Shift+Tab`). |
-| **Responsive Data Tables** | Structured multi-column ledgers and data comparisons | `@tiptap/extension-table` with row/column insertion, deletion, and cell merging. |
+| **Responsive Data Tables** | Structured multi-column ledgers and data comparisons | `@tiptap/extension-table` with Excel-style grips (`TableExcelGrips`) and $O(1)$ non-table transaction bailout in `useTableCellValidation`. |
 | **Embedded Bookmarks** | Rich link preview cards with local metadata extraction | Asynchronous Open Graph metadata resolver with zero-latency cached previews. |
 
 ---
@@ -51,14 +52,17 @@ Synapse Notes extends the standard ProseMirror document model with dedicated nod
 
 Synapse Notes replaces legacy "last-write-wins" database overwrites with mathematically guaranteed **Conflict-Free Replicated Data Types (CRDTs)**:
 
-1. **State Vectors (`Y.Doc`)**:
+1. **Lightweight Metadata Tree & On-Demand Body Hydration**:
+   - `getAllPages()` / `notes_get_all_pages` loads only lightweight page metadata (`id`, `parent_id`, `title`, `icon`, `is_pinned`, `sort_order`, timestamps) for instant sidebar and tab rendering.
+   - Full HTML/JSON bodies and Yjs `crdt_state` payloads are hydrated on demand when a note is opened via `getPageContent(pageId)` with in-flight request deduplication.
+2. **State Vectors (`Y.Doc`)**:
    - Each note edit produces a compact binary state vector update representing insertion and deletion operations.
    - When multiple devices (e.g. Linux desktop and Android companion) edit the same paragraph simultaneously, the edits merge deterministically without user conflict prompts.
-2. **Offline-First Convergence**:
+3. **Offline-First Convergence**:
    - When offline, edits accumulate in the local `Y.Doc`.
    - Upon reconnecting, state vectors are exchanged with the signaling relay (Firebase Firestore) using encrypted binary blobs (`Uint8Array`).
-3. **History Compaction**:
-   - To avoid unbounded CRDT growth over months of note revision, periodic document compaction generates consolidated snapshots.
+4. **Automated Snapshot Compaction (`yjs-utils.ts`)**:
+   - To avoid unbounded CRDT tombstone growth over months of note revision, `encodeYDocToBase64` automatically compacts encoded snapshots exceeding 128 KB into a fresh `Y.Doc` state with a `WeakMap` low-yield throttle.
 
 ---
 
