@@ -11,7 +11,7 @@ export const tauriFilesApi: FilesApi = {
   delete: async (id: string): Promise<boolean> => await invoke('files_delete', { id }),
   move: async (id: string, folderId: string | null): Promise<boolean> => await invoke('files_move', { id, folderId }),
   saveLocal: async (filename: string, data: Uint8Array): Promise<string> =>
-    await invoke('files_save_local', { filename, data: Array.from(data) }),
+    await invoke('files_save_local', { filename, data }),
   getLocal: async (idOrPath: string): Promise<string | null> => {
     try {
       const { getBaseAppDir } = await import('./path');

@@ -21,7 +21,7 @@ export const tauriNotesApi = {
   imageCache: {
     get: async (id: string) => await invoke('image_cache_get', { id }),
     put: async (id: string, data: ArrayBuffer, mimeType: string) => 
-      await invoke('image_cache_put', { id, data: Array.from(new Uint8Array(data)), mimeType }),
+      await invoke('image_cache_put', { id, data: new Uint8Array(data), mimeType }),
     delete: async (id: string) => await invoke('image_cache_delete', { id }),
     cleanupOrphans: async () => await invoke('notes_cleanup_orphaned_images'),
   },

@@ -147,7 +147,10 @@ export async function resolveCanonicalBuffer(options: ResolveCanonicalOptions): 
         }
         if (arrayBuffer && onUpdateSavedPath && (!savedPath || savedPath.startsWith('drive:'))) {
           const extension = extHint || (savedPath?.toLowerCase().includes('.epub') ? 'epub' : 'pdf');
-          onUpdateSavedPath(`indexeddb://${id}.${extension}`);
+          const canonicalPath = platform.canReadLocalFilesystem
+            ? `library/${id}.${extension}.enc`
+            : `indexeddb://${id}.${extension}`;
+          onUpdateSavedPath(canonicalPath);
         }
       }
     } catch (apiErr) {

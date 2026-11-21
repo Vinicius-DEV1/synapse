@@ -3,8 +3,10 @@ import { invoke } from '@tauri-apps/api/core';
 export const tauriConfigApi = {
   get: async (key: string) => {
     try {
-      const rows = await invoke<{id: string, data: string}[]>('sync_get_table', { tableName: 'config' });
-      const row = rows.find(r => r.id === key);
+      const row = await invoke<{ id: string; data: string } | null>('sync_get_row', {
+        tableName: 'config',
+        id: key,
+      });
       if (row && row.data) {
         return JSON.parse(row.data);
       }

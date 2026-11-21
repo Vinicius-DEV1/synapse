@@ -145,27 +145,13 @@ export async function uploadNewLofi(file: File, duration?: number, masterKey?: C
 
   let finalBufferToUpload = buffer;
   let finalFileName = file.name;
-  let isEncrypted = false;
 
-  if (localPath) {
-    try {
-      const req = await fetch('http://asset.localhost/' + encodeURIComponent(localPath));
-      finalBufferToUpload = await req.arrayBuffer();
-      finalFileName = file.name + '.enc';
-      isEncrypted = true;
-    } catch (e) {
-      console.error("Erro ao ler arquivo criptografado localmente", e);
-    }
-  }
-
-  if (!isEncrypted) {
-    if (masterKey) {
-      const { encryptFile } = await import('./storage');
-      finalBufferToUpload = await encryptFile(buffer, masterKey);
-      finalFileName = file.name + '.enc';
-    } else {
-      throw new Error("Master key is required for uploading securely on the Web.");
-    }
+  if (masterKey) {
+    const { encryptFile } = await import('./storage');
+    finalBufferToUpload = await encryptFile(buffer, masterKey);
+    finalFileName = file.name + '.enc';
+  } else if (!isLocal) {
+    throw new Error("Master key is required for uploading securely on the Web.");
   }
 
   const mainFileId = await uploadToDrive(token, finalFileName, finalBufferToUpload, 'lofi', (p) => {
