@@ -14,16 +14,17 @@ interface UseEditorSyncProps {
   onSaveRef: MutableRefObject<EditorSaveCallback>;
   latestContentRef: MutableRefObject<{ html: string; crdt: string } | null>;
   instanceId?: string;
+  isActive?: boolean;
 }
 
-export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestContentRef, instanceId }: UseEditorSyncProps) {
+export function useEditorSync({ pageId, initialCrdtState, latestContentRef, instanceId, isActive = true }: UseEditorSyncProps) {
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
   // Track if CRDT application failed so Editor can fall back to HTML
   const [crdtFailed, setCrdtFailed] = useState(false);
 
   const [ydoc] = React.useState(() => {
-    const doc = new Y.Doc();
+    let doc = new Y.Doc();
     doc.guid = pageId || 'temp';
     
     if (hasMeaningfulCrdt) {
@@ -34,8 +35,9 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
         if (!xmlFragment) throw new Error('CRDT produced empty XmlFragment');
       } catch (err) {
         console.warn('[Caderno:Sync] CRDT inválido ou incompatível, usando fallback HTML:', err);
-        // Return a fresh doc — caller will see crdtFailed=true and load HTML instead
-        return new Y.Doc();
+        doc.destroy();
+        doc = new Y.Doc();
+        doc.guid = pageId || 'temp';
       }
     }
     
@@ -98,8 +100,14 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
   // 3. Protection fallback when gaining focus / returning to visibility
   // Validates persistent storage state to avoid applying stale in-memory CRDT snapshots over external edits
   useEffect(() => {
+    if (!isActive) return;
+
+    let lastFocusCheckTime = 0;
     const handleFocusCheck = async () => {
-      if (!pageId || !ydocRef.current) return;
+      if (!pageId || !ydocRef.current || !isActive) return;
+      const now = Date.now();
+      if (now - lastFocusCheckTime < 2000) return;
+      lastFocusCheckTime = now;
 
       if (document.visibilityState === 'visible' && window.api?.getAllPages) {
         try {
@@ -147,22 +155,21 @@ export function useEditorSync({ pageId, initialCrdtState, onSaveRef, latestConte
       document.removeEventListener('visibilitychange', handleFocusCheck);
       window.removeEventListener('focus', handleFocusCheck);
     };
-  }, [pageId]);
+  }, [pageId, isActive, latestContentRef]);
 
-  // 4. Flush pending changes on unmount
+  // 4. Destroy Y.Doc on unmount after synchronous editor flush completes
   useEffect(() => {
+    const docInstance = ydocRef.current;
     return () => {
-      const saveFn = onSaveRef.current;
-      if (latestContentRef.current && latestContentRef.current.crdt.length > 8) {
-        const result = saveFn(latestContentRef.current.html, latestContentRef.current.crdt, [], instanceId);
-        if (result && typeof (result as Promise<void>).catch === 'function') {
-          (result as Promise<void>).catch((err: unknown) => {
-            console.error(`[Caderno:Flush] Falha ao persistir alterações no unmount de ${pageId}:`, err);
-          });
+      queueMicrotask(() => {
+        try {
+          docInstance.destroy();
+        } catch {
+          // Ignore if already destroyed
         }
-      }
+      });
     };
-  }, [pageId, latestContentRef, onSaveRef, instanceId]);
+  }, []);
 
   // Signal CRDT failure on first render so Editor can fall back to HTML
   useEffect(() => {

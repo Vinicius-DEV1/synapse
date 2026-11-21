@@ -67,6 +67,7 @@ function Editor({
     onSaveRef,
     latestContentRef,
     instanceId,
+    isActive,
   });
 
   // When CRDT is corrupted, treat the page as having no CRDT so HTML content is used

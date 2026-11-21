@@ -215,7 +215,7 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
     dom.addEventListener('mousemove', handleMouseMove, { passive: true });
     dom.addEventListener('dblclick', handleDblClick);
     window.addEventListener('resize', scheduleUpdate, { passive: true });
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('scroll', scheduleUpdate, { capture: true, passive: true });
     window.addEventListener('dragend', handleWindowDragEnd);
     editor.on('selectionUpdate', handleTransaction);
     editor.on('transaction', handleTransaction);
@@ -224,7 +224,7 @@ export default function TableExcelGrips({ editor, wrapperRef }: TableExcelGripsP
       dom.removeEventListener('mousemove', handleMouseMove);
       dom.removeEventListener('dblclick', handleDblClick);
       window.removeEventListener('resize', scheduleUpdate);
-      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate, true);
       window.removeEventListener('dragend', handleWindowDragEnd);
       editor.off('selectionUpdate', handleTransaction);
       editor.off('transaction', handleTransaction);

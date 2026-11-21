@@ -8,30 +8,20 @@ import {
 } from '../components/table/tableColumnTypes';
 
 /**
- * Resolves the column type for a given cell element by finding
- * its corresponding header cell in the same column.
+ * Pre-computes column types and select options once per table header row in O(C).
  */
-function getColumnTypeForCell(
-  cell: HTMLTableCellElement
-): { type: TableColumnType; options: string[] } {
-  const table = cell.closest('table');
-  if (!table) return { type: 'text', options: [] };
-
-  // Determine the column index of this cell
-  const row = cell.parentElement;
-  if (!row) return { type: 'text', options: [] };
-  const cellIndex = Array.from(row.children).indexOf(cell);
-  if (cellIndex < 0) return { type: 'text', options: [] };
-
-  // Find the header cell at the same column index
+function getTableColumnConfigs(
+  table: HTMLTableElement
+): Array<{ type: TableColumnType; options: string[] }> {
   const headerCells = table.querySelectorAll<HTMLTableCellElement>('tr:first-child > th');
-  const th = headerCells[cellIndex];
-  if (!th) return { type: 'text', options: [] };
-
-  const type = (th.getAttribute('data-column-type') as TableColumnType) || 'text';
-  const options = type === 'select' ? parseSelectOptions(th.getAttribute('data-column-options')) : [];
-
-  return { type, options };
+  const configs: Array<{ type: TableColumnType; options: string[] }> = [];
+  headerCells.forEach((th) => {
+    const type = (th.getAttribute('data-column-type') as TableColumnType) || 'text';
+    const options =
+      type === 'select' ? parseSelectOptions(th.getAttribute('data-column-options')) : [];
+    configs.push({ type, options });
+  });
+  return configs;
 }
 
 /**
@@ -57,16 +47,20 @@ export function useTableCellValidation(editor: Editor | null): void {
 
     const editorDom = editor.view.dom;
     const tables = editorDom.querySelectorAll<HTMLTableElement>('table');
+    if (tables.length === 0) return;
 
     tables.forEach((table) => {
+      const columnConfigs = getTableColumnConfigs(table);
       const rows = table.querySelectorAll<HTMLTableRowElement>('tr');
 
       // Skip header row (index 0)
       for (let rowIdx = 1; rowIdx < rows.length; rowIdx++) {
         const cells = rows[rowIdx].querySelectorAll<HTMLTableCellElement>('td');
 
-        cells.forEach((cell) => {
-          const { type, options } = getColumnTypeForCell(cell);
+        cells.forEach((cell, colIdx) => {
+          const config = columnConfigs[colIdx];
+          const type = config?.type || 'text';
+          const options = config?.options || [];
 
           // Clean up previous validation classes
           cell.classList.remove(
@@ -136,9 +130,11 @@ export function useTableCellValidation(editor: Editor | null): void {
   useEffect(() => {
     if (!editor) return;
 
-    // Run validation on every transaction (content change)
-    const handleTransaction = () => {
-      scheduleValidation();
+    // Run validation only when document content actually changes
+    const handleTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+      if (transaction.docChanged) {
+        scheduleValidation();
+      }
     };
 
     editor.on('transaction', handleTransaction);

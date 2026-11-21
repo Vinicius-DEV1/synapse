@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense, memo } from 'react';
-import { useStore, usePages } from '../../store/useStore';
+import { useStoreDispatch, usePages } from '../../store/useStore';
 import type { Page } from '../../types';
 import Editor from '../Editor';
 import SubPageGrid from '../notes/components/SubPageGrid';
@@ -39,7 +39,7 @@ interface PageViewProps {
 }
 
 function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onUpdatePage, isActive = true }: PageViewProps) {
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const pages = usePages();
   const { t } = useI18n();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -102,6 +102,7 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
 
     let lastFocusTime = 0;
     const handleFocusCheck = () => {
+      if (!isActive) return;
       const now = Date.now();
       if (document.visibilityState === 'visible' && now - lastFocusTime > 2000) {
         lastFocusTime = now;
@@ -117,7 +118,7 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
       document.removeEventListener('visibilitychange', handleFocusCheck);
       window.removeEventListener('focus', handleFocusCheck);
     };
-  }, [page?.id, page?.is_locked]);
+  }, [page?.id, page?.is_locked, isActive]);
 
   const handleSave = useCallback((content: string, crdtState: string | null, embeddedSaves?: { id: string; content: string }[], senderInstanceId?: string) => {
     if (page?.id) {
