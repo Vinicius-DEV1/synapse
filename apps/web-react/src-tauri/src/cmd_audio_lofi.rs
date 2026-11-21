@@ -77,17 +77,19 @@ pub async fn lofi_save_local(
 
     fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
 
-    let keys_guard = db_state.lock_keys()?;
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.focus {
-            k.clone()
+    let master_key = {
+        let keys_guard = db_state.lock_keys()?;
+        if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.focus {
+                k.clone()
+            } else {
+                let _ = fs::remove_file(&temp_path);
+                return Err("Focus key not found".into());
+            }
         } else {
             let _ = fs::remove_file(&temp_path);
-            return Err("Focus key not found".into());
+            return Err("Keys not unlocked".into());
         }
-    } else {
-        let _ = fs::remove_file(&temp_path);
-        return Err("Keys not unlocked".into());
     };
 
     if let Err(e) =
@@ -123,15 +125,17 @@ pub async fn lofi_copy_local(
     let filename_enc = format!("{}.enc", safe_filename);
     let dest_path = lofi_dir.join(&filename_enc);
 
-    let keys_guard = db_state.lock_keys()?;
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.focus {
-            k.clone()
+    let master_key = {
+        let keys_guard = db_state.lock_keys()?;
+        if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.focus {
+                k.clone()
+            } else {
+                return Err("Focus key not found".into());
+            }
         } else {
-            return Err("Focus key not found".into());
+            return Err("Keys not unlocked".into());
         }
-    } else {
-        return Err("Keys not unlocked".into());
     };
 
     crate::crypto_stream::encrypt_file_chunked(&source_path, &dest_path, &master_key)?;

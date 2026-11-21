@@ -92,7 +92,7 @@ pub fn sync_get_table(
 ) -> Result<Vec<Value>, String> {
     validate_sync_table(&table_name)?;
 
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let query = format!("SELECT * FROM {}", table_name);
@@ -143,14 +143,15 @@ pub fn sync_delete_row(
 ) -> Result<bool, String> {
     validate_sync_table(&table_name)?;
 
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
 
     let query = format!(
-        "UPDATE {} SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE {} SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
         table_name
     );
-    conn.execute(&query, [&id]).map_err(|e| e.to_string())?;
+    conn.execute(&query, [&now, &id]).map_err(|e| e.to_string())?;
 
     Ok(true)
 }
@@ -163,7 +164,7 @@ pub fn sync_upsert_row(
 ) -> Result<bool, String> {
     validate_sync_table(&table_name)?;
 
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let obj = row.as_object().ok_or("Row must be an object")?;
@@ -249,7 +250,7 @@ pub fn sync_get_rows_by_ids(
     ids: Vec<String>,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<Value>, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     // Validate table name to prevent SQL injection
@@ -330,7 +331,7 @@ pub fn sync_get_modified_rows(
 ) -> Result<Vec<Value>, String> {
     validate_sync_table(&table_name)?;
 
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let query_meta = format!("SELECT * FROM {} LIMIT 0", table_name);

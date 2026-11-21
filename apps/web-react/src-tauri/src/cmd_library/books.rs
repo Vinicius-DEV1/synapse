@@ -200,9 +200,10 @@ pub fn library_update_book(book: Book, db_state: State<'_, DbState>) -> Result<i
             final_file_path.as_ref().map(|p| !p.trim().is_empty()).unwrap_or(false)
         });
 
+    let now = chrono::Utc::now().to_rfc3339();
     let count = conn.execute(
-        "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, is_local = ?, original_name = ?, publisher = ?, published_year = ?, language = ?, description = ?, is_archived = ?, archived_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![final_title, final_author, final_file_path, final_drive_file_id, final_cover_color, final_cover_image, final_total_pages, final_current_page, final_reading_status, final_last_read_page, final_epub_locations, final_reading_preferences, is_local_val, final_original_name, final_publisher, final_published_year, final_language, final_description, final_is_archived, final_archived_at, book.id]
+        "UPDATE library_books SET title = ?, author = ?, file_path = ?, drive_file_id = ?, cover_color = ?, cover_image = ?, total_pages = ?, current_page = ?, reading_status = ?, last_read_page = ?, epub_locations = ?, reading_preferences = ?, is_local = ?, original_name = ?, publisher = ?, published_year = ?, language = ?, description = ?, is_archived = ?, archived_at = ?, updated_at = ? WHERE id = ?",
+        params![final_title, final_author, final_file_path, final_drive_file_id, final_cover_color, final_cover_image, final_total_pages, final_current_page, final_reading_status, final_last_read_page, final_epub_locations, final_reading_preferences, is_local_val, final_original_name, final_publisher, final_published_year, final_language, final_description, final_is_archived, final_archived_at, now, book.id]
     ).map_err(|e| e.to_string())?;
 
     Ok(count as i32)
@@ -225,15 +226,17 @@ pub fn library_import_and_encrypt_book(
     db_state: State<'_, DbState>,
     _app_handle: tauri::AppHandle,
 ) -> Result<bool, String> {
-    let keys_guard = db_state.keys.lock().unwrap();
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.library {
-            k.clone()
+    let master_key = {
+        let keys_guard = db_state.lock_keys()?;
+        if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.library {
+                k.clone()
+            } else {
+                return Err("Library key not found".into());
+            }
         } else {
-            return Err("Library key not found".into());
+            return Err("Keys not unlocked".into());
         }
-    } else {
-        return Err("Keys not unlocked".into());
     };
 
     let app_dir = crate::get_app_data_dir();
@@ -254,16 +257,16 @@ pub fn library_get_book_file(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<Vec<u8>, String> {
-    let guard = db_state.conn.lock().unwrap();
-    let conn = guard.as_ref().ok_or("Database not initialized")?;
-
-    let file_path: Option<String> = conn
-        .query_row(
+    let file_path: Option<String> = {
+        let guard = db_state.lock_conn()?;
+        let conn = guard.as_ref().ok_or("Database not initialized")?;
+        conn.query_row(
             "SELECT file_path FROM library_books WHERE id = ?",
             [&id],
             |row| row.get(0),
         )
-        .ok();
+        .ok()
+    };
 
     let app_dir = crate::get_app_data_dir();
     let library_dir = app_dir.join("library");
@@ -304,15 +307,17 @@ pub fn library_get_book_file(
             };
 
             if is_enc1 {
-                let keys_guard = db_state.keys.lock().unwrap();
-                let master_key = if let Some(keys) = keys_guard.as_ref() {
-                    if let Some(ref k) = keys.library {
-                        k.clone()
+                let master_key = {
+                    let keys_guard = db_state.lock_keys()?;
+                    if let Some(keys) = keys_guard.as_ref() {
+                        if let Some(ref k) = keys.library {
+                            k.clone()
+                        } else {
+                            return Err("Library key not found".into());
+                        }
                     } else {
-                        return Err("Library key not found".into());
+                        return Err("Keys not unlocked".into());
                     }
-                } else {
-                    return Err("Keys not unlocked".into());
                 };
 
                 let total_size = crate::crypto_stream::get_encrypted_file_size(&path)?;
@@ -383,9 +388,10 @@ pub fn library_evict_book_local_cache(
     }
 
     println!("[books.rs] Updating library_books DB to set file_path = '', is_local = 0");
+    let now = chrono::Utc::now().to_rfc3339();
     let _ = conn.execute(
-        "UPDATE library_books SET file_path = '', is_local = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
+        "UPDATE library_books SET file_path = '', is_local = 0, updated_at = ?1 WHERE id = ?2",
+        [&now, &id],
     );
 
     Ok(true)

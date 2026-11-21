@@ -104,12 +104,13 @@ pub fn file_links_create(
 
 #[tauri::command]
 pub fn file_links_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "UPDATE file_page_links SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [&id],
+        "UPDATE file_page_links SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+        [&now, &id],
     )
     .map_err(|e| e.to_string())?;
 

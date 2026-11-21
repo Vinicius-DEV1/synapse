@@ -146,13 +146,18 @@ pub fn files_create(
     if file.id.is_empty() {
         file.id = Uuid::new_v4().to_string();
     }
+    let now = chrono::Utc::now().to_rfc3339();
+    if file.created_at.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+        file.created_at = Some(now.clone());
+    }
+    file.updated_at = Some(now.clone());
 
     let enc_path = encrypt_opt(&file.local_path, &enc_key);
     let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
 
     conn.execute(
-        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             file_type = excluded.file_type,
@@ -162,8 +167,8 @@ pub fn files_create(
             folder_id = excluded.folder_id,
             mime_type = excluded.mime_type,
             deleted_at = NULL,
-            updated_at = CURRENT_TIMESTAMP",
-        params![file.id, file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type]
+            updated_at = excluded.updated_at",
+        params![file.id, file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type, file.created_at, now]
     ).map_err(|e| e.to_string())?;
 
     Ok(file)
@@ -174,13 +179,14 @@ pub fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Result<i3
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
     let enc_key = get_files_key(&db_state)?;
+    let now = chrono::Utc::now().to_rfc3339();
 
     let enc_path = encrypt_opt(&file.local_path, &enc_key);
     let enc_drive = encrypt_opt(&file.drive_file_id, &enc_key);
 
     let count = conn.execute(
-        "UPDATE files SET name = ?, file_type = ?, file_size = ?, local_path = ?, drive_file_id = ?, folder_id = ?, mime_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type, file.id]
+        "UPDATE files SET name = ?, file_type = ?, file_size = ?, local_path = ?, drive_file_id = ?, folder_id = ?, mime_type = ?, updated_at = ? WHERE id = ?",
+        params![file.name, file.file_type, file.file_size, enc_path, enc_drive, file.folder_id, file.mime_type, now, file.id]
     ).map_err(|e| e.to_string())?;
 
     Ok(count as i32)
@@ -190,13 +196,14 @@ pub fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Result<i3
 pub fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
 
-    conn.execute("UPDATE files SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [&id])
+    conn.execute("UPDATE files SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2", [&now, &id])
         .map_err(|e| e.to_string())?;
 
     // Clean up annotations when standalone file is removed (Soft Delete)
-    let _ = conn.execute("UPDATE library_highlights SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
-    let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE book_id = ?", [&id]);
+    let _ = conn.execute("UPDATE library_highlights SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2", [&now, &id]);
+    let _ = conn.execute("UPDATE library_bookmarks SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2", [&now, &id]);
 
     Ok(true)
 }
@@ -209,10 +216,11 @@ pub fn files_move(
 ) -> Result<bool, String> {
     let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
+    let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "UPDATE files SET folder_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        params![folder_id, id],
+        "UPDATE files SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
+        params![folder_id, now, id],
     )
     .map_err(|e| e.to_string())?;
 

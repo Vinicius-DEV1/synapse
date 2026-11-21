@@ -8,7 +8,7 @@ use synapse_core::domain::vault::groups as core_groups;
 #[tauri::command]
 pub fn vault_get_groups(db_state: State<'_, DbState>) -> Result<Vec<VaultGroup>, String> {
     let vault_key = get_vault_key(&db_state)?;
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let raw_groups = core_groups::get_vault_groups(conn).map_err(|e| e.to_string())?;
@@ -70,7 +70,7 @@ pub fn vault_upsert_group(mut group: VaultGroup, db_state: State<'_, DbState>) -
         None
     };
 
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     conn.execute(
@@ -82,7 +82,7 @@ pub fn vault_upsert_group(mut group: VaultGroup, db_state: State<'_, DbState>) -
             color = excluded.color,
             position = excluded.position,
             deleted_at = excluded.deleted_at,
-            updated_at = CURRENT_TIMESTAMP",
+            updated_at = excluded.updated_at",
         rusqlite::params![group.id, enc_name, enc_icon, enc_color, group.position, group.created_at, group.updated_at, group.deleted_at],
     ).map_err(|e| e.to_string())?;
 
@@ -92,7 +92,7 @@ pub fn vault_upsert_group(mut group: VaultGroup, db_state: State<'_, DbState>) -
 /// Soft-deletes a vault group and cascades deletion to all associated items.
 #[tauri::command]
 pub fn vault_delete_group(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     core_groups::delete_vault_group(conn, &id).map_err(|e| e.to_string())?;
@@ -105,7 +105,7 @@ pub fn vault_reorder_groups(
     updates: Vec<GroupOrderUpdate>,
     db_state: State<'_, DbState>,
 ) -> Result<(), String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let tuples: Vec<(&str, i32)> = updates.iter().map(|u| (u.id.as_str(), u.position)).collect();

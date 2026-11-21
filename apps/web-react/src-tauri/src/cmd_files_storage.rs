@@ -42,18 +42,20 @@ pub fn files_save_local(
     // Save to temp file
     fs::write(&temp_path, data).map_err(|e| e.to_string())?;
 
-    // Encrypt
-    let keys_guard = db_state.lock_keys()?;
-    let master_key = if let Some(keys) = keys_guard.as_ref() {
-        if let Some(ref k) = keys.files {
-            k.clone()
+    // Encrypt (release keys lock before chunked file I/O)
+    let master_key = {
+        let keys_guard = db_state.lock_keys()?;
+        if let Some(keys) = keys_guard.as_ref() {
+            if let Some(ref k) = keys.files {
+                k.clone()
+            } else {
+                let _ = fs::remove_file(&temp_path);
+                return Err("Files key not found".into());
+            }
         } else {
             let _ = fs::remove_file(&temp_path);
-            return Err("Files key not found".into());
+            return Err("Keys not unlocked".into());
         }
-    } else {
-        let _ = fs::remove_file(&temp_path);
-        return Err("Keys not unlocked".into());
     };
 
     if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &dest_path, &master_key)

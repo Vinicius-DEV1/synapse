@@ -10,7 +10,7 @@ pub fn vault_get_items(
     db_state: State<'_, DbState>,
 ) -> Result<Vec<VaultItem>, String> {
     let vault_key = get_vault_key(&db_state)?;
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut items = Vec::new();
@@ -48,7 +48,7 @@ pub fn vault_get_items(
 #[tauri::command]
 pub fn vault_get_item(id: String, db_state: State<'_, DbState>) -> Result<VaultItem, String> {
     let vault_key = get_vault_key(&db_state)?;
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     let mut stmt = conn.prepare("SELECT id, group_id, label, username, email, password, url, notes, custom_fields, is_favorite, password_changed_at, password_strength, created_at, updated_at, deleted_at, position, login_type FROM vault_items WHERE id = ?")
@@ -66,7 +66,7 @@ pub fn vault_get_item(id: String, db_state: State<'_, DbState>) -> Result<VaultI
 #[tauri::command]
 pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> Result<(), String> {
     let vault_key = get_vault_key(&db_state)?;
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
 
     if item.id.trim().is_empty() {
@@ -155,7 +155,7 @@ pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> R
             deleted_at = excluded.deleted_at,
             position = excluded.position,
             login_type = excluded.login_type,
-            updated_at = CURRENT_TIMESTAMP",
+            updated_at = excluded.updated_at",
         rusqlite::params![item.id, item.group_id, enc_label, enc_user, enc_email, enc_pass, enc_url, enc_notes, enc_custom, item.is_favorite, item.password_changed_at, item.password_strength, item.created_at, item.updated_at, item.deleted_at, item.position, login_type],
     ).map_err(|e| e.to_string())?;
 
@@ -165,7 +165,7 @@ pub fn vault_upsert_item(mut item: VaultItem, db_state: State<'_, DbState>) -> R
 /// Soft-deletes a vault item by setting deleted_at timestamp.
 #[tauri::command]
 pub fn vault_delete_item(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let now = chrono::Utc::now().to_rfc3339();
 
@@ -225,13 +225,14 @@ pub fn vault_reorder_items(
     updates: Vec<ItemOrderUpdate>,
     db_state: State<'_, DbState>,
 ) -> Result<(), String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Database not initialized")?;
+    let now = chrono::Utc::now().to_rfc3339();
 
     for update in updates {
         conn.execute(
-            "UPDATE vault_items SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            rusqlite::params![update.position, update.id],
+            "UPDATE vault_items SET position = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![update.position, now, update.id],
         )
         .map_err(|e| e.to_string())?;
     }

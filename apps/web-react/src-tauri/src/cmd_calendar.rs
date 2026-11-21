@@ -52,10 +52,11 @@ pub fn calendar_add_event(
     let reminders_str = value_to_string_or_default(&reminders_val, "[]");
     let notified_val = event_obj.get("notified_reminders").cloned();
     let notified_str = value_to_string_or_default(&notified_val, "[]");
+    let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO calendar_events (id, title, description, start_date, end_date, type, type_, status, color, page_id, reminders, notified_reminders) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12) \
+        "INSERT INTO calendar_events (id, title, description, start_date, end_date, type, type_, status, color, page_id, reminders, notified_reminders, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13) \
          ON CONFLICT(id) DO UPDATE SET \
             title = excluded.title, \
             description = excluded.description, \
@@ -68,8 +69,8 @@ pub fn calendar_add_event(
             page_id = excluded.page_id, \
             reminders = excluded.reminders, \
             notified_reminders = excluded.notified_reminders, \
-            updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![id, title, description, start_date, end_date, type_, type_, status, color, page_id, reminders_str, notified_str]
+            updated_at = excluded.updated_at",
+        rusqlite::params![id, title, description, start_date, end_date, type_, type_, status, color, page_id, reminders_str, notified_str, now]
     ).map_err(|e| e.to_string())?;
 
     Ok(CalendarEvent {
@@ -84,8 +85,8 @@ pub fn calendar_add_event(
         page_id,
         reminders: reminders_val.or(Some(serde_json::json!([]))),
         notified_reminders: notified_val.or(Some(serde_json::json!([]))),
-        created_at: None,
-        updated_at: None,
+        created_at: Some(now.clone()),
+        updated_at: Some(now),
     })
 }
 
@@ -95,7 +96,7 @@ pub fn calendar_update_event(
     event: serde_json::Value,
     db_state: State<'_, DbState>,
 ) -> Result<i32, String> {
-    let guard = db_state.conn.lock().unwrap();
+    let guard = db_state.lock_conn()?;
     let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
     let event_obj = event.as_object().ok_or("Parâmetro event inválido")?;
@@ -129,6 +130,7 @@ pub fn calendar_update_event(
     let notified_opt = event_obj
         .get("notified_reminders")
         .map(|n| value_to_string_or_default(&Some(n.clone()), "[]"));
+    let now = chrono::Utc::now().to_rfc3339();
 
     let count = conn.execute(
         "UPDATE calendar_events SET \
@@ -143,7 +145,7 @@ pub fn calendar_update_event(
             page_id = COALESCE(?8, page_id), \
             reminders = COALESCE(?9, reminders), \
             notified_reminders = COALESCE(?10, notified_reminders), \
-            updated_at = CURRENT_TIMESTAMP \
+            updated_at = ?12 \
          WHERE id = ?11",
         rusqlite::params![
             title,
@@ -156,7 +158,8 @@ pub fn calendar_update_event(
             page_id,
             reminders_opt,
             notified_opt,
-            event_id
+            event_id,
+            now
         ]
     ).map_err(|e| e.to_string())?;
 

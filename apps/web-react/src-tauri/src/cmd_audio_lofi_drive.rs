@@ -146,12 +146,25 @@ pub async fn lofi_download_drive_file(
         }
         std::fs::rename(&temp_path, &final_path).map_err(|e| e.to_string())?;
     } else {
-        let keys_guard = db_state.lock_keys()?;
-        let unlocked_keys = keys_guard.as_ref().ok_or("Keys not unlocked")?;
-        let focus_key = unlocked_keys
-            .focus
-            .clone()
-            .ok_or("Focus key not found")?;
+        let (focus_key, keys_to_try) = {
+            let keys_guard = db_state.lock_keys()?;
+            let unlocked_keys = keys_guard.as_ref().ok_or("Keys not unlocked")?;
+            let fk = unlocked_keys
+                .focus
+                .clone()
+                .ok_or("Focus key not found")?;
+            let mut list: Vec<String> = vec![fk.clone()];
+            if let Some(ref k) = unlocked_keys.core {
+                list.push(k.clone());
+            }
+            if let Some(ref k) = unlocked_keys.notes {
+                list.push(k.clone());
+            }
+            if let Some(ref k) = unlocked_keys.culture {
+                list.push(k.clone());
+            }
+            (fk, list)
+        };
 
         if is_raw_audio {
             if final_path.exists() {
@@ -168,19 +181,9 @@ pub async fn lofi_download_drive_file(
             let _ = std::fs::remove_file(&temp_path);
         } else {
             let data = std::fs::read(&temp_path).map_err(|e| e.to_string())?;
-            let mut keys_to_try: Vec<&str> = vec![&focus_key];
-            if let Some(ref k) = unlocked_keys.core {
-                keys_to_try.push(k.as_str());
-            }
-            if let Some(ref k) = unlocked_keys.notes {
-                keys_to_try.push(k.as_str());
-            }
-            if let Some(ref k) = unlocked_keys.culture {
-                keys_to_try.push(k.as_str());
-            }
 
             let mut decrypted_data: Option<Vec<u8>> = None;
-            for key in keys_to_try {
+            for key in &keys_to_try {
                 if let Ok(dec) = decrypt_single_chunk(key, &data) {
                     decrypted_data = Some(dec);
                     break;

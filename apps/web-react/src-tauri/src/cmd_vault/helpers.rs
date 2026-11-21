@@ -4,7 +4,7 @@ use crate::db::DbState;
 
 /// Retrieves the active unlocked Vault encryption key from application state.
 pub fn get_vault_key(db_state: &State<'_, DbState>) -> Result<String, String> {
-    let keys_guard = db_state.keys.lock().unwrap();
+    let keys_guard = db_state.lock_keys()?;
     let keys = keys_guard.as_ref().ok_or("User not authenticated")?;
     let vault_key = keys.vault.as_ref().ok_or("Vault encryption key not found")?;
     Ok(vault_key.clone())
