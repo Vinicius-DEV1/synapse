@@ -184,8 +184,10 @@ Rectangle {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        dataController.deletePracticeSession(modelData.id)
-                                        practiceRoot.refreshSessions()
+                                        practiceDeleteModal.itemId = modelData.id
+                                        practiceDeleteModal.itemTitle = modelData.title || qsTr("Sessão")
+                                        practiceDeleteModal.deleteType = "session"
+                                        practiceDeleteModal.isOpen = true
                                     }
                                 }
                             }
@@ -553,8 +555,10 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        dataController.deletePracticeMemory(modelData.id)
-                                        practiceRoot.refreshMemories()
+                                        practiceDeleteModal.itemId = modelData.id
+                                        practiceDeleteModal.itemTitle = qsTr("Instrução de Memória")
+                                        practiceDeleteModal.deleteType = "memory"
+                                        practiceDeleteModal.isOpen = true
                                     }
                                 }
                             }
@@ -609,11 +613,27 @@ Rectangle {
         onCloseRequested: practiceRoot.isMicTestOpen = false
     }
 
+    PracticeDeleteModal {
+        id: practiceDeleteModal
+        onConfirmed: function(id, type) {
+            if (type === "session") {
+                dataController.deletePracticeSession(id)
+                practiceRoot.refreshSessions()
+            } else if (type === "memory") {
+                dataController.deletePracticeMemory(id)
+                practiceRoot.refreshMemories()
+            }
+            practiceDeleteModal.isOpen = false
+        }
+        onCancelled: practiceDeleteModal.isOpen = false
+    }
+
     Shortcut {
         sequence: "Escape"
-        enabled: practiceRoot.isHelpOpen || practiceRoot.isMemoryDrawerOpen || practiceRoot.isNewSessionModalOpen || practiceRoot.isInterviewSetupOpen || practiceRoot.isFeedbackOpen || practiceRoot.isMicTestOpen
+        enabled: practiceRoot.isHelpOpen || practiceRoot.isMemoryDrawerOpen || practiceRoot.isNewSessionModalOpen || practiceRoot.isInterviewSetupOpen || practiceRoot.isFeedbackOpen || practiceRoot.isMicTestOpen || practiceDeleteModal.isOpen
         onActivated: {
-            if (practiceRoot.isHelpOpen) practiceRoot.isHelpOpen = false
+            if (practiceDeleteModal.isOpen) practiceDeleteModal.isOpen = false
+            else if (practiceRoot.isHelpOpen) practiceRoot.isHelpOpen = false
             else if (practiceRoot.isMemoryDrawerOpen) practiceRoot.isMemoryDrawerOpen = false
             else if (practiceRoot.isNewSessionModalOpen) practiceRoot.isNewSessionModalOpen = false
             else if (practiceRoot.isInterviewSetupOpen) practiceRoot.isInterviewSetupOpen = false

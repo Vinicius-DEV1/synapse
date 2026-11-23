@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: createWorkspaceModalRoot
@@ -96,6 +97,29 @@ Rectangle {
                             }
                         }
                     }
+
+                    Rectangle {
+                        width: 36; height: 36; radius: 8
+                        color: moreEmojiMouse.containsMouse ? "#338b5cf6" : "#211f30"
+                        border.color: "#33ffffff"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "+"
+                            color: "#a7a9be"
+                            font.pixelSize: 18
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            id: moreEmojiMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: workspaceEmojiPopover.open()
+                        }
+                    }
                 }
             }
 
@@ -173,6 +197,13 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    AppEmojiPopover {
+        id: workspaceEmojiPopover
+        onEmojiSelected: function(emoji) {
+            createWorkspaceModalRoot.selectedEmoji = emoji
         }
     }
 }

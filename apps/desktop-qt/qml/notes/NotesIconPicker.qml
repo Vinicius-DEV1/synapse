@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Item {
     id: iconPicker
@@ -10,7 +11,7 @@ Item {
     Layout.preferredHeight: 64
 
     property string activeIcon: "📄"
-    readonly property bool isOpen: emojiPopup.opened
+    readonly property bool isOpen: emojiPopup.visible
 
     signal iconSelected(string icon)
 
@@ -19,8 +20,8 @@ Item {
         width: 64
         height: 64
         radius: 12
-        color: emojiPopup.opened ? "#1a8b5cf6" : (emojiMouse.containsMouse ? "#0dffffff" : "transparent")
-        border.color: emojiPopup.opened ? "#668b5cf6" : (emojiMouse.containsMouse ? "#12ffffff" : "transparent")
+        color: emojiPopup.visible ? "#1a8b5cf6" : (emojiMouse.containsMouse ? "#0dffffff" : "transparent")
+        border.color: emojiPopup.visible ? "#668b5cf6" : (emojiMouse.containsMouse ? "#12ffffff" : "transparent")
         border.width: 1
 
         Text {
@@ -34,50 +35,16 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: emojiPopup.opened ? emojiPopup.close() : emojiPopup.open()
+            onClicked: emojiPopup.visible ? emojiPopup.close() : emojiPopup.open()
         }
     }
 
-    Popup {
+    AppEmojiPopover {
         id: emojiPopup
         x: 0
         y: emojiButton.height + 8
-        width: 292
-        padding: 12
-        modal: false
-        focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        background: Rectangle {
-            color: "#161524"
-            border.color: "#4d818cf8"
-            radius: 12
-        }
-
-        contentItem: GridLayout {
-            columns: 4
-            rowSpacing: 6
-            columnSpacing: 6
-
-            Repeater {
-                model: ["📄", "💡", "🚀", "📚", "💻", "🎨", "⚡", "🎯", "🔒", "⭐", "🧠", "🔥", "📊", "💰", "🎵", "📝"]
-
-                delegate: ToolButton {
-                    Layout.preferredWidth: 58
-                    Layout.preferredHeight: 42
-                    text: modelData
-                    font.pixelSize: 20
-                    onClicked: {
-                        iconPicker.iconSelected(modelData)
-                        emojiPopup.close()
-                    }
-                    background: Rectangle {
-                        color: parent.hovered ? "#18ffffff" : "#1a1924"
-                        border.color: "#0affffff"
-                        radius: 8
-                    }
-                }
-            }
+        onEmojiSelected: function(emoji) {
+            iconPicker.iconSelected(emoji)
         }
     }
 }
