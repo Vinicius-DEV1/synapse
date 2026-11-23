@@ -1,53 +1,100 @@
 package com.synapse.features.library.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.synapse.features.library.model.BookItem
+import com.synapse.features.library.ui.components.LibraryBookCard
+import com.synapse.features.library.ui.components.LibraryHelpAction
+import com.synapse.features.library.viewmodel.LibraryViewModel
 import com.synapse.features.library.ui.dialogs.NewBookDialog
+import com.synapse.features.library.ui.dialogs.BookManagementDialog
+import com.synapse.features.library.ui.dialogs.CollectionsManagementDialog
+import com.synapse.features.library.ui.dialogs.rememberLibraryNotebookActions
 import com.synapse.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(
-    initialBooks: List<BookItem> = emptyList()
-) {
-    var books by remember { mutableStateOf(initialBooks) }
+fun LibraryScreen() {
+    val context = LocalContext.current.applicationContext
+    val factory = remember(context) {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = LibraryViewModel(context) as T
+        }
+    }
+    val viewModel: LibraryViewModel = viewModel(factory = factory)
+    val state by viewModel.state.collectAsState()
+    val notebookActions = rememberLibraryNotebookActions(viewModel)
+    val books = state.books
     var selectedFilter by remember { mutableStateOf("Todos") }
     var isAddingBook by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
     var newAuthor by remember { mutableStateOf("") }
     var newTotalPages by remember { mutableStateOf("300") }
+    var formError by remember { mutableStateOf<String?>(null) }
+    var closeAfterSave by remember { mutableStateOf(false) }
+    var bookBeingManaged by remember { mutableStateOf<BookItem?>(null) }
+    var managementOpenedAtVersion by remember { mutableLongStateOf(0L) }
+    var showCollectionsDialog by remember { mutableStateOf(false) }
+    var selectedCollectionId by remember { mutableStateOf<String?>(null) }
 
-    val filteredBooks = remember(books, selectedFilter) {
-        if (selectedFilter == "Todos") books
+    LaunchedEffect(state.mutationVersion) {
+        if (bookBeingManaged != null && state.mutationVersion > managementOpenedAtVersion) {
+            bookBeingManaged = null
+        }
+    }
+
+    LaunchedEffect(state.saving, state.error) {
+        if (closeAfterSave && !state.saving) {
+            if (state.error == null) {
+                newTitle = ""
+                newAuthor = ""
+                formError = null
+                isAddingBook = false
+            }
+            closeAfterSave = false
+        }
+    }
+
+    val filteredBooks = remember(books, selectedFilter, selectedCollectionId) {
+        val statusFiltered = if (selectedFilter == "Todos") books
         else books.filter { it.status.equals(selectedFilter, ignoreCase = true) }
+        selectedCollectionId?.let { id -> statusFiltered.filter { id in it.collectionIds } } ?: statusFiltered
     }
 
-    val totalPagesRead = remember(books) {
-        books.sumOf { it.currentPage }
+    LaunchedEffect(state.collections) {
+        if (selectedCollectionId != null && state.collections.none { it.id == selectedCollectionId }) {
+            selectedCollectionId = null
+        }
     }
+
+    val currentProgressPages = state.stats?.currentProgressPages ?: 0L
 
     Scaffold(
         containerColor = DarkCanvas,
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { isAddingBook = true },
+                onClick = { if (!state.loading && !state.saving) isAddingBook = true },
                 containerColor = BrandIndigo,
                 contentColor = Color.White
             ) {
@@ -63,14 +110,21 @@ fun LibraryScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Biblioteca & Leituras",
+                    modifier = Modifier.weight(1f),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                )
+                TextButton(onClick = { showCollectionsDialog = true }, enabled = !state.saving) {
+                    Text("Coleções", color = BrandIndigoLight)
+                }
+                LibraryHelpAction()
+            }
             Text(
-                text = "Biblioteca & Leituras",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Text(
-                text = "$totalPagesRead páginas lidas acumuladas • ${books.size} livros no acervo",
+                text = "$currentProgressPages páginas lidas acumuladas • ${books.size} livros no acervo",
                 fontSize = 13.sp,
                 color = TextSecondary
             )
@@ -104,13 +158,56 @@ fun LibraryScreen(
                 }
             }
 
+            if (state.collections.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = selectedCollectionId == null,
+                        onClick = { selectedCollectionId = null },
+                        label = { Text("Todas as coleções") },
+                    )
+                    state.collections.forEach { collection ->
+                        FilterChip(
+                            selected = selectedCollectionId == collection.id,
+                            onClick = {
+                                selectedCollectionId = if (selectedCollectionId == collection.id) null else collection.id
+                            },
+                            label = { Text(collection.name) },
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(14.dp))
 
+            state.error?.let { message ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                ) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(message, color = TextPrimary)
+                        TextButton(onClick = viewModel::loadLibrary, enabled = !state.loading) {
+                            Text("Tentar novamente", color = BrandIndigoLight)
+                        }
+                    }
+                }
+            }
+
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                if (filteredBooks.isEmpty()) {
+                if (state.loading) {
+                    item {
+                        CircularProgressIndicator(
+                            color = BrandIndigo,
+                            modifier = Modifier.padding(top = 32.dp),
+                        )
+                    }
+                } else if (filteredBooks.isEmpty()) {
                     item {
                         Text(
                             text = "Nenhum livro disponível neste dispositivo.",
@@ -124,141 +221,15 @@ fun LibraryScreen(
                 }
 
                 items(filteredBooks, key = { it.id }) { book ->
-                    val progressRatio = if (book.totalPages > 0) book.currentPage.toFloat() / book.totalPages else 0f
-                    val percentage = (progressRatio * 100).toInt()
-
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp)),
-                        color = DarkSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Text(text = book.coverEmoji, fontSize = 26.sp)
-                                    Column {
-                                        Text(
-                                            text = book.title,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Text(
-                                            text = book.author,
-                                            fontSize = 12.sp,
-                                            color = TextMuted
-                                        )
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = when (book.status) {
-                                        "Concluído" -> CorrectEmeraldBg
-                                        "Lendo" -> BrandIndigo.copy(alpha = 0.2f)
-                                        else -> DarkSurfaceElevated
-                                    }
-                                ) {
-                                    Text(
-                                        text = book.status,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = when (book.status) {
-                                            "Concluído" -> CorrectEmeraldText
-                                            "Lendo" -> BrandIndigoLight
-                                            else -> TextMuted
-                                        }
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            LinearProgressIndicator(
-                                progress = { progressRatio.coerceIn(0f, 1f) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = BrandIndigo,
-                                trackColor = DarkSurfaceElevated,
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Pág. ${book.currentPage} de ${book.totalPages} ($percentage%)",
-                                    fontSize = 11.sp,
-                                    color = TextSecondary
-                                )
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Surface(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .clickable {
-                                                val newPage = maxOf(0, book.currentPage - 1)
-                                                books = books.map { if (it.id == book.id) it.copy(currentPage = newPage) else it }
-                                            },
-                                        color = DarkSurfaceElevated
-                                    ) {
-                                        Text("-1", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = TextSecondary)
-                                    }
-
-                                    Surface(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .clickable {
-                                                val newPage = minOf(book.totalPages, book.currentPage + 1)
-                                                val isNowDone = newPage >= book.totalPages
-                                                books = books.map {
-                                                    if (it.id == book.id) it.copy(
-                                                        currentPage = newPage,
-                                                        status = if (isNowDone) "Concluído" else it.status
-                                                    ) else it
-                                                }
-                                            },
-                                        color = BrandIndigo.copy(alpha = 0.3f)
-                                    ) {
-                                        Text("+1", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = BrandIndigoLight, fontWeight = FontWeight.Bold)
-                                    }
-
-                                    Surface(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .clickable {
-                                                val newPage = minOf(book.totalPages, book.currentPage + 5)
-                                                val isNowDone = newPage >= book.totalPages
-                                                books = books.map {
-                                                    if (it.id == book.id) it.copy(
-                                                        currentPage = newPage,
-                                                        status = if (isNowDone) "Concluído" else it.status
-                                                    ) else it
-                                                }
-                                            },
-                                        color = BrandIndigo.copy(alpha = 0.3f)
-                                    ) {
-                                        Text("+5", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = BrandIndigoLight, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    LibraryBookCard(
+                        book = book,
+                        enabled = book.totalPages > 0 && !book.isArchived && book.id !in state.savingBookIds && !state.loading,
+                        onAdjustProgress = { delta -> viewModel.adjustProgress(book, delta) },
+                        onManage = {
+                            bookBeingManaged = book
+                            managementOpenedAtVersion = state.mutationVersion
+                        },
+                    )
                 }
             }
         }
@@ -268,28 +239,55 @@ fun LibraryScreen(
                 title = newTitle,
                 author = newAuthor,
                 totalPages = newTotalPages,
+                error = formError ?: state.error,
+                saving = state.saving,
                 onTitleChange = { newTitle = it },
                 onAuthorChange = { newAuthor = it },
                 onTotalPagesChange = { newTotalPages = it },
-                onDismiss = { isAddingBook = false },
+                onDismiss = { if (!state.saving) isAddingBook = false },
                 onAdd = {
-                    val pages = newTotalPages.toIntOrNull() ?: 100
-                    if (newTitle.isNotBlank()) {
-                        books = listOf(
-                            BookItem(
-                                id = System.currentTimeMillis().toString(),
-                                title = newTitle.trim(),
-                                author = newAuthor.trim(),
-                                currentPage = 0,
-                                totalPages = pages,
-                                status = "Lendo"
-                            )
-                        ) + books
-                        newTitle = ""
-                        newAuthor = ""
-                        isAddingBook = false
+                    val pageCount = newTotalPages.toIntOrNull()
+                    when {
+                        newTitle.isBlank() -> formError = "Informe o título do livro."
+                        pageCount == null || pageCount <= 0 -> formError = "Informe um total de páginas maior que zero."
+                        state.loading || state.saving -> Unit
+                        else -> {
+                            viewModel.createBook(newTitle.trim(), newAuthor.trim(), pageCount)
+                            closeAfterSave = true
+                        }
                     }
                 }
+            )
+        }
+
+        bookBeingManaged?.let { book ->
+            BookManagementDialog(
+                book = book,
+                collections = state.collections,
+                saving = state.saving,
+                error = state.error,
+                onDismiss = { bookBeingManaged = null },
+                onSave = { title, author, collectionIds ->
+                    viewModel.updateBook(book, title, author, collectionIds)
+                },
+                onArchive = { viewModel.setArchived(book, !book.isArchived) },
+                onDelete = { viewModel.deleteBook(book) },
+                notebookState = state,
+                notebookActions = notebookActions,
+                onOpenNotebook = { viewModel.openNotebook(book) },
+                onCloseNotebook = viewModel::closeNotebook,
+            )
+        }
+
+        if (showCollectionsDialog) {
+            CollectionsManagementDialog(
+                collections = state.collections,
+                saving = state.saving,
+                error = state.error,
+                mutationVersion = state.mutationVersion,
+                onDismiss = { showCollectionsDialog = false },
+                onSave = viewModel::saveCollection,
+                onDelete = viewModel::deleteCollection,
             )
         }
     }

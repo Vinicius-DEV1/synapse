@@ -1,241 +1,88 @@
 package com.synapse.features.notes.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.synapse.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.synapse.features.notes.ui.components.NotesEditorScreen
+import com.synapse.features.notes.ui.components.NotesLibraryScreen
+import com.synapse.features.notes.viewmodel.NotesViewModel
+import com.synapse.features.settings.model.AndroidSettings
+import com.synapse.ui.theme.BrandIndigo
 
-data class NoteItem(
-    val id: String,
-    val title: String,
-    val content: String,
-    val icon: String = "📄",
-    val isPinned: Boolean = false,
-    val updatedAt: String = "Hoje"
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
-    initialNotes: List<NoteItem> = emptyList()
+    initialNoteId: String? = null,
+    createNewNote: Boolean = false,
+    settings: AndroidSettings,
+    onLaunchActionConsumed: () -> Unit,
 ) {
-    var notes by remember { mutableStateOf(initialNotes) }
-    var selectedNote by remember { mutableStateOf<NoteItem?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    // Android hardware / gesture back navigation pipeline
-    BackHandler(enabled = selectedNote != null) {
-        selectedNote = null
-    }
-
-    if (selectedNote != null) {
-        // Note Detail & Reading View
-        val note = selectedNote!!
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DarkCanvas)
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { selectedNote = null }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Voltar",
-                        tint = TextPrimary
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${note.icon} ${note.title}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp)),
-                color = DarkSurface
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Atualizado em ${note.updatedAt}",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = note.content,
-                        fontSize = 15.sp,
-                        color = TextPrimary,
-                        lineHeight = 22.sp
-                    )
-                }
-            }
-        }
-    } else {
-        // Notes Explorer List
-        val filteredNotes = remember(notes, searchQuery) {
-            if (searchQuery.isBlank()) notes
-            else notes.filter {
-                it.title.contains(searchQuery, ignoreCase = true) ||
-                it.content.contains(searchQuery, ignoreCase = true)
-            }
-        }
-
-        val pinnedNotes = remember(filteredNotes) { filteredNotes.filter { it.isPinned } }
-        val otherNotes = remember(filteredNotes) { filteredNotes.filter { !it.isPinned } }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DarkCanvas)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            // Header
-            Text(
-                text = "📝 Caderno & Notas",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar notas...", color = TextMuted) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar", tint = TextSecondary) },
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandIndigo,
-                    unfocusedBorderColor = DarkBorder,
-                    focusedContainerColor = DarkSurface,
-                    unfocusedContainerColor = DarkSurface
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (filteredNotes.isEmpty()) {
-                    item {
-                        Text(
-                            text = "Nenhuma nota disponível neste dispositivo.",
-                            color = TextMuted,
-                            fontSize = 14.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 32.dp)
-                        )
-                    }
-                }
-
-                if (pinnedNotes.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "📌 FIXADOS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandIndigoLight,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    items(pinnedNotes) { note ->
-                        NoteCard(note = note, onClick = { selectedNote = note })
-                    }
-                }
-
-                if (otherNotes.isNotEmpty()) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "TODAS AS NOTAS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextMuted,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    items(otherNotes) { note ->
-                        NoteCard(note = note, onClick = { selectedNote = note })
-                    }
-                }
-            }
+    val context = LocalContext.current.applicationContext
+    val factory = remember(context) {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = NotesViewModel(context) as T
         }
     }
-}
+    val viewModel: NotesViewModel = viewModel(factory = factory)
+    val state by viewModel.state.collectAsState()
 
-@Composable
-fun NoteCard(note: NoteItem, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        color = DarkSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = note.icon, fontSize = 20.sp)
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = note.title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = note.updatedAt,
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
-            }
-            if (note.isPinned) {
-                Icon(
-                    imageVector = Icons.Default.PushPin,
-                    contentDescription = "Fixado",
-                    tint = BrandIndigoLight,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+    LaunchedEffect(initialNoteId, createNewNote) {
+        when {
+            initialNoteId != null -> viewModel.openNote(initialNoteId)
+            createNewNote -> viewModel.createNote("Nova Página")
         }
+        if (initialNoteId != null || createNewNote) onLaunchActionConsumed()
+    }
+
+    BackHandler(enabled = state.selectedNote != null || state.loadingNote) {
+        if (state.selectedNote != null) viewModel.closeNote() else viewModel.cancelOpeningNote()
+    }
+
+    when {
+        state.loadingNote -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator(color = BrandIndigo) }
+        state.loading && state.notes.isEmpty() && state.selectedNote == null -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator(color = BrandIndigo) }
+        state.selectedNote != null -> NotesEditorScreen(
+            note = state.selectedNote!!,
+            settings = settings,
+            parentCandidates = state.parentCandidates,
+            hierarchyMutationVersion = state.hierarchyMutationVersion,
+            saving = state.saving,
+            dirty = state.isDirty,
+            error = state.error,
+            onTitleChange = viewModel::updateDraftTitle,
+            onContentChange = viewModel::updateDraftContent,
+            onSave = { viewModel.saveNote() },
+            onClose = viewModel::closeNote,
+            onTogglePin = viewModel::togglePin,
+            onCreateSubpage = viewModel::createSubpage,
+            onMove = viewModel::moveNote,
+            onDelete = viewModel::deleteNote,
+        )
+        else -> NotesLibraryScreen(
+            state = state,
+            onSearch = viewModel::updateSearch,
+            onRefresh = viewModel::refreshNotes,
+            onOpenNote = viewModel::openNote,
+            onCreateNote = viewModel::createNote,
+            onReorderSiblings = viewModel::reorderPages,
+        )
     }
 }

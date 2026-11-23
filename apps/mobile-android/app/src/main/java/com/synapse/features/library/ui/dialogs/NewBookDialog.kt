@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -24,7 +25,9 @@ fun NewBookDialog(
     onAuthorChange: (String) -> Unit,
     onTotalPagesChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    error: String? = null,
+    saving: Boolean = false,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -46,6 +49,7 @@ fun NewBookDialog(
                         unfocusedBorderColor = DarkBorder
                     )
                 )
+                error?.let { Text(it, color = IncorrectRoseText) }
                 OutlinedTextField(
                     value = author,
                     onValueChange = onAuthorChange,
@@ -75,13 +79,14 @@ fun NewBookDialog(
         confirmButton = {
             Button(
                 onClick = onAdd,
+                enabled = !saving,
                 colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo)
             ) {
-                Text("Adicionar", color = Color.White)
+                if (saving) CircularProgressIndicator(color = Color.White) else Text("Adicionar", color = Color.White)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !saving) {
                 Text("Cancelar", color = TextSecondary)
             }
         }

@@ -1,16 +1,18 @@
 package com.synapse.features.finance.data
 
 import android.content.Context
+import com.synapse.data.SynapseDatabase
 import com.synapse.core.FinanceAccount
 import com.synapse.core.FinanceTransaction
 import com.synapse.core.FinanceWishlistItem
+import com.synapse.core.FinanceSummary
 import com.synapse.core.SynapseFinanceStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.YearMonth
 
 class FinanceRepository(context: Context) : AutoCloseable {
-    private val databasePath = context.applicationContext.getDatabasePath(DATABASE_NAME).absolutePath
+    private val databasePath = SynapseDatabase.path(context)
     private var store: SynapseFinanceStore? = null
 
     suspend fun load(accountId: String, period: YearMonth?): FinanceSnapshot = withContext(Dispatchers.IO) {
@@ -27,6 +29,9 @@ class FinanceRepository(context: Context) : AutoCloseable {
             selectedAccountId = resolvedAccountId,
         )
     }
+
+    suspend fun loadDashboardSummary(period: YearMonth = YearMonth.now()): FinanceSummary =
+        withContext(Dispatchers.IO) { store().getSummaryFor(null, period.toString()) }
 
     suspend fun createAccount(account: FinanceAccount): FinanceAccount = ioStore { it.createAccount(account) }
     suspend fun updateAccount(account: FinanceAccount): FinanceAccount = ioStore { it.updateAccount(account) }
@@ -60,7 +65,6 @@ class FinanceRepository(context: Context) : AutoCloseable {
     }
 
     companion object {
-        private const val DATABASE_NAME = "synapse-finance.sqlite"
         private const val ALL_ACCOUNTS = "all"
     }
 }

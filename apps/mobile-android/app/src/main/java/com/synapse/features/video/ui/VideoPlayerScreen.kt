@@ -10,21 +10,17 @@ import android.util.Rational
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -33,13 +29,14 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
-import com.synapse.features.video.ui.components.VideoPlayerControls
+import com.synapse.features.video.ui.components.VideoPlayerOverlay
+import com.synapse.features.video.ui.components.videoPlayerGestures
+import com.synapse.features.video.VIDEO_SKIP_INTERVAL_MS
 import com.synapse.media.EncryptedChunkDataSource
-import com.synapse.ui.theme.BrandIndigo
-import com.synapse.ui.theme.BrandIndigoLight
-import com.synapse.ui.theme.DarkSurfaceElevated
+import com.synapse.R
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -48,17 +45,22 @@ import java.io.File
 fun VideoPlayerScreen(
     videoPath: String? = null,
     keyHex: String? = null,
+    videoTitle: String = "Video",
+    initialProgressSeconds: Double = 0.0,
+    onProgressSeconds: (Double) -> Unit = {},
+    onDurationSeconds: (Double) -> Unit = {},
+    onBack: () -> Unit = {},
 ) {
     val activeVideoPath = videoPath?.takeIf(String::isNotBlank)
     val activeKeyHex = keyHex?.takeIf(String::isNotBlank)
-    if (activeVideoPath == null || activeKeyHex == null) {
+    if (activeVideoPath == null || (activeKeyHex == null && !activeVideoPath.startsWith("content://"))) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black),
             contentAlignment = Alignment.Center,
         ) {
-            Text("Nenhum vídeo selecionado.", color = Color.White, fontSize = 16.sp)
+            Text(stringResource(R.string.video_unselected), color = Color.White, fontSize = 16.sp)
         }
         return
     }
@@ -73,18 +75,45 @@ fun VideoPlayerScreen(
     var controlsVisible by remember { mutableStateOf(true) }
     var toastMessage by remember { mutableStateOf<String?>(null) }
     var playbackSpeed by remember { mutableFloatStateOf(1.0f) }
+    var lastSavedPositionMs by remember(activeVideoPath) { mutableLongStateOf(initialProgressSeconds.times(MILLIS_PER_SECOND).toLong()) }
+    var showResumePrompt by remember(activeVideoPath) { mutableStateOf(false) }
+    var restoredPosition by remember(activeVideoPath) { mutableStateOf(false) }
+    var playbackStarted by remember(activeVideoPath) { mutableStateOf(false) }
+    val latestProgressCallback by rememberUpdatedState(onProgressSeconds)
+    val latestDurationCallback by rememberUpdatedState(onDurationSeconds)
+    val initialPositionMs = remember(activeVideoPath) { (initialProgressSeconds * MILLIS_PER_SECOND).toLong().coerceAtLeast(0L) }
+
+    BackHandler(enabled = true, onBack = onBack)
 
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val originalScreenBrightness = remember(activity) { activity?.window?.attributes?.screenBrightness }
+
+    DisposableEffect(activity, originalScreenBrightness) {
+        onDispose {
+            if (activity != null && originalScreenBrightness != null) {
+                activity.window.attributes = activity.window.attributes.apply {
+                    screenBrightness = originalScreenBrightness
+                }
+            }
+        }
+    }
 
     val exoPlayer = remember(context, activeVideoPath, activeKeyHex) {
-        val dataSourceFactory = EncryptedChunkDataSource.Factory(activeKeyHex)
+        val dataSourceFactory = if (activeKeyHex != null) {
+            EncryptedChunkDataSource.Factory(activeKeyHex)
+        } else {
+            DefaultDataSource.Factory(context)
+        }
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
 
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             .apply {
-                val uri = Uri.fromFile(File(activeVideoPath))
+                val uri = when {
+                    activeVideoPath.startsWith("content://") || activeVideoPath.startsWith("file://") -> Uri.parse(activeVideoPath)
+                    else -> Uri.fromFile(File(activeVideoPath))
+                }
                 setMediaItem(MediaItem.fromUri(uri))
                 prepare()
                 playWhenReady = false
@@ -97,25 +126,40 @@ fun VideoPlayerScreen(
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_READY) {
                             durationMs = duration.coerceAtLeast(1L)
+                            latestDurationCallback(durationMs / MILLIS_PER_SECOND)
+                            if (!restoredPosition) {
+                                restoredPosition = true
+                                if (initialPositionMs > RESUME_THRESHOLD_SECONDS * MILLIS_PER_SECOND) {
+                                    currentPositionMs = initialPositionMs.coerceAtMost((durationMs - 1L).coerceAtLeast(0L))
+                                    showResumePrompt = true
+                                }
+                            }
+                        } else if (playbackState == Player.STATE_ENDED) {
+                            currentPositionMs = 0L
+                            lastSavedPositionMs = 0L
+                            playbackStarted = false
+                            latestProgressCallback(0.0)
                         }
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        toastMessage = "Não foi possível reproduzir o vídeo: ${error.errorCodeName}"
+                        toastMessage = context.getString(R.string.video_playback_error, error.errorCodeName)
                     }
                 })
             }
     }
 
-    // Auto-update playback progress
     LaunchedEffect(isPlaying, exoPlayer) {
         while (isPlaying) {
             currentPositionMs = exoPlayer.currentPosition
+            if (exoPlayer.currentPosition - lastSavedPositionMs >= PROGRESS_SAVE_INTERVAL_MS) {
+                lastSavedPositionMs = exoPlayer.currentPosition
+                latestProgressCallback(exoPlayer.currentPosition / MILLIS_PER_SECOND)
+            }
             delay(500)
         }
     }
 
-    // Auto-hide controls
     LaunchedEffect(controlsVisible, isPlaying) {
         if (controlsVisible && isPlaying) {
             delay(4000)
@@ -123,65 +167,36 @@ fun VideoPlayerScreen(
         }
     }
 
-    // Cleanup ExoPlayer on dispose
     DisposableEffect(exoPlayer) {
         onDispose {
+            if (playbackStarted) latestProgressCallback(exoPlayer.currentPosition / MILLIS_PER_SECOND)
             exoPlayer.release()
         }
+    }
+
+    val startOverPlayback = {
+        exoPlayer.seekTo(0L)
+        currentPositionMs = 0L
+        lastSavedPositionMs = 0L
+        playbackStarted = true
+        showResumePrompt = false
+        exoPlayer.play()
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(exoPlayer) {
-                detectTapGestures(
-                    onTap = { controlsVisible = !controlsVisible },
-                    onDoubleTap = { offset ->
-                        val screenWidth = size.width
-                        if (offset.x < screenWidth / 2) {
-                            // Rewind 10s
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            val newPos = (exoPlayer.currentPosition - 10000).coerceAtLeast(0)
-                            exoPlayer.seekTo(newPos)
-                            currentPositionMs = newPos
-                        } else {
-                            // Forward 10s
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            val newPos = (exoPlayer.currentPosition + 10000).coerceAtMost(durationMs)
-                            exoPlayer.seekTo(newPos)
-                            currentPositionMs = newPos
-                        }
-                    }
-                )
-            }
-            .pointerInput(exoPlayer) {
-                detectVerticalDragGestures { change, dragAmount ->
-                    val screenWidth = size.width
-                    if (change.position.x < screenWidth / 2) {
-                        // Left side swipe: adjust Screen Brightness
-                        activity?.window?.let { window ->
-                            val attrs = window.attributes
-                            val currentBrightness = if (attrs.screenBrightness < 0) 0.5f else attrs.screenBrightness
-                            val newBrightness = (currentBrightness - dragAmount / 1000f).coerceIn(0.01f, 1.0f)
-                            attrs.screenBrightness = newBrightness
-                            window.attributes = attrs
-                        }
-                    } else {
-                        // Right side swipe: adjust Volume
-                        val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                        val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                        val delta = if (dragAmount < 0) 1 else -1
-                        audioManager.setStreamVolume(
-                            AudioManager.STREAM_MUSIC,
-                            (currentVol + delta).coerceIn(0, maxVol),
-                            0
-                        )
-                    }
-                }
-            }
+            .videoPlayerGestures(
+                player = exoPlayer,
+                activity = activity,
+                audioManager = audioManager,
+                haptic = haptic,
+                durationMs = durationMs,
+                onToggleControls = { controlsVisible = !controlsVisible },
+                onPositionChanged = { currentPositionMs = it },
+            )
     ) {
-        // Native ExoPlayer View
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
@@ -196,50 +211,49 @@ fun VideoPlayerScreen(
             }
         )
 
-        // Playback error notification
-        toastMessage?.let { msg ->
-            LaunchedEffect(msg) {
-                delay(2500)
-                toastMessage = null
-            }
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 48.dp),
-                color = DarkSurfaceElevated,
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BrandIndigo)
-            ) {
-                Text(
-                    text = msg,
-                    color = BrandIndigoLight,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-        }
-
-        VideoPlayerControls(
-            visible = controlsVisible,
-            videoTitle = File(activeVideoPath).nameWithoutExtension.ifBlank { "Vídeo" },
+        VideoPlayerOverlay(
+            player = exoPlayer,
+            videoTitle = videoTitle,
             isPlaying = isPlaying,
             currentPositionMs = currentPositionMs,
             durationMs = durationMs,
             playbackSpeed = playbackSpeed,
+            controlsVisible = controlsVisible,
+            toastMessage = toastMessage,
+            showResumePrompt = showResumePrompt,
+            initialPositionMs = initialPositionMs,
+            onToastDismiss = { toastMessage = null },
             onPlaybackSpeedChange = { speed ->
                 playbackSpeed = speed
                 exoPlayer.setPlaybackSpeed(speed)
             },
-            onTogglePlayback = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
+            onTogglePlayback = {
+                if (isPlaying) {
+                    exoPlayer.pause()
+                    lastSavedPositionMs = exoPlayer.currentPosition
+                    latestProgressCallback(exoPlayer.currentPosition / MILLIS_PER_SECOND)
+                } else {
+                    playbackStarted = true
+                    exoPlayer.play()
+                }
+            },
             onSkipBackward = {
-                exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0))
+                val position = (exoPlayer.currentPosition - VIDEO_SKIP_INTERVAL_MS).coerceAtLeast(0L)
+                exoPlayer.seekTo(position)
+                currentPositionMs = position
+                lastSavedPositionMs = position
+                latestProgressCallback(position / MILLIS_PER_SECOND)
             },
             onSkipForward = {
-                exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(durationMs))
+                val position = (exoPlayer.currentPosition + VIDEO_SKIP_INTERVAL_MS).coerceAtMost(durationMs)
+                exoPlayer.seekTo(position)
+                currentPositionMs = position
+                lastSavedPositionMs = position
+                latestProgressCallback(position / MILLIS_PER_SECOND)
             },
-            onScrub = { newPosition ->
-                currentPositionMs = newPosition
-                exoPlayer.seekTo(newPosition)
+            onScrub = { position ->
+                currentPositionMs = position
+                exoPlayer.seekTo(position)
             },
             onEnterPictureInPicture = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -248,8 +262,22 @@ fun VideoPlayerScreen(
                         .build()
                     activity?.enterPictureInPictureMode(params)
                 }
-            }
+            },
+            onBack = onBack,
+            onResumePromptDismiss = startOverPlayback,
+            onResume = {
+                exoPlayer.seekTo(currentPositionMs)
+                lastSavedPositionMs = currentPositionMs
+                playbackStarted = true
+                showResumePrompt = false
+                exoPlayer.play()
+            },
+            onStartOver = startOverPlayback,
         )
     }
 }
+
+private const val MILLIS_PER_SECOND = 1000.0
+private const val RESUME_THRESHOLD_SECONDS = 5L
+private const val PROGRESS_SAVE_INTERVAL_MS = 10_000L
 

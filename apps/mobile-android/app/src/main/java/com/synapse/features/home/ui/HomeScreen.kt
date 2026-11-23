@@ -13,17 +13,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.synapse.features.home.ui.components.HomeAgendaCard
+import com.synapse.features.home.ui.components.HomeFinanceCard
+import com.synapse.features.home.ui.components.HomePagesCard
+import com.synapse.features.home.viewmodel.HomeDashboardViewModel
 import com.synapse.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun HomeScreen(
-    onNavigateToTab: (String) -> Unit = {}
+    onNavigateToTab: (String) -> Unit,
+    onOpenNote: (String) -> Unit,
+    onCreateNote: () -> Unit,
 ) {
+    val context = LocalContext.current.applicationContext
+    val factory = remember(context) {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                require(modelClass.isAssignableFrom(HomeDashboardViewModel::class.java))
+                return modelClass.cast(HomeDashboardViewModel(context))
+            }
+        }
+    }
+    val viewModel: HomeDashboardViewModel = viewModel(factory = factory)
+    val state by viewModel.state.collectAsState()
+    val snapshot = state.snapshot
+
+    LaunchedEffect(viewModel) { viewModel.refresh() }
+
     val greeting = remember {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         when {
@@ -99,12 +124,17 @@ fun HomeScreen(
                             subtitle = "Abrir editor",
                             color = BrandPurple,
                             modifier = Modifier.weight(1f),
-                            onClick = { onNavigateToTab("notes") }
+                            onClick = onCreateNote
                         )
                         ActionCard(
                             icon = "🎴",
                             title = "Flashcards",
-                            subtitle = "Revisar Anki FSRS",
+                            subtitle = when {
+                                state.loading && snapshot == null -> "Carregando revisões"
+                                state.error != null && snapshot == null -> "Revisões indisponíveis"
+                                snapshot?.dueCardCount == 0L -> "Tudo revisado"
+                                else -> "${snapshot?.dueCardCount ?: 0} para revisar"
+                            },
                             color = BrandIndigo,
                             modifier = Modifier.weight(1f),
                             onClick = { onNavigateToTab("anki") }
@@ -135,115 +165,48 @@ fun HomeScreen(
                 }
             }
 
-            // Agenda Section Card
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    color = DarkSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+            state.error?.let { message ->
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "📅 Agenda de Hoje",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Ver Tudo →",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandIndigoLight,
-                                modifier = Modifier.clickable { onNavigateToTab("calendar") }
-                            )
+                            Text(message, color = IncorrectRoseText, modifier = Modifier.weight(1f))
+                            TextButton(onClick = viewModel::refresh) { Text("Tentar novamente") }
                         }
-
-                        Text(
-                            text = "Nenhum compromisso disponível neste dispositivo.",
-                            fontSize = 13.sp,
-                            color = TextMuted
-                        )
                     }
                 }
             }
 
-            // Financial Snapshot Card
             item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    color = DarkSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "💰 Resumo Financeiro",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Ver Finanças →",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CorrectEmeraldText,
-                                modifier = Modifier.clickable { onNavigateToTab("finance") }
-                            )
-                        }
-
-                        Text(
-                            text = "Nenhum resumo financeiro disponível neste dispositivo.",
-                            fontSize = 13.sp,
-                            color = TextMuted
-                        )
-                    }
-                }
+                HomeAgendaCard(
+                    todayEvents = snapshot?.todayEvents.orEmpty(),
+                    tomorrowEvents = snapshot?.tomorrowEvents.orEmpty(),
+                    loading = state.loading && snapshot == null,
+                    onOpenCalendar = { onNavigateToTab("calendar") },
+                    onOpenNote = onOpenNote,
+                )
             }
 
-            // Pinned Notes
             item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    color = DarkSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = "📌 Notas Fixadas",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
+                HomeFinanceCard(
+                    summary = snapshot?.financeSummary,
+                    loading = state.loading && snapshot == null,
+                    onOpenFinance = { onNavigateToTab("finance") },
+                )
+            }
 
-                        Text(
-                            text = "Nenhuma nota fixada disponível neste dispositivo.",
-                            fontSize = 13.sp,
-                            color = TextMuted,
-                            modifier = Modifier.clickable { onNavigateToTab("notes") }
-                        )
-                    }
-                }
+            item {
+                HomePagesCard("📌 Notas Fixadas", snapshot?.pinnedNotes.orEmpty(), onOpenNote)
+            }
+
+            item {
+                HomePagesCard("🕘 Notas Recentes", snapshot?.recentNotes.orEmpty(), onOpenNote)
             }
         }
     }

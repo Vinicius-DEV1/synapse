@@ -15,15 +15,18 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.synapse.ui.theme.*
+import com.synapse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateDiagramSheet(
     title: String,
+    saving: Boolean,
     onTitleChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onCreate: () -> Unit
@@ -41,7 +44,7 @@ fun CreateDiagramSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                text = "Novo Diagrama ou Lousa",
+                text = stringResource(R.string.diagrams_create_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -49,7 +52,7 @@ fun CreateDiagramSheet(
             OutlinedTextField(
                 value = title,
                 onValueChange = onTitleChange,
-                label = { Text("Título da Lousa") },
+                label = { Text(stringResource(R.string.diagrams_title_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TextPrimary,
@@ -60,11 +63,15 @@ fun CreateDiagramSheet(
             )
             Button(
                 onClick = onCreate,
+                enabled = !saving,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Criar Lousa", fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(if (saving) R.string.diagrams_creating else R.string.diagrams_create),
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }

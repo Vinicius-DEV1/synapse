@@ -31,6 +31,7 @@ fun QuizCompletionScreen(
     score: Int,
     totalQuestions: Int,
     onRestart: () -> Unit,
+    onReturnToLibrary: () -> Unit,
 ) {
     val percentage = if (totalQuestions == 0) 0 else score * 100 / totalQuestions
 
@@ -84,6 +85,12 @@ fun QuizCompletionScreen(
             shape = RoundedCornerShape(8.dp),
         ) {
             Text("Recomeçar sessão", fontWeight = FontWeight.Bold)
+        }
+        androidx.compose.material3.TextButton(
+            onClick = onReturnToLibrary,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        ) {
+            Text("Voltar para questões", color = TextSecondary)
         }
     }
 }

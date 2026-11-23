@@ -5,43 +5,45 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.synapse.features.anki.ui.AnkiStudyScreen
+import com.synapse.ui.components.ModulesBottomSheet
+import com.synapse.ui.components.localizedTitle
+import com.synapse.features.anki.ui.AnkiScreen
 import com.synapse.features.calendar.ui.CalendarScreen
 import com.synapse.features.culture.ui.CultureScreen
 import com.synapse.features.diagrams.ui.DiagramsScreen
 import com.synapse.features.finance.ui.FinanceScreen
+import com.synapse.features.files.ui.FilesScreen
 import com.synapse.features.focus.ui.FocusScreen
 import com.synapse.features.habits.ui.HabitsScreen
 import com.synapse.features.home.ui.HomeScreen
 import com.synapse.features.library.ui.LibraryScreen
 import com.synapse.features.notes.ui.NotesScreen
+import com.synapse.features.notifications.ui.NotificationsScreen
+import com.synapse.features.practice.ui.PracticeScreen
 import com.synapse.features.questions.ui.ZenQuizScreen
+import com.synapse.features.settings.data.AndroidSettingsRepository
+import com.synapse.features.settings.ui.SettingsScreen
 import com.synapse.ui.theme.*
 import com.synapse.features.trash.ui.TrashScreen
 import com.synapse.features.vault.ui.VaultScreen
-import com.synapse.features.video.ui.VideoPlayerScreen
+import com.synapse.features.video.ui.VideoScreen
 
 enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Boolean = true) {
     HOME("Início", Icons.Default.Home, true),
     NOTES("Notas", Icons.AutoMirrored.Filled.Assignment, true),
+    FILES("Arquivos", Icons.Default.Folder, false),
     ANKI("Anki", Icons.Default.Psychology, true),
     QUIZ("Quiz", Icons.Default.Quiz, true),
     DIAGRAMS("Diagramas", Icons.Default.Brush, false),
@@ -53,10 +55,19 @@ enum class NavItem(val title: String, val icon: ImageVector, val isPrimary: Bool
     LIBRARY("Livros", Icons.AutoMirrored.Filled.MenuBook, false),
     VAULT("Cofre", Icons.Default.Lock, false),
     VIDEO("Vídeo", Icons.Default.PlayCircle, false),
-    TRASH("Lixeira", Icons.Default.Delete, false)
+    TRASH("Lixeira", Icons.Default.Delete, false),
+    NOTIFICATIONS("Notificações", Icons.Default.Notifications, false),
+    PRACTICE("Prática", Icons.Default.Mic, false),
+    SETTINGS("Settings", Icons.Default.Settings, false)
 }
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val EXTRA_INITIAL_MODULE = "com.synapse.initial_module"
+        const val EXTRA_NOTIFICATION_PAGE_ID = "com.synapse.notification_page_id"
+        const val EXTRA_NOTIFICATION_EVENT_ID = "com.synapse.notification_event_id"
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,8 +75,42 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SynapseTheme {
-                var currentTab by remember { mutableStateOf(NavItem.HOME) }
-                var showMoreSheet by remember { mutableStateOf(false) }
+                val settingsRepository = remember { AndroidSettingsRepository(applicationContext) }
+                var appSettings by remember { mutableStateOf(settingsRepository.load()) }
+                val initialTab = when {
+                    !intent.getStringExtra(EXTRA_NOTIFICATION_PAGE_ID).isNullOrBlank() -> NavItem.NOTES
+                    !intent.getStringExtra(EXTRA_NOTIFICATION_EVENT_ID).isNullOrBlank() -> NavItem.CALENDAR
+                    intent.getStringExtra(EXTRA_INITIAL_MODULE) == NavItem.NOTIFICATIONS.name -> NavItem.NOTIFICATIONS
+                    else -> NavItem.HOME
+                }
+                var currentTab by rememberSaveable { mutableStateOf(initialTab) }
+                var showMoreSheet by rememberSaveable { mutableStateOf(false) }
+                var immersiveStudy by rememberSaveable { mutableStateOf(false) }
+                var pendingNoteId by rememberSaveable {
+                    mutableStateOf(intent.getStringExtra(EXTRA_NOTIFICATION_PAGE_ID))
+                }
+                var pendingCalendarEventId by rememberSaveable {
+                    mutableStateOf(intent.getStringExtra(EXTRA_NOTIFICATION_EVENT_ID))
+                }
+                var pendingNoteCreation by rememberSaveable { mutableStateOf(false) }
+                val openNote: (String) -> Unit = { noteId ->
+                    pendingNoteCreation = false
+                    pendingNoteId = noteId
+                    currentTab = NavItem.NOTES
+                }
+                val openNotificationTarget: (String?, String?) -> Unit = { pageId, eventId ->
+                    when {
+                        !pageId.isNullOrBlank() -> openNote(pageId)
+                        !eventId.isNullOrBlank() -> {
+                            pendingCalendarEventId = eventId
+                            currentTab = NavItem.CALENDAR
+                        }
+                    }
+                }
+
+                LaunchedEffect(currentTab) {
+                    if (currentTab != NavItem.ANKI && currentTab != NavItem.QUIZ) immersiveStudy = false
+                }
 
                 // Hierarchical back press: If not on primary HOME tab, return to HOME first
                 BackHandler(enabled = currentTab != NavItem.HOME) {
@@ -76,14 +121,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     containerColor = DarkCanvas,
                     bottomBar = {
+                        if (!immersiveStudy) {
                         NavigationBar(containerColor = DarkSurface) {
                             // Primary tabs
                             NavItem.values().filter { it.isPrimary }.forEach { item ->
                                 NavigationBarItem(
                                     selected = currentTab == item,
                                     onClick = { currentTab = item },
-                                    icon = { Icon(item.icon, contentDescription = item.title) },
-                                    label = { Text(item.title) },
+                                    icon = { Icon(item.icon, contentDescription = item.localizedTitle()) },
+                                    label = { Text(item.localizedTitle()) },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Color.White,
                                         selectedTextColor = BrandIndigoLight,
@@ -105,7 +151,7 @@ class MainActivity : ComponentActivity() {
                                         contentDescription = "Módulos"
                                     )
                                 },
-                                label = { Text(if (isSecondarySelected) currentTab.title else "Mais") },
+                                label = { Text(if (isSecondarySelected) currentTab.localizedTitle() else "Mais") },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Color.White,
                                     selectedTextColor = BrandIndigoLight,
@@ -114,6 +160,7 @@ class MainActivity : ComponentActivity() {
                                     unselectedTextColor = TextSecondary
                                 )
                             )
+                        }
                         }
                     }
                 ) { innerPadding ->
@@ -125,9 +172,16 @@ class MainActivity : ComponentActivity() {
                     ) {
                         when (currentTab) {
                             NavItem.HOME -> HomeScreen(
+                                onCreateNote = {
+                                    pendingNoteId = null
+                                    pendingNoteCreation = true
+                                    currentTab = NavItem.NOTES
+                                },
+                                onOpenNote = openNote,
                                 onNavigateToTab = { tabKey ->
                                     val target = when (tabKey) {
                                         "notes" -> NavItem.NOTES
+                                        "files" -> NavItem.FILES
                                         "diagrams" -> NavItem.DIAGRAMS
                                         "anki" -> NavItem.ANKI
                                         "quiz" -> NavItem.QUIZ
@@ -140,88 +194,64 @@ class MainActivity : ComponentActivity() {
                                         "vault" -> NavItem.VAULT
                                         "video" -> NavItem.VIDEO
                                         "trash" -> NavItem.TRASH
+                                        "notifications" -> NavItem.NOTIFICATIONS
+                                        "practice" -> NavItem.PRACTICE
+                                        "settings" -> NavItem.SETTINGS
                                         else -> NavItem.HOME
                                     }
                                     currentTab = target
                                 }
                             )
-                            NavItem.NOTES -> NotesScreen()
+                            NavItem.NOTES -> NotesScreen(
+                                initialNoteId = pendingNoteId,
+                                createNewNote = pendingNoteCreation,
+                                settings = appSettings,
+                                onLaunchActionConsumed = {
+                                    pendingNoteId = null
+                                    pendingNoteCreation = false
+                                },
+                            )
+                            NavItem.FILES -> FilesScreen()
                             NavItem.DIAGRAMS -> DiagramsScreen()
-                            NavItem.ANKI -> AnkiStudyScreen(cards = emptyList())
-                            NavItem.QUIZ -> ZenQuizScreen()
+                            NavItem.ANKI -> AnkiScreen(
+                                onImmersiveChanged = { immersiveStudy = it },
+                                settings = appSettings,
+                            )
+                            NavItem.QUIZ -> ZenQuizScreen(onImmersiveChanged = { immersiveStudy = it })
                             NavItem.HABITS -> HabitsScreen()
-                            NavItem.CALENDAR -> CalendarScreen()
+                            NavItem.CALENDAR -> CalendarScreen(
+                                onOpenNote = openNote,
+                                initialEventId = pendingCalendarEventId,
+                                onLaunchActionConsumed = { pendingCalendarEventId = null },
+                            )
                             NavItem.CULTURE -> CultureScreen()
                             NavItem.FOCUS -> FocusScreen()
                             NavItem.FINANCE -> FinanceScreen()
                             NavItem.LIBRARY -> LibraryScreen()
                             NavItem.VAULT -> VaultScreen()
-                            NavItem.VIDEO -> VideoPlayerScreen()
+                            NavItem.VIDEO -> VideoScreen()
                             NavItem.TRASH -> TrashScreen()
+                            NavItem.NOTIFICATIONS -> NotificationsScreen(onOpenTarget = openNotificationTarget)
+                            NavItem.PRACTICE -> PracticeScreen()
+                            NavItem.SETTINGS -> SettingsScreen(
+                                settings = appSettings,
+                                onSettingsChange = { updated ->
+                                    settingsRepository.save(updated)
+                                    appSettings = updated
+                                },
+                            )
                         }
                     }
 
-                    // More Modules Bottom Sheet
                     if (showMoreSheet) {
-                        ModalBottomSheet(
-                            onDismissRequest = { showMoreSheet = false },
-                            containerColor = DarkSurfaceElevated,
-                            dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp)
-                                    .padding(bottom = 32.dp)
-                            ) {
-                                Text(
-                                    text = "Todos os Módulos Synapse",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    NavItem.values().forEach { item ->
-                                        val isCurrent = currentTab == item
-                                        Surface(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .clickable {
-                                                    currentTab = item
-                                                    showMoreSheet = false
-                                                },
-                                            color = if (isCurrent) BrandIndigo.copy(alpha = 0.2f) else DarkSurface,
-                                            border = androidx.compose.foundation.BorderStroke(
-                                                1.dp,
-                                                if (isCurrent) BrandIndigo else DarkBorder
-                                            )
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(14.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                                            ) {
-                                                Icon(
-                                                    item.icon,
-                                                    contentDescription = item.title,
-                                                    tint = if (isCurrent) BrandIndigoLight else TextSecondary,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Text(
-                                                    text = item.title,
-                                                    fontSize = 15.sp,
-                                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                                                    color = if (isCurrent) Color.White else TextPrimary
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        ModulesBottomSheet(
+                            currentTab = currentTab,
+                            onSelect = { selected ->
+                                currentTab = selected
+                                showMoreSheet = false
+                            },
+                            onDismiss = { showMoreSheet = false },
+                        )
                     }
                 }
             }

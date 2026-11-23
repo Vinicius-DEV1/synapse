@@ -6,10 +6,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -18,6 +22,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,13 +35,17 @@ import com.synapse.ui.theme.*
 fun AddMediaSheet(
     title: String,
     type: String,
+    totalProgress: String,
     onTitleChange: (String) -> Unit,
     onTypeChange: (String) -> Unit,
+    onTotalProgressChange: (String) -> Unit,
+    isSaving: Boolean,
+    errorMessage: String?,
     onDismiss: () -> Unit,
     onAdd: () -> Unit
 ) {
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSaving) onDismiss() },
         containerColor = DarkSurfaceElevated,
         dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
     ) {
@@ -59,22 +69,17 @@ fun AddMediaSheet(
                     unfocusedBorderColor = DarkBorder
                 )
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                listOf("movie" to "Filme", "series" to "Série", "anime" to "Anime").forEach { (value, label) ->
-                    val isSelected = type == value
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CULTURE_MEDIA_TYPES) { option ->
+                    val isSelected = type == option.value
                     Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onTypeChange(value) },
+                        modifier = Modifier.clickable(enabled = !isSaving) { onTypeChange(option.value) },
                         shape = RoundedCornerShape(8.dp),
                         color = if (isSelected) BrandIndigo.copy(alpha = 0.25f) else DarkSurface,
                         border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) BrandIndigo else DarkBorder)
                     ) {
                         Text(
-                            text = label,
+                            text = stringResource(option.label),
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) androidx.compose.ui.graphics.Color.White else TextSecondary,
@@ -84,13 +89,37 @@ fun AddMediaSheet(
                     }
                 }
             }
+            OutlinedTextField(
+                value = totalProgress,
+                onValueChange = { value ->
+                    val parsed = value.toIntOrNull()
+                    if (value.isEmpty() || (parsed != null && parsed > 0)) onTotalProgressChange(value)
+                },
+                label = { Text(if (type == "filme") "Unidades de progresso" else "Total de episódios/capítulos") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    focusedBorderColor = BrandIndigo,
+                    unfocusedBorderColor = DarkBorder
+                )
+            )
+            errorMessage?.let { message ->
+                Text(message, color = IncorrectRoseText, fontSize = 13.sp)
+            }
             Button(
                 onClick = onAdd,
+                enabled = title.isNotBlank() && totalProgress.toIntOrNull() != null && !isSaving,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandIndigo),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Cadastrar Mídia", fontWeight = FontWeight.Bold)
+                if (isSaving) {
+                    CircularProgressIndicator(color = androidx.compose.ui.graphics.Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text("Cadastrar Mídia", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

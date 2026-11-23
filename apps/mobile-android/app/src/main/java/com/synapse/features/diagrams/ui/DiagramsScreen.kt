@@ -1,287 +1,189 @@
 package com.synapse.features.diagrams.ui
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.synapse.R
 import com.synapse.features.diagrams.model.DiagramItem
-import com.synapse.features.diagrams.model.DrawPath
+import com.synapse.features.diagrams.ui.components.DiagramCanvasEditor
+import com.synapse.features.diagrams.ui.components.DiagramsGallery
 import com.synapse.features.diagrams.ui.dialogs.CreateDiagramSheet
-import com.synapse.ui.theme.*
+import com.synapse.features.diagrams.ui.dialogs.DeleteDiagramDialog
+import com.synapse.features.diagrams.viewmodel.DiagramsViewModel
+import com.synapse.ui.theme.BrandIndigo
+import com.synapse.ui.theme.DarkCanvas
+import com.synapse.ui.theme.DarkSurfaceElevated
+import com.synapse.ui.theme.IncorrectRoseText
+import com.synapse.ui.theme.TextPrimary
+import com.synapse.ui.theme.TextSecondary
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiagramsScreen(
-    initialDiagrams: List<DiagramItem> = emptyList()
-) {
-    var diagrams by remember { mutableStateOf(initialDiagrams) }
-    var activeDiagram by remember { mutableStateOf<DiagramItem?>(null) }
-    var isCreatingDiagram by remember { mutableStateOf(false) }
+fun DiagramsScreen() {
+    val context = LocalContext.current.applicationContext
+    val factory = remember(context) {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = DiagramsViewModel(context) as T
+        }
+    }
+    val viewModel: DiagramsViewModel = viewModel(factory = factory)
+    val state by viewModel.state.collectAsState()
+    var showCreateSheet by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
+    var diagramToDelete by remember { mutableStateOf<DiagramItem?>(null) }
 
-    // Canvas state
-    val paths = remember { mutableStateListOf<DrawPath>() }
-    var currentColor by remember { mutableStateOf(BrandIndigo) }
-    var currentPath by remember { mutableStateOf<Path?>(null) }
+    BackHandler(enabled = diagramToDelete != null || showCreateSheet || state.selectedDiagram != null) {
+        when {
+            diagramToDelete != null && !state.saving -> diagramToDelete = null
+            showCreateSheet && !state.saving -> showCreateSheet = false
+            state.selectedDiagram != null -> viewModel.closeEditor()
+        }
+    }
 
-    val colorPalette = listOf(BrandIndigo, CorrectEmerald, AmberWarning, BrandPurple, IncorrectRose, Color.White)
+    LaunchedEffect(state.selectedDiagram?.id) {
+        if (state.selectedDiagram != null) {
+            showCreateSheet = false
+            newTitle = ""
+        }
+    }
 
-    if (activeDiagram != null) {
-        // Full Canvas Whiteboard Editor
-        Scaffold(
-            containerColor = Color(0xFF0C0B12),
-            topBar = {
-                Surface(
-                    color = DarkSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IconButton(onClick = { activeDiagram = null }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = TextPrimary)
-                            }
-                            Text(
-                                text = activeDiagram?.title ?: "Diagrama",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        }
+    val selectedDiagram = state.selectedDiagram
+    if (selectedDiagram != null) {
+        DiagramCanvasEditor(item = selectedDiagram, onBack = viewModel::closeEditor)
+        return
+    }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            colorPalette.forEach { col ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(col)
-                                        .border(2.dp, if (currentColor == col) Color.White else Color.Transparent, CircleShape)
-                                        .clickable { currentColor = col }
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            IconButton(onClick = { paths.clear() }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Limpar", tint = IncorrectRoseText)
-                            }
-                        }
-                    }
-                }
-            }
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+    Scaffold(
+        containerColor = DarkCanvas,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showCreateSheet = true },
+                containerColor = BrandIndigo,
+                contentColor = androidx.compose.ui.graphics.Color.White,
             ) {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    val newP = Path().apply { moveTo(offset.x, offset.y) }
-                                    currentPath = newP
-                                    paths.add(DrawPath(newP, currentColor))
-                                },
-                                onDrag = { change, _ ->
-                                    currentPath?.lineTo(change.position.x, change.position.y)
-                                },
-                                onDragEnd = {
-                                    currentPath = null
-                                }
-                            )
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.diagrams_new))
+            }
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.diagrams_title),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+            )
+            Text(
+                text = stringResource(R.string.diagrams_count, state.items.size),
+                fontSize = 13.sp,
+                color = TextSecondary,
+            )
+            if (state.openingDiagram) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = BrandIndigo)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            state.error?.let { message ->
+                Surface(color = DarkSurfaceElevated, modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(message, color = IncorrectRoseText, modifier = Modifier.weight(1f))
+                        IconButton(onClick = viewModel::dismissError) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.general_close), tint = TextSecondary)
                         }
-                ) {
-                    paths.forEach { drawPath ->
-                        drawPath(
-                            path = drawPath.path,
-                            color = drawPath.color,
-                            style = Stroke(
-                                width = drawPath.strokeWidth,
-                                cap = StrokeCap.Round,
-                                join = StrokeJoin.Round
-                            )
-                        )
                     }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (state.loading && state.items.isEmpty()) {
+                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = BrandIndigo)
+                }
+            } else {
+                DiagramsGallery(
+                    items = state.items,
+                    enabled = !state.saving && !state.openingDiagram,
+                    onOpen = viewModel::open,
+                    onDelete = { diagramToDelete = it },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
-    } else {
-        // Diagrams Gallery Grid
-        Scaffold(
-            containerColor = DarkCanvas,
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { isCreatingDiagram = true },
-                    containerColor = BrandIndigo,
-                    contentColor = Color.White
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Novo Diagrama")
-                }
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Diagramas & Lousa",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "${diagrams.size} lousas e mapas mentais no acervo",
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (diagrams.isEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(220.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Nenhum diagrama disponível neste dispositivo.",
-                                    color = TextMuted,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
+        if (showCreateSheet) {
+            CreateDiagramSheet(
+                title = newTitle,
+                saving = state.saving,
+                onTitleChange = { newTitle = it },
+                onDismiss = { if (!state.saving) showCreateSheet = false },
+                onCreate = { viewModel.create(newTitle, context.getString(R.string.diagrams_default_title)) },
+            )
+        }
+        diagramToDelete?.let { item ->
+            DeleteDiagramDialog(
+                item = item,
+                saving = state.saving,
+                onConfirm = {
+                    diagramToDelete = null
+                    viewModel.delete(item)
+                },
+                onDismiss = { if (!state.saving) diagramToDelete = null },
+            )
+        }
+        if (state.unsupportedContent) {
+            AlertDialog(
+                onDismissRequest = viewModel::dismissUnsupportedContent,
+                containerColor = DarkSurfaceElevated,
+                title = { Text(stringResource(R.string.diagrams_editor_unsupported_title), color = TextPrimary) },
+                text = { Text(stringResource(R.string.diagrams_editor_unsupported_body), color = TextSecondary) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::dismissUnsupportedContent) {
+                        Text(stringResource(R.string.general_close), color = TextSecondary)
                     }
-
-                    items(diagrams, key = { it.id }) { item ->
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable {
-                                    activeDiagram = item
-                                    paths.clear()
-                                },
-                            color = DarkSurface,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(14.dp),
-                                verticalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(BrandIndigo.copy(alpha = 0.15f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(item.icon, fontSize = 18.sp)
-                                    }
-
-                                    IconButton(
-                                        onClick = { diagrams = diagrams.filter { it.id != item.id } },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Excluir", tint = TextMuted, modifier = Modifier.size(16.dp))
-                                    }
-                                }
-
-                                Column {
-                                    Text(
-                                        text = item.title,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextPrimary,
-                                        maxLines = 2
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = item.updatedAt,
-                                        fontSize = 11.sp,
-                                        color = TextSecondary
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (isCreatingDiagram) {
-                CreateDiagramSheet(
-                    title = newTitle,
-                    onTitleChange = { newTitle = it },
-                    onDismiss = { isCreatingDiagram = false },
-                    onCreate = {
-                        if (newTitle.isNotBlank()) {
-                            val created = DiagramItem(
-                                id = java.util.UUID.randomUUID().toString(),
-                                title = newTitle.trim(),
-                                icon = "🎨"
-                            )
-                            diagrams = diagrams + created
-                            newTitle = ""
-                            isCreatingDiagram = false
-                            activeDiagram = created
-                            paths.clear()
-                        }
-                    }
-                )
-            }
+                },
+            )
         }
     }
 }
-

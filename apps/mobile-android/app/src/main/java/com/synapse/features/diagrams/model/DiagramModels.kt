@@ -7,7 +7,7 @@ data class DiagramItem(
     val id: String,
     val title: String,
     val icon: String = "🎨",
-    val updatedAt: String = "Hoje"
+    val updatedAt: String = ""
 )
 
 data class DrawPath(

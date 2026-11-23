@@ -1,6 +1,11 @@
 package com.synapse.features.focus.ui
 
-import androidx.compose.animation.core.animateFloatAsState
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,37 +23,58 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.synapse.features.focus.viewmodel.FocusViewModel
+import com.synapse.features.focus.ui.components.FocusHistoryDialog
+import com.synapse.features.focus.ui.components.FocusAlarmsDialog
+import com.synapse.features.focus.ui.components.FocusScreenHeader
+import com.synapse.features.focus.ui.components.FocusLofiDialog
+import com.synapse.features.focus.ui.components.FocusHelpDialog
 import com.synapse.ui.theme.*
-import kotlinx.coroutines.delay
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FocusScreen() {
-    var selectedPresetMinutes by remember { mutableStateOf(25) }
-    var timeLeftSeconds by remember { mutableStateOf(25 * 60) }
-    var isRunning by remember { mutableStateOf(false) }
-    var sessionsCompletedToday by remember { mutableStateOf(0) }
-    var focusMinutesCompletedToday by remember { mutableStateOf(0) }
-    var activeSound by remember { mutableStateOf<String?>("chuva") }
-
-    LaunchedEffect(isRunning, timeLeftSeconds) {
-        if (isRunning && timeLeftSeconds > 0) {
-            delay(1000L)
-            timeLeftSeconds--
-        } else if (timeLeftSeconds == 0 && isRunning) {
-            isRunning = false
-            sessionsCompletedToday++
-            focusMinutesCompletedToday += selectedPresetMinutes
-            timeLeftSeconds = selectedPresetMinutes * 60
+    val context = LocalContext.current.applicationContext
+    val factory = remember(context) {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = FocusViewModel(context) as T
         }
     }
+    val viewModel: FocusViewModel = viewModel(factory = factory)
+    val focusState by viewModel.state.collectAsState()
+    var showHistory by remember { mutableStateOf(false) }
+    var showAlarms by remember { mutableStateOf(false) }
+    var showLofi by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
+    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri?.let(viewModel::importLofiTrack)
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+        viewModel::onNotificationPermissionResult,
+    )
+    val requestAlarmNotificationPermission: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+    val timer = focusState.timer
+    val selectedPresetMinutes = timer.selectedPresetMinutes
+    val timeLeftSeconds = timer.remainingSeconds
+    val isRunning = timer.isRunning
+    val activeSound = timer.activeSound
+
+    LaunchedEffect(viewModel) { viewModel.refresh() }
 
     val minutes = timeLeftSeconds / 60
     val seconds = timeLeftSeconds % 60
     val timeFormatted = String.format("%02d:%02d", minutes, seconds)
-    val totalSeconds = selectedPresetMinutes * 60
-    val progress = if (totalSeconds > 0) (totalSeconds - timeLeftSeconds).toFloat() / totalSeconds else 0f
-
     val ambientSounds = listOf(
         "chuva" to "🌧️ Chuva",
         "cafe" to "☕ Café",
@@ -68,38 +94,16 @@ fun FocusScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Foco & Lo-Fi Pomodoro",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "$sessionsCompletedToday ciclos concluídos hoje ($focusMinutesCompletedToday min)",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = DarkSurfaceElevated,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
-                    modifier = Modifier.padding(4.dp)
-                ) {
-                    Icon(
-                        Icons.Default.HourglassTop,
-                        contentDescription = "Foco",
-                        tint = BrandIndigoLight,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
+            FocusScreenHeader(
+                stats = focusState.stats,
+                onOpenHelp = { showHelp = true },
+                onOpenLofi = { showLofi = true },
+                onOpenAlarms = { showAlarms = true },
+                onOpenHistory = { showHistory = true },
+            )
+
+            if (focusState.error != null) {
+                Text(focusState.error.orEmpty(), color = IncorrectRoseText, fontSize = 12.sp)
             }
 
             // Presets Row
@@ -120,9 +124,7 @@ fun FocusScreen() {
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isSel) DarkSurfaceElevated else Color.Transparent)
                             .clickable {
-                                selectedPresetMinutes = mins
-                                timeLeftSeconds = mins * 60
-                                isRunning = false
+                                viewModel.selectPreset(mins)
                             }
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
@@ -169,8 +171,7 @@ fun FocusScreen() {
             ) {
                 IconButton(
                     onClick = {
-                        isRunning = false
-                        timeLeftSeconds = selectedPresetMinutes * 60
+                        viewModel.resetTimer()
                     },
                     modifier = Modifier
                         .size(48.dp)
@@ -182,7 +183,7 @@ fun FocusScreen() {
                 }
 
                 Button(
-                    onClick = { isRunning = !isRunning },
+                    onClick = viewModel::toggleTimer,
                     modifier = Modifier
                         .height(56.dp)
                         .width(140.dp),
@@ -200,7 +201,7 @@ fun FocusScreen() {
 
                 IconButton(
                     onClick = {
-                        timeLeftSeconds = maxOf(0, timeLeftSeconds - 60)
+                        viewModel.skipMinute()
                     },
                     modifier = Modifier
                         .size(48.dp)
@@ -234,7 +235,7 @@ fun FocusScreen() {
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    activeSound = if (isSoundActive) null else key
+                                    viewModel.toggleSound(key)
                                 },
                             color = if (isSoundActive) BrandIndigo.copy(alpha = 0.25f) else DarkSurface,
                             border = androidx.compose.foundation.BorderStroke(
@@ -256,4 +257,37 @@ fun FocusScreen() {
             }
         }
     }
+
+    if (showHistory) {
+        FocusHistoryDialog(focusState.sessions) { showHistory = false }
+    }
+    if (showAlarms) {
+        FocusAlarmsDialog(
+            alarms = focusState.alarms,
+            saving = focusState.saving,
+            onDismiss = { showAlarms = false },
+            onCreate = { time, label ->
+                viewModel.createAlarm(time, label)
+                requestAlarmNotificationPermission()
+            },
+            onToggle = { id, enabled ->
+                viewModel.setAlarmEnabled(id, enabled)
+                if (enabled) requestAlarmNotificationPermission()
+            },
+            onDelete = viewModel::deleteAlarm,
+        )
+    }
+    if (showLofi) {
+        FocusLofiDialog(
+            tracks = focusState.lofiTracks,
+            activeTrackId = focusState.activeLofiId,
+            isPlaying = focusState.isLofiPlaying,
+            saving = focusState.saving,
+            onDismiss = { showLofi = false },
+            onImport = { audioPicker.launch(arrayOf("audio/*")) },
+            onTogglePlayback = viewModel::toggleLofiTrack,
+            onDelete = viewModel::deleteLofiTrack,
+        )
+    }
+    if (showHelp) FocusHelpDialog(onDismiss = { showHelp = false })
 }

@@ -47,10 +47,12 @@ fun CultureMediaCard(
             ) {
                 Text(
                     text = when (item.type) {
-                        "movie" -> "🎬"
-                        "series" -> "📺"
+                        "filme" -> "🎬"
+                        "série" -> "📺"
                         "anime" -> "🎌"
-                        else -> "📖"
+                        "hq", "manga" -> "📖"
+                        "livro", "novel" -> "📚"
+                        else -> "🎞️"
                     },
                     fontSize = 24.sp
                 )
@@ -68,8 +70,14 @@ fun CultureMediaCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("★ ${item.score}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AmberWarningText)
-                    Text("${item.currentProgress}/${item.totalProgress} ep", fontSize = 12.sp, color = TextSecondary)
+                    item.score?.let { score ->
+                        Text("★ $score", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AmberWarningText)
+                    }
+                    Text(
+                        "${item.currentProgress}/${item.totalProgress} ${if (item.type == "filme") "unidades" else "cap./ep."}",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                    )
                     Text(
                         text = when (item.status) {
                             "watching" -> "Assistindo"

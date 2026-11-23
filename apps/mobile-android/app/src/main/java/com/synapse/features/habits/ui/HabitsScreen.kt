@@ -1,60 +1,96 @@
 package com.synapse.features.habits.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.synapse.features.habits.ui.components.HabitCard
+import com.synapse.features.habits.ui.components.HabitsHelpAction
 import com.synapse.features.habits.ui.dialogs.CreateHabitDialog
-import com.synapse.ui.theme.*
+import com.synapse.features.habits.viewmodel.HabitViewModel
+import com.synapse.ui.theme.BrandIndigo
+import com.synapse.ui.theme.BrandIndigoLight
+import com.synapse.ui.theme.DarkBorder
+import com.synapse.ui.theme.DarkCanvas
+import com.synapse.ui.theme.DarkSurface
+import com.synapse.ui.theme.IncorrectRoseText
+import com.synapse.ui.theme.TextMuted
+import com.synapse.ui.theme.TextPrimary
+import com.synapse.ui.theme.TextSecondary
 
-data class HabitItem(
-    val id: String,
-    val name: String,
-    val icon: String = "⚡",
-    val category: String = "Rotina",
-    val currentStreak: Int = 0,
-    val daysCompleted: List<Boolean> = listOf(false, false, false, false, false, false, false)
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitsScreen(
-    initialHabits: List<HabitItem> = emptyList()
-) {
-    var habits by remember { mutableStateOf(initialHabits) }
+fun HabitsScreen() {
+    val context = LocalContext.current.applicationContext
+    val factory = remember(context) {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = HabitViewModel(context) as T
+        }
+    }
+    val viewModel: HabitViewModel = viewModel(factory = factory)
+    val state by viewModel.state.collectAsState()
+
     var selectedCategory by remember { mutableStateOf("Todos") }
     var isAddingHabit by remember { mutableStateOf(false) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submittedMutationVersion by remember { mutableStateOf(0L) }
     var newHabitName by remember { mutableStateOf("") }
-    var newHabitCategory by remember { mutableStateOf("Geral") }
+    var newHabitCategory by remember { mutableStateOf("Rotina") }
 
-    val daysOfWeek = listOf("S", "T", "Q", "Q", "S", "S", "D")
-
-    val categories = listOf("Todos", "Saúde", "Estudos", "Mente", "Rotina")
-
-    val filteredHabits = remember(habits, selectedCategory) {
-        if (selectedCategory == "Todos") habits
-        else habits.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+    LaunchedEffect(state.mutationVersion, state.saving, state.error) {
+        if (isSubmitting && state.mutationVersion > submittedMutationVersion) {
+            newHabitName = ""
+            isAddingHabit = false
+            isSubmitting = false
+        } else if (isSubmitting && !state.saving && state.error != null) {
+            isSubmitting = false
+        }
     }
 
-    val totalCompletedToday = remember(habits) {
-        habits.count { it.daysCompleted.lastOrNull() == true }
+    val categories = remember(state.habits) {
+        listOf("Todos") + state.habits.map { it.category }.distinct().sorted()
     }
+    val filteredHabits = remember(state.habits, selectedCategory) {
+        if (selectedCategory == "Todos") state.habits
+        else state.habits.filter { it.category.equals(selectedCategory, ignoreCase = true) }
+    }
+    val completedToday = remember(state.habits) { state.habits.count { it.todayCompleted } }
 
     Scaffold(
         containerColor = DarkCanvas,
@@ -62,198 +98,90 @@ fun HabitsScreen(
             FloatingActionButton(
                 onClick = { isAddingHabit = true },
                 containerColor = BrandIndigo,
-                contentColor = Color.White
+                contentColor = Color.White,
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Novo Hábito")
             }
-        }
+        },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Header Banner
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column {
+                    Text("Rastreador de Hábitos", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Text(
-                        text = "Rastreador de Hábitos",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "$totalCompletedToday de ${habits.size} hábitos concluídos hoje",
+                        "$completedToday de ${state.habits.size} hábitos concluídos hoje",
                         fontSize = 13.sp,
-                        color = TextSecondary
+                        color = TextSecondary,
                     )
                 }
+                HabitsHelpAction()
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Category Filter Pills
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                categories.forEach { cat ->
-                    val isSelected = selectedCategory == cat
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(categories) { category ->
+                    val selected = selectedCategory == category
                     Surface(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { selectedCategory = cat },
-                        color = if (isSelected) BrandIndigo else DarkSurface,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isSelected) BrandIndigoLight else DarkBorder
-                        )
+                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { selectedCategory = category },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected) BrandIndigo else DarkSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) BrandIndigoLight else DarkBorder),
                     ) {
                         Text(
-                            text = cat,
+                            category,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            color = if (isSelected) Color.White else TextSecondary,
+                            color = if (selected) Color.White else TextSecondary,
                             fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Habits List
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (filteredHabits.isEmpty()) {
+                if (state.loading && state.habits.isEmpty()) {
                     item {
-                        Text(
-                            text = "Nenhum hábito disponível neste dispositivo.",
-                            color = TextMuted,
-                            fontSize = 14.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 32.dp)
-                        )
+                        CircularProgressIndicator(modifier = Modifier.padding(top = 32.dp), color = BrandIndigoLight)
                     }
                 }
-
-                items(filteredHabits, key = { it.id }) { habit ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp)),
-                        color = DarkSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            // Top Row: Icon, Name, Streak badge
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(text = habit.icon, fontSize = 20.sp)
-                                    Column {
-                                        Text(
-                                            text = habit.name,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Text(
-                                            text = habit.category,
-                                            fontSize = 11.sp,
-                                            color = TextMuted
-                                        )
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = AmberWarningBg,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, AmberWarning.copy(alpha = 0.3f))
-                                ) {
-                                    Text(
-                                        text = "🔥 ${habit.currentStreak} dias",
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        color = AmberWarningText,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // 7-day Streak Bubbles
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                habit.daysCompleted.forEachIndexed { index, completed ->
-                                    val dayName = daysOfWeek.getOrElse(index) { "?" }
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            text = dayName,
-                                            fontSize = 10.sp,
-                                            color = TextMuted
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .size(32.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    if (completed) CorrectEmerald else DarkSurfaceElevated
-                                                )
-                                                .border(
-                                                    1.dp,
-                                                    if (completed) CorrectEmerald else DarkBorder,
-                                                    CircleShape
-                                                )
-                                                .clickable {
-                                                    val updatedDays = habit.daysCompleted.toMutableList()
-                                                    updatedDays[index] = !completed
-                                                    val delta = if (updatedDays[index]) 1 else -1
-                                                    val newStreak = maxOf(0, habit.currentStreak + delta)
-                                                    habits = habits.map {
-                                                        if (it.id == habit.id) it.copy(daysCompleted = updatedDays, currentStreak = newStreak)
-                                                        else it
-                                                    }
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (completed) {
-                                                Icon(
-                                                    Icons.Default.Check,
-                                                    contentDescription = "Concluído",
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                if (state.error != null && !isAddingHabit) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(state.error.orEmpty(), color = IncorrectRoseText, fontSize = 13.sp)
+                            TextButton(onClick = viewModel::refresh, enabled = !state.loading) {
+                                Text("Tentar novamente", color = BrandIndigoLight)
                             }
                         }
                     }
+                }
+                if (!state.loading && filteredHabits.isEmpty()) {
+                    item {
+                        Text(
+                            if (state.habits.isEmpty()) "Nenhum hábito cadastrado ainda." else "Nenhum hábito nesta categoria.",
+                            color = TextMuted,
+                            fontSize = 14.sp,
+                            modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                        )
+                    }
+                }
+                items(filteredHabits, key = { it.id }) { habit ->
+                    HabitCard(
+                        habit = habit,
+                        saving = state.saving,
+                        onCheckin = { date -> if (!state.saving) viewModel.toggleCheckin(habit.id, date) },
+                        onDelete = { if (!state.saving) viewModel.delete(habit) },
+                    )
                 }
             }
         }
@@ -262,24 +190,18 @@ fun HabitsScreen(
             CreateHabitDialog(
                 name = newHabitName,
                 category = newHabitCategory,
+                isSaving = state.saving,
+                errorMessage = state.error.takeIf { isSubmitting },
                 onNameChange = { newHabitName = it },
                 onCategoryChange = { newHabitCategory = it },
-                onDismiss = { isAddingHabit = false },
+                onDismiss = { if (!state.saving) isAddingHabit = false },
                 onCreate = {
-                    if (newHabitName.isNotBlank()) {
-                        habits = listOf(
-                            HabitItem(
-                                id = System.currentTimeMillis().toString(),
-                                name = newHabitName.trim(),
-                                category = newHabitCategory.trim(),
-                                currentStreak = 0,
-                                daysCompleted = listOf(false, false, false, false, false, false, false)
-                            )
-                        ) + habits
-                        newHabitName = ""
-                        isAddingHabit = false
+                    if (newHabitName.isNotBlank() && !state.saving) {
+                        submittedMutationVersion = state.mutationVersion
+                        isSubmitting = true
+                        viewModel.create(newHabitName.trim(), newHabitCategory.trim())
                     }
-                }
+                },
             )
         }
     }

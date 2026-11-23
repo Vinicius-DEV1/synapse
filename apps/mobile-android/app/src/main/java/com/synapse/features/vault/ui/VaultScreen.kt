@@ -22,10 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.synapse.R
 import com.synapse.ui.theme.*
 
 data class VaultCredential(
@@ -80,11 +82,12 @@ fun VaultScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Cofre E2EE & Credenciais",
+                text = stringResource(R.string.vault_title),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
+            VaultHelpAction()
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -175,11 +178,18 @@ fun VaultScreen(
                                     color = TextSecondary
                                 )
                             }
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(item.group, fontSize = 10.sp, color = BrandIndigoLight) },
-                                colors = AssistChipDefaults.assistChipColors(containerColor = DarkSurfaceElevated)
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = DarkSurfaceElevated,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
+                            ) {
+                                Text(
+                                    text = item.group,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    fontSize = 10.sp,
+                                    color = BrandIndigoLight,
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))

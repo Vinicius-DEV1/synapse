@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -19,17 +21,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.synapse.features.calendar.model.CalendarEventItem
+import com.synapse.R
 import com.synapse.ui.theme.*
 
 @Composable
 fun CalendarEventCard(
     event: CalendarEventItem,
     onToggleComplete: () -> Unit,
-    onDelete: () -> Unit
+    onOpenNote: (String) -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
 ) {
+    val schedule = when {
+        event.time == "00:00" && event.endTime == "23:59" -> "${event.date} • ${stringResource(R.string.calendar_all_day)}"
+        event.date != event.endDate -> "${event.date} ${event.time} – ${event.endDate} ${event.endTime}"
+        event.time != event.endTime -> "${event.date} • ${event.time}–${event.endTime}"
+        else -> "${event.date} às ${event.time}"
+    }
+    val taskLabel = if (event.eventType == "task") {
+        "${stringResource(R.string.calendar_type_task)} · "
+    } else {
+        ""
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -54,16 +71,29 @@ fun CalendarEventCard(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (event.isCompleted) TextMuted else TextPrimary,
-                    textDecoration = if (event.isCompleted) TextDecoration.LineThrough else null
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = event.title,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (event.isCompleted) TextMuted else TextPrimary,
+                        textDecoration = if (event.isCompleted) TextDecoration.LineThrough else null
+                    )
+                    event.pageId?.let { pageId ->
+                        IconButton(onClick = { onOpenNote(pageId) }, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = "Abrir página vinculada",
+                                tint = BrandIndigoLight,
+                                modifier = Modifier.size(15.dp),
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${event.date} às ${event.time}" +
+                    text = taskLabel + schedule +
                         if (event.description.isNotBlank()) " • ${event.description}" else "",
                     fontSize = 12.sp,
                     color = TextSecondary,
@@ -94,6 +124,14 @@ fun CalendarEventCard(
                 }
             }
             Spacer(modifier = Modifier.width(6.dp))
+            IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Editar compromisso",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.Delete,

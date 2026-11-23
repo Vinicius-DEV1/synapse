@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
@@ -23,8 +24,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.synapse.R
 import com.synapse.ui.theme.BrandIndigo
 
 @Composable
@@ -40,7 +44,8 @@ fun VideoPlayerControls(
     onSkipBackward: () -> Unit,
     onSkipForward: () -> Unit,
     onScrub: (Long) -> Unit,
-    onEnterPictureInPicture: () -> Unit
+    onEnterPictureInPicture: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val playbackSpeeds = remember { listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f) }
 
@@ -63,11 +68,17 @@ fun VideoPlayerControls(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.video_player_back), tint = Color.White)
+                }
                 Text(
                     text = "🎬 $videoTitle",
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                     color = Color.White,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(
@@ -89,7 +100,7 @@ fun VideoPlayerControls(
                     IconButton(onClick = onEnterPictureInPicture) {
                         Icon(
                             imageVector = Icons.Default.PictureInPicture,
-                            contentDescription = "Picture in Picture",
+                            contentDescription = stringResource(R.string.video_picture_in_picture),
                             tint = Color.White
                         )
                     }
@@ -103,7 +114,7 @@ fun VideoPlayerControls(
                 IconButton(onClick = onSkipBackward) {
                     Icon(
                         imageVector = Icons.Default.FastRewind,
-                        contentDescription = "Rewind 10s",
+                        contentDescription = stringResource(R.string.video_rewind),
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
@@ -118,7 +129,7 @@ fun VideoPlayerControls(
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = stringResource(if (isPlaying) R.string.video_pause else R.string.video_play),
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
@@ -126,7 +137,7 @@ fun VideoPlayerControls(
                 IconButton(onClick = onSkipForward) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
-                        contentDescription = "Forward 10s",
+                        contentDescription = stringResource(R.string.video_forward),
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
