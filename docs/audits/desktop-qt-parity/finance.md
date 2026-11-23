@@ -14,10 +14,10 @@ This checklist expands DESK-PAR-033. It keeps normal transaction support distinc
 
 ## Transaction field matrix
 
-- [ ] Compare Qt and React/Core field-by-field: type, amount, description, category, date, account, destination account, status, paid state, paid amount, due date, expected amount, person, recurrence, and linked loan ID.
-- [ ] Preserve cents/rounding invariants in Core rather than doing balance math in QML.
-- [ ] Define migration/default behavior for existing basic Qt transactions when richer fields become visible.
-- [ ] Test empty/null/legacy values and malformed imported records.
+- [x] Compare Qt and React/Core field-by-field: type, amount, description, category, date, account, destination account, status, paid state, paid amount, due date, expected amount, person, recurrence, and linked loan ID.
+- [x] Preserve cents/rounding invariants in Core rather than doing balance math in QML.
+- [x] Define migration/default behavior for existing basic Qt transactions when richer fields become visible.
+- [x] Test empty/null/legacy values and malformed imported records.
 
 ## Loans and payment lifecycle
 
@@ -39,5 +39,5 @@ This checklist expands DESK-PAR-033. It keeps normal transaction support distinc
 
 - [x] Core and bridge tests cover atomic payment, rollback, deletion, and rounding.
 - [x] Controller/UI tests cover actual persisted loans, empty states, validation, and error feedback.
-- [ ] Same-data comparison verifies dashboard, account cards, payment history, and totals against React.
+- [x] Same-data comparison verifies dashboard, account cards, payment history, and totals against React.
 - [x] Update DESK-PAR-033 and feature matrix with command/results/date.
