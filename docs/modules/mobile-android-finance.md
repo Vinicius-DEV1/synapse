@@ -1,10 +1,10 @@
 # Native Android Finance Module
 
-**Status:** Native Finance UI and local API are implemented through Kotlin/Compose, UniFFI, `synapse-core`, and SQLite. Firebase account sign-in and cloud synchronization are not implemented for the native Android app. Last reviewed: 2026-11-20.
+**Status:** Native Finance UI and local API are implemented through Kotlin/Compose, UniFFI, `synapse-core`, and SQLite. Firebase account sign-in and cloud synchronization are not implemented for the native Android app. Last reviewed: 2026-11-22.
 
 ## Scope
 
-The implementation is limited to the Finance feature in `apps/mobile-android/`. Other Android modules were not migrated to persistence or changed as part of this work. The old Finance sample model, summary card, and transaction dialog were removed; Finance no longer presents sample transactions as user data.
+This guide documents the Finance-specific implementation and its limits. Several other Android modules now have local Core/UniFFI flows; their current feature-by-feature status and remaining work are tracked in the [React-to-Android parity checklist](../audits/mobile-android-parity/feature-matrix.md). The old Finance sample model, summary card, and transaction dialog were removed; Finance no longer presents sample transactions as user data.
 
 The screen follows the React Finance module's core workflows: account selection and balances, period summaries, income and expense entries, transfers, pending confirmation, loans and partial payments, payment settlement and reopening, wishlist CRUD, and wishlist acquisition. The native guide describes how the local data works and states the cloud-sync limitation.
 
@@ -47,7 +47,7 @@ Payment and acquisition flows use SQLite transactions so the associated parent r
 - Native Android Finance does **not** authenticate with Firebase, load the Conta Nuvem keychain, or synchronize Finance records to Firestore. No Firebase reads or writes are made by this module.
 - The Android Finance SQLite database currently stores Finance columns in plaintext. App-private storage does not constitute field-level encryption.
 - The account/password migration and encrypted local key ownership for Android remain open. Do not describe native Finance data as cloud-backed, cross-device, or encrypted at rest.
-- Other Android module APIs and persistence are outside this implementation and remain tracked in the [Android audit](../audits/potential-bug-audit-android-2026-11-19.md).
+- Other Android modules and all cross-client gaps remain tracked in the [React-to-Android parity checklist](../audits/mobile-android-parity/feature-matrix.md).
 
 ## Verification
 
@@ -74,4 +74,4 @@ apps/mobile-android/gradlew -p apps/mobile-android :app:assembleDebug
 - [x] Remove the superseded Finance sample model and demo components.
 - [ ] Implement Firebase Authentication, Conta Nuvem key loading, and cloud sync for native Android.
 - [ ] Add and verify at-rest encryption for Android Finance data.
-- [ ] Complete persistence and sync integration for other Android modules when they are in scope.
+- [ ] Complete account-scoped sync for Android modules that already have typed local Core persistence; see the [Android parity checklist](../audits/mobile-android-parity/feature-matrix.md) for module-level coverage.

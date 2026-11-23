@@ -71,7 +71,7 @@ The unified architecture establishes `core/synapse-core/` as the **Single Source
 
 ### React and Tauri
 
-React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands as non-blocking `async fn` handlers (`tokio::task::spawn_blocking`) backed by a dedicated SQLite WAL writer connection and a 4-connection read-only pool (`apps/web-react/src-tauri/src/db.rs`), delegating persistence and domain calculations directly to `core/synapse-core/`. Web browser flows consume pure domain logic compiled via `bridges/bridge-wasm/` and store local data in `IndexedDB`.
+React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands as non-blocking `async fn` handlers (`tokio::task::spawn_blocking`) backed by a dedicated SQLite WAL writer connection and a 4-connection read-only pool (`apps/web-react/src-tauri/src/db.rs`). Many handlers delegate persistence and domain calculations to `core/synapse-core/`, but some domain commands still contain direct SQL or duplicate operations; see the current `WEB-CORE-*` remediation findings in the [React-to-Android parity checklist](../audits/mobile-android-parity/core-and-react.md). Web browser flows use domain services and platform adapters compiled or bundled for the browser and store local data in `IndexedDB`; full Core/WASM parity remains incomplete for Anki scheduling.
 
 ### Qt Desktop
 

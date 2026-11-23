@@ -135,6 +135,10 @@ To prevent concurrent execution, race conditions, and wasted cloud quotas, `useS
 
 ---
 
+## 3.2. Known Conflict Limitation
+
+The current timestamp-based last-write-wins behavior may not distinguish two different edits to a non-page record when they share the same timestamp precision. The Yjs page merge path has dedicated convergence handling, but that does not prove collision-free synchronization for every entity. Revalidate the current code before changing sync behavior; before claiming collision-free multi-client sync, define a version or revision conflict contract, migration and recovery behavior, and regression coverage for equal-time concurrent edits.
+
 ## 4. Cross-Platform Consistency & Timestamp Standards
 
 ### 4.1. Strict RFC3339 UTC Formatting

@@ -31,7 +31,7 @@ Keep persisted route keys, database identifiers, and public API names stable dur
 
 ## Verified Navigation Coverage
 
-**Inventory date:** 2026-11-20.
+**Inventory date:** 2026-11-22.
 
 This inventory records whether a client has a top-level route or overlay entry point. A route does not certify feature parity; the Qt feature comparison remains in the [native desktop parity matrix](../native-desktop-parity.md).
 
@@ -44,17 +44,17 @@ This inventory records whether a client has a top-level route or overlay entry p
 | Video | Route | Route | Route | Hosts React app |
 | Flashcards (`anki`) | Route | Route | Route | Hosts React app |
 | Diagrams | Route | Route | Route | Hosts React app |
-| Calendar | Route | Route | Route | Hosts React app |
-| Culture | Route | Route | Route | Hosts React app |
+| Calendar | Route | Route | Native Core-backed event list/create/edit/complete/delete with month navigation, selected-day filtering, linked-page opening, notification deep links to matching event editing, and date-range validation; recurrence/reminders/Firebase sync are open | Hosts React app |
+| Culture | Route | Route | Native catalog with typed Core-backed create/edit/progress/goals/soft-delete and episode checklist; catalog APIs and sync are open | Hosts React app |
 | Finance | Route | Route | Native Compose route with typed core-backed SQLite persistence; no Firebase sync | Hosts React app |
-| Focus | Route | Route | Route | Hosts React app |
-| Habits | Editor widget/API; no standalone `Tab` or `ViewFactory` route | Editor widget/modal; no standalone sidebar route | Route | Hosts React app; no separate shell route |
+| Focus | Route | Route | Native Core-backed completed-session statistics/history; timer preset, pause, sound selection, and absolute deadline persist locally across navigation/process recreation; alarms, audio playback, and sync are open | Hosts React app |
+| Habits | Editor widget/API; no standalone `Tab` or `ViewFactory` route | Editor widget/modal; no standalone sidebar route | Native route with typed Core persistence, check-ins, and shared streak metrics | Hosts React app; no separate shell route |
 | Vault | Route | Route | Route | Hosts React app |
-| Files | Route | Route | No route found | Hosts React app |
-| Practice | Route | No route found | No route found | Hosts React app |
+| Files | Route | Route | Native Core-backed browser with nested folders, recent/Drive metadata, SAF import, move/rename/duplicate, current-list filters, and bounded global file/folder search; Drive sync, bulk actions, export, app-native preview, page links, and encryption are open | Hosts React app |
+| Practice | Route | No route found | Native Core-backed session history, transcript, notes, and memory management; AI provider/voice flows are open | Hosts React app |
 | Trash | Route | Route | Route | Hosts React app |
-| Settings | Route | Route | No route found | Hosts React app |
-| Notifications | Global overlay | Global overlay | No native route found | Hosts React app |
+| Settings | Route | Route | Native route with locally persisted note text size, spellcheck, Anki flip animation, and study sound preferences; other React settings are open | Hosts React app |
+| Notifications | Global overlay | Global overlay | Native route with typed Core-backed list/read/delete and atomic 15-minute snooze; permission-aware system alerts restore on reboot/app restart and open linked Notes or Calendar events; Calendar reminder generation and sync are open | Hosts React app |
 | Workspaces | Switcher and management modals | No workspace management route found | No route found | Hosts React app |
 | Authentication and cloud sync | Auth and sync flows | No equivalent shell flow found | No equivalent shell flow found | Hosts React app |
 | AI assistant sidebar and sharing | Global overlays/actions | No equivalent flow found | No equivalent flow found | Hosts React app |
@@ -67,7 +67,7 @@ React and Qt desktop do not include `habits` as a standalone sidebar navigation 
 | --- | --- | --- | --- | --- |
 | Module presentation | `apps/web-react/src/components/<module>/` | `apps/desktop-qt/qml/<module>/` | `apps/mobile-android/app/src/main/java/com/synapse/features/<module>/ui/` | No product modules; embeds the React app |
 | Module orchestration | Shared hooks in `apps/web-react/src/hooks/`, or focused hooks colocated under a module | Feature controllers in `apps/desktop-qt/src/controllers/<module>/` | Add ViewModels under the same `features/<module>/` package when a screen needs state orchestration | Shell lifecycle in `App.tsx` |
-| Domain and persistence | Canonical domain logic and SQLite repositories in `core/synapse-core/` (Tauri commands delegate directly); Web browser uses `src/services/<module>/` with `bridge-wasm` | Thin C++ controllers delegate persistence and domain calculations to `core/synapse-core/` via `bridges/bridge-qt/` | ViewModels delegate domain and persistence to `core/synapse-core/` via `bridges/bridge-uniffi/` | No domain or product persistence layer |
+| Domain and persistence | Core repositories own migrated shared operations; remaining Tauri commands with direct SQL are tracked in `WEB-CORE-*`; Web browser uses `src/services/<module>/` and `bridge-wasm` where available | Thin C++ controllers delegate persistence and domain calculations to `core/synapse-core/` via `bridges/bridge-qt/` | Documented ViewModels and repositories delegate to `core/synapse-core/` via `bridges/bridge-uniffi/`; platform-only lifecycle state stays in Android preferences | No domain or product persistence layer |
 | Platform boundaries | `apps/web-react/src/api/{contracts,web,tauri}/` | `bridges/bridge-qt/` | `bridges/bridge-uniffi/` | `src/config/` and `src/utils/` for shell-to-web bridge behavior |
 | Module tests | Beside the implementation as `*.test.ts(x)` | `apps/desktop-qt/tests/<module>/` | `app/src/test/` or `app/src/androidTest/`, grouped by module | Beside shell logic when tests are introduced |
 
@@ -75,7 +75,7 @@ The React app intentionally keeps its top-level `components/`, `hooks/`, `store/
 
 Qt keeps QML in a feature-first tree and groups thin C++ controllers under the same module ID. Controllers expose `Q_PROPERTY` and signals to QML while delegating SQLite queries and domain calculations to `core/synapse-core/` via `bridges/bridge-qt/`. `src/synapse_controller.*`, `src/main.cpp`, media integration, and platform helpers remain at the shared app level because they compose or serve multiple modules.
 
-Android Compose groups feature screens under `features/<module>/ui/`. The Finance module owns its `data/` repository and `ui/` ViewModel, both delegating domain rules and persistence to `core/synapse-core/` through UniFFI. See the [native Android Finance guide](../modules/mobile-android-finance.md) for its implemented API and cloud-sync/encryption gaps. Add `domain/`, `data/`, or `viewmodel/` only when the module owns that responsibility; do not create empty placeholder packages. Theme, core bindings, and media primitives stay shared.
+Android Compose groups feature screens under `features/<module>/ui/`. Finance, Files, Calendar, Culture, Diagrams catalog, Video catalog/folders, Focus, Habits, Trash, Notifications, Practice, Anki, Questions, Library, and supported Notes flows use module-owned repositories/ViewModels with typed `synapse-core` operations through UniFFI and the shared Android database path. Focus timer lifecycle and Settings display/interaction preferences use Android preferences for platform-specific state. The Diagrams canvas remains transient until its document format can interoperate with React Tldraw snapshots. Video stores catalog metadata, folders, and progress in Core while streaming Android document URIs directly; encrypted and remote playback remain open. Account, cloud sync, full encryption, and other cross-client settings remain open. See the [native Android Finance guide](../modules/mobile-android-finance.md) for Finance's local-only and encryption limits and the [Android parity checklist](../audits/mobile-android-parity/README.md) for the current feature inventory and implementation queue. Add `domain/`, `data/`, or `viewmodel/` only when the feature owns that responsibility; do not create empty placeholder packages. Theme, core bindings, and media primitives stay shared.
 
 The Expo WebView project is a host shell, not a second copy of the React product. Keep its navigation bridge, safe-area integration, and native capabilities in the shell; implement product features in the React app or in the fully native Android app.
 

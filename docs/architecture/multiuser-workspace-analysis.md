@@ -71,7 +71,7 @@ The project enforces strict separation of concerns across four tiers:
 | :--- | :--- | :--- |
 | **Firestore** | **Active (Core Sync Relay)** | Configured via `apps/web-react/src/services/firebase.ts`, rules in `firestore.rules`. Serves as encrypted blind relay. |
 | **Authentication** | **Configured; account setup pending in this snapshot** | Firebase Auth email/password and anonymous providers were enabled for the configured web app. The production project had zero Auth users at the time. The primary account was established later; scoped reconciliation and remaining UI acceptance are tracked in the current Firebase audit. |
-| **Storage** | **Initialized but unused in this snapshot; since removed** | Firebase Storage had no consumers at the time. Its unused initialization and environment setting have since been removed; see the [repository hygiene audit](../maintenance/repository-hygiene-audit-2026-11-18.md). |
+| **Storage** | **Initialized but unused in this snapshot; since removed** | Firebase Storage had no consumers at the time. Its unused initialization and environment setting have since been removed; see the [documentation status index](../documentation-status.md). |
 | **Functions** | **Inactive (NOT configured)** | No Cloud Functions exist in `firebase.json` or source tree. |
 | **Hosting** | **Active (Production & Dev PWA)** | Configured in `firebase.json` for 4 targets (`synapse-dev`, `synapsedev`, `synapse-web`, `fourth-cirrus-468923-h7`). Deploys `apps/web-react/dist-web` with `/s/** -> /share-viewer.html` and `** -> /index.html` rewrites. |
 

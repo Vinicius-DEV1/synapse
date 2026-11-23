@@ -15,6 +15,7 @@ Synapse is a local-first, multi-platform knowledge and study workstation spannin
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`documentation-status.md`**](./documentation-status.md) | **Documentation Ownership & Current Status** — Authoritative sources of truth, verified project status, and documentation maintenance rules. | All contributors & AI agents |
+| [**`audits/mobile-android-parity/README.md`**](./audits/mobile-android-parity/README.md) | **React-to-Android Parity Checklist** — Current Compose coverage, shared Core/UniFFI boundary, detailed implementation queue, security gates, and next-agent handoff. | Android & Core contributors |
 | [**`native-desktop-parity.md`**](./native-desktop-parity.md) | **Native Desktop Parity Matrix** — Module-by-module native Qt 6 coverage, verification evidence, and remaining differences vs. React. | Desktop & Qt contributors |
 
 ### 2. System Architecture (`docs/architecture/`)
@@ -47,21 +48,15 @@ Synapse is a local-first, multi-platform knowledge and study workstation spannin
 ### 5. Security, Protocols & RFCs (`docs/security/`, `docs/protocols/`, `docs/rfcs/`)
 | Document | Description | Audience |
 | :--- | :--- | :--- |
-| [**`security/native-encryption-audit.md`**](./security/native-encryption-audit.md) | **Native Desktop Encryption Audit** — Verified encryption coverage, managed media recovery journal, and open plaintext data-at-rest gaps. | Security Auditors |
+| [**`security/native-encryption-audit.md`**](./security/native-encryption-audit.md) | **Native Encryption Audit** — Verified cross-client encryption coverage, managed media recovery journal, and open plaintext data-at-rest gaps. | Security Auditors |
 | [**`security/cloud-account-encryption-migration.md`**](./security/cloud-account-encryption-migration.md) | **Cloud Account Encryption Migration** — Firebase account sign-in, transactional key envelope rewrap, and safe legacy-removal gates. | Security & Cloud Engineers |
 | [**`protocols/enc1-streaming.md`**](./protocols/enc1-streaming.md) | **Encrypted Media Container (ENC1)** — 16-byte header, 1 MiB AES-256-GCM chunk layout, random-access range math, and async protocol readers. | Systems Engineers |
 | [**`rfcs/RFC-001-contextual-vocabulary.md`**](./rfcs/RFC-001-contextual-vocabulary.md) | **RFC-001: Contextual Vocabulary Extraction** — Formal proposal for one-click EPUB/PDF dictionary lookup to FSRS flashcard pipeline. | Product & AI Engineers |
 
-### 6. Engineering Audits & Maintenance Records (`docs/audits/`, `docs/maintenance/`)
+### 6. Engineering Audits (`docs/audits/`)
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`audits/firebase-sync-integrity-2026-11-17/README.md`**](./audits/firebase-sync-integrity-2026-11-17/README.md) | **Firebase Sync Integrity Audit** — Scoped Firestore reconciliation (5,005 documents), decrypted readback verification, and SQLite migration checks. | Cloud & Data Auditors |
-| [**`audits/potential-bug-audit-2026-11-18.md`**](./audits/potential-bug-audit-2026-11-18.md) | **Potential Bug Audit (2026-11-18)** — Sync queue serialization, local stream CORS origin validation, initial sync planning, and Qt note save checks. | Core Contributors |
-| [**`audits/potential-bug-audit-2026-11-19.md`**](./audits/potential-bug-audit-2026-11-19.md) | **Potential Bug Audit — Sync & Yjs (2026-11-19)** — Equal-timestamp Yjs CRDT convergence and in-flight pull merge preservation. | Core Contributors |
-| [**`audits/potential-bug-audit-qt-2026-11-19.md`**](./audits/potential-bug-audit-qt-2026-11-19.md) | **Potential Bug Audit — Native Qt (2026-11-19)** — Removal of false-success cloud account placeholder in Qt desktop. | Qt Contributors |
-| [**`audits/potential-bug-audit-android-2026-11-19.md`**](./audits/potential-bug-audit-android-2026-11-19.md) | **Potential Bug Audit — Native Android (2026-11-20)** — UniFFI ABI generation, encrypted video reader lifecycle, and removal of fabricated sample data. | Android Contributors |
-| [**`audits/android-ui-modularization-plan-2026-11-20.md`**](./audits/android-ui-modularization-plan-2026-11-20.md) | **Android UI Modularization Record (2026-11-20)** — Decomposition of Android Compose screens below the 300-line anti-monolith target. | Android Contributors |
-| [**`maintenance/repository-hygiene-audit-2026-11-18.md`**](./maintenance/repository-hygiene-audit-2026-11-18.md) | **Repository Hygiene Audit** — Generated-file cleanup, deliberately retained compatibility files, and safe-deletion gates. | Maintainers |
 
 > [!TIP]
 > **Agent Skills & Engineering Playbooks**: For operational playbooks covering refactoring, design system tokens, security audits, and type safety, see [`.agents/skills/README.md`](../.agents/skills/README.md) and the root [`AGENTS.md`](../AGENTS.md).
