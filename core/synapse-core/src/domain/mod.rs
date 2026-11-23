@@ -1,5 +1,6 @@
 pub mod anki;
 pub mod calendar;
+pub mod config;
 pub mod culture;
 pub mod diagrams;
 pub mod files;

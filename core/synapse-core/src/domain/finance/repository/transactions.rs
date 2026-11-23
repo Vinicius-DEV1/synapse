@@ -163,4 +163,44 @@ impl FinanceRepository {
     pub fn delete_transaction_conn(conn: &rusqlite::Connection, tx_id: &str) -> Result<bool> {
         transactions::delete_transaction(conn, tx_id)
     }
+
+    pub fn get_loans(db: &Database) -> Result<Vec<Transaction>> {
+        let txs = Self::get_transactions(db, None, None)?;
+        Ok(txs
+            .into_iter()
+            .filter(|t| t.type_ == "loan_made" || t.type_ == "loan_taken")
+            .collect())
+    }
+
+    pub fn create_loan(
+        db: &Database,
+        description: &str,
+        person: &str,
+        amount: f64,
+        loan_type: &str,
+        account_id: &str,
+        date: Option<&str>,
+    ) -> Result<Transaction> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        let date_val = date
+            .map(str::trim)
+            .filter(|d| !d.is_empty())
+            .map(str::to_owned)
+            .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
+
+        let t = Transaction {
+            description: description.trim().to_owned(),
+            person: Some(person.trim().to_owned()),
+            amount,
+            type_: loan_type.trim().to_owned(),
+            category: "Empréstimo".to_owned(),
+            date: date_val,
+            account_id: if account_id.trim().is_empty() { None } else { Some(account_id.trim().to_owned()) },
+            paid_amount: Some(0.0),
+            is_paid: Some(0),
+            status: Some("in_progress".to_owned()),
+            ..Transaction::default()
+        };
+        Self::add_transaction_struct(&conn, t)
+    }
 }

@@ -80,12 +80,6 @@ pub fn create_video_folder(conn: &Connection, name: &str) -> Result<Option<Video
     }
 
     let mut folders = get_video_folders(conn)?;
-    if folders
-        .iter()
-        .any(|folder| folder.name.eq_ignore_ascii_case(normalized_name))
-    {
-        return Ok(None);
-    }
     let folder = VideoFolder {
         id: Uuid::new_v4().to_string(),
         name: normalized_name.to_string(),
@@ -136,7 +130,7 @@ pub fn rename_video_folder(conn: &Connection, folder_id: &str, name: &str) -> Re
         return Ok(true);
     }
     if folders.iter().any(|folder| {
-        folder.id != normalized_id && folder.name.eq_ignore_ascii_case(normalized_name)
+        folder.id != normalized_id && folder.name == normalized_name
     }) {
         return Ok(false);
     }

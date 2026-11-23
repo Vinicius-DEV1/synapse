@@ -1,9 +1,11 @@
-use super::{Card, FsrsEngine, Rating, State};
+use super::{Card, FsrsEngine, FsrsParameters, Rating, State};
 use chrono::{Duration, Utc};
 
 #[test]
 fn initial_good_review_creates_a_review_card() {
-    let engine = FsrsEngine::new(None);
+    let mut params = FsrsParameters::default();
+    params.learning_steps.clear();
+    let engine = FsrsEngine::new(Some(params));
     let updated = engine.review(&Card::default(), Rating::Good, Utc::now());
 
     assert_eq!(updated.state, State::Review);
@@ -27,7 +29,9 @@ fn initial_again_review_enters_learning_steps() {
 
 #[test]
 fn review_progression_increases_stability_after_success() {
-    let engine = FsrsEngine::new(None);
+    let mut params = FsrsParameters::default();
+    params.learning_steps.clear();
+    let engine = FsrsEngine::new(Some(params));
     let day0 = Utc::now();
     let card1 = engine.review(&Card::default(), Rating::Good, day0);
     let day3 = day0 + Duration::days(card1.scheduled_days as i64);

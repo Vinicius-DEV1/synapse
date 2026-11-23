@@ -171,6 +171,15 @@ impl FocusRepository {
         sessions::delete_focus_session(conn, id)
     }
 
+    pub fn clear_sessions_range(db: &Database, range: &str) -> Result<usize> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        sessions::clear_focus_sessions_range(&conn, range)
+    }
+
+    pub fn clear_sessions_range_conn(conn: &rusqlite::Connection, range: &str) -> Result<usize> {
+        sessions::clear_focus_sessions_range(conn, range)
+    }
+
     pub fn get_alarms(db: &Database) -> Result<Vec<FocusAlarm>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         alarms::get_alarms(&conn)

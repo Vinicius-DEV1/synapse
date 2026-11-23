@@ -29,7 +29,7 @@ fn initialization_is_versioned_idempotent_and_preserves_legacy_sessions() {
             row.get(0)
         })
         .expect("read migration version count");
-    assert_eq!(version_count, 7);
+    assert_eq!(version_count, 9);
 
     for table in [
         "shared_page_keys",
@@ -91,7 +91,7 @@ fn versioned_migrations_add_finance_columns_to_existing_databases() {
     assert!(has_updated_at);
     assert!(has_person);
     assert!(has_habit_category);
-    assert_eq!(version, 7);
+    assert_eq!(version, 9);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn initialization_rejects_a_database_from_a_newer_schema_version() {
     connection
         .execute_batch(
             "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
-             INSERT INTO schema_migrations (version, applied_at) VALUES (8, 'future');",
+             INSERT INTO schema_migrations (version, applied_at) VALUES (10, 'future');",
         )
         .expect("create newer schema marker");
 

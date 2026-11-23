@@ -97,6 +97,14 @@ impl HabitsRepository {
     pub fn get_habit_logs(db: &Database, date: &str) -> Result<Vec<HabitLog>> {
         Self::get_habit_logs_range(db, date, date)
     }
+
+    pub fn get_habit_stats(db: &Database, habit_id: &str, today: &str) -> Result<super::super::models::HabitStats> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        let logs = Self::get_logs_for_habit_conn(&conn, habit_id)?;
+        let date = chrono::NaiveDate::parse_from_str(today.trim(), "%Y-%m-%d")
+            .unwrap_or_else(|_| chrono::Utc::now().naive_utc().date());
+        Ok(crate::domain::habits::calculations::calculate_habit_stats(&logs, date))
+    }
 }
 
 fn map_habit(row: &rusqlite::Row<'_>) -> rusqlite::Result<Habit> {

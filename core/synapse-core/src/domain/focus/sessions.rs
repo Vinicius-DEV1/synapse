@@ -156,3 +156,32 @@ pub fn delete_focus_session(conn: &rusqlite::Connection, id: &str) -> Result<boo
 
     Ok(rows > 0)
 }
+
+pub fn clear_focus_sessions_range(conn: &rusqlite::Connection, range: &str) -> Result<usize> {
+    let range = range.trim().to_lowercase();
+    let rows = match range.as_str() {
+        "today" => {
+            let today = Utc::now().format("%Y-%m-%d").to_string();
+            conn.execute(
+                "UPDATE focus_sessions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP \
+                 WHERE deleted_at IS NULL AND substr(created_at, 1, 10) = ?1",
+                params![today],
+            )?
+        }
+        "last7days" | "week" => {
+            conn.execute(
+                "UPDATE focus_sessions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP \
+                 WHERE deleted_at IS NULL AND datetime(created_at) >= datetime('now', '-7 days')",
+                [],
+            )?
+        }
+        _ => {
+            conn.execute(
+                "UPDATE focus_sessions SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP \
+                 WHERE deleted_at IS NULL",
+                [],
+            )?
+        }
+    };
+    Ok(rows)
+}

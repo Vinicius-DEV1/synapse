@@ -24,7 +24,7 @@ fn test_habits_lifecycle_and_toggle() {
     assert_eq!(habit.target_days_per_week, 7);
 
     // 3. Toggle habit (check)
-    let checked = HabitsRepository::toggle_habit(&db, &habit.id, "2026-11-14").unwrap();
+    let checked = HabitsRepository::toggle_habit_checkin(&db, &habit.id, "2026-11-14").unwrap();
     assert!(checked);
 
     let logs = HabitsRepository::get_habit_logs_range(&db, "2026-11-01", "2026-11-30").unwrap();
@@ -33,7 +33,7 @@ fn test_habits_lifecycle_and_toggle() {
     assert_eq!(logs[0].date, "2026-11-14");
 
     // 4. Toggle habit again (uncheck)
-    let checked_again = HabitsRepository::toggle_habit(&db, &habit.id, "2026-11-14").unwrap();
+    let checked_again = HabitsRepository::toggle_habit_checkin(&db, &habit.id, "2026-11-14").unwrap();
     assert!(!checked_again);
 
     let logs = HabitsRepository::get_habit_logs_range(&db, "2026-11-01", "2026-11-30").unwrap();

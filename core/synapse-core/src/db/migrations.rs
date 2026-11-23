@@ -74,25 +74,42 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
 fn apply_versioned_migration(conn: &Connection, version: i64) -> Result<(), String> {
     match version {
         1 => apply_initial_schema(conn),
-        2 => add_column_if_missing(conn, "transactions", "updated_at", "DATETIME").map(|_| ()),
-        3 => add_column_if_missing(conn, "transactions", "person", "TEXT").map(|_| ()),
-        4 => add_column_if_missing(conn, "habits", "category", "TEXT DEFAULT 'Geral'").map(|_| ()),
+        2 => add_column_if_table_exists(conn, "transactions", "updated_at", "DATETIME"),
+        3 => add_column_if_table_exists(conn, "transactions", "person", "TEXT"),
+        4 => add_column_if_table_exists(conn, "habits", "category", "TEXT DEFAULT 'Geral'"),
         5 => add_lofi_trash_columns(conn),
         6 => add_focus_session_columns(conn),
         7 => repair_anki_default_settings(conn),
-        8 => add_column_if_missing(
+        8 => add_column_if_table_exists(
             conn,
             "anki_srs_state",
             "learning_steps",
             "INTEGER NOT NULL DEFAULT 0",
-        )
-        .map(|_| ()),
-        9 => add_column_if_missing(conn, "notifications", "event_reminder_minutes", "INTEGER")
-            .map(|_| ()),
+        ),
+        9 => add_column_if_table_exists(conn, "notifications", "event_reminder_minutes", "INTEGER"),
         _ => Err(format!(
             "SQLite schema migration {version} is not registered."
         )),
     }
+}
+
+fn add_column_if_table_exists(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<(), String> {
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
+            [table],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Failed to inspect SQLite table {table}: {error}"))?;
+    if !table_exists {
+        return Ok(());
+    }
+    add_column_if_missing(conn, table, column, definition).map(|_| ())
 }
 
 fn repair_anki_default_settings(conn: &Connection) -> Result<(), String> {
