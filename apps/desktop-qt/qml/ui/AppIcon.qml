@@ -357,6 +357,53 @@ Canvas {
             line([12, 12, 12, 20])
             line([9, 17, 12, 20, 15, 17])
             break
+        case "sparkles":
+            line([12, 3, 13.8, 8.2, 19, 10, 13.8, 11.8, 12, 17, 10.2, 11.8, 5, 10, 10.2, 8.2, 12, 3])
+            line([19, 15, 19, 21])
+            line([16, 18, 22, 18])
+            break
+        case "upload":
+            line([21, 15, 21, 19, 19, 21, 5, 21, 3, 19, 3, 15])
+            line([17, 8, 12, 3, 7, 8])
+            line([12, 3, 12, 15])
+            break
+        case "download":
+            line([21, 15, 21, 19, 19, 21, 5, 21, 3, 19, 3, 15])
+            line([7, 10, 12, 15, 17, 10])
+            line([12, 15, 12, 3])
+            break
+        case "more-horizontal":
+            circle(5, 12, 1.2)
+            circle(12, 12, 1.2)
+            circle(19, 12, 1.2)
+            break
+        case "palette":
+            circle(12, 12, 9)
+            circle(8.5, 10, 1)
+            circle(12, 7.5, 1)
+            circle(15.5, 10, 1)
+            circle(9.5, 14.5, 1.3)
+            break
+        case "panel-left":
+            rect(3, 4, 18, 16, 2)
+            line([9, 4, 9, 20])
+            break
+        case "chevron-down":
+            line([6, 9, 12, 15, 18, 9])
+            break
+        case "chevron-right":
+            line([9, 6, 15, 12, 9, 18])
+            break
+        case "file-symlink":
+            rect(4, 3, 16, 18, 2)
+            line([8, 14, 15, 9])
+            line([11, 9, 15, 9, 15, 13])
+            break
+        case "external-link":
+            line([15, 3, 21, 3, 21, 9])
+            line([10, 14, 21, 3])
+            line([18, 13, 18, 20, 4, 20, 4, 6, 11, 6])
+            break
         default:
             circle(12, 12, 8)
         }

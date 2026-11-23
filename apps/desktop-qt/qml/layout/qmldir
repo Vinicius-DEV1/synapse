@@ -1,4 +1,5 @@
 AppSidebar 1.0 AppSidebar.qml
+AppSidebarSubSections 1.0 AppSidebarSubSections.qml
 AppSidebarPageContextMenu 1.0 AppSidebarPageContextMenu.qml
 AppSidebarPageItem 1.0 AppSidebarPageItem.qml
 AppSidebarPageTree 1.0 AppSidebarPageTree.qml

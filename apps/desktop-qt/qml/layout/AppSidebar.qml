@@ -12,6 +12,7 @@ Rectangle {
     property var notePageTree: []
     property var noteCollapsedNodeMap: ({})
     property string selectedNotePageId: ""
+    property string activeSubSection: ""
 
     signal tabSelected(string tabKey)
     signal toggleSidebarRequested()
@@ -19,18 +20,23 @@ Rectangle {
     signal notePageSelected(string pageId)
     signal openInNewTabRequested(string pageId)
     signal createNoteRequested()
+    signal importNoteRequested(string parentId)
+    signal exportNoteRequested(string pageId)
+    signal shareNoteRequested(string pageId)
     signal createSubNoteRequested(string parentId)
     signal toggleNotePinRequested(string pageId)
     signal toggleNoteCollapseRequested(string pageId)
     signal noteSearchChanged(string query)
     signal moveNoteRequested(string pageId)
     signal renameNoteRequested(string pageId)
+    signal changeNoteIconRequested(string pageId, string emoji)
     signal deleteNoteRequested(string pageId)
     signal moveNoteInTreeRequested(string sourceId, string targetParentId)
     signal openWorkspaceCreateRequested()
     signal openWorkspaceMembersRequested()
     signal openAccountEvolutionRequested()
     signal settingsTabSelected(string tabId)
+    signal moduleSubSectionSelected(string moduleKey, string sectionId)
 
     Theme { id: theme }
 
@@ -130,11 +136,12 @@ Rectangle {
                 radius: 6
                 color: collapseMouse.containsMouse ? theme.bgHover : "transparent"
 
-                Text {
+                AppIcon {
                     anchors.centerIn: parent
-                    text: sidebarRoot.sidebarExpanded ? "◨" : "◧"
-                    color: theme.textSubtext
-                    font.pixelSize: 14
+                    width: 16
+                    height: 16
+                    name: "panel-left"
+                    color: sidebarRoot.sidebarExpanded ? theme.textSubtext : theme.brand400
                 }
 
                 MouseArea {
@@ -155,64 +162,7 @@ Rectangle {
             onOpenEvolutionModal: sidebarRoot.openAccountEvolutionRequested()
         }
 
-        // 2. Search entry opens the command palette
-        Rectangle {
-            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes"
-            Layout.fillWidth: true
-            Layout.preferredHeight: 34
-            radius: 7
-            color: searchMouse.containsMouse ? theme.bgDarkSurface : "transparent"
-            border.color: searchMouse.containsMouse ? theme.borderBrand : theme.borderSubtle
-            border.width: 1
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 9
-                anchors.rightMargin: 8
-                spacing: 8
-
-                AppIcon {
-                    Layout.preferredWidth: 16
-                    Layout.preferredHeight: 16
-                    name: "search"
-                    color: theme.textSubtext
-                }
-
-                Text {
-                    text: qsTr("Buscar...")
-                    color: theme.textSubtext
-                    font.pixelSize: 12
-                    font.family: theme.fontFamily
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
-
-                Rectangle {
-                    Layout.preferredWidth: 48
-                    Layout.preferredHeight: 18
-                    radius: 4
-                    color: theme.bgDarkBg
-                    border.color: theme.borderSubtle
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Ctrl+K"
-                        color: theme.textMuted
-                        font.pixelSize: 9
-                        font.family: theme.fontMono
-                    }
-                }
-            }
-
-            MouseArea {
-                id: searchMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: sidebarRoot.openCommandPaletteRequested()
-            }
-        }
-
-        // 3. Hierarchical Page Tree for Notes module
+        // 2. Hierarchical Page Tree for Notes module
         AppSidebarPageTree {
             visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab === "notes"
             Layout.fillWidth: true
@@ -224,101 +174,42 @@ Rectangle {
             onPageSelected: function(pageId) { sidebarRoot.notePageSelected(pageId) }
             onOpenInNewTabRequested: function(pageId) { sidebarRoot.openInNewTabRequested(pageId) }
             onCreateRootRequested: sidebarRoot.createNoteRequested()
+            onImportRootRequested: sidebarRoot.importNoteRequested("")
             onCreateSubRequested: function(parentId) { sidebarRoot.createSubNoteRequested(parentId) }
+            onImportSubRequested: function(parentId) { sidebarRoot.importNoteRequested(parentId) }
+            onExportPageRequested: function(pageId) { sidebarRoot.exportNoteRequested(pageId) }
+            onSharePageRequested: function(pageId) { sidebarRoot.shareNoteRequested(pageId) }
             onTogglePinRequested: function(pageId) { sidebarRoot.toggleNotePinRequested(pageId) }
             onToggleCollapseRequested: function(pageId) { sidebarRoot.toggleNoteCollapseRequested(pageId) }
+            onOpenCommandPaletteRequested: sidebarRoot.openCommandPaletteRequested()
             onSearchChanged: function(query) { sidebarRoot.noteSearchChanged(query) }
             onMovePageRequested: function(pageId) { sidebarRoot.moveNoteRequested(pageId) }
             onRenamePageRequested: function(pageId) { sidebarRoot.renameNoteRequested(pageId) }
+            onChangeIconRequested: function(pageId, emoji) { sidebarRoot.changeNoteIconRequested(pageId, emoji) }
             onDeletePageRequested: function(pageId) { sidebarRoot.deleteNoteRequested(pageId) }
             onMovePageInTree: function(sourceId, targetParentId) {
                 sidebarRoot.moveNoteInTreeRequested(sourceId, targetParentId)
             }
         }
 
-        // 4. Settings Sub-Tabs Navigation (when activeTab === "settings")
-        ColumnLayout {
-            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab === "settings"
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 4
-
-            Text {
-                text: qsTr("SEÇÕES DE CONFIGURAÇÃO")
-                color: theme.textMuted
-                font.pixelSize: 10
-                font.bold: true
-                font.letterSpacing: 1.1
-                Layout.bottomMargin: 4
-            }
-
-            Flickable {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                contentHeight: settingsNavCol.implicitHeight
-                clip: true
-
-                ColumnLayout {
-                    id: settingsNavCol
-                    width: parent.width
-                    spacing: 2
-
-                    Repeater {
-                        model: [
-                            { id: "general", label: qsTr("Geral"), icon: "settings" },
-                            { id: "editor", label: qsTr("Editor de Notas"), icon: "layout" },
-                            { id: "security", label: qsTr("Segurança e Cofre"), icon: "shield" },
-                            { id: "ai", label: qsTr("Inteligência Artificial"), icon: "zap" },
-                            { id: "shortcuts", label: qsTr("Atalhos de Teclado"), icon: "keyboard" },
-                            { id: "storage", label: qsTr("Armazenamento"), icon: "hard-drive" },
-                            { id: "video", label: qsTr("Vídeo e Mídia"), icon: "video" },
-                            { id: "backup", label: qsTr("Backup de Dados"), icon: "backup" },
-                            { id: "sync", label: qsTr("Sincronização"), icon: "refresh" },
-                            { id: "sharing", label: qsTr("Compartilhamento"), icon: "share" }
-                        ]
-
-                        delegate: Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 32
-                            radius: 6
-                            color: sMouse.containsMouse ? theme.bgHover : "transparent"
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 8
-                                spacing: 8
-
-                                AppIcon {
-                                    width: 14; height: 14
-                                    name: modelData.icon
-                                    color: theme.brand400
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: modelData.label
-                                    color: theme.textDark
-                                    font.pixelSize: 12
-                                }
-                            }
-
-                            MouseArea {
-                                id: sMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: sidebarRoot.settingsTabSelected(modelData.id)
-                            }
-                        }
-                    }
+        // 3. Sub-Sections Navigation for Settings, Finance, Focus & Vault
+        AppSidebarSubSections {
+            id: subSectionsNav
+            visible: sidebarRoot.sidebarExpanded && (sidebarRoot.activeTab === "settings" || sidebarRoot.activeTab === "finance" || sidebarRoot.activeTab === "focus" || sidebarRoot.activeTab === "vault")
+            activeTab: sidebarRoot.activeTab
+            activeSubSection: sidebarRoot.activeSubSection
+            onSubSectionSelected: function(sectionId) {
+                if (sidebarRoot.activeTab === "settings") {
+                    sidebarRoot.settingsTabSelected(sectionId)
+                } else {
+                    sidebarRoot.moduleSubSectionSelected(sidebarRoot.activeTab, sectionId)
                 }
             }
         }
 
-        // 5. Other Modules Description
+        // 4. Other Modules Description
         ColumnLayout {
-            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes" && sidebarRoot.activeTab !== "settings"
+            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes" && !subSectionsNav.visible
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 2
@@ -371,10 +262,11 @@ Rectangle {
                     font.letterSpacing: 1.2
                 }
                 Item { Layout.fillWidth: true }
-                Text {
-                    text: sidebarRoot.modulesExpanded ? "⌄" : "⌃"
+                AppIcon {
+                    width: 12
+                    height: 12
+                    name: sidebarRoot.modulesExpanded ? "chevron-down" : "chevron-right"
                     color: theme.textMuted
-                    font.pixelSize: 11
                 }
             }
 

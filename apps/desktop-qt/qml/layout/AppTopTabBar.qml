@@ -15,17 +15,19 @@ Rectangle {
     border.width: 1
 
     property var openTabs: [
-        { id: "tab-home", module: "home", title: "Início", icon: "home", isPinned: false },
-        { id: "tab-notes", module: "notes", title: "Caderno", icon: "notes", isPinned: false }
+        { id: "tab-home", module: "home", title: "Início", icon: "home", isPinned: false }
     ]
     property string activeTabId: "tab-home"
     property int unreadCount: 0
+    property bool compactPinnedTabs: true
+    property int tabMaxWidth: 220
     property var windowRoot: null
     readonly property bool isMaximized: windowRoot ? (windowRoot.visibility === Window.Maximized) : false
 
     signal tabSelected(string tabId, string moduleKey)
     signal tabClosed(string tabId)
     signal tabPinToggled(string tabId)
+    signal tabReordered(int fromIndex, int toIndex)
     signal duplicateTabRequested(string tabId)
     signal closeOtherTabsRequested(string tabId)
     signal closeTabsToRightRequested(string tabId)
@@ -114,10 +116,12 @@ Rectangle {
             ToolTip.visible: aiMouse.containsMouse
             ToolTip.delay: 300
 
-            Text {
+            AppIcon {
                 anchors.centerIn: parent
-                text: "✨"
-                font.pixelSize: 13
+                width: 15
+                height: 15
+                name: "sparkles"
+                color: aiMouse.containsMouse ? theme.brand400 : theme.textSubtext
             }
 
             MouseArea {
@@ -192,14 +196,18 @@ Rectangle {
 
                         readonly property bool isActive: tabBarRoot.activeTabId === tabDelegate.modelData.id
                         readonly property bool isPinned: tabDelegate.modelData.isPinned === true
+                        readonly property string pageEmoji: tabDelegate.modelData.pageEmoji || ""
+                        readonly property bool showEmojiIcon: tabDelegate.modelData.module === "notes" && pageEmoji.length > 0 && !pageEmoji.startsWith("fa-")
 
-                        width: tabDelegate.isPinned ? 42 : Math.min(220, Math.max(120, tabContentRow.implicitWidth + 24))
+                        width: (tabDelegate.isPinned && tabBarRoot.compactPinnedTabs)
+                               ? 44
+                               : Math.min(tabBarRoot.tabMaxWidth, Math.max(120, tabContentRow.implicitWidth + 24))
                         height: 38
                         anchors.bottom: parent.bottom
                         radius: 8
 
-                        color: tabDelegate.isActive ? "#0f0e17" : (tabMouse.containsMouse ? "#0fffffff" : "transparent")
-                        border.color: tabDelegate.isActive ? "#1affffff" : "transparent"
+                        color: tabDelegate.isActive ? "#0f0e17" : (tabDropArea.containsDrag ? "#1e1b4b" : (tabMouse.containsMouse ? "#0fffffff" : "transparent"))
+                        border.color: tabDropArea.containsDrag ? tabTheme.brand500 : (tabDelegate.isActive ? "#1affffff" : "transparent")
                         border.width: 1
 
                         // Active Tab Purple Accent Bar
@@ -213,25 +221,45 @@ Rectangle {
                             visible: tabDelegate.isActive
                         }
 
+                        // Small Pin Indicator Dot on Pinned Tabs
+                        Rectangle {
+                            visible: tabDelegate.isPinned
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 4
+                            width: 5
+                            height: 5
+                            radius: 2.5
+                            color: tabTheme.brand400
+                        }
+
                         // Tab Content
                         RowLayout {
                             id: tabContentRow
                             anchors.fill: parent
-                            anchors.leftMargin: tabDelegate.isPinned ? 0 : 10
-                            anchors.rightMargin: tabDelegate.isPinned ? 0 : 8
+                            anchors.leftMargin: (tabDelegate.isPinned && tabBarRoot.compactPinnedTabs) ? 0 : 10
+                            anchors.rightMargin: (tabDelegate.isPinned && tabBarRoot.compactPinnedTabs) ? 0 : 8
                             spacing: 6
                             z: 2
 
+                            Text {
+                                visible: tabDelegate.showEmojiIcon
+                                Layout.alignment: (tabDelegate.isPinned && tabBarRoot.compactPinnedTabs) ? Qt.AlignCenter : Qt.AlignVCenter
+                                text: tabDelegate.pageEmoji
+                                font.pixelSize: 13
+                            }
+
                             AppIcon {
-                                Layout.alignment: tabDelegate.isPinned ? Qt.AlignCenter : Qt.AlignVCenter
+                                visible: !tabDelegate.showEmojiIcon
+                                Layout.alignment: (tabDelegate.isPinned && tabBarRoot.compactPinnedTabs) ? Qt.AlignCenter : Qt.AlignVCenter
                                 Layout.preferredWidth: 14
                                 Layout.preferredHeight: 14
-                                name: tabDelegate.isPinned ? "pin" : (tabDelegate.modelData.icon || "notes")
+                                name: tabDelegate.modelData.icon || "notes"
                                 color: tabDelegate.isActive ? tabTheme.brand400 : tabTheme.textSubtext
                             }
 
                             Text {
-                                visible: !tabDelegate.isPinned
+                                visible: !(tabDelegate.isPinned && tabBarRoot.compactPinnedTabs)
                                 Layout.fillWidth: true
                                 text: tabDelegate.modelData.title || qsTr("Caderno")
                                 color: tabDelegate.isActive ? tabTheme.textDark : tabTheme.textSubtext
@@ -254,10 +282,11 @@ Rectangle {
                                 ToolTip.visible: closeMouse.containsMouse
                                 ToolTip.delay: 300
 
-                                Text {
+                                AppIcon {
                                     anchors.centerIn: parent
-                                    text: "✕"
-                                    font.pixelSize: 10
+                                    width: 10
+                                    height: 10
+                                    name: "close"
                                     color: closeMouse.containsMouse ? "#ffffff" : tabTheme.textSubtext
                                 }
 
@@ -274,15 +303,45 @@ Rectangle {
                             }
                         }
 
-                        // Tab Click / Context Menu Area
+                        DropArea {
+                            id: tabDropArea
+                            anchors.fill: parent
+                            keys: ["tabIndex"]
+                            onDropped: function(drop) {
+                                if (drop.source && drop.source.tabIdx !== undefined) {
+                                    var fromIdx = drop.source.tabIdx
+                                    if (fromIdx !== tabDelegate.index) {
+                                        tabBarRoot.tabReordered(fromIdx, tabDelegate.index)
+                                    }
+                                }
+                            }
+                        }
+
+                        Item {
+                            id: tabDragProxy
+                            property int tabIdx: tabDelegate.index
+                            Drag.active: tabMouse.drag.active
+                            Drag.source: tabDragProxy
+                            Drag.keys: ["tabIndex"]
+                        }
+
+                        // Tab Click / Middle-Click / Drag / Context Menu Area
                         MouseArea {
                             id: tabMouse
                             anchors.fill: parent
                             z: 1
                             hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                             cursorShape: Qt.PointingHandCursor
+                            drag.target: tabDragProxy
+                            drag.axis: Drag.XAxis
                             onClicked: function(mouse) {
+                                if (mouse.button === Qt.MiddleButton) {
+                                    if (!tabDelegate.isPinned && tabBarRoot.openTabs.length > 1) {
+                                        tabBarRoot.tabClosed(tabDelegate.modelData.id)
+                                    }
+                                    return
+                                }
                                 if (mouse.button === Qt.RightButton) {
                                     tabContextMenu.targetTab = tabDelegate.modelData
                                     tabContextMenu.tabCount = tabBarRoot.openTabs.length

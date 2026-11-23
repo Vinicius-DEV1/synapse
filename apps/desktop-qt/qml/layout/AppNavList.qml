@@ -19,22 +19,22 @@ Item {
         clip: true
         spacing: 3
         model: [
-            { key: "home", name: "Início", icon: "home", count: 0 },
-            { key: "notes", name: "Caderno", icon: "notes", count: dataController.pageCount },
-            { key: "quiz", name: "Questões", icon: "quiz", count: dataController.quizBatteryCount },
-            { key: "library", name: "Biblioteca", icon: "library", count: dataController.bookCount },
-            { key: "finance", name: "Finanças", icon: "finance", count: dataController.transactionCount },
-            { key: "culture", name: "Cultura", icon: "culture", count: dataController.cultureCount },
-            { key: "video", name: "Vídeos", icon: "video", count: dataController.videoCount },
-            { key: "anki", name: "Flashcards", icon: "anki", count: dataController.deckCount },
-            { key: "focus", name: "Foco", icon: "focus", count: dataController.focusSessionCount },
-            { key: "calendar", name: "Agenda", icon: "calendar", count: dataController.eventCount },
-            { key: "files", name: "Arquivos", icon: "folder", count: 0 },
-            { key: "diagrams", name: "Diagramas", icon: "diagrams", count: 0 },
-            { key: "practice", name: "Prática", icon: "focus", count: 0 },
-            { key: "vault", name: "Cofre", icon: "vault", count: dataController.vaultItemCount },
-            { key: "trash", name: "Lixeira", icon: "trash", count: 0 },
-            { key: "settings", name: "Configurações", icon: "settings", count: 0 }
+            { key: "home", name: "Início", icon: "home" },
+            { key: "notes", name: "Caderno", icon: "notes" },
+            { key: "calendar", name: "Calendário", icon: "calendar" },
+            { key: "library", name: "Biblioteca", icon: "library" },
+            { key: "video", name: "Vídeos", icon: "video" },
+            { key: "files", name: "Arquivos", icon: "folder" },
+            { key: "anki", name: "Flashcards", icon: "anki" },
+            { key: "quiz", name: "Questões", icon: "quiz" },
+            { key: "practice", name: "Prática & IA", icon: "sparkles" },
+            { key: "focus", name: "Foco & Hábitos", icon: "focus" },
+            { key: "culture", name: "Cultura", icon: "culture" },
+            { key: "finance", name: "Finanças", icon: "finance" },
+            { key: "diagrams", name: "Diagramas", icon: "diagrams" },
+            { key: "vault", name: "Cofre", icon: "vault" },
+            { key: "trash", name: "Lixeira", icon: "trash" },
+            { key: "settings", name: "Configurações", icon: "settings" }
         ]
 
         delegate: Rectangle {
@@ -70,26 +70,6 @@ Item {
                     font.weight: itemDelegate.isActive ? Font.DemiBold : Font.Normal
                     font.family: theme.fontFamily
                     elide: Text.ElideRight
-                }
-
-                // Counter Badge (discreet pill)
-                Rectangle {
-                    visible: navListRoot.sidebarExpanded && modelData.count > 0
-                    Layout.alignment: Qt.AlignVCenter
-                    width: Math.max(18, countText.contentWidth + 8)
-                    height: 18
-                    radius: 9
-                    color: itemDelegate.isActive ? theme.brand600 : "#0affffff"
-
-                    Text {
-                        id: countText
-                        anchors.centerIn: parent
-                        text: modelData.count.toString()
-                        color: itemDelegate.isActive ? "#ffffff" : theme.textMuted
-                        font.pixelSize: 10
-                        font.bold: true
-                        font.family: theme.fontFamily
-                    }
                 }
             }
 

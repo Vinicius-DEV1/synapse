@@ -17,7 +17,32 @@ Rectangle {
 
     signal navigateToTab(string tabKey)
     signal openPage(string pageId)
+    signal openPageInNewTab(string pageId)
     signal triggerAction(string actionKey)
+
+    Theme { id: theme }
+
+    function cycleScope() {
+        var order = ["all", "title", "content", "pinned"]
+        var idx = order.indexOf(activeScope)
+        activeScope = order[(idx + 1) % order.length]
+        updateResults()
+    }
+
+    function escapeRich(text) {
+        return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+
+    function highlightMatch(text, queryStr) {
+        var safe = escapeRich(text)
+        var q = (queryStr || "").trim()
+        if (q.length === 0) return safe
+        var lowerSafe = safe.toLowerCase()
+        var lowerQ = q.toLowerCase()
+        var idx = lowerSafe.indexOf(lowerQ)
+        if (idx === -1) return safe
+        return safe.substring(0, idx) + "<font color='#c4b5fd'><b>" + safe.substring(idx, idx + q.length) + "</b></font>" + safe.substring(idx + q.length)
+    }
 
     function open() {
         isOpen = true
@@ -94,24 +119,7 @@ Rectangle {
         var scope = activeScope
         var matches = []
 
-        // If scope is 'all', also include matching actions
-        if (scope === "all") {
-            for (var i = 0; i < allActions.length; i++) {
-                var act = allActions[i]
-                if (q.length === 0 || act.label.toLowerCase().indexOf(q) !== -1 || act.category.toLowerCase().indexOf(q) !== -1) {
-                    matches.push({
-                        label: act.label,
-                        icon: act.icon,
-                        category: act.category,
-                        tab: act.tab,
-                        action: act.action,
-                        snippet: ""
-                    })
-                }
-            }
-        }
-
-        // Fetch pages from dataController
+        // Fetch workspace pages first (GlobalSearchModal priority)
         var pages = []
         try {
             if (scope === "pinned") {
@@ -158,20 +166,42 @@ Rectangle {
             if (matches.length >= 25) break
         }
 
+        // Append matching navigation/quick actions below page results in 'all' scope
+        if (scope === "all" && matches.length < 30) {
+            for (var i = 0; i < allActions.length; i++) {
+                var act = allActions[i]
+                if ((q.length > 0 && (act.label.toLowerCase().indexOf(q) !== -1 || act.category.toLowerCase().indexOf(q) !== -1)) || (q.length === 0 && matches.length < 15)) {
+                    matches.push({
+                        label: act.label,
+                        icon: act.icon,
+                        category: act.category,
+                        tab: act.tab,
+                        action: act.action,
+                        snippet: ""
+                    })
+                    if (matches.length >= 30) break
+                }
+            }
+        }
+
         filteredResults = matches
         if (selectedIndex >= filteredResults.length) {
             selectedIndex = 0
         }
     }
 
-    function executeSelected() {
+    function executeSelected(inNewTab) {
         if (filteredResults.length === 0) return
         var item = filteredResults[selectedIndex]
         if (!item) return
 
         if (item.tab) {
-            navigateToTab(item.tab)
-            if (item.pageId) openPage(item.pageId)
+            if (inNewTab && item.pageId) {
+                openPageInNewTab(item.pageId)
+            } else {
+                navigateToTab(item.tab)
+                if (item.pageId) openPage(item.pageId)
+            }
         } else if (item.action) {
             triggerAction(item.action)
         }
@@ -211,9 +241,11 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 10
 
-                Text {
-                    text: "🔍"
-                    font.pixelSize: 16
+                AppIcon {
+                    width: 16
+                    height: 16
+                    name: "search"
+                    color: theme.brand400
                 }
 
                 TextInput {
@@ -228,6 +260,10 @@ Rectangle {
                         paletteRoot.updateResults()
                     }
                     Keys.onEscapePressed: paletteRoot.close()
+                    Keys.onTabPressed: function(event) {
+                        event.accepted = true
+                        paletteRoot.cycleScope()
+                    }
                     Keys.onDownPressed: {
                         if (paletteRoot.selectedIndex < paletteRoot.filteredResults.length - 1) {
                             paletteRoot.selectedIndex++
@@ -238,11 +274,15 @@ Rectangle {
                             paletteRoot.selectedIndex--
                         }
                     }
-                    Keys.onReturnPressed: paletteRoot.executeSelected()
-                    Keys.onEnterPressed: paletteRoot.executeSelected()
+                    Keys.onReturnPressed: function(event) {
+                        paletteRoot.executeSelected((event.modifiers & Qt.ControlModifier) !== 0)
+                    }
+                    Keys.onEnterPressed: function(event) {
+                        paletteRoot.executeSelected((event.modifiers & Qt.ControlModifier) !== 0)
+                    }
 
                     Text {
-                        text: "Buscar módulo, comando ou nota... (↑↓ para navegar, Enter para abrir)"
+                        text: qsTr("Buscar páginas, pastas ou comandos... (Tab alterna filtro)")
                         color: "#64748b"
                         font.pixelSize: 13
                         font.bold: false
@@ -360,7 +400,8 @@ Rectangle {
                             spacing: 2
 
                             Text {
-                                text: modelData.label
+                                text: paletteRoot.highlightMatch(modelData.label, paletteRoot.searchQuery)
+                                textFormat: Text.RichText
                                 color: (index === paletteRoot.selectedIndex) ? "#ffffff" : "#e2e8f0"
                                 font.pixelSize: 13
                                 font.bold: (index === paletteRoot.selectedIndex)
@@ -370,8 +411,9 @@ Rectangle {
 
                             Text {
                                 visible: Boolean(modelData.snippet && modelData.snippet.length > 0)
-                                text: modelData.snippet || ""
-                                color: (index === paletteRoot.selectedIndex) ? "#c4b5fd" : "#94a3b8"
+                                text: paletteRoot.highlightMatch(modelData.snippet || "", paletteRoot.searchQuery)
+                                textFormat: Text.RichText
+                                color: (index === paletteRoot.selectedIndex) ? "#ddd6fe" : "#94a3b8"
                                 font.pixelSize: 11
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -398,13 +440,26 @@ Rectangle {
                         id: rowMouse
                         anchors.fill: parent
                         hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: function(mouse) {
                             paletteRoot.selectedIndex = index
-                            paletteRoot.executeSelected()
+                            paletteRoot.executeSelected(mouse.button === Qt.MiddleButton)
                         }
                     }
                 }
+            }
+
+            // Keyboard Shortcut Legend Footer
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 14
+                Text { text: "↑↓ Navegar"; color: "#64748b"; font.pixelSize: 10 }
+                Text { text: "↵ Abrir"; color: "#64748b"; font.pixelSize: 10 }
+                Text { text: "Ctrl+↵ Nova aba"; color: "#64748b"; font.pixelSize: 10 }
+                Text { text: "Tab Filtro"; color: "#64748b"; font.pixelSize: 10 }
+                Item { Layout.fillWidth: true }
+                Text { text: "Esc Fechar"; color: "#64748b"; font.pixelSize: 10 }
             }
         }
     }

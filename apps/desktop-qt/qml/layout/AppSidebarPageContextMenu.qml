@@ -15,6 +15,9 @@ Popup {
     signal openRequested(string pageId)
     signal openInNewTabRequested(string pageId)
     signal createSubRequested(string pageId)
+    signal importSubRequested(string pageId)
+    signal exportRequested(string pageId)
+    signal shareRequested(string pageId)
     signal togglePinRequested(string pageId)
     signal moveRequested(string pageId)
     signal renameRequested(string pageId)
@@ -107,6 +110,123 @@ Popup {
                 onClicked: {
                     pageContextMenu.close()
                     pageContextMenu.createSubRequested(pageContextMenu.targetPageId)
+                }
+            }
+        }
+
+        // Importar subpágina
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 6
+            color: importSubMouse.containsMouse ? theme.bgHover : "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                AppIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "upload"
+                    color: theme.textSubtext
+                }
+                Text {
+                    text: qsTr("Importar subpágina")
+                    color: theme.textDark
+                    font.pixelSize: 12
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                id: importSubMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pageContextMenu.close()
+                    pageContextMenu.importSubRequested(pageContextMenu.targetPageId)
+                }
+            }
+        }
+
+        // Exportar página
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 6
+            color: exportMouse.containsMouse ? theme.bgHover : "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                AppIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "download"
+                    color: theme.textSubtext
+                }
+                Text {
+                    text: qsTr("Exportar página")
+                    color: theme.textDark
+                    font.pixelSize: 12
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                id: exportMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pageContextMenu.close()
+                    pageContextMenu.exportRequested(pageContextMenu.targetPageId)
+                }
+            }
+        }
+
+        // Compartilhar página
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            radius: 6
+            color: shareMouse.containsMouse ? theme.bgHover : "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 8
+
+                AppIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "share"
+                    color: theme.textSubtext
+                }
+                Text {
+                    text: qsTr("Compartilhar página")
+                    color: theme.textDark
+                    font.pixelSize: 12
+                    font.family: theme.fontFamily
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                id: shareMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pageContextMenu.close()
+                    pageContextMenu.shareRequested(pageContextMenu.targetPageId)
                 }
             }
         }

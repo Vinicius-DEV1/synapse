@@ -34,29 +34,116 @@ Item {
     property bool notificationsOpen: false
     property bool aiSidebarOpen: false
     property var tabsList: [
-        { id: "tab-home", module: "home", title: "Início", icon: "home", isPinned: false }
+        { id: "tab-home", module: "home", title: "Início", icon: "home", pageId: null, pageEmoji: "", bookId: null, bookTitle: "", moduleState: ({}), isPinned: false }
     ]
     property string currentTabId: "tab-home"
+    property bool compactPinnedTabs: true
+    property int tabMaxWidth: 220
 
-    readonly property string activeTitle: {
-        if (activeTab === "notes" && notesView && notesView.activeTitle && notesView.activeTitle !== "Selecione uma nota") {
-            return notesView.activeTitle
-        }
-        var info = getModuleInfo(activeTab)
-        return info.title
+    function loadShellTabSettings() {
+        if (!dataController) return
+        try {
+            var raw = dataController.getConfig("app_settings", "")
+            if (raw && raw.length > 0) {
+                var parsed = JSON.parse(raw)
+                if (typeof parsed.compactPinnedTabs === "boolean") compactPinnedTabs = parsed.compactPinnedTabs
+                if (typeof parsed.tabMaxWidth === "number" && parsed.tabMaxWidth >= 90) tabMaxWidth = parsed.tabMaxWidth
+            }
+        } catch (e) {}
     }
 
-    onActiveTitleChanged: {
-        if (activeTab === "notes" && activeTitle && activeTitle.length > 0 && activeTitle !== "Selecione uma nota") {
-            for (var i = 0; i < tabsList.length; ++i) {
-                if (tabsList[i].id === currentTabId) {
-                    if (tabsList[i].title !== activeTitle) {
-                        var newTabs = tabsList.slice()
-                        newTabs[i] = Object.assign({}, newTabs[i], { title: activeTitle })
-                        tabsList = newTabs
-                    }
-                    break
+    Component.onCompleted: loadShellTabSettings()
+
+    readonly property var currentTabObj: {
+        for (var i = 0; i < tabsList.length; ++i) {
+            if (tabsList[i].id === currentTabId) return tabsList[i]
+        }
+        return null
+    }
+
+    readonly property string activeSubSection: {
+        if (activeTab === "settings" && settingsView) return settingsView.activeTab
+        if (activeTab === "finance" && financeView) return financeView.activeSubTab
+        if (activeTab === "focus" && focusView) return focusView.currentTab
+        if (activeTab === "vault" && vaultView) return vaultView.viewMode === "security" ? "security" : (vaultView.isPasswordDialogOpen ? "generator" : "items")
+        return ""
+    }
+
+    function captureActiveTabState() {
+        var idx = -1
+        for (var i = 0; i < tabsList.length; ++i) {
+            if (tabsList[i].id === currentTabId) { idx = i; break }
+        }
+        if (idx === -1) return
+        var cur = tabsList[idx]
+        var patch = ({})
+        if (cur.module === "notes" && notesView && notesView.selectedPageId) {
+            patch.pageId = notesView.selectedPageId
+            patch.pageEmoji = notesView.activeIcon || "📄"
+            patch.title = notesView.activeTitle || "Caderno"
+        } else if (cur.module === "finance" && financeView) {
+            patch.pageId = financeView.activeSubTab
+        } else if (cur.module === "settings" && settingsView) {
+            patch.pageId = settingsView.activeTab
+        } else if (cur.module === "focus" && focusView) {
+            patch.pageId = focusView.currentTab
+        } else if (cur.module === "vault" && vaultView) {
+            patch.pageId = vaultView.viewMode === "security" ? "security" : "items"
+        }
+        var nextTabs = tabsList.slice()
+        nextTabs[idx] = Object.assign({}, cur, patch)
+        tabsList = nextTabs
+    }
+
+    function restoreTabState(tabObj) {
+        if (!tabObj) return
+        if (tabObj.module === "notes" && notesView && tabObj.pageId) {
+            notesView.selectPage(tabObj.pageId)
+        } else if (tabObj.module === "finance" && financeView && tabObj.pageId) {
+            financeView.activeSubTab = tabObj.pageId
+        } else if (tabObj.module === "settings" && settingsView && tabObj.pageId) {
+            settingsView.activeTab = tabObj.pageId
+        } else if (tabObj.module === "focus" && focusView && tabObj.pageId) {
+            focusView.currentTab = tabObj.pageId
+        } else if (tabObj.module === "vault" && vaultView && tabObj.pageId) {
+            vaultView.viewMode = (tabObj.pageId === "security") ? "security" : "items"
+        }
+    }
+
+    function switchToTab(tabId) {
+        flushActiveNotes()
+        captureActiveTabState()
+        for (var i = 0; i < tabsList.length; ++i) {
+            if (tabsList[i].id === tabId) {
+                currentTabId = tabId
+                activeTab = tabsList[i].module
+                restoreTabState(tabsList[i])
+                return
+            }
+        }
+    }
+
+    function reorderTabs(fromIndex, toIndex) {
+        if (fromIndex < 0 || toIndex < 0 || fromIndex >= tabsList.length || toIndex >= tabsList.length || fromIndex === toIndex) return
+        var nextTabs = tabsList.slice()
+        var item = nextTabs.splice(fromIndex, 1)[0]
+        nextTabs.splice(toIndex, 0, item)
+        tabsList = nextTabs
+    }
+
+    function syncActiveNotesTabMeta() {
+        if (activeTab !== "notes" || !notesView) return
+        var pageTitle = (notesView.activeTitle && notesView.activeTitle !== "Selecione uma nota") ? notesView.activeTitle : "Caderno"
+        var pageId = notesView.selectedPageId || ""
+        var pageEmoji = notesView.activeIcon || "📄"
+        for (var i = 0; i < tabsList.length; ++i) {
+            if (tabsList[i].id === currentTabId && tabsList[i].module === "notes") {
+                if (tabsList[i].title !== pageTitle || tabsList[i].pageId !== pageId || tabsList[i].pageEmoji !== pageEmoji) {
+                    var newTabs = tabsList.slice()
+                    newTabs[i] = Object.assign({}, newTabs[i], { title: pageTitle, pageId: pageId, pageEmoji: pageEmoji })
+                    tabsList = newTabs
                 }
+                break
             }
         }
     }
@@ -67,8 +154,9 @@ Item {
         }
     }
 
-    function addNewTab(moduleKey, title, icon) {
+    function addNewTab(moduleKey, title, icon, pageId, pageEmoji) {
         flushActiveNotes()
+        captureActiveTabState()
         var mod = moduleKey || "notes"
         var info = getModuleInfo(mod)
         var newId = "tab-" + mod + "-" + Date.now() + "-" + Math.floor(Math.random() * 1000)
@@ -78,18 +166,25 @@ Item {
             module: mod,
             title: title || (mod === "notes" ? "Nova Nota" : info.title),
             icon: icon || info.icon,
+            pageId: pageId || null,
+            pageEmoji: pageEmoji || "",
+            bookId: null,
+            bookTitle: "",
+            moduleState: ({}),
             isPinned: false
         })
         tabsList = newTabs
         currentTabId = newId
         activeTab = mod
         if (mod === "notes" && notesView) {
-            notesView.createNewRootNote()
+            if (pageId) notesView.selectPage(pageId)
+            else notesView.createNewRootNote()
         }
     }
 
-    function updateActiveTabModule(moduleKey, title, icon) {
+    function updateActiveTabModule(moduleKey, title, icon, pageId, pageEmoji) {
         flushActiveNotes()
+        captureActiveTabState()
         var mod = moduleKey || "notes"
         var info = getModuleInfo(mod)
         var tabTitle = title || info.title
@@ -118,7 +213,7 @@ Item {
                 targetIndex = unpinnedIndex
                 currentTabId = newTabs[unpinnedIndex].id
             } else {
-                addNewTab(mod, tabTitle, tabIcon)
+                addNewTab(mod, tabTitle, tabIcon, pageId, pageEmoji)
                 return
             }
         }
@@ -129,6 +224,11 @@ Item {
                 module: mod,
                 title: tabTitle,
                 icon: tabIcon,
+                pageId: pageId || null,
+                pageEmoji: pageEmoji || "",
+                bookId: null,
+                bookTitle: "",
+                moduleState: ({}),
                 isPinned: newTabs[targetIndex].isPinned === true
             }
         } else if (newTabs.length > 0) {
@@ -137,19 +237,25 @@ Item {
                 module: mod,
                 title: tabTitle,
                 icon: tabIcon,
+                pageId: pageId || null,
+                pageEmoji: pageEmoji || "",
+                bookId: null,
+                bookTitle: "",
+                moduleState: ({}),
                 isPinned: newTabs[0].isPinned === true
             }
             currentTabId = newTabs[0].id
         } else {
             var newId = "tab-" + mod + "-" + Date.now()
-            newTabs.push({ id: newId, module: mod, title: tabTitle, icon: tabIcon, isPinned: false })
+            newTabs.push({ id: newId, module: mod, title: tabTitle, icon: tabIcon, pageId: pageId || null, pageEmoji: pageEmoji || "", bookId: null, bookTitle: "", moduleState: ({}), isPinned: false })
             currentTabId = newId
         }
 
         tabsList = newTabs
         activeTab = mod
-        if (mod === "notes" && notesView && notesView.selectedPageId === "") {
-            notesView.loadPages()
+        if (mod === "notes" && notesView) {
+            if (pageId) notesView.selectPage(pageId)
+            else if (notesView.selectedPageId === "") notesView.loadPages()
         }
     }
 
@@ -175,6 +281,7 @@ Item {
                 var nextTab = newTabs[Math.min(idx, newTabs.length - 1)] || newTabs[0]
                 currentTabId = nextTab.id
                 activeTab = nextTab.module
+                restoreTabState(nextTab)
             }
         }
     }
@@ -196,15 +303,17 @@ Item {
     }
 
     function duplicateTab(tabId) {
+        captureActiveTabState()
         for (var i = 0; i < tabsList.length; ++i) {
             if (tabsList[i].id === tabId) {
                 var src = tabsList[i]
                 var newId = "tab-" + src.module + "-" + Date.now()
                 var newTabs = tabsList.slice()
-                newTabs.splice(i + 1, 0, { id: newId, module: src.module, title: src.title, icon: src.icon, isPinned: false })
+                newTabs.splice(i + 1, 0, Object.assign({}, src, { id: newId, isPinned: false }))
                 tabsList = newTabs
                 currentTabId = newId
                 activeTab = src.module
+                restoreTabState(newTabs[i + 1])
                 return
             }
         }
@@ -252,8 +361,7 @@ Item {
         for (var i = 0; i < tabsList.length; ++i) {
             if (tabsList[i].id === currentTabId) {
                 var nextIdx = (i + 1) % tabsList.length
-                currentTabId = tabsList[nextIdx].id
-                activeTab = tabsList[nextIdx].module
+                switchToTab(tabsList[nextIdx].id)
                 return
             }
         }
@@ -264,8 +372,7 @@ Item {
         for (var i = 0; i < tabsList.length; ++i) {
             if (tabsList[i].id === currentTabId) {
                 var prevIdx = (i - 1 + tabsList.length) % tabsList.length
-                currentTabId = tabsList[prevIdx].id
-                activeTab = tabsList[prevIdx].module
+                switchToTab(tabsList[prevIdx].id)
                 return
             }
         }
@@ -348,19 +455,19 @@ Item {
             openTabs: rootWindow.tabsList
             activeTabId: rootWindow.currentTabId
             unreadCount: dataController ? dataController.unreadNotificationCount : 0
+            compactPinnedTabs: rootWindow.compactPinnedTabs
+            tabMaxWidth: rootWindow.tabMaxWidth
             windowRoot: rootWindow.windowRoot
-            onTabSelected: function(tId, modKey) {
-                rootWindow.currentTabId = tId
-                rootWindow.activeTab = modKey
-            }
+            onTabSelected: function(tId, _modKey) { rootWindow.switchToTab(tId) }
             onTabClosed: function(tId) { rootWindow.closeTab(tId) }
             onTabPinToggled: function(tId) { rootWindow.togglePinTab(tId) }
+            onTabReordered: function(fromIdx, toIdx) { rootWindow.reorderTabs(fromIdx, toIdx) }
             onDuplicateTabRequested: function(tId) { rootWindow.duplicateTab(tId) }
             onCloseOtherTabsRequested: function(tId) { rootWindow.closeOtherTabs(tId) }
             onCloseTabsToRightRequested: function(tId) { rootWindow.closeTabsToRight(tId) }
             onNotificationRequested: rootWindow.notificationsOpen = !rootWindow.notificationsOpen
             onAiAssistantRequested: rootWindow.aiSidebarOpen = !rootWindow.aiSidebarOpen
-            onNewTabRequested: rootWindow.addNewTab("notes", "Nova Nota", "notes")
+            onNewTabRequested: rootWindow.addNewTab("notes", "Nova Nota", "notes", "", "📄")
             onMinimizeRequested: {
                 if (rootWindow.windowRoot) rootWindow.windowRoot.showMinimized()
             }
@@ -387,6 +494,7 @@ Item {
                 visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen)
                 sidebarExpanded: rootWindow.sidebarExpanded
                 activeTab: rootWindow.activeTab
+                activeSubSection: rootWindow.activeSubSection
                 notePinnedPages: notesView.pinnedPages
                 notePageTree: notesView.pageTree
                 noteCollapsedNodeMap: notesView.collapsedNodeMap
@@ -397,8 +505,29 @@ Item {
                 }
                 onSettingsTabSelected: function(tabId) {
                     var info = rootWindow.getModuleInfo("settings")
-                    rootWindow.updateActiveTabModule("settings", info.title, info.icon)
+                    rootWindow.updateActiveTabModule("settings", info.title, info.icon, tabId, "")
                     settingsView.activeTab = tabId
+                }
+                onModuleSubSectionSelected: function(modKey, secId) {
+                    var info = rootWindow.getModuleInfo(modKey)
+                    rootWindow.updateActiveTabModule(modKey, info.title, info.icon, secId, "")
+                    if (modKey === "finance") {
+                        financeView.activeSubTab = secId
+                    } else if (modKey === "focus") {
+                        focusView.currentTab = secId
+                    } else if (modKey === "vault") {
+                        if (secId === "generator") {
+                            vaultView.viewMode = "items"
+                            vaultView.generatedPassword = dataController.generateSecurePassword(20, true, true, true, true)
+                            vaultView.isPasswordDialogOpen = true
+                        } else if (secId === "security") {
+                            vaultView.isPasswordDialogOpen = false
+                            vaultView.viewMode = "security"
+                        } else {
+                            vaultView.isPasswordDialogOpen = false
+                            vaultView.viewMode = "items"
+                        }
+                    }
                 }
                 onToggleSidebarRequested: rootWindow.sidebarExpanded = !rootWindow.sidebarExpanded
                 onOpenCommandPaletteRequested: cmdPalette.open()
@@ -406,20 +535,39 @@ Item {
                     notesView.selectPage(pageId)
                     var p = dataController.getPage(pageId)
                     var title = (p && p.title) ? p.title : "Caderno"
-                    rootWindow.updateActiveTabModule("notes", title, "notes")
+                    var emoji = (p && p.icon) ? p.icon : "📄"
+                    rootWindow.updateActiveTabModule("notes", title, "notes", pageId, emoji)
                 }
                 onOpenInNewTabRequested: function(pageId) {
                     var p = dataController.getPage(pageId)
                     var title = (p && p.title) ? p.title : "Caderno"
-                    rootWindow.addNewTab("notes", title, "notes")
-                    notesView.selectPage(pageId)
+                    var emoji = (p && p.icon) ? p.icon : "📄"
+                    rootWindow.addNewTab("notes", title, "notes", pageId, emoji)
                 }
                 onCreateNoteRequested: notesView.createNewRootNote()
+                onImportNoteRequested: function(parentId) { notesImportExport.openImport(parentId) }
+                onExportNoteRequested: function(pageId) { notesImportExport.openExport(pageId) }
+                onShareNoteRequested: function(pageId) {
+                    var p = dataController.getPage(pageId)
+                    globalModals.openShare(pageId, (p && p.title) ? p.title : "Página")
+                }
                 onCreateSubNoteRequested: function(parentId) { notesView.createNewSubNote(parentId) }
                 onToggleNotePinRequested: function(pageId) { notesView.togglePin(pageId) }
                 onToggleNoteCollapseRequested: function(pageId) { notesView.toggleNodeCollapse(pageId) }
                 onNoteSearchChanged: function(query) { notesView.setPageFilter(query) }
                 onMoveNoteRequested: function(pageId) { notesView.openMovePageDialog(pageId) }
+                onRenameNoteRequested: function(pageId) {
+                    var p = dataController.getPage(pageId)
+                    renamePageModal.openFor(pageId, (p && p.title) ? p.title : "")
+                }
+                onChangeNoteIconRequested: function(pageId, emoji) {
+                    dataController.updatePageIcon(pageId, emoji)
+                    if (notesView.selectedPageId === pageId) {
+                        notesView.activeIcon = emoji
+                    }
+                    notesView.loadPages()
+                    rootWindow.syncActiveNotesTabMeta()
+                }
                 onDeleteNoteRequested: function(pageId) {
                     var p = dataController.getPage(pageId)
                     var title = (p && p.title) ? p.title : "esta página"
@@ -481,14 +629,20 @@ Item {
                             notesView.selectPage(pageId)
                             var p = dataController.getPage(pageId)
                             var title = (p && p.title) ? p.title : "Caderno"
-                            rootWindow.updateActiveTabModule("notes", title, "notes")
+                            var emoji = (p && p.icon) ? p.icon : "📄"
+                            rootWindow.updateActiveTabModule("notes", title, "notes", pageId, emoji)
                         }
                         onNavigateToTab: function(tabKey) {
                             var info = rootWindow.getModuleInfo(tabKey)
                             rootWindow.updateActiveTabModule(tabKey, info.title, info.icon)
                         }
                     }
-                    NotesEditorView { id: notesView }
+                    NotesEditorView {
+                        id: notesView
+                        onSelectedPageIdChanged: rootWindow.syncActiveNotesTabMeta()
+                        onActiveTitleChanged: rootWindow.syncActiveNotesTabMeta()
+                        onActiveIconChanged: rootWindow.syncActiveNotesTabMeta()
+                    }
                     ZenQuizView { id: quizView }
                     LibraryView {
                         id: libraryView
@@ -539,7 +693,14 @@ Item {
             notesView.selectPage(pageId)
             var p = dataController.getPage(pageId)
             var title = (p && p.title) ? p.title : "Caderno"
-            rootWindow.updateActiveTabModule("notes", title, "notes")
+            var emoji = (p && p.icon) ? p.icon : "📄"
+            rootWindow.updateActiveTabModule("notes", title, "notes", pageId, emoji)
+        }
+        onOpenPageInNewTab: function(pageId) {
+            var p = dataController.getPage(pageId)
+            var title = (p && p.title) ? p.title : "Caderno"
+            var emoji = (p && p.icon) ? p.icon : "📄"
+            rootWindow.addNewTab("notes", title, "notes", pageId, emoji)
         }
         onNavigateToTab: function(tabKey) {
             var info = rootWindow.getModuleInfo(tabKey)
@@ -547,6 +708,32 @@ Item {
         }
         onTriggerAction: function(actionKey) {
             rootWindow.handleGlobalAction(actionKey)
+        }
+    }
+
+    RenamePageModal {
+        id: renamePageModal
+        onRenamed: function(pageId, newTitle) {
+            dataController.renamePage(pageId, newTitle)
+            if (notesView.selectedPageId === pageId) {
+                notesView.activeTitle = newTitle
+            }
+            notesView.loadPages()
+            rootWindow.syncActiveNotesTabMeta()
+        }
+    }
+
+    NotesImportExportDialogs {
+        id: notesImportExport
+        onImported: function(newPageId) {
+            notesView.loadPages()
+            notesView.selectPage(newPageId)
+            var p = dataController.getPage(newPageId)
+            rootWindow.updateActiveTabModule("notes", (p && p.title) ? p.title : "Caderno", "notes", newPageId, (p && p.icon) ? p.icon : "📄")
+            globalModals.showSyncStatus("success")
+        }
+        onExported: function(_filePath) {
+            globalModals.showSyncStatus("success")
         }
     }
 

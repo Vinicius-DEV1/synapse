@@ -11,10 +11,13 @@ Item {
     property bool hasChildren: false
 
     signal pageSelected(string pageId)
+    signal openInNewTabRequested(string pageId)
     signal toggleCollapseRequested(string pageId)
     signal createSubRequested(string parentId)
     signal togglePinRequested(string pageId)
     signal moveRequested(string pageId)
+    signal renameRequested(string pageId)
+    signal emojiClickRequested(string pageId, real itemX, real itemY)
     signal contextMenuRequested(string pageId, real mouseX, real mouseY)
     signal pageDropped(string draggedPageId, string targetParentId)
 
@@ -36,6 +39,7 @@ Item {
         border.width: 1
 
         RowLayout {
+            z: 2
             anchors.fill: parent
             anchors.leftMargin: 4
             anchors.rightMargin: 6
@@ -46,10 +50,11 @@ Item {
                 Layout.preferredWidth: 18
                 Layout.preferredHeight: 18
 
-                Text {
+                AppIcon {
                     anchors.centerIn: parent
-                    text: pageItemRoot.isCollapsed ? "▶" : "▼"
-                    font.pixelSize: 9
+                    width: 10
+                    height: 10
+                    name: pageItemRoot.isCollapsed ? "chevron-right" : "chevron-down"
                     color: theme.textMuted
                     visible: pageItemRoot.hasChildren
                 }
@@ -66,10 +71,33 @@ Item {
                 }
             }
 
-            // Page Icon
-            Text {
-                text: (pageItemRoot.pageData && pageItemRoot.pageData.icon) ? pageItemRoot.pageData.icon : "📄"
-                font.pixelSize: 13
+            // Page Icon (clickable for inline Emoji Picker)
+            Rectangle {
+                id: emojiBadge
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                radius: 4
+                color: emojiMouse.containsMouse ? theme.bgHover : "transparent"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: (pageItemRoot.pageData && pageItemRoot.pageData.icon) ? pageItemRoot.pageData.icon : "📄"
+                    font.pixelSize: 13
+                }
+
+                MouseArea {
+                    id: emojiMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: function(mouse) {
+                        mouse.accepted = true
+                        if (pageItemRoot.pageData) {
+                            var pt = emojiBadge.mapToItem(pageItemRoot, 0, emojiBadge.height)
+                            pageItemRoot.emojiClickRequested(pageItemRoot.pageData.id, pt.x, pt.y)
+                        }
+                    }
+                }
             }
 
             // Page Title
@@ -84,10 +112,10 @@ Item {
                 elide: Text.ElideRight
             }
 
-            // Hover actions: [+] Add sub-page | [📌] Pin | [📂] Move
+            // Hover actions: [+] Add sub-page | [•••] Context Menu
             RowLayout {
                 spacing: 2
-                visible: itemMouse.containsMouse
+                visible: itemMouse.containsMouse || addSubMouse.containsMouse || moreMouse.containsMouse
 
                 // Add sub-page button
                 Rectangle {
@@ -98,8 +126,8 @@ Item {
 
                     AppIcon {
                         anchors.centerIn: parent
-                        width: 10
-                        height: 10
+                        width: 11
+                        height: 11
                         name: "plus"
                         color: theme.textSubtext
                     }
@@ -107,8 +135,10 @@ Item {
                     MouseArea {
                         id: addSubMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: function(mouse) {
+                            mouse.accepted = true
                             if (pageItemRoot.pageData) {
                                 pageItemRoot.createSubRequested(pageItemRoot.pageData.id)
                             }
@@ -116,28 +146,32 @@ Item {
                     }
                 }
 
-                // Pin button
+                // More options button ([•••])
                 Rectangle {
+                    id: moreBtn
                     Layout.preferredWidth: 20
                     Layout.preferredHeight: 20
                     radius: 4
-                    color: pinBtnMouse.containsMouse ? theme.bgHover : "transparent"
+                    color: moreMouse.containsMouse ? theme.bgHover : "transparent"
 
                     AppIcon {
                         anchors.centerIn: parent
-                        width: 10
-                        height: 10
-                        name: "pin"
+                        width: 11
+                        height: 11
+                        name: "more-horizontal"
                         color: theme.textSubtext
                     }
 
                     MouseArea {
-                        id: pinBtnMouse
+                        id: moreMouse
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: function(mouse) {
+                            mouse.accepted = true
                             if (pageItemRoot.pageData) {
-                                pageItemRoot.togglePinRequested(pageItemRoot.pageData.id)
+                                var pt = moreBtn.mapToItem(pageItemRoot, moreBtn.width, moreBtn.height)
+                                pageItemRoot.contextMenuRequested(pageItemRoot.pageData.id, pt.x, pt.y)
                             }
                         }
                     }
@@ -149,7 +183,7 @@ Item {
             id: itemMouse
             anchors.fill: parent
             hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             cursorShape: Qt.PointingHandCursor
 
             drag.target: dragProxy
@@ -160,10 +194,19 @@ Item {
                     if (pageItemRoot.pageData) {
                         pageItemRoot.contextMenuRequested(pageItemRoot.pageData.id, mouse.x, mouse.y)
                     }
+                } else if (mouse.button === Qt.MiddleButton) {
+                    if (pageItemRoot.pageData) {
+                        pageItemRoot.openInNewTabRequested(pageItemRoot.pageData.id)
+                    }
                 } else {
                     if (pageItemRoot.pageData) {
                         pageItemRoot.pageSelected(pageItemRoot.pageData.id)
                     }
+                }
+            }
+            onDoubleClicked: function(mouse) {
+                if (mouse.button === Qt.LeftButton && pageItemRoot.pageData) {
+                    pageItemRoot.renameRequested(pageItemRoot.pageData.id)
                 }
             }
         }
