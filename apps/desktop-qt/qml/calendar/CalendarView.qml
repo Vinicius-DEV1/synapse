@@ -187,18 +187,9 @@ Rectangle {
             filteredCount: calendarRoot.filteredEvents.length
             totalCount: calendarRoot.allEvents.length
             viewMode: calendarRoot.viewMode
-            activeStatusFilter: calendarRoot.activeStatusFilter
 
-            onSearchChanged: function(text) {
-                calendarRoot.searchFilter = text
-                calendarRoot.applyFilters()
-            }
             onViewModeSelected: function(mode) {
                 calendarRoot.viewMode = mode
-            }
-            onFilterSelected: function(status) {
-                calendarRoot.activeStatusFilter = status
-                calendarRoot.applyFilters()
             }
             onCreateEventRequested: calendarRoot.openCreateModal("")
             onHelpRequested: helpDialog.isOpen = true
@@ -244,7 +235,11 @@ Rectangle {
                 CalendarTaskFeed {
                     Layout.preferredWidth: 320
                     Layout.fillHeight: true
-                    events: calendarRoot.allEvents
+                    events: calendarRoot.filteredEvents
+                    activeStatusFilter: calendarRoot.activeStatusFilter
+                    searchText: calendarRoot.searchFilter
+                    onSearchChanged: function(txt) { calendarRoot.searchFilter = txt; calendarRoot.applyFilters() }
+                    onStatusFilterSelected: function(status) { calendarRoot.activeStatusFilter = status; calendarRoot.applyFilters() }
                     onEditRequested: function(eventData) { calendarRoot.openEditModal(eventData) }
                     onToggleStatusRequested: function(eventId, curStatus) {
                         dataController.toggleEventStatus(eventId)

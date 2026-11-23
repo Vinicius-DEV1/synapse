@@ -19,6 +19,11 @@ Rectangle {
     property string previewText: ""
     property string previewError: ""
     property bool loading: false
+    property bool markdownRendered: true
+    property int previewPdfPage: 1
+    property string previewPdfImageUrl: ""
+    property string previewPdfImagePath: ""
+    readonly property bool isMarkdownFile: /\.(md|markdown)$/i.test(previewName)
 
     signal closeRequested()
     signal exportRequested(string fileId)
@@ -26,6 +31,26 @@ Rectangle {
     function stopVideo() {
         previewVideoPlayer.command(["stop"])
         previewVideoPlayer.source = ""
+    }
+
+    Connections {
+        target: dataController
+        function onLibraryPdfPageReady(result) {
+            if (!previewOverlay.visible || previewOverlay.previewType !== "pdf") return
+            if (!result.success) {
+                if (Number(result.pageNumber || 1) === 1 && previewOverlay.previewPdfImageUrl.length === 0) {
+                    previewOverlay.previewError = result.error || "Não foi possível renderizar o PDF."
+                }
+                return
+            }
+            if (previewOverlay.previewPdfImagePath.length > 0 && previewOverlay.previewPdfImagePath !== result.path) {
+                dataController.closeLibraryBook(previewOverlay.previewPdfImagePath)
+            }
+            previewOverlay.previewPdfImageUrl = result.url || ""
+            previewOverlay.previewPdfImagePath = result.path || ""
+            previewOverlay.previewPdfPage = Number(result.pageNumber || 1)
+            previewOverlay.previewError = ""
+        }
     }
 
     ColumnLayout {
@@ -41,6 +66,37 @@ Rectangle {
                 spacing: 2
                 Text { Layout.fillWidth: true; text: previewOverlay.previewName || "Abrindo arquivo…"; color: theme.textDark; font.pixelSize: 15; font.bold: true; elide: Text.ElideRight }
                 Text { text: previewOverlay.previewType ? String(previewOverlay.previewType).toUpperCase() : "Pré-visualização local"; color: theme.textMuted; font.pixelSize: 9; font.family: theme.fontMono }
+            }
+            Button {
+                text: previewOverlay.markdownRendered ? "Ver Código-fonte" : "Ver Renderizado"
+                visible: !previewOverlay.loading && previewOverlay.isMarkdownFile && (previewOverlay.previewType === "text" || previewOverlay.previewType === "code")
+                onClicked: previewOverlay.markdownRendered = !previewOverlay.markdownRendered
+                background: Rectangle { color: theme.activePillBg; border.color: theme.borderBrand; radius: 8 }
+                contentItem: Text { text: parent.text; color: theme.brand300; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            RowLayout {
+                visible: !previewOverlay.loading && previewOverlay.previewType === "pdf" && previewOverlay.previewPath.length > 0
+                spacing: 6
+                Button {
+                    text: "◀"
+                    enabled: previewOverlay.previewPdfPage > 1 && !dataController.fileOperationRunning
+                    onClicked: dataController.renderLibraryPdfPage(previewOverlay.previewPath, Math.max(1, previewOverlay.previewPdfPage - 1), 960)
+                    background: Rectangle { color: theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
+                    contentItem: Text { text: parent.text; color: parent.enabled ? theme.textSubtext : theme.textMuted; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                }
+                Text {
+                    text: "Pág. " + previewOverlay.previewPdfPage
+                    color: theme.textSubtext
+                    font.pixelSize: 11
+                    font.bold: true
+                }
+                Button {
+                    text: "▶"
+                    enabled: !dataController.fileOperationRunning
+                    onClicked: dataController.renderLibraryPdfPage(previewOverlay.previewPath, previewOverlay.previewPdfPage + 1, 960)
+                    background: Rectangle { color: theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
+                    contentItem: Text { text: parent.text; color: parent.enabled ? theme.textSubtext : theme.textMuted; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                }
             }
             Button {
                 text: "Exportar"
@@ -101,16 +157,32 @@ Rectangle {
             ScrollView {
                 anchors.fill: parent
                 anchors.margins: 14
-                visible: !previewOverlay.loading && previewOverlay.previewType === "text" && previewOverlay.previewError.length === 0
+                visible: !previewOverlay.loading && previewOverlay.previewType === "pdf" && previewOverlay.previewPdfImageUrl.length > 0 && previewOverlay.previewError.length === 0
+                clip: true
+                Image {
+                    width: parent.width - 12
+                    source: previewOverlay.previewPdfImageUrl
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    cache: false
+                }
+            }
+
+            ScrollView {
+                anchors.fill: parent
+                anchors.margins: 14
+                visible: !previewOverlay.loading && (previewOverlay.previewType === "text" || previewOverlay.previewType === "code") && previewOverlay.previewError.length === 0
                 clip: true
                 TextArea {
+                    width: parent.width
                     text: previewOverlay.previewText
+                    textFormat: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? TextEdit.MarkdownText : TextEdit.PlainText
                     readOnly: true
                     selectByMouse: true
-                    wrapMode: TextEdit.NoWrap
+                    wrapMode: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? TextEdit.Wrap : TextEdit.NoWrap
                     color: theme.textSubtext
-                    font.family: theme.fontMono
-                    font.pixelSize: 11
+                    font.family: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? theme.fontFamily : theme.fontMono
+                    font.pixelSize: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? 13 : 11
                     background: Rectangle { color: "transparent" }
                 }
             }
@@ -119,7 +191,7 @@ Rectangle {
                 anchors.centerIn: parent
                 width: Math.min(parent.width - 48, 520)
                 spacing: 10
-                visible: !previewOverlay.loading && (previewOverlay.previewError.length > 0 || ["image", "video", "text"].indexOf(previewOverlay.previewType) === -1)
+                visible: !previewOverlay.loading && (previewOverlay.previewError.length > 0 || (["image", "video", "text", "code", "pdf"].indexOf(previewOverlay.previewType) === -1) || (previewOverlay.previewType === "pdf" && previewOverlay.previewPdfImageUrl.length === 0))
                 AppIcon { Layout.alignment: Qt.AlignHCenter; width: 30; height: 30; name: "files"; color: theme.textMuted }
                 Text {
                     Layout.fillWidth: true

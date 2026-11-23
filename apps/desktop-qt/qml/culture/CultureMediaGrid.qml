@@ -10,6 +10,52 @@ ColumnLayout {
     property var filteredItems: []
     property string activeTypeFilter: "all"
     property string activeStatusFilter: "all"
+    property string displayMode: "grid" // "grid" | "compact" | "list"
+    property var typeOrder: ["anime", "série", "filme"]
+
+    readonly property var goalItems: {
+        if (!filteredItems || filteredItems.length === 0) return []
+        return filteredItems.filter(function(it) {
+            return it.goal_note && String(it.goal_note).trim().length > 0
+        })
+    }
+
+    function moveTypeOrder(typeKey, delta) {
+        var idx = typeOrder.indexOf(typeKey)
+        var target = idx + delta
+        if (idx < 0 || target < 0 || target >= typeOrder.length) return
+        var next = typeOrder.slice()
+        var tmp = next[idx]
+        next[idx] = next[target]
+        next[target] = tmp
+        typeOrder = next
+        if (typeof dataController !== "undefined" && dataController) {
+            dataController.setConfig("culture_type_order", JSON.stringify(next))
+        }
+    }
+
+    Component.onCompleted: {
+        if (typeof dataController !== "undefined" && dataController) {
+            try {
+                var rawOrder = dataController.getConfig("culture_type_order", "")
+                if (rawOrder && rawOrder.length > 2) {
+                    var parsed = JSON.parse(rawOrder)
+                    if (Array.isArray(parsed) && parsed.length > 0) typeOrder = parsed
+                }
+            } catch (e) {}
+        }
+    }
+
+    readonly property var orderedFilteredItems: {
+        if (!filteredItems || filteredItems.length === 0 || activeTypeFilter !== "all") return filteredItems
+        var orderMap = ({})
+        for (var k = 0; k < typeOrder.length; k++) orderMap[typeOrder[k]] = k
+        return filteredItems.slice().sort(function(a, b) {
+            var ia = orderMap.hasOwnProperty(a.type) ? orderMap[a.type] : 99
+            var ib = orderMap.hasOwnProperty(b.type) ? orderMap[b.type] : 99
+            return ia - ib
+        })
+    }
 
     signal typeFilterChanged(string filter)
     signal statusFilterChanged(string filter)
@@ -107,24 +153,135 @@ ColumnLayout {
                     }
                 }
             }
+
+            Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 20; color: "#15ffffff" }
+
+            // Display Mode Switcher (Grid | Compact | List)
+            RowLayout {
+                spacing: 4
+                Repeater {
+                    model: [
+                        { key: "grid", label: "Grade" },
+                        { key: "compact", label: "Compacto" },
+                        { key: "list", label: "Lista" }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: modeLabel.contentWidth + 16
+                        height: 32
+                        radius: 8
+                        color: mediaGridRoot.displayMode === modelData.key ? "#268b5cf6" : "#1a1924"
+                        border.color: mediaGridRoot.displayMode === modelData.key ? "#668b5cf6" : "#0fffffff"
+                        Text {
+                            id: modeLabel
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: mediaGridRoot.displayMode === modelData.key ? "#c4b5fd" : "#a7a9be"
+                            font.pixelSize: 11
+                            font.bold: mediaGridRoot.displayMode === modelData.key
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mediaGridRoot.displayMode = modelData.key
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // Grid View of Culture Items
+    // Active Personal Goals & Category Reordering Bar
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 12
+        visible: mediaGridRoot.goalItems.length > 0 || mediaGridRoot.activeTypeFilter === "all"
+
+        Rectangle {
+            visible: mediaGridRoot.goalItems.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 34
+            radius: 8
+            color: "#151422"
+            border.color: "#22f59e0b"
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: 8
+                Text { text: "🎯 Objetivos Ativos (" + mediaGridRoot.goalItems.length + "):"; color: "#fbbf24"; font.pixelSize: 11; font.bold: true }
+                Text {
+                    Layout.fillWidth: true
+                    text: mediaGridRoot.goalItems.slice(0, 3).map(function(g) { return g.title + " — " + g.goal_note }).join("   •   ")
+                    color: "#cbd5e1"
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        RowLayout {
+            visible: mediaGridRoot.activeTypeFilter === "all"
+            spacing: 4
+            Text { text: "Ordem:"; color: "#64748b"; font.pixelSize: 10 }
+            Repeater {
+                model: mediaGridRoot.typeOrder
+                delegate: Rectangle {
+                    required property string modelData
+                    required property int index
+                    width: ordRow.implicitWidth + 12
+                    height: 28
+                    radius: 6
+                    color: "#1a1924"
+                    border.color: "#14ffffff"
+                    RowLayout {
+                        id: ordRow
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Text { text: modelData; color: "#c4b5fd"; font.pixelSize: 10; font.bold: true }
+                        Text {
+                            visible: index > 0
+                            text: "←"
+                            color: "#94a1b2"
+                            font.pixelSize: 10
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: mediaGridRoot.moveTypeOrder(modelData, -1)
+                            }
+                        }
+                        Text {
+                            visible: index < mediaGridRoot.typeOrder.length - 1
+                            text: "→"
+                            color: "#94a1b2"
+                            font.pixelSize: 10
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: mediaGridRoot.moveTypeOrder(modelData, 1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Grid / Compact / List View of Culture Items
     GridView {
         id: cultureGridView
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
-        readonly property int columnCount: Math.max(1, Math.floor(width / 310))
+        readonly property int columnCount: mediaGridRoot.displayMode === "list" ? 1 : (mediaGridRoot.displayMode === "compact" ? Math.max(1, Math.floor(width / 230)) : Math.max(1, Math.floor(width / 310)))
         cellWidth: Math.floor(width / columnCount)
-        cellHeight: 170
-        model: mediaGridRoot.filteredItems
+        cellHeight: mediaGridRoot.displayMode === "list" ? 86 : (mediaGridRoot.displayMode === "compact" ? 124 : 170)
+        model: mediaGridRoot.orderedFilteredItems
 
         delegate: Rectangle {
             id: cultureCardDelegate
             width: cultureGridView.cellWidth - 16
-            height: 154
+            height: cultureGridView.cellHeight - 14
             x: 8
             radius: 12
             color: cardMouse.containsMouse ? "#211f30" : "#1a1924"
@@ -141,7 +298,7 @@ ColumnLayout {
 
                 // Cover image / poster
                 Rectangle {
-                    Layout.preferredWidth: 84
+                    Layout.preferredWidth: mediaGridRoot.displayMode === "list" ? 46 : (mediaGridRoot.displayMode === "compact" ? 64 : 84)
                     Layout.fillHeight: true
                     radius: 8
                     color: "#15141b"
@@ -211,6 +368,7 @@ ColumnLayout {
 
                     // Synopsis preview
                     Text {
+                        visible: mediaGridRoot.displayMode === "grid"
                         Layout.fillWidth: true
                         text: modelData.synopsis || "Sem sinopse disponível."
                         color: "#a7a9be"

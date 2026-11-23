@@ -17,6 +17,21 @@ Item {
     signal itemActivated(var item)
     signal itemActionRequested(string action, var item)
     signal sortRequested(string key)
+    signal itemsDroppedOnFolder(var items, string targetFolderId)
+
+    function dragItemsFor(modelData) {
+        var idStr = String(modelData.id)
+        if (selectedIds.indexOf(idStr) !== -1 && selectedIds.length > 0) {
+            var res = []
+            for (var i = 0; i < items.length; i++) {
+                if (selectedIds.indexOf(String(items[i].id)) !== -1) {
+                    res.push({ id: String(items[i].id), isFolder: items[i].kind === "folder" })
+                }
+            }
+            if (res.length > 0) return res
+        }
+        return [{ id: idStr, isFolder: modelData.kind === "folder" }]
+    }
 
     function selected(itemId) {
         return selectedIds.indexOf(String(itemId)) !== -1
@@ -104,18 +119,66 @@ Item {
             cellHeight: 145
             model: explorer.items
             delegate: Rectangle {
+                id: gridCard
                 required property var modelData
                 width: grid.cellWidth - 10
                 height: grid.cellHeight - 10
                 radius: 11
-                color: explorer.selected(modelData.id) || explorer.focusedId === modelData.id
-                       ? theme.activePillBg : theme.bgDarkSurface
-                border.color: explorer.selected(modelData.id) || explorer.focusedId === modelData.id
-                              ? theme.borderBrand : theme.borderCard
+                color: gridFolderDrop.containsDrag
+                       ? "#2a8b5cf6"
+                       : (explorer.selected(modelData.id) || explorer.focusedId === modelData.id ? theme.activePillBg : theme.bgDarkSurface)
+                border.color: gridFolderDrop.containsDrag
+                              ? theme.brand400
+                              : (explorer.selected(modelData.id) || explorer.focusedId === modelData.id ? theme.borderBrand : theme.borderCard)
+
+                Item {
+                    id: gridDragProxy
+                    anchors.centerIn: parent
+                    width: 120
+                    height: 28
+                    Drag.active: gridMouse.drag.active
+                    Drag.keys: ["synapse-file-move"]
+                    property var dragItemsPayload: explorer.dragItemsFor(gridCard.modelData)
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
+                    visible: Drag.active
+                    z: 200
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 6
+                        color: "#cc8b5cf6"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Mover " + gridDragProxy.dragItemsPayload.length + " item(ns)"
+                            color: "#ffffff"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                    }
+                }
+
+                DropArea {
+                    id: gridFolderDrop
+                    anchors.fill: parent
+                    enabled: gridCard.modelData.kind === "folder"
+                    keys: ["synapse-file-move"]
+                    onDropped: function(drop) {
+                        if (drop.source && drop.source.dragItemsPayload) {
+                            explorer.itemsDroppedOnFolder(drop.source.dragItemsPayload, String(gridCard.modelData.id))
+                        }
+                    }
+                }
 
                 MouseArea {
+                    id: gridMouse
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    drag.target: gridDragProxy
+                    drag.threshold: 10
+                    onPressed: gridDragProxy.dragItemsPayload = explorer.dragItemsFor(gridCard.modelData)
+                    onReleased: {
+                        if (gridMouse.drag.active) gridDragProxy.Drag.drop()
+                    }
                     onClicked: {
                         explorer.itemSelected(String(modelData.id), modelData.kind === "folder", mouse.modifiers)
                         if (mouse.button === Qt.RightButton) fileMenu.popup()
@@ -178,12 +241,42 @@ Item {
             clip: true
             model: explorer.items
             delegate: Rectangle {
+                id: tableRow
                 required property var modelData
                 width: table.width
                 height: 42
-                color: explorer.selected(modelData.id) || explorer.focusedId === modelData.id
-                       ? theme.activePillBg : rowMouse.containsMouse ? "#08ffffff" : "transparent"
-                border.color: "#05ffffff"
+                color: tableFolderDrop.containsDrag
+                       ? "#2a8b5cf6"
+                       : (explorer.selected(modelData.id) || explorer.focusedId === modelData.id ? theme.activePillBg : rowMouse.containsMouse ? "#08ffffff" : "transparent")
+                border.color: tableFolderDrop.containsDrag ? theme.borderBrand : "#05ffffff"
+                Item {
+                    id: tableDragProxy
+                    anchors.centerIn: parent
+                    width: 120
+                    height: 26
+                    Drag.active: rowMouse.drag.active
+                    Drag.keys: ["synapse-file-move"]
+                    property var dragItemsPayload: explorer.dragItemsFor(tableRow.modelData)
+                    visible: Drag.active
+                    z: 200
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 6
+                        color: "#cc8b5cf6"
+                        Text { anchors.centerIn: parent; text: "Mover " + tableDragProxy.dragItemsPayload.length + " item(ns)"; color: "#ffffff"; font.pixelSize: 10; font.bold: true }
+                    }
+                }
+                DropArea {
+                    id: tableFolderDrop
+                    anchors.fill: parent
+                    enabled: tableRow.modelData.kind === "folder"
+                    keys: ["synapse-file-move"]
+                    onDropped: function(drop) {
+                        if (drop.source && drop.source.dragItemsPayload) {
+                            explorer.itemsDroppedOnFolder(drop.source.dragItemsPayload, String(tableRow.modelData.id))
+                        }
+                    }
+                }
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 12
@@ -210,6 +303,10 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    drag.target: tableDragProxy
+                    drag.threshold: 10
+                    onPressed: tableDragProxy.dragItemsPayload = explorer.dragItemsFor(tableRow.modelData)
+                    onReleased: { if (rowMouse.drag.active) tableDragProxy.Drag.drop() }
                     onClicked: {
                         explorer.itemSelected(String(modelData.id), modelData.kind === "folder", mouse.modifiers)
                         if (mouse.button === Qt.RightButton) rowMenu.popup()

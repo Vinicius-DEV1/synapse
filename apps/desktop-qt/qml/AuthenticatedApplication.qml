@@ -89,10 +89,31 @@ Item {
             patch.pageId = focusView.currentTab
         } else if (cur.module === "vault" && vaultView) {
             patch.pageId = vaultView.viewMode === "security" ? "security" : "items"
+        } else if (cur.module === "library" && libraryView) {
+            patch.bookId = libraryView.activeBookId || null
+            patch.bookTitle = libraryView.activeBookTitle || ""
+            patch.title = patch.bookId ? patch.bookTitle : "Biblioteca"
         }
         var nextTabs = tabsList.slice()
         nextTabs[idx] = Object.assign({}, cur, patch)
         tabsList = nextTabs
+    }
+
+    function syncActiveLibraryTabMeta() {
+        if (activeTab !== "library" || !libraryView) return
+        var bId = libraryView.activeBookId || null
+        var bTitle = libraryView.activeBookTitle || ""
+        var tabTitle = bId ? bTitle : "Biblioteca"
+        for (var i = 0; i < tabsList.length; ++i) {
+            if (tabsList[i].id === currentTabId && tabsList[i].module === "library") {
+                if (tabsList[i].bookId !== bId || tabsList[i].title !== tabTitle) {
+                    var newTabs = tabsList.slice()
+                    newTabs[i] = Object.assign({}, newTabs[i], { bookId: bId, bookTitle: bTitle, title: tabTitle })
+                    tabsList = newTabs
+                }
+                break
+            }
+        }
     }
 
     function restoreTabState(tabObj) {
@@ -107,6 +128,9 @@ Item {
             focusView.currentTab = tabObj.pageId
         } else if (tabObj.module === "vault" && vaultView && tabObj.pageId) {
             vaultView.viewMode = (tabObj.pageId === "security") ? "security" : "items"
+        } else if (tabObj.module === "library" && libraryView) {
+            if (tabObj.bookId) libraryView.openBookById(tabObj.bookId)
+            else libraryView.closeReaderIfOpen()
         }
     }
 
@@ -450,7 +474,7 @@ Item {
         // Signature Top Chrome Tab Bar
         AppTopTabBar {
             id: topTabBar
-            visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen)
+            visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen) && !libraryView.isReaderFullscreen
             Layout.preferredHeight: visible ? 46 : 0
             openTabs: rootWindow.tabsList
             activeTabId: rootWindow.currentTabId
@@ -491,7 +515,7 @@ Item {
             // Caderno Sidebar
             AppSidebar {
                 id: appSidebar
-                visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen)
+                visible: !(videoView.activeVideo !== null && videoView.isPlayerFullscreen) && !libraryView.isReaderFullscreen
                 sidebarExpanded: rootWindow.sidebarExpanded
                 activeTab: rootWindow.activeTab
                 activeSubSection: rootWindow.activeSubSection
@@ -662,6 +686,7 @@ Item {
                     LibraryView {
                         id: libraryView
                         viewportWidth: rootWindow.width
+                        onActiveBookChanged: rootWindow.syncActiveLibraryTabMeta()
                     }
                     FinanceView { id: financeView }
                     CultureView { id: cultureView }

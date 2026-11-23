@@ -118,6 +118,8 @@ Item {
         previewOverlay.previewFileId = fileId
         previewOverlay.previewError = ""
         previewOverlay.previewText = ""
+        previewOverlay.previewPdfPage = 1
+        previewOverlay.previewPdfImageUrl = ""
         previewOverlay.loading = true
         previewOpen = true
         dataController.previewLocalFile(fileId)
@@ -125,6 +127,9 @@ Item {
 
     function closePreview(alreadyInvalidated) {
         if (previewOverlay.loading) dataController.cancelFilePreview()
+        if (previewOverlay.previewPdfImagePath.length > 0 && !alreadyInvalidated) {
+            dataController.closeLibraryBook(previewOverlay.previewPdfImagePath)
+        }
         if (previewOverlay.previewPath.length > 0 && !alreadyInvalidated) {
             dataController.closeFilePreview(previewOverlay.previewPath)
         }
@@ -136,6 +141,9 @@ Item {
         previewOverlay.previewType = ""
         previewOverlay.previewText = ""
         previewOverlay.previewError = ""
+        previewOverlay.previewPdfPage = 1
+        previewOverlay.previewPdfImageUrl = ""
+        previewOverlay.previewPdfImagePath = ""
         previewOverlay.loading = false
         previewOpen = false
     }
@@ -230,10 +238,12 @@ Item {
             previewOverlay.previewName = result.name || ""
             previewOverlay.previewType = result.file_type || "other"
             actions.previewOpen = true
-            if (previewOverlay.previewType === "text") {
+            if (previewOverlay.previewType === "text" || previewOverlay.previewType === "code") {
                 var textResult = dataController.readFilePreviewText(previewOverlay.previewPath)
                 if (textResult.success) previewOverlay.previewText = textResult.text || ""
                 else previewOverlay.previewError = textResult.error || "Could not read the text preview."
+            } else if (previewOverlay.previewType === "pdf" && previewOverlay.previewPath.length > 0) {
+                dataController.renderLibraryPdfPage(previewOverlay.previewPath, 1, 960)
             }
         }
         function onFilePreviewsInvalidated() { actions.closePreview(true) }

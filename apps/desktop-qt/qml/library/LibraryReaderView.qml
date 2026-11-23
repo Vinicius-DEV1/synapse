@@ -105,7 +105,7 @@ Rectangle {
     function renderCurrentPdfPage() {
         if (format !== "pdf" || temporaryPath.length === 0 || totalPages < 1) return
         readerError = ""
-        dataController.renderLibraryPdfPage(temporaryPath, currentPage, Math.min(1800, Math.floor(width * 0.7)))
+        pdfContinuousView.enqueuePage(currentPage)
     }
 
     function navigateToPage(page) {
@@ -114,7 +114,7 @@ Rectangle {
         if (nextPage === currentPage) return
         currentPage = nextPage
         dataController.updateBookProgress(book.id, currentPage, totalPages)
-        if (format === "pdf") renderCurrentPdfPage()
+        if (format === "pdf") pdfContinuousView.scrollToPage(currentPage)
         if (format === "epub") epubContent.cursorPosition = 0
     }
 
@@ -197,7 +197,13 @@ Rectangle {
             totalPages: reader.totalPages
             format: reader.format
             busy: dataController.fileOperationRunning
-            onBackRequested: reader.closeReader()
+            isFullscreen: reader.isFullscreen
+            onBackRequested: {
+                reader.isFullscreen = false
+                pdfContinuousView.resetPages()
+                reader.closeReader()
+            }
+            onFullscreenRequested: reader.isFullscreen = !reader.isFullscreen
             onPreviousRequested: reader.navigateToPage(reader.currentPage - 1)
             onNextRequested: reader.navigateToPage(reader.currentPage + 1)
             onSearchRequested: searchHost.openSearch()
@@ -224,23 +230,22 @@ Rectangle {
                 border.color: "#12ffffff"
                 clip: true
 
-                Flickable {
-                    id: pdfFlickable
+                LibraryPdfContinuousView {
+                    id: pdfContinuousView
                     anchors.fill: parent
-                    anchors.margins: 16
-                    clip: true
-                    visible: reader.format === "pdf" && reader.pdfImageUrl.length > 0
-                    contentWidth: Math.max(width, pdfImg.width)
-                    contentHeight: Math.max(height, pdfImg.height)
-
-                    Image {
-                        id: pdfImg
-                        width: parent.width * reader.zoomFactor
-                        height: implicitHeight > 0 && implicitWidth > 0 ? (width * implicitHeight / implicitWidth) : parent.height * reader.zoomFactor
-                        source: reader.pdfImageUrl
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        cache: false
+                    anchors.margins: 12
+                    visible: reader.format === "pdf" && reader.temporaryPath.length > 0 && reader.totalPages > 0
+                    controller: dataController
+                    temporaryPath: reader.temporaryPath
+                    totalPages: reader.totalPages
+                    currentPage: reader.currentPage
+                    zoomScale: reader.zoomFactor
+                    highlights: reader.highlights
+                    onPageScrolled: function(pageNumber) {
+                        if (reader.book && pageNumber !== reader.currentPage) {
+                            reader.currentPage = pageNumber
+                            dataController.updateBookProgress(reader.book.id, reader.currentPage, reader.totalPages)
+                        }
                     }
                 }
 
@@ -384,22 +389,26 @@ Rectangle {
             reader.currentPage = Math.max(1, Math.min(reader.totalPages, Number(result.currentPage) || 1))
             reader.readingSessionId = dataController.startLibraryReadingSession(result.bookId, reader.currentPage)
             reader.loadAnnotations()
-            if (reader.format === "pdf") reader.renderCurrentPdfPage()
+            if (reader.format === "pdf") {
+                pdfContinuousView.resetPages()
+                pdfContinuousView.scrollToPage(reader.currentPage)
+            }
         }
         function onLibraryPdfPageReady(result) {
-            if (!reader.isOpen || reader.format !== "pdf" || Number(result.pageNumber) !== reader.currentPage) {
+            if (!reader.isOpen || reader.format !== "pdf") {
                 if (result.path) dataController.closeLibraryBook(result.path)
                 return
             }
-            if (!result.success) {
-                reader.readerError = result.error || "Não foi possível renderizar esta página."
-                return
+            pdfContinuousView.handlePageReady(result)
+            if (Number(result.pageNumber) === reader.currentPage) {
+                if (result.success) {
+                    reader.pdfImageUrl = result.url || ""
+                    reader.pdfPageText = result.text || ""
+                    reader.readerError = ""
+                } else {
+                    reader.readerError = result.error || "Não foi possível renderizar esta página."
+                }
             }
-            if (reader.pdfImagePath.length > 0) dataController.closeLibraryBook(reader.pdfImagePath)
-            reader.pdfImageUrl = result.url || ""
-            reader.pdfImagePath = result.path || ""
-            reader.pdfPageText = result.text || ""
-            reader.readerError = ""
         }
         function onFilePreviewsInvalidated() {
             if (reader.isOpen) reader.closeReader()

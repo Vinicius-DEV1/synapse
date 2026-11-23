@@ -23,6 +23,37 @@ Rectangle {
     property var importQueue: []
     property string importStatus: ""
 
+    readonly property bool isReaderFullscreen: libraryReader.isOpen && libraryReader.isFullscreen
+    readonly property string activeBookId: libraryReader.isOpen && libraryReader.book ? String(libraryReader.book.id) : ""
+    readonly property string activeBookTitle: libraryReader.isOpen && libraryReader.book ? String(libraryReader.book.title) : ""
+
+    signal activeBookChanged(string bookId, string bookTitle)
+
+    function openBookById(bookId) {
+        if (!bookId) return
+        if (libraryReader.isOpen && libraryReader.book && String(libraryReader.book.id) === String(bookId)) return
+        for (var i = 0; i < books.length; i++) {
+            if (String(books[i].id) === String(bookId)) {
+                libraryReader.openBook(books[i])
+                return
+            }
+        }
+        var fresh = dataController.getLibraryBooks("")
+        for (var j = 0; j < fresh.length; j++) {
+            if (String(fresh[j].id) === String(bookId)) {
+                libraryReader.openBook(fresh[j])
+                return
+            }
+        }
+    }
+
+    function closeReaderIfOpen() {
+        if (libraryReader.isOpen) {
+            libraryReader.isFullscreen = false
+            libraryReader.closeReader()
+        }
+    }
+
     function importNextQueuedBook() {
         if (importQueue.length === 0) return
         var nextUrl = importQueue[0]
@@ -295,6 +326,8 @@ Rectangle {
     LibraryReaderView {
         id: libraryReader
         anchors.fill: parent
+        onIsOpenChanged: libraryRoot.activeBookChanged(libraryRoot.activeBookId, libraryRoot.activeBookTitle)
+        onBookChanged: libraryRoot.activeBookChanged(libraryRoot.activeBookId, libraryRoot.activeBookTitle)
     }
 
     FileDialog {

@@ -11,12 +11,26 @@ RowLayout {
     property var collection
     property var actions
     property var dialogs
+    property bool showSidebar: true
+    property bool showCategoryBar: true
     readonly property bool searchActive: fileSearchField.activeFocus
     signal helpRequested()
 
+    function moveDroppedItemsToFolder(draggedItems, targetFolderId) {
+        if (!draggedItems || draggedItems.length === 0) return
+        var filtered = draggedItems.filter(function(entry) {
+            return !(entry.isFolder && String(entry.id) === String(targetFolderId))
+        })
+        if (filtered.length === 0) return
+        var moved = dataController.moveFileItems(filtered, String(targetFolderId || ""))
+        actions.feedbackText = moved ? "Item(ns) movido(s) com sucesso." : "Não foi possível mover para essa pasta."
+        collection.clearSelection()
+    }
+
     FilesFolderSidebar {
-        Layout.preferredWidth: 218
-        Layout.minimumWidth: 200
+        visible: workspace.showSidebar
+        Layout.preferredWidth: visible ? 218 : 0
+        Layout.minimumWidth: visible ? 200 : 0
         Layout.fillHeight: true
         folders: workspace.collection.allFolders
         files: workspace.collection.allFiles
@@ -26,6 +40,7 @@ RowLayout {
         onSectionSelected: function(section) { workspace.collection.openSection(section) }
         onFolderSelected: function(folderId) { workspace.collection.navigateToFolder(folderId) }
         onNewFolderRequested: function(parentId) { workspace.dialogs.openCreateFolder(parentId) }
+        onItemsDroppedOnFolder: function(items, targetFolderId) { workspace.moveDroppedItemsToFolder(items, targetFolderId) }
     }
 
     ColumnLayout {
@@ -47,10 +62,86 @@ RowLayout {
                     font.bold: true
                     font.family: theme.fontFamily
                 }
+                Row {
+                    visible: workspace.collection.activeSection === "folders"
+                    spacing: 4
+                    Rectangle {
+                        id: rootCrumb
+                        width: rootCrumbText.implicitWidth + 12
+                        height: 20
+                        radius: 5
+                        color: rootCrumbDrop.containsDrag ? theme.activePillBg : (rootCrumbMouse.containsMouse ? theme.bgHover : "transparent")
+                        border.color: rootCrumbDrop.containsDrag ? theme.borderBrand : "transparent"
+                        Text {
+                            id: rootCrumbText
+                            anchors.centerIn: parent
+                            text: workspace.collection.folderStack.length > 0 ? "Início" : "Armazenamento local criptografado"
+                            color: rootCrumbMouse.containsMouse || rootCrumbDrop.containsDrag ? theme.brand300 : theme.textSubtext
+                            font.pixelSize: 10
+                        }
+                        MouseArea {
+                            id: rootCrumbMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: workspace.collection.openSection("folders")
+                        }
+                        DropArea {
+                            id: rootCrumbDrop
+                            anchors.fill: parent
+                            keys: ["synapse-file-move"]
+                            onDropped: function(drop) {
+                                if (drop.source && drop.source.dragItemsPayload) {
+                                    workspace.moveDroppedItemsToFolder(drop.source.dragItemsPayload, "")
+                                }
+                            }
+                        }
+                    }
+                    Repeater {
+                        model: workspace.collection.folderStack
+                        delegate: Row {
+                            required property var modelData
+                            required property int index
+                            spacing: 4
+                            Text { text: "/"; color: theme.textMuted; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle {
+                                width: crumbLabel.implicitWidth + 12
+                                height: 20
+                                radius: 5
+                                color: crumbDrop.containsDrag ? theme.activePillBg : (crumbMouse.containsMouse ? theme.bgHover : "transparent")
+                                border.color: crumbDrop.containsDrag ? theme.borderBrand : "transparent"
+                                Text {
+                                    id: crumbLabel
+                                    anchors.centerIn: parent
+                                    text: modelData.name
+                                    color: index === workspace.collection.folderStack.length - 1 ? theme.textDark : theme.textSubtext
+                                    font.pixelSize: 10
+                                    font.bold: index === workspace.collection.folderStack.length - 1
+                                }
+                                MouseArea {
+                                    id: crumbMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: workspace.collection.navigateToFolder(String(modelData.id))
+                                }
+                                DropArea {
+                                    id: crumbDrop
+                                    anchors.fill: parent
+                                    keys: ["synapse-file-move"]
+                                    onDropped: function(drop) {
+                                        if (drop.source && drop.source.dragItemsPayload) {
+                                            workspace.moveDroppedItemsToFolder(drop.source.dragItemsPayload, String(modelData.id))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Text {
-                    text: workspace.collection.activeSection === "folders"
-                          ? (workspace.collection.folderStack.length ? "Início  /  " + workspace.collection.folderStack.map(function(folder) { return folder.name }).join("  /  ") : "Armazenamento local criptografado")
-                          : workspace.collection.activeSection === "all" ? "Todos os arquivos" : workspace.collection.activeSection === "recent" ? "Arquivos recentes" : "Arquivos no Google Drive"
+                    visible: workspace.collection.activeSection !== "folders"
+                    text: workspace.collection.activeSection === "all" ? "Todos os arquivos" : workspace.collection.activeSection === "recent" ? "Arquivos recentes" : "Arquivos no Google Drive"
                     color: theme.textSubtext
                     font.pixelSize: 10
                     elide: Text.ElideRight
@@ -151,11 +242,28 @@ RowLayout {
                 background: Rectangle { color: workspace.actions.inspectorOpen ? theme.activePillBg : parent.hovered ? theme.bgHover : theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
                 contentItem: Text { text: parent.text; color: workspace.actions.inspectorOpen ? theme.brand300 : theme.textSubtext; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             }
+            ToolButton {
+                text: "◧"
+                ToolTip.visible: hovered
+                ToolTip.text: workspace.showSidebar ? "Ocultar barra lateral de pastas" : "Mostrar barra lateral de pastas"
+                onClicked: workspace.showSidebar = !workspace.showSidebar
+                background: Rectangle { color: workspace.showSidebar ? theme.activePillBg : theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
+                contentItem: Text { text: parent.text; color: workspace.showSidebar ? theme.brand300 : theme.textSubtext; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            ToolButton {
+                text: "⊞"
+                ToolTip.visible: hovered
+                ToolTip.text: workspace.showCategoryBar ? "Ocultar filtros de tipo" : "Mostrar filtros de tipo"
+                onClicked: workspace.showCategoryBar = !workspace.showCategoryBar
+                background: Rectangle { color: workspace.showCategoryBar ? theme.activePillBg : theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
+                contentItem: Text { text: parent.text; color: workspace.showCategoryBar ? theme.brand300 : theme.textSubtext; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
         }
 
         FilesCategoryFilter {
+            visible: workspace.showCategoryBar
             Layout.fillWidth: true
-            Layout.preferredHeight: 32
+            Layout.preferredHeight: visible ? 32 : 0
             files: workspace.collection.allFiles
             activeCategory: workspace.collection.categoryFilter
             onCategorySelected: function(category) { workspace.collection.categoryFilter = category }
@@ -190,6 +298,7 @@ RowLayout {
                 }
                 onItemActionRequested: function(action, item) { workspace.actions.handleItemMenuAction(action, item) }
                 onSortRequested: function(key) { workspace.collection.sortByColumn(key) }
+                onItemsDroppedOnFolder: function(items, targetFolderId) { workspace.moveDroppedItemsToFolder(items, targetFolderId) }
             }
             FilesInspector {
                 visible: workspace.actions.inspectorOpen

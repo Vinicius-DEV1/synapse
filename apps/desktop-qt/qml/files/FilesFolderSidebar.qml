@@ -19,6 +19,7 @@ Rectangle {
     signal sectionSelected(string section)
     signal folderSelected(string folderId)
     signal newFolderRequested(string parentId)
+    signal itemsDroppedOnFolder(var items, string targetFolderId)
 
     function isExpanded(folderId) {
         return expandedIds.indexOf(folderId) !== -1
@@ -85,8 +86,22 @@ Rectangle {
                 Layout.fillWidth: true
                 height: 32
                 radius: 7
-                color: sidebar.activeSection === modelData.id && (modelData.id !== "folders" || !sidebar.selectedFolderId)
-                       ? theme.activePillBg : "transparent"
+                color: rootItemDrop.containsDrag
+                       ? "#2a8b5cf6"
+                       : (sidebar.activeSection === modelData.id && (modelData.id !== "folders" || !sidebar.selectedFolderId) ? theme.activePillBg : "transparent")
+                border.color: rootItemDrop.containsDrag ? theme.borderBrand : "transparent"
+
+                DropArea {
+                    id: rootItemDrop
+                    anchors.fill: parent
+                    enabled: modelData.id === "folders"
+                    keys: ["synapse-file-move"]
+                    onDropped: function(drop) {
+                        if (drop.source && drop.source.dragItemsPayload) {
+                            sidebar.itemsDroppedOnFolder(drop.source.dragItemsPayload, "")
+                        }
+                    }
+                }
 
                 RowLayout {
                     z: 1
@@ -161,8 +176,21 @@ Rectangle {
                 width: folderList.width
                 height: 30
                 radius: 6
-                color: sidebar.activeSection === "folders" && sidebar.selectedFolderId === modelData.id
-                       ? theme.activePillBg : rowMouse.containsMouse ? theme.bgHover : "transparent"
+                color: folderRowDrop.containsDrag
+                       ? "#2a8b5cf6"
+                       : (sidebar.activeSection === "folders" && sidebar.selectedFolderId === modelData.id ? theme.activePillBg : rowMouse.containsMouse ? theme.bgHover : "transparent")
+                border.color: folderRowDrop.containsDrag ? theme.borderBrand : "transparent"
+
+                DropArea {
+                    id: folderRowDrop
+                    anchors.fill: parent
+                    keys: ["synapse-file-move"]
+                    onDropped: function(drop) {
+                        if (drop.source && drop.source.dragItemsPayload) {
+                            sidebar.itemsDroppedOnFolder(drop.source.dragItemsPayload, String(modelData.id))
+                        }
+                    }
+                }
 
                 RowLayout {
                     z: 1

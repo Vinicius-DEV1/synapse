@@ -12,9 +12,13 @@ Rectangle {
 
     property var events: []
     property string taskFilter: "all" // "all" | "tasks"
+    property string activeStatusFilter: "all"
+    property string searchText: ""
 
     signal editRequested(var eventData)
     signal toggleStatusRequested(string eventId, string currentStatus)
+    signal searchChanged(string text)
+    signal statusFilterSelected(string status)
 
     readonly property string todayStr: Qt.formatDate(new Date(), "yyyy-MM-dd")
 
@@ -87,22 +91,87 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // Header
+        // Header with Search & Status Filters (moved from CalendarHeader for web parity)
         Rectangle {
             Layout.fillWidth: true
-            height: 90
+            height: 158
             color: "transparent"
 
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 14
-                spacing: 10
+                spacing: 8
 
                 Text {
                     text: qsTr("Agenda")
                     color: "#fffffe"
                     font.pixelSize: 16
                     font.bold: true
+                }
+
+                // Search bar inside Agenda feed
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 32
+                    radius: 8
+                    color: "#11101a"
+                    border.color: feedSearchInput.activeFocus ? "#803b82f6" : "#22ffffff"
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 6
+                        Text { text: "🔍"; color: "#94a1b2"; font.pixelSize: 11 }
+                        TextInput {
+                            id: feedSearchInput
+                            Layout.fillWidth: true
+                            color: "#fffffe"
+                            font.pixelSize: 12
+                            selectByMouse: true
+                            text: feedContainer.searchText
+                            onTextChanged: feedContainer.searchChanged(text)
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("Buscar compromisso...")
+                                color: "#64748b"
+                                font.pixelSize: 12
+                                visible: !feedSearchInput.text && !feedSearchInput.activeFocus
+                            }
+                        }
+                    }
+                }
+
+                // Status Filter Pills (Todos / Pendentes / Concluídos)
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    Repeater {
+                        model: [
+                            { id: "all", label: qsTr("Todos"), color: "#fffffe" },
+                            { id: "pending", label: qsTr("Pendentes"), color: "#38bdf8" },
+                            { id: "completed", label: qsTr("Concluídos"), color: "#34d399" }
+                        ]
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            height: 26
+                            radius: 6
+                            color: feedContainer.activeStatusFilter === modelData.id ? "#262438" : "#0a11101a"
+                            border.color: feedContainer.activeStatusFilter === modelData.id ? "#4d8b5cf6" : "#18ffffff"
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: feedContainer.activeStatusFilter === modelData.id ? modelData.color : "#94a1b2"
+                                font.pixelSize: 10
+                                font.bold: feedContainer.activeStatusFilter === modelData.id
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: feedContainer.statusFilterSelected(modelData.id)
+                            }
+                        }
+                    }
                 }
 
                 // Filter Buttons (Tudo | Apenas Tarefas)

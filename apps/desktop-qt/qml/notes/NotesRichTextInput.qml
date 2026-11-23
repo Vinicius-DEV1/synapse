@@ -17,12 +17,32 @@ Item {
     property string slashQuery: ""
     property real slashAnchorX: 0
     property real slashAnchorY: 0
+    property string detectedPasteUrl: ""
     readonly property alias pageReferenceMenu: pageReferenceFlow.menu
     readonly property alias editor: richEditor
     signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
     signal widgetSlashCommandRequested(string commandId)
     signal askAiRequested(string selectedText)
+
+    Timer {
+        id: urlDetectTimer
+        interval: 6000
+        onTriggered: inputRoot.detectedPasteUrl = ""
+    }
+
+    function detectPastedStandaloneUrl(prevText, nextText) {
+        if (!nextText || nextText.length - prevText.length < 10) return
+        var cursor = richEditor.cursorPosition
+        var lineStart = nextText.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1
+        var lineEnd = nextText.indexOf("\n", cursor)
+        if (lineEnd < 0) lineEnd = nextText.length
+        var lineText = nextText.substring(lineStart, lineEnd).trim()
+        if (/^https?:\/\/[^\s<>"']+$/.test(lineText)) {
+            detectedPasteUrl = lineText
+            urlDetectTimer.restart()
+        }
+    }
     readonly property string editorAccessibleDescription: {
         var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
             ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
@@ -267,6 +287,7 @@ Item {
             if (currentPlainText !== previousPlainText) {
                 inputRoot.editorRoot.textOperations.applyRichPendingMarks(
                             richEditor.textDocument, previousPlainText, currentPlainText, richEditor.cursorPosition)
+                inputRoot.detectPastedStandaloneUrl(previousPlainText, currentPlainText)
             }
             inputRoot.updateSlashMenu(currentPlainText)
             inputRoot.editorRoot.hasPendingChanges = true
@@ -607,6 +628,49 @@ Item {
                     verticalAlignment: Text.AlignVCenter
                 }
                 onClicked: inputRoot.askAiRequested(richEditor.selectedText)
+            }
+        }
+    }
+
+    Rectangle {
+        visible: inputRoot.detectedPasteUrl.length > 0 && !inputRoot.slashMenuOpen && inputRoot.editorRoot.active
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        width: pasteUrlRow.implicitWidth + 16
+        height: 30
+        radius: 8
+        color: "#1e1b2e"
+        border.color: "#448b5cf6"
+        z: 35
+
+        RowLayout {
+            id: pasteUrlRow
+            anchors.centerIn: parent
+            spacing: 8
+            Text {
+                text: "🔗 URL colada"
+                color: "#c4b5fd"
+                font.pixelSize: 11
+                font.bold: true
+            }
+            Button {
+                text: "Abrir link"
+                Layout.preferredHeight: 22
+                background: Rectangle { radius: 5; color: parent.hovered ? "#2a8b5cf6" : "#1a8b5cf6" }
+                contentItem: Text { text: parent.text; color: "#fffffe"; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                onClicked: {
+                    inputRoot.externalLinkRequested(inputRoot.detectedPasteUrl)
+                    inputRoot.detectedPasteUrl = ""
+                }
+            }
+            ToolButton {
+                text: "✕"
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                onClicked: inputRoot.detectedPasteUrl = ""
+                contentItem: Text { text: parent.text; color: "#94a1b2"; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: "transparent" }
             }
         }
     }

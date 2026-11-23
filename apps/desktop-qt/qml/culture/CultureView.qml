@@ -143,6 +143,16 @@ Rectangle {
         }
 
         // Media Grid & Filter Pills
+        CultureRecentReleases {
+            visible: cultureRoot.activeSectionTab === "collection"
+            allItems: cultureRoot.allItems
+            onItemSelected: function(item) { cultureRoot.selectedItemForDetails = item }
+            onIncrementRequested: function(itemId) {
+                dataController.incrementCultureProgress(itemId)
+                cultureRoot.refreshItems()
+            }
+        }
+
         CultureMediaGrid {
             visible: cultureRoot.activeSectionTab === "collection"
             Layout.fillWidth: true

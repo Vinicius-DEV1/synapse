@@ -12,6 +12,36 @@ Rectangle {
     property bool isOpen: false
     property var item: null
     property var episodes: []
+    property var collapsedSeasons: ({})
+
+    readonly property var seasonGroups: {
+        var list = episodes || []
+        var groupsMap = ({})
+        var order = []
+        for (var i = 0; i < list.length; i++) {
+            var ep = list[i]
+            var sNum = Number(ep.season || 0)
+            if (sNum <= 0) {
+                var eNum = Number(ep.episode_number || (i + 1))
+                sNum = Math.floor((Math.max(1, eNum) - 1) / 12) + 1
+            }
+            var key = String(sNum)
+            if (!groupsMap[key]) {
+                groupsMap[key] = { season: sNum, episodes: [], watchedCount: 0 }
+                order.push(key)
+            }
+            groupsMap[key].episodes.push(ep)
+            if (ep.is_watched) groupsMap[key].watchedCount += 1
+        }
+        return order.map(function(k) { return groupsMap[k] })
+    }
+
+    function toggleSeason(seasonNum) {
+        var next = Object.assign({}, collapsedSeasons)
+        var k = String(seasonNum)
+        next[k] = !next[k]
+        collapsedSeasons = next
+    }
 
     signal closed()
     signal episodeWatchedToggled(string episodeId, string itemId)
@@ -172,94 +202,141 @@ Rectangle {
                 }
             }
 
-            // Episode List
+            // Episode List Grouped by Season Accordion
             ListView {
                 id: epListView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                spacing: 6
-                model: episodesModalRoot.episodes
+                spacing: 8
+                model: episodesModalRoot.seasonGroups
 
-                delegate: Rectangle {
-                    id: epRow
-                    property var epData: modelData
+                delegate: ColumnLayout {
+                    id: seasonBlock
+                    required property var modelData
+                    readonly property bool isCollapsed: Boolean(episodesModalRoot.collapsedSeasons[String(modelData.season)])
                     width: epListView.width
-                    height: 48
-                    radius: 8
-                    color: epRowMouse.containsMouse ? "#211f30" : "#1a1924"
-                    border.color: epData.is_watched ? "#2610b981" : "#0fffffff"
+                    spacing: 6
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        spacing: 12
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 36
+                        radius: 8
+                        color: "#1e1c2e"
+                        border.color: "#228b5cf6"
 
-                        // Watched Checkbox Pill
-                        Rectangle {
-                            width: 28; height: 28; radius: 6
-                            color: epRow.epData.is_watched ? "#2010b981" : "#12ffffff"
-                            border.color: epRow.epData.is_watched ? "#10b981" : "#25ffffff"
-
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 8
                             Text {
-                                anchors.centerIn: parent
-                                text: epRow.epData.is_watched ? "✓" : ""
-                                color: "#34d399"
+                                text: seasonBlock.isCollapsed ? "▸" : "▾"
+                                color: "#c4b5fd"
+                                font.pixelSize: 12
+                            }
+                            Text {
+                                text: "Temporada " + seasonBlock.modelData.season
+                                color: "#fffffe"
                                 font.pixelSize: 13
                                 font.bold: true
                             }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: episodesModalRoot.episodeWatchedToggled(epRow.epData.id, episodesModalRoot.item.id)
-                            }
-                        }
-
-                        // Number Badge
-                        Rectangle {
-                            width: 32; height: 24; radius: 4
-                            color: "#18ffffff"
+                            Item { Layout.fillWidth: true }
                             Text {
-                                anchors.centerIn: parent
-                                text: "#" + epRow.epData.episode_number
-                                color: "#a7a9be"
+                                text: seasonBlock.modelData.watchedCount + " / " + seasonBlock.modelData.episodes.length + " assistidos"
+                                color: seasonBlock.modelData.watchedCount === seasonBlock.modelData.episodes.length ? "#34d399" : "#94a1b2"
                                 font.pixelSize: 11
                                 font.bold: true
                             }
                         }
 
-                        // Title
-                        Text {
-                            Layout.fillWidth: true
-                            text: epRow.epData.title || ("Episódio " + epRow.epData.episode_number)
-                            color: epRow.epData.is_watched ? "#64748b" : "#fffffe"
-                            font.pixelSize: 13
-                            font.strikeout: epRow.epData.is_watched
-                            elide: Text.ElideRight
-                        }
-
-                        // Delete Ep Button
-                        Rectangle {
-                            width: 28; height: 28; radius: 6
-                            color: delEpMouse.containsMouse ? "#26f43f5e" : "transparent"
-                            Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
-                            MouseArea {
-                                id: delEpMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: episodesModalRoot.episodeDeleted(epRow.epData.id)
-                            }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: episodesModalRoot.toggleSeason(seasonBlock.modelData.season)
                         }
                     }
 
-                    MouseArea {
-                        id: epRowMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        z: -1
+                    Repeater {
+                        model: seasonBlock.isCollapsed ? [] : seasonBlock.modelData.episodes
+                        delegate: Rectangle {
+                            id: epRow
+                            required property var modelData
+                            property var epData: modelData
+                            Layout.fillWidth: true
+                            height: 46
+                            radius: 8
+                            color: epRowMouse.containsMouse ? "#211f30" : "#1a1924"
+                            border.color: epData.is_watched ? "#2610b981" : "#0fffffff"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                spacing: 12
+
+                                Rectangle {
+                                    width: 28; height: 28; radius: 6
+                                    color: epRow.epData.is_watched ? "#2010b981" : "#12ffffff"
+                                    border.color: epRow.epData.is_watched ? "#10b981" : "#25ffffff"
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: epRow.epData.is_watched ? "✓" : ""
+                                        color: "#34d399"
+                                        font.pixelSize: 13
+                                        font.bold: true
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: episodesModalRoot.episodeWatchedToggled(epRow.epData.id, episodesModalRoot.item.id)
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: 32; height: 24; radius: 4
+                                    color: "#18ffffff"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "#" + epRow.epData.episode_number
+                                        color: "#a7a9be"
+                                        font.pixelSize: 11
+                                        font.bold: true
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: epRow.epData.title || ("Episódio " + epRow.epData.episode_number)
+                                    color: epRow.epData.is_watched ? "#64748b" : "#fffffe"
+                                    font.pixelSize: 13
+                                    font.strikeout: epRow.epData.is_watched
+                                    elide: Text.ElideRight
+                                }
+
+                                Rectangle {
+                                    width: 28; height: 28; radius: 6
+                                    color: delEpMouse.containsMouse ? "#26f43f5e" : "transparent"
+                                    Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+                                    MouseArea {
+                                        id: delEpMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: episodesModalRoot.episodeDeleted(epRow.epData.id)
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: epRowMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                z: -1
+                            }
+                        }
                     }
                 }
 

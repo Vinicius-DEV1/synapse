@@ -13,67 +13,67 @@ Item {
     property int selectedIndex: 0
     property string errorMessage: ""
     readonly property var commands: [
-        { id: "text", title: qsTr("Text"), subtitle: qsTr("Start with normal text."), icon: "T",
+        { id: "text", category: qsTr("Básicos"), title: qsTr("Text"), subtitle: qsTr("Start with normal text."), icon: "T",
             keywords: ["text", "paragraph", "p", "texto", "paragrafo"] },
-        { id: "h1", title: qsTr("Heading 1"), subtitle: qsTr("Large section heading."), icon: "H1",
+        { id: "h1", category: qsTr("Básicos"), title: qsTr("Heading 1"), subtitle: qsTr("Large section heading."), icon: "H1",
             keywords: ["h1", "heading 1", "title 1", "titulo 1"] },
-        { id: "h2", title: qsTr("Heading 2"), subtitle: qsTr("Medium section heading."), icon: "H2",
+        { id: "h2", category: qsTr("Básicos"), title: qsTr("Heading 2"), subtitle: qsTr("Medium section heading."), icon: "H2",
             keywords: ["h2", "heading 2", "title 2", "titulo 2"] },
-        { id: "h3", title: qsTr("Heading 3"), subtitle: qsTr("Small section heading."), icon: "H3",
+        { id: "h3", category: qsTr("Básicos"), title: qsTr("Heading 3"), subtitle: qsTr("Small section heading."), icon: "H3",
             keywords: ["h3", "heading 3", "title 3", "titulo 3"] },
-        { id: "todo", title: qsTr("Task list"), subtitle: qsTr("Track tasks with checkboxes."), icon: "□",
+        { id: "todo", category: qsTr("Básicos"), title: qsTr("Task list"), subtitle: qsTr("Track tasks with checkboxes."), icon: "□",
             keywords: ["todo", "task", "check", "tarefa", "checklist"] },
-        { id: "bullet", title: qsTr("Bulleted list"), subtitle: qsTr("Create a simple list."), icon: "•",
+        { id: "bullet", category: qsTr("Básicos"), title: qsTr("Bulleted list"), subtitle: qsTr("Create a simple list."), icon: "•",
             keywords: ["bullet", "list", "points", "marcador", "lista"] },
-        { id: "callout", title: qsTr("Callout"), subtitle: qsTr("Make text stand out."), icon: "❝",
+        { id: "callout", category: qsTr("Básicos"), title: qsTr("Callout"), subtitle: qsTr("Make text stand out."), icon: "❝",
             keywords: ["callout", "quote", "notice", "destaque", "aviso"] },
-        { id: "code", title: qsTr("Code"), subtitle: qsTr("Insert a code block."), icon: "</>",
+        { id: "code", category: qsTr("Básicos"), title: qsTr("Code"), subtitle: qsTr("Insert a code block."), icon: "</>",
             keywords: ["code", "javascript", "typescript", "codigo"] },
-        { id: "page", title: qsTr("Link to page"), subtitle: qsTr("Reference an existing page."), icon: "↗",
+        { id: "page", category: qsTr("Básicos"), title: qsTr("Link to page"), subtitle: qsTr("Reference an existing page."), icon: "↗",
             keywords: ["page", "page link", "reference", "link to page", "pagina", "vincular pagina"] },
-        { id: "page-create", title: qsTr("Create linked page"), subtitle: qsTr("Create a child page and link it here."), icon: "+",
+        { id: "page-create", category: qsTr("Básicos"), title: qsTr("Create linked page"), subtitle: qsTr("Create a child page and link it here."), icon: "+",
             keywords: ["page create", "create page", "new page", "subpage", "criar pagina", "nova pagina"] },
-        { id: "divider", title: qsTr("Divider"), subtitle: qsTr("Separate content blocks."), icon: "—",
+        { id: "divider", category: qsTr("Básicos"), title: qsTr("Divider"), subtitle: qsTr("Separate content blocks."), icon: "—",
             keywords: ["divider", "line", "hr", "divisor", "linha"] },
-        { id: "table", title: qsTr("Table"), subtitle: qsTr("Insert a structured table."), icon: "▦",
+        { id: "table", category: qsTr("Estrutura & Tabelas"), title: qsTr("Table"), subtitle: qsTr("Insert a structured table."), icon: "▦",
             keywords: ["table", "grid", "tabela"] },
-        { id: "table-week", title: qsTr("Weekly Table"), subtitle: qsTr("7 columns (Monday to Sunday)."), icon: "📅",
+        { id: "table-week", category: qsTr("Estrutura & Tabelas"), title: qsTr("Weekly Table"), subtitle: qsTr("7 columns (Monday to Sunday)."), icon: "📅",
             keywords: ["semana", "dias", "semanal", "week", "table-week", "tabela semana"] },
-        { id: "table-day", title: qsTr("Daily Schedule Table"), subtitle: qsTr("Daily schedule and activity table."), icon: "🕒",
+        { id: "table-day", category: qsTr("Estrutura & Tabelas"), title: qsTr("Daily Schedule Table"), subtitle: qsTr("Daily schedule and activity table."), icon: "🕒",
             keywords: ["dia", "horarios", "diaria", "day", "table-day", "tabela dia"] },
-        { id: "table-habit", title: qsTr("Habit Matrix Table"), subtitle: qsTr("Weekly matrix for habit consistency."), icon: "⚡",
+        { id: "table-habit", category: qsTr("Estrutura & Tabelas"), title: qsTr("Habit Matrix Table"), subtitle: qsTr("Weekly matrix for habit consistency."), icon: "⚡",
             keywords: ["habitos", "habit", "matriz", "table-habit", "tabela habitos"] },
-        { id: "cols2", title: qsTr("2 Columns"), subtitle: qsTr("Divide content into 2 equal columns."), icon: "⫽",
+        { id: "cols2", category: qsTr("Estrutura & Tabelas"), title: qsTr("2 Columns"), subtitle: qsTr("Divide content into 2 equal columns."), icon: "⫽",
             keywords: ["2colunas", "cols2", "colunas", "duas colunas", "2"] },
-        { id: "cols3", title: qsTr("3 Columns"), subtitle: qsTr("Divide content into 3 columns."), icon: "⫿",
+        { id: "cols3", category: qsTr("Estrutura & Tabelas"), title: qsTr("3 Columns"), subtitle: qsTr("Divide content into 3 columns."), icon: "⫿",
             keywords: ["3colunas", "cols3", "tres colunas", "3"] },
-        { id: "toggle", title: qsTr("Collapsible Toggle"), subtitle: qsTr("Expandable and collapsible block."), icon: "▶",
+        { id: "toggle", category: qsTr("Estrutura & Tabelas"), title: qsTr("Collapsible Toggle"), subtitle: qsTr("Expandable and collapsible block."), icon: "▶",
             keywords: ["toggle", "oculta", "dropdown", "colapsavel"] },
-        { id: "blockquoteToggle", title: qsTr("Callout Toggle"), subtitle: qsTr("Callout with expandable dropdown."), icon: "▼",
+        { id: "blockquoteToggle", category: qsTr("Estrutura & Tabelas"), title: qsTr("Callout Toggle"), subtitle: qsTr("Callout with expandable dropdown."), icon: "▼",
             keywords: ["toggle destaque", "callout toggle", "blockquote toggle"] },
-        { id: "question", title: qsTr("Quiz Question"), subtitle: qsTr("Multiple choice question with prompt and options."), icon: "❓",
+        { id: "question", category: qsTr("Widgets & Mídia"), title: qsTr("Quiz Question"), subtitle: qsTr("Multiple choice question with prompt and options."), icon: "❓",
             keywords: ["questao", "quiz", "pergunta", "exercicio", "question"] },
-        { id: "foco", title: qsTr("Focus Timer"), subtitle: qsTr("Embedded Pomodoro focus session widget."), icon: "⏱️",
+        { id: "foco", category: qsTr("Widgets & Mídia"), title: qsTr("Focus Timer"), subtitle: qsTr("Embedded Pomodoro focus session widget."), icon: "⏱️",
             keywords: ["foco", "timer", "pomodoro", "focus"] },
-        { id: "alarme", title: qsTr("Scheduled Alarm"), subtitle: qsTr("Embedded alarm clock widget."), icon: "⏰",
+        { id: "alarme", category: qsTr("Widgets & Mídia"), title: qsTr("Scheduled Alarm"), subtitle: qsTr("Embedded alarm clock widget."), icon: "⏰",
             keywords: ["alarme", "despertador", "alarm"] },
-        { id: "evento", title: qsTr("Calendar Event"), subtitle: qsTr("Linked calendar appointment card."), icon: "📆",
+        { id: "evento", category: qsTr("Widgets & Mídia"), title: qsTr("Calendar Event"), subtitle: qsTr("Linked calendar appointment card."), icon: "📆",
             keywords: ["evento", "agenda", "calendario", "event"] },
-        { id: "habito", title: qsTr("Daily Habit"), subtitle: qsTr("Daily habit tracker widget."), icon: "🔥",
+        { id: "habito", category: qsTr("Widgets & Mídia"), title: qsTr("Daily Habit"), subtitle: qsTr("Daily habit tracker widget."), icon: "🔥",
             keywords: ["habito", "habit", "rotina", "meta", "tracker"] },
-        { id: "documento", title: qsTr("Attached Document"), subtitle: qsTr("Embedded file reference card."), icon: "📁",
+        { id: "documento", category: qsTr("Widgets & Mídia"), title: qsTr("Attached Document"), subtitle: qsTr("Embedded file reference card."), icon: "📁",
             keywords: ["documento", "arquivo", "upload", "file"] },
-        { id: "agrupar", title: qsTr("Document Bundle"), subtitle: qsTr("Group bundled documents into a card."), icon: "📦",
+        { id: "agrupar", category: qsTr("Widgets & Mídia"), title: qsTr("Document Bundle"), subtitle: qsTr("Group bundled documents into a card."), icon: "📦",
             keywords: ["agrupar", "bundle", "grupo", "pacote"] },
-        { id: "scrap", title: qsTr("Web Snapshot"), subtitle: qsTr("Offline captured web page snapshot."), icon: "🌐",
+        { id: "scrap", category: qsTr("Widgets & Mídia"), title: qsTr("Web Snapshot"), subtitle: qsTr("Offline captured web page snapshot."), icon: "🌐",
             keywords: ["scrap", "snapshot", "web", "capturar"] },
-        { id: "group", title: qsTr("Collection"), subtitle: qsTr("Collapsible group for pages or blocks."), icon: "📁",
+        { id: "group", category: qsTr("Widgets & Mídia"), title: qsTr("Collection"), subtitle: qsTr("Collapsible group for pages or blocks."), icon: "📁",
             keywords: ["colecao", "grupo", "pasta", "collection", "group"] },
-        { id: "video", title: qsTr("Link Video"), subtitle: qsTr("Link a video from your gallery."), icon: "🎬",
+        { id: "video", category: qsTr("Widgets & Mídia"), title: qsTr("Link Video"), subtitle: qsTr("Link a video from your gallery."), icon: "🎬",
             keywords: ["video", "midia", "filme", "media"] },
-        { id: "livro", title: qsTr("Link Book"), subtitle: qsTr("Link a book from your library."), icon: "📖",
+        { id: "livro", category: qsTr("Widgets & Mídia"), title: qsTr("Link Book"), subtitle: qsTr("Link a book from your library."), icon: "📖",
             keywords: ["livro", "epub", "pdf", "book", "library"] },
-        { id: "ia", title: qsTr("Ask AI"), subtitle: qsTr("Request AI assistance or generation."), icon: "✨",
+        { id: "ia", category: qsTr("Widgets & Mídia"), title: qsTr("Ask AI"), subtitle: qsTr("Request AI assistance or generation."), icon: "✨",
             keywords: ["ia", "ai", "prompt", "assistente", "gerar"] }
     ]
     readonly property var filteredCommands: {
@@ -159,6 +159,24 @@ Item {
             model: slashMenu.filteredCommands
             currentIndex: slashMenu.selectedIndex
             boundsBehavior: Flickable.StopAtBounds
+            section.property: "category"
+            section.criteria: ViewSection.FullString
+            section.delegate: Rectangle {
+                required property string section
+                width: commandList.width
+                height: 22
+                color: "#151422"
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    text: parent.section.toUpperCase()
+                    color: "#7f5af0"
+                    font.pixelSize: 9
+                    font.bold: true
+                    font.letterSpacing: 0.7
+                }
+            }
             delegate: Button {
                 id: commandButton
                 objectName: "notesRichSlashCommand_" + modelData.id

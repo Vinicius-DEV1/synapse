@@ -249,63 +249,28 @@ Rectangle {
     }
 
     function parseInputText() {
-        var text = rawTextInput.text
-        var lines = text.split("\n")
-        var questions = []
-        var curQ = null
-
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-            if (!line) continue
-
-            // Detect new question: "1. ", "1 - ", "Questão 1"
-            var qMatch = line.match(/^(\d+)[\.\-\)]\s*(.+)/) || line.match(/^(?:Quest[ãa]o\s*\d+[\:\-\.]?)\s*(.+)/i)
-            if (qMatch) {
-                if (curQ && curQ.prompt && curQ.options.length >= 2) {
-                    questions.push(curQ)
-                }
-                curQ = {
-                    prompt: qMatch[2] || qMatch[1],
-                    options: [],
-                    correctIndex: 0,
-                    explanation: "",
-                    tags: ["importado"]
-                }
-                continue
-            }
-
-            // Detect options: "A) ", "a) ", "A. ", "[A]"
-            var optMatch = line.match(/^([A-Da-d])[\.\)\-\]]\s*(.+)/)
-            if (optMatch && curQ) {
-                curQ.options.push(optMatch[2])
-                continue
-            }
-
-            // Detect Gabarito: "Gabarito: A", "Resposta: B"
-            var ansMatch = line.match(/^(?:Gabarito|Resposta|Resp|Correta)[\:\s]+([A-Da-d])/i)
-            if (ansMatch && curQ) {
-                var charCode = ansMatch[1].toUpperCase().charCodeAt(0) - 65
-                curQ.correctIndex = (charCode >= 0 && charCode < 4) ? charCode : 0
-                continue
-            }
-
-            // Detect Explanation
-            var explMatch = line.match(/^(?:Explica[çc][ãa]o|Coment[áa]rio)[\:\s]+(.+)/i)
-            if (explMatch && curQ) {
-                curQ.explanation = explMatch[1]
-                continue
-            }
-
-            // If prompt line continued
-            if (curQ && curQ.options.length === 0) {
-                curQ.prompt += " " + line
-            }
+        var text = rawTextInput.text || ""
+        if (text.trim().length === 0) {
+            quizImportRoot.parsedQuestions = []
+            return
         }
-
-        if (curQ && curQ.prompt && curQ.options.length >= 2) {
-            questions.push(curQ)
+        if (typeof dataController !== "undefined" && dataController && typeof dataController.parseQuizImportText === "function") {
+            var rustParsed = dataController.parseQuizImportText(text) || []
+            var mapped = []
+            for (var r = 0; r < rustParsed.length; r++) {
+                var item = rustParsed[r]
+                if (!item || !item.prompt || !item.options || item.options.length < 2) continue
+                mapped.push({
+                    prompt: item.prompt,
+                    options: item.options,
+                    correctIndex: typeof item.correctIndex === "number" ? item.correctIndex : (typeof item.correct_index === "number" ? item.correct_index : 0),
+                    explanation: item.explanation || "",
+                    tags: item.tags || ["importado"]
+                })
+            }
+            quizImportRoot.parsedQuestions = mapped
+            return
         }
-
-        quizImportRoot.parsedQuestions = questions
+        quizImportRoot.parsedQuestions = []
     }
 }

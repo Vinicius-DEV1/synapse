@@ -10,11 +10,8 @@ RowLayout {
     property int filteredCount: 0
     property int totalCount: 0
     property string viewMode: "grid"
-    property string activeStatusFilter: "all"
 
-    signal searchChanged(string text)
     signal viewModeSelected(string mode)
-    signal filterSelected(string status)
     signal createEventRequested()
     signal helpRequested()
 
@@ -34,41 +31,6 @@ RowLayout {
     }
 
     Item { Layout.fillWidth: true }
-
-    // Search Bar
-    Rectangle {
-        Layout.preferredWidth: 240
-        height: 40
-        radius: 10
-        color: "#15141b"
-        border.color: eventSearchInput.activeFocus ? "#803b82f6" : "#12ffffff"
-        border.width: 1
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 8
-
-            Text { text: "🔍"; color: "#a7a9be"; font.pixelSize: 12 }
-
-            TextInput {
-                id: eventSearchInput
-                Layout.fillWidth: true
-                color: "#fffffe"
-                font.pixelSize: 13
-                selectByMouse: true
-                onTextChanged: headerRoot.searchChanged(text)
-
-                Text {
-                    text: "Buscar compromisso..."
-                    color: "#64748b"
-                    font.pixelSize: 13
-                    visible: !eventSearchInput.text && !eventSearchInput.activeFocus
-                }
-            }
-        }
-    }
 
     // View Switcher (Grid vs List)
     Rectangle {
@@ -95,78 +57,6 @@ RowLayout {
                 color: headerRoot.viewMode === "list" ? "#262438" : "transparent"
                 Text { anchors.centerIn: parent; text: "📋 Lista"; color: headerRoot.viewMode === "list" ? "#fffffe" : "#a7a9be"; font.pixelSize: 12; font.bold: true }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: headerRoot.viewModeSelected("list") }
-            }
-        }
-    }
-
-    // Status Filter Tabs
-    Rectangle {
-        height: 40
-        radius: 10
-        color: "#15141b"
-        border.color: "#12ffffff"
-        border.width: 1
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 4
-            spacing: 4
-
-            // Tab: Todos
-            Rectangle {
-                width: 70
-                height: 32
-                radius: 7
-                color: headerRoot.activeStatusFilter === "all" ? "#262438" : "transparent"
-                Text {
-                    anchors.centerIn: parent
-                    text: "Todos"
-                    color: headerRoot.activeStatusFilter === "all" ? "#fffffe" : "#a7a9be"
-                    font.pixelSize: 12
-                    font.bold: headerRoot.activeStatusFilter === "all"
-                }
-                MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: headerRoot.filterSelected("all")
-                }
-            }
-
-            // Tab: Pendentes
-            Rectangle {
-                width: 80
-                height: 32
-                radius: 7
-                color: headerRoot.activeStatusFilter === "pending" ? "#262438" : "transparent"
-                Text {
-                    anchors.centerIn: parent
-                    text: "Pendentes"
-                    color: headerRoot.activeStatusFilter === "pending" ? "#38bdf8" : "#a7a9be"
-                    font.pixelSize: 12
-                    font.bold: headerRoot.activeStatusFilter === "pending"
-                }
-                MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: headerRoot.filterSelected("pending")
-                }
-            }
-
-            // Tab: Concluídos
-            Rectangle {
-                width: 86
-                height: 32
-                radius: 7
-                color: headerRoot.activeStatusFilter === "completed" ? "#262438" : "transparent"
-                Text {
-                    anchors.centerIn: parent
-                    text: "Concluídos"
-                    color: headerRoot.activeStatusFilter === "completed" ? "#34d399" : "#a7a9be"
-                    font.pixelSize: 12
-                    font.bold: headerRoot.activeStatusFilter === "completed"
-                }
-                MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: headerRoot.filterSelected("completed")
-                }
             }
         }
     }

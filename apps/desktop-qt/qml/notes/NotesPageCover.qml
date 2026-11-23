@@ -11,10 +11,25 @@ Item {
     property string pageId: ""
     property string coverImage: ""
     property string errorMessage: ""
+    property int coverPositionY: 50
+    property bool isRepositioning: false
     readonly property bool hasCover: coverImage.trim().length > 0
 
     signal coverSaved(string url)
     signal actionFailed(string message)
+
+    function loadCoverPosition() {
+        isRepositioning = false
+        if (!controller || !pageId || typeof controller.getConfig !== "function") {
+            coverPositionY = 50
+            return
+        }
+        var raw = Number(controller.getConfig("note_cover_pos_" + pageId, "50"))
+        coverPositionY = isNaN(raw) ? 50 : Math.max(0, Math.min(100, Math.round(raw)))
+    }
+
+    onPageIdChanged: loadCoverPosition()
+    Component.onCompleted: loadCoverPosition()
 
     function reportError(message) {
         errorMessage = message
@@ -28,14 +43,58 @@ Item {
 
     Image {
         id: coverPreview
-        anchors.fill: parent
+        x: 0
+        width: parent.width
+        height: implicitWidth > 0 && implicitHeight > 0
+            ? Math.max(parent.height, parent.width * (implicitHeight / implicitWidth))
+            : parent.height
+        y: height > parent.height
+            ? -((height - parent.height) * (coverRoot.coverPositionY / 100.0))
+            : 0
         visible: coverRoot.hasCover
         source: coverRoot.stableCoverUrl(coverRoot.coverImage)
         asynchronous: true
         cache: true
         fillMode: Image.PreserveAspectCrop
         sourceSize.width: width
-        sourceSize.height: height
+        sourceSize.height: Math.max(parent.height, height)
+    }
+
+    MouseArea {
+        id: repositionDragArea
+        anchors.fill: parent
+        visible: coverRoot.hasCover && coverRoot.isRepositioning
+        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        z: 1
+        property real pressY: 0
+        property int startPositionY: 50
+        onPressed: function(mouse) {
+            pressY = mouse.y
+            startPositionY = coverRoot.coverPositionY
+        }
+        onPositionChanged: function(mouse) {
+            if (!pressed) return
+            var delta = Math.round(((pressY - mouse.y) / Math.max(1, height)) * 100)
+            coverRoot.coverPositionY = Math.max(0, Math.min(100, startPositionY + delta))
+        }
+    }
+
+    Rectangle {
+        anchors.centerIn: parent
+        visible: coverRoot.hasCover && coverRoot.isRepositioning
+        width: repositionHint.implicitWidth + 24
+        height: 30
+        radius: 8
+        color: "#b30f0e17"
+        border.color: "#33ffffff"
+        z: 2
+        Label {
+            id: repositionHint
+            anchors.centerIn: parent
+            text: qsTr("Arraste verticalmente para ajustar (%1%)").arg(coverRoot.coverPositionY)
+            color: "#fffffe"
+            font.pixelSize: 12
+        }
     }
 
     function stableCoverUrl(url) {
@@ -73,10 +132,30 @@ Item {
         anchors.right: parent.right
         anchors.margins: 16
         spacing: 8
+        z: 3
         visible: coverRoot.hasCover
-        opacity: coverHover.hovered || changeCoverButton.activeFocus || coverActions.activeFocus ? 1 : 0
+        opacity: coverRoot.isRepositioning || coverHover.hovered || repositionButton.activeFocus || changeCoverButton.activeFocus || coverActions.activeFocus ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
+        Button {
+            id: repositionButton
+            text: coverRoot.isRepositioning ? qsTr("Salvar posição") : qsTr("Reposicionar")
+            onClicked: {
+                if (coverRoot.isRepositioning) {
+                    if (coverRoot.controller && typeof coverRoot.controller.setConfig === "function") {
+                        coverRoot.controller.setConfig("note_cover_pos_" + coverRoot.pageId, String(coverRoot.coverPositionY))
+                    }
+                    coverRoot.isRepositioning = false
+                } else {
+                    coverRoot.isRepositioning = true
+                }
+            }
+            background: Rectangle {
+                radius: 8
+                color: coverRoot.isRepositioning ? "#cc8b5cf6" : (parent.hovered ? "#b3000000" : "#80000000")
+            }
+            contentItem: Label { text: parent.text; color: "white"; font.pixelSize: 13; font.weight: Font.Medium; leftPadding: 4; rightPadding: 4 }
+        }
         Button {
             id: changeCoverButton
             text: qsTr("Change cover")

@@ -15,6 +15,7 @@ Rectangle {
     property int totalPages: 0
     property string format: ""
     property bool busy: false
+    property bool isFullscreen: false
 
     signal backRequested()
     signal previousRequested()
@@ -25,6 +26,7 @@ Rectangle {
     signal zoomInRequested()
     signal zoomOutRequested()
     signal fitWidthRequested()
+    signal fullscreenRequested()
     signal pageJumpRequested(int page)
 
     RowLayout {
@@ -140,6 +142,16 @@ Rectangle {
             onClicked: toolbar.fitWidthRequested()
             background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
             contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+
+        Button {
+            text: toolbar.isFullscreen ? "🗗" : "⛶"
+            Accessible.name: "Modo tela cheia"
+            ToolTip.visible: hovered
+            ToolTip.text: toolbar.isFullscreen ? "Sair da tela cheia" : "Modo foco / tela cheia"
+            onClicked: toolbar.fullscreenRequested()
+            background: Rectangle { color: toolbar.isFullscreen ? "#3e315e" : "#242331"; radius: 7 }
+            contentItem: Text { text: parent.text; color: toolbar.isFullscreen ? "#c4b5fd" : "#d4d4dc"; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
 
         Button {
