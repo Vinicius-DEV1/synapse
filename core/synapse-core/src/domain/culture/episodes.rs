@@ -2,7 +2,10 @@ use super::models::CultureEpisode;
 use crate::error::Result;
 use rusqlite::params;
 
-pub fn get_culture_episodes(conn: &rusqlite::Connection, item_id: &str) -> Result<Vec<CultureEpisode>> {
+pub fn get_culture_episodes(
+    conn: &rusqlite::Connection,
+    item_id: &str,
+) -> Result<Vec<CultureEpisode>> {
     let mut stmt = conn.prepare(
         "SELECT id, item_id, episode_number, title, synopsis, is_watched, watched_at, \
          season_number, episode_in_season, aired_at, updated_at \
@@ -70,7 +73,11 @@ pub fn add_culture_episode(
     Ok(rows > 0)
 }
 
-pub fn toggle_episode_watched(conn: &rusqlite::Connection, episode_id: &str, item_id: &str) -> Result<bool> {
+pub fn toggle_episode_watched(
+    conn: &rusqlite::Connection,
+    episode_id: &str,
+    item_id: &str,
+) -> Result<bool> {
     let current_watched: Option<i32> = conn
         .query_row(
             "SELECT is_watched FROM culture_episodes WHERE id = ?1 AND deleted_at IS NULL",
@@ -133,7 +140,11 @@ pub fn toggle_episode_watched(conn: &rusqlite::Connection, episode_id: &str, ite
     Ok(true)
 }
 
-pub fn bulk_create_episodes(conn: &rusqlite::Connection, item_id: &str, count: i32) -> Result<bool> {
+pub fn bulk_create_episodes(
+    conn: &rusqlite::Connection,
+    item_id: &str,
+    count: i32,
+) -> Result<bool> {
     let existing_count: i32 = conn
         .query_row(
             "SELECT COUNT(*) FROM culture_episodes WHERE item_id = ?1 AND deleted_at IS NULL",
@@ -160,7 +171,11 @@ pub fn bulk_create_episodes(conn: &rusqlite::Connection, item_id: &str, count: i
     Ok(true)
 }
 
-pub fn save_episodes(conn: &rusqlite::Connection, item_id: &str, episodes: &[CultureEpisode]) -> Result<bool> {
+pub fn save_episodes(
+    conn: &rusqlite::Connection,
+    item_id: &str,
+    episodes: &[CultureEpisode],
+) -> Result<bool> {
     conn.execute(
         "UPDATE culture_episodes SET deleted_at = CURRENT_TIMESTAMP WHERE item_id = ?1",
         params![item_id.trim()],

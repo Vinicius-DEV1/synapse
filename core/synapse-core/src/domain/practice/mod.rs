@@ -1,6 +1,7 @@
 //! Practice and AI tutor domain module.
 
 pub mod models;
+pub mod operations;
 pub mod repository;
 #[cfg(test)]
 pub mod tests;
@@ -13,6 +14,25 @@ pub use models::{TutorMemory, TutorMessage, TutorSession};
 pub struct PracticeRepository;
 
 impl PracticeRepository {
+    pub fn create_session(
+        db: &Database,
+        title: &str,
+        started_at: &str,
+        custom_prompt: Option<&str>,
+    ) -> Result<TutorSession> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        operations::create_session(&conn, title, started_at, custom_prompt)
+    }
+
+    pub fn create_session_conn(
+        conn: &rusqlite::Connection,
+        title: &str,
+        started_at: &str,
+        custom_prompt: Option<&str>,
+    ) -> Result<TutorSession> {
+        operations::create_session(conn, title, started_at, custom_prompt)
+    }
+
     pub fn get_sessions(db: &Database) -> Result<Vec<TutorSession>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         repository::get_sessions(&conn)
@@ -27,7 +47,10 @@ impl PracticeRepository {
         repository::get_session(&conn, session_id)
     }
 
-    pub fn get_session_conn(conn: &rusqlite::Connection, session_id: &str) -> Result<Option<TutorSession>> {
+    pub fn get_session_conn(
+        conn: &rusqlite::Connection,
+        session_id: &str,
+    ) -> Result<Option<TutorSession>> {
         repository::get_session(conn, session_id)
     }
 
@@ -38,6 +61,25 @@ impl PracticeRepository {
 
     pub fn save_session_conn(conn: &rusqlite::Connection, session: &TutorSession) -> Result<()> {
         repository::save_session(conn, session)
+    }
+
+    pub fn create_message(
+        db: &Database,
+        session_id: &str,
+        role: &str,
+        text_content: &str,
+    ) -> Result<TutorMessage> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        operations::create_message(&conn, session_id, role, text_content)
+    }
+
+    pub fn create_message_conn(
+        conn: &rusqlite::Connection,
+        session_id: &str,
+        role: &str,
+        text_content: &str,
+    ) -> Result<TutorMessage> {
+        operations::create_message(conn, session_id, role, text_content)
     }
 
     pub fn delete_session(db: &Database, session_id: &str) -> Result<bool> {
@@ -54,7 +96,10 @@ impl PracticeRepository {
         repository::get_messages(&conn, session_id)
     }
 
-    pub fn get_messages_conn(conn: &rusqlite::Connection, session_id: &str) -> Result<Vec<TutorMessage>> {
+    pub fn get_messages_conn(
+        conn: &rusqlite::Connection,
+        session_id: &str,
+    ) -> Result<Vec<TutorMessage>> {
         repository::get_messages(conn, session_id)
     }
 
@@ -83,6 +128,19 @@ impl PracticeRepository {
 
     pub fn save_memory_conn(conn: &rusqlite::Connection, memory: &TutorMemory) -> Result<()> {
         repository::save_memory(conn, memory)
+    }
+
+    pub fn create_memory(db: &Database, category: &str, fact: &str) -> Result<TutorMemory> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        operations::create_memory(&conn, category, fact)
+    }
+
+    pub fn create_memory_conn(
+        conn: &rusqlite::Connection,
+        category: &str,
+        fact: &str,
+    ) -> Result<TutorMemory> {
+        operations::create_memory(conn, category, fact)
     }
 
     pub fn delete_memory(db: &Database, memory_id: &str) -> Result<bool> {

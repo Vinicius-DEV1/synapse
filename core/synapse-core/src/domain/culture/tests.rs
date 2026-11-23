@@ -29,19 +29,35 @@ fn test_culture_lifecycle_and_episode_sync() {
     assert!(!episodes[0].is_watched);
 
     // Toggle episode 1
-    assert!(CultureRepository::toggle_episode_watched(&db, &episodes[0].id, &item.id).expect("toggle 1"));
+    assert!(
+        CultureRepository::toggle_episode_watched(&db, &episodes[0].id, &item.id)
+            .expect("toggle 1")
+    );
     let items = CultureRepository::get_items(&db, None).expect("get items");
     assert_eq!(items[0].progress, 1);
     assert_eq!(items[0].status.as_deref(), Some("backlog"));
 
     // Toggle episode 2 -> completes all episodes -> status should auto-update to finished
-    assert!(CultureRepository::toggle_episode_watched(&db, &episodes[1].id, &item.id).expect("toggle 2"));
+    assert!(
+        CultureRepository::toggle_episode_watched(&db, &episodes[1].id, &item.id)
+            .expect("toggle 2")
+    );
     let items = CultureRepository::get_items(&db, None).expect("get items");
     assert_eq!(items[0].progress, 2);
     assert_eq!(items[0].status.as_deref(), Some("finished"));
 
     // Soft delete
     assert!(CultureRepository::delete_item(&db, &item.id).expect("delete"));
-    assert_eq!(CultureRepository::get_items(&db, None).expect("get items").len(), 0);
-    assert_eq!(CultureRepository::get_episodes(&db, &item.id).expect("get episodes").len(), 0);
+    assert_eq!(
+        CultureRepository::get_items(&db, None)
+            .expect("get items")
+            .len(),
+        0
+    );
+    assert_eq!(
+        CultureRepository::get_episodes(&db, &item.id)
+            .expect("get episodes")
+            .len(),
+        0
+    );
 }

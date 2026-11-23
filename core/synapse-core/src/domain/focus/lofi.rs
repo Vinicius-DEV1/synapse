@@ -1,6 +1,6 @@
 use super::models::LofiTrack;
 use crate::error::Result;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 
 pub fn get_lofis(conn: &rusqlite::Connection) -> Result<Vec<LofiTrack>> {
     let mut stmt = conn.prepare(
@@ -14,20 +14,16 @@ pub fn get_lofis(conn: &rusqlite::Connection) -> Result<Vec<LofiTrack>> {
             id: row.get(0)?,
             title: row.get(1)?,
             original_name: row.get(2)?,
-            duration: row.get(3).unwrap_or(0.0),
-            file_path: row.get(4).unwrap_or_default(),
-            is_local: row.get(5).unwrap_or(1),
+            duration: row.get(3)?,
+            file_path: row.get(4)?,
+            is_local: row.get(5)?,
             drive_file_id: row.get(6)?,
             created_at: row.get(7)?,
             updated_at: row.get(8)?,
         })
     })?;
 
-    let mut list = Vec::new();
-    for track in iter.flatten() {
-        list.push(track);
-    }
-    Ok(list)
+    Ok(iter.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn add_lofi_track(
@@ -67,4 +63,29 @@ pub fn delete_lofi(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
     )?;
 
     Ok(rows > 0)
+}
+
+pub fn get_deleted_file_path(conn: &rusqlite::Connection, id: &str) -> Result<Option<String>> {
+    Ok(conn
+        .query_row(
+            "SELECT file_path FROM lofis WHERE id = ?1 AND deleted_at IS NOT NULL",
+            params![id.trim()],
+            |row| row.get(0),
+        )
+        .optional()?)
+}
+
+pub fn get_deleted_file_paths(conn: &rusqlite::Connection) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare("SELECT file_path FROM lofis WHERE deleted_at IS NOT NULL")?;
+    let iter = stmt.query_map([], |row| row.get(0))?;
+    Ok(iter.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
+pub fn is_file_path_referenced(conn: &rusqlite::Connection, file_path: &str) -> Result<bool> {
+    let referenced: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM lofis WHERE file_path = ?1)",
+        params![file_path],
+        |row| row.get(0),
+    )?;
+    Ok(referenced)
 }

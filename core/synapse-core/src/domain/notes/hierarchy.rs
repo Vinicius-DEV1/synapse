@@ -190,10 +190,11 @@ pub fn reorder_pages(
     parent_id: Option<&str>,
     page_ids: &[String],
 ) -> Result<bool> {
+    let transaction = conn.unchecked_transaction()?;
     let norm_parent = parent_id.map(|s| s.trim()).filter(|s| !s.is_empty());
 
     if let Some(parent) = norm_parent {
-        let parent_exists: Option<String> = conn
+        let parent_exists: Option<String> = transaction
             .query_row(
                 "SELECT id FROM pages WHERE id = ?1 AND deleted_at IS NULL",
                 params![parent],
@@ -206,9 +207,10 @@ pub fn reorder_pages(
     }
 
     let mut stmt = if norm_parent.is_some() {
-        conn.prepare("SELECT id FROM pages WHERE parent_id = ?1 AND deleted_at IS NULL")?
+        transaction.prepare("SELECT id FROM pages WHERE parent_id = ?1 AND deleted_at IS NULL")?
     } else {
-        conn.prepare("SELECT id FROM pages WHERE parent_id IS NULL AND deleted_at IS NULL")?
+        transaction
+            .prepare("SELECT id FROM pages WHERE parent_id IS NULL AND deleted_at IS NULL")?
     };
 
     let mut sibling_rows = if let Some(parent) = norm_parent {
@@ -222,6 +224,8 @@ pub fn reorder_pages(
         let id: String = r.get(0)?;
         sibling_ids.insert(id);
     }
+    drop(sibling_rows);
+    drop(stmt);
 
     if page_ids.len() != sibling_ids.len() {
         return Ok(false);
@@ -238,16 +242,17 @@ pub fn reorder_pages(
     let now = Utc::now().to_rfc3339();
     for (sort_order, pid) in page_ids.iter().enumerate() {
         if let Some(parent) = norm_parent {
-            conn.execute(
+            transaction.execute(
                 "UPDATE pages SET sort_order = ?1, updated_at = ?2 WHERE id = ?3 AND parent_id = ?4 AND deleted_at IS NULL",
                 params![sort_order as i32, now, pid, parent],
             )?;
         } else {
-            conn.execute(
+            transaction.execute(
                 "UPDATE pages SET sort_order = ?1, updated_at = ?2 WHERE id = ?3 AND parent_id IS NULL AND deleted_at IS NULL",
                 params![sort_order as i32, now, pid],
             )?;
         }
     }
+    transaction.commit()?;
     Ok(true)
 }

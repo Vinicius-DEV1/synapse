@@ -81,7 +81,10 @@ impl VaultRepository {
         items::get_vault_items(&conn, group_id)
     }
 
-    pub fn get_items_conn(conn: &rusqlite::Connection, group_id: Option<&str>) -> Result<Vec<VaultItem>> {
+    pub fn get_items_conn(
+        conn: &rusqlite::Connection,
+        group_id: Option<&str>,
+    ) -> Result<Vec<VaultItem>> {
         items::get_vault_items(conn, group_id)
     }
 
@@ -103,12 +106,18 @@ impl VaultRepository {
         items::delete_vault_item(conn, id)
     }
 
-    pub fn get_password_history(db: &Database, item_id: &str) -> Result<Vec<VaultPasswordHistoryEntry>> {
+    pub fn get_password_history(
+        db: &Database,
+        item_id: &str,
+    ) -> Result<Vec<VaultPasswordHistoryEntry>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         items::get_vault_password_history(&conn, item_id)
     }
 
-    pub fn get_password_history_conn(conn: &rusqlite::Connection, item_id: &str) -> Result<Vec<VaultPasswordHistoryEntry>> {
+    pub fn get_password_history_conn(
+        conn: &rusqlite::Connection,
+        item_id: &str,
+    ) -> Result<Vec<VaultPasswordHistoryEntry>> {
         items::get_vault_password_history(conn, item_id)
     }
 }

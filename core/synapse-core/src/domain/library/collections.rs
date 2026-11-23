@@ -1,7 +1,7 @@
 //! Library collections and book-collection relation management.
 
 use chrono::Utc;
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -44,7 +44,11 @@ pub fn get_collections(conn: &Connection) -> Result<Vec<BookCollection>> {
 }
 
 /// Creates a new book collection with name and hex color.
-pub fn create_collection(conn: &Connection, name: &str, color: &str) -> Result<Option<BookCollection>> {
+pub fn create_collection(
+    conn: &Connection,
+    name: &str,
+    color: &str,
+) -> Result<Option<BookCollection>> {
     let norm_name = name.trim();
     let norm_color = color.trim();
     if !is_valid_collection(norm_name, norm_color) {
@@ -71,7 +75,12 @@ pub fn create_collection(conn: &Connection, name: &str, color: &str) -> Result<O
 }
 
 /// Updates an existing collection name and color.
-pub fn update_collection(conn: &Connection, collection_id: &str, name: &str, color: &str) -> Result<bool> {
+pub fn update_collection(
+    conn: &Connection,
+    collection_id: &str,
+    name: &str,
+    color: &str,
+) -> Result<bool> {
     let norm_id = collection_id.trim();
     let norm_name = name.trim();
     let norm_color = color.trim();
@@ -104,13 +113,30 @@ pub fn delete_collection(conn: &Connection, collection_id: &str) -> Result<bool>
 }
 
 /// Replaces collection assignments for a given book.
-pub fn set_book_collections(conn: &Connection, book_id: &str, collection_ids: &[String]) -> Result<bool> {
+pub fn set_book_collections(
+    conn: &Connection,
+    book_id: &str,
+    collection_ids: &[String],
+) -> Result<bool> {
+    let transaction = conn.unchecked_transaction()?;
+    let updated = set_book_collections_in_transaction(&transaction, book_id, collection_ids)?;
+    if updated {
+        transaction.commit()?;
+    }
+    Ok(updated)
+}
+
+pub fn set_book_collections_in_transaction(
+    transaction: &Transaction<'_>,
+    book_id: &str,
+    collection_ids: &[String],
+) -> Result<bool> {
     let norm_book_id = book_id.trim();
     if norm_book_id.is_empty() {
         return Ok(false);
     }
 
-    let book_exists: Option<String> = conn
+    let book_exists: Option<String> = transaction
         .query_row(
             "SELECT id FROM library_books WHERE id = ?1 AND deleted_at IS NULL",
             params![norm_book_id],
@@ -122,7 +148,7 @@ pub fn set_book_collections(conn: &Connection, book_id: &str, collection_ids: &[
         return Ok(false);
     }
 
-    let active_cols = get_collections(conn)?;
+    let active_cols = get_collections(transaction)?;
     let active_ids: HashSet<String> = active_cols.into_iter().map(|c| c.id).collect();
 
     let mut unique_ids = Vec::new();
@@ -137,15 +163,15 @@ pub fn set_book_collections(conn: &Connection, book_id: &str, collection_ids: &[
     }
 
     let now = Utc::now().to_rfc3339();
-    let _ = conn.execute(
+    transaction.execute(
         "UPDATE library_book_collections SET deleted_at = ?1, updated_at = ?1 \
          WHERE book_id = ?2 AND deleted_at IS NULL",
         params![now, norm_book_id],
-    );
+    )?;
 
     for cid in unique_ids {
         let rel_id = Uuid::new_v4().to_string();
-        conn.execute(
+        transaction.execute(
             "INSERT INTO library_book_collections (id, book_id, collection_id, created_at, updated_at) \
              VALUES (?1, ?2, ?3, ?4, ?4)",
             params![rel_id, norm_book_id, cid, now],
@@ -156,7 +182,11 @@ pub fn set_book_collections(conn: &Connection, book_id: &str, collection_ids: &[
 }
 
 /// Adds a single book to a collection if not already assigned.
-pub fn add_book_to_collection(conn: &Connection, book_id: &str, collection_id: &str) -> Result<bool> {
+pub fn add_book_to_collection(
+    conn: &Connection,
+    book_id: &str,
+    collection_id: &str,
+) -> Result<bool> {
     let now = Utc::now().to_rfc3339();
     let rel_id = Uuid::new_v4().to_string();
     let rows = conn.execute(
@@ -168,7 +198,11 @@ pub fn add_book_to_collection(conn: &Connection, book_id: &str, collection_id: &
 }
 
 /// Removes a book from a collection.
-pub fn remove_book_from_collection(conn: &Connection, book_id: &str, collection_id: &str) -> Result<bool> {
+pub fn remove_book_from_collection(
+    conn: &Connection,
+    book_id: &str,
+    collection_id: &str,
+) -> Result<bool> {
     let now = Utc::now().to_rfc3339();
     let rows = conn.execute(
         "UPDATE library_book_collections SET deleted_at = ?1, updated_at = ?1 \

@@ -1,12 +1,15 @@
 pub mod attempts;
+pub mod authoring;
 pub mod batteries;
 pub mod models;
 pub mod questions;
+mod repository_attempts;
 
 #[cfg(test)]
 mod tests;
 
 pub use attempts::*;
+pub use authoring::*;
 pub use batteries::*;
 pub use models::*;
 pub use questions::*;
@@ -27,21 +30,39 @@ impl QuizRepository {
         batteries::get_quiz_batteries(conn)
     }
 
-    pub fn create_quiz_battery(db: &Database, title: &str, description: Option<&str>) -> Result<String> {
+    pub fn create_quiz_battery(
+        db: &Database,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<String> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         batteries::create_quiz_battery(&conn, title, description)
     }
 
-    pub fn create_quiz_battery_conn(conn: &rusqlite::Connection, title: &str, description: Option<&str>) -> Result<String> {
+    pub fn create_quiz_battery_conn(
+        conn: &rusqlite::Connection,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<String> {
         batteries::create_quiz_battery(conn, title, description)
     }
 
-    pub fn update_quiz_battery(db: &Database, battery_id: &str, title: &str, description: Option<&str>) -> Result<bool> {
+    pub fn update_quiz_battery(
+        db: &Database,
+        battery_id: &str,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         batteries::update_quiz_battery(&conn, battery_id, title, description)
     }
 
-    pub fn update_quiz_battery_conn(conn: &rusqlite::Connection, battery_id: &str, title: &str, description: Option<&str>) -> Result<bool> {
+    pub fn update_quiz_battery_conn(
+        conn: &rusqlite::Connection,
+        battery_id: &str,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<bool> {
         batteries::update_quiz_battery(conn, battery_id, title, description)
     }
 
@@ -60,7 +81,10 @@ impl QuizRepository {
         questions::get_battery_questions(&conn, battery_id)
     }
 
-    pub fn get_battery_questions_conn(conn: &rusqlite::Connection, battery_id: &str) -> Result<Vec<QuizQuestion>> {
+    pub fn get_battery_questions_conn(
+        conn: &rusqlite::Connection,
+        battery_id: &str,
+    ) -> Result<Vec<QuizQuestion>> {
         questions::get_battery_questions(conn, battery_id)
     }
 
@@ -87,7 +111,9 @@ impl QuizRepository {
         questions::get_error_notebook_questions(&conn)
     }
 
-    pub fn get_error_notebook_questions_conn(conn: &rusqlite::Connection) -> Result<Vec<QuizQuestion>> {
+    pub fn get_error_notebook_questions_conn(
+        conn: &rusqlite::Connection,
+    ) -> Result<Vec<QuizQuestion>> {
         questions::get_error_notebook_questions(conn)
     }
 
@@ -96,7 +122,10 @@ impl QuizRepository {
         questions::get_random_simulation_questions(&conn, limit)
     }
 
-    pub fn get_random_simulation_questions_conn(conn: &rusqlite::Connection, limit: i32) -> Result<Vec<QuizQuestion>> {
+    pub fn get_random_simulation_questions_conn(
+        conn: &rusqlite::Connection,
+        limit: i32,
+    ) -> Result<Vec<QuizQuestion>> {
         questions::get_random_simulation_questions(conn, limit)
     }
 
@@ -131,7 +160,15 @@ impl QuizRepository {
         tags_json: Option<&str>,
     ) -> Result<String> {
         let conn = db.lock().map_err(SynapseError::Database)?;
-        questions::create_quiz_question(&conn, battery_id, question, options_json, correct_index, explanation, tags_json)
+        authoring::create_quiz_question(
+            &conn,
+            battery_id,
+            question,
+            options_json,
+            correct_index,
+            explanation,
+            tags_json,
+        )
     }
 
     pub fn create_quiz_question_conn(
@@ -143,7 +180,15 @@ impl QuizRepository {
         explanation: Option<&str>,
         tags_json: Option<&str>,
     ) -> Result<String> {
-        questions::create_quiz_question(conn, battery_id, question, options_json, correct_index, explanation, tags_json)
+        authoring::create_quiz_question(
+            conn,
+            battery_id,
+            question,
+            options_json,
+            correct_index,
+            explanation,
+            tags_json,
+        )
     }
 
     pub fn update_quiz_question(
@@ -156,7 +201,15 @@ impl QuizRepository {
         tags_json: Option<&str>,
     ) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
-        questions::update_quiz_question(&conn, question_id, question, options_json, correct_index, explanation, tags_json)
+        authoring::update_quiz_question(
+            &conn,
+            question_id,
+            question,
+            options_json,
+            correct_index,
+            explanation,
+            tags_json,
+        )
     }
 
     pub fn update_quiz_question_conn(
@@ -168,46 +221,26 @@ impl QuizRepository {
         explanation: Option<&str>,
         tags_json: Option<&str>,
     ) -> Result<bool> {
-        questions::update_quiz_question(conn, question_id, question, options_json, correct_index, explanation, tags_json)
+        authoring::update_quiz_question(
+            conn,
+            question_id,
+            question,
+            options_json,
+            correct_index,
+            explanation,
+            tags_json,
+        )
     }
 
     pub fn delete_quiz_question(db: &Database, question_id: &str) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
-        questions::delete_quiz_question(&conn, question_id)
+        authoring::delete_quiz_question(&conn, question_id)
     }
 
-    pub fn delete_quiz_question_conn(conn: &rusqlite::Connection, question_id: &str) -> Result<bool> {
-        questions::delete_quiz_question(conn, question_id)
-    }
-
-    // --- Attempts & Stats ---
-    pub fn record_quiz_attempt(
-        db: &Database,
-        battery_id: &str,
-        question_id: &str,
-        selected_index: i32,
-        is_correct: bool,
-    ) -> Result<bool> {
-        let conn = db.lock().map_err(SynapseError::Database)?;
-        attempts::record_quiz_attempt(&conn, battery_id, question_id, selected_index, is_correct)
-    }
-
-    pub fn record_quiz_attempt_conn(
+    pub fn delete_quiz_question_conn(
         conn: &rusqlite::Connection,
-        battery_id: &str,
         question_id: &str,
-        selected_index: i32,
-        is_correct: bool,
     ) -> Result<bool> {
-        attempts::record_quiz_attempt(conn, battery_id, question_id, selected_index, is_correct)
-    }
-
-    pub fn get_quiz_stats(db: &Database) -> Result<QuizStats> {
-        let conn = db.lock().map_err(SynapseError::Database)?;
-        attempts::get_quiz_stats(&conn)
-    }
-
-    pub fn get_quiz_stats_conn(conn: &rusqlite::Connection) -> Result<QuizStats> {
-        attempts::get_quiz_stats(conn)
+        authoring::delete_quiz_question(conn, question_id)
     }
 }

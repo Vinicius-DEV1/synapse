@@ -55,7 +55,8 @@ fn test_video_crud_and_query() {
     let filtered = VideoRepository::get_videos(&db, Some("col-1")).expect("Get filtered");
     assert_eq!(filtered.len(), 1);
 
-    let filtered_none = VideoRepository::get_videos(&db, Some("Other")).expect("Get filtered other");
+    let filtered_none =
+        VideoRepository::get_videos(&db, Some("Other")).expect("Get filtered other");
     assert_eq!(filtered_none.len(), 0);
 
     // Soft delete
@@ -77,7 +78,10 @@ fn test_video_folders_workflow() {
     assert_eq!(folders_list.len(), 1);
     assert_eq!(folders_list[0].name, "Sci-Fi");
 
-    assert!(VideoRepository::rename_video_folder(&db, &folder.id, "Science Fiction").expect("Rename folder"));
+    assert!(
+        VideoRepository::rename_video_folder(&db, &folder.id, "Science Fiction")
+            .expect("Rename folder")
+    );
     let renamed_list = VideoRepository::get_video_folders(&db).expect("Get folders after rename");
     assert_eq!(renamed_list[0].name, "Science Fiction");
 
@@ -105,7 +109,9 @@ fn test_video_subtitles_and_words() {
         drive_web_file_id: None,
         drive_subtitle_id: None,
         local_subtitle_path: None,
-        subtitles_json: Some(r#"[{"id":"sub_1","label":"English","local_path":"/subs/en.vtt"}]"#.to_string()),
+        subtitles_json: Some(
+            r#"[{"id":"sub_1","label":"English","local_path":"/subs/en.vtt"}]"#.to_string(),
+        ),
         audio_tracks_json: None,
         youtube_url: None,
         youtube_description: None,
@@ -123,7 +129,14 @@ fn test_video_subtitles_and_words() {
     assert_eq!(removed_path, Some("/subs/en.vtt".to_string()));
 
     // Words
-    let word = words::add_video_word(&conn, "vid-sub", "serendipity", Some("a happy accident"), 42.5).unwrap();
+    let word = words::add_video_word(
+        &conn,
+        "vid-sub",
+        "serendipity",
+        Some("a happy accident"),
+        42.5,
+    )
+    .unwrap();
     assert_eq!(word.word, "serendipity");
 
     let words_list = words::get_video_words(&conn, "vid-sub").unwrap();

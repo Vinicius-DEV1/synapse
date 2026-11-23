@@ -12,7 +12,9 @@ fn test_quiz_lifecycle_and_error_notebook() {
     assert!(batteries.is_empty());
 
     // 2. Create battery
-    let bat_id = QuizRepository::create_quiz_battery(&db, "Rust Concurrency", Some("Tests sync primitives")).unwrap();
+    let bat_id =
+        QuizRepository::create_quiz_battery(&db, "Rust Concurrency", Some("Tests sync primitives"))
+            .unwrap();
     assert!(!bat_id.is_empty());
 
     let batteries = QuizRepository::get_quiz_batteries(&db).unwrap();
@@ -31,7 +33,8 @@ fn test_quiz_lifecycle_and_error_notebook() {
         2, // Rc
         Some("Rc is single-threaded reference counted"),
         Some(tags),
-    ).unwrap();
+    )
+    .unwrap();
 
     let questions = QuizRepository::get_battery_questions(&db, &bat_id).unwrap();
     assert_eq!(questions.len(), 1);
@@ -54,7 +57,8 @@ fn test_quiz_lifecycle_and_error_notebook() {
     assert_eq!(stats.accuracy_rate, 0);
 
     // 5. Record subsequent correct attempt
-    let recorded_correct = QuizRepository::record_quiz_attempt(&db, &bat_id, &q_id, 2, true).unwrap();
+    let recorded_correct =
+        QuizRepository::record_quiz_attempt(&db, &bat_id, &q_id, 2, true).unwrap();
     assert!(recorded_correct);
 
     // Error notebook should now be empty because latest attempt is correct

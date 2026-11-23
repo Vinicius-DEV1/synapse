@@ -1,8 +1,10 @@
+pub mod calendar_reminders;
 pub mod models;
 pub mod repository;
 #[cfg(test)]
 mod tests;
 
+pub use calendar_reminders::sync_calendar_reminders as sync_calendar_reminders_conn;
 pub use models::*;
 pub use repository::*;
 
@@ -30,6 +32,19 @@ impl NotificationsRepository {
         repository::get_unread_count(conn)
     }
 
+    pub fn sync_calendar_reminders(
+        db: &Database,
+        requests: &[CalendarReminderRequest],
+    ) -> Result<CalendarReminderSyncResult> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        calendar_reminders::sync_calendar_reminders(&conn, requests)
+    }
+
+    pub fn mark_delivered(db: &Database, id: &str) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        repository::mark_notification_delivered(&conn, id)
+    }
+
     pub fn add_notification(
         db: &Database,
         title: &str,
@@ -49,6 +64,16 @@ impl NotificationsRepository {
             event_id,
             scheduled_for,
         )
+    }
+
+    pub fn snooze_notification(
+        db: &Database,
+        id: &str,
+        delay_minutes: u32,
+        title_suffix: &str,
+    ) -> Result<AppNotification> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        repository::snooze_notification(&conn, id, delay_minutes, title_suffix)
     }
 
     pub fn add_notification_conn(

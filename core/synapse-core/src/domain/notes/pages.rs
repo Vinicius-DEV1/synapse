@@ -1,48 +1,11 @@
 //! Pages CRUD, persistence, pin toggling, and recursive subtree deletion.
 
+use super::models::PageRecord;
+use crate::error::Result;
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
-use uuid::Uuid;
 
-use super::models::{PageMetaRecord, PageRecord};
-use crate::error::Result;
-
-/// Retrieves lightweight metadata for all non-deleted pages without reading content, encrypted_content, or crdt_state blobs.
-pub fn get_page_metas(conn: &Connection) -> Result<Vec<PageMetaRecord>> {
-    let sql = "SELECT id, parent_id, title, icon, sort_order, created_at, updated_at, \
-               deleted_at, cover_image, description, is_pinned, pinned_order, is_locked \
-               FROM pages WHERE deleted_at IS NULL \
-               ORDER BY updated_at DESC";
-    let mut stmt = conn.prepare(sql)?;
-    let mut rows = stmt.query([])?;
-
-    let mut pages = Vec::new();
-    while let Some(row) = rows.next()? {
-        let sort_order = match row.get_ref(4)? {
-            rusqlite::types::ValueRef::Integer(value) => value as f64,
-            rusqlite::types::ValueRef::Real(value) => value,
-            _ => 0.0,
-        };
-        pages.push(PageMetaRecord {
-            id: row.get(0)?,
-            parent_id: row.get(1)?,
-            title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
-            icon: row
-                .get::<_, Option<String>>(3)?
-                .unwrap_or_else(|| "📄".to_string()),
-            sort_order,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
-            deleted_at: row.get(7)?,
-            cover_image: row.get(8)?,
-            description: row.get(9)?,
-            is_pinned: row.get::<_, Option<i32>>(10)?.unwrap_or(0),
-            pinned_order: row.get::<_, Option<f64>>(11)?.unwrap_or(0.0),
-            is_locked: row.get::<_, Option<i32>>(12)?.unwrap_or(0),
-        });
-    }
-    Ok(pages)
-}
+pub use super::content::{create_page, save_page};
 
 /// Retrieves pages matching an optional title filter, ordered by updated_at descending.
 pub fn get_pages(conn: &Connection, filter: Option<&str>) -> Result<Vec<PageRecord>> {
@@ -123,79 +86,21 @@ pub fn get_page(conn: &Connection, page_id: &str) -> Result<Option<PageRecord>> 
                is_pinned, pinned_order, is_locked \
                FROM pages WHERE id = ?1 AND deleted_at IS NULL";
 
-    let opt = conn.query_row(sql, params![page_id], map_page_row).optional()?;
+    let opt = conn
+        .query_row(sql, params![page_id], map_page_row)
+        .optional()?;
     Ok(opt)
-}
-
-/// Creates a new subpage under an optional parent.
-pub fn create_page(
-    conn: &Connection,
-    parent_id: Option<&str>,
-    title: &str,
-    icon: Option<&str>,
-) -> Result<PageRecord> {
-    let id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
-    let effective_title = if title.trim().is_empty() { "Nova Página" } else { title.trim() };
-    let effective_icon = icon.unwrap_or("📄");
-
-    conn.execute(
-        "INSERT INTO pages (id, parent_id, title, content, icon, sort_order, created_at, updated_at, \
-         is_pinned, pinned_order, is_locked) \
-         VALUES (?1, ?2, ?3, '', ?4, 0, ?5, ?5, 0, 0.0, 0)",
-        params![id, parent_id, effective_title, effective_icon, now],
-    )?;
-
-    Ok(PageRecord {
-        id,
-        parent_id: parent_id.map(|s| s.to_string()),
-        title: effective_title.to_string(),
-        content: String::new(),
-        icon: effective_icon.to_string(),
-        sort_order: 0,
-        created_at: Some(now.clone()),
-        updated_at: Some(now),
-        deleted_at: None,
-        cover_image: None,
-        description: None,
-        password_salt: None,
-        crdt_state: None,
-        encrypted_content: None,
-        is_pinned: 0,
-        pinned_order: 0.0,
-        is_locked: 0,
-    })
-}
-
-/// Saves page title, content, encrypted_content, and icon (inserting if not exists).
-pub fn save_page(
-    conn: &Connection,
-    id: &str,
-    title: &str,
-    content: &str,
-    encrypted_content: Option<&str>,
-    icon: &str,
-) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE pages SET title = ?1, content = ?2, encrypted_content = ?3, icon = ?4, \
-         crdt_state = NULL, updated_at = ?5 WHERE id = ?6 AND deleted_at IS NULL",
-        params![title, content, encrypted_content, icon, now, id],
-    )?;
-    if rows == 0 {
-        let inserted = conn.execute(
-            "INSERT INTO pages (id, title, content, encrypted_content, icon, sort_order, is_pinned, pinned_order, is_locked, created_at, updated_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, 0, 0, 0.0, 0, ?6, ?6)",
-            params![id, title, content, encrypted_content, icon, now],
-        )?;
-        Ok(inserted > 0)
-    } else {
-        Ok(true)
-    }
 }
 
 /// Renames a page title.
 pub fn rename_page(conn: &Connection, page_id: &str, title: &str) -> Result<bool> {
+    let page_id = page_id.trim();
+    let title = title.trim();
+    if page_id.is_empty() || title.is_empty() {
+        return Err(crate::error::SynapseError::Validation(
+            "Page ID and title cannot be empty".into(),
+        ));
+    }
     let now = Utc::now().to_rfc3339();
     let rows = conn.execute(
         "UPDATE pages SET title = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
@@ -215,7 +120,11 @@ pub fn update_page_icon(conn: &Connection, page_id: &str, icon: &str) -> Result<
 }
 
 /// Updates page description.
-pub fn update_page_description(conn: &Connection, page_id: &str, description: &str) -> Result<bool> {
+pub fn update_page_description(
+    conn: &Connection,
+    page_id: &str,
+    description: &str,
+) -> Result<bool> {
     let now = Utc::now().to_rfc3339();
     let rows = conn.execute(
         "UPDATE pages SET description = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
@@ -225,7 +134,11 @@ pub fn update_page_description(conn: &Connection, page_id: &str, description: &s
 }
 
 /// Updates page cover image.
-pub fn update_page_cover(conn: &Connection, page_id: &str, cover_image: Option<&str>) -> Result<bool> {
+pub fn update_page_cover(
+    conn: &Connection,
+    page_id: &str,
+    cover_image: Option<&str>,
+) -> Result<bool> {
     let now = Utc::now().to_rfc3339();
     let rows = conn.execute(
         "UPDATE pages SET cover_image = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
@@ -260,6 +173,7 @@ pub fn toggle_pin_page(conn: &Connection, page_id: &str) -> Result<bool> {
 
 /// Soft-deletes a page and all its hierarchical children recursively, plus linked calendar events.
 pub fn soft_delete_page_subtree(conn: &Connection, page_id: &str) -> Result<bool> {
+    let tx = conn.unchecked_transaction()?;
     let now = Utc::now().to_rfc3339();
     let cte = "WITH RECURSIVE note_subtree(id) AS (\
                SELECT id FROM pages WHERE id = ?1 AND deleted_at IS NULL \
@@ -273,24 +187,51 @@ pub fn soft_delete_page_subtree(conn: &Connection, page_id: &str) -> Result<bool
          WHERE page_id IN (SELECT id FROM note_subtree)",
         cte
     );
-    let _ = conn.execute(&update_events_sql, params![page_id, now]);
+    tx.execute(&update_events_sql, params![page_id, now])?;
 
     let update_pages_sql = format!(
         "{} UPDATE pages SET deleted_at = ?2, updated_at = ?2 \
          WHERE id IN (SELECT id FROM note_subtree)",
         cte
     );
-    let rows = conn.execute(&update_pages_sql, params![page_id, now])?;
+    let rows = tx.execute(&update_pages_sql, params![page_id, now])?;
+    tx.commit()?;
     Ok(rows > 0)
 }
 
 /// Restores a soft-deleted page.
 pub fn restore_page(conn: &Connection, page_id: &str) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE pages SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2",
-        params![now, page_id],
-    )?;
+    let tx = conn.unchecked_transaction()?;
+    let deleted_at: Option<String> = tx
+        .query_row(
+            "SELECT deleted_at FROM pages WHERE id = ?1 AND deleted_at IS NOT NULL",
+            params![page_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let Some(deleted_at) = deleted_at else {
+        tx.commit()?;
+        return Ok(false);
+    };
+
+    let restore_pages_sql = "WITH RECURSIVE note_subtree(id) AS (\
+        SELECT id FROM pages WHERE id = ?1 AND deleted_at IS NOT NULL \
+        UNION \
+        SELECT child.id FROM pages AS child \
+        JOIN note_subtree AS parent ON child.parent_id = parent.id \
+        WHERE child.deleted_at IS NOT NULL) \
+        UPDATE pages SET deleted_at = NULL, updated_at = ?2 \
+        WHERE id IN (SELECT id FROM note_subtree)";
+    let rows = tx.execute(restore_pages_sql, params![page_id, Utc::now().to_rfc3339()])?;
+    let restore_events_sql = "WITH RECURSIVE note_subtree(id) AS (\
+        SELECT id FROM pages WHERE id = ?1 \
+        UNION \
+        SELECT child.id FROM pages AS child \
+        JOIN note_subtree AS parent ON child.parent_id = parent.id) \
+        UPDATE calendar_events SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP \
+        WHERE deleted_at = ?2 AND page_id IN (SELECT id FROM note_subtree)";
+    tx.execute(restore_events_sql, params![page_id, deleted_at])?;
+    tx.commit()?;
     Ok(rows > 0)
 }
 
@@ -305,7 +246,9 @@ fn map_page_row(row: &rusqlite::Row) -> rusqlite::Result<PageRecord> {
         parent_id: row.get(1)?,
         title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
         content: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
-        icon: row.get::<_, Option<String>>(4)?.unwrap_or_else(|| "📄".to_string()),
+        icon: row
+            .get::<_, Option<String>>(4)?
+            .unwrap_or_else(|| "📄".to_string()),
         sort_order,
         created_at: row.get(6)?,
         updated_at: row.get(7)?,

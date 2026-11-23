@@ -75,6 +75,8 @@ pub struct LibraryReadingStats {
     pub total_books_finished: i32,
     pub total_time_minutes: i64,
     pub total_pages_read: i64,
+    #[serde(default)]
+    pub current_progress_pages: i64,
     pub total_highlights: i32,
     pub current_streak: i32,
     pub longest_streak: i32,

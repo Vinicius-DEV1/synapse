@@ -74,11 +74,7 @@ pub fn get_page_revision(
 }
 
 /// Restores a historical revision into the active page record.
-pub fn restore_page_revision(
-    conn: &Connection,
-    page_id: &str,
-    revision_id: &str,
-) -> Result<bool> {
+pub fn restore_page_revision(conn: &Connection, page_id: &str, revision_id: &str) -> Result<bool> {
     let revision = match get_page_revision(conn, page_id, revision_id)? {
         Some(r) => r,
         None => return Ok(false),

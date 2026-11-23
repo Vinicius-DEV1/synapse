@@ -1,7 +1,7 @@
 //! Vault migration helpers for batch column encryption and decryption.
 
-use rusqlite::{params, Connection};
 use crate::error::Result;
+use rusqlite::{params, Connection};
 
 /// Clears all entries in the keychain table.
 pub fn clear_keychain(conn: &Connection) -> Result<()> {
@@ -51,7 +51,11 @@ pub fn get_encrypted_page_history(conn: &Connection) -> Result<Vec<(String, Stri
 }
 
 /// Updates page history plaintext content and clears encrypted content.
-pub fn set_page_history_decrypted_content(conn: &Connection, id: &str, content: &str) -> Result<bool> {
+pub fn set_page_history_decrypted_content(
+    conn: &Connection,
+    id: &str,
+    content: &str,
+) -> Result<bool> {
     let rows = conn.execute(
         "UPDATE page_history SET content = ?1, encrypted_content = NULL WHERE id = ?2",
         params![content, id],
@@ -85,8 +89,11 @@ pub fn set_diagram_decrypted_content(conn: &Connection, id: &str, content: &str)
 }
 
 /// Retrieves all vault groups (id, name, icon, color) for migration.
-pub fn get_vault_groups_migration(conn: &Connection) -> Result<Vec<(String, String, Option<String>, Option<String>)>> {
-    let mut stmt = conn.prepare("SELECT id, name, icon, color FROM vault_groups WHERE deleted_at IS NULL")?;
+pub fn get_vault_groups_migration(
+    conn: &Connection,
+) -> Result<Vec<(String, String, Option<String>, Option<String>)>> {
+    let mut stmt =
+        conn.prepare("SELECT id, name, icon, color FROM vault_groups WHERE deleted_at IS NULL")?;
     let rows = stmt.query_map([], |row| {
         Ok((
             row.get::<_, String>(0)?,
@@ -119,7 +126,8 @@ pub fn update_vault_group_migration(
 
 /// Retrieves all password history entries (id, password) for migration.
 pub fn get_vault_password_history_migration(conn: &Connection) -> Result<Vec<(String, String)>> {
-    let mut stmt = conn.prepare("SELECT id, password FROM vault_password_history WHERE deleted_at IS NULL")?;
+    let mut stmt =
+        conn.prepare("SELECT id, password FROM vault_password_history WHERE deleted_at IS NULL")?;
     let rows = stmt.query_map([], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?;
@@ -131,7 +139,11 @@ pub fn get_vault_password_history_migration(conn: &Connection) -> Result<Vec<(St
 }
 
 /// Updates password history entry during migration.
-pub fn update_vault_password_history_migration(conn: &Connection, id: &str, password: &str) -> Result<bool> {
+pub fn update_vault_password_history_migration(
+    conn: &Connection,
+    id: &str,
+    password: &str,
+) -> Result<bool> {
     let rows = conn.execute(
         "UPDATE vault_password_history SET password = ?1 WHERE id = ?2",
         params![password, id],

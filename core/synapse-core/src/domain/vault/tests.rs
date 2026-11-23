@@ -35,5 +35,7 @@ fn test_vault_domain() {
 
     // Delete item
     assert!(VaultRepository::delete_item(&db, &item.id).expect("delete item"));
-    assert!(VaultRepository::get_items(&db, Some(&group.id)).expect("get items").is_empty());
+    assert!(VaultRepository::get_items(&db, Some(&group.id))
+        .expect("get items")
+        .is_empty());
 }

@@ -9,7 +9,11 @@ use super::models::LibraryReadingStats;
 use crate::error::Result;
 
 /// Starts a new reading session for a book.
-pub fn start_reading_session(conn: &Connection, book_id: &str, start_page: i32) -> Result<Option<String>> {
+pub fn start_reading_session(
+    conn: &Connection,
+    book_id: &str,
+    start_page: i32,
+) -> Result<Option<String>> {
     let norm_book_id = book_id.trim();
     if norm_book_id.is_empty() {
         return Ok(None);
@@ -81,6 +85,14 @@ pub fn get_reading_stats(conn: &Connection) -> Result<LibraryReadingStats> {
 
     let highlights: i32 = conn.query_row(
         "SELECT COUNT(*) FROM library_highlights WHERE deleted_at IS NULL",
+        [],
+        |r| r.get(0),
+    )?;
+
+    let current_progress_pages: i64 = conn.query_row(
+        "SELECT COALESCE(SUM(MIN(MAX(COALESCE(current_page, 0), 0), \
+                 MAX(COALESCE(total_pages, 0), 0))), 0) \
+         FROM library_books WHERE deleted_at IS NULL",
         [],
         |r| r.get(0),
     )?;
@@ -169,6 +181,7 @@ pub fn get_reading_stats(conn: &Connection) -> Result<LibraryReadingStats> {
         total_books_finished: books_finished,
         total_time_minutes: (total_duration_seconds as f64 / 60.0).round() as i64,
         total_pages_read,
+        current_progress_pages,
         total_highlights: highlights,
         current_streak,
         longest_streak,

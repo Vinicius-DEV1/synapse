@@ -1,10 +1,11 @@
-use crate::db::Database;
-use tempfile::NamedTempFile;
 use super::hierarchy::*;
 use super::history::*;
 use super::links::*;
+use super::metadata::*;
 use super::models::*;
 use super::pages::*;
+use crate::db::Database;
+use tempfile::NamedTempFile;
 
 fn setup_test_db() -> (Database, NamedTempFile) {
     let temp_file = NamedTempFile::new().expect("Failed to create temp file");
@@ -24,11 +25,21 @@ fn test_page_crud_and_pin() {
     assert_eq!(page1.is_pinned, 0);
 
     // Save content
-    let saved = save_page(&conn, &page1.id, "My Notes Updated", "<p>Hello</p>", None, "📘").expect("save page");
+    let saved = save_page(
+        &conn,
+        &page1.id,
+        "My Notes Updated",
+        "<p>Hello</p>",
+        None,
+        "📘",
+    )
+    .expect("save page");
     assert!(saved);
 
     // Retrieve single
-    let fetched = get_page(&conn, &page1.id).expect("get page").expect("found");
+    let fetched = get_page(&conn, &page1.id)
+        .expect("get page")
+        .expect("found");
     assert_eq!(fetched.title, "My Notes Updated");
     assert_eq!(fetched.content, "<p>Hello</p>");
     assert_eq!(fetched.icon, "📘");
@@ -47,7 +58,9 @@ fn test_page_crud_and_pin() {
 
     // Rename
     rename_page(&conn, &page1.id, "Brand New Title").expect("rename");
-    let after_rename = get_page(&conn, &page1.id).expect("get page").expect("found");
+    let after_rename = get_page(&conn, &page1.id)
+        .expect("get page")
+        .expect("found");
     assert_eq!(after_rename.title, "Brand New Title");
 
     // Icon, description, cover
@@ -80,7 +93,10 @@ fn test_hierarchy_tree_and_cycle_prevention() {
 
     // Cycle prevention: root cannot be moved under its own descendant (subchild1)
     let move_cycle = move_page(&conn, &root.id, Some(&subchild1.id)).expect("move cycle");
-    assert!(!move_cycle, "Root moving under its descendant must be rejected");
+    assert!(
+        !move_cycle,
+        "Root moving under its descendant must be rejected"
+    );
 
     // Page cannot be its own parent
     let self_parent = move_page(&conn, &root.id, Some(&root.id)).expect("self parent");
@@ -91,11 +107,19 @@ fn test_hierarchy_tree_and_cycle_prevention() {
     assert!(valid_move);
 
     let tree_after = get_page_tree(&conn, None).expect("tree after");
-    let child1_node = tree_after.iter().find(|n| n.id == child1.id).expect("find child1");
+    let child1_node = tree_after
+        .iter()
+        .find(|n| n.id == child1.id)
+        .expect("find child1");
     assert_eq!(child1_node.children_count, 2);
 
     // Reorder pages
-    let reordered = reorder_pages(&conn, Some(&child1.id), &[child2.id.clone(), subchild1.id.clone()]).expect("reorder");
+    let reordered = reorder_pages(
+        &conn,
+        Some(&child1.id),
+        &[child2.id.clone(), subchild1.id.clone()],
+    )
+    .expect("reorder");
     assert!(reordered);
 
     // Subtree soft delete
@@ -117,7 +141,8 @@ fn test_history_and_link_metadata() {
     let h1 = record_page_history(&conn, &page.id, "<p>Draft 1</p>", None).expect("h1");
     assert!(!h1.is_empty());
 
-    let h2 = record_page_history(&conn, &page.id, "<p>Draft 2</p>", Some("enc_draft2")).expect("h2");
+    let h2 =
+        record_page_history(&conn, &page.id, "<p>Draft 2</p>", Some("enc_draft2")).expect("h2");
     assert!(!h2.is_empty());
 
     let history = get_page_history(&conn, &page.id).expect("get history");
@@ -148,7 +173,9 @@ fn test_history_and_link_metadata() {
     let saved_meta = save_link_metadata(&conn, &meta).expect("save meta");
     assert!(saved_meta);
 
-    let fetched_meta = get_link_metadata(&conn, "https://example.com/rust").expect("get meta").expect("found");
+    let fetched_meta = get_link_metadata(&conn, "https://example.com/rust")
+        .expect("get meta")
+        .expect("found");
     assert_eq!(fetched_meta.title.as_deref(), Some("Rust Book"));
     assert_eq!(fetched_meta.channel.as_deref(), Some("Rustaceans"));
     assert_eq!(fetched_meta.duration, Some(120.5));
@@ -181,5 +208,7 @@ fn test_get_pages_unfiltered_returns_more_than_150_and_handles_legacy_column_typ
 
     let metas = get_page_metas(&conn).expect("get lightweight page metas");
     assert_eq!(metas.len(), 165);
-    assert!(metas.iter().any(|meta| (meta.sort_order - 164.0).abs() < f64::EPSILON));
+    assert!(metas
+        .iter()
+        .any(|meta| (meta.sort_order - 164.0).abs() < f64::EPSILON));
 }

@@ -1,8 +1,11 @@
 use super::models::FileFolder;
 use crate::error::Result;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 
-pub fn get_file_folders(conn: &rusqlite::Connection, parent_id: Option<&str>) -> Result<Vec<FileFolder>> {
+pub fn get_file_folders(
+    conn: &rusqlite::Connection,
+    parent_id: Option<&str>,
+) -> Result<Vec<FileFolder>> {
     let sql = match parent_id {
         Some(pid) if !pid.trim().is_empty() => {
             "SELECT id, name, parent_id, color, created_at, updated_at \
@@ -31,12 +34,10 @@ pub fn get_file_folders(conn: &rusqlite::Connection, parent_id: Option<&str>) ->
     let rows: Vec<FileFolder> = match parent_id {
         Some(pid) if !pid.trim().is_empty() => stmt
             .query_map([pid.trim()], map_row)?
-            .filter_map(std::result::Result::ok)
-            .collect(),
+            .collect::<rusqlite::Result<Vec<_>>>()?,
         _ => stmt
             .query_map([], map_row)?
-            .filter_map(std::result::Result::ok)
-            .collect(),
+            .collect::<rusqlite::Result<Vec<_>>>()?,
     };
 
     Ok(rows)
@@ -48,7 +49,7 @@ pub fn get_all_file_folders(conn: &rusqlite::Connection) -> Result<Vec<FileFolde
          FROM file_folders WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE ASC",
     )?;
 
-    let iter = stmt.query_map([], |row| {
+    let rows = stmt.query_map([], |row| {
         Ok(FileFolder {
             id: row.get(0)?,
             name: row.get(1)?,
@@ -59,11 +60,7 @@ pub fn get_all_file_folders(conn: &rusqlite::Connection) -> Result<Vec<FileFolde
         })
     })?;
 
-    let mut list = Vec::new();
-    for f in iter.flatten() {
-        list.push(f);
-    }
-    Ok(list)
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn create_file_folder(
@@ -85,14 +82,17 @@ pub fn create_file_folder(
                 params![pid],
                 |r| r.get(0),
             )
-            .ok();
+            .optional()?;
         if parent_exists.is_none() {
             return Ok(None);
         }
     }
 
     let id = uuid::Uuid::new_v4().to_string();
-    let resolved_color = color.map(|s| s.trim()).filter(|s| !s.is_empty()).unwrap_or("#3b82f6");
+    let resolved_color = color
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("#3b82f6");
 
     conn.execute(
         "INSERT INTO file_folders (id, name, parent_id, color, created_at, updated_at) \
@@ -125,7 +125,11 @@ pub fn rename_file_folder(conn: &rusqlite::Connection, id: &str, new_name: &str)
     Ok(rows > 0)
 }
 
-pub fn move_file_folder(conn: &rusqlite::Connection, id: &str, new_parent_id: Option<&str>) -> Result<bool> {
+pub fn move_file_folder(
+    conn: &rusqlite::Connection,
+    id: &str,
+    new_parent_id: Option<&str>,
+) -> Result<bool> {
     if id.trim().is_empty() {
         return Ok(false);
     }
@@ -140,8 +144,20 @@ pub fn move_file_folder(conn: &rusqlite::Connection, id: &str, new_parent_id: Op
                 params![pid],
                 |r| r.get(0),
             )
-            .ok();
+            .optional()?;
         if parent_exists.is_none() {
+            return Ok(false);
+        }
+        let creates_cycle: bool = conn.query_row(
+            "WITH RECURSIVE descendants(id) AS (\
+                 SELECT id FROM file_folders WHERE id = ?1 \
+                 UNION SELECT child.id FROM file_folders child \
+                 INNER JOIN descendants parent ON child.parent_id = parent.id) \
+             SELECT EXISTS(SELECT 1 FROM descendants WHERE id = ?2)",
+            params![id.trim(), pid],
+            |row| row.get(0),
+        )?;
+        if creates_cycle {
             return Ok(false);
         }
     }
@@ -160,19 +176,27 @@ pub fn delete_file_folder(conn: &rusqlite::Connection, id: &str) -> Result<bool>
         return Ok(false);
     }
 
-    let rows = conn.execute(
-        "UPDATE file_folders SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP \
-         WHERE id = ?1 AND deleted_at IS NULL",
-        params![id.trim()],
+    let transaction = conn.unchecked_transaction()?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let rows = transaction.execute(
+        "UPDATE file_folders SET deleted_at = ?1, updated_at = ?1 \
+         WHERE id = ?2 AND deleted_at IS NULL",
+        params![now, id.trim()],
     )?;
-
-    if rows > 0 {
-        let _ = conn.execute(
-            "UPDATE files SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP \
-             WHERE folder_id = ?1 AND deleted_at IS NULL",
-            params![id.trim()],
-        );
+    if rows == 0 {
+        transaction.commit()?;
+        return Ok(false);
     }
-
-    Ok(rows > 0)
+    transaction.execute(
+        "UPDATE files SET folder_id = NULL, updated_at = ?1 \
+         WHERE folder_id = ?2 AND deleted_at IS NULL",
+        params![now, id.trim()],
+    )?;
+    transaction.execute(
+        "UPDATE file_folders SET parent_id = NULL, updated_at = ?1 \
+         WHERE parent_id = ?2 AND deleted_at IS NULL",
+        params![now, id.trim()],
+    )?;
+    transaction.commit()?;
+    Ok(true)
 }

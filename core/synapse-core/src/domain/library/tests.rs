@@ -50,7 +50,10 @@ fn test_book_crud_and_query() {
     assert_eq!(b.total_pages, Some(464));
 
     // Update progress
-    assert!(LibraryRepository::update_book_progress(&db, "book-1", 100, 464, None).expect("Update progress"));
+    assert!(
+        LibraryRepository::update_book_progress(&db, "book-1", 100, 464, None)
+            .expect("Update progress")
+    );
     let fetched_after = LibraryRepository::get_book(&db, "book-1").unwrap().unwrap();
     assert_eq!(fetched_after.current_page, Some(100));
     assert_eq!(fetched_after.reading_status, Some("reading".to_string()));
@@ -84,7 +87,10 @@ fn test_collections_and_relations() {
     assert_eq!(collections.len(), 1);
 
     // Update
-    assert!(LibraryRepository::update_collection(&db, &col.id, "Software Engineering", "#10b981").expect("Update col"));
+    assert!(
+        LibraryRepository::update_collection(&db, &col.id, "Software Engineering", "#10b981")
+            .expect("Update col")
+    );
     let updated_cols = LibraryRepository::get_collections(&db).expect("Get updated cols");
     assert_eq!(updated_cols[0].name, "Software Engineering");
 
@@ -119,7 +125,10 @@ fn test_collections_and_relations() {
     };
     LibraryRepository::insert_book(&db, &book).unwrap();
 
-    assert!(LibraryRepository::set_book_collections(&db, "book-rel", &[col.id.clone()]).expect("Set relations"));
+    assert!(
+        LibraryRepository::set_book_collections(&db, "book-rel", &[col.id.clone()])
+            .expect("Set relations")
+    );
 
     // Delete
     assert!(LibraryRepository::delete_collection(&db, &col.id).expect("Delete col"));
@@ -162,19 +171,29 @@ fn test_bookmarks_highlights_and_stats() {
     LibraryRepository::insert_book(&db, &book).unwrap();
 
     // Bookmark
-    let bm = LibraryRepository::add_bookmark(&db, "book-stats", 42, Some("Important chapter")).expect("Add bookmark");
+    let bm = LibraryRepository::add_bookmark(&db, "book-stats", 42, Some("Important chapter"))
+        .expect("Add bookmark");
     assert_eq!(bm.page_number, 42);
     let bms = LibraryRepository::get_bookmarks(&db, "book-stats").expect("Get bookmarks");
     assert_eq!(bms.len(), 1);
 
     // Highlight
-    let hl = LibraryRepository::add_highlight(&db, "book-stats", 42, "Care About Your Craft", Some("#fde047"), None).expect("Add highlight");
+    let hl = LibraryRepository::add_highlight(
+        &db,
+        "book-stats",
+        42,
+        "Care About Your Craft",
+        Some("#fde047"),
+        None,
+    )
+    .expect("Add highlight");
     assert_eq!(hl.text_content, "Care About Your Craft");
     let hls = LibraryRepository::get_highlights(&db, "book-stats").expect("Get highlights");
     assert_eq!(hls.len(), 1);
 
     // Reading Session & Stats
-    let session_id = LibraryRepository::start_reading_session(&db, "book-stats", 20).expect("Start session");
+    let session_id =
+        LibraryRepository::start_reading_session(&db, "book-stats", 20).expect("Start session");
     assert!(session_id.is_some());
     let sid = session_id.unwrap();
 

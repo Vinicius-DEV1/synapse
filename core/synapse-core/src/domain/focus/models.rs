@@ -30,6 +30,13 @@ pub struct FocusSession {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(default)]
+pub struct FocusStats {
+    pub completed_sessions_today: i32,
+    pub completed_minutes_today: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(default)]
 pub struct FocusAlarm {
     pub id: String,
     pub time: String,

@@ -1,10 +1,13 @@
 //! Notes & Pages domain module: page tree, rich text revisions, links metadata, and hierarchy.
 
+pub mod content;
 pub mod hierarchy;
 pub mod history;
 pub mod links;
+pub mod metadata;
 pub mod models;
 pub mod pages;
+pub mod plain_text;
 #[cfg(test)]
 pub mod tests;
 
@@ -20,12 +23,28 @@ impl NotesRepository {
         pages::get_pages(&conn, filter)
     }
 
-    pub fn get_pages_conn(conn: &rusqlite::Connection, filter: Option<&str>) -> Result<Vec<PageRecord>> {
+    pub fn get_pages_conn(
+        conn: &rusqlite::Connection,
+        filter: Option<&str>,
+    ) -> Result<Vec<PageRecord>> {
         pages::get_pages(conn, filter)
     }
 
+    pub fn get_page_metas(db: &Database) -> Result<Vec<PageMetaRecord>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        metadata::get_page_metas(&conn)
+    }
+
+    pub fn get_filtered_page_metas(
+        db: &Database,
+        filter: Option<&str>,
+    ) -> Result<Vec<PageMetaRecord>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        metadata::get_filtered_page_metas(&conn, filter)
+    }
+
     pub fn get_page_metas_conn(conn: &rusqlite::Connection) -> Result<Vec<PageMetaRecord>> {
-        pages::get_page_metas(conn)
+        metadata::get_page_metas(conn)
     }
 
     pub fn get_pinned_pages(db: &Database) -> Result<Vec<PageRecord>> {
@@ -55,6 +74,25 @@ impl NotesRepository {
     ) -> Result<PageRecord> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         pages::create_page(&conn, parent_id, title, icon)
+    }
+
+    pub fn save_plain_text_page(
+        db: &Database,
+        id: &str,
+        title: &str,
+        content: &str,
+        icon: &str,
+    ) -> Result<bool> {
+        let mut conn = db.lock().map_err(SynapseError::Database)?;
+        plain_text::save_plain_text_page(&mut conn, id, title, content, icon)
+    }
+
+    pub fn can_edit_as_plain_text(page: &PageRecord) -> bool {
+        plain_text::is_plain_text_page_editable(page)
+    }
+
+    pub fn extract_plain_text(content: &str) -> Option<String> {
+        plain_text::extract_plain_text(content)
     }
 
     pub fn save_page(
@@ -90,12 +128,20 @@ impl NotesRepository {
         pages::update_page_icon(&conn, page_id, icon)
     }
 
-    pub fn update_page_description(db: &Database, page_id: &str, description: &str) -> Result<bool> {
+    pub fn update_page_description(
+        db: &Database,
+        page_id: &str,
+        description: &str,
+    ) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         pages::update_page_description(&conn, page_id, description)
     }
 
-    pub fn update_page_cover(db: &Database, page_id: &str, cover_image: Option<&str>) -> Result<bool> {
+    pub fn update_page_cover(
+        db: &Database,
+        page_id: &str,
+        cover_image: Option<&str>,
+    ) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         pages::update_page_cover(&conn, page_id, cover_image)
     }
@@ -158,11 +204,7 @@ impl NotesRepository {
         history::get_page_revision(&conn, page_id, revision_id)
     }
 
-    pub fn restore_page_revision(
-        db: &Database,
-        page_id: &str,
-        revision_id: &str,
-    ) -> Result<bool> {
+    pub fn restore_page_revision(db: &Database, page_id: &str, revision_id: &str) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         history::restore_page_revision(&conn, page_id, revision_id)
     }

@@ -42,6 +42,7 @@ pub fn wasm_fsrs_calculate(
         scheduled_days: 0,
         reps: 0,
         lapses: 0,
+        learning_steps: 0,
         state: card_state,
         due: chrono::Utc::now(),
         last_review: None,
@@ -100,4 +101,3 @@ pub fn wasm_encrypt_module_key(module_key: &str, password: &str) -> Result<Strin
 pub fn wasm_decrypt_module_key(encrypted_payload: &str, password: &str) -> Result<String, JsValue> {
     crypto::decrypt_module_key(encrypted_payload, password).map_err(|e| JsValue::from_str(&e))
 }
-

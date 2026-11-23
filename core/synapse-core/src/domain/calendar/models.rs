@@ -19,6 +19,7 @@ pub struct CalendarEvent {
     pub page_id: Option<String>,
     pub reminders: Option<serde_json::Value>,
     pub notified_reminders: Option<serde_json::Value>,
+    pub recurrence_rule: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }

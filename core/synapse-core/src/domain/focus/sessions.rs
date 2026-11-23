@@ -1,5 +1,6 @@
-use super::models::FocusSession;
-use crate::error::Result;
+use super::models::{FocusSession, FocusStats};
+use crate::error::{Result, SynapseError};
+use chrono::{DateTime, NaiveDate, Utc};
 use rusqlite::params;
 
 pub fn get_focus_sessions(conn: &rusqlite::Connection) -> Result<Vec<FocusSession>> {
@@ -12,8 +13,8 @@ pub fn get_focus_sessions(conn: &rusqlite::Connection) -> Result<Vec<FocusSessio
         Ok(FocusSession {
             id: row.get(0)?,
             tag: row.get(1)?,
-            description: row.get(2).unwrap_or_default(),
-            target_time_minutes: row.get(3).unwrap_or(0),
+            description: row.get(2)?,
+            target_time_minutes: row.get(3)?,
             status: row.get(4)?,
             justification: row.get(5)?,
             summary: row.get(6)?,
@@ -22,11 +23,7 @@ pub fn get_focus_sessions(conn: &rusqlite::Connection) -> Result<Vec<FocusSessio
         })
     })?;
 
-    let mut list = Vec::new();
-    for s in iter.flatten() {
-        list.push(s);
-    }
-    Ok(list)
+    Ok(iter.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn record_focus_session(
@@ -37,6 +34,29 @@ pub fn record_focus_session(
     summary: &str,
     description: &str,
 ) -> Result<bool> {
+    record_focus_session_at(
+        conn,
+        tag,
+        target_minutes,
+        status,
+        summary,
+        description,
+        &Utc::now().to_rfc3339(),
+    )
+}
+
+pub fn record_focus_session_at(
+    conn: &rusqlite::Connection,
+    tag: &str,
+    target_minutes: i32,
+    status: &str,
+    summary: &str,
+    description: &str,
+    completed_at: &str,
+) -> Result<bool> {
+    let completed_at = DateTime::parse_from_rfc3339(completed_at)
+        .map_err(|error| SynapseError::Validation(format!("Invalid focus timestamp: {error}")))?
+        .to_rfc3339();
     let resolved_tag = if tag.trim().is_empty() {
         "Estudo"
     } else {
@@ -52,7 +72,7 @@ pub fn record_focus_session(
 
     let rows = conn.execute(
         "INSERT INTO focus_sessions (id, tag, description, target_time_minutes, status, summary, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP)",
         params![
             id,
             resolved_tag,
@@ -60,13 +80,36 @@ pub fn record_focus_session(
             resolved_minutes,
             resolved_status,
             summary.trim(),
+            completed_at,
         ],
     )?;
 
     Ok(rows > 0)
 }
 
-pub fn create_focus_session(conn: &rusqlite::Connection, mut session: FocusSession) -> Result<String> {
+pub fn get_focus_stats(conn: &rusqlite::Connection, today: &str) -> Result<FocusStats> {
+    let today = NaiveDate::parse_from_str(today, "%Y-%m-%d")
+        .map_err(|error| SynapseError::Validation(format!("Invalid focus date: {error}")))?
+        .format("%Y-%m-%d")
+        .to_string();
+    conn.query_row(
+        "SELECT COUNT(*), COALESCE(SUM(target_time_minutes), 0) FROM focus_sessions \
+         WHERE deleted_at IS NULL AND status = 'completed' AND substr(created_at, 1, 10) = ?1",
+        [today],
+        |row| {
+            Ok(FocusStats {
+                completed_sessions_today: row.get(0)?,
+                completed_minutes_today: row.get(1)?,
+            })
+        },
+    )
+    .map_err(Into::into)
+}
+
+pub fn create_focus_session(
+    conn: &rusqlite::Connection,
+    mut session: FocusSession,
+) -> Result<String> {
     let id = if session.id.trim().is_empty() {
         uuid::Uuid::new_v4().to_string()
     } else {

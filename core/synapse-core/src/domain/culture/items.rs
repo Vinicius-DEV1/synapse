@@ -2,7 +2,10 @@ use super::models::CultureItem;
 use crate::error::Result;
 use rusqlite::params;
 
-pub fn get_culture_items(conn: &rusqlite::Connection, status_filter: Option<&str>) -> Result<Vec<CultureItem>> {
+pub fn get_culture_items(
+    conn: &rusqlite::Connection,
+    status_filter: Option<&str>,
+) -> Result<Vec<CultureItem>> {
     let sql = match status_filter {
         Some(s) if !s.trim().is_empty() => {
             "SELECT id, title, type, synopsis, cover_image, access_link, progress, total_progress, \
@@ -61,7 +64,10 @@ pub fn get_culture_items(conn: &rusqlite::Connection, status_filter: Option<&str
     Ok(rows)
 }
 
-pub fn create_culture_item(conn: &rusqlite::Connection, mut item: CultureItem) -> Result<CultureItem> {
+pub fn create_culture_item(
+    conn: &rusqlite::Connection,
+    mut item: CultureItem,
+) -> Result<CultureItem> {
     if item.id.trim().is_empty() {
         item.id = uuid::Uuid::new_v4().to_string();
     }
@@ -108,7 +114,11 @@ pub fn create_culture_item(conn: &rusqlite::Connection, mut item: CultureItem) -
     Ok(item)
 }
 
-pub fn update_culture_item(conn: &rusqlite::Connection, id: &str, item: &CultureItem) -> Result<bool> {
+pub fn update_culture_item(
+    conn: &rusqlite::Connection,
+    id: &str,
+    item: &CultureItem,
+) -> Result<bool> {
     let total_eps = if item.total_episodes > 0 {
         item.total_episodes
     } else {
@@ -155,7 +165,11 @@ pub fn increment_culture_progress(conn: &rusqlite::Connection, id: &str) -> Resu
     Ok(rows > 0)
 }
 
-pub fn update_culture_progress(conn: &rusqlite::Connection, id: &str, progress: i32) -> Result<bool> {
+pub fn update_culture_progress(
+    conn: &rusqlite::Connection,
+    id: &str,
+    progress: i32,
+) -> Result<bool> {
     let rows = conn.execute(
         "UPDATE culture_items SET progress = ?1, updated_at = CURRENT_TIMESTAMP \
          WHERE id = ?2 AND deleted_at IS NULL",
@@ -173,7 +187,12 @@ pub fn update_culture_status(conn: &rusqlite::Connection, id: &str, status: &str
     Ok(rows > 0)
 }
 
-pub fn set_culture_goal(conn: &rusqlite::Connection, id: &str, is_goal: bool, goal_note: &str) -> Result<bool> {
+pub fn set_culture_goal(
+    conn: &rusqlite::Connection,
+    id: &str,
+    is_goal: bool,
+    goal_note: &str,
+) -> Result<bool> {
     let rows = conn.execute(
         "UPDATE culture_items SET is_goal = ?1, goal_note = ?2, updated_at = CURRENT_TIMESTAMP \
          WHERE id = ?3 AND deleted_at IS NULL",

@@ -81,13 +81,24 @@ pub fn update_vault_group(
         conn.execute(
             "UPDATE vault_groups SET name = ?1, icon = ?2, color = ?3, position = ?4, \
              updated_at = CURRENT_TIMESTAMP WHERE id = ?5 AND deleted_at IS NULL",
-            params![name.trim(), icon.map(|s| s.trim()), color.map(|s| s.trim()), pos, id.trim()],
+            params![
+                name.trim(),
+                icon.map(|s| s.trim()),
+                color.map(|s| s.trim()),
+                pos,
+                id.trim()
+            ],
         )?
     } else {
         conn.execute(
             "UPDATE vault_groups SET name = ?1, icon = ?2, color = ?3, \
              updated_at = CURRENT_TIMESTAMP WHERE id = ?4 AND deleted_at IS NULL",
-            params![name.trim(), icon.map(|s| s.trim()), color.map(|s| s.trim()), id.trim()],
+            params![
+                name.trim(),
+                icon.map(|s| s.trim()),
+                color.map(|s| s.trim()),
+                id.trim()
+            ],
         )?
     };
 

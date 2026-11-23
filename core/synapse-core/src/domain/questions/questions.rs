@@ -1,14 +1,16 @@
 use super::models::QuizQuestion;
-use crate::error::{Result, SynapseError};
-use chrono::Utc;
+use crate::error::Result;
 use rusqlite::params;
 use serde_json::Value;
 
-pub fn get_battery_questions(conn: &rusqlite::Connection, battery_id: &str) -> Result<Vec<QuizQuestion>> {
+pub fn get_battery_questions(
+    conn: &rusqlite::Connection,
+    battery_id: &str,
+) -> Result<Vec<QuizQuestion>> {
     let mut stmt = conn.prepare(
-        "SELECT id, battery_id, type, question, options, correct_index, expected_answer, explanation, tags, sort_order 
-         FROM quiz_questions 
-         WHERE battery_id = ? AND deleted_at IS NULL 
+        "SELECT id, battery_id, type, question, options, correct_index, expected_answer, explanation, tags, sort_order
+         FROM quiz_questions
+         WHERE battery_id = ? AND deleted_at IS NULL
          ORDER BY sort_order ASC, created_at ASC, id ASC",
     )?;
 
@@ -34,10 +36,10 @@ pub fn get_battery_questions(conn: &rusqlite::Connection, battery_id: &str) -> R
 
 pub fn get_all_quiz_questions(conn: &rusqlite::Connection) -> Result<Vec<QuizQuestion>> {
     let mut stmt = conn.prepare(
-        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order 
-         FROM quiz_questions q 
-         INNER JOIN quiz_batteries b ON b.id = q.battery_id 
-         WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL 
+        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order
+         FROM quiz_questions q
+         INNER JOIN quiz_batteries b ON b.id = q.battery_id
+         WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL
          ORDER BY b.sort_order ASC, q.sort_order ASC, q.created_at ASC, q.id ASC",
     )?;
 
@@ -63,8 +65,8 @@ pub fn get_all_quiz_questions(conn: &rusqlite::Connection) -> Result<Vec<QuizQue
 
 pub fn get_all_quiz_tags(conn: &rusqlite::Connection) -> Result<Vec<String>> {
     let mut stmt = conn.prepare(
-        "SELECT q.tags FROM quiz_questions q 
-         INNER JOIN quiz_batteries b ON b.id = q.battery_id 
+        "SELECT q.tags FROM quiz_questions q
+         INNER JOIN quiz_batteries b ON b.id = q.battery_id
          WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL",
     )?;
 
@@ -99,16 +101,16 @@ pub fn get_all_quiz_tags(conn: &rusqlite::Connection) -> Result<Vec<String>> {
 
 pub fn get_error_notebook_questions(conn: &rusqlite::Connection) -> Result<Vec<QuizQuestion>> {
     let mut stmt = conn.prepare(
-        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order 
-         FROM quiz_questions q 
-         INNER JOIN quiz_batteries b ON b.id = q.battery_id 
-         INNER JOIN quiz_attempts a ON q.id = a.question_id 
-         WHERE a.is_correct = 0 AND q.deleted_at IS NULL AND b.deleted_at IS NULL AND q.type = 'multiple_choice' 
+        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order
+         FROM quiz_questions q
+         INNER JOIN quiz_batteries b ON b.id = q.battery_id
+         INNER JOIN quiz_attempts a ON q.id = a.question_id
+         WHERE a.is_correct = 0 AND q.deleted_at IS NULL AND b.deleted_at IS NULL AND q.type = 'multiple_choice'
            AND NOT EXISTS (
-               SELECT 1 FROM quiz_attempts newer 
-               WHERE newer.question_id = a.question_id 
+               SELECT 1 FROM quiz_attempts newer
+               WHERE newer.question_id = a.question_id
                  AND (newer.created_at > a.created_at OR (newer.created_at = a.created_at AND newer.rowid > a.rowid))
-           ) 
+           )
          ORDER BY a.created_at DESC, a.rowid DESC",
     )?;
 
@@ -132,13 +134,16 @@ pub fn get_error_notebook_questions(conn: &rusqlite::Connection) -> Result<Vec<Q
     Ok(questions)
 }
 
-pub fn get_random_simulation_questions(conn: &rusqlite::Connection, limit: i32) -> Result<Vec<QuizQuestion>> {
+pub fn get_random_simulation_questions(
+    conn: &rusqlite::Connection,
+    limit: i32,
+) -> Result<Vec<QuizQuestion>> {
     let safe_limit = limit.clamp(1, 500);
     let mut stmt = conn.prepare(
-        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order 
-         FROM quiz_questions q 
-         INNER JOIN quiz_batteries b ON b.id = q.battery_id 
-         WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL AND q.type = 'multiple_choice' 
+        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order
+         FROM quiz_questions q
+         INNER JOIN quiz_batteries b ON b.id = q.battery_id
+         WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL AND q.type = 'multiple_choice'
          ORDER BY RANDOM() LIMIT ?",
     )?;
 
@@ -175,14 +180,14 @@ pub fn get_filtered_quiz_questions(
         _ => "all",
     };
 
-    let sql = "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order 
-               FROM quiz_questions q 
-               INNER JOIN quiz_batteries b ON b.id = q.battery_id 
-               WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL AND q.type = 'multiple_choice' 
-                 AND (?1 = 'all' OR (?1 = 'unanswered' AND NOT EXISTS (SELECT 1 FROM quiz_attempts a WHERE a.question_id = q.id)) 
-                 OR (?1 = 'incorrect' AND EXISTS (SELECT 1 FROM quiz_attempts a WHERE a.question_id = q.id AND a.is_correct = 0 
-                 AND NOT EXISTS (SELECT 1 FROM quiz_attempts newer WHERE newer.question_id = a.question_id 
-                 AND (newer.created_at > a.created_at OR (newer.created_at = a.created_at AND newer.rowid > a.rowid)))))) 
+    let sql = "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index, q.expected_answer, q.explanation, q.tags, q.sort_order
+               FROM quiz_questions q
+               INNER JOIN quiz_batteries b ON b.id = q.battery_id
+               WHERE q.deleted_at IS NULL AND b.deleted_at IS NULL AND q.type = 'multiple_choice'
+                 AND (?1 = 'all' OR (?1 = 'unanswered' AND NOT EXISTS (SELECT 1 FROM quiz_attempts a WHERE a.question_id = q.id))
+                 OR (?1 = 'incorrect' AND EXISTS (SELECT 1 FROM quiz_attempts a WHERE a.question_id = q.id AND a.is_correct = 0
+                 AND NOT EXISTS (SELECT 1 FROM quiz_attempts newer WHERE newer.question_id = a.question_id
+                 AND (newer.created_at > a.created_at OR (newer.created_at = a.created_at AND newer.rowid > a.rowid))))))
                ORDER BY b.sort_order ASC, q.sort_order ASC, q.created_at ASC, q.id ASC";
 
     let mut stmt = conn.prepare(sql)?;
@@ -246,104 +251,4 @@ pub fn get_filtered_quiz_questions(
     }
 
     Ok(questions)
-}
-
-pub fn create_quiz_question(
-    conn: &rusqlite::Connection,
-    battery_id: &str,
-    question: &str,
-    options_json: &str,
-    correct_index: i32,
-    explanation: Option<&str>,
-    tags_json: Option<&str>,
-) -> Result<String> {
-    let trimmed_q = question.trim();
-    if battery_id.trim().is_empty() || trimmed_q.is_empty() {
-        return Err(SynapseError::Validation("Battery ID and question cannot be empty".into()));
-    }
-
-    let options_val: Value = serde_json::from_str(options_json)
-        .map_err(|e| SynapseError::Validation(format!("Invalid options JSON: {}", e)))?;
-    let options_arr = options_val.as_array()
-        .ok_or_else(|| SynapseError::Validation("Options must be a JSON array".into()))?;
-
-    if options_arr.len() < 2 || correct_index < 0 || correct_index as usize >= options_arr.len() {
-        return Err(SynapseError::Validation("Invalid options count or correct_index".into()));
-    }
-
-    let correct_answer = options_arr[correct_index as usize]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
-
-    let id = uuid::Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
-    let expl = explanation.unwrap_or("").trim();
-    let tags = tags_json.unwrap_or("[]").trim();
-
-    conn.execute(
-        "INSERT INTO quiz_questions (id, battery_id, type, question, options, correct_answer, correct_index, expected_answer, explanation, tags, sort_order, created_at, updated_at) 
-         VALUES (?, ?, 'multiple_choice', ?, ?, ?, ?, '', ?, ?, 
-         COALESCE((SELECT MAX(sort_order) + 1 FROM quiz_questions WHERE battery_id = ?), 0), ?, ?)",
-        params![id, battery_id, trimmed_q, options_json, correct_answer, correct_index, expl, tags, battery_id, now, now],
-    )?;
-
-    Ok(id)
-}
-
-pub fn update_quiz_question(
-    conn: &rusqlite::Connection,
-    question_id: &str,
-    question: &str,
-    options_json: &str,
-    correct_index: i32,
-    explanation: Option<&str>,
-    tags_json: Option<&str>,
-) -> Result<bool> {
-    let trimmed_q = question.trim();
-    if question_id.trim().is_empty() || trimmed_q.is_empty() {
-        return Err(SynapseError::Validation("Question ID and text cannot be empty".into()));
-    }
-
-    let options_val: Value = serde_json::from_str(options_json)
-        .map_err(|e| SynapseError::Validation(format!("Invalid options JSON: {}", e)))?;
-    let options_arr = options_val.as_array()
-        .ok_or_else(|| SynapseError::Validation("Options must be a JSON array".into()))?;
-
-    if options_arr.len() < 2 || correct_index < 0 || correct_index as usize >= options_arr.len() {
-        return Err(SynapseError::Validation("Invalid options count or correct_index".into()));
-    }
-
-    let correct_answer = options_arr[correct_index as usize]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
-
-    let now = Utc::now().to_rfc3339();
-    let expl = explanation.unwrap_or("").trim();
-    let tags = tags_json.unwrap_or("[]").trim();
-
-    let count = conn.execute(
-        "UPDATE quiz_questions 
-         SET question = ?, options = ?, correct_answer = ?, correct_index = ?, explanation = ?, tags = ?, updated_at = ? 
-         WHERE id = ? AND deleted_at IS NULL",
-        params![trimmed_q, options_json, correct_answer, correct_index, expl, tags, now, question_id],
-    )?;
-
-    Ok(count > 0)
-}
-
-pub fn delete_quiz_question(conn: &rusqlite::Connection, question_id: &str) -> Result<bool> {
-    let trimmed_id = question_id.trim();
-    if trimmed_id.is_empty() {
-        return Err(SynapseError::Validation("ID cannot be empty".into()));
-    }
-
-    let now = Utc::now().to_rfc3339();
-    let count = conn.execute(
-        "UPDATE quiz_questions SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
-        params![now, trimmed_id],
-    )?;
-
-    Ok(count > 0)
 }

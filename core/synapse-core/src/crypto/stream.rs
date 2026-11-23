@@ -28,9 +28,17 @@ fn validated_original_size(file: &mut File) -> Result<u64, String> {
 
     let chunk_size_u64 = u64::from(CHUNK_SIZE);
     let chunk_count = original_size / chunk_size_u64
-        + if original_size % chunk_size_u64 == 0 { 0 } else { 1 };
+        + if original_size % chunk_size_u64 == 0 {
+            0
+        } else {
+            1
+        };
     let expected_size = original_size
-        .checked_add(chunk_count.checked_mul(28).ok_or("ENC1 file size overflow")?)
+        .checked_add(
+            chunk_count
+                .checked_mul(28)
+                .ok_or("ENC1 file size overflow")?,
+        )
         .and_then(|size| size.checked_add(16))
         .ok_or("ENC1 file size overflow")?;
     let actual_size = file.metadata().map_err(|e| e.to_string())?.len();
@@ -333,7 +341,13 @@ mod tests {
         drop(file);
 
         assert!(get_encrypted_file_size(malformed.path()).is_err());
-        assert!(read_chunked_range(malformed.path(), &crate::crypto::generate_module_key(), 0, 0).is_err());
+        assert!(read_chunked_range(
+            malformed.path(),
+            &crate::crypto::generate_module_key(),
+            0,
+            0
+        )
+        .is_err());
     }
 
     #[test]

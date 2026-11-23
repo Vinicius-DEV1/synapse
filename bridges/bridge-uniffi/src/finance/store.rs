@@ -1,4 +1,5 @@
 use super::models::{FinanceAccount, FinanceSummary, FinanceTransaction, FinanceWishlistItem};
+use crate::errors::{map_core_error, not_found};
 use crate::SynapseError;
 use std::sync::Arc;
 use synapse_core::domain::finance::{
@@ -216,22 +217,5 @@ impl SynapseFinanceStore {
         FinanceRepository::get_financial_summary(&self.database)
             .map(Into::into)
             .map_err(map_core_error)
-    }
-}
-
-fn map_core_error(error: synapse_core::error::SynapseError) -> SynapseError {
-    match error {
-        synapse_core::error::SynapseError::Database(message) => {
-            SynapseError::IoError { msg: message }
-        }
-        other => SynapseError::InvalidInput {
-            msg: other.to_string(),
-        },
-    }
-}
-
-fn not_found(entity: &str, id: &str) -> SynapseError {
-    SynapseError::InvalidInput {
-        msg: format!("{entity} {id} was not found"),
     }
 }

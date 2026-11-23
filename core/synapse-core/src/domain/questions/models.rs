@@ -48,6 +48,32 @@ pub struct QuizAttempt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizAttemptDetail {
+    pub id: String,
+    pub question_id: String,
+    pub battery_id: String,
+    pub question: String,
+    pub type_: String,
+    pub selected_index: Option<i32>,
+    pub user_typed_answer: Option<String>,
+    pub user_answer: Option<String>,
+    pub correct_answer: String,
+    pub explanation: Option<String>,
+    pub is_correct: bool,
+    pub duration_ms: i64,
+    pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizAnswerResult {
+    pub attempt_id: String,
+    pub is_correct: bool,
+    pub correct_index: i32,
+    pub correct_answer: String,
+    pub explanation: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct QuizStats {
     pub total_batteries: i64,
     pub total_questions: i64,

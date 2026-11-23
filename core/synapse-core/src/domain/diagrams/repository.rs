@@ -33,7 +33,8 @@ pub fn get_diagrams(conn: &Connection) -> Result<Vec<DiagramMeta>> {
 
 /// Retrieves a single diagram by ID.
 pub fn get_diagram(conn: &Connection, id: &str) -> Result<Option<DiagramRecord>> {
-    let sql = "SELECT id, title, icon, content, encrypted_content, created_at, updated_at, deleted_at \
+    let sql =
+        "SELECT id, title, icon, content, encrypted_content, created_at, updated_at, deleted_at \
                FROM diagrams WHERE id = ?1 AND deleted_at IS NULL";
 
     let opt = conn

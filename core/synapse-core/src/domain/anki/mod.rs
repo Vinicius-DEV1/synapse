@@ -1,8 +1,10 @@
 pub mod cards;
 pub mod decks;
 pub mod models;
+pub mod queue;
 pub mod review;
 pub mod settings;
+mod study_cards;
 
 #[cfg(test)]
 mod tests;
@@ -34,7 +36,9 @@ impl AnkiRepository {
         decks::get_hierarchical_decks(&conn)
     }
 
-    pub fn get_hierarchical_decks_conn(conn: &rusqlite::Connection) -> Result<Vec<HierarchicalDeck>> {
+    pub fn get_hierarchical_decks_conn(
+        conn: &rusqlite::Connection,
+    ) -> Result<Vec<HierarchicalDeck>> {
         decks::get_hierarchical_decks(conn)
     }
 
@@ -135,6 +139,15 @@ impl AnkiRepository {
         cards::get_due_cards(conn, deck_id)
     }
 
+    pub fn get_study_queue(db: &Database, deck_id: &str) -> Result<Vec<Card>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        queue::get_study_queue(&conn, deck_id)
+    }
+
+    pub fn get_study_queue_conn(conn: &rusqlite::Connection, deck_id: &str) -> Result<Vec<Card>> {
+        queue::get_study_queue(conn, deck_id)
+    }
+
     pub fn get_due_cards_count(db: &Database) -> Result<i64> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         cards::get_due_cards_count(&conn)
@@ -209,7 +222,11 @@ impl AnkiRepository {
         review::record_card_review(&conn, card_id, rating)
     }
 
-    pub fn record_card_review_conn(conn: &rusqlite::Connection, card_id: &str, rating: i32) -> Result<bool> {
+    pub fn record_card_review_conn(
+        conn: &rusqlite::Connection,
+        card_id: &str,
+        rating: i32,
+    ) -> Result<bool> {
         review::record_card_review(conn, card_id, rating)
     }
 
@@ -219,7 +236,10 @@ impl AnkiRepository {
         settings::get_deck_settings(&conn, deck_id)
     }
 
-    pub fn get_deck_settings_conn(conn: &rusqlite::Connection, deck_id: &str) -> Result<AnkiDeckSettings> {
+    pub fn get_deck_settings_conn(
+        conn: &rusqlite::Connection,
+        deck_id: &str,
+    ) -> Result<AnkiDeckSettings> {
         settings::get_deck_settings(conn, deck_id)
     }
 
@@ -228,7 +248,11 @@ impl AnkiRepository {
         settings::update_deck_settings(&conn, deck_id, s)
     }
 
-    pub fn update_deck_settings_conn(conn: &rusqlite::Connection, deck_id: &str, s: AnkiDeckSettings) -> Result<bool> {
+    pub fn update_deck_settings_conn(
+        conn: &rusqlite::Connection,
+        deck_id: &str,
+        s: AnkiDeckSettings,
+    ) -> Result<bool> {
         settings::update_deck_settings(conn, deck_id, s)
     }
 

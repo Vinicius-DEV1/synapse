@@ -26,7 +26,11 @@ impl TrashRepository {
         repository::restore_trash_item(&conn, id, item_type)
     }
 
-    pub fn restore_trash_item_conn(conn: &rusqlite::Connection, id: &str, item_type: &str) -> Result<bool> {
+    pub fn restore_trash_item_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        item_type: &str,
+    ) -> Result<bool> {
         repository::restore_trash_item(conn, id, item_type)
     }
 
@@ -35,7 +39,11 @@ impl TrashRepository {
         repository::delete_trash_item_permanently(&conn, id, item_type)
     }
 
-    pub fn delete_trash_item_permanently_conn(conn: &rusqlite::Connection, id: &str, item_type: &str) -> Result<bool> {
+    pub fn delete_trash_item_permanently_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        item_type: &str,
+    ) -> Result<bool> {
         repository::delete_trash_item_permanently(conn, id, item_type)
     }
 

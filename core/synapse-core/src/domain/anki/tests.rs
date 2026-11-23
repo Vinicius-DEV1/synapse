@@ -12,7 +12,14 @@ fn test_anki_deck_card_and_fsrs_review() {
     assert!(decks.is_empty());
 
     // 2. Create deck
-    let deck_id = AnkiRepository::create_deck(&db, "Rust Deep Dive", Some("Memory & Safety"), Some("#f97316"), None).unwrap();
+    let deck_id = AnkiRepository::create_deck(
+        &db,
+        "Rust Deep Dive",
+        Some("Memory & Safety"),
+        Some("#f97316"),
+        None,
+    )
+    .unwrap();
     assert!(!deck_id.is_empty());
 
     let decks = AnkiRepository::get_decks(&db).unwrap();
@@ -29,7 +36,8 @@ fn test_anki_deck_card_and_fsrs_review() {
         Some("rust,memory"),
         Some("reading"),
         Some("Chapter 4 of Rust Book"),
-    ).unwrap();
+    )
+    .unwrap();
     assert!(!card_id.is_empty());
 
     let cards = AnkiRepository::get_deck_cards(&db, &deck_id).unwrap();

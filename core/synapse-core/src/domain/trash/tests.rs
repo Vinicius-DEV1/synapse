@@ -8,7 +8,9 @@ fn test_trash_domain() {
     let db = Database::open(temp_db.path()).unwrap();
 
     // Verify empty
-    assert!(TrashRepository::get_trash_items(&db).expect("empty").is_empty());
+    assert!(TrashRepository::get_trash_items(&db)
+        .expect("empty")
+        .is_empty());
 
     {
         let conn = db.lock().unwrap();
@@ -33,5 +35,7 @@ fn test_trash_domain() {
 
     // Delete tx permanently
     assert!(TrashRepository::delete_trash_item_permanently(&db, "t1", "finance").expect("delete"));
-    assert!(TrashRepository::get_trash_items(&db).expect("get").is_empty());
+    assert!(TrashRepository::get_trash_items(&db)
+        .expect("get")
+        .is_empty());
 }

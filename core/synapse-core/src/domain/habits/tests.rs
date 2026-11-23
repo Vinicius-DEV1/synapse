@@ -12,7 +12,14 @@ fn test_habits_lifecycle_and_toggle() {
     assert!(habits.is_empty());
 
     // 2. Create habit
-    let habit = HabitsRepository::create_habit(&db, "Drink Water", Some("#06b6d4"), Some("droplet"), Some(7)).unwrap();
+    let habit = HabitsRepository::create_habit(
+        &db,
+        "Drink Water",
+        Some("#06b6d4"),
+        Some("droplet"),
+        Some(7),
+    )
+    .unwrap();
     assert_eq!(habit.title, "Drink Water");
     assert_eq!(habit.target_days_per_week, 7);
 

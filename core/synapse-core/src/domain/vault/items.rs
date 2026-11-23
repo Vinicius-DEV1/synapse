@@ -2,7 +2,10 @@ use super::models::{VaultItem, VaultPasswordHistoryEntry};
 use crate::error::Result;
 use rusqlite::params;
 
-pub fn get_vault_items(conn: &rusqlite::Connection, group_id: Option<&str>) -> Result<Vec<VaultItem>> {
+pub fn get_vault_items(
+    conn: &rusqlite::Connection,
+    group_id: Option<&str>,
+) -> Result<Vec<VaultItem>> {
     let sql = match group_id {
         Some(gid) if !gid.trim().is_empty() => {
             "SELECT id, group_id, label, username, email, password, url, notes, is_favorite, \
@@ -51,15 +54,47 @@ pub fn get_vault_items(conn: &rusqlite::Connection, group_id: Option<&str>) -> R
 }
 
 pub fn save_vault_item(conn: &rusqlite::Connection, mut item: VaultItem) -> Result<VaultItem> {
-    let clean_group = item.group_id.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
+    let clean_group = item
+        .group_id
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
     let clean_label = item.label.trim();
-    let clean_user = item.username.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let clean_email = item.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let clean_pass = item.password.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let clean_url = item.url.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let clean_notes = item.notes.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let clean_custom = item.custom_fields.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
-    let clean_login = item.login_type.as_deref().map(|s| s.trim()).unwrap_or("password");
+    let clean_user = item
+        .username
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let clean_email = item
+        .email
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let clean_pass = item
+        .password
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let clean_url = item
+        .url
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let clean_notes = item
+        .notes
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let clean_custom = item
+        .custom_fields
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    let clean_login = item
+        .login_type
+        .as_deref()
+        .map(|s| s.trim())
+        .unwrap_or("password");
     let is_fav_int = if item.is_favorite { 1 } else { 0 };
 
     if item.id.trim().is_empty() {
@@ -144,7 +179,10 @@ pub fn delete_vault_item(conn: &rusqlite::Connection, id: &str) -> Result<bool> 
     Ok(rows > 0)
 }
 
-pub fn get_vault_password_history(conn: &rusqlite::Connection, item_id: &str) -> Result<Vec<VaultPasswordHistoryEntry>> {
+pub fn get_vault_password_history(
+    conn: &rusqlite::Connection,
+    item_id: &str,
+) -> Result<Vec<VaultPasswordHistoryEntry>> {
     let mut stmt = conn.prepare(
         "SELECT id, item_id, password, changed_at, deleted_at FROM vault_password_history WHERE item_id = ?1 AND deleted_at IS NULL ORDER BY changed_at DESC"
     )?;

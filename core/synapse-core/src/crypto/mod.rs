@@ -48,7 +48,8 @@ pub fn generate_module_key() -> String {
 }
 
 pub fn encrypt_module_key_with_key(module_key: &str, key: &[u8; 32]) -> Result<String, String> {
-    let decoded_module_key = Zeroizing::new(hex::decode(module_key).map_err(|_| "Invalid module key")?);
+    let decoded_module_key =
+        Zeroizing::new(hex::decode(module_key).map_err(|_| "Invalid module key")?);
     if decoded_module_key.len() != 32 {
         return Err("Module key must be 32 bytes".into());
     }

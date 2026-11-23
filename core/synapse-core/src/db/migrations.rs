@@ -10,7 +10,7 @@ pub use quiz::migrate_quiz_schema;
 mod tests;
 
 // Released migration numbers are explicit in `apply_versioned_migration`; append, never renumber.
-const CURRENT_SCHEMA_VERSION: i64 = 3;
+const CURRENT_SCHEMA_VERSION: i64 = 9;
 
 /// Applies all pending schema changes atomically and records the applied version.
 pub fn run_migrations(conn: &Connection) -> Result<(), String> {
@@ -76,10 +76,103 @@ fn apply_versioned_migration(conn: &Connection, version: i64) -> Result<(), Stri
         1 => apply_initial_schema(conn),
         2 => add_column_if_missing(conn, "transactions", "updated_at", "DATETIME").map(|_| ()),
         3 => add_column_if_missing(conn, "transactions", "person", "TEXT").map(|_| ()),
+        4 => add_column_if_missing(conn, "habits", "category", "TEXT DEFAULT 'Geral'").map(|_| ()),
+        5 => add_lofi_trash_columns(conn),
+        6 => add_focus_session_columns(conn),
+        7 => repair_anki_default_settings(conn),
+        8 => add_column_if_missing(
+            conn,
+            "anki_srs_state",
+            "learning_steps",
+            "INTEGER NOT NULL DEFAULT 0",
+        )
+        .map(|_| ()),
+        9 => add_column_if_missing(conn, "notifications", "event_reminder_minutes", "INTEGER")
+            .map(|_| ()),
         _ => Err(format!(
             "SQLite schema migration {version} is not registered."
         )),
     }
+}
+
+fn repair_anki_default_settings(conn: &Connection) -> Result<(), String> {
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'anki_deck_settings')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Failed to inspect SQLite table anki_deck_settings: {error}"))?;
+    if !table_exists {
+        return Ok(());
+    }
+
+    for (column, definition) in [
+        ("new_limit", "INTEGER DEFAULT 20"),
+        ("review_limit", "INTEGER DEFAULT 100"),
+        ("learning_steps", "TEXT"),
+        ("relearning_steps", "TEXT"),
+        ("fsrs_weights", "TEXT"),
+        ("updated_at", "DATETIME"),
+        ("deleted_at", "DATETIME DEFAULT NULL"),
+    ] {
+        add_column_if_missing(conn, "anki_deck_settings", column, definition)?;
+    }
+
+    conn.execute(
+        "UPDATE anki_deck_settings
+         SET new_limit = 20, review_limit = 200,
+             learning_steps = '1m,10m', relearning_steps = '10m',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE new_limit = 0 AND review_limit = 0
+           AND COALESCE(learning_steps, '') = ''
+           AND COALESCE(relearning_steps, '') = ''
+           AND fsrs_weights IS NULL
+           AND deleted_at IS NULL",
+        [],
+    )
+    .map_err(|error| format!("Failed to repair default Anki deck settings: {error}"))?;
+    Ok(())
+}
+
+fn add_lofi_trash_columns(conn: &Connection) -> Result<(), String> {
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'lofis')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Failed to inspect SQLite table lofis: {error}"))?;
+    if !table_exists {
+        return Ok(());
+    }
+
+    for (column, definition) in [
+        ("created_at", "DATETIME"),
+        ("updated_at", "DATETIME"),
+        ("deleted_at", "DATETIME"),
+    ] {
+        add_column_if_missing(conn, "lofis", column, definition)?;
+    }
+    Ok(())
+}
+
+fn add_focus_session_columns(conn: &Connection) -> Result<(), String> {
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'focus_sessions')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Failed to inspect SQLite table focus_sessions: {error}"))?;
+    if !table_exists {
+        return Ok(());
+    }
+
+    for (column, definition) in [("updated_at", "DATETIME"), ("deleted_at", "DATETIME")] {
+        add_column_if_missing(conn, "focus_sessions", column, definition)?;
+    }
+    Ok(())
 }
 
 fn apply_initial_schema(conn: &Connection) -> Result<(), String> {

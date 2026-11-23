@@ -25,12 +25,22 @@ impl FocusRepository {
         lofi::get_lofis(conn)
     }
 
-    pub fn add_lofi_track(db: &Database, title: &str, file_path: &str, duration: f64) -> Result<bool> {
+    pub fn add_lofi_track(
+        db: &Database,
+        title: &str,
+        file_path: &str,
+        duration: f64,
+    ) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         lofi::add_lofi_track(&conn, title, file_path, duration)
     }
 
-    pub fn add_lofi_track_conn(conn: &rusqlite::Connection, title: &str, file_path: &str, duration: f64) -> Result<bool> {
+    pub fn add_lofi_track_conn(
+        conn: &rusqlite::Connection,
+        title: &str,
+        file_path: &str,
+        duration: f64,
+    ) -> Result<bool> {
         lofi::add_lofi_track(conn, title, file_path, duration)
     }
 
@@ -43,6 +53,21 @@ impl FocusRepository {
         lofi::delete_lofi(conn, id)
     }
 
+    pub fn get_deleted_lofi_file_path(db: &Database, id: &str) -> Result<Option<String>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        lofi::get_deleted_file_path(&conn, id)
+    }
+
+    pub fn get_deleted_lofi_file_paths(db: &Database) -> Result<Vec<String>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        lofi::get_deleted_file_paths(&conn)
+    }
+
+    pub fn is_lofi_file_path_referenced(db: &Database, file_path: &str) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        lofi::is_file_path_referenced(&conn, file_path)
+    }
+
     pub fn get_sessions(db: &Database) -> Result<Vec<FocusSession>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         sessions::get_focus_sessions(&conn)
@@ -50,6 +75,15 @@ impl FocusRepository {
 
     pub fn get_sessions_conn(conn: &rusqlite::Connection) -> Result<Vec<FocusSession>> {
         sessions::get_focus_sessions(conn)
+    }
+
+    pub fn get_stats(db: &Database, today: &str) -> Result<FocusStats> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        sessions::get_focus_stats(&conn, today)
+    }
+
+    pub fn get_stats_conn(conn: &rusqlite::Connection, today: &str) -> Result<FocusStats> {
+        sessions::get_focus_stats(conn, today)
     }
 
     pub fn record_session(
@@ -75,12 +109,56 @@ impl FocusRepository {
         sessions::record_focus_session(conn, tag, target_minutes, status, summary, description)
     }
 
+    pub fn record_session_at(
+        db: &Database,
+        tag: &str,
+        target_minutes: i32,
+        status: &str,
+        summary: &str,
+        description: &str,
+        completed_at: &str,
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        sessions::record_focus_session_at(
+            &conn,
+            tag,
+            target_minutes,
+            status,
+            summary,
+            description,
+            completed_at,
+        )
+    }
+
+    pub fn record_session_at_conn(
+        conn: &rusqlite::Connection,
+        tag: &str,
+        target_minutes: i32,
+        status: &str,
+        summary: &str,
+        description: &str,
+        completed_at: &str,
+    ) -> Result<bool> {
+        sessions::record_focus_session_at(
+            conn,
+            tag,
+            target_minutes,
+            status,
+            summary,
+            description,
+            completed_at,
+        )
+    }
+
     pub fn create_session(db: &Database, session: FocusSession) -> Result<String> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         sessions::create_focus_session(&conn, session)
     }
 
-    pub fn create_session_conn(conn: &rusqlite::Connection, session: FocusSession) -> Result<String> {
+    pub fn create_session_conn(
+        conn: &rusqlite::Connection,
+        session: FocusSession,
+    ) -> Result<String> {
         sessions::create_focus_session(conn, session)
     }
 
@@ -166,6 +244,15 @@ impl FocusRepository {
 
     pub fn toggle_alarm_conn(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
         alarms::toggle_alarm(conn, id)
+    }
+
+    pub fn disable_alarm(db: &Database, id: &str) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        alarms::disable_alarm(&conn, id)
+    }
+
+    pub fn disable_alarm_conn(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
+        alarms::disable_alarm(conn, id)
     }
 
     pub fn delete_alarm(db: &Database, id: &str) -> Result<bool> {

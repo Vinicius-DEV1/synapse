@@ -1,7 +1,7 @@
 use super::models::AnkiDeckSettings;
 use crate::error::Result;
 use chrono::Utc;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use std::collections::HashMap;
 
 pub fn get_deck_settings(conn: &rusqlite::Connection, deck_id: &str) -> Result<AnkiDeckSettings> {
@@ -20,13 +20,8 @@ pub fn get_deck_settings(conn: &rusqlite::Connection, deck_id: &str) -> Result<A
                 fsrs_weights: row.get(4)?,
             })
         })
-        .unwrap_or_else(|_| AnkiDeckSettings {
-            new_limit: 20,
-            review_limit: 200,
-            learning_steps: "1m,10m".to_string(),
-            relearning_steps: "10m".to_string(),
-            fsrs_weights: None,
-        });
+        .optional()?
+        .unwrap_or_default();
 
     Ok(settings)
 }
@@ -36,15 +31,24 @@ pub fn update_deck_settings(
     deck_id: &str,
     settings: AnkiDeckSettings,
 ) -> Result<bool> {
-    let mut exists = false;
-    if let Ok(mut stmt) = conn.prepare("SELECT id FROM anki_deck_settings WHERE deck_id = ?") {
-        if stmt.exists([deck_id]).unwrap_or(false) {
-            exists = true;
-        }
+    if settings.new_limit < 0 || settings.review_limit < 0 {
+        return Err(crate::error::SynapseError::Validation(
+            "Anki daily limits cannot be negative".to_owned(),
+        ));
     }
+    validate_fsrs_weights(settings.fsrs_weights.as_deref())?;
 
-    if exists {
-        conn.execute(
+    let tx = conn.unchecked_transaction()?;
+    let existing_id: Option<String> = tx
+        .query_row(
+            "SELECT id FROM anki_deck_settings WHERE deck_id = ?",
+            params![deck_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+
+    if existing_id.is_some() {
+        tx.execute(
             "UPDATE anki_deck_settings 
              SET new_limit = ?, review_limit = ?, learning_steps = ?, relearning_steps = ?, fsrs_weights = ?, updated_at = CURRENT_TIMESTAMP 
              WHERE deck_id = ?",
@@ -59,7 +63,7 @@ pub fn update_deck_settings(
         )?;
     } else {
         let id = uuid::Uuid::new_v4().to_string();
-        conn.execute(
+        tx.execute(
             "INSERT INTO anki_deck_settings (id, deck_id, new_limit, review_limit, learning_steps, relearning_steps, fsrs_weights) 
              VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
@@ -74,7 +78,23 @@ pub fn update_deck_settings(
         )?;
     }
 
+    tx.commit()?;
     Ok(true)
+}
+
+fn validate_fsrs_weights(weights: Option<&str>) -> Result<()> {
+    let Some(weights) = weights.filter(|value| !value.trim().is_empty()) else {
+        return Ok(());
+    };
+    let values: Vec<f64> = serde_json::from_str(weights).map_err(|error| {
+        crate::error::SynapseError::Validation(format!("Invalid Anki FSRS weights: {error}"))
+    })?;
+    if !matches!(values.len(), 17 | 19 | 21) || values.iter().any(|value| !value.is_finite()) {
+        return Err(crate::error::SynapseError::Validation(
+            "Anki FSRS weights must contain 17, 19, or 21 finite values".to_owned(),
+        ));
+    }
+    Ok(())
 }
 
 pub fn get_total_due_count(conn: &rusqlite::Connection) -> Result<i64> {
@@ -103,9 +123,11 @@ pub fn get_total_due_count(conn: &rusqlite::Connection) -> Result<i64> {
         Ok((deck_id, state, due_date, new_limit, review_limit))
     })?;
 
-    for r in rows.flatten() {
-        let (deck_id, state_str, due_date, new_limit, review_limit) = r;
-        let entry = deck_counts.entry(deck_id).or_insert((0, 0, 0, new_limit, review_limit));
+    for r in rows {
+        let (deck_id, state_str, due_date, new_limit, review_limit) = r?;
+        let entry = deck_counts
+            .entry(deck_id)
+            .or_insert((0, 0, 0, new_limit, review_limit));
         let state: i32 = match state_str.trim().to_lowercase().as_str() {
             "0" | "new" | "" => 0,
             "1" | "learning" => 1,

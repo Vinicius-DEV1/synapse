@@ -26,7 +26,9 @@ pub fn get_videos(conn: &Connection, collection_filter: Option<&str>) -> Result<
                 sql.push_str("AND collection_id IS NULL AND collection_name = ?1 ");
                 param_values.push(legacy_name.to_string());
             } else {
-                sql.push_str("AND (collection_id = ?1 OR (collection_id IS NULL AND collection_name = ?1)) ");
+                sql.push_str(
+                    "AND (collection_id = ?1 OR (collection_id IS NULL AND collection_name = ?1)) ",
+                );
                 param_values.push(trimmed.to_string());
             }
         }
@@ -169,6 +171,9 @@ pub fn insert_video(conn: &Connection, video: &VideoRecord) -> Result<()> {
 
 /// Updates video playback progress timestamp.
 pub fn update_video_progress(conn: &Connection, video_id: &str, progress: f64) -> Result<bool> {
+    if video_id.trim().is_empty() || !progress.is_finite() || progress < 0.0 {
+        return Ok(false);
+    }
     let now = Utc::now().to_rfc3339();
     let rows = conn.execute(
         "UPDATE videos SET progress = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",

@@ -21,9 +21,10 @@ pub fn get_video_folders(conn: &Connection) -> Result<Vec<VideoFolder>> {
         .optional()?;
 
     if let Some(serialized) = row_opt {
-        if let Ok(folders) = serde_json::from_str::<Vec<VideoFolder>>(&serialized) {
-            configured_folders = folders;
-        }
+        configured_folders =
+            serde_json::from_str::<Vec<VideoFolder>>(&serialized).map_err(|error| {
+                SynapseError::Internal(format!("Invalid video folder configuration: {error}"))
+            })?;
     }
 
     let mut folders: Vec<VideoFolder> = Vec::new();
@@ -79,20 +80,28 @@ pub fn create_video_folder(conn: &Connection, name: &str) -> Result<Option<Video
     }
 
     let mut folders = get_video_folders(conn)?;
+    if folders
+        .iter()
+        .any(|folder| folder.name.eq_ignore_ascii_case(normalized_name))
+    {
+        return Ok(None);
+    }
     let folder = VideoFolder {
         id: Uuid::new_v4().to_string(),
         name: normalized_name.to_string(),
     };
     folders.push(folder.clone());
 
+    let transaction = conn.unchecked_transaction()?;
     let now = Utc::now().to_rfc3339();
-    let _ = conn.execute(
+    transaction.execute(
         "UPDATE videos SET collection_id = ?1, updated_at = ?2 \
          WHERE deleted_at IS NULL AND collection_id IS NULL AND collection_name = ?3",
         params![folder.id, now, normalized_name],
-    );
+    )?;
 
-    save_video_folders(conn, &folders)?;
+    save_video_folders(&transaction, &folders)?;
+    transaction.commit()?;
     Ok(Some(folder))
 }
 
@@ -100,7 +109,10 @@ pub fn create_video_folder(conn: &Connection, name: &str) -> Result<Option<Video
 pub fn rename_video_folder(conn: &Connection, folder_id: &str, name: &str) -> Result<bool> {
     let normalized_id = folder_id.trim();
     let normalized_name = name.trim();
-    if normalized_id.is_empty() || normalized_name.is_empty() || normalized_name.eq_ignore_ascii_case("Todos") {
+    if normalized_id.is_empty()
+        || normalized_name.is_empty()
+        || normalized_name.eq_ignore_ascii_case("Todos")
+    {
         return Ok(false);
     }
 
@@ -123,20 +135,28 @@ pub fn rename_video_folder(conn: &Connection, folder_id: &str, name: &str) -> Re
     if previous_name == normalized_name {
         return Ok(true);
     }
+    if folders.iter().any(|folder| {
+        folder.id != normalized_id && folder.name.eq_ignore_ascii_case(normalized_name)
+    }) {
+        return Ok(false);
+    }
 
+    let transaction = conn.unchecked_transaction()?;
     let now = Utc::now().to_rfc3339();
-    let _ = conn.execute(
+    transaction.execute(
         "UPDATE videos SET collection_id = ?1, collection_name = ?2, updated_at = ?3 \
          WHERE deleted_at IS NULL AND collection_id IS NULL AND collection_name = ?4",
         params![normalized_id, normalized_name, now, previous_name],
-    );
-    let _ = conn.execute(
+    )?;
+    transaction.execute(
         "UPDATE videos SET collection_name = ?1, updated_at = ?2 \
          WHERE deleted_at IS NULL AND collection_id = ?3",
         params![normalized_name, now, normalized_id],
-    );
+    )?;
 
-    save_video_folders(conn, &folders)
+    save_video_folders(&transaction, &folders)?;
+    transaction.commit()?;
+    Ok(true)
 }
 
 /// Deletes a video folder and unlinks videos associated with it.
@@ -154,18 +174,25 @@ pub fn delete_video_folder(conn: &Connection, folder_id: &str) -> Result<bool> {
         return Ok(false);
     }
 
+    let transaction = conn.unchecked_transaction()?;
     let now = Utc::now().to_rfc3339();
-    let _ = conn.execute(
+    transaction.execute(
         "UPDATE videos SET collection_id = NULL, collection_name = NULL, updated_at = ?1 \
          WHERE collection_id = ?2 AND deleted_at IS NULL",
         params![now, normalized_id],
-    );
+    )?;
 
-    save_video_folders(conn, &folders)
+    save_video_folders(&transaction, &folders)?;
+    transaction.commit()?;
+    Ok(true)
 }
 
 /// Moves a video to a designated folder (or removes it if folder_id is None).
-pub fn move_video_to_folder(conn: &Connection, video_id: &str, folder_id: Option<&str>) -> Result<bool> {
+pub fn move_video_to_folder(
+    conn: &Connection,
+    video_id: &str,
+    folder_id: Option<&str>,
+) -> Result<bool> {
     let normalized_video_id = video_id.trim();
     if normalized_video_id.is_empty() {
         return Ok(false);

@@ -60,7 +60,16 @@ impl CalendarRepository {
         page_id: Option<&str>,
     ) -> Result<Option<CalendarEvent>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
-        events::create_calendar_event(&conn, title, description, start_date, end_date, event_type, color, page_id)
+        events::create_calendar_event(
+            &conn,
+            title,
+            description,
+            start_date,
+            end_date,
+            event_type,
+            color,
+            page_id,
+        )
     }
 
     pub fn create_event_conn(
@@ -73,7 +82,68 @@ impl CalendarRepository {
         color: &str,
         page_id: Option<&str>,
     ) -> Result<Option<CalendarEvent>> {
-        events::create_calendar_event(conn, title, description, start_date, end_date, event_type, color, page_id)
+        events::create_calendar_event(
+            conn,
+            title,
+            description,
+            start_date,
+            end_date,
+            event_type,
+            color,
+            page_id,
+        )
+    }
+
+    pub fn create_event_with_reminders(
+        db: &Database,
+        title: &str,
+        description: &str,
+        start_date: &str,
+        end_date: &str,
+        event_type: &str,
+        color: &str,
+        page_id: Option<&str>,
+        reminders: &[i32],
+    ) -> Result<Option<CalendarEvent>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        events::create_calendar_event_with_reminders(
+            &conn,
+            title,
+            description,
+            start_date,
+            end_date,
+            event_type,
+            color,
+            page_id,
+            reminders,
+        )
+    }
+
+    pub fn create_event_series(
+        db: &Database,
+        title: &str,
+        description: &str,
+        start_date: &str,
+        end_date: &str,
+        event_type: &str,
+        color: &str,
+        page_id: Option<&str>,
+        reminders: &[i32],
+        recurrence: &str,
+    ) -> Result<Vec<CalendarEvent>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        events::create_calendar_event_series(
+            &conn,
+            title,
+            description,
+            start_date,
+            end_date,
+            event_type,
+            color,
+            page_id,
+            reminders,
+            recurrence,
+        )
     }
 
     pub fn update_event(
@@ -88,7 +158,17 @@ impl CalendarRepository {
         page_id: Option<&str>,
     ) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
-        events::update_calendar_event(&conn, id, title, description, start_date, end_date, color, event_type, page_id)
+        events::update_calendar_event(
+            &conn,
+            id,
+            title,
+            description,
+            start_date,
+            end_date,
+            color,
+            event_type,
+            page_id,
+        )
     }
 
     pub fn update_event_conn(
@@ -102,7 +182,70 @@ impl CalendarRepository {
         event_type: Option<&str>,
         page_id: Option<&str>,
     ) -> Result<bool> {
-        events::update_calendar_event(conn, id, title, description, start_date, end_date, color, event_type, page_id)
+        events::update_calendar_event(
+            conn,
+            id,
+            title,
+            description,
+            start_date,
+            end_date,
+            color,
+            event_type,
+            page_id,
+        )
+    }
+
+    pub fn update_event_with_reminders(
+        db: &Database,
+        id: &str,
+        title: &str,
+        description: &str,
+        start_date: &str,
+        end_date: &str,
+        color: &str,
+        event_type: Option<&str>,
+        page_id: Option<&str>,
+        reminders: &[i32],
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        events::update_calendar_event_with_reminders(
+            &conn,
+            id,
+            title,
+            description,
+            start_date,
+            end_date,
+            color,
+            event_type,
+            page_id,
+            Some(reminders),
+        )
+    }
+
+    pub fn update_event_with_reminders_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        title: &str,
+        description: &str,
+        start_date: &str,
+        end_date: &str,
+        color: &str,
+        event_type: Option<&str>,
+        page_id: Option<&str>,
+        reminders: &[i32],
+    ) -> Result<bool> {
+        events::update_calendar_event_with_reminders(
+            conn,
+            id,
+            title,
+            description,
+            start_date,
+            end_date,
+            color,
+            event_type,
+            page_id,
+            Some(reminders),
+        )
     }
 
     pub fn toggle_status(db: &Database, id: &str) -> Result<bool> {
@@ -119,7 +262,29 @@ impl CalendarRepository {
         events::delete_calendar_event(&conn, id)
     }
 
+    pub fn delete_event_series(db: &Database, id: &str) -> Result<u32> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        events::delete_calendar_event_series(&conn, id)
+    }
+
     pub fn delete_event_conn(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
         events::delete_calendar_event(conn, id)
+    }
+
+    pub fn mark_reminder_notified(
+        db: &Database,
+        event_id: &str,
+        reminder_minutes: i32,
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        events::mark_calendar_reminder_notified(&conn, event_id, reminder_minutes)
+    }
+
+    pub fn mark_reminder_notified_conn(
+        conn: &rusqlite::Connection,
+        event_id: &str,
+        reminder_minutes: i32,
+    ) -> Result<bool> {
+        events::mark_calendar_reminder_notified(conn, event_id, reminder_minutes)
     }
 }

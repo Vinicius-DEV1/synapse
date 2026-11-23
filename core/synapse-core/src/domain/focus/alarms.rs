@@ -1,6 +1,6 @@
 use super::models::FocusAlarm;
 use crate::error::Result;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 
 pub fn get_alarms(conn: &rusqlite::Connection) -> Result<Vec<FocusAlarm>> {
     let mut stmt = conn.prepare(
@@ -21,11 +21,7 @@ pub fn get_alarms(conn: &rusqlite::Connection) -> Result<Vec<FocusAlarm>> {
         })
     })?;
 
-    let mut list = Vec::new();
-    for a in iter.flatten() {
-        list.push(a);
-    }
-    Ok(list)
+    Ok(iter.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn create_alarm(
@@ -86,7 +82,14 @@ pub fn upsert_alarm(conn: &rusqlite::Connection, mut alarm: FocusAlarm) -> Resul
             days = excluded.days, \
             deleted_at = NULL, \
             updated_at = CURRENT_TIMESTAMP",
-        params![id, alarm.time, alarm.label, alarm.sound, alarm.enabled, alarm.days],
+        params![
+            id,
+            alarm.time,
+            alarm.label,
+            alarm.sound,
+            alarm.enabled,
+            alarm.days
+        ],
     )?;
 
     alarm.id = id;
@@ -144,7 +147,7 @@ pub fn toggle_alarm(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
             params![id.trim()],
             |row| row.get(0),
         )
-        .ok();
+        .optional()?;
 
     if let Some(enabled) = current_enabled {
         let new_enabled = if enabled == 1 { 0 } else { 1 };
@@ -157,6 +160,19 @@ pub fn toggle_alarm(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
     } else {
         Ok(false)
     }
+}
+
+pub fn disable_alarm(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
+    if id.trim().is_empty() {
+        return Ok(false);
+    }
+
+    let rows = conn.execute(
+        "UPDATE alarms SET enabled = 0, updated_at = CURRENT_TIMESTAMP \
+         WHERE id = ?1 AND enabled = 1 AND deleted_at IS NULL",
+        params![id.trim()],
+    )?;
+    Ok(rows > 0)
 }
 
 pub fn delete_alarm(conn: &rusqlite::Connection, id: &str) -> Result<bool> {

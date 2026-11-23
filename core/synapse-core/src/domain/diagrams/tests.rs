@@ -43,7 +43,9 @@ fn test_diagrams_lifecycle_and_crud() {
     )
     .unwrap());
 
-    let updated = DiagramsRepository::get_diagram(&db, "diag_1").unwrap().unwrap();
+    let updated = DiagramsRepository::get_diagram(&db, "diag_1")
+        .unwrap()
+        .unwrap();
     assert_eq!(updated.title, "Arquitetura Synapse Atualizada");
     assert_eq!(updated.content, "[{\"type\":\"circle\"}]");
     assert_eq!(updated.icon, "📐");

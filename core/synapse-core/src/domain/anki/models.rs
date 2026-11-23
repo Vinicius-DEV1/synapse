@@ -50,13 +50,14 @@ pub struct Card {
     pub difficulty: Option<f64>,
     pub reps: Option<i32>,
     pub lapses: Option<i32>,
+    pub learning_steps: Option<i32>,
     pub state: Option<String>,
     pub due_date: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AnkiDeckSettings {
     #[serde(default = "default_new_limit")]
     pub new_limit: i32,
@@ -69,10 +70,30 @@ pub struct AnkiDeckSettings {
     pub fsrs_weights: Option<String>,
 }
 
-fn default_new_limit() -> i32 { 20 }
-fn default_review_limit() -> i32 { 200 }
-fn default_learning_steps() -> String { "1m,10m".to_string() }
-fn default_relearning_steps() -> String { "10m".to_string() }
+impl Default for AnkiDeckSettings {
+    fn default() -> Self {
+        Self {
+            new_limit: default_new_limit(),
+            review_limit: default_review_limit(),
+            learning_steps: default_learning_steps(),
+            relearning_steps: default_relearning_steps(),
+            fsrs_weights: None,
+        }
+    }
+}
+
+fn default_new_limit() -> i32 {
+    20
+}
+fn default_review_limit() -> i32 {
+    200
+}
+fn default_learning_steps() -> String {
+    "1m,10m".to_string()
+}
+fn default_relearning_steps() -> String {
+    "10m".to_string()
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct DeckStats {

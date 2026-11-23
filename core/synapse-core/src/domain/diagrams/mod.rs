@@ -27,13 +27,43 @@ impl DiagramsRepository {
         repository::get_diagram(&conn, id)
     }
 
-    pub fn get_diagram_conn(conn: &rusqlite::Connection, id: &str) -> Result<Option<DiagramRecord>> {
+    pub fn get_diagram_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+    ) -> Result<Option<DiagramRecord>> {
         repository::get_diagram(conn, id)
     }
 
     pub fn create_diagram(db: &Database, diagram: &DiagramRecord) -> Result<()> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         repository::create_diagram(&conn, diagram)
+    }
+
+    /// Creates a new diagram record with shared ID and timestamp generation.
+    pub fn create_diagram_record(db: &Database, title: &str, icon: &str) -> Result<DiagramRecord> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        Self::create_diagram_record_conn(&conn, title, icon)
+    }
+
+    /// Connection-scoped variant used by platform adapters that already hold a transaction lock.
+    pub fn create_diagram_record_conn(
+        conn: &rusqlite::Connection,
+        title: &str,
+        icon: &str,
+    ) -> Result<DiagramRecord> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let diagram = DiagramRecord {
+            id: uuid::Uuid::new_v4().to_string(),
+            title: title.to_owned(),
+            icon: icon.to_owned(),
+            content: String::new(),
+            encrypted_content: None,
+            created_at: Some(now.clone()),
+            updated_at: Some(now),
+            deleted_at: None,
+        };
+        repository::create_diagram(conn, &diagram)?;
+        Ok(diagram)
     }
 
     pub fn create_diagram_conn(conn: &rusqlite::Connection, diagram: &DiagramRecord) -> Result<()> {

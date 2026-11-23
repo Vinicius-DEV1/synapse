@@ -19,7 +19,10 @@ impl CultureRepository {
         items::get_culture_items(&conn, status_filter)
     }
 
-    pub fn get_items_conn(conn: &rusqlite::Connection, status_filter: Option<&str>) -> Result<Vec<CultureItem>> {
+    pub fn get_items_conn(
+        conn: &rusqlite::Connection,
+        status_filter: Option<&str>,
+    ) -> Result<Vec<CultureItem>> {
         items::get_culture_items(conn, status_filter)
     }
 
@@ -37,7 +40,11 @@ impl CultureRepository {
         items::update_culture_item(&conn, id, item)
     }
 
-    pub fn update_item_conn(conn: &rusqlite::Connection, id: &str, item: &CultureItem) -> Result<bool> {
+    pub fn update_item_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        item: &CultureItem,
+    ) -> Result<bool> {
         items::update_culture_item(conn, id, item)
     }
 
@@ -55,7 +62,11 @@ impl CultureRepository {
         items::update_culture_progress(&conn, id, progress)
     }
 
-    pub fn update_progress_conn(conn: &rusqlite::Connection, id: &str, progress: i32) -> Result<bool> {
+    pub fn update_progress_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        progress: i32,
+    ) -> Result<bool> {
         items::update_culture_progress(conn, id, progress)
     }
 
@@ -73,7 +84,12 @@ impl CultureRepository {
         items::set_culture_goal(&conn, id, is_goal, goal_note)
     }
 
-    pub fn set_goal_conn(conn: &rusqlite::Connection, id: &str, is_goal: bool, goal_note: &str) -> Result<bool> {
+    pub fn set_goal_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        is_goal: bool,
+        goal_note: &str,
+    ) -> Result<bool> {
         items::set_culture_goal(conn, id, is_goal, goal_note)
     }
 
@@ -91,7 +107,10 @@ impl CultureRepository {
         episodes::get_culture_episodes(&conn, item_id)
     }
 
-    pub fn get_episodes_conn(conn: &rusqlite::Connection, item_id: &str) -> Result<Vec<CultureEpisode>> {
+    pub fn get_episodes_conn(
+        conn: &rusqlite::Connection,
+        item_id: &str,
+    ) -> Result<Vec<CultureEpisode>> {
         episodes::get_culture_episodes(conn, item_id)
     }
 
@@ -145,7 +164,11 @@ impl CultureRepository {
         episodes::toggle_episode_watched(&conn, episode_id, item_id)
     }
 
-    pub fn toggle_episode_watched_conn(conn: &rusqlite::Connection, episode_id: &str, item_id: &str) -> Result<bool> {
+    pub fn toggle_episode_watched_conn(
+        conn: &rusqlite::Connection,
+        episode_id: &str,
+        item_id: &str,
+    ) -> Result<bool> {
         episodes::toggle_episode_watched(conn, episode_id, item_id)
     }
 
@@ -154,7 +177,11 @@ impl CultureRepository {
         episodes::bulk_create_episodes(&conn, item_id, count)
     }
 
-    pub fn bulk_create_episodes_conn(conn: &rusqlite::Connection, item_id: &str, count: i32) -> Result<bool> {
+    pub fn bulk_create_episodes_conn(
+        conn: &rusqlite::Connection,
+        item_id: &str,
+        count: i32,
+    ) -> Result<bool> {
         episodes::bulk_create_episodes(conn, item_id, count)
     }
 
@@ -163,7 +190,11 @@ impl CultureRepository {
         episodes::save_episodes(&conn, item_id, eps)
     }
 
-    pub fn save_episodes_conn(conn: &rusqlite::Connection, item_id: &str, eps: &[CultureEpisode]) -> Result<bool> {
+    pub fn save_episodes_conn(
+        conn: &rusqlite::Connection,
+        item_id: &str,
+        eps: &[CultureEpisode],
+    ) -> Result<bool> {
         episodes::save_episodes(conn, item_id, eps)
     }
 

@@ -1,12 +1,15 @@
 //! Library book catalog database queries and persistence.
 
+mod updates;
+pub use updates::*;
+
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::json;
 use std::collections::HashMap;
 
 use super::models::BookRecord;
-use crate::error::Result;
+use crate::error::{Result, SynapseError};
 
 /// Retrieves books matching an optional title/author filter with hydrated collections.
 pub fn get_books(conn: &Connection, filter: Option<&str>) -> Result<Vec<BookRecord>> {
@@ -35,23 +38,18 @@ pub fn get_books(conn: &Connection, filter: Option<&str>) -> Result<Vec<BookReco
     let rel_sql = "SELECT bc.book_id, c.id, c.name, c.color FROM library_book_collections bc \
                    INNER JOIN library_collections c ON c.id = bc.collection_id \
                    WHERE bc.deleted_at IS NULL AND c.deleted_at IS NULL ORDER BY bc.rowid ASC";
-    if let Ok(mut rel_stmt) = conn.prepare(rel_sql) {
-        if let Ok(mut rel_rows) = rel_stmt.query([]) {
-            while let Ok(Some(row)) = rel_rows.next() {
-                if let (Ok(book_id), Ok(id), Ok(name), Ok(color)) = (
-                    row.get::<_, String>(0),
-                    row.get::<_, String>(1),
-                    row.get::<_, String>(2),
-                    row.get::<_, String>(3),
-                ) {
-                    collections_by_book.entry(book_id).or_default().push(json!({
-                        "id": id,
-                        "name": name,
-                        "color": color,
-                    }));
-                }
-            }
-        }
+    let mut rel_stmt = conn.prepare(rel_sql)?;
+    let mut rel_rows = rel_stmt.query([])?;
+    while let Some(row) = rel_rows.next()? {
+        let book_id: String = row.get(0)?;
+        let id: String = row.get(1)?;
+        let name: String = row.get(2)?;
+        let color: String = row.get(3)?;
+        collections_by_book.entry(book_id).or_default().push(json!({
+            "id": id,
+            "name": name,
+            "color": color,
+        }));
     }
 
     let mut stmt = conn.prepare(&sql)?;
@@ -65,7 +63,9 @@ pub fn get_books(conn: &Connection, filter: Option<&str>) -> Result<Vec<BookReco
     while let Some(row) = rows.next()? {
         let id: String = row.get(0)?;
         let collections = if let Some(cols) = collections_by_book.get(&id) {
-            Some(serde_json::to_string(cols).unwrap_or_else(|_| "[]".to_string()))
+            Some(serde_json::to_string(cols).map_err(|error| {
+                SynapseError::Internal(format!("Failed to serialize book collections: {error}"))
+            })?)
         } else {
             row.get(7)?
         };
@@ -192,112 +192,4 @@ pub fn insert_book(conn: &Connection, book: &BookRecord) -> Result<()> {
     )?;
 
     Ok(())
-}
-
-/// Updates reading progress of a book.
-pub fn update_book_progress(
-    conn: &Connection,
-    book_id: &str,
-    current_page: i32,
-    total_pages: i32,
-    reading_status: Option<&str>,
-) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let status = reading_status.unwrap_or_else(|| {
-        if current_page >= total_pages && total_pages > 0 {
-            "finished"
-        } else if current_page > 0 {
-            "reading"
-        } else {
-            "unread"
-        }
-    });
-
-    let rows = conn.execute(
-        "UPDATE library_books SET current_page = ?1, total_pages = ?2, reading_status = ?3, \
-         last_read_at = ?4, updated_at = ?4 WHERE id = ?5 AND deleted_at IS NULL",
-        params![current_page, total_pages, status, now, book_id],
-    )?;
-    Ok(rows > 0)
-}
-
-/// Updates only the reading status of a book.
-pub fn update_book_status(conn: &Connection, book_id: &str, status: &str) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE library_books SET reading_status = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
-        params![status, now, book_id],
-    )?;
-    Ok(rows > 0)
-}
-
-/// Sets whether a book is archived.
-pub fn set_book_archived(conn: &Connection, book_id: &str, archived: bool) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let archive_timestamp = if archived { Some(now.clone()) } else { None };
-    let rows = conn.execute(
-        "UPDATE library_books SET is_archived = ?1, archived_at = ?2, updated_at = ?3 WHERE id = ?4 AND deleted_at IS NULL",
-        params![if archived { 1 } else { 0 }, archive_timestamp, now, book_id],
-    )?;
-    Ok(rows > 0)
-}
-
-/// Updates book details and metadata.
-pub fn update_book_metadata(
-    conn: &Connection,
-    book_id: &str,
-    title: &str,
-    author: &str,
-    description: Option<&str>,
-    published_year: Option<i32>,
-    publisher: Option<&str>,
-    language: Option<&str>,
-) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE library_books SET title = ?1, author = ?2, description = ?3, \
-         published_year = ?4, publisher = ?5, language = ?6, updated_at = ?7 \
-         WHERE id = ?8 AND deleted_at IS NULL",
-        params![title, author, description, published_year, publisher, language, now, book_id],
-    )?;
-    Ok(rows > 0)
-}
-
-/// Updates book cover image and color.
-pub fn update_book_cover(
-    conn: &Connection,
-    book_id: &str,
-    cover_image: Option<&str>,
-    cover_color: Option<&str>,
-) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE library_books SET cover_image = ?1, cover_color = ?2, updated_at = ?3 \
-         WHERE id = ?4 AND deleted_at IS NULL",
-        params![cover_image, cover_color, now, book_id],
-    )?;
-    Ok(rows > 0)
-}
-
-/// Soft-deletes a book, its highlights, and bookmarks.
-pub fn soft_delete_book(conn: &Connection, book_id: &str) -> Result<bool> {
-    let now = Utc::now().to_rfc3339();
-    let rows = conn.execute(
-        "UPDATE library_books SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-        params![now, book_id],
-    )?;
-
-    if rows > 0 {
-        let _ = conn.execute(
-            "UPDATE library_highlights SET deleted_at = ?1 WHERE book_id = ?2 AND deleted_at IS NULL",
-            params![now, book_id],
-        );
-        let _ = conn.execute(
-            "UPDATE library_bookmarks SET deleted_at = ?1 WHERE book_id = ?2 AND deleted_at IS NULL",
-            params![now, book_id],
-        );
-        Ok(true)
-    } else {
-        Ok(false)
-    }
 }

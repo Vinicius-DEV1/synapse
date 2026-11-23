@@ -111,7 +111,16 @@ pub fn add_highlight(
     color: Option<&str>,
     note: Option<&str>,
 ) -> Result<Highlight> {
-    add_highlight_full(conn, book_id, page_number, text_content, color, None, None, note)
+    add_highlight_full(
+        conn,
+        book_id,
+        page_number,
+        text_content,
+        color,
+        None,
+        None,
+        note,
+    )
 }
 
 pub fn add_highlight_full(
@@ -179,13 +188,25 @@ pub fn update_highlight_full(
          color = COALESCE(?2, color), rects = COALESCE(?3, rects), \
          highlight_type = COALESCE(?4, highlight_type), note = COALESCE(?5, note), \
          updated_at = ?6 WHERE id = ?7 AND deleted_at IS NULL",
-        params![text_content, color, rects, highlight_type, note, now, highlight_id],
+        params![
+            text_content,
+            color,
+            rects,
+            highlight_type,
+            note,
+            now,
+            highlight_id
+        ],
     )?;
     Ok(rows > 0)
 }
 
 /// Updates only the note on a highlight.
-pub fn update_highlight_note(conn: &Connection, highlight_id: &str, note: Option<&str>) -> Result<bool> {
+pub fn update_highlight_note(
+    conn: &Connection,
+    highlight_id: &str,
+    note: Option<&str>,
+) -> Result<bool> {
     let now = Utc::now().to_rfc3339();
     let rows = conn.execute(
         "UPDATE library_highlights SET note = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",

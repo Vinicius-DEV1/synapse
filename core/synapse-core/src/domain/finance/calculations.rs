@@ -48,7 +48,11 @@ pub fn accumulate_transaction_delta(
 }
 
 /// Summarizes income, expense, delta balance and total current balance.
-pub fn build_financial_summary(income: f64, expense: f64, accounts: &[Account]) -> FinancialSummary {
+pub fn build_financial_summary(
+    income: f64,
+    expense: f64,
+    accounts: &[Account],
+) -> FinancialSummary {
     let total_balance: f64 = accounts
         .iter()
         .map(|acc| acc.current_balance.unwrap_or(0.0))

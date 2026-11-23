@@ -41,7 +41,9 @@ fn test_calendar_event_lifecycle() {
     .expect("update event");
     assert!(ok);
 
-    let updated = CalendarRepository::get_event(&db, &ev.id).expect("get event").expect("found");
+    let updated = CalendarRepository::get_event(&db, &ev.id)
+        .expect("get event")
+        .expect("found");
     assert_eq!(updated.title, "Final Exam");
     assert_eq!(updated.type_, "task");
     assert_eq!(updated.color, "#10b981");
@@ -49,10 +51,17 @@ fn test_calendar_event_lifecycle() {
 
     // Toggle status
     assert!(CalendarRepository::toggle_status(&db, &ev.id).expect("toggle status"));
-    let toggled = CalendarRepository::get_event(&db, &ev.id).expect("get event").expect("found");
+    let toggled = CalendarRepository::get_event(&db, &ev.id)
+        .expect("get event")
+        .expect("found");
     assert_eq!(toggled.status, "completed");
 
     // Delete event
     assert!(CalendarRepository::delete_event(&db, &ev.id).expect("delete event"));
-    assert_eq!(CalendarRepository::get_events(&db).expect("get events").len(), 0);
+    assert_eq!(
+        CalendarRepository::get_events(&db)
+            .expect("get events")
+            .len(),
+        0
+    );
 }

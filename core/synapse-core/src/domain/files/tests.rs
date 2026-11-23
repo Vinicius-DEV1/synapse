@@ -40,13 +40,17 @@ fn test_files_domain() {
         );
     }
 
-    let files = FilesRepository::get_files_for_section(&db, "folders", Some(&sub.id)).expect("get files");
+    let files =
+        FilesRepository::get_files_for_section(&db, "folders", Some(&sub.id)).expect("get files");
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].name, "report.pdf");
 
     // Duplicate file
-    let _copy_id = FilesRepository::duplicate_file(&db, "f1", Some(&sub.id)).expect("duplicate").expect("copy");
-    let files2 = FilesRepository::get_files_for_section(&db, "folders", Some(&sub.id)).expect("get files");
+    let _copy_id = FilesRepository::duplicate_file(&db, "f1", Some(&sub.id))
+        .expect("duplicate")
+        .expect("copy");
+    let files2 =
+        FilesRepository::get_files_for_section(&db, "folders", Some(&sub.id)).expect("get files");
     assert_eq!(files2.len(), 2);
 
     // Link file to page
@@ -60,7 +64,7 @@ fn test_files_domain() {
     let linked2 = FilesRepository::get_file_linked_pages(&db, "f1").expect("linked");
     assert!(linked2.is_empty());
 
-    // Delete folder (soft deletes folder and child files)
+    // Delete folders while preserving their files in the root section.
     assert!(FilesRepository::delete_folder(&db, &sub.id).expect("delete folder"));
     let subs_after = FilesRepository::get_folders(&db, Some(&root.id)).expect("get sub folders");
     assert!(subs_after.is_empty());
