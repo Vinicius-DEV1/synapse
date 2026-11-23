@@ -50,7 +50,6 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 14
-                alignment: Qt.AlignTop
 
                 Rectangle {
                     width: 40

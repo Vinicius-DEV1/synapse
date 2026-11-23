@@ -18,6 +18,7 @@ ToolButton {
     signal archiveToggleRequested(var book, bool archived)
     signal downloadOfflineRequested(var book)
     signal clearCacheRequested(var book)
+    signal evictCacheRequested(var book)
 
     visible: cardHovered
     text: "⋮"
@@ -70,7 +71,10 @@ ToolButton {
         MenuItem {
             visible: !!actionsMenu.book.drive_file_id && !!actionsMenu.book.is_local
             text: "🗑 Liberar espaço (remover cache local)"
-            onTriggered: actionsMenu.clearCacheRequested(actionsMenu.book)
+            onTriggered: {
+                actionsMenu.clearCacheRequested(actionsMenu.book)
+                actionsMenu.evictCacheRequested(actionsMenu.book)
+            }
         }
         MenuSeparator {}
         Menu {
