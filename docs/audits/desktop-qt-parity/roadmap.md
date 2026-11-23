@@ -48,17 +48,17 @@ This order separates product gaps from architecture and release acceptance. Work
 ## Phase 3 — Architecture and maintainability
 
 - [x] DESK-PAR-017: remove generic SQL from QML and feature controllers; document narrow infrastructure/migration exceptions.
-- [ ] DESK-PAR-018: decompose global controller and largest files in tested steps.
-- [ ] Add typed bridge contracts and focused tests for new operations.
-- [ ] Keep canonical domain logic in synapse-core and QML presentation-only.
-- [ ] Add static inventory for orphaned QML signals, methods, and unused mock surfaces.
-- [ ] Update Qt app guidance and parity docs when boundaries change.
+- [x] DESK-PAR-018: decompose global controller and largest files in tested steps.
+- [x] Add typed bridge contracts and focused tests for new operations.
+- [x] Keep canonical domain logic in synapse-core and QML presentation-only.
+- [x] Add static inventory for orphaned QML signals, methods, and unused mock surfaces.
+- [x] Update Qt app guidance and parity docs when boundaries change.
 
 **Exit gate:** No new domain logic or generic SQL enters QML/controllers; remaining exceptions are owned and tested.
 
 ## Phase 4 — Release-quality UX and distribution
 
-- [ ] DESK-PAR-016: establish translation catalogs and supported locale checks.
+- [x] DESK-PAR-016: establish translation catalogs and supported locale checks.
 - [ ] DESK-PAR-020: map matrix requirements to tests/manual cases.
 - [ ] Complete accessibility and shortcut acceptance from [UX and verification](ux-and-verification.md).
 - [ ] Complete matched-window screenshots and document native differences.

@@ -77,3 +77,36 @@ bool SynapseDataController::addNotification(const QString &title, const QString 
     }
     return false;
 }
+
+QVariantList SynapseDataController::checkDueNotifications() {
+    if (!m_db) return {};
+    char *jsonStr = synapse_notifications_deliver_due(m_db);
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+    const QVariantList dueList = doc.array().toVariantList();
+    if (!dueList.isEmpty()) {
+        refreshStats();
+    }
+    return dueList;
+}
+
+bool SynapseDataController::snoozeNotification(const QString &notificationId, int delayMinutes, const QString &titleSuffix) {
+    if (!m_db || notificationId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = notificationId.trimmed().toUtf8();
+    const QByteArray suffixBytes = titleSuffix.trimmed().toUtf8();
+
+    const int ret = synapse_notifications_snooze(
+        m_db,
+        idBytes.constData(),
+        delayMinutes,
+        suffixBytes.isEmpty() ? nullptr : suffixBytes.constData()
+    );
+
+    if (ret == 1) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}

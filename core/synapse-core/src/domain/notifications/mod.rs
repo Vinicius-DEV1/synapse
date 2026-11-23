@@ -45,6 +45,11 @@ impl NotificationsRepository {
         repository::mark_notification_delivered(&conn, id)
     }
 
+    pub fn deliver_due_notifications(db: &Database) -> Result<Vec<AppNotification>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        repository::deliver_due_notifications(&conn)
+    }
+
     pub fn add_notification(
         db: &Database,
         title: &str,

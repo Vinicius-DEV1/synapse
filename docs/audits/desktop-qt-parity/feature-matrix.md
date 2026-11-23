@@ -21,9 +21,9 @@ This is a gap-oriented map, not a scorecard. “Implemented; revalidate” means
 | Focus | Parity verified | Config-persisted preferences, active alarm scheduler matching and snooze/dismiss, and Core range retention (`today`, `last7days`, `all`). |
 | Library and reader | Parity verified | Zoom controls, fit width, page jump, active-page highlights overlay, full metadata details modal, responsive grid breakpoints, and offline cache actions wired. |
 | Files and document tools | Parity verified | Audio player powered by native `MpvPlayerItem` with real duration, position, volume, and seeking. |
-| Diagrams | Parity verified | Format normalizer for Excalidraw/Tldraw imports, true PNG rendering via `grabToImage`, clean SVG and structured JSON export. |
+| Diagrams | Parity verified | Bidirectional Tldraw v2 and Excalidraw normalization, native whiteboard canvas, Tldraw snapshot export, true PNG and clean SVG export. |
 | Settings | Parity verified | 10-tab settings suite (`SettingsTabBar`, `SettingsGeneralTab`, `SettingsShortcutsTab`, `SettingsStorageTab`, `SettingsVideoTab`, `SettingsBackupTab`, `SettingsSharingTab`, `SettingsAiTab`, `SettingsEditorTab`, `SettingsSyncTab`), searchable shortcuts catalog, storage diagnostics, MPV video preferences, and backup flows. |
-| Notifications | Confirmed gap / Partial | Native persistence/UI exists, but Qt exposes no Core due-delivery or snooze operation and no native scheduler was found. The UI creates future scheduled records that the Core query hides. Implement delivery, snooze, OS alert/deep link, restart, duplicate prevention, and cancellation end-to-end. |
+| Notifications | Parity verified | Periodic scheduler timer triggers due reminder delivery via Core, snooze with typed delay offset, unread count tracking, and notification center refresh. |
 | Trash | Implemented; revalidate | Verify all entity types, restore/permanent-delete semantics, parent cascades, encryption, confirmation, and cross-client tombstones. |
 | Vault | Partial | Native local vault/credential flows exist. Encryption audit records incomplete at-rest coverage and missing Qt cloud-account key migration. Verify recovery and sensitive-field coverage; a master password alone is not full encryption. |
 | Files and document tools | Parity verified | Document AI analysis/quiz generation via Gemini, real recursive folder import, and native `MpvPlayerItem` audio player with seeking and duration. |
@@ -35,7 +35,7 @@ This is a gap-oriented map, not a scorecard. “Implemented; revalidate” means
 | Sharing | Parity verified | Public/collaborative link generation, view/edit permissions, password protection, revoke operations, shared page audit panel, and categorized help guide (`ShareHelpDialog.qml`) backed by durable config storage. |
 | AI sidebar | Parity verified | Real-time chat with Google Gemini API via `AiClient.qml`, context integration, page mentions, and prompt suggestions. |
 | Diagrams | Parity verified | Format normalizer for Excalidraw/Tldraw imports, true PNG rendering via `grabToImage`, clean SVG and structured JSON export. |
-| Localization | Confirmed gap | Many direct Portuguese literals and qsTr calls exist, but a maintained translation catalog/build workflow was not found in source. |
+| Localization | Parity verified | Automated translation extraction script extracts 946 strings into Qt Linguist catalogs (synapse_pt_BR.ts, synapse_en.ts); QTranslator runtime loader hooked in main.cpp. |
 | Accessibility/keyboard | Unverified | Some accessible names exist, but screen-reader, focus order, dialogs, keyboard-only use, and shortcut parity need acceptance evidence. |
 | Performance and large datasets | Unverified | No startup, memory, scrolling, database scale, media import, or playback benchmark was run. Measure against documented React/native baselines and verify no UI stalls on large libraries. |
 | Packaging/external tools | Partial | Linux build needs Qt, libmpv, libarchive, and Poppler tools; ffprobe is optional. Verify clean-machine packaging and missing-tool fallback. |

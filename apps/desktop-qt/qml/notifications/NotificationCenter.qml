@@ -289,8 +289,7 @@ Item {
                             Button {
                                 text: "Adiar 15 min"
                                 onClicked: {
-                                    centerRoot.markRead(modelData.id)
-                                    dataController.addNotification((modelData.title || "Lembrete") + " (adiado)", modelData.message || "", modelData.type || "system", modelData.target_page_id || "", modelData.event_id || "", new Date(Date.now() + 15 * 60 * 1000).toISOString())
+                                    dataController.snoozeNotification(modelData.id, 15, "Adiado 15m")
                                     centerRoot.refresh()
                                 }
                                 background: Rectangle { color: parent.hovered ? theme.bgHover : "#08ffffff"; radius: 7 }

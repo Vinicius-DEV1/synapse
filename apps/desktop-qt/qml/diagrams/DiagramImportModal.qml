@@ -45,12 +45,57 @@ Rectangle {
             // Tldraw format
             if (data.records && Array.isArray(data.records)) {
                 var tldrawConverted = []
+                var tldrawColorMap = {
+                    "violet": "#8b5cf6", "blue": "#3b82f6", "red": "#ef4444",
+                    "green": "#10b981", "yellow": "#eab308", "white": "#ffffff",
+                    "black": "#000000", "grey": "#6b7280", "orange": "#f97316"
+                }
                 for (var r = 0; r < data.records.length; r++) {
                     var rec = data.records[r]
                     if (rec.typeName === "shape") {
                         var props = rec.props || {}
+                        var strokeColor = tldrawColorMap[props.color] || props.color || "#8b5cf6"
+                        var rx = rec.x || 0
+                        var ry = rec.y || 0
                         if (rec.type === "geo") {
-                            tldrawConverted.push({ type: props.geo === "ellipse" ? "circle" : "rect", x: rec.x || 0, y: rec.y || 0, w: props.w || 100, h: props.h || 100, color: props.color || "#8b5cf6", lineWidth: 2 })
+                            tldrawConverted.push({
+                                type: props.geo === "ellipse" ? "circle" : "rect",
+                                x: rx,
+                                y: ry,
+                                w: props.w || 100,
+                                h: props.h || 100,
+                                color: strokeColor,
+                                lineWidth: 2
+                            })
+                        } else if (rec.type === "draw" && props.segments && props.segments.length > 0) {
+                            for (var seg = 0; seg < props.segments.length; seg++) {
+                                var sPoints = props.segments[seg].points || []
+                                if (sPoints.length > 0) {
+                                    var convertedPts = []
+                                    for (var sp = 0; sp < sPoints.length; sp++) {
+                                        convertedPts.push({
+                                            x: rx + (sPoints[sp].x || 0),
+                                            y: ry + (sPoints[sp].y || 0)
+                                        })
+                                    }
+                                    tldrawConverted.push({
+                                        type: "path",
+                                        points: convertedPts,
+                                        color: strokeColor,
+                                        lineWidth: 2
+                                    })
+                                }
+                            }
+                        } else if ((rec.type === "arrow" || rec.type === "line") && props.start && props.end) {
+                            tldrawConverted.push({
+                                type: "path",
+                                points: [
+                                    { x: rx + (props.start.x || 0), y: ry + (props.start.y || 0) },
+                                    { x: rx + (props.end.x || 0), y: ry + (props.end.y || 0) }
+                                ],
+                                color: strokeColor,
+                                lineWidth: 2
+                            })
                         }
                     }
                 }

@@ -64,15 +64,14 @@ Rectangle {
         refreshMessages()
     }
 
-    function sendMessage() {
-        var text = msgInput.text.trim()
-        if (!activeSession || text.length === 0) return
-        msgInput.text = ""
-        dataController.createPracticeMessage(activeSession.id, "user", text)
+    function sendMessage(text) {
+        if (!activeSession || !text || text.trim().length === 0) return
+        var cleanText = text.trim()
+        dataController.createPracticeMessage(activeSession.id, "user", cleanText)
         refreshMessages()
 
         var sysPrompt = activeSession.custom_prompt || "Você é um tutor prático e examinador de estudos no Synapse. Avalie a resposta do aluno e proponha novos desafios conceituais ou práticos."
-        aiClient.promptText(sysPrompt, text, messages, function(success, replyText, errorMsg) {
+        aiClient.promptText(sysPrompt, cleanText, messages, function(success, replyText, errorMsg) {
             if (!activeSession) return
             var reply = ""
             if (success) {
@@ -103,347 +102,40 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // Left Sessions Sidebar
-        Rectangle {
-            Layout.preferredWidth: 280
-            Layout.fillHeight: true
-            color: "#161524"
-            border.color: "#12ffffff"
-            border.width: 1
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 14
-
-                // Sidebar Header
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Text { text: "💬"; font.pixelSize: 18 }
-                    Text { text: "Sessões"; color: "#fffffe"; font.pixelSize: 16; font.bold: true; Layout.fillWidth: true }
-                    Rectangle {
-                        width: 76; height: 30; radius: 6; color: "#8b5cf6"
-                        Text { anchors.centerIn: parent; text: "+ Nova"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: practiceRoot.isNewSessionModalOpen = true
-                        }
-                    }
-                }
-
-                Rectangle { Layout.fillWidth: true; height: 1; color: "#10ffffff" }
-
-                // Sessions List
-                ListView {
-                    id: sessionsListView
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    spacing: 6
-                    model: practiceRoot.sessions
-
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: sessionsListView.width
-                        height: 54
-                        radius: 8
-                        color: (practiceRoot.activeSession && practiceRoot.activeSession.id === modelData.id) ? "#268b5cf6" : (sessMouse.containsMouse ? "#1f1d2e" : "transparent")
-                        border.color: (practiceRoot.activeSession && practiceRoot.activeSession.id === modelData.id) ? "#558b5cf6" : "transparent"
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-                                Text {
-                                    text: modelData.title || "Sessão"
-                                    color: (practiceRoot.activeSession && practiceRoot.activeSession.id === modelData.id) ? "#fffffe" : "#c4c4d0"
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-                                Text {
-                                    text: modelData.started_at ? modelData.started_at.substring(0, 10) : ""
-                                    color: "#64748b"
-                                    font.pixelSize: 10
-                                }
-                            }
-
-                            // Delete button
-                            Rectangle {
-                                width: 26; height: 26; radius: 4; color: delMouse.containsMouse ? "#33f43f5e" : "transparent"
-                                Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
-                                MouseArea {
-                                    id: delMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        practiceDeleteModal.itemId = modelData.id
-                                        practiceDeleteModal.itemTitle = modelData.title || qsTr("Sessão")
-                                        practiceDeleteModal.deleteType = "session"
-                                        practiceDeleteModal.isOpen = true
-                                    }
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: sessMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            z: -1
-                            onClicked: practiceRoot.selectSession(modelData)
-                        }
-                    }
-
-                    // Empty state
-                    Text {
-                        anchors.centerIn: parent
-                        visible: practiceRoot.sessions.length === 0
-                        text: "Nenhuma sessão ainda.\nClique em '+ Nova'."
-                        color: "#64748b"
-                        font.pixelSize: 12
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                }
+        PracticeSidebar {
+            sessions: practiceRoot.sessions
+            activeSession: practiceRoot.activeSession
+            onSessionSelected: function(session) { practiceRoot.selectSession(session) }
+            onNewSessionRequested: practiceRoot.isNewSessionModalOpen = true
+            onDeleteRequested: function(id, title) {
+                practiceDeleteModal.itemId = id
+                practiceDeleteModal.itemTitle = title
+                practiceDeleteModal.deleteType = "session"
+                practiceDeleteModal.isOpen = true
             }
         }
 
-        // Right Main Content (Active Chat)
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: "#0f0e17"
-
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 0
-
-                // Session Header
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 58
-                    color: "#161524"
-                    border.color: "#12ffffff"
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 14
-                        spacing: 12
-
-                        Text {
-                            text: practiceRoot.activeSession ? practiceRoot.activeSession.title : "Nenhuma sessão ativa"
-                            color: "#fffffe"
-                            font.pixelSize: 16
-                            font.bold: true
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-
-                        Rectangle {
-                            visible: practiceRoot.activeSession && Boolean(practiceRoot.activeSession.custom_prompt)
-                            height: 24
-                            radius: 12
-                            color: "#208b5cf6"
-                            border.color: "#408b5cf6"
-                            Layout.preferredWidth: promptBadge.implicitWidth + 14
-                            Text {
-                                id: promptBadge
-                                anchors.centerIn: parent
-                                text: "Prompt Ativo"
-                                color: "#c4b5fd"
-                                font.pixelSize: 10
-                                font.bold: true
-                            }
-                        }
-
-                        Rectangle {
-                            height: 32
-                            radius: 8
-                            color: memMouse.containsMouse ? "#268b5cf6" : "#211f30"
-                            border.color: "#18ffffff"
-                            Layout.preferredWidth: memText.implicitWidth + 20
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 6
-                                Text { text: "🧠"; font.pixelSize: 12 }
-                                Text { id: memText; text: "Memórias (" + practiceRoot.memories.length + ")"; color: "#fffffe"; font.pixelSize: 11; font.bold: true }
-                            }
-                            MouseArea {
-                                id: memMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: practiceRoot.isMemoryDrawerOpen = !practiceRoot.isMemoryDrawerOpen
-                            }
-                        }
-
-                        // Voice call trigger
-                        Rectangle {
-                            height: 32
-                            radius: 8
-                            color: voiceBtnMouse.containsMouse ? "#7c3aed" : "#8b5cf6"
-                            Layout.preferredWidth: voiceBtnText.implicitWidth + 20
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-                                Text { text: "🎙️"; font.pixelSize: 12 }
-                                Text { id: voiceBtnText; text: practiceRoot.isVoiceCallActive ? "Em Chamada" : "Chamada de Voz"; color: "#ffffff"; font.pixelSize: 11; font.bold: true }
-                            }
-                            MouseArea {
-                                id: voiceBtnMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (practiceRoot.isVoiceCallActive) {
-                                        practiceRoot.isVoiceCallActive = false
-                                        practiceRoot.isFeedbackOpen = true
-                                    } else {
-                                        practiceRoot.isInterviewSetupOpen = true
-                                    }
-                                }
-                            }
-                        }
-
-                        // Mic test button
-                        Rectangle {
-                            height: 32
-                            radius: 8
-                            color: micTestMouse.containsMouse ? "#268b5cf6" : "#211f30"
-                            border.color: "#18ffffff"
-                            Layout.preferredWidth: micTestText.implicitWidth + 18
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-                                Text { text: "🎤"; font.pixelSize: 11 }
-                                Text { id: micTestText; text: "Testar Mic"; color: "#d4d4d8"; font.pixelSize: 11 }
-                            }
-                            MouseArea {
-                                id: micTestMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: practiceRoot.isMicTestOpen = true
-                            }
-                        }
-
-                        Rectangle {
-                            width: 32; height: 32; radius: 8; color: "#211f30"
-                            Text { anchors.centerIn: parent; text: "?"; color: "#a7a9be"; font.pixelSize: 14; font.bold: true }
-                            MouseArea {
-                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                onClicked: practiceRoot.isHelpOpen = true
-                            }
-                        }
-                    }
-                }
-
-                // Active Voice Call Bar
-                PracticeCallBar {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.topMargin: 8
-                    visible: practiceRoot.isVoiceCallActive
-                    isCallActive: practiceRoot.isVoiceCallActive
-                    activeModeName: practiceRoot.activeSession ? practiceRoot.activeSession.title : "Chamada com IA"
-                    onEndCallRequested: {
-                        practiceRoot.isVoiceCallActive = false
-                        practiceRoot.isFeedbackOpen = true
-                    }
-                }
-
-                // Chat Messages Transcript
-                ListView {
-                    id: messagesList
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.margins: 16
-                    clip: true
-                    spacing: 12
-                    model: practiceRoot.messages
-
-                    delegate: Item {
-                        required property var modelData
-                        width: messagesList.width
-                        height: bubbleRect.implicitHeight + 8
-
-                        Rectangle {
-                            id: bubbleRect
-                            anchors.right: modelData.role === "user" ? parent.right : undefined
-                            anchors.left: modelData.role === "user" ? undefined : parent.left
-                            width: Math.min(messagesList.width * 0.72, msgText.implicitWidth + 28)
-                            implicitHeight: msgText.implicitHeight + 20
-                            radius: 12
-                            color: modelData.role === "user" ? "#268b5cf6" : "#1a1924"
-                            border.color: modelData.role === "user" ? "#508b5cf6" : "#14ffffff"
-
-                            Text {
-                                id: msgText
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                text: modelData.text_content || ""
-                                color: "#fffffe"
-                                font.pixelSize: 13
-                                wrapMode: Text.Wrap
-                                lineHeight: 1.3
-                            }
-                        }
-                    }
-
-                    // Empty transcript state
-                    Text {
-                        anchors.centerIn: parent
-                        visible: practiceRoot.messages.length === 0 && Boolean(practiceRoot.activeSession)
-                        text: "Inicie a conversa digitando sua pergunta ou tema abaixo."
-                        color: "#64748b"
-                        font.pixelSize: 13
-                    }
-                }
-
-                // Message Input Dock
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 64
-                    color: "#161524"
-                    border.color: "#12ffffff"
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 10
-
-                        TextField {
-                            id: msgInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            placeholderText: "Digite sua mensagem para o tutor..."
-                            color: "#ffffff"
-                            background: Rectangle { color: "#0f0e17"; border.color: msgInput.activeFocus ? "#8b5cf6" : "#18ffffff"; radius: 8 }
-                            onAccepted: practiceRoot.sendMessage()
-                        }
-
-                        Rectangle {
-                            width: 80; height: 38; radius: 8; color: "#8b5cf6"
-                            Text { anchors.centerIn: parent; text: "Enviar"; color: "#ffffff"; font.pixelSize: 12; font.bold: true }
-                            MouseArea {
-                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                onClicked: practiceRoot.sendMessage()
-                            }
-                        }
-                    }
+        PracticeChatArea {
+            activeSession: practiceRoot.activeSession
+            messages: practiceRoot.messages
+            memoryCount: practiceRoot.memories.length
+            isVoiceCallActive: practiceRoot.isVoiceCallActive
+            onSendMessageRequested: function(text) { practiceRoot.sendMessage(text) }
+            onVoiceCallToggled: {
+                if (practiceRoot.isVoiceCallActive) {
+                    practiceRoot.isVoiceCallActive = false
+                    practiceRoot.isFeedbackOpen = true
+                } else {
+                    practiceRoot.isInterviewSetupOpen = true
                 }
             }
+            onEndCallRequested: {
+                practiceRoot.isVoiceCallActive = false
+                practiceRoot.isFeedbackOpen = true
+            }
+            onMicTestRequested: practiceRoot.isMicTestOpen = true
+            onMemoryDrawerToggled: practiceRoot.isMemoryDrawerOpen = !practiceRoot.isMemoryDrawerOpen
+            onHelpRequested: practiceRoot.isHelpOpen = true
         }
     }
 

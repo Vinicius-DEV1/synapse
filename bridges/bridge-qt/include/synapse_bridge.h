@@ -178,6 +178,8 @@ int synapse_focus_delete_alarm(Database* db, const char* alarm_id);
 // Domain APIs: Notifications
 char* synapse_notifications_get(Database* db);
 int synapse_notifications_get_unread_count(Database* db);
+char* synapse_notifications_deliver_due(Database* db);
+int synapse_notifications_snooze(Database* db, const char* id, int delay_minutes, const char* title_suffix);
 int synapse_notifications_add(Database* db, const char* title, const char* message, const char* notif_type, const char* target_page_id, const char* event_id, const char* scheduled_for);
 int synapse_notifications_mark_read(Database* db, const char* notification_id);
 int synapse_notifications_delete(Database* db, const char* notification_id);

@@ -579,4 +579,22 @@ Item {
             rootWindow.handleGlobalAction(actionKey)
         }
     }
+
+    Timer {
+        id: notificationSchedulerTimer
+        interval: 10000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            if (dataController) {
+                var due = dataController.checkDueNotifications()
+                if (due && due.length > 0) {
+                    if (notificationCenter && notificationCenter.isOpen) {
+                        notificationCenter.refresh()
+                    }
+                }
+            }
+        }
+    }
 }

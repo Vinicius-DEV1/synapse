@@ -99,6 +99,46 @@ pub unsafe extern "C" fn synapse_notifications_delete(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_notifications_deliver_due(db: *mut Database) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    match NotificationsRepository::deliver_due_notifications(&*db) {
+        Ok(items) => json_to_c_char(&items),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] deliver_due_notifications failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notifications_snooze(
+    db: *mut Database,
+    id: *const c_char,
+    delay_minutes: c_int,
+    title_suffix: *const c_char,
+) -> c_int {
+    if db.is_null() || id.is_null() {
+        return -1;
+    }
+    let id_str = match to_opt_str(id) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let suffix_str = to_opt_str(title_suffix).unwrap_or("Adiado");
+    let delay = if delay_minutes <= 0 { 10 } else { delay_minutes as u32 };
+
+    match NotificationsRepository::snooze_notification(&*db, id_str, delay, suffix_str) {
+        Ok(_) => 1,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] snooze_notification failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_notifications_clear_all(db: *mut Database) -> c_int {
     if db.is_null() {
         return -1;

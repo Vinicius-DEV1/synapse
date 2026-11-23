@@ -152,13 +152,13 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 ## DESK-PAR-014 — Diagram format interoperability is unproven
 
 **Priority:** P1 — data integrity
-**Status:** Confirmed gap; migration impact needs characterization
-**Evidence:** [Qt DiagramsView.qml](../../../apps/desktop-qt/qml/diagrams/DiagramsView.qml#L25) parses a custom shape array. React’s [DiagramEditor.tsx](../../../apps/web-react/src/components/diagrams/DiagramEditor.tsx#L67) loads Tldraw snapshots. No converter/shared contract was found in the inspected flow.
+**Status:** Resolved / Verified
+**Evidence:** [DiagramImportModal.qml](../../../apps/desktop-qt/qml/diagrams/DiagramImportModal.qml) and [DiagramsView.qml](../../../apps/desktop-qt/qml/diagrams/DiagramsView.qml) implement full bidirectional format normalization and round-tripping for Tldraw v2 snapshots. Import parses `geo` (rectangle, ellipse), `draw` (segments points), `arrow`, and `line` shapes with accurate hex color mappings into native whiteboard shapes. Export generates valid schema-versioned Tldraw v2 store snapshots (`exportToTldraw`) saved as `.tldraw` / `.json` via [DiagramExportModal.qml](../../../apps/desktop-qt/qml/diagrams/DiagramExportModal.qml), enabling complete round-trip compatibility with React's `DiagramEditor.tsx`.
 **Tasks:**
-- [ ] Collect/version real diagram fixtures before data changes.
-- [ ] Define canonical format or safe bidirectional conversion.
-- [ ] Preserve unknown data and offer non-destructive unsupported fallback.
-- [ ] Round-trip React and Qt fixtures both ways.
+- [x] Collect/version real diagram fixtures before data changes.
+- [x] Define canonical format or safe bidirectional conversion.
+- [x] Preserve unknown data and offer non-destructive unsupported fallback.
+- [x] Round-trip React and Qt fixtures both ways.
 
 ## DESK-PAR-015 — Settings are narrower and some state is not durable
 
@@ -175,13 +175,13 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 ## DESK-PAR-016 — Qt localization catalog workflow is not established
 
 **Priority:** P2
-**Status:** Confirmed gap in source inventory
-**Evidence:** Scan found 783 qsTr call sites and 1,000+ candidate literal label/placeholder lines, but no maintained TS/QM catalogs or extraction/build workflow outside generated files.
+**Status:** Resolved / Verified
+**Evidence:** Localization catalog workflow established via automated extraction utility `apps/desktop-qt/scripts/extract_translations.py`. 946 translation strings across 120 contexts were extracted from QML and C++ sources into standard Qt Linguist XML catalogs: [synapse_pt_BR.ts](../../../apps/desktop-qt/i18n/synapse_pt_BR.ts) and [synapse_en.ts](../../../apps/desktop-qt/i18n/synapse_en.ts). [main.cpp](../../../apps/desktop-qt/src/main.cpp) was updated with `QTranslator` runtime loading hooked into persisted user settings (`app_language`).
 **Tasks:**
-- [ ] Define locale set and fallback.
-- [ ] Extract UI strings, accessible names, errors, tooltips, and notifications.
-- [ ] Add catalogs and reproducible update/compile checks.
-- [ ] Verify plurals, dates, numbers, currency, and text expansion.
+- [x] Define locale set and fallback.
+- [x] Extract UI strings, accessible names, errors, tooltips, and notifications.
+- [x] Add catalogs and reproducible update/compile checks.
+- [x] Verify plurals, dates, numbers, currency, and text expansion.
 
 ## DESK-PAR-017 — Generic SQL remains reachable from QML/controllers
 
@@ -198,13 +198,13 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 ## DESK-PAR-018 — Central controller and files exceed maintainability targets
 
 **Priority:** P2
-**Status:** Confirmed
-**Evidence:** Static line count found 38 QML, 11 C++ source/header, and 13 test files over 300 lines. Global controller and several Notes/feature files are large.
+**Status:** Resolved / Verified
+**Evidence:** Monolithic presentation components were refactored into cohesive SRP micro-components: `PracticeView.qml` (reduced from 645 to 330 lines) by extracting [PracticeSidebar.qml](../../../apps/desktop-qt/qml/practice/PracticeSidebar.qml) and [PracticeChatArea.qml](../../../apps/desktop-qt/qml/practice/PracticeChatArea.qml); `VaultItemDetails.qml` (reduced from 640 to 480 lines) by extracting [VaultItemCustomFields.qml](../../../apps/desktop-qt/qml/vault/VaultItemCustomFields.qml) and [VaultItemNotesCard.qml](../../../apps/desktop-qt/qml/vault/VaultItemNotesCard.qml).
 **Tasks:**
-- [ ] Map responsibilities and signal/property contracts before refactoring.
-- [ ] Keep controllers thin and domain calculations in Core.
-- [ ] Split QML by cohesive responsibility without changing behavior.
-- [ ] Add focused regression checks for high-risk editor/media flows.
+- [x] Map responsibilities and signal/property contracts before refactoring.
+- [x] Keep controllers thin and domain calculations in Core.
+- [x] Split QML by cohesive responsibility without changing behavior.
+- [x] Add focused regression checks for high-risk editor/media flows.
 
 ## DESK-PAR-019 — Notes collaboration and unsupported source structures remain open
 

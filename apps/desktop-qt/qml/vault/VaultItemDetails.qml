@@ -464,174 +464,18 @@ Item {
             }
 
             // Custom Fields Card
-            Rectangle {
-                id: custFieldsRect
-                property var customFieldsList: detailsRoot.parseCustomFields()
-                visible: custFieldsRect.customFieldsList && custFieldsRect.customFieldsList.length > 0
-                Layout.fillWidth: true
-                Layout.preferredHeight: custCol.implicitHeight + 32
-                radius: 16
-                color: "#16161e"
-                border.color: "#2e2e38"
-                border.width: 1
-
-                ColumnLayout {
-                    id: custCol
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    spacing: 12
-
-                    Text {
-                        text: "CAMPOS ADICIONAIS"
-                        color: "#a7a9be"
-                        font.pixelSize: 11
-                        font.weight: Font.Bold
-                    }
-
-                    Repeater {
-                        model: custFieldsRect.customFieldsList
-
-                        delegate: Rectangle {
-                            id: fldDelegate
-                            required property var modelData
-                            required property int index
-
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 46
-                            radius: 8
-                            color: "#0f0e17"
-                            border.color: "#22222d"
-                            border.width: 1
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 8
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-                                    Text {
-                                        text: fldDelegate.modelData.key || ""
-                                        color: "#6b7280"
-                                        font.pixelSize: 10
-                                    }
-                                    Text {
-                                        text: fldDelegate.modelData.type === "hidden" && !detailsRoot.showPassword ? "••••••••" : (fldDelegate.modelData.value || "")
-                                        color: "#fffffe"
-                                        font.pixelSize: 12
-                                    }
-                                }
-
-                                Rectangle {
-                                    Layout.preferredWidth: 26
-                                    Layout.preferredHeight: 26
-                                    radius: 6
-                                    color: detailsRoot.copiedField === ("fld-" + fldDelegate.index) ? "#14532d" : (fldMouse.containsMouse ? "#2e2e38" : "transparent")
-
-                                    AppIcon {
-                                        anchors.centerIn: parent
-                                        name: detailsRoot.copiedField === ("fld-" + fldDelegate.index) ? "check" : "copy"
-                                        color: detailsRoot.copiedField === ("fld-" + fldDelegate.index) ? "#4ade80" : "#a7a9be"
-                                        Layout.preferredWidth: 13
-                                        Layout.preferredHeight: 13
-                                    }
-
-                                    MouseArea {
-                                        id: fldMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: detailsRoot.copyVal(fldDelegate.modelData.value, "fld-" + fldDelegate.index)
-                                    }
-                                }
-                            }
-                        }
-                    }
+            VaultItemCustomFields {
+                customFieldsList: detailsRoot.parseCustomFields()
+                copiedField: detailsRoot.copiedField
+                onCopyRequested: function(value, key) {
+                    detailsRoot.copyVal(value, key)
                 }
             }
 
-            // Secure Notes Card
-            Rectangle {
-                visible: detailsRoot.item && detailsRoot.item.notes
-                Layout.fillWidth: true
-                Layout.preferredHeight: notesCol.implicitHeight + 32
-                radius: 16
-                color: "#16161e"
-                border.color: "#2e2e38"
-                border.width: 1
-
-                ColumnLayout {
-                    id: notesCol
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    spacing: 8
-
-                    Text {
-                        text: "ANOTAÇÕES SEGURAS"
-                        color: "#a7a9be"
-                        font.pixelSize: 11
-                        font.weight: Font.Bold
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: notesText.implicitHeight + 20
-                        radius: 10
-                        color: "#0f0e17"
-                        border.color: "#22222d"
-                        border.width: 1
-
-                        Text {
-                            id: notesText
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            text: detailsRoot.item ? (detailsRoot.item.notes || "") : ""
-                            color: "#c4b5fd"
-                            font.family: "monospace"
-                            font.pixelSize: 12
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-                }
-            }
-
-            // Password History Card
-            Rectangle {
-                visible: (!detailsRoot.isGoogle || (detailsRoot.item && detailsRoot.item.password))
-                Layout.fillWidth: true
-                Layout.preferredHeight: histCol.implicitHeight + 32
-                radius: 16
-                color: "#16161e"
-                border.color: "#2e2e38"
-                border.width: 1
-
-                ColumnLayout {
-                    id: histCol
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    spacing: 12
-
-                    RowLayout {
-                        spacing: 8
-                        AppIcon {
-                            name: "history"
-                            color: "#a7a9be"
-                            Layout.preferredWidth: 16
-                            Layout.preferredHeight: 16
-                        }
-                        Text {
-                            text: "HISTÓRICO DE SENHAS"
-                            color: "#a7a9be"
-                            font.pixelSize: 11
-                            font.weight: Font.Bold
-                        }
-                    }
-
-                    VaultPasswordHistory {
-                        itemId: detailsRoot.item ? (detailsRoot.item.id || "") : ""
-                    }
-                }
+            // Secure Notes and History Cards
+            VaultItemNotesCard {
+                item: detailsRoot.item
+                isGoogle: detailsRoot.isGoogle
             }
 
             Item { Layout.preferredHeight: 32 }

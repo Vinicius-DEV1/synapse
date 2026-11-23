@@ -5,6 +5,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
+#include <QtCore/QTranslator>
 #include <clocale>
 #include "mpv_player_item.h"
 #include "synapse_controller.h"
@@ -33,6 +34,17 @@ int main(int argc, char *argv[]) {
     if (!configuredDatabasePath.isEmpty() && !dataController.openDatabase(configuredDatabasePath)) {
         qCritical() << "[Synapse Desktop] Could not open the configured database.";
         return -1;
+    }
+
+    // Localization / Translation catalog loading
+    QTranslator translator;
+    const QString appLang = dataController.getConfig("app_language", "pt_BR");
+    QString qmPath = QCoreApplication::applicationDirPath() + "/i18n/synapse_" + appLang + ".qm";
+    if (!QFile::exists(qmPath)) {
+        qmPath = QDir::current().filePath("apps/desktop-qt/i18n/synapse_" + appLang + ".qm");
+    }
+    if (QFile::exists(qmPath) && translator.load(qmPath)) {
+        app.installTranslator(&translator);
     }
 
     // Register native C++ QML types

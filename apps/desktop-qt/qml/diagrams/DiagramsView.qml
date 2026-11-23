@@ -22,11 +22,137 @@ Rectangle {
         diagramsList = dataController.getDiagrams()
     }
 
+    function parseTldrawRecords(records) {
+        if (!records || !Array.isArray(records)) return []
+        var converted = []
+        var colorMap = {
+            "violet": "#8b5cf6", "blue": "#3b82f6", "red": "#ef4444",
+            "green": "#10b981", "yellow": "#eab308", "white": "#ffffff",
+            "black": "#000000", "grey": "#6b7280", "orange": "#f97316"
+        }
+        for (var i = 0; i < records.length; i++) {
+            var rec = records[i]
+            if (rec.typeName === "shape") {
+                var props = rec.props || {}
+                var c = colorMap[props.color] || props.color || "#8b5cf6"
+                var rx = rec.x || 0
+                var ry = rec.y || 0
+                if (rec.type === "geo") {
+                    converted.push({
+                        type: props.geo === "ellipse" ? "circle" : "rect",
+                        x: rx, y: ry, w: props.w || 100, h: props.h || 100,
+                        color: c, lineWidth: 2
+                    })
+                } else if (rec.type === "draw" && props.segments && props.segments.length > 0) {
+                    for (var seg = 0; seg < props.segments.length; seg++) {
+                        var pts = props.segments[seg].points || []
+                        if (pts.length > 0) {
+                            var pList = []
+                            for (var p = 0; p < pts.length; p++) {
+                                pList.push({ x: rx + (pts[p].x || 0), y: ry + (pts[p].y || 0) })
+                            }
+                            converted.push({ type: "path", points: pList, color: c, lineWidth: 2 })
+                        }
+                    }
+                } else if ((rec.type === "arrow" || rec.type === "line") && props.start && props.end) {
+                    converted.push({
+                        type: "path",
+                        points: [
+                            { x: rx + (props.start.x || 0), y: ry + (props.start.y || 0) },
+                            { x: rx + (props.end.x || 0), y: ry + (props.end.y || 0) }
+                        ],
+                        color: c, lineWidth: 2
+                    })
+                }
+            }
+        }
+        return converted
+    }
+
+    function exportToTldraw() {
+        var records = [
+            { "gridSize": 10, "name": "", "meta": {}, "id": "document:document", "typeName": "document" },
+            { "id": "page:page", "name": "Page 1", "index": "a1", "typeName": "page", "meta": {} }
+        ]
+        var colorMap = {
+            "#8b5cf6": "violet", "#3b82f6": "blue", "#ef4444": "red",
+            "#10b981": "green", "#eab308": "yellow", "#ffffff": "white",
+            "#000000": "black", "#6b7280": "grey", "#f97316": "orange"
+        }
+        for (var i = 0; i < shapes.length; i++) {
+            var s = shapes[i]
+            var id = "shape:" + (i + 1)
+            var cName = colorMap[s.color] || "violet"
+            if (s.type === "rect") {
+                records.push({
+                    "x": s.x || 0, "y": s.y || 0, "rotation": 0, "isLocked": false, "opacity": 1, "meta": {},
+                    "id": id, "type": "geo",
+                    "props": {
+                        "w": s.w || 100, "h": s.h || 80, "geo": "rectangle", "color": cName,
+                        "labelColor": "black", "fill": "none", "dash": "draw", "size": "m", "font": "draw",
+                        "text": "", "align": "middle", "verticalAlign": "middle", "growY": 0, "url": "", "scale": 1
+                    },
+                    "parentId": "page:page", "index": "a" + (i + 2), "typeName": "shape"
+                })
+            } else if (s.type === "circle") {
+                records.push({
+                    "x": s.x || 0, "y": s.y || 0, "rotation": 0, "isLocked": false, "opacity": 1, "meta": {},
+                    "id": id, "type": "geo",
+                    "props": {
+                        "w": s.w || 100, "h": s.h || 100, "geo": "ellipse", "color": cName,
+                        "labelColor": "black", "fill": "none", "dash": "draw", "size": "m", "font": "draw",
+                        "text": "", "align": "middle", "verticalAlign": "middle", "growY": 0, "url": "", "scale": 1
+                    },
+                    "parentId": "page:page", "index": "a" + (i + 2), "typeName": "shape"
+                })
+            } else if (s.type === "path" && s.points && s.points.length > 0) {
+                var pts = []
+                var baseX = s.points[0].x || 0
+                var baseY = s.points[0].y || 0
+                for (var p = 0; p < s.points.length; p++) {
+                    pts.push({
+                        "x": (s.points[p].x || 0) - baseX,
+                        "y": (s.points[p].y || 0) - baseY,
+                        "z": 0.5
+                    })
+                }
+                records.push({
+                    "x": baseX, "y": baseY, "rotation": 0, "isLocked": false, "opacity": 1, "meta": {},
+                    "id": id, "type": "draw",
+                    "props": {
+                        "color": cName, "fill": "none", "dash": "draw", "size": "m",
+                        "segments": [{ "type": "free", "points": pts }],
+                        "isComplete": true, "isClosed": false, "isPen": false, "scale": 1
+                    },
+                    "parentId": "page:page", "index": "a" + (i + 2), "typeName": "shape"
+                })
+            }
+        }
+        return {
+            "schema": {
+                "schemaVersion": 2,
+                "sequences": {
+                    "com.tldraw.store": 4, "com.tldraw.shape": 4,
+                    "com.tldraw.shape.geo": 9, "com.tldraw.shape.draw": 2,
+                    "com.tldraw.shape.text": 2, "com.tldraw.shape.arrow": 5
+                }
+            },
+            "records": records
+        }
+    }
+
     function openDiagram(d) {
         var full = dataController.getDiagram(d.id)
         activeDiagram = full
         try {
-            shapes = JSON.parse(full.content || "[]")
+            var raw = JSON.parse(full.content || "[]")
+            if (raw && !Array.isArray(raw) && raw.records) {
+                shapes = parseTldrawRecords(raw.records)
+            } else if (Array.isArray(raw)) {
+                shapes = raw
+            } else {
+                shapes = []
+            }
         } catch (e) {
             shapes = []
         }
@@ -156,6 +282,8 @@ Rectangle {
         onExportCompleted: function(filePath) {
             if (filePath.endsWith(".svg")) {
                 dataController.saveLocalTextFile(filePath, diagramsRoot.exportToSvg())
+            } else if (filePath.endsWith(".tldraw") || filePath.indexOf(".tldraw") !== -1) {
+                dataController.saveLocalTextFile(filePath, JSON.stringify(diagramsRoot.exportToTldraw(), null, 2))
             } else if (filePath.endsWith(".json") || filePath.endsWith(".excalidraw")) {
                 dataController.saveLocalTextFile(filePath, JSON.stringify(diagramsRoot.shapes, null, 2))
             } else if (filePath.endsWith(".png")) {

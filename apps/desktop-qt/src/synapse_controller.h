@@ -406,6 +406,8 @@ public:
                                      const QString &targetPageId = "",
                                      const QString &eventId = "",
                                      const QString &scheduledFor = "");
+    Q_INVOKABLE QVariantList checkDueNotifications();
+    Q_INVOKABLE bool snoozeNotification(const QString &notificationId, int delayMinutes = 10, const QString &titleSuffix = "Adiado");
 
     // 17. Practice & AI Tutor
     Q_INVOKABLE QVariantList getPracticeSessions();

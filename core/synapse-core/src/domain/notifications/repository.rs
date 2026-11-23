@@ -104,6 +104,47 @@ pub fn mark_notification_delivered(conn: &rusqlite::Connection, id: &str) -> Res
     super::calendar_reminders::mark_reminder_delivered(conn, id)
 }
 
+pub fn deliver_due_notifications(conn: &rusqlite::Connection) -> Result<Vec<AppNotification>> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut stmt = conn.prepare(
+        "SELECT id, title, message, type, target_page_id, event_id, scheduled_for, \
+         event_reminder_minutes, fired_at, is_read, created_at, updated_at \
+         FROM notifications \
+         WHERE deleted_at IS NULL AND is_read = 0 \
+           AND scheduled_for IS NOT NULL AND scheduled_for <= ?1",
+    )?;
+
+    let due = stmt
+        .query_map(params![now], |row| {
+            let is_read_int: i32 = row.get(9)?;
+            Ok(AppNotification {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                message: row.get(2)?,
+                type_: row.get(3)?,
+                target_page_id: row.get(4)?,
+                event_id: row.get(5)?,
+                scheduled_for: row.get(6)?,
+                event_reminder_minutes: row.get(7)?,
+                fired_at: row.get(8)?,
+                is_read: is_read_int != 0,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    for item in &due {
+        conn.execute(
+            "UPDATE notifications SET scheduled_for = NULL, fired_at = ?1, created_at = ?1, updated_at = ?1 \
+             WHERE id = ?2",
+            params![now, item.id],
+        )?;
+    }
+
+    Ok(due)
+}
+
 pub fn snooze_notification(
     conn: &rusqlite::Connection,
     id: &str,
