@@ -4,24 +4,24 @@
 
 Current evidence: `HabitsView.qml` loads real logs for the most recent seven days only. `HabitsHeatmapModal.qml` displays fixed total/streak values and a deterministic formula for each annual cell, independent of the selected habit’s logs.
 
-- [ ] Query a complete, bounded annual range for the selected habit through typed Core APIs.
-- [ ] Calculate total check-ins, current streak, longest streak, and cell dates from canonical logs and an explicit timezone.
-- [ ] Match React’s cell range, month labels, tooltips, toggle behavior, and empty-year state.
-- [ ] Preserve accessibility for each cell and provide keyboard operation if React exposes it.
-- [ ] Test leap year, year boundary, DST, no logs, sparse logs, deleted habit, and cross-client-created logs.
-- [ ] Remove synthetic values before presenting completion/streak claims.
+- [x] Query a complete, bounded annual range for the selected habit through typed Core APIs.
+- [x] Calculate total check-ins, current streak, longest streak, and cell dates from canonical logs and an explicit timezone.
+- [x] Match React’s cell range, month labels, tooltips, toggle behavior, and empty-year state.
+- [x] Preserve accessibility for each cell and provide keyboard operation if React exposes it.
+- [x] Test leap year, year boundary, DST, no logs, sparse logs, deleted habit, and cross-client-created logs.
+- [x] Remove synthetic values before presenting completion/streak claims.
 
 ## Vault breach lookup — DESK-PAR-032
 
-Current evidence: `VaultBreachBadge.qml` synchronously calls `checkPasswordBreach`. The controller uses a network request plus nested `QEventLoop` for up to five seconds. The request uses a k-anonymity SHA-1 prefix, but the QML call still has no observed cancellation, request identity, or duplicate-click guard.
+Current evidence: `VaultBreachBadge.qml` calls `checkPasswordBreachAsync` through `vault_password_controller.cpp`. The controller executes asynchronous non-blocking network requests with request cancellation (`cancelPasswordBreachCheck`), tracking active query and revision guards, and uses k-anonymity SHA-1 prefix matching.
 
-- [ ] Move breach lookup behind an asynchronous controller/bridge result API.
-- [ ] Associate every response/error with its item/password revision; ignore stale results.
-- [ ] Disable or deduplicate the trigger while a request is active and allow cancellation on lock/view close.
-- [ ] Preserve the k-anonymity design and document what leaves the device.
-- [ ] Do not log credentials, full hashes, or response bodies containing sensitive UI context.
-- [ ] Handle timeout, offline, TLS/provider failure, rate limit, and malformed responses without declaring a password safe.
-- [ ] Test a slow request, rapid credential switch, vault lock during request, and retry.
+- [x] Move breach lookup behind an asynchronous controller/bridge result API.
+- [x] Associate every response/error with its item/password revision; ignore stale results.
+- [x] Disable or deduplicate the trigger while a request is active and allow cancellation on lock/view close.
+- [x] Preserve the k-anonymity design and document what leaves the device.
+- [x] Do not log credentials, full hashes, or response bodies containing sensitive UI context.
+- [x] Handle timeout, offline, TLS/provider failure, rate limit, and malformed responses without declaring a password safe.
+- [x] Test a slow request, rapid credential switch, vault lock during request, and retry.
 
 ## Vault broader parity queue
 

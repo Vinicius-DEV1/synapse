@@ -32,11 +32,11 @@ These statements have different risk profiles. Diagnostics and atomic recovery m
 - [ ] Inventory every Q_INVOKABLE that persists data or calculates domain values.
 - [ ] Link each method to the typed bridge export and Core operation.
 - [ ] Classify remaining queries as domain logic, diagnostics, or migration.
-- [ ] Move domain reads/writes/calculations to atomic, tested Core APIs without changing schemas or behavior.
+- [x] Move domain reads/writes/calculations to atomic, tested Core APIs without changing schemas or behavior.
 - [ ] Replace QVariantMap/List with typed DTOs where stable and practical.
-- [ ] Remove generic SQL from QML once all callers use typed operations.
+- [x] Remove generic SQL from QML once all callers use typed operations.
 - [ ] Add bridge contract tests for null, malformed, stale, and unsupported payloads.
-- [ ] Keep Core and bridge files cohesive and within size guidance.
+- [x] Keep Core and bridge files cohesive and within size guidance.
 
 ## Controller concentration
 
@@ -70,10 +70,10 @@ Qt uses a custom JSON shapes array; React loads Tldraw snapshots. Collect fixtur
 
 ## Architecture completion gate
 
-- [ ] No arbitrary SQL invocation is reachable from QML.
-- [ ] Feature persistence and calculations use typed Core APIs except documented infrastructure/migration operations.
-- [ ] Every exception has an owner, rationale, and test.
+- [x] No arbitrary SQL invocation is reachable from QML.
+- [x] Feature persistence and calculations use typed Core APIs except documented infrastructure/migration operations.
+- [x] Every exception has an owner, rationale, and test.
 - [ ] Controller responsibilities are module-scoped and reviewable.
-- [ ] Contracts report explicit errors rather than empty/default success.
-- [ ] New work does not introduce domain duplication or controller monoliths.
+- [x] Contracts report explicit errors rather than empty/default success.
+- [x] New work does not introduce domain duplication or controller monoliths.
 

@@ -22,11 +22,11 @@ This checklist expands DESK-PAR-023, DESK-PAR-024, and DESK-PAR-025. It is imple
 
 ## Focus preferences and sound
 
-- [ ] Inventory React Focus preferences and map each Qt supported/unsupported value.
-- [ ] Persist daily goal, sound enabled/type, volume, selected Lo-fi state, and any timer defaults through an approved settings contract.
-- [ ] Do not store secret/provider data in QML properties.
-- [ ] Implement actual completion/pause/alarm sound playback with volume/mute and device error handling.
-- [ ] Restore preferences on restart and test per-profile/account behavior if profiles are introduced.
+- [x] Inventory React Focus preferences and map each Qt supported/unsupported value.
+- [x] Persist daily goal, sound enabled/type, volume, selected Lo-fi state, and any timer defaults through an approved settings contract.
+- [x] Do not store secret/provider data in QML properties.
+- [x] Implement actual completion/pause/alarm sound playback with volume/mute and device error handling.
+- [x] Restore preferences on restart and test per-profile/account behavior if profiles are introduced.
 
 ## Alarm scheduling and delivery
 
@@ -49,11 +49,11 @@ This checklist expands DESK-PAR-023, DESK-PAR-024, and DESK-PAR-025. It is imple
 
 ## Focus history retention
 
-- [ ] Move date-range filtering into a typed Core operation; do not iterate/deletion-filter in QML.
-- [ ] Define local timezone and inclusion boundaries for Today and Last 7 Days.
-- [ ] Show exact count and period in confirmation before deletion.
-- [ ] Preserve expected soft-delete/recovery policy.
-- [ ] Test no records, one boundary record, timezone boundary, all-history, and failed delete behavior.
+- [x] Move date-range filtering into a typed Core operation; do not iterate/deletion-filter in QML.
+- [x] Define local timezone and inclusion boundaries for Today and Last 7 Days.
+- [x] Show exact count and period in confirmation before deletion.
+- [x] Preserve expected soft-delete/recovery policy.
+- [x] Test no records, one boundary record, timezone boundary, all-history, and failed delete behavior.
 
 ## Acceptance record
 

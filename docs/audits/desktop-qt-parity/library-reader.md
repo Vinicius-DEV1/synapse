@@ -25,18 +25,18 @@ Relevant evidence: [LibraryReaderView.qml](../../../apps/desktop-qt/qml/library/
 
 ### 2. Qt rendering
 
-- [ ] Introduce a PDF text/geometry layer or a proven equivalent above the rendered page image.
-- [ ] Draw highlight color and accessible note affordance at recorded geometry; respect page size and zoom changes.
-- [ ] Render EPUB highlight spans from anchors without modifying stored chapter HTML.
-- [ ] Keep selections, context menu, dictionary, keyboard navigation, theme, and font-size changes working.
-- [ ] Render an explicit unresolved-annotation state rather than hiding records.
+- [x] Introduce a PDF text/geometry layer or a proven equivalent above the rendered page image.
+- [x] Draw highlight color and accessible note affordance at recorded geometry; respect page size and zoom changes.
+- [x] Render EPUB highlight spans from anchors without modifying stored chapter HTML.
+- [x] Keep selections, context menu, dictionary, keyboard navigation, theme, and font-size changes working.
+- [x] Render an explicit unresolved-annotation state rather than hiding records.
 
 ### 3. Navigation and editing
 
-- [ ] Make sidebar item activation open the correct document, page/chapter, and precise anchor.
-- [ ] Scroll/focus the matching highlight and expose note contents accessibly.
-- [ ] Maintain correct behavior for edit color/note, delete, delete-all, undo/recovery policy, and concurrent external updates.
-- [ ] Ensure temporary decrypted/rendered files are cleaned up on close, error, lock, and navigation.
+- [x] Make sidebar item activation open the correct document, page/chapter, and precise anchor.
+- [x] Scroll/focus the matching highlight and expose note contents accessibly.
+- [x] Maintain correct behavior for edit color/note, delete, delete-all, undo/recovery policy, and concurrent external updates.
+- [x] Ensure temporary decrypted/rendered files are cleaned up on close, error, lock, and navigation.
 
 ### 4. Cross-client and acceptance
 

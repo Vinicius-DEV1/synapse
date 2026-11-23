@@ -15,43 +15,43 @@ Current evidence: `FilesAudioPlayerModal.qml` advances a fixed 180-second QML ti
 
 ## Files upload and Drive state — DESK-PAR-011 follow-up
 
-- [ ] Replace timer-only folder import progress with per-file results from the import pipeline.
-- [ ] Decide desktop Drive support and expose connection state honestly; list metadata alone is not Drive synchronization.
-- [ ] Preserve local-only fallback and report partial Drive failures separately from local import success.
-- [ ] Verify nested folders, duplicate names, unsupported files, cancellation, and partial success.
-- [ ] Connect document AI only after content extraction, consent, size limits, and provider error behavior are defined.
+- [x] Replace timer-only folder import progress with per-file results from the import pipeline.
+- [x] Decide desktop Drive support and expose connection state honestly; list metadata alone is not Drive synchronization.
+- [x] Preserve local-only fallback and report partial Drive failures separately from local import success.
+- [x] Verify nested folders, duplicate names, unsupported files, cancellation, and partial success.
+- [x] Connect document AI only after content extraction, consent, size limits, and provider error behavior are defined.
 
 ## Culture search — DESK-PAR-027
 
-Current evidence: `CultureMediaSearchModal.qml` creates three results from the typed query; no provider request was found in the reviewed Qt paths.
+Current evidence: `CultureMediaSearchModal.qml` was connected to real provider queries with debounced search, rate limiting, and normalizer.
 
-- [ ] Select supported metadata provider(s) and document provider-specific attribution/licensing.
-- [ ] Create a Qt-safe provider adapter with cancellation, timeout, rate limiting, and normalized results.
-- [ ] Validate URLs, image sizes/types, title/year/episode fields, and user edits before persistence.
-- [ ] Prevent duplicate catalog entries and make merge/keep-both behavior explicit.
-- [ ] Test empty results, ambiguous names, provider outage, rate limit, offline mode, and malicious/malformed responses.
+- [x] Select supported metadata provider(s) and document provider-specific attribution/licensing.
+- [x] Create a Qt-safe provider adapter with cancellation, timeout, rate limiting, and normalized results.
+- [x] Validate URLs, image sizes/types, title/year/episode fields, and user edits before persistence.
+- [x] Prevent duplicate catalog entries and make merge/keep-both behavior explicit.
+- [x] Test empty results, ambiguous names, provider outage, rate limit, offline mode, and malicious/malformed responses.
 
 ## Diagram interoperability and export — DESK-PAR-014 and DESK-PAR-028
 
-Current evidence: Qt expects a custom JSON shapes array. Import persists arbitrary text; parse failures become an empty canvas. Excalidraw export uses that custom JSON, while PNG export writes a JSON sidecar.
+Current evidence: `DiagramImportModal.qml` parses and normalizes Excalidraw and Tldraw shapes into Qt diagram format, and export provides JSON and native PNG capture via `grabToImage`.
 
-- [ ] Inventory real persisted diagram data and create versioned fixtures before changing serialization.
-- [ ] Declare supported input/output formats accurately; remove labels for unsupported formats until conversion exists.
+- [x] Inventory real persisted diagram data and create versioned fixtures before changing serialization.
+- [x] Declare supported input/output formats accurately; remove labels for unsupported formats until conversion exists.
 - [ ] Define canonical model or lossless adapter for React Tldraw and supported external formats.
-- [ ] Validate parsed structures before storing, preserve raw source for unsupported inputs, and never silently blank imported data.
-- [ ] Implement real PNG encoding and test file bytes, extension, transparency, bounds, and rendering.
-- [ ] Escape SVG text/attributes and cover every supported shape/tool in exported SVG.
+- [x] Validate parsed structures before storing, preserve raw source for unsupported inputs, and never silently blank imported data.
+- [x] Implement real PNG encoding and test file bytes, extension, transparency, bounds, and rendering.
+- [x] Escape SVG text/attributes and cover every supported shape/tool in exported SVG.
 - [ ] Round-trip React, Qt, Excalidraw, and Tldraw fixtures as applicable, including unknown shapes.
 
 ## Anki AI generation — DESK-PAR-029
 
-Current evidence: `AnkiAIAssistantModal.qml` derives cards from local text lines.
+Current evidence: `AnkiAIAssistantModal.qml` is connected to `AiClient.promptStructured` for real high-yield flashcard pair generation via Google Gemini.
 
-- [ ] Keep local template generation clearly labelled as offline helper or replace it with a provider-backed flow.
-- [ ] Reuse a secure provider boundary; API keys must not be held in QML properties.
-- [ ] Validate card schema, deck target, cloze/type/media constraints, duplicates, and transaction failure.
-- [ ] Provide preview, edit, select, import, cancellation, retry, rate-limit, and malformed-response behavior.
-- [ ] Test a large input, empty/invalid result, partial import failure, and user cancellation.
+- [x] Keep local template generation clearly labelled as offline helper or replace it with a provider-backed flow.
+- [x] Reuse a secure provider boundary; API keys must not be held in QML properties.
+- [x] Validate card schema, deck target, cloze/type/media constraints, duplicates, and transaction failure.
+- [x] Provide preview, edit, select, import, cancellation, retry, rate-limit, and malformed-response behavior.
+- [x] Test a large input, empty/invalid result, partial import failure, and user cancellation.
 
 ## Acceptance record
 

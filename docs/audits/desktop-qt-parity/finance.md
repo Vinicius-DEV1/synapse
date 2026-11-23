@@ -21,23 +21,23 @@ This checklist expands DESK-PAR-033. It keeps normal transaction support distinc
 
 ## Loans and payment lifecycle
 
-- [ ] Add typed bridge/controller operations for list/create/update/delete loan and record/reopen payment.
-- [ ] Replace seeded objects with canonical persisted records and a true empty state.
-- [ ] Let Core create payment cashflow and update parent paid amount/status in one transaction.
-- [ ] Select and validate the payment account, payment date, and optional notes/person fields.
-- [ ] Support payment history, edit/delete rollback, close/reopen, overdue display, and overpayment rejection.
-- [ ] Test app restart and React/Qt cross-client round trip for a loan with multiple payments.
+- [x] Add typed bridge/controller operations for list/create/update/delete loan and record/reopen payment.
+- [x] Replace seeded objects with canonical persisted records and a true empty state.
+- [x] Let Core create payment cashflow and update parent paid amount/status in one transaction.
+- [x] Select and validate the payment account, payment date, and optional notes/person fields.
+- [x] Support payment history, edit/delete rollback, close/reopen, overdue display, and overpayment rejection.
+- [x] Test app restart and React/Qt cross-client round trip for a loan with multiple payments.
 
 ## Pending and recurring transactions
 
-- [ ] Map React pending/future transaction UI and fields to Core’s status/is-paid/due-date semantics.
-- [ ] Add recurring creation/edit/cancellation only through a defined canonical schedule contract.
-- [ ] Verify balances do not count pending transactions prematurely.
-- [ ] Test period filters, account filters, pending confirmation, recurrence boundaries, and timezone/date formatting.
+- [x] Map React pending/future transaction UI and fields to Core’s status/is-paid/due-date semantics.
+- [x] Add recurring creation/edit/cancellation only through a defined canonical schedule contract.
+- [x] Verify balances do not count pending transactions prematurely.
+- [x] Test period filters, account filters, pending confirmation, recurrence boundaries, and timezone/date formatting.
 
 ## Acceptance record
 
-- [ ] Core and bridge tests cover atomic payment, rollback, deletion, and rounding.
-- [ ] Controller/UI tests cover actual persisted loans, empty states, validation, and error feedback.
+- [x] Core and bridge tests cover atomic payment, rollback, deletion, and rounding.
+- [x] Controller/UI tests cover actual persisted loans, empty states, validation, and error feedback.
 - [ ] Same-data comparison verifies dashboard, account cards, payment history, and totals against React.
-- [ ] Update DESK-PAR-033 and feature matrix with command/results/date.
+- [x] Update DESK-PAR-033 and feature matrix with command/results/date.

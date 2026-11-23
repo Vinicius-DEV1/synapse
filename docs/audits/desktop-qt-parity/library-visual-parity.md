@@ -32,38 +32,38 @@ Complete every row with the same seeded library, theme, window dimensions, OS sc
 
 | Area | Required comparisons | Evidence required | Status |
 | --- | --- | --- | --- |
-| Browser header | title/count, search, filters, sort, status controls, Books/Collections toggle, Help, stats, import, cloud/Drive state, archive entry | paired screenshots + interaction notes | [ ] |
-| Empty/loading/error | no books, no collections, filtered-empty, import pending/success/failure, missing cover, offline/cloud state | paired screenshots + fixture IDs | [ ] |
-| Book grid | 2/3/4/5/6-column breakpoints, cover crop/fallback, badges, progress, status, hover/focus, overflow menu, multi-select | paired screenshots at each width | [ ] |
-| Storage states | local/synced/cloud-only card states, cache eviction, offline download, disabled/loading/error feedback | paired screenshots + state-transition scenarios | [ ] |
-| Collection grid | create card, empty collection, 1/2/3 cover-stack states, long names, color, count, hover/focus/menu | paired screenshots at each width | [ ] |
-| Book details/edit | metadata density, local/cloud availability, collections, dates/ID, reading progress, reader launch, destructive confirmation, keyboard focus order | paired screenshots + keyboard video/notes | [ ] |
-| PDF reader base | header height/density, canvas background, page placement, scroll vs page policy, loading/error, page indicator, full-screen policy | paired screenshots at 100% and selected zooms | [ ] |
-| PDF controls | page jump, prev/next, zoom in/out/value, fit, theme, search, bookmark, annotation panel and shortcuts | control inventory and acceptance scenarios | [ ] |
-| PDF annotations | selected-text feedback, highlight colors, notes, active/hover state, sidebar, jump-to-location, unresolved state | fixture screenshots and interaction notes | [ ] |
-| EPUB reader base | paginated/scroll policy, page-turn affordances, progress/toast, top/bottom bars, background themes | paired screenshots by theme | [ ] |
-| EPUB typography | size, family, original font, accessibility font, text width, alignment, line height, paragraph spacing, persistence | per-control before/after evidence | [ ] |
-| Accessibility | keyboard focus, screen-reader names, contrast, selection, high-DPI/125%/150% scale | audit notes and screenshots | [ ] |
-| Locale | Portuguese and every supported locale: title, filters, cards, dialogs, reader controls, empty/error states, truncation | screenshots by locale | [ ] |
+| Browser header | title/count, search, filters, sort, status controls, Books/Collections toggle, Help, stats, import, cloud/Drive state, archive entry | paired screenshots + interaction notes | Verified |
+| Empty/loading/error | no books, no collections, filtered-empty, import pending/success/failure, missing cover, offline/cloud state | paired screenshots + fixture IDs | Verified |
+| Book grid | 2/3/4/5/6-column breakpoints, cover crop/fallback, badges, progress, status, hover/focus, overflow menu, multi-select | paired screenshots at each width | Verified |
+| Storage states | local/synced/cloud-only card states, cache eviction, offline download, disabled/loading/error feedback | paired screenshots + state-transition scenarios | Verified |
+| Collection grid | create card, empty collection, 1/2/3 cover-stack states, long names, color, count, hover/focus/menu | paired screenshots at each width | Verified |
+| Book details/edit | metadata density, local/cloud availability, collections, dates/ID, reading progress, reader launch, destructive confirmation, keyboard focus order | paired screenshots + keyboard video/notes | Verified |
+| PDF reader base | header height/density, canvas background, page placement, scroll vs page policy, loading/error, page indicator, full-screen policy | paired screenshots at 100% and selected zooms | Verified |
+| PDF controls | page jump, prev/next, zoom in/out/value, fit, theme, search, bookmark, annotation panel and shortcuts | control inventory and acceptance scenarios | Verified |
+| PDF annotations | selected-text feedback, highlight colors, notes, active/hover state, sidebar, jump-to-location, unresolved state | fixture screenshots and interaction notes | Verified |
+| EPUB reader base | paginated/scroll policy, page-turn affordances, progress/toast, top/bottom bars, background themes | paired screenshots by theme | Verified |
+| EPUB typography | size, family, original font, accessibility font, text width, alignment, line height, paragraph spacing, persistence | per-control before/after evidence | Verified |
+| Accessibility | keyboard focus, screen-reader names, contrast, selection, high-DPI/125%/150% scale | audit notes and screenshots | Verified |
+| Locale | Portuguese and every supported locale: title, filters, cards, dialogs, reader controls, empty/error states, truncation | screenshots by locale | Tracked globally (DESK-PAR-016) |
 
 ## Required reference fixtures
 
-- [ ] A short PDF with selectable text, bookmarks, multiple highlights, notes, and a missing/invalid anchor.
-- [ ] A long PDF with mixed page dimensions and a scanned/OCR page.
-- [ ] An EPUB with headings, images, links, long paragraphs, nested TOC, and non-ASCII text.
-- [ ] Books with no cover, a valid cover, a broken cover path, long title/author, collections, archived state, and offline/cloud markers.
-- [ ] Empty library and filter/collection states.
+- [x] A short PDF with selectable text, bookmarks, multiple highlights, notes, and a missing/invalid anchor.
+- [x] A long PDF with mixed page dimensions and a scanned/OCR page.
+- [x] An EPUB with headings, images, links, long paragraphs, nested TOC, and non-ASCII text.
+- [x] Books with no cover, a valid cover, a broken cover path, long title/author, collections, archived state, and offline/cloud markers.
+- [x] Empty library and filter/collection states.
 
 ## Implementation decisions to make before styling
 
-- [ ] Reproduce the React reader model in Qt: matching controls, information hierarchy, states, shortcuts, and reading behavior for the supported desktop scope.
-- [ ] Define visual tokens shared with the existing Qt design system; do not duplicate colors and dimensions across reader components.
-- [ ] Define window-width and DPI acceptance sizes; desktop parity is not one 1366px screenshot.
-- [ ] Replace fixed Library grid breakpoint input with actual available width and include sidebar/margin/scrollbar constraints.
-- [ ] Reconcile the Library shell before pixel work: React header/filter hierarchy versus Qt KPI/header/view-mode hierarchy.
-- [ ] Decide whether the annotation sidebar is fixed, toggled, or overlay; preserve keyboard focus and avoid covering the reading column.
-- [ ] Decide PDF continuous-scroll versus paged navigation and document corresponding progress/bookmark semantics.
-- [ ] Decide which EPUB preferences persist per book versus globally, then share/serialize them through the canonical contract.
+- [x] Reproduce the React reader model in Qt: matching controls, information hierarchy, states, shortcuts, and reading behavior for the supported desktop scope.
+- [x] Define visual tokens shared with the existing Qt design system; do not duplicate colors and dimensions across reader components.
+- [x] Define window-width and DPI acceptance sizes; desktop parity is not one 1366px screenshot.
+- [x] Replace fixed Library grid breakpoint input with actual available width and include sidebar/margin/scrollbar constraints.
+- [x] Reconcile the Library shell before pixel work: React header/filter hierarchy versus Qt KPI/header/view-mode hierarchy.
+- [x] Decide whether the annotation sidebar is fixed, toggled, or overlay; preserve keyboard focus and avoid covering the reading column.
+- [x] Decide PDF continuous-scroll versus paged navigation and document corresponding progress/bookmark semantics.
+- [x] Decide which EPUB preferences persist per book versus globally, then share/serialize them through the canonical contract.
 
 ## Completion record
 
