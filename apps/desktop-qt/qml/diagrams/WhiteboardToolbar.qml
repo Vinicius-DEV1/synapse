@@ -65,6 +65,7 @@ Rectangle {
             spacing: 3
             Repeater {
                 model: [
+                    { tool: "select", label: "⬈" },
                     { tool: "hand", label: "✋" },
                     { tool: "pen", label: "✏️" },
                     { tool: "rect", label: "▭" },

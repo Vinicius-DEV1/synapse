@@ -227,6 +227,18 @@ Rectangle {
                     onTodayRequested: calendarRoot.goToToday()
                     onCellClicked: function(dateStr) { calendarRoot.openDayModal(dateStr) }
                     onEventClicked: function(eventData) { calendarRoot.openEditModal(eventData) }
+                    onEventDroppedOnDate: function(ev, targetDateStr) {
+                        if (!ev || !ev.id) return
+                        var oldStart = String(ev.start_date || "")
+                        var timeSuffix = oldStart.length > 10 ? oldStart.substring(10) : ""
+                        var newStart = targetDateStr + timeSuffix
+                        dataController.updateCalendarEvent(
+                            ev.id, ev.title || "", ev.description || "",
+                            newStart, newStart, ev.color || "#3b82f6",
+                            ev.type || "event", ev.page_id || "", []
+                        )
+                        calendarRoot.refreshEvents()
+                    }
                 }
 
                 CalendarTaskFeed {

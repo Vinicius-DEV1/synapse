@@ -11,7 +11,9 @@ Rectangle {
     property var transactions: []
     property var wishlistItems: []
     property var loans: []
-    property string activeSubTab: "transactions" // "transactions", "wishlist", "loans"
+    property var periodMetrics: ({ income: 0, expense: 0, balance: 0, breakdown: [] })
+    property int selectedPeriodIndex: 0
+    property string activeSubTab: "transactions" // "dashboard", "transactions", "wishlist", "loans"
     property string transactionTypeFilter: "all" // "all", "income", "expense"
     property string selectedAccountId: "all"
     property string transactionSearch: ""
@@ -36,6 +38,10 @@ Rectangle {
         transactions = dataController.getTransactions(transactionTypeFilter, selectedAccountId)
         wishlistItems = dataController.getWishlist()
         loans = dataController.getLoans()
+        var pKeys = ["month", "prev_month", "year", "all"]
+        if (typeof dataController.getFinancialPeriodMetrics === "function") {
+            periodMetrics = dataController.getFinancialPeriodMetrics(selectedAccountId, pKeys[selectedPeriodIndex] || "month") || ({})
+        }
     }
 
     function filteredTransactions() {
@@ -96,16 +102,30 @@ Rectangle {
             onManageAccountsRequested: financeRoot.isAccountManagerOpen = true
         }
 
+        // Period Selector + 3 Summary Cards
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            FinancePeriodSelector {
+                selectedPeriodIndex: financeRoot.selectedPeriodIndex
+                onPeriodSelected: function(idx, lbl) {
+                    financeRoot.selectedPeriodIndex = idx
+                    financeRoot.refreshData()
+                }
+            }
+            Item { Layout.fillWidth: true }
+        }
+
         // 3 Summary Cards (Receitas, Despesas, Saldo Líquido)
         FinanceKpiCards {
-            summary: financeRoot.summary
+            summary: financeRoot.periodMetrics && financeRoot.periodMetrics.income !== undefined ? financeRoot.periodMetrics : financeRoot.summary
         }
 
         // Main List Area
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: financeRoot.activeSubTab === "transactions" ? 0 : (financeRoot.activeSubTab === "wishlist" ? 1 : 2)
+            currentIndex: financeRoot.activeSubTab === "dashboard" ? 3 : (financeRoot.activeSubTab === "transactions" ? 0 : (financeRoot.activeSubTab === "wishlist" ? 1 : 2))
 
             // 1. Transactions List
             TransactionsTable {
@@ -136,6 +156,10 @@ Rectangle {
             // 2. Wishlist List
             WishlistGrid {
                 wishlistItems: financeRoot.wishlistItems
+                onDetailsRequested: function(item) {
+                    financeRoot.selectedWishlistItem = item
+                    financeRoot.isWishlistDetailsOpen = true
+                }
                 onAcquiredRequested: function(item) {
                     financeRoot.selectedWishlistItem = item
                     financeRoot.isAcquireModalOpen = true
@@ -153,9 +177,50 @@ Rectangle {
                     financeRoot.selectedLoan = item
                     financeRoot.isPaymentModalOpen = true
                 }
+                onReopenRequested: function(loanId) {
+                    if (typeof dataController.reopenLoan === "function" && dataController.reopenLoan(loanId)) {
+                        financeRoot.refreshData()
+                    }
+                }
                 onDeleteLoanRequested: function(id) {
                     dataController.deleteLoan(id)
                     financeRoot.refreshData()
+                }
+            }
+
+            // 4. Period Category Breakdown Dashboard
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 10
+                    Text {
+                        text: qsTr("Despesas e Receitas por Categoria no Período")
+                        color: "#fffffe"
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+                    Repeater {
+                        model: (financeRoot.periodMetrics && financeRoot.periodMetrics.breakdown) ? financeRoot.periodMetrics.breakdown : []
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            height: 44
+                            radius: 9
+                            color: "#161524"
+                            border.color: "#14ffffff"
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 14
+                                Text { text: modelData.category || qsTr("Geral"); color: "#fffffe"; font.pixelSize: 13; Layout.fillWidth: true }
+                                Text { text: Number(modelData.percentage || 0).toFixed(1) + "%"; color: "#94a1b2"; font.pixelSize: 11 }
+                                Text { text: "R$ " + Number(modelData.amount || 0).toFixed(2); color: "#c4b5fd"; font.pixelSize: 13; font.bold: true }
+                            }
+                        }
+                    }
                 }
             }
         }

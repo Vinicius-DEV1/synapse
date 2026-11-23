@@ -14,6 +14,7 @@ ColumnLayout {
     signal todayRequested()
     signal cellClicked(string dateStr)
     signal eventClicked(var eventData)
+    signal eventDroppedOnDate(var eventData, string targetDateStr)
 
     // Month Nav Bar
     RowLayout {
@@ -83,13 +84,26 @@ ColumnLayout {
         model: monthGridRoot.monthCells
 
         delegate: Rectangle {
+            id: dayCellRect
             width: monthCellsGrid.cellWidth - 4
             height: monthCellsGrid.cellHeight - 4
             x: 2; y: 2
             radius: 8
-            color: modelData.isToday ? "#1e293b" : (cellMouse.containsMouse ? "#201e30" : "#141320")
-            border.color: modelData.isToday ? "#8838bdf8" : "#0affffff"
+            color: dayDropArea.containsDrag ? "#2e244d" : (modelData.isToday ? "#1e293b" : (cellMouse.containsMouse ? "#201e30" : "#141320"))
+            border.color: dayDropArea.containsDrag ? "#8b5cf6" : (modelData.isToday ? "#8838bdf8" : "#0affffff")
             border.width: 1
+
+            DropArea {
+                id: dayDropArea
+                anchors.fill: parent
+                keys: ["synapse-calendar-event"]
+                onDropped: function(drop) {
+                    if (drop.source && drop.source.draggedEvent) {
+                        monthGridRoot.eventDroppedOnDate(drop.source.draggedEvent, modelData.dateStr)
+                        drop.acceptProposedAction()
+                    }
+                }
+            }
 
             ColumnLayout {
                 anchors.fill: parent
@@ -119,11 +133,17 @@ ColumnLayout {
                     Repeater {
                         model: modelData.events ? modelData.events.slice(0, 2) : []
                         delegate: Rectangle {
+                            id: eventPill
+                            property var draggedEvent: modelData
                             Layout.fillWidth: true
                             height: 18
                             radius: 4
                             color: (modelData.color || "#3b82f6") + "33"
                             border.color: (modelData.color || "#3b82f6") + "66"
+                            Drag.active: eventPillMouse.drag.active
+                            Drag.source: eventPill
+                            Drag.keys: ["synapse-calendar-event"]
+                            Drag.supportedActions: Qt.MoveAction
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 4
@@ -141,8 +161,10 @@ ColumnLayout {
                                 }
                             }
                             MouseArea {
+                                id: eventPillMouse
                                 anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
+                                drag.target: eventPill
+                                cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                                 onClicked: monthGridRoot.eventClicked(modelData)
                             }
                         }

@@ -17,6 +17,30 @@ Rectangle {
     property int autoSaveSeconds: 2
     property bool spellCheckEnabled: true
 
+    Component.onCompleted: {
+        try {
+            var raw = dataController.getConfig("editor_prefs", "")
+            if (raw && raw.length > 0) {
+                var p = JSON.parse(raw)
+                if (p.font) editorFont = String(p.font)
+                if (p.fontSize) editorFontSize = Number(p.fontSize)
+                if (p.lineHeight) editorLineHeight = Number(p.lineHeight)
+                if (p.autoSaveSeconds) autoSaveSeconds = Number(p.autoSaveSeconds)
+                if (p.spellCheck !== undefined) spellCheckEnabled = Boolean(p.spellCheck)
+            }
+        } catch (e) {}
+    }
+
+    function savePreferences() {
+        dataController.setConfig("editor_prefs", JSON.stringify({
+            font: editorFont,
+            fontSize: editorFontSize,
+            lineHeight: editorLineHeight,
+            autoSaveSeconds: autoSaveSeconds,
+            spellCheck: spellCheckEnabled
+        }))
+    }
+
     ColumnLayout {
         id: contentCol
         anchors.fill: parent

@@ -107,6 +107,24 @@ ColumnLayout {
         spacing: 8
 
         Rectangle {
+            width: 130; height: 36; radius: 8
+            color: headerRoot.activeSubTab === "dashboard" ? "#1a6366f1" : "transparent"
+            border.color: headerRoot.activeSubTab === "dashboard" ? "#6366f1" : "transparent"
+            Text {
+                anchors.centerIn: parent
+                text: qsTr("Dashboard")
+                color: headerRoot.activeSubTab === "dashboard" ? "#a78bfa" : "#a7a9be"
+                font.pixelSize: 13
+                font.bold: true
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerRoot.subTabSelected("dashboard")
+            }
+        }
+
+        Rectangle {
             width: 150; height: 36; radius: 8
             color: headerRoot.activeSubTab === "transactions" ? "#1a6366f1" : "transparent"
             border.color: headerRoot.activeSubTab === "transactions" ? "#6366f1" : "transparent"

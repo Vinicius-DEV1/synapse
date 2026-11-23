@@ -24,6 +24,9 @@ Rectangle {
     property bool durationPersisted: false
     property bool showResumePrompt: false
     property bool isPlayerFullscreen: false
+    property double abLoopStart: -1
+    property double abLoopEnd: -1
+    property bool abLoopEnabled: false
 
     signal fullscreenToggled()
 
@@ -281,6 +284,10 @@ Rectangle {
 
         onPositionObserved: function(position) {
             videoRoot.currentPos = position
+            if (videoRoot.abLoopEnabled && videoRoot.abLoopStart >= 0 && videoRoot.abLoopEnd > videoRoot.abLoopStart &&
+                    position >= videoRoot.abLoopEnd) {
+                videoRoot.jumpToTimestamp(videoRoot.abLoopStart)
+            }
             var bucket = Math.floor(position / 5)
             if (videoRoot.activeVideo && bucket !== videoRoot.lastSavedProgressBucket) {
                 dataController.updateVideoProgress(videoRoot.activeVideo.id, position)

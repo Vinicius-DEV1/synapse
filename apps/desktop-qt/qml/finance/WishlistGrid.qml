@@ -7,6 +7,7 @@ ListView {
     spacing: 8
 
     property var wishlistItems: []
+    signal detailsRequested(var item)
     signal acquiredRequested(var item)
     signal deleteRequested(string itemId)
 
@@ -97,7 +98,9 @@ ListView {
             id: wishItemMouse
             anchors.fill: parent
             hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             z: -1
+            onClicked: wishListView.detailsRequested(modelData)
         }
     }
 

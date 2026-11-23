@@ -763,6 +763,11 @@ Item {
             rootWindow.updateActiveTabModule("notes", title, "notes")
             rootWindow.notificationsOpen = false
         }
+        onOpenCalendarRequested: function(eventId) {
+            var info = rootWindow.getModuleInfo("calendar")
+            rootWindow.updateActiveTabModule("calendar", info.title, info.icon)
+            rootWindow.notificationsOpen = false
+        }
     }
 
     AiSidebarPanel {

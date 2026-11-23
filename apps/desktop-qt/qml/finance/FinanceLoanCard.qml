@@ -14,6 +14,7 @@ Rectangle {
     property var loan: null
 
     signal paymentRequested(var loanItem)
+    signal reopenRequested(string loanId)
     signal deleteRequested(string loanId)
 
     readonly property bool isLent: loan ? loan.type === "lent" : true
@@ -117,20 +118,25 @@ Rectangle {
             spacing: 6
 
             Button {
-                text: "Pagar / Amortizar"
-                enabled: loanCardRoot.remainingAmount > 0
+                text: loanCardRoot.remainingAmount > 0 ? "Pagar / Amortizar" : qsTr("Reabrir")
                 background: Rectangle {
-                    color: parent.enabled ? "#232135" : "#1a1829"
+                    color: "#232135"
                     radius: 6
-                    border.color: parent.enabled ? "#8b5cf6" : "#2e2b44"
+                    border.color: loanCardRoot.remainingAmount > 0 ? "#8b5cf6" : "#f59e0b"
                 }
                 contentItem: Text {
                     text: parent.text
-                    color: parent.parent.enabled ? "#c4b5fd" : "#4c4869"
+                    color: loanCardRoot.remainingAmount > 0 ? "#c4b5fd" : "#fbbf24"
                     font.pixelSize: 11
                     font.bold: true
                 }
-                onClicked: loanCardRoot.paymentRequested(loanCardRoot.loan)
+                onClicked: {
+                    if (loanCardRoot.remainingAmount > 0) {
+                        loanCardRoot.paymentRequested(loanCardRoot.loan)
+                    } else if (loanCardRoot.loan && loanCardRoot.loan.id) {
+                        loanCardRoot.reopenRequested(loanCardRoot.loan.id)
+                    }
+                }
             }
 
             Button {

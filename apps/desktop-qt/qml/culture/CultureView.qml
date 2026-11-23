@@ -10,6 +10,8 @@ Rectangle {
     property var filteredItems: []
     property string activeTypeFilter: "all" // "all", "anime", "série", "filme"
     property string activeStatusFilter: "all" // "all", "watching", "backlog", "finished"
+    property string activeSectionTab: "collection" // "collection" | "recommendations"
+    property string sortMode: "recent" // "recent" | "title" | "progress"
     property string searchQuery: ""
     property bool isCreatingItem: false
     property var editingItem: null
@@ -58,6 +60,11 @@ Rectangle {
                 result.push(it)
             }
         }
+        if (sortMode === "title") {
+            result.sort(function(a, b) { return String(a.title || "").localeCompare(String(b.title || "")) })
+        } else if (sortMode === "progress") {
+            result.sort(function(a, b) { return (b.progress || 0) - (a.progress || 0) })
+        }
         filteredItems = result
     }
 
@@ -89,8 +96,55 @@ Rectangle {
             onOnlineSearchRequested: cultureRoot.isSearchOnlineOpen = true
         }
 
+        // Tab Switcher + Active Goals strip
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Repeater {
+                model: [
+                    { id: "collection", label: qsTr("Minha Coleção") },
+                    { id: "recommendations", label: qsTr("✨ Recomendações IA") }
+                ]
+                delegate: Button {
+                    required property var modelData
+                    Layout.preferredHeight: 32
+                    padding: 12
+                    onClicked: cultureRoot.activeSectionTab = modelData.id
+                    background: Rectangle {
+                        radius: 8
+                        color: cultureRoot.activeSectionTab === modelData.id ? "#268b5cf6" : "#15141b"
+                        border.color: cultureRoot.activeSectionTab === modelData.id ? "#668b5cf6" : "#14ffffff"
+                    }
+                    contentItem: Text {
+                        text: modelData.label
+                        color: cultureRoot.activeSectionTab === modelData.id ? "#fffffe" : "#a7a9be"
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                    }
+                }
+            }
+            Item { Layout.fillWidth: true }
+            Repeater {
+                model: [
+                    { id: "recent", label: qsTr("Recentes") },
+                    { id: "title", label: qsTr("A-Z") },
+                    { id: "progress", label: qsTr("Progresso") }
+                ]
+                delegate: Button {
+                    visible: cultureRoot.activeSectionTab === "collection"
+                    required property var modelData
+                    Layout.preferredHeight: 28
+                    padding: 8
+                    onClicked: { cultureRoot.sortMode = modelData.id; cultureRoot.applyFilters() }
+                    background: Rectangle { radius: 7; color: cultureRoot.sortMode === modelData.id ? "#228b5cf6" : "#141320" }
+                    contentItem: Text { text: modelData.label; color: cultureRoot.sortMode === modelData.id ? "#ddd6fe" : "#94a1b2"; font.pixelSize: 11 }
+                }
+            }
+        }
+
         // Media Grid & Filter Pills
         CultureMediaGrid {
+            visible: cultureRoot.activeSectionTab === "collection"
             Layout.fillWidth: true
             Layout.fillHeight: true
             filteredItems: cultureRoot.filteredItems
@@ -126,6 +180,16 @@ Rectangle {
                     cultureRoot.deletingItem = { id: itemId, title: "Obra", type: "item" }
                 }
                 cultureRoot.isDeleteModalOpen = true
+            }
+        }
+
+        CultureRecommendationsView {
+            visible: cultureRoot.activeSectionTab === "recommendations"
+            collectionItems: cultureRoot.allItems
+            onAddRecommendationRequested: function(title, mediaType, synopsis) {
+                dataController.createCultureItem(title, mediaType, synopsis, 12, "", "", "")
+                cultureRoot.refreshItems()
+                cultureRoot.activeSectionTab = "collection"
             }
         }
     }

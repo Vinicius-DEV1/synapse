@@ -12,6 +12,7 @@ ColumnLayout {
     property int typeFilter: 0 // 0: All, 1: Lent, 2: Borrowed
 
     signal paymentRequested(var loanItem)
+    signal reopenRequested(string loanId)
     signal deleteLoanRequested(string loanId)
     signal newLoanRequested()
 
@@ -143,6 +144,7 @@ ColumnLayout {
                 width: loansListView.width
                 loan: modelData
                 onPaymentRequested: function(item) { loansTabRoot.paymentRequested(item) }
+                onReopenRequested: function(id) { loansTabRoot.reopenRequested(id) }
                 onDeleteRequested: function(id) { loansTabRoot.deleteLoanRequested(id) }
             }
 

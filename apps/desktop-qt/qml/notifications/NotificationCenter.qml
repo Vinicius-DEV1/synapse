@@ -16,6 +16,7 @@ Item {
 
     signal closed()
     signal openPage(string pageId)
+    signal openCalendarRequested(string eventId)
 
     readonly property var filteredNotifications: {
         if (!notifications || notifications.length === 0) return []
@@ -294,6 +295,15 @@ Item {
                                 }
                                 background: Rectangle { color: parent.hovered ? theme.bgHover : "#08ffffff"; radius: 7 }
                                 contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                Layout.preferredHeight: 26
+                            }
+
+                            Button {
+                                visible: modelData.type === "calendar_event" && Boolean(modelData.event_id)
+                                text: qsTr("Abrir Agenda")
+                                onClicked: centerRoot.openCalendarRequested(modelData.event_id)
+                                background: Rectangle { color: parent.hovered ? "#333b82f6" : "#1a3b82f6"; radius: 7 }
+                                contentItem: Text { text: parent.text; color: "#93c5fd"; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                                 Layout.preferredHeight: 26
                             }
 

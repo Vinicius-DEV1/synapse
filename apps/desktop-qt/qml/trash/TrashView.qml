@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: trashRoot
@@ -10,6 +11,8 @@ Rectangle {
     property string activeTypeFilter: "all"
     property string searchQuery: ""
     property bool isHelpOpen: false
+    property string pendingDeleteId: ""
+    property string pendingDeleteType: ""
 
     function refreshTrash() {
         allTrashItems = dataController.getTrashItems()
@@ -77,9 +80,27 @@ Rectangle {
                 trashRoot.refreshTrash()
             }
             onDeletePermanentlyRequested: function(id, itemType) {
-                dataController.deleteTrashItemPermanently(id, itemType)
+                trashRoot.pendingDeleteId = id
+                trashRoot.pendingDeleteType = itemType
+                singleDeleteConfirm.open()
+            }
+        }
+    }
+
+    AppConfirmDialog {
+        id: singleDeleteConfirm
+        anchors.centerIn: parent
+        titleText: qsTr("Excluir Permanentemente")
+        messageText: qsTr("Tem certeza que deseja excluir este item permanentemente? Esta ação não pode ser desfeita.")
+        confirmLabel: qsTr("Excluir")
+        isDestructive: true
+        onConfirmed: {
+            if (trashRoot.pendingDeleteId.length > 0) {
+                dataController.deleteTrashItemPermanently(trashRoot.pendingDeleteId, trashRoot.pendingDeleteType)
                 trashRoot.refreshTrash()
             }
+            trashRoot.pendingDeleteId = ""
+            trashRoot.pendingDeleteType = ""
         }
     }
 

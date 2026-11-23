@@ -33,8 +33,10 @@ Rectangle {
     }
 
     function triggerSave() {
-        if (generalTabItem.visible) generalTabItem.savePreferences()
-        if (videoTabItem.visible) videoTabItem.savePreferences()
+        generalTabItem.savePreferences()
+        editorTabItem.savePreferences()
+        videoTabItem.savePreferences()
+        dataController.setConfig("app_accent_color", activeAccentColor)
         dataController.refreshStats()
         settingsRoot.saveSuccess = true
         saveFeedbackTimer.restart()

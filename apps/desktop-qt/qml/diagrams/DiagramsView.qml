@@ -8,6 +8,7 @@ Rectangle {
 
     property var diagramsList: []
     property var activeDiagram: null
+    property string activeRawContent: ""
     property bool isEditing: false
     property bool isCreatingModal: false
     property bool isHelpOpen: false
@@ -144,16 +145,10 @@ Rectangle {
     function openDiagram(d) {
         var full = dataController.getDiagram(d.id)
         activeDiagram = full
-        try {
-            var raw = JSON.parse(full.content || "[]")
-            if (raw && !Array.isArray(raw) && raw.records) {
-                shapes = parseTldrawRecords(raw.records)
-            } else if (Array.isArray(raw)) {
-                shapes = raw
-            } else {
-                shapes = []
-            }
-        } catch (e) {
+        activeRawContent = full.content || ""
+        if (typeof dataController.extractQtDiagramShapes === "function") {
+            shapes = dataController.extractQtDiagramShapes(activeRawContent) || []
+        } else {
             shapes = []
         }
         isEditing = true
@@ -162,7 +157,10 @@ Rectangle {
 
     function saveActiveDiagram() {
         if (!activeDiagram) return
-        var contentStr = JSON.stringify(shapes)
+        var contentStr = typeof dataController.encodeQtDiagramAsTldrawV2 === "function"
+            ? dataController.encodeQtDiagramAsTldrawV2(shapes, activeRawContent)
+            : JSON.stringify(shapes)
+        activeRawContent = contentStr
         dataController.saveDiagram(activeDiagram.id, activeDiagram.title, contentStr, activeDiagram.icon || "🎨")
         loadDiagrams()
     }
@@ -171,28 +169,16 @@ Rectangle {
         saveActiveDiagram()
         isEditing = false
         activeDiagram = null
+        activeRawContent = ""
         shapes = []
         loadDiagrams()
     }
 
     function exportToSvg() {
-        var svg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1920\" height=\"1080\">\n"
-        for (var i = 0; i < shapes.length; i++) {
-            var s = shapes[i]
-            var c = s.color || "#8b5cf6"
-            var lw = s.lineWidth || 2
-            if (s.type === "path" && s.points && s.points.length > 1) {
-                var d = "M " + s.points[0].x + " " + s.points[0].y
-                for (var p = 1; p < s.points.length; p++) d += " L " + s.points[p].x + " " + s.points[p].y
-                svg += "  <path d=\"" + d + "\" stroke=\"" + c + "\" stroke-width=\"" + lw + "\" fill=\"none\" />\n"
-            } else if (s.type === "rect") {
-                svg += "  <rect x=\"" + s.x + "\" y=\"" + s.y + "\" width=\"" + s.w + "\" height=\"" + s.h + "\" stroke=\"" + c + "\" stroke-width=\"" + lw + "\" fill=\"none\" />\n"
-            } else if (s.type === "circle") {
-                svg += "  <ellipse cx=\"" + (s.x + s.w/2) + "\" cy=\"" + (s.y + s.h/2) + "\" rx=\"" + Math.abs(s.w/2) + "\" ry=\"" + Math.abs(s.h/2) + "\" stroke=\"" + c + "\" stroke-width=\"" + lw + "\" fill=\"none\" />\n"
-            }
+        if (typeof dataController.exportQtDiagramToSvg === "function") {
+            return dataController.exportQtDiagramToSvg(shapes)
         }
-        svg += "</svg>"
-        return svg
+        return "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>"
     }
 
     Component.onCompleted: {
@@ -283,7 +269,10 @@ Rectangle {
             if (filePath.endsWith(".svg")) {
                 dataController.saveLocalTextFile(filePath, diagramsRoot.exportToSvg())
             } else if (filePath.endsWith(".tldraw") || filePath.indexOf(".tldraw") !== -1) {
-                dataController.saveLocalTextFile(filePath, JSON.stringify(diagramsRoot.exportToTldraw(), null, 2))
+                var tldrawOut = typeof dataController.encodeQtDiagramAsTldrawV2 === "function"
+                    ? dataController.encodeQtDiagramAsTldrawV2(diagramsRoot.shapes, diagramsRoot.activeRawContent)
+                    : JSON.stringify(diagramsRoot.exportToTldraw(), null, 2)
+                dataController.saveLocalTextFile(filePath, tldrawOut)
             } else if (filePath.endsWith(".json") || filePath.endsWith(".excalidraw")) {
                 dataController.saveLocalTextFile(filePath, JSON.stringify(diagramsRoot.shapes, null, 2))
             } else if (filePath.endsWith(".png")) {

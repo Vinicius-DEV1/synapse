@@ -18,6 +18,7 @@ Rectangle {
     property real zoomLevel: 1.0
     property real panX: 0
     property real panY: 0
+    property int selectedShapeIndex: -1
 
     signal saveRequested()
 
@@ -210,6 +211,27 @@ Rectangle {
                 if (mouse.button === Qt.MiddleButton || canvasRoot.activeTool === "hand") {
                     return
                 }
+                if (canvasRoot.activeTool === "select") {
+                    if (canvasRoot.selectedShapeIndex >= 0) canvasRoot.saveRequested()
+                    return
+                }
+
+                if (canvasRoot.activeTool === "select") {
+                    canvasRoot.selectedShapeIndex = -1
+                    for (var si = canvasRoot.shapes.length - 1; si >= 0; si--) {
+                        var obj = canvasRoot.shapes[si]
+                        if (obj.x !== undefined && obj.y !== undefined) {
+                            var ow = Math.abs(obj.w || 120)
+                            var oh = Math.abs(obj.h || 60)
+                            if (wx >= obj.x - 10 && wx <= obj.x + ow + 10 && wy >= obj.y - 20 && wy <= obj.y + oh + 10) {
+                                canvasRoot.selectedShapeIndex = si
+                                canvasRoot.pushHistory()
+                                break
+                            }
+                        }
+                    }
+                    return
+                }
 
                 if (canvasRoot.activeTool === "eraser") {
                     canvasRoot.pushHistory()
@@ -258,6 +280,22 @@ Rectangle {
                     return
                 }
 
+                if (mouse.buttons & Qt.LeftButton && canvasRoot.activeTool === "select" && canvasRoot.selectedShapeIndex >= 0) {
+                    var nwx = screenToWorldX(mouse.x)
+                    var nwy = screenToWorldY(mouse.y)
+                    var dx = nwx - startX
+                    var dy = nwy - startY
+                    startX = nwx
+                    startY = nwy
+                    var target = canvasRoot.shapes[canvasRoot.selectedShapeIndex]
+                    if (target && target.x !== undefined) {
+                        target.x += dx
+                        target.y += dy
+                        diagramCanvas.requestPaint()
+                    }
+                    return
+                }
+
                 if (mouse.buttons & Qt.LeftButton && canvasRoot.activeTool === "pen") {
                     var wx = screenToWorldX(mouse.x)
                     var wy = screenToWorldY(mouse.y)
@@ -268,6 +306,10 @@ Rectangle {
 
             onReleased: function(mouse) {
                 if (mouse.button === Qt.MiddleButton || canvasRoot.activeTool === "hand") {
+                    return
+                }
+                if (canvasRoot.activeTool === "select") {
+                    if (canvasRoot.selectedShapeIndex >= 0) canvasRoot.saveRequested()
                     return
                 }
 
