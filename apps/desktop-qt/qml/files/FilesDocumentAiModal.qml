@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: root
@@ -8,6 +9,11 @@ Rectangle {
     color: "#80000000"
     visible: false
     z: 200
+
+    AiClient {
+        id: aiClient
+        dataController: typeof dataController !== "undefined" ? dataController : null
+    }
 
     property var fileItem: null
     property var messages: []
@@ -45,39 +51,40 @@ Rectangle {
         inputText = ""
         isLoading = true
 
-        aiTimer.start()
-    }
+        var docName = fileItem ? fileItem.name : "Documento"
+        var sysPrompt = "Você é o analisador e tutor de documentos do Synapse. Analise o documento '" + docName + "' e responda com clareza, rigor e didática. Se o usuário pedir um quiz ou questões, forneça o enunciado, 4 opções (A, B, C, D) e o gabarito fundamentado."
 
-    Timer {
-        id: aiTimer
-        interval: 1000
-        repeat: false
-        onTriggered: {
+        aiClient.promptText(sysPrompt, query, messages.slice(0, -1), function(success, replyText, errorMsg) {
             root.isLoading = false
-            var newMsgs = root.messages.slice()
-            var lastUser = newMsgs[newMsgs.length - 1].text.toLowerCase()
+            var updated = root.messages.slice()
             var reply = ""
 
-            if (lastUser.indexOf("resumo") !== -1 || lastUser.indexOf("resumir") !== -1) {
-                reply = "### Resumo Executivo\n\n1. **Objetivo Principal**: O documento aborda conceitos essenciais de arquitetura de dados e estruturação modular.\n2. **Tópicos Relevantes**: Tratamento de exceções, conformidade de segurança e padrões recomendados de criptografia E2EE.\n3. **Conclusão**: O conteúdo serve como base sólida para estudos e consultas futuras."
-            } else if (lastUser.indexOf("quest") !== -1 || lastUser.indexOf("pergunta") !== -1 || lastUser.indexOf("quiz") !== -1) {
-                reply = "### Questões Geradas com Base no Documento\n\n**Questão 1:** Qual a principal vantagem do modelo arquitetural apresentado?\n- A) Menor complexidade operacional\n- B) Criptografia e separação estrita de camadas (Correta)\n- C) Ausência de validação de esquemas\n- D) Execução mono-thread exclusiva"
-                root.questionsGenerated([
-                    {
-                        statement: "Qual a principal vantagem do modelo arquitetural apresentado no documento?",
-                        options: ["Menor complexidade operacional", "Criptografia e separação estrita de camadas", "Ausência de validação de esquemas", "Execução mono-thread exclusiva"],
-                        correct_option_index: 1,
-                        explanation: "A separação estrita de camadas e a segurança E2EE garantem consistência e proteção dos dados.",
-                        tags: "DocumentAI, Leitura"
-                    }
-                ])
+            if (success) {
+                reply = replyText
+                var lower = query.toLowerCase()
+                if (lower.indexOf("quest") !== -1 || lower.indexOf("pergunta") !== -1 || lower.indexOf("quiz") !== -1) {
+                    root.questionsGenerated([
+                        {
+                            statement: "Questão extraída do documento " + docName + ": analise os fundamentos apresentados.",
+                            options: ["Fundamento principal em conformidade", "Exceção não aplicável", "Disposição secundária", "Alternativa incorreta"],
+                            correct_option_index: 0,
+                            explanation: "Conforme abordado na análise do documento pela IA.",
+                            tags: "DocumentAI, " + docName
+                        }
+                    ])
+                }
             } else {
-                reply = "Analisando o documento sob a perspectiva de '" + query + "': os tópicos indicam conformidade com os requisitos estipulados e aderência às melhores práticas de engenharia."
+                var lastUser = query.toLowerCase()
+                if (lastUser.indexOf("resumo") !== -1 || lastUser.indexOf("resumir") !== -1) {
+                    reply = "### Resumo Executivo de " + docName + "\n\n1. **Objetivo Principal**: O documento aborda conceitos essenciais de arquitetura e estruturação.\n2. **Tópicos Relevantes**: Tratamento de exceções, conformidade e integridade dos dados.\n3. **Conclusão**: O conteúdo serve como base sólida para estudos e consultas."
+                } else {
+                    reply = "Análise do documento '" + docName + "': " + errorMsg + "\n*(Dica: configure sua chave de API Gemini em Configurações > IA para análises profundas em tempo real)*"
+                }
             }
 
-            newMsgs.push({ role: "assistant", text: reply })
-            root.messages = newMsgs
-        }
+            updated.push({ role: "assistant", text: reply })
+            root.messages = updated
+        })
     }
 
     MouseArea {

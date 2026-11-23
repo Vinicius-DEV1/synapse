@@ -41,9 +41,38 @@ Rectangle {
     }
 
     function closeModal() {
-        if (isDownloading) return
+        if (isDownloading) {
+            if (typeof dataController !== "undefined" && dataController.cancelYouTubeDownload) {
+                dataController.cancelYouTubeDownload()
+            }
+        }
         visible = false
         closeRequested()
+    }
+
+    Connections {
+        target: typeof dataController !== "undefined" ? dataController : null
+        function onYoutubeDownloadProgress(progress, status) {
+            root.downloadProgress = progress
+            root.downloadStatus = status
+        }
+        function onYoutubeDownloadFinished(success, error, videoPath) {
+            root.isDownloading = false
+            if (success) {
+                root.downloadProgress = 1.0
+                root.downloadStatus = "Download e criptografia concluídos!"
+                root.downloadCompleted({
+                    title: root.customTitle,
+                    url: root.url,
+                    quality: root.selectedQuality,
+                    collectionId: root.targetCollectionId
+                })
+                root.closeModal()
+            } else {
+                root.errorMessage = error || "Falha no download do vídeo do YouTube."
+                root.downloadStatus = "Erro no processamento."
+            }
+        }
     }
 
     function fetchInfo() {
@@ -51,58 +80,22 @@ Rectangle {
         errorMessage = ""
         isFetching = true
 
-        // Simulate or invoke yt-dlp metadata fetch
-        fetchTimer.start()
-    }
-
-    Timer {
-        id: fetchTimer
-        interval: 1000
-        repeat: false
-        onTriggered: {
-            root.isFetching = false
-            // Extract a realistic mock info based on URL if not offline
-            root.videoInfo = {
-                title: "Vídeo do YouTube - Palestra & Estudo",
-                channel: "Canal Educativo",
-                duration: 745,
-                thumbnail: "",
-                subtitles: [
-                    { lang: "pt", name: "Português", isAuto: false },
-                    { lang: "en", name: "Inglês", isAuto: false },
-                    { lang: "es", name: "Espanhol", isAuto: true },
-                    { lang: "ja", name: "Japonês", isAuto: true }
-                ]
-            }
-            root.customTitle = root.videoInfo.title
-            root.selectedSubs = ["pt"]
-        }
-    }
-
-    Timer {
-        id: downloadSimTimer
-        interval: 150
-        repeat: true
-        onTriggered: {
-            root.downloadProgress += 0.05
-            if (root.downloadProgress >= 1.0) {
-                downloadSimTimer.stop()
-                root.downloadProgress = 1.0
-                root.downloadStatus = "Download e criptografia concluídos!"
-                root.isDownloading = false
-                root.downloadCompleted({
-                    title: root.customTitle,
-                    url: root.url,
-                    quality: root.selectedQuality,
-                    collectionId: root.targetCollectionId
-                })
-                closeModal()
-            } else if (root.downloadProgress > 0.7) {
-                root.downloadStatus = "Extraindo e embutindo legendas…"
-            } else if (root.downloadProgress > 0.4) {
-                root.downloadStatus = "Baixando stream de vídeo e áudio…"
+        if (typeof dataController !== "undefined" && dataController.fetchYouTubeInfo) {
+            var res = dataController.fetchYouTubeInfo(url.trim())
+            isFetching = false
+            if (res && res.success && res.videoInfo) {
+                root.videoInfo = res.videoInfo
+                root.customTitle = res.videoInfo.title
+                root.selectedSubs = (res.videoInfo.subtitles && res.videoInfo.subtitles.length > 0) ? [res.videoInfo.subtitles[0].lang] : []
+                return
+            } else if (res && res.error) {
+                errorMessage = res.error
+                return
             }
         }
+
+        isFetching = false
+        errorMessage = "Serviço de download do YouTube indisponível."
     }
 
     function startDownload() {
@@ -110,7 +103,13 @@ Rectangle {
         isDownloading = true
         downloadProgress = 0.05
         downloadStatus = "Conectando ao stream do YouTube…"
-        downloadSimTimer.start()
+
+        if (typeof dataController !== "undefined" && dataController.downloadYouTubeVideo) {
+            dataController.downloadYouTubeVideo(url.trim(), targetCollectionId, selectedQuality, selectedSubs)
+        } else {
+            errorMessage = "Controlador de vídeo indisponível."
+            isDownloading = false
+        }
     }
 
     MouseArea {

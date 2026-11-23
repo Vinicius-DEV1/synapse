@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: root
@@ -8,6 +9,11 @@ Rectangle {
     color: "#80000000"
     visible: false
     z: 200
+
+    AiClient {
+        id: aiClient
+        dataController: typeof dataController !== "undefined" ? dataController : null
+    }
 
     property var book: null
     property bool isAnalyzing: false
@@ -21,33 +27,51 @@ Rectangle {
         enrichedData = null
         isAnalyzing = true
         visible = true
-        analyzeTimer.start()
+
+        var title = targetBook ? (targetBook.title || "Livro") : "Livro"
+        var author = targetBook ? (targetBook.author || "") : ""
+        var cleanTitle = title.replace(/\.pdf$|\.epub$/i, "")
+
+        // First attempt real metadata lookup via Google Books
+        aiClient.queryBookMetadata(cleanTitle, author, function(success, gbooksData, err) {
+            if (success && gbooksData) {
+                root.enrichedData = gbooksData
+                root.isAnalyzing = false
+                return
+            }
+
+            // If not found in Google Books, try Gemini AI enrichment if configured
+            var sysPrompt = "Você é um bibliógrafo especialista do Synapse. Enriqueça os metadados do livro informado retornando um JSON com: {\"title\": \"título completo\", \"author\": \"autor\", \"description\": \"sinopse abrangente\", \"tags\": \"gêneros/temas separados por vírgula\", \"language\": \"pt-BR\", \"readingTimeMinutes\": 180}."
+            var userPrompt = "Livro: \"" + cleanTitle + "\"" + (author ? " - Autor: " + author : "")
+            aiClient.promptStructured(sysPrompt, userPrompt, function(aiSuccess, aiData, aiErr) {
+                root.isAnalyzing = false
+                if (aiSuccess && aiData && aiData.title) {
+                    root.enrichedData = {
+                        title: aiData.title,
+                        author: aiData.author || author || "Autor Desconhecido",
+                        description: aiData.description || "Sinopse elaborada pela inteligência artificial.",
+                        tags: aiData.tags || "Estudo, Leitura, Referência",
+                        language: aiData.language || "pt-BR",
+                        readingTimeMinutes: aiData.readingTimeMinutes || 180
+                    }
+                } else {
+                    root.enrichedData = {
+                        title: cleanTitle,
+                        author: author && author.length > 0 ? author : "Autor Identificado",
+                        description: "Obra literária em formato digital no acervo Synapse.",
+                        tags: "Estudo, Leitura, Tecnologia, Referência",
+                        language: "pt-BR",
+                        readingTimeMinutes: 180
+                    }
+                }
+            })
+        })
     }
 
     function closeModal() {
         if (isAnalyzing) return
         visible = false
         closeRequested()
-    }
-
-    Timer {
-        id: analyzeTimer
-        interval: 1200
-        repeat: false
-        onTriggered: {
-            root.isAnalyzing = false
-            var title = root.book ? (root.book.title || "Livro") : "Livro"
-            var author = root.book ? (root.book.author || "Autor Desconhecido") : "Autor"
-
-            root.enrichedData = {
-                title: title.replace(/\.pdf$|\.epub$/i, ""),
-                author: author.length > 0 && author !== "Autor desconhecido" ? author : "Autor Identificado pela IA",
-                description: "Obra literária analisada por inteligência artificial. Abrange tópicos de desenvolvimento pessoal, fundamentos técnicos e contextualização histórica.",
-                tags: "Estudo, Leitura, Tecnologia, Referência",
-                language: "pt-BR",
-                readingTimeMinutes: 180
-            }
-        }
     }
 
     MouseArea {

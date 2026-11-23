@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import "../ui"
 
 Rectangle {
     id: aiModalRoot
@@ -8,6 +9,11 @@ Rectangle {
     color: "#b3000000"
     visible: false
     z: 120
+
+    AiClient {
+        id: aiClient
+        dataController: typeof dataController !== "undefined" ? dataController : null
+    }
 
     property string deckId: ""
     property string deckName: "Baralho"
@@ -132,21 +138,47 @@ Rectangle {
                         enabled: !aiModalRoot.isGenerating && topicInput.text.trim().length > 0
                         onClicked: {
                             aiModalRoot.isGenerating = true
-                            // Simulation/Generation helper: creates high-yield cards from topic text
                             var count = (cardCountCombo.currentIndex + 1) * 5
-                            var mockGen = []
-                            var lines = topicInput.text.split("\n").filter(function(l) { return l.trim().length > 0 })
-                            for (var i = 0; i < Math.min(count, Math.max(3, lines.length)); i++) {
-                                var line = lines[i % lines.length]
-                                mockGen.push({
-                                    front: "Conceito essencial: " + line.substring(0, 45) + (line.length > 45 ? "..." : ""),
-                                    back: line,
-                                    card_type: "reading",
-                                    selected: true
-                                })
-                            }
-                            aiModalRoot.generatedCards = mockGen
-                            aiModalRoot.isGenerating = false
+                            var topicText = topicInput.text.trim()
+
+                            var sysPrompt = "Você é um especialista em repetição espaçada e cartões Anki. Extraia exatamente " + count + " cartões no formato: [{\"front\": \"pergunta objetiva ou lacuna cloze\", \"back\": \"resposta concisa\", \"card_type\": \"reading\"}]. Responda estritamente com o array JSON."
+                            var userPrompt = "Gere " + count + " flashcards de alto rendimento baseados no seguinte conteúdo:\n" + topicText
+
+                            aiClient.promptStructured(sysPrompt, userPrompt, function(success, parsedList, errorMsg) {
+                                aiModalRoot.isGenerating = false
+                                if (success && Array.isArray(parsedList) && parsedList.length > 0) {
+                                    var validated = []
+                                    for (var i = 0; i < parsedList.length; i++) {
+                                        var c = parsedList[i]
+                                        if (c.front && c.back) {
+                                            validated.push({
+                                                front: c.front,
+                                                back: c.back,
+                                                card_type: c.card_type || "reading",
+                                                selected: true
+                                            })
+                                        }
+                                    }
+                                    if (validated.length > 0) {
+                                        aiModalRoot.generatedCards = validated
+                                        return
+                                    }
+                                }
+
+                                // Fallback parser if API is unconfigured or failed
+                                var mockGen = []
+                                var lines = topicText.split("\n").filter(function(l) { return l.trim().length > 0 })
+                                for (var j = 0; j < Math.min(count, Math.max(3, lines.length)); j++) {
+                                    var line = lines[j % lines.length]
+                                    mockGen.push({
+                                        front: "Conceito essencial: " + line.substring(0, 45) + (line.length > 45 ? "..." : ""),
+                                        back: line,
+                                        card_type: "reading",
+                                        selected: true
+                                    })
+                                }
+                                aiModalRoot.generatedCards = mockGen
+                            })
                         }
                     }
                 }

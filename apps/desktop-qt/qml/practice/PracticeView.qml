@@ -1,10 +1,16 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: practiceRoot
     color: "#0f0e17" // bg-dark-bg
+
+    AiClient {
+        id: aiClient
+        dataController: typeof dataController !== "undefined" ? dataController : null
+    }
 
     property var sessions: []
     property var activeSession: null
@@ -65,24 +71,27 @@ Rectangle {
         dataController.createPracticeMessage(activeSession.id, "user", text)
         refreshMessages()
 
-        // Local automated assistant prompt feedback
-        responseTimer.restart()
-    }
-
-    Timer {
-        id: responseTimer
-        interval: 400
-        onTriggered: {
+        var sysPrompt = activeSession.custom_prompt || "Você é um tutor prático e examinador de estudos no Synapse. Avalie a resposta do aluno e proponha novos desafios conceituais ou práticos."
+        aiClient.promptText(sysPrompt, text, messages, function(success, replyText, errorMsg) {
             if (!activeSession) return
-            var reply = "Compreendi seu raciocínio. Vamos analisar os pontos-chave e exercitar mais uma perspectiva sobre este tema."
-            if (activeSession.custom_prompt && activeSession.custom_prompt.indexOf("entrevistador") !== -1) {
-                reply = "Ótimo ponto técnico! Como você estruturaria essa solução considerando complexidade de tempo O(N) e espaço O(1) em ambiente distribuído?"
-            } else if (activeSession.custom_prompt && activeSession.custom_prompt.indexOf("idiomas") !== -1) {
-                reply = "Good phrasing! You used natural expressions. How would you elaborate on this idea using past continuous tense?"
+            var reply = ""
+            if (success) {
+                reply = replyText
+            } else {
+                if (activeSession.custom_prompt && activeSession.custom_prompt.indexOf("entrevistador") !== -1) {
+                    reply = "Ótimo ponto técnico! Como você estruturaria essa solução considerando complexidade de tempo O(N) e espaço O(1) em ambiente distribuído?"
+                } else if (activeSession.custom_prompt && activeSession.custom_prompt.indexOf("idiomas") !== -1) {
+                    reply = "Good phrasing! You used natural expressions. How would you elaborate on this idea using past continuous tense?"
+                } else {
+                    reply = "Compreendi seu raciocínio. Vamos analisar os pontos-chave e exercitar mais uma perspectiva sobre este tema."
+                }
+                if (errorMsg && errorMsg.indexOf("não configurada") !== -1) {
+                    reply += "\n\n*(Dica: configure sua chave de API Gemini em Configurações > IA para respostas dinâmicas em tempo real)*"
+                }
             }
             dataController.createPracticeMessage(activeSession.id, "assistant", reply)
             practiceRoot.refreshMessages()
-        }
+        })
     }
 
     Component.onCompleted: {

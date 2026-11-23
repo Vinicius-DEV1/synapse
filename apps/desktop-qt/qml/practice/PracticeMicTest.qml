@@ -17,22 +17,47 @@ Rectangle {
     Shortcut {
         sequence: "Escape"
         enabled: micTestRoot.visible
-        onActivated: micTestRoot.closeRequested()
+        onActivated: {
+            stopTesting()
+            micTestRoot.closeRequested()
+        }
     }
 
-    Timer {
-        id: levelSimTimer
-        interval: 60
-        running: micTestRoot.isTesting
-        repeat: true
-        onTriggered: {
-            micTestRoot.audioLevel = 0.1 + Math.random() * 0.8
+    Connections {
+        target: typeof dataController !== "undefined" ? dataController : null
+        function onAudioRecordingLevelChanged(level) {
+            if (micTestRoot.isTesting) {
+                micTestRoot.audioLevel = qBound(0.0, level / 100.0, 1.0)
+            }
+        }
+    }
+
+    function toggleTesting() {
+        if (!isTesting) {
+            isTesting = true
+            audioLevel = 0.0
+            if (typeof dataController !== "undefined" && dataController.startAudioRecording) {
+                dataController.startAudioRecording()
+            }
+        } else {
+            stopTesting()
+        }
+    }
+
+    function stopTesting() {
+        isTesting = false
+        audioLevel = 0.0
+        if (typeof dataController !== "undefined" && dataController.cancelAudioRecording) {
+            dataController.cancelAudioRecording()
         }
     }
 
     MouseArea {
         anchors.fill: parent
-        onClicked: micTestRoot.closeRequested()
+        onClicked: {
+            stopTesting()
+            micTestRoot.closeRequested()
+        }
     }
 
     Rectangle {
@@ -116,7 +141,7 @@ Rectangle {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                    onClicked: micTestRoot.isTesting = !micTestRoot.isTesting
+                    onClicked: micTestRoot.toggleTesting()
                 }
 
                 Button {
@@ -124,7 +149,7 @@ Rectangle {
                     background: Rectangle { color: "#232135"; radius: 8 }
                     contentItem: Text { text: parent.text; color: "#fffffe"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: {
-                        micTestRoot.isTesting = false
+                        micTestRoot.stopTesting()
                         micTestRoot.closeRequested()
                     }
                 }

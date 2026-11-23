@@ -8,17 +8,57 @@ Item {
     height: 48
 
     property string activeWorkspaceId: "default"
-    property string activeWorkspaceName: "Espaço Pessoal"
+    property string activeWorkspaceName: "Espaço Pessoal (Local)"
     property string activeWorkspaceIcon: "📁"
     property string activeRole: "owner"
     property var workspaces: [
-        { id: "default", name: "Espaço Pessoal", icon: "📁", role: "owner" }
+        { id: "default", name: "Espaço Pessoal (Local)", icon: "📁", role: "owner" }
     ]
 
     signal workspaceSelected(string id)
     signal openCreateModal()
     signal openMembersModal()
     signal openEvolutionModal()
+
+    Component.onCompleted: loadWorkspaces()
+
+    function loadWorkspaces() {
+        if (typeof dataController === "undefined") return
+        var json = dataController.getConfig("workspaces_list", "")
+        var activeId = dataController.getConfig("workspaces_active_id", "default")
+        if (json && json.length > 0) {
+            try {
+                var parsed = JSON.parse(json)
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    switcherRoot.workspaces = parsed
+                }
+            } catch (e) {}
+        }
+        selectWorkspace(activeId, false)
+    }
+
+    function selectWorkspace(id, persist) {
+        var found = null
+        for (var i = 0; i < workspaces.length; i++) {
+            if (workspaces[i].id === id) {
+                found = workspaces[i]
+                break
+            }
+        }
+        if (!found && workspaces.length > 0) {
+            found = workspaces[0]
+        }
+        if (found) {
+            activeWorkspaceId = found.id
+            activeWorkspaceName = found.name
+            activeWorkspaceIcon = found.icon || "📁"
+            activeRole = found.role || "owner"
+            if (persist && typeof dataController !== "undefined") {
+                dataController.setConfig("workspaces_active_id", found.id)
+            }
+            switcherRoot.workspaceSelected(found.id)
+        }
+    }
 
     Rectangle {
         id: pillBg
@@ -83,7 +123,10 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: switcherMenu.open()
+            onClicked: {
+                switcherRoot.loadWorkspaces()
+                switcherMenu.open()
+            }
         }
     }
 
@@ -91,9 +134,18 @@ Item {
         id: switcherMenu
         y: switcherRoot.height + 4
 
-        MenuItem {
-            text: "📁 Espaço Pessoal (Local)"
-            onTriggered: switcherRoot.workspaceSelected("default")
+        Instantiator {
+            model: switcherRoot.workspaces
+            MenuItem {
+                text: (modelData.icon || "📁") + " " + modelData.name + (modelData.id === switcherRoot.activeWorkspaceId ? " ✓" : "")
+                onTriggered: switcherRoot.selectWorkspace(modelData.id, true)
+            }
+            onObjectAdded: function(index, object) {
+                switcherMenu.insertItem(index, object)
+            }
+            onObjectRemoved: function(index, object) {
+                switcherMenu.removeItem(object)
+            }
         }
 
         MenuSeparator {}

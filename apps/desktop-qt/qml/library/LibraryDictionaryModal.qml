@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: root
@@ -8,6 +9,11 @@ Rectangle {
     color: "#80000000"
     visible: false
     z: 200
+
+    AiClient {
+        id: aiClient
+        dataController: typeof dataController !== "undefined" ? dataController : null
+    }
 
     property string word: ""
     property string context: ""
@@ -40,33 +46,79 @@ Rectangle {
         isSearching = true
         statusMessage = ""
 
-        lookupTimer.start()
-    }
+        var cleanWord = word.replace(/[^a-zA-ZÀ-ÿ0-9-]/g, "").toLowerCase()
+        var xhr = new XMLHttpRequest()
+        var url = "https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(cleanWord)
+        xhr.open("GET", url)
 
-    Timer {
-        id: lookupTimer
-        interval: 350
-        repeat: false
-        onTriggered: {
-            root.isSearching = false
-            // Rich definition mock/structure
-            root.definitionData = {
-                word: root.word,
-                phonetic: "/ " + root.word.toLowerCase() + " /",
-                partOfSpeech: "noun / verb",
-                meanings: [
-                    {
-                        definition: "A fundamental concept, action or term used in the current context.",
-                        example: root.context.length > 0 ? root.context : "This demonstrates the practical usage of " + root.word + "."
-                    },
-                    {
-                        definition: "Secondary meaning relating to context or domain literature.",
-                        example: "An exemplary illustration of the subject matter."
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText)
+                        if (Array.isArray(res) && res.length > 0) {
+                            var entry = res[0]
+                            var phonetic = entry.phonetic || (entry.phonetics && entry.phonetics[0] ? entry.phonetics[0].text : "") || ("/ " + cleanWord + " /")
+                            var meanings = []
+                            var pos = ""
+                            if (Array.isArray(entry.meanings)) {
+                                for (var m = 0; m < entry.meanings.length; m++) {
+                                    var mean = entry.meanings[m]
+                                    if (!pos && mean.partOfSpeech) pos = mean.partOfSpeech
+                                    if (Array.isArray(mean.definitions)) {
+                                        for (var d = 0; d < mean.definitions.length; d++) {
+                                            var def = mean.definitions[d]
+                                            meanings.push({
+                                                definition: def.definition,
+                                                example: def.example || (m === 0 && d === 0 && root.context.length > 0 ? root.context : "")
+                                            })
+                                            if (meanings.length >= 4) break
+                                        }
+                                    }
+                                    if (meanings.length >= 4) break
+                                }
+                            }
+                            root.definitionData = {
+                                word: entry.word || root.word,
+                                phonetic: phonetic,
+                                partOfSpeech: pos || "noun / verb",
+                                meanings: meanings.length > 0 ? meanings : [{ definition: "Definição encontrada para " + cleanWord, example: root.context }],
+                                portuguese: "Significado em inglês documentado no Free Dictionary."
+                            }
+                            root.isSearching = false
+                            return
+                        }
+                    } catch (e) {
+                        console.warn("[LibraryDictionary] JSON parse error:", e.message)
                     }
-                ],
-                portuguese: "Conceito, termo ou ação fundamental referente ao texto."
+                }
+
+                // If not found in English dictionary, try Gemini structured definition
+                var sysPrompt = "Você é um léxico e dicionário multilíngue integrado do Synapse. Retorne a definição da palavra ou termo como um objeto JSON com formato: {\"word\": \"palavra\", \"phonetic\": \"/fonética/\", \"partOfSpeech\": \"classe gramatical\", \"meanings\": [{\"definition\": \"significado 1\", \"example\": \"exemplo 1\"}], \"portuguese\": \"tradução/explicação concisa em português\"}."
+                var userPrompt = "Defina o termo \"" + root.word + "\"" + (root.context ? " no contexto: \"" + root.context + "\"" : "")
+                aiClient.promptStructured(sysPrompt, userPrompt, function(success, aiData, err) {
+                    root.isSearching = false
+                    if (success && aiData && aiData.meanings) {
+                        root.definitionData = aiData
+                    } else {
+                        root.definitionData = {
+                            word: root.word,
+                            phonetic: "/ " + root.word.toLowerCase() + " /",
+                            partOfSpeech: "termo / conceito",
+                            meanings: [
+                                {
+                                    definition: "Termo presente no texto de estudo sob análise.",
+                                    example: root.context.length > 0 ? root.context : "Ocorrência identificada no leitor."
+                                }
+                            ],
+                            portuguese: "Conceito lexical referente ao contexto de leitura."
+                        }
+                    }
+                })
             }
         }
+
+        xhr.send()
     }
 
     MouseArea {

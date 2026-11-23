@@ -48,38 +48,19 @@ Rectangle {
             root.folderPath = path
             var parts = path.split(/[\/\\]/)
             root.folderName = parts[parts.length - 1] || "Pasta"
-            root.totalFiles = 12
+            root.totalFiles = 1
             root.completedFiles = 0
-            root.uploadStatus = "12 arquivos encontrados para importação e criptografia."
-        }
-    }
-
-    Timer {
-        id: uploadTimer
-        interval: 160
-        repeat: true
-        onTriggered: {
-            root.completedFiles += 1
-            root.totalProgress = root.completedFiles / root.totalFiles
-            if (root.completedFiles >= root.totalFiles) {
-                uploadTimer.stop()
-                root.totalProgress = 1.0
-                root.uploadStatus = "Pasta importada e criptografada com sucesso!"
-                root.isUploading = false
-                root.folderUploadCompleted(root.folderPath, root.targetFolderId)
-            } else {
-                root.uploadStatus = "Criptografando arquivo " + root.completedFiles + " de " + root.totalFiles + " (AES-256-GCM)…"
-            }
+            root.uploadStatus = "Pasta pronta para importação e criptografia E2EE."
         }
     }
 
     function startUpload() {
         if (!folderPath || folderPath.length === 0) return
         isUploading = true
-        completedFiles = 0
-        totalProgress = 0.05
-        uploadStatus = "Criando hierarquia de pastas e envelopes de chaves…"
-        uploadTimer.start()
+        totalProgress = 1.0
+        uploadStatus = "Importando hierarquia de arquivos e criptografando..."
+        root.folderUploadCompleted(root.folderPath, root.targetFolderId)
+        closeModal()
     }
 
     MouseArea {

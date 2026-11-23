@@ -13,10 +13,18 @@ Rectangle {
     property bool isRecording: false
     property int recordedSeconds: 0
     property string recordedFilePath: ""
+    property int audioLevel: 0
 
     signal recordingStarted()
     signal recordingStopped(string filePath)
     signal recordingDiscarded()
+
+    Connections {
+        target: typeof dataController !== "undefined" ? dataController : null
+        function onAudioRecordingLevelChanged(level) {
+            recorderRoot.audioLevel = level
+        }
+    }
 
     Timer {
         id: recordTimer
@@ -52,10 +60,18 @@ Rectangle {
                     if (!recorderRoot.isRecording) {
                         recorderRoot.recordedSeconds = 0
                         recorderRoot.isRecording = true
+                        if (typeof dataController !== "undefined" && dataController.startAudioRecording) {
+                            dataController.startAudioRecording()
+                        }
                         recorderRoot.recordingStarted()
                     } else {
                         recorderRoot.isRecording = false
-                        recorderRoot.recordingStopped(recorderRoot.recordedFilePath)
+                        var savedPath = ""
+                        if (typeof dataController !== "undefined" && dataController.stopAudioRecording) {
+                            savedPath = dataController.stopAudioRecording()
+                        }
+                        recorderRoot.recordedFilePath = savedPath
+                        recorderRoot.recordingStopped(savedPath)
                     }
                 }
             }
@@ -81,7 +97,7 @@ Rectangle {
                 }
 
                 Text {
-                    text: recorderRoot.isRecording ? qsTr("Gravando áudio...") : (recorderRoot.recordedSeconds > 0 ? qsTr("Áudio gravado") : qsTr("Pronto para gravar"))
+                    text: recorderRoot.isRecording ? qsTr("Gravando áudio com microfone...") : (recorderRoot.recordedSeconds > 0 ? qsTr("Áudio gravado") : qsTr("Pronto para gravar"))
                     color: "#71717a"
                     font.pixelSize: 11
                 }
@@ -97,7 +113,7 @@ Rectangle {
                     delegate: Rectangle {
                         required property int index
                         width: 4
-                        height: Math.max(4, (index % 4 + 1) * 4)
+                        height: Math.max(4, Math.min(24, Math.round((recorderRoot.audioLevel / 100.0) * ((index % 4 + 1) * 6))))
                         radius: 2
                         color: "#ef4444"
                     }
@@ -126,6 +142,9 @@ Rectangle {
                 onClicked: {
                     recorderRoot.recordedSeconds = 0
                     recorderRoot.recordedFilePath = ""
+                    if (typeof dataController !== "undefined" && dataController.cancelAudioRecording) {
+                        dataController.cancelAudioRecording()
+                    }
                     recorderRoot.recordingDiscarded()
                 }
             }

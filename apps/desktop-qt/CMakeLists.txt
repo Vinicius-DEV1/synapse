@@ -104,6 +104,8 @@ add_executable(synapse-desktop
     src/controllers/vault/vault_asset_migration_controller.cpp
     src/controllers/vault/vault_removal_controller.cpp
     src/controllers/video/video_controller.cpp
+    src/controllers/video/video_youtube_controller.cpp
+    src/controllers/media/audio_recorder_controller.cpp
     src/controllers/video/video_storage_controller.cpp
     src/controllers/video/video_subtitles_controller.cpp
     src/controllers/video/video_subtitle_metadata_controller.cpp
@@ -283,6 +285,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/vault/vault_asset_migration_controller.cpp
         src/controllers/vault/vault_removal_controller.cpp
         src/controllers/video/video_controller.cpp
+        src/controllers/video/video_youtube_controller.cpp
+        src/controllers/media/audio_recorder_controller.cpp
         src/controllers/video/video_storage_controller.cpp
         src/controllers/video/video_subtitles_controller.cpp
         src/controllers/video/video_subtitle_metadata_controller.cpp

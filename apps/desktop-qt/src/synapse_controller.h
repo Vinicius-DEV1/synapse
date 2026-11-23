@@ -21,6 +21,7 @@
 #include <QtCore/QMap>
 #include <QtCore/QTemporaryFile>
 #include <QtCore/QPointer>
+#include <QtCore/QProcess>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -113,9 +114,23 @@ public:
     QString vaultLockError() const { return m_vaultLockError; }
 
     Q_INVOKABLE void refreshStats();
-    Q_INVOKABLE bool executeSql(const QString &sql);
+    bool executeSql(const QString &sql);
+    Q_INVOKABLE bool checkpointWal();
     Q_INVOKABLE QString getConfig(const QString &key, const QString &defaultValue = QString());
     Q_INVOKABLE bool setConfig(const QString &key, const QString &value);
+
+    // YouTube integration
+    Q_INVOKABLE QVariantMap fetchYouTubeInfo(const QString &url);
+    Q_INVOKABLE QString downloadYouTubeVideo(const QString &url, const QString &collectionId = "",
+                                            const QString &quality = "720p", const QStringList &subtitles = {});
+    Q_INVOKABLE void cancelYouTubeDownload();
+
+    // Audio capture integration
+    Q_INVOKABLE bool startAudioRecording(const QString &destinationPath = QString());
+    Q_INVOKABLE QString stopAudioRecording();
+    Q_INVOKABLE void cancelAudioRecording();
+    Q_INVOKABLE bool isAudioRecording() const;
+    Q_INVOKABLE int getAudioRecordingLevel() const;
 
     // 1. Pages / Editor (Hierarchical & Pinned Support)
     Q_INVOKABLE QVariantList getPages(const QString &filter = "");
@@ -457,6 +472,9 @@ signals:
     void tasksChanged();
     void taskCancelled(const QString &taskId);
     void passwordBreachChecked(const QString &password, const QVariantMap &result);
+    void youtubeDownloadProgress(double progress, const QString &status);
+    void youtubeDownloadFinished(bool success, const QString &error, const QString &videoPath);
+    void audioRecordingLevelChanged(int level);
 
 private:
     void startNotesRichImageOperation(std::function<QVariantMap()> operation,
@@ -509,6 +527,12 @@ private:
     QVariantList m_activeTasks;
     QPointer<QNetworkReply> m_activeBreachReply;
     QNetworkAccessManager *m_networkManager = nullptr;
+    QProcess *m_youtubeProcess = nullptr;
+    QString m_activeYouTubeTaskId;
+    QProcess *m_audioRecordProcess = nullptr;
+    QString m_activeAudioRecordPath;
+    QTimer *m_audioLevelTimer = nullptr;
+    int m_audioRecordingLevel = 0;
 
     void checkKeychainState();
     void clearUnlockedKeys();

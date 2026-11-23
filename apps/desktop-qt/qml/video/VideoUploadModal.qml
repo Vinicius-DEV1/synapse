@@ -79,39 +79,13 @@ Rectangle {
         }
     }
 
-    Timer {
-        id: uploadSimTimer
-        interval: 120
-        repeat: true
-        onTriggered: {
-            root.uploadProgress += 0.08
-            if (root.uploadProgress >= 1.0) {
-                uploadSimTimer.stop()
-                root.uploadProgress = 1.0
-                root.uploadPhase = "Criptografia e indexação finalizadas!"
-                root.isUploading = false
-                root.isSuccess = true
-                root.uploadResult = {
-                    title: root.videoFileName,
-                    duration: 120,
-                    size: 45 * 1024 * 1024,
-                    quality: root.selectedQuality
-                }
-                root.uploadCompleted(root.videoPath, root.targetCollectionId)
-            } else if (root.uploadProgress > 0.6) {
-                root.uploadPhase = "Criptografando com chave Culture (AES-256-GCM)…"
-            } else if (root.uploadProgress > 0.3) {
-                root.uploadPhase = "Extraindo faixas de áudio e metadados…"
-            }
-        }
-    }
-
     function startUpload() {
         if (!videoPath || videoPath.length === 0) return
         isUploading = true
-        uploadProgress = 0.05
-        uploadPhase = "Lendo cabeçalhos de contêiner…"
-        uploadSimTimer.start()
+        uploadProgress = 1.0
+        uploadPhase = "Importando e criptografando vídeo..."
+        root.uploadCompleted(root.videoPath, root.targetCollectionId)
+        closeModal()
     }
 
     MouseArea {

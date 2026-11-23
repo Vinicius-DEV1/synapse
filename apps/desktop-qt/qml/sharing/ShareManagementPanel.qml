@@ -8,9 +8,7 @@ Rectangle {
     color: "#aa000000"
     z: 110
 
-    property var sharedPages: [
-        { id: "1", title: "Resumo de Direito Constitucional", url: "https://synapse.local/share/doc-1", views: 12, permission: "view" }
-    ]
+    property var sharedPages: []
 
     signal closed()
     signal revokeRequested(string pageId)
@@ -65,12 +63,30 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
+            // Empty state placeholder
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: panelRoot.sharedPages.length === 0
+                color: "transparent"
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Text { text: "🔗"; font.pixelSize: 32; horizontalAlignment: Text.AlignHCenter; Layout.alignment: Qt.AlignHCenter }
+                    Text { text: "Nenhuma página compartilhada no momento."; color: "#d4d4d8"; font.pixelSize: 13; font.bold: true; horizontalAlignment: Text.AlignHCenter; Layout.alignment: Qt.AlignHCenter }
+                    Text { text: "Gere links de compartilhamento pelo menu de opções de qualquer página de notas."; color: "#71717a"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; Layout.alignment: Qt.AlignHCenter }
+                }
+            }
+
             // Shared Items List
             ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
                 spacing: 8
+                visible: panelRoot.sharedPages.length > 0
                 model: panelRoot.sharedPages
 
                 delegate: Rectangle {

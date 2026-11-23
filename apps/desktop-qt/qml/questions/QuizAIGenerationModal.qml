@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import "../ui"
 
 Rectangle {
     id: aiQuizModalRoot
@@ -8,6 +9,11 @@ Rectangle {
     color: "#b3000000"
     visible: false
     z: 130
+
+    AiClient {
+        id: aiClient
+        dataController: typeof dataController !== "undefined" ? dataController : null
+    }
 
     property string batteryId: ""
     property string batteryName: "Bateria"
@@ -288,35 +294,66 @@ Rectangle {
         var qType = typeCombo.currentIndex // 0: MC, 1: Open, 2: Mixed
         var topic = topicInput.text.trim()
 
-        var results = []
-        for (var i = 1; i <= count; i++) {
-            var isCurrentOpen = (qType === 1) || (qType === 2 && i % 2 === 0)
-            if (isCurrentOpen) {
-                results.push({
-                    prompt: "Explique os principais aspectos de " + topic + " (Tópico #" + i + "):",
-                    type: "open",
-                    options: [],
-                    correctIndex: 0,
-                    explanation: "Critérios fundamentais: análise sistemática dos requisitos e aplicação prática em " + topic + ".",
-                    tags: [topic.split(" ")[0].toLowerCase(), "discursiva"]
-                })
-            } else {
-                results.push({
-                    prompt: "Acerca de " + topic + ", assinale a assertiva correta referente ao ponto #" + i + ":",
-                    type: "multiple_choice",
-                    options: [
-                        "Assertiva prioritária e em conformidade estrita com o regramento de " + topic + ".",
-                        "Hipótese que incorre em vedação expressa nos casos correlatos.",
-                        "Disposição revogada e inaplicável ao contexto contemporâneo.",
-                        "Exceção secundária sem amparo na regra geral de regência."
-                    ],
-                    correctIndex: 0,
-                    explanation: "A alternativa A reflete com precisão os postulados fundamentais de " + topic + ".",
-                    tags: [topic.split(" ")[0].toLowerCase(), "simulado"]
-                })
+        var formatDesc = qType === 0 ? "apenas múltipla escolha com 4 opções e correctIndex (0 a 3)" :
+                         (qType === 1 ? "apenas discursivas com campo options vazio e explanation como critério de correção" :
+                          "mistas (alternando múltipla escolha e discursivas)")
+
+        var sysPrompt = "Você é um criador de questões acadêmicas e de concursos para o Synapse. Crie exatamente " + count + " questões de alto nível sobre o tema informado. O formato de cada questão DEVE ser: {\"prompt\": \"enunciado\", \"type\": \"multiple_choice\" ou \"open\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correctIndex\": 0, \"explanation\": \"justificativa detalhada\", \"tags\": [\"tag1\"]}. Responda como um array JSON contendo esses objetos."
+        var userPrompt = "Gere " + count + " questões sobre: \"" + topic + "\". Tipos: " + formatDesc + "."
+
+        aiClient.promptStructured(sysPrompt, userPrompt, function(success, parsedList, errorMsg) {
+            isGenerating = false
+            if (success && Array.isArray(parsedList) && parsedList.length > 0) {
+                var validated = []
+                for (var i = 0; i < parsedList.length; i++) {
+                    var q = parsedList[i]
+                    if (q.prompt && q.prompt.length > 0) {
+                        validated.push({
+                            prompt: q.prompt,
+                            type: q.type || (q.options && q.options.length > 0 ? "multiple_choice" : "open"),
+                            options: Array.isArray(q.options) ? q.options : [],
+                            correctIndex: typeof q.correctIndex === "number" ? q.correctIndex : 0,
+                            explanation: q.explanation || "Gabarito fundamentado.",
+                            tags: Array.isArray(q.tags) ? q.tags : [topic.split(" ")[0].toLowerCase()]
+                        })
+                    }
+                }
+                if (validated.length > 0) {
+                    aiQuizModalRoot.generatedQuestions = validated
+                    return
+                }
             }
-        }
-        aiQuizModalRoot.generatedQuestions = results
-        isGenerating = false
+
+            // Fallback template generation if API is unconfigured or failed
+            var results = []
+            for (var j = 1; j <= count; j++) {
+                var isCurrentOpen = (qType === 1) || (qType === 2 && j % 2 === 0)
+                if (isCurrentOpen) {
+                    results.push({
+                        prompt: "Explique os principais aspectos de " + topic + " (Tópico #" + j + "):",
+                        type: "open",
+                        options: [],
+                        correctIndex: 0,
+                        explanation: "Critérios fundamentais: análise sistemática dos requisitos e aplicação prática em " + topic + ".",
+                        tags: [topic.split(" ")[0].toLowerCase(), "discursiva"]
+                    })
+                } else {
+                    results.push({
+                        prompt: "Acerca de " + topic + ", assinale a assertiva correta referente ao ponto #" + j + ":",
+                        type: "multiple_choice",
+                        options: [
+                            "Assertiva prioritária e em conformidade estrita com o regramento de " + topic + ".",
+                            "Hipótese que incorre em vedação expressa nos casos correlatos.",
+                            "Disposição revogada e inaplicável ao contexto contemporâneo.",
+                            "Exceção secundária sem amparo na regra geral de regência."
+                        ],
+                        correctIndex: 0,
+                        explanation: "A alternativa A reflete com precisão os postulados fundamentais de " + topic + ".",
+                        tags: [topic.split(" ")[0].toLowerCase(), "simulado"]
+                    })
+                }
+            }
+            aiQuizModalRoot.generatedQuestions = results
+        })
     }
 }

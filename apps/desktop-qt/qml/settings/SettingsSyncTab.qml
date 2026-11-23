@@ -26,7 +26,9 @@ Rectangle {
         interval: 400
         repeat: false
         onTriggered: {
-            dataController.executeSql("PRAGMA wal_checkpoint(PASSIVE);")
+            if (typeof dataController !== "undefined" && dataController.checkpointWal) {
+                dataController.checkpointWal()
+            }
             root.isSyncing = false
             root.lastSyncTime = "Último checkpoint: agora mesmo"
             root.syncStatus = "Base Local Íntegra (SQLite WAL Ativo)"

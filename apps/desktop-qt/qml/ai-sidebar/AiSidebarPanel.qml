@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import "../ui"
 
 Rectangle {
     id: sidebarRoot
@@ -11,6 +12,7 @@ Rectangle {
     visible: false
     z: 90
 
+    property var dataCtrl: typeof dataController !== "undefined" ? dataController : null
     property var chatMessages: [
         { role: "assistant", messageText: "Olá! Sou seu assistente de estudos Synapse. Como posso ajudar você hoje?", timestamp: "Agora" }
     ]
@@ -214,20 +216,9 @@ Rectangle {
         }
     }
 
-    Timer {
-        id: replyTimer
-        interval: 600
-        onTriggered: {
-            sidebarRoot.isGenerating = false
-            var msgs = [...sidebarRoot.chatMessages]
-            msgs.push({
-                role: "assistant",
-                messageText: "Compreendido perfeitamente. Com base nas anotações do Synapse, sintetizei as informações relevantes e organizei um roteiro de fixação ideal para seus estudos.",
-                timestamp: "Agora"
-            })
-            sidebarRoot.chatMessages = msgs
-            msgList.positionViewAtEnd()
-        }
+    AiClient {
+        id: aiClient
+        dataController: sidebarRoot.dataCtrl
     }
 
     function handleSend() {
@@ -248,7 +239,27 @@ Rectangle {
         chatMessages = msgs
         msgList.positionViewAtEnd()
         isGenerating = true
-        replyTimer.restart()
+
+        var sysPrompt = "Você é o assistente inteligente do Synapse para estudos e anotações. Ajude com resumos, perguntas e explicações claras e didáticas."
+        aiClient.promptText(sysPrompt, text, chatMessages.slice(0, -1), function(success, replyText, errorMsg) {
+            sidebarRoot.isGenerating = false
+            var updated = [...sidebarRoot.chatMessages]
+            if (success) {
+                updated.push({
+                    role: "assistant",
+                    messageText: replyText,
+                    timestamp: "Agora"
+                })
+            } else {
+                updated.push({
+                    role: "assistant",
+                    messageText: "⚠️ " + errorMsg,
+                    timestamp: "Agora"
+                })
+            }
+            sidebarRoot.chatMessages = updated
+            msgList.positionViewAtEnd()
+        })
     }
 
     // Mention Popup (Floats above input bar, outside ColumnLayout)
