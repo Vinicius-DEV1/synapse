@@ -17,7 +17,7 @@ Rectangle {
     readonly property bool isEditing: initialTransaction !== null && initialTransaction !== undefined
     readonly property bool isTransfer: transTypeCombo.currentIndex === 2
 
-    signal transactionSubmitted(string description, double amount, string type, string category, string date, string accountId, string destinationAccountId)
+    signal transactionSubmitted(string description, double amount, string type, string category, string date, string accountId, string destinationAccountId, string status)
     signal closed()
 
     function loadInitialTransaction() {
@@ -32,6 +32,7 @@ Rectangle {
             accCombo.currentIndex = 0
             fromAccCombo.currentIndex = 0
             toAccCombo.currentIndex = (modalRoot.accounts.length > 1) ? 1 : 0
+            transPendingCheck.checked = false
             return
         }
         transDescInput.text = initialTransaction.description || ""
@@ -40,6 +41,7 @@ Rectangle {
         transTypeCombo.currentIndex = typeIdx >= 0 ? typeIdx : 0
         transCategoryInput.text = initialTransaction.category || "Geral"
         transDateInput.text = initialTransaction.date || today
+        transPendingCheck.checked = initialTransaction.status === "pending" || initialTransaction.is_paid === 0
 
         // Select account in combo
         for (var i = 0; i < modalRoot.accounts.length; i++) {
@@ -65,7 +67,7 @@ Rectangle {
     Rectangle {
         anchors.centerIn: parent
         width: 460
-        height: modalRoot.isTransfer ? 460 : 440
+        height: modalRoot.isTransfer ? 480 : 490
         radius: 16
         color: "#1a1924"
         border.color: "#1affffff"
@@ -143,6 +145,21 @@ Rectangle {
                     Layout.fillWidth: true
                     textRole: "name"
                     model: modalRoot.accounts
+                }
+            }
+
+            // Pending Checkbox
+            CheckBox {
+                id: transPendingCheck
+                text: qsTr("Marcar como pendente / futura (não altera o saldo)")
+                visible: !modalRoot.isTransfer
+                checked: false
+                contentItem: Text {
+                    text: transPendingCheck.text
+                    font.pixelSize: 12
+                    color: transPendingCheck.checked ? "#fbbf24" : "#a7a9be"
+                    verticalAlignment: Text.AlignVCenter
+                    leftPadding: transPendingCheck.indicator.width + 6
                 }
             }
 
@@ -236,6 +253,7 @@ Rectangle {
                         }
 
                         modalRoot.errorMessage = ""
+                        var status = transPendingCheck.visible && transPendingCheck.checked ? "pending" : "completed"
                         modalRoot.transactionSubmitted(
                             transDescInput.text.trim(),
                             val,
@@ -243,7 +261,8 @@ Rectangle {
                             type === "transfer" ? "Transferência" : transCategoryInput.text.trim(),
                             date,
                             accId,
-                            destId
+                            destId,
+                            status
                         )
                     }
                 }

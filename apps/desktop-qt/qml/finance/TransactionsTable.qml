@@ -11,6 +11,7 @@ ListView {
 
     signal deleteRequested(string transactionId)
     signal editRequested(var transaction)
+    signal confirmPendingRequested(var transaction)
 
     function getAccountName(accId) {
         if (!accId || accId.length === 0) return ""
@@ -78,6 +79,25 @@ ListView {
                             font.bold: true
                         }
                     }
+                    // Pending status badge
+                    Rectangle {
+                        readonly property bool isPending: transRowRect.txData.status === "pending" || transRowRect.txData.is_paid === 0
+                        visible: isPending
+                        Layout.preferredHeight: 18
+                        Layout.preferredWidth: pendingLabel.contentWidth + 12
+                        radius: 4
+                        color: "#26f59e0b"
+                        border.color: "#4df59e0b"
+                        border.width: 1
+                        Text {
+                            id: pendingLabel
+                            anchors.centerIn: parent
+                            text: "⏱ Pendente"
+                            color: "#fbbf24"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                    }
                 }
             }
 
@@ -92,7 +112,31 @@ ListView {
             }
 
             Row {
-                spacing: 4
+                spacing: 6
+                // Confirm Pending button
+                Rectangle {
+                    readonly property bool isPending: transRowRect.txData.status === "pending" || transRowRect.txData.is_paid === 0
+                    visible: isPending
+                    width: 76
+                    height: 28
+                    radius: 6
+                    color: confirmBtnMouse.containsMouse ? "#3310b981" : "#1a10b981"
+                    border.color: "#4d10b981"
+                    border.width: 1
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Text { text: "✓"; color: "#34d399"; font.pixelSize: 11; font.bold: true }
+                        Text { text: "Efetivar"; color: "#34d399"; font.pixelSize: 11; font.bold: true }
+                    }
+                    MouseArea {
+                        id: confirmBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: transListView.confirmPendingRequested(transRowRect.txData)
+                    }
+                }
                 Rectangle {
                     width: 28; height: 28; radius: 6
                     color: editTransMouse.containsMouse ? "#1a8b5cf6" : "transparent"

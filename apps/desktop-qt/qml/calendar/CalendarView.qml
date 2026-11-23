@@ -210,16 +210,35 @@ Rectangle {
             Layout.fillHeight: true
             currentIndex: calendarRoot.viewMode === "grid" ? 0 : 1
 
-            // View 1: Month Calendar Grid
-            CalendarMonthGrid {
-                monthCells: calendarRoot.monthCells
-                currentMonthLabel: calendarRoot.formatMonthYear(calendarRoot.currentMonthDate)
+            // View 1: Month Calendar Grid with Task Feed Sidebar
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 16
 
-                onPrevMonthRequested: calendarRoot.prevMonth()
-                onNextMonthRequested: calendarRoot.nextMonth()
-                onTodayRequested: calendarRoot.goToToday()
-                onCellClicked: function(dateStr) { calendarRoot.openDayModal(dateStr) }
-                onEventClicked: function(eventData) { calendarRoot.openEditModal(eventData) }
+                CalendarMonthGrid {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    monthCells: calendarRoot.monthCells
+                    currentMonthLabel: calendarRoot.formatMonthYear(calendarRoot.currentMonthDate)
+
+                    onPrevMonthRequested: calendarRoot.prevMonth()
+                    onNextMonthRequested: calendarRoot.nextMonth()
+                    onTodayRequested: calendarRoot.goToToday()
+                    onCellClicked: function(dateStr) { calendarRoot.openDayModal(dateStr) }
+                    onEventClicked: function(eventData) { calendarRoot.openEditModal(eventData) }
+                }
+
+                CalendarTaskFeed {
+                    Layout.preferredWidth: 320
+                    Layout.fillHeight: true
+                    events: calendarRoot.allEvents
+                    onEditRequested: function(eventData) { calendarRoot.openEditModal(eventData) }
+                    onToggleStatusRequested: function(eventId, curStatus) {
+                        dataController.toggleEventStatus(eventId)
+                        calendarRoot.refreshEvents()
+                    }
+                }
             }
 
             // View 2: Events ListView

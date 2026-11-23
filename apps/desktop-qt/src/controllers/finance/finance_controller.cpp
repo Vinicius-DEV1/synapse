@@ -103,22 +103,51 @@ bool SynapseDataController::deleteAccount(const QString &accountId) {
 }
 
 bool SynapseDataController::addTransaction(const QString &description, double amount, const QString &type,
-                                           const QString &category, const QString &date, const QString &accountId) {
+                                           const QString &category, const QString &date, const QString &accountId,
+                                           const QString &status) {
     if (!m_db || description.trimmed().isEmpty() || !std::isfinite(amount) || amount < 0.0) return false;
     const QByteArray descBytes = description.toUtf8();
     const QByteArray typeBytes = type.toUtf8();
     const QByteArray catBytes = category.toUtf8();
     const QByteArray dateBytes = date.toUtf8();
     const QByteArray accBytes = accountId.toUtf8();
+    const QByteArray statusBytes = status.toUtf8();
 
-    const int res = synapse_finance_add_transaction(
+    const int res = synapse_finance_add_transaction_with_status(
         m_db,
         descBytes.constData(),
         amount,
         typeBytes.constData(),
         category.trimmed().isEmpty() ? nullptr : catBytes.constData(),
         date.trimmed().isEmpty() ? nullptr : dateBytes.constData(),
-        accountId.trimmed().isEmpty() ? nullptr : accBytes.constData()
+        accountId.trimmed().isEmpty() ? nullptr : accBytes.constData(),
+        status.trimmed().isEmpty() ? nullptr : statusBytes.constData()
+    );
+    if (res == 0) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}
+
+bool SynapseDataController::confirmPendingTransaction(const QString &txId, double amount, const QString &date,
+                                                      const QString &accountId, const QString &description,
+                                                      const QString &category) {
+    if (!m_db || txId.trimmed().isEmpty() || !std::isfinite(amount) || amount < 0.0) return false;
+    const QByteArray idBytes = txId.toUtf8();
+    const QByteArray dateBytes = date.toUtf8();
+    const QByteArray accBytes = accountId.toUtf8();
+    const QByteArray descBytes = description.toUtf8();
+    const QByteArray catBytes = category.toUtf8();
+
+    const int res = synapse_finance_confirm_pending_transaction(
+        m_db,
+        idBytes.constData(),
+        amount,
+        date.trimmed().isEmpty() ? nullptr : dateBytes.constData(),
+        accountId.trimmed().isEmpty() ? nullptr : accBytes.constData(),
+        description.trimmed().isEmpty() ? nullptr : descBytes.constData(),
+        category.trimmed().isEmpty() ? nullptr : catBytes.constData()
     );
     if (res == 0) {
         refreshStats();

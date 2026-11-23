@@ -23,6 +23,8 @@ Rectangle {
     property bool isPaymentModalOpen: false
     property bool isWishlistDetailsOpen: false
     property bool isAcquireModalOpen: false
+    property bool isConfirmPendingModalOpen: false
+    property var confirmingTransaction: null
     property var editingTransaction: null
     property var deletingTransaction: null
     property var selectedWishlistItem: null
@@ -113,6 +115,10 @@ Rectangle {
                     financeRoot.editingTransaction = transaction
                     financeRoot.isAddingTransaction = true
                 }
+                onConfirmPendingRequested: function(tx) {
+                    financeRoot.confirmingTransaction = tx
+                    financeRoot.isConfirmPendingModalOpen = true
+                }
                 onDeleteRequested: function(txId) {
                     for (var i = 0; i < financeRoot.transactions.length; i++) {
                         if (financeRoot.transactions[i].id === txId) {
@@ -165,7 +171,7 @@ Rectangle {
             financeRoot.isAddingTransaction = false
             financeRoot.editingTransaction = null
         }
-        onTransactionSubmitted: function(desc, amount, type, cat, date, accId, destId) {
+        onTransactionSubmitted: function(desc, amount, type, cat, date, accId, destId, status) {
             var saved = false
             if (type === "transfer") {
                 saved = dataController.addTransfer(desc, amount, accId, destId, date)
@@ -181,7 +187,7 @@ Rectangle {
                     destId
                 )
             } else {
-                saved = dataController.addTransaction(desc, amount, type, cat, date, accId)
+                saved = dataController.addTransaction(desc, amount, type, cat, date, accId, status || "")
             }
 
             if (!saved) {
@@ -284,6 +290,25 @@ Rectangle {
             dataController.addTransaction(title, amount, "expense", "Wishlist", date, accountId)
             dataController.deleteWishlistItem(itemId)
             financeRoot.refreshData()
+        }
+    }
+
+    // Modal: Efetivar Transação Pendente
+    FinanceConfirmPendingModal {
+        isOpen: financeRoot.isConfirmPendingModalOpen
+        transaction: financeRoot.confirmingTransaction
+        accounts: financeRoot.accounts
+        onClosed: {
+            financeRoot.isConfirmPendingModalOpen = false
+            financeRoot.confirmingTransaction = null
+        }
+        onConfirmed: function(txId, amount, date, accountId, description, category) {
+            var ok = dataController.confirmPendingTransaction(txId, amount, date, accountId, description, category)
+            if (ok) {
+                financeRoot.isConfirmPendingModalOpen = false
+                financeRoot.confirmingTransaction = null
+                financeRoot.refreshData()
+            }
         }
     }
 }

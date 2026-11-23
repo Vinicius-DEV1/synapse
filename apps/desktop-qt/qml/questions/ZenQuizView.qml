@@ -208,6 +208,14 @@ Rectangle {
         }
         onRequestDeleteBattery: function(batteryId) {
             questionOverlays.pendingDeleteBatteryId = batteryId
+            var found = null
+            for (var i = 0; i < quizRoot.batteries.length; i++) {
+                if (quizRoot.batteries[i].id === batteryId) {
+                    found = quizRoot.batteries[i]
+                    break
+                }
+            }
+            questionOverlays.pendingDeleteBattery = found || { id: batteryId, title: "Sem título", questions: [] }
             questionOverlays.isDeleteConfirmationOpen = true
         }
     }

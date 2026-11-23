@@ -240,7 +240,8 @@ public:
     Q_INVOKABLE bool createAccount(const QString &name, const QString &color = "#10b981", const QString &icon = "wallet", double initialBalance = 0.0);
     Q_INVOKABLE bool updateAccount(const QString &accountId, const QString &name, const QString &color = "#10b981", const QString &icon = "wallet", double initialBalance = 0.0);
     Q_INVOKABLE bool deleteAccount(const QString &accountId);
-    Q_INVOKABLE bool addTransaction(const QString &description, double amount, const QString &type, const QString &category, const QString &date, const QString &accountId = "");
+    Q_INVOKABLE bool addTransaction(const QString &description, double amount, const QString &type, const QString &category, const QString &date, const QString &accountId = "", const QString &status = "");
+    Q_INVOKABLE bool confirmPendingTransaction(const QString &txId, double amount, const QString &date, const QString &accountId, const QString &description, const QString &category);
     Q_INVOKABLE bool addTransfer(const QString &description, double amount, const QString &fromAccountId, const QString &toAccountId, const QString &date = "");
     Q_INVOKABLE bool updateTransaction(const QString &txId, const QString &description, double amount, const QString &type, const QString &category, const QString &date = "", const QString &accountId = "", const QString &destinationAccountId = "");
     Q_INVOKABLE bool deleteTransaction(const QString &txId);

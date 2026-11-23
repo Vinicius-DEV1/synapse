@@ -13,6 +13,7 @@ Rectangle {
     property bool isOpen: false
     property string searchQuery: ""
     property int selectedIndex: 0
+    property string activeScope: "all" // "all" | "title" | "content" | "pinned"
 
     signal navigateToTab(string tabKey)
     signal openPage(string pageId)
@@ -21,6 +22,7 @@ Rectangle {
     function open() {
         isOpen = true
         searchQuery = ""
+        activeScope = "all"
         paletteInput.text = ""
         selectedIndex = 0
         updateResults()
@@ -57,31 +59,103 @@ Rectangle {
 
     property var filteredResults: []
 
+    function stripMarkup(str) {
+        if (!str) return ""
+        return str.replace(/<[^>]*>/g, " ").replace(/\{[^}]*\}/g, " ").replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim()
+    }
+
+    function getSnippet(content, queryStr) {
+        if (!content || !queryStr || queryStr.trim().length === 0) return ""
+        var cleaned = stripMarkup(content)
+        var terms = queryStr.trim().toLowerCase().split(/\s+/)
+        var lower = cleaned.toLowerCase()
+        var firstIdx = -1
+        var matchedTerm = ""
+        for (var i = 0; i < terms.length; i++) {
+            var term = terms[i]
+            if (term.length === 0) continue
+            var idx = lower.indexOf(term)
+            if (idx !== -1 && (firstIdx === -1 || idx < firstIdx)) {
+                firstIdx = idx
+                matchedTerm = term
+            }
+        }
+        if (firstIdx === -1) return ""
+        var start = Math.max(0, firstIdx - 35)
+        var end = Math.min(cleaned.length, firstIdx + matchedTerm.length + 45)
+        var snippet = cleaned.substring(start, end)
+        if (start > 0) snippet = "…" + snippet
+        if (end < cleaned.length) snippet = snippet + "…"
+        return snippet
+    }
+
     function updateResults() {
         var q = searchQuery.trim().toLowerCase()
-        if (q.length === 0) {
-            filteredResults = allActions
-            return
-        }
+        var scope = activeScope
         var matches = []
-        for (var i = 0; i < allActions.length; i++) {
-            var item = allActions[i]
-            if (item.label.toLowerCase().indexOf(q) !== -1 || item.category.toLowerCase().indexOf(q) !== -1) {
-                matches.push(item)
+
+        // If scope is 'all', also include matching actions
+        if (scope === "all") {
+            for (var i = 0; i < allActions.length; i++) {
+                var act = allActions[i]
+                if (q.length === 0 || act.label.toLowerCase().indexOf(q) !== -1 || act.category.toLowerCase().indexOf(q) !== -1) {
+                    matches.push({
+                        label: act.label,
+                        icon: act.icon,
+                        category: act.category,
+                        tab: act.tab,
+                        action: act.action,
+                        snippet: ""
+                    })
+                }
             }
         }
 
-        // Also search notes titles dynamically
-        var pages = dataController.getPages(q)
-        for (var p = 0; p < Math.min(pages.length, 5); p++) {
+        // Fetch pages from dataController
+        var pages = []
+        try {
+            if (scope === "pinned") {
+                pages = dataController.getPinnedPages()
+            } else {
+                pages = dataController.getPages(q)
+            }
+        } catch (e) {
+            pages = dataController.getPages(q)
+        }
+
+        for (var p = 0; p < pages.length; p++) {
             var page = pages[p]
+            if (!page) continue
+
+            var pTitle = (page.title || "").trim()
+            var pContent = page.content || ""
+            var isPinned = Boolean(page.is_pinned === 1 || page.is_pinned === true)
+
+            if (scope === "pinned" && !isPinned) continue
+
+            var titleMatches = q.length === 0 || pTitle.toLowerCase().indexOf(q) !== -1
+            var contentMatches = false
+            var snippet = ""
+
+            if (q.length > 0) {
+                snippet = getSnippet(pContent, q)
+                contentMatches = snippet.length > 0
+            }
+
+            if (scope === "title" && !titleMatches) continue
+            if (scope === "content" && !contentMatches) continue
+            if (scope === "all" && q.length > 0 && !titleMatches && !contentMatches) continue
+
             matches.push({
-                label: "Nota: " + (page.title || "Sem título"),
+                label: pTitle.length > 0 ? pTitle : "Sem título",
                 icon: page.icon || "📄",
-                category: "Notas",
+                category: isPinned ? "Fixadas" : (contentMatches && !titleMatches ? "Conteúdo" : "Notas"),
                 tab: "notes",
-                pageId: page.id
+                pageId: page.id,
+                snippet: snippet
             })
+
+            if (matches.length >= 25) break
         }
 
         filteredResults = matches
@@ -114,13 +188,13 @@ Rectangle {
     Rectangle {
         id: paletteDialog
         width: 620
-        height: Math.min(500, 72 + filteredResults.length * 48 + 32)
+        height: Math.min(540, Math.max(180, 110 + filteredResults.length * 52))
         radius: 16
         color: "#161524"
         border.color: "#40818cf8"
         border.width: 1
         anchors.horizontalCenter: parent.horizontalCenter
-        y: parent.height * 0.15
+        y: parent.height * 0.12
 
         // Prevent click through
         MouseArea {
@@ -130,7 +204,7 @@ Rectangle {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 16
-            spacing: 12
+            spacing: 10
 
             // Search Bar Row
             RowLayout {
@@ -193,6 +267,50 @@ Rectangle {
                 }
             }
 
+            // Scope Filter Chips
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Repeater {
+                    model: [
+                        { key: "all", label: "Todos" },
+                        { key: "title", label: "Títulos e Pastas" },
+                        { key: "content", label: "Conteúdo" },
+                        { key: "pinned", label: "Fixadas" }
+                    ]
+                    delegate: Rectangle {
+                        readonly property bool isSelected: paletteRoot.activeScope === modelData.key
+                        height: 24
+                        radius: 6
+                        color: isSelected ? "#266366f1" : (chipMouse.containsMouse ? "#15ffffff" : "#08ffffff")
+                        border.color: isSelected ? "#818cf8" : "#1affffff"
+                        border.width: 1
+                        Layout.preferredWidth: chipText.contentWidth + 16
+
+                        Text {
+                            id: chipText
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: isSelected ? "#ffffff" : "#94a3b8"
+                            font.pixelSize: 11
+                            font.bold: isSelected
+                        }
+
+                        MouseArea {
+                            id: chipMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                paletteRoot.activeScope = modelData.key
+                                paletteRoot.updateResults()
+                            }
+                        }
+                    }
+                }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
@@ -211,7 +329,7 @@ Rectangle {
 
                 delegate: Rectangle {
                     width: resultsList.width
-                    height: 44
+                    height: (modelData.snippet && modelData.snippet.length > 0) ? 58 : 44
                     radius: 8
                     color: (index === paletteRoot.selectedIndex) ? "#266366f1" : (rowMouse.containsMouse ? "#08ffffff" : "transparent")
                     border.color: (index === paletteRoot.selectedIndex) ? "#55818cf8" : "transparent"
@@ -237,13 +355,27 @@ Rectangle {
                             font.pixelSize: 14
                         }
 
-                        Text {
-                            text: modelData.label
-                            color: (index === paletteRoot.selectedIndex) ? "#ffffff" : "#e2e8f0"
-                            font.pixelSize: 13
-                            font.bold: (index === paletteRoot.selectedIndex)
-                            elide: Text.ElideRight
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            spacing: 2
+
+                            Text {
+                                text: modelData.label
+                                color: (index === paletteRoot.selectedIndex) ? "#ffffff" : "#e2e8f0"
+                                font.pixelSize: 13
+                                font.bold: (index === paletteRoot.selectedIndex)
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                visible: Boolean(modelData.snippet && modelData.snippet.length > 0)
+                                text: modelData.snippet || ""
+                                color: (index === paletteRoot.selectedIndex) ? "#c4b5fd" : "#94a3b8"
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
                         }
 
                         Rectangle {
@@ -277,4 +409,3 @@ Rectangle {
         }
     }
 }
-

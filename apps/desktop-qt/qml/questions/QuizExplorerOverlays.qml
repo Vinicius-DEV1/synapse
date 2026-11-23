@@ -17,6 +17,7 @@ Item {
     property bool isQuestionHelpOpen: false
     property bool isDeleteConfirmationOpen: false
     property string pendingDeleteBatteryId: ""
+    property var pendingDeleteBattery: null
     property bool isCreatingBattery: false
     property var editingBattery: null
     property bool isCreatingQuestion: false
@@ -80,25 +81,16 @@ Item {
         onClosed: overlaysRoot.questionHelpClosed()
     }
 
-    Dialog {
-        id: batteryDeleteDialog
-        anchors.centerIn: parent
-        width: Math.min(parent.width - 32, 420)
-        modal: true
-        title: "Excluir bateria"
-        standardButtons: Dialog.Yes | Dialog.No
-        visible: overlaysRoot.isDeleteConfirmationOpen
-
-        contentItem: Text {
-            text: "A bateria será movida para a lixeira. Deseja continuar?"
-            color: "#d4d4d8"
-            wrapMode: Text.Wrap
-        }
-
-        onAccepted: overlaysRoot.deleteBatteryConfirmed(overlaysRoot.pendingDeleteBatteryId)
-        onRejected: {
+    BatteryDeleteModal {
+        isOpen: overlaysRoot.isDeleteConfirmationOpen
+        battery: overlaysRoot.pendingDeleteBattery
+        onClosed: {
             overlaysRoot.isDeleteConfirmationOpen = false
+            overlaysRoot.pendingDeleteBattery = null
             overlaysRoot.pendingDeleteBatteryId = ""
+        }
+        onConfirmed: function(batteryId) {
+            overlaysRoot.deleteBatteryConfirmed(batteryId)
         }
     }
 
