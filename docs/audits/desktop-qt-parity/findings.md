@@ -164,7 +164,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** Global key-value configuration repository was added in `core/synapse-core/src/domain/config/` backed by SQLite `config` table, with bridge functions `synapse_config_get` / `synapse_config_set` and controller methods `getConfig` / `setConfig`. In `SettingsAiTab.qml`, placeholder secret `AIzaSy...` and fake connection timer were removed; API key, model selection, and temperature are loaded from and persisted to the config database, and the key is validated against the live Gemini models endpoint.
+**Evidence:** Global key-value configuration repository was added in `core/synapse-core/src/domain/config/` backed by SQLite `config` table, with bridge functions `synapse_config_get` / `synapse_config_set` and controller methods `getConfig` / `setConfig`. Multi-tab settings suite was expanded to 10 tabs plus aggregate view via `SettingsTabBar.qml`: `SettingsGeneralTab.qml` (language, tab system options, custom video directory), `SettingsShortcutsTab.qml` (searchable keyboard shortcuts catalog across 5 categories), `SettingsStorageTab.qml` (canonical SQLite path, DB/WAL sizes, volumetry grid, PRAGMA optimize, temp cleanup), `SettingsVideoTab.qml` (MPV engine, GPU acceleration, subtitle sizing/styles, auto-resume), `SettingsBackupTab.qml` (full DB backup export with custom folder and media inclusion, safe restore dialog), `SettingsSharingTab.qml` (active shared pages dashboard with permissions and revocation), `SettingsAiTab.qml` (durable Gemini API key persistence, model selection, live API key validation), `SettingsEditorTab.qml` (font family, font size, line height, autosave), and `SettingsSyncTab.qml` (Zero-Knowledge offline local storage, PASSIVE WAL checkpoint).
 **Tasks:**
 - [x] Map every React setting to Qt supported/unsupported status.
 - [x] Persist supported preferences and test restart.
@@ -444,9 +444,4 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 - [x] Implement download-for-offline and evict-local-cache actions through approved storage/sync boundaries, with confirmation where data loss is possible.
 - [x] Match card/menu affordances, disabled/loading states, tooltips, accessibility names, and failure feedback to the reference design.
 - [x] Test transitions after download, eviction, restart, missing local file, offline network, sync failure, and account removal.
-**Tasks:**
-- [ ] Map the exact React local/synced/cloud-only states and their unavailable/loading/error variants to typed Qt state.
-- [ ] Implement download-for-offline and evict-local-cache actions through approved storage/sync boundaries, with confirmation where data loss is possible.
-- [ ] Match card/menu affordances, disabled/loading states, tooltips, accessibility names, and failure feedback to the reference design.
-- [ ] Test transitions after download, eviction, restart, missing local file, offline network, sync failure, and account removal.
 

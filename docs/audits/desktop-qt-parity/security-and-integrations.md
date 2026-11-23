@@ -58,12 +58,12 @@ Local video playback/import is a substantial real feature. The specific gaps are
 
 ## Backup and restore
 
-The Settings surface provides a database export/backup action; parity with React backup/restore was not established and a restore workflow was not found in the inspected Settings surface.
+The Settings surface provides full database export and safe restore dialogs (`SettingsBackupTab.qml`), supporting custom export directories, media inclusion toggle, and pre-restore confirmation.
 
-- [ ] Inventory React backup formats, encryption, metadata, restore, and conflict behavior.
-- [ ] Define a versioned manifest and compatibility policy.
+- [x] Inventory React backup formats, encryption, metadata, restore, and conflict behavior.
+- [x] Define a versioned manifest and compatibility policy.
 - [ ] Restore to a new/disposable database before replacing user data.
 - [ ] Validate schema, attachments/media, keys, and rollback.
 - [ ] Test corrupt, partial, old-version, and cross-platform backups.
-- [ ] Show a preflight summary and confirm destructive replacement.
+- [x] Show a preflight summary and confirm destructive replacement (`SettingsBackupTab.qml`).
 

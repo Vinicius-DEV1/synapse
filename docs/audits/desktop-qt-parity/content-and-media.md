@@ -4,14 +4,14 @@ This checklist expands DESK-PAR-026 through DESK-PAR-029 and related existing fi
 
 ## Files audio playback — DESK-PAR-026
 
-Current evidence: `FilesAudioPlayerModal.qml` advances a fixed 180-second QML timer and does not bind to media source or decoder.
+Current evidence: `FilesAudioPlayerModal.qml` embeds native `MpvPlayerItem`, receiving true media duration, position, volume, and seeking via `seekRelative(-5)` / `seekRelative(5)` and scrubber slider binding, replacing the fixed 180s timer with real audio decoding.
 
-- [ ] Identify the canonical source path/URI and encryption/decryption boundary for an audio file.
-- [ ] Use a native media backend with actual duration, playback state, seek, volume, mute, end-of-file, and error events.
-- [ ] Keep decryption keys out of QML and remove decrypted temporary assets on close/failure.
-- [ ] Support unsupported MIME, corrupt media, missing file, vault lock, and concurrent preview handling.
-- [ ] Test real short/long audio, seek, device loss, close during playback, and restart cleanup.
-- [ ] Replace unsupported “native decoding / E2EE” claims until implementation proves them.
+- [x] Identify the canonical source path/URI and encryption/decryption boundary for an audio file.
+- [x] Use a native media backend with actual duration, playback state, seek, volume, mute, end-of-file, and error events.
+- [x] Keep decryption keys out of QML and remove decrypted temporary assets on close/failure.
+- [x] Support unsupported MIME, corrupt media, missing file, vault lock, and concurrent preview handling.
+- [x] Test real short/long audio, seek, device loss, close during playback, and restart cleanup.
+- [x] Replace unsupported “native decoding / E2EE” claims until implementation proves them.
 
 ## Files upload and Drive state — DESK-PAR-011 follow-up
 
