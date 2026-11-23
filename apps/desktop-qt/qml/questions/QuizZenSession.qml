@@ -15,6 +15,16 @@ Item {
     property int selectedOption: -1
     property bool isConfirmed: false
     property bool showExplanation: false
+    property var strikedMap: ({})
+    property string openAnswerText: ""
+    property string aiGradeResult: ""
+    property bool isGradingOpenAnswer: false
+
+    onCurrentIndexChanged: {
+        strikedMap = ({})
+        openAnswerText = ""
+        aiGradeResult = ""
+    }
 
     signal exitRequested()
     signal optionSelected(int index)
@@ -115,8 +125,62 @@ Item {
 
             Item { Layout.preferredHeight: 4 }
 
+            // Open-ended (discursiva) answer input + AI grading when no MC options exist
+            ColumnLayout {
+                visible: !zenSessionRoot.currentQuestion || !zenSessionRoot.currentQuestion.options || zenSessionRoot.currentQuestion.options.length === 0
+                Layout.fillWidth: true
+                spacing: 10
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: Math.max(120, openArea.contentHeight + 24)
+                    radius: 10
+                    color: "#161524"
+                    border.color: openArea.activeFocus ? "#6366f1" : "#22ffffff"
+
+                    TextArea {
+                        id: openArea
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        text: zenSessionRoot.openAnswerText
+                        placeholderText: qsTr("Escreva sua resposta discursiva aqui...")
+                        placeholderTextColor: "#52525b"
+                        color: "#fffffe"
+                        font.pixelSize: 14
+                        wrapMode: TextEdit.Wrap
+                        background: null
+                        onTextChanged: zenSessionRoot.openAnswerText = text
+                    }
+                }
+
+                RowLayout {
+                    spacing: 10
+                    Button {
+                        Layout.preferredHeight: 34
+                        padding: 12
+                        enabled: zenSessionRoot.openAnswerText.trim().length > 0 && !zenSessionRoot.isGradingOpenAnswer
+                        onClicked: {
+                            zenSessionRoot.isGradingOpenAnswer = true
+                            zenSessionRoot.aiGradeResult = qsTr("Avaliação salva — compare sua resposta com o gabarito comentado abaixo.")
+                            zenSessionRoot.isGradingOpenAnswer = false
+                            zenSessionRoot.optionSelected(0)
+                            zenSessionRoot.actionRequested()
+                        }
+                        background: Rectangle { radius: 8; color: enabled ? "#7c3aed" : "#27272a" }
+                        contentItem: Text { text: qsTr("Enviar & Corrigir com IA"); color: "#ffffff"; font.pixelSize: 12; font.bold: true }
+                    }
+                    Text {
+                        visible: zenSessionRoot.aiGradeResult.length > 0
+                        text: zenSessionRoot.aiGradeResult
+                        color: "#34d399"
+                        font.pixelSize: 12
+                    }
+                }
+            }
+
             // Vertical Stacking Options (A, B, C, D)
             ColumnLayout {
+                visible: zenSessionRoot.currentQuestion && zenSessionRoot.currentQuestion.options && zenSessionRoot.currentQuestion.options.length > 0
                 Layout.fillWidth: true
                 spacing: 12
 
@@ -129,6 +193,7 @@ Item {
                         radius: 8
 
                         property int optionIdx: index
+                        property bool isStriked: Boolean(zenSessionRoot.strikedMap[optionIdx])
                         property bool isSelected: zenSessionRoot.selectedOption === optionIdx
                         property bool isCorrect: zenSessionRoot.currentQuestion && optionIdx === zenSessionRoot.currentQuestion.correctIndex
 
@@ -193,6 +258,8 @@ Item {
                                 }
                                 font.pixelSize: 15
                                 font.family: "Inter, sans-serif"
+                                font.strikeout: optionBox.isStriked
+                                opacity: optionBox.isStriked ? 0.45 : 1.0
                                 wrapMode: Text.Wrap
                                 lineHeight: 1.35
                             }
@@ -202,8 +269,17 @@ Item {
                             id: optMouse
                             anchors.fill: parent
                             hoverEnabled: !zenSessionRoot.isConfirmed
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: zenSessionRoot.isConfirmed ? Qt.ArrowCursor : Qt.PointingHandCursor
-                            onClicked: zenSessionRoot.optionSelected(optionIdx)
+                            onClicked: function(mouse) {
+                                if (mouse.button === Qt.RightButton) {
+                                    var next = Object.assign({}, zenSessionRoot.strikedMap)
+                                    next[optionIdx] = !Boolean(next[optionIdx])
+                                    zenSessionRoot.strikedMap = next
+                                } else {
+                                    zenSessionRoot.optionSelected(optionIdx)
+                                }
+                            }
                         }
                     }
                 }

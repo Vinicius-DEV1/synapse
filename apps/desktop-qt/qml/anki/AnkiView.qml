@@ -34,6 +34,12 @@ Rectangle {
     property var globalStats: ({})
 
     Component.onCompleted: {
+        try {
+            var saved = dataController.getConfig("anki_collapsed_decks", "{}")
+            if (saved && saved.length > 0) collapsedDeckMap = JSON.parse(saved)
+        } catch (e) {
+            collapsedDeckMap = ({})
+        }
         reloadDecks()
     }
 
@@ -52,6 +58,7 @@ Rectangle {
             copy[deckId] = true
         }
         collapsedDeckMap = copy
+        dataController.setConfig("anki_collapsed_decks", JSON.stringify(copy))
     }
 
     function revealAnswer() {
@@ -65,19 +72,16 @@ Rectangle {
         isAnswerRevealed = true
     }
 
-    function startStudy(deck) {
+    function startStudy(deck, includeAllCards) {
         selectedDeck = deck
-        var due = dataController.getDueCards(deck.id)
-        if (due.length === 0) {
-            due = dataController.getDeckCards(deck.id)
-        }
-        deckCards = due
+        var due = includeAllCards ? dataController.getDeckCards(deck.id) : dataController.getDueCards(deck.id)
+        deckCards = due || []
         currentCardIndex = 0
         cardsReviewedThisSession = 0
         userTypedAnswer = ""
         exactMatch = false
         isAnswerRevealed = false
-        isStudyFinished = false
+        isStudyFinished = (deckCards.length === 0)
         isStudying = true
     }
 
@@ -213,6 +217,7 @@ Rectangle {
         }
         onRequestReveal: ankiRoot.revealAnswer()
         onRequestRate: function(rating) { ankiRoot.rateCard(rating) }
+        onRequestExtraStudy: if (ankiRoot.selectedDeck) ankiRoot.startStudy(ankiRoot.selectedDeck, true)
     }
 
     // ===================================================================

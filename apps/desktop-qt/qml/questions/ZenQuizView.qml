@@ -6,6 +6,11 @@ Rectangle {
     color: "#0f0e17" // Dark canvas
 
     property var batteries: []
+    property var allBatteriesTree: []
+    property var visibleBatteries: []
+    property var currentBreadcrumbs: []
+    property string activeSubTab: "explorer"
+    property string currentParentId: ""
     property var quizStats: ({})
     property var availableQuestionTags: []
     property var activeBattery: null
@@ -35,8 +40,30 @@ Rectangle {
 
     function loadBatteries() {
         batteries = dataController.getQuizBatteries()
+        allBatteriesTree = typeof dataController.getQuizBatteryTree === "function"
+            ? (dataController.getQuizBatteryTree() || batteries)
+            : batteries
         quizStats = dataController.getQuizStats()
         availableQuestionTags = dataController.getAllQuizTags()
+        rebuildVisibleHierarchy()
+    }
+
+    function rebuildVisibleHierarchy() {
+        var flat = allBatteriesTree || batteries || []
+        visibleBatteries = flat.filter(function(b) {
+            return String(b.parent_id || "") === String(currentParentId || "")
+        })
+        var crumbs = []
+        var byId = ({})
+        for (var i = 0; i < flat.length; i++) byId[flat[i].id] = flat[i]
+        var cur = byId[currentParentId]
+        var guard = 0
+        while (cur && guard < 12) {
+            crumbs.unshift(cur)
+            cur = cur.parent_id ? byId[cur.parent_id] : null
+            guard++
+        }
+        currentBreadcrumbs = crumbs
     }
 
     function startBatterySession(battery) {
@@ -184,7 +211,24 @@ Rectangle {
     QuizExplorerView {
         visible: !quizRoot.isSessionActive
         quizStats: quizRoot.quizStats
-        batteries: quizRoot.batteries
+        batteries: quizRoot.visibleBatteries
+        activeSubTab: quizRoot.activeSubTab
+        breadcrumbs: quizRoot.currentBreadcrumbs
+        onSubTabChanged: function(tid) { quizRoot.activeSubTab = tid }
+        onNavigateParentRequested: function(pid) {
+            quizRoot.currentParentId = pid
+            quizRoot.rebuildVisibleHierarchy()
+        }
+        onMoveBatteryRequested: function(bat) { batteryMoveModal.openFor(bat) }
+        onCreateChildBatteryRequested: function(parentBat) {
+            if (typeof dataController.createChildQuizBattery === "function") {
+                var newId = dataController.createChildQuizBattery(parentBat.id, "Sub-bateria", "")
+                if (newId) {
+                    quizRoot.currentParentId = parentBat.id
+                    quizRoot.loadBatteries()
+                }
+            }
+        }
         onRequestStartGeneralPractice: quizRoot.startBatterySession(null)
         onRequestOpenSimulationBuilder: questionOverlays.isSimulationBuilderOpen = true
         onRequestStartErrorNotebook: quizRoot.startErrorNotebookSession()
@@ -396,6 +440,19 @@ Rectangle {
             dataController.recordQuizAttempt(bId, qId, selIndex, correct)
             quizRoot.loadBatteries()
         }
+    }
+
+    BatteryMoveModal {
+        id: batteryMoveModal
+        onMoveConfirmed: function(batteryId, newParentId) {
+            if (typeof dataController.moveQuizBattery === "function" &&
+                    dataController.moveQuizBattery(batteryId, newParentId)) {
+                quizRoot.loadBatteries()
+            } else {
+                quizRoot.showSessionNotice(qsTr("Não foi possível mover esta bateria."))
+            }
+        }
+        onClosed: batteryMoveModal.isOpen = false
     }
 
     Keys.onPressed: function(event) {

@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import "../ui"
 
 Rectangle {
     id: chatItemRoot
@@ -15,6 +16,9 @@ Rectangle {
 
     readonly property bool isUser: role === "user"
 
+    signal copyRequested(string text)
+    signal insertIntoNoteRequested(string text)
+
     color: isUser ? "#268b5cf6" : "#161524"
     border.color: isUser ? "#8b5cf6" : "#2e2b44"
     border.width: 1
@@ -25,13 +29,12 @@ Rectangle {
         anchors.margins: 12
         spacing: 6
 
-        // Role & time header
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
 
             Text {
-                text: chatItemRoot.isUser ? "Você" : "Synapse AI"
+                text: chatItemRoot.isUser ? qsTr("Você") : "Synapse AI"
                 color: chatItemRoot.isUser ? "#c4b5fd" : "#34d399"
                 font.pixelSize: 11
                 font.bold: true
@@ -46,7 +49,6 @@ Rectangle {
             }
         }
 
-        // Message text
         TextEdit {
             Layout.fillWidth: true
             text: chatItemRoot.messageText
@@ -56,6 +58,30 @@ Rectangle {
             readOnly: true
             selectByMouse: true
             textFormat: TextEdit.AutoText
+        }
+
+        RowLayout {
+            visible: !chatItemRoot.isUser && chatItemRoot.messageText.length > 0
+            Layout.fillWidth: true
+            spacing: 6
+
+            Button {
+                Layout.preferredHeight: 24
+                padding: 6
+                onClicked: chatItemRoot.copyRequested(chatItemRoot.messageText)
+                background: Rectangle { radius: 5; color: parent.hovered ? "#22ffffff" : "#12ffffff" }
+                contentItem: Text { text: qsTr("Copiar"); color: "#cbd5e1"; font.pixelSize: 10 }
+            }
+
+            Button {
+                Layout.preferredHeight: 24
+                padding: 8
+                onClicked: chatItemRoot.insertIntoNoteRequested(chatItemRoot.messageText)
+                background: Rectangle { radius: 5; color: parent.hovered ? "#338b5cf6" : "#1f8b5cf6" }
+                contentItem: Text { text: qsTr("Inserir na nota"); color: "#ddd6fe"; font.pixelSize: 10; font.weight: Font.Medium }
+            }
+
+            Item { Layout.fillWidth: true }
         }
     }
 }

@@ -13,6 +13,8 @@ ColumnLayout {
     signal addQuestionRequested(var battery)
     signal editBatteryRequested(var battery)
     signal inspectBatteryRequested(var battery)
+    signal moveBatteryRequested(var battery)
+    signal createSubBatteryRequested(var battery)
     signal deleteBatteryRequested(string batteryId)
     signal startGeneralPracticeRequested()
     signal createBatteryRequested()
@@ -167,6 +169,31 @@ ColumnLayout {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: gridRoot.editBatteryRequested(modelData)
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 8
+                        color: moveBatMouse.containsMouse ? "#262438" : "#0affffff"
+                        border.color: moveBatMouse.containsMouse ? "#408b5cf6" : "#0fffffff"
+                        border.width: 1
+
+                        AppIcon {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            name: "file-symlink"
+                            color: moveBatMouse.containsMouse ? "#fffffe" : "#a7a9be"
+                        }
+
+                        MouseArea {
+                            id: moveBatMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: gridRoot.moveBatteryRequested(modelData)
                         }
                     }
 

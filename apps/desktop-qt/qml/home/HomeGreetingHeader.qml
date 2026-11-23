@@ -11,6 +11,7 @@ ColumnLayout {
     property int dueCardsCount: 0
 
     signal actionClicked(string tabKey)
+    signal newPageRequested()
     signal helpRequested()
 
     // Greeting Header matching Caderno Original
@@ -38,31 +39,6 @@ ColumnLayout {
         }
 
         Item { Layout.fillWidth: true }
-
-        Rectangle {
-            width: 38
-            height: 38
-            radius: 10
-            color: helpMouse.containsMouse ? "#201e30" : "#161524"
-            border.color: helpMouse.containsMouse ? "#448b5cf6" : "#12ffffff"
-            border.width: 1
-
-            Text {
-                anchors.centerIn: parent
-                text: "?"
-                color: "#a7a9be"
-                font.pixelSize: 15
-                font.bold: true
-            }
-
-            MouseArea {
-                id: helpMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: greetingRoot.helpRequested()
-            }
-        }
     }
 
     // 4 Quick Actions Bar matching Original Caderno (HomeQuickActions.tsx)
@@ -106,7 +82,7 @@ ColumnLayout {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: greetingRoot.actionClicked("notes")
+                onClicked: greetingRoot.newPageRequested()
             }
         }
 

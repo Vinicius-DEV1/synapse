@@ -20,12 +20,14 @@ ColumnLayout {
     property string filterText: ""
     property string selectedCollectionName: ""
     property int totalBooksCount: 0
+    property string displayMode: "grid" // "grid" | "compact" | "list"
     property int viewportWidth: width > 0 ? width : 1366
-    readonly property int columnCount: viewportWidth >= 1280 ? 6
+    readonly property int baseColumnCount: viewportWidth >= 1280 ? 6
                                    : viewportWidth >= 1024 ? 5
                                    : viewportWidth >= 768 ? 4
                                    : viewportWidth >= 640 ? 3 : 2
-    readonly property int gridGap: viewportWidth >= 640 ? 24 : 12
+    readonly property int columnCount: displayMode === "compact" ? (baseColumnCount + 2) : baseColumnCount
+    readonly property int gridGap: viewportWidth >= 640 ? (displayMode === "compact" ? 14 : 24) : 12
 
     signal statusFilterChanged(string filter)
     signal formatFilterChanged(string format)
@@ -91,8 +93,65 @@ ColumnLayout {
         onClearAllRequested: gridRoot.clearAllFiltersRequested()
     }
 
+    ListView {
+        id: bookListView
+        visible: gridRoot.displayMode === "list"
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        clip: true
+        spacing: 8
+        model: gridRoot.books
+        delegate: Rectangle {
+            required property var modelData
+            width: bookListView.width
+            height: 68
+            radius: 10
+            color: listRowMouse.containsMouse ? "#211f30" : "#161524"
+            border.color: listRowMouse.containsMouse ? "#558b5cf6" : "#12ffffff"
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 12
+                Rectangle {
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 48
+                    radius: 6
+                    color: "#29224a"
+                    clip: true
+                    Image {
+                        anchors.fill: parent
+                        source: modelData.cover_image || ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        visible: status === Image.Ready
+                    }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Text { text: modelData.title || "Sem título"; color: "#fffffe"; font.pixelSize: 13; font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
+                    Text { text: modelData.author || qsTr("Autor desconhecido"); color: "#94a1b2"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+                }
+                Text {
+                    text: gridRoot.progressFor(modelData) + "%"
+                    color: "#c4b5fd"
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+            }
+            MouseArea {
+                id: listRowMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: gridRoot.bookSelected(modelData)
+            }
+        }
+    }
+
     GridView {
         id: bookGridView
+        visible: gridRoot.displayMode !== "list"
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true

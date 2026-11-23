@@ -13,6 +13,7 @@ Rectangle {
     property string filterText: ""
     property string activeStatusFilter: "all" // "all", "reading", "finished", "queue"
     property string activeViewMode: "books"
+    property string displayMode: "grid" // "grid" | "compact" | "list"
     property string selectedCollectionId: ""
     property bool isViewingArchived: false
     property var selectedBook: null
@@ -112,6 +113,7 @@ Rectangle {
 
         LibraryViewModeBar {
             viewMode: libraryRoot.activeViewMode
+            displayMode: libraryRoot.displayMode
             collectionCount: libraryRoot.collections.length
             archivedCount: libraryRoot.books.filter(function(book) { return Boolean(book.is_archived) }).length
             hasSelectedCollection: libraryRoot.activeViewMode === "books" && libraryRoot.selectedCollectionId.length > 0
@@ -125,6 +127,7 @@ Rectangle {
                 libraryRoot.activeViewMode = "collections"
                 libraryRoot.selectedCollectionId = ""
             }
+            onDisplayModeChanged: function(mode) { libraryRoot.displayMode = mode }
             onBackToCollectionsRequested: {
                 libraryRoot.selectedCollectionId = ""
                 libraryRoot.activeViewMode = "collections"
@@ -151,6 +154,7 @@ Rectangle {
 
         LibraryBookGrid {
             visible: libraryRoot.activeViewMode === "books"
+            displayMode: libraryRoot.displayMode
             Layout.fillWidth: true
             Layout.fillHeight: true
             viewportWidth: libraryRoot.viewportWidth

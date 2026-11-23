@@ -24,7 +24,7 @@ Rectangle {
     property bool isMicTestOpen: false
     property bool isInterviewSetupOpen: false
 
-    function refreshSessions() {
+    function refreshSessions(preserveEmpty) {
         sessions = dataController.getPracticeSessions()
         if (activeSession) {
             var exists = false
@@ -34,10 +34,8 @@ Rectangle {
                     break
                 }
             }
-            if (!exists) {
-                activeSession = sessions.length > 0 ? sessions[0] : null
-            }
-        } else if (sessions.length > 0) {
+            if (!exists) activeSession = null
+        } else if (!preserveEmpty && sessions.length > 0 && activeSession !== null) {
             activeSession = sessions[0]
         }
         if (activeSession) {
@@ -45,6 +43,25 @@ Rectangle {
         } else {
             messages = []
         }
+    }
+
+    function openGeneratedFeedback() {
+        feedbackModal.sessionTitle = activeSession ? activeSession.title : "Sessão de Prática"
+        isFeedbackOpen = true
+        if (!messages || messages.length === 0) return
+        var transcript = messages.slice(-12).map(function(m) {
+            return (m.role === "user" ? "Aluno: " : "Tutor: ") + (m.text_content || "")
+        }).join("\n")
+        var sys = "Avalie o desempenho do aluno na sessão abaixo e responda SOMENTE JSON válido: {\"score\": 85, \"strengths\": [\"...\"], \"improvements\": [\"...\"]}"
+        aiClient.promptText(sys, transcript, [], function(ok, reply) {
+            if (!ok) return
+            try {
+                var parsed = JSON.parse(aiClient.cleanJson(reply))
+                if (typeof parsed.score === "number") feedbackModal.overallScore = Math.max(0, Math.min(100, Math.round(parsed.score)))
+                if (Array.isArray(parsed.strengths) && parsed.strengths.length > 0) feedbackModal.strengthsList = parsed.strengths
+                if (Array.isArray(parsed.improvements) && parsed.improvements.length > 0) feedbackModal.improvementsList = parsed.improvements
+            } catch (e) {}
+        })
     }
 
     function refreshMessages() {
@@ -94,7 +111,7 @@ Rectangle {
     }
 
     Component.onCompleted: {
-        refreshSessions()
+        refreshSessions(true)
         refreshMemories()
     }
 
@@ -124,14 +141,14 @@ Rectangle {
             onVoiceCallToggled: {
                 if (practiceRoot.isVoiceCallActive) {
                     practiceRoot.isVoiceCallActive = false
-                    practiceRoot.isFeedbackOpen = true
+                    practiceRoot.openGeneratedFeedback()
                 } else {
                     practiceRoot.isInterviewSetupOpen = true
                 }
             }
             onEndCallRequested: {
                 practiceRoot.isVoiceCallActive = false
-                practiceRoot.isFeedbackOpen = true
+                practiceRoot.openGeneratedFeedback()
             }
             onMicTestRequested: practiceRoot.isMicTestOpen = true
             onMemoryDrawerToggled: practiceRoot.isMemoryDrawerOpen = !practiceRoot.isMemoryDrawerOpen
@@ -295,6 +312,7 @@ Rectangle {
     }
 
     PracticeInterviewFeedbackModal {
+        id: feedbackModal
         visible: practiceRoot.isFeedbackOpen
         sessionTitle: practiceRoot.activeSession ? practiceRoot.activeSession.title : "Sessão de Prática"
         onCloseRequested: practiceRoot.isFeedbackOpen = false

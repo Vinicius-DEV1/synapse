@@ -8,7 +8,13 @@ Item {
 
     property var quizStats: ({})
     property var batteries: []
+    property string activeSubTab: "explorer"
+    property var breadcrumbs: []
 
+    signal subTabChanged(string tabId)
+    signal navigateParentRequested(string parentId)
+    signal moveBatteryRequested(var battery)
+    signal createChildBatteryRequested(var parentBattery)
     signal requestStartGeneralPractice()
     signal requestOpenSimulationBuilder()
     signal requestStartErrorNotebook()
@@ -111,13 +117,50 @@ Item {
                 }
             }
 
-            // Top Metric Cards Grid
+            QuizNavHeader {
+                activeSubTab: explorerRoot.activeSubTab
+                onTabSelected: function(tid) { explorerRoot.subTabChanged(tid) }
+            }
+
+            // Hierarchical breadcrumbs when inside a sub-battery
+            RowLayout {
+                visible: explorerRoot.activeSubTab === "explorer" && explorerRoot.breadcrumbs.length > 0
+                Layout.fillWidth: true
+                spacing: 6
+                Button {
+                    Layout.preferredHeight: 26
+                    padding: 8
+                    onClicked: explorerRoot.navigateParentRequested("")
+                    background: Rectangle { radius: 6; color: "#1a1924"; border.color: "#18ffffff" }
+                    contentItem: Text { text: qsTr("Todas as Baterias"); color: "#c4b5fd"; font.pixelSize: 11 }
+                }
+                Repeater {
+                    model: explorerRoot.breadcrumbs
+                    delegate: RowLayout {
+                        required property var modelData
+                        spacing: 6
+                        Text { text: "/"; color: "#64748b"; font.pixelSize: 11 }
+                        Button {
+                            Layout.preferredHeight: 26
+                            padding: 8
+                            onClicked: explorerRoot.navigateParentRequested(modelData.id)
+                            background: Rectangle { radius: 6; color: "#1a1924"; border.color: "#18ffffff" }
+                            contentItem: Text { text: modelData.title || qsTr("Bateria"); color: "#fffffe"; font.pixelSize: 11 }
+                        }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
+
+            // Top Metric Cards Grid (Dashboard tab or overview)
             QuizKpiCards {
+                visible: explorerRoot.activeSubTab === "dashboard"
                 quizStats: explorerRoot.quizStats
             }
 
             // Quick Action Banners: Caderno de Erros & Simulado Dinâmico
             QuizActionBanners {
+                visible: explorerRoot.activeSubTab === "simulations"
                 incorrectAttemptsCount: explorerRoot.quizStats.reviewable_incorrect_questions || 0
                 totalQuestions: explorerRoot.quizStats.total_questions || 0
                 onStartErrorNotebookRequested: explorerRoot.requestStartErrorNotebook()
@@ -126,11 +169,14 @@ Item {
 
             // Batteries Grid
             QuizBatteriesGrid {
+                visible: explorerRoot.activeSubTab === "explorer"
                 batteries: explorerRoot.batteries
                 onStartBatteryRequested: function(bat) { explorerRoot.requestStartBattery(bat) }
                 onAddQuestionRequested: function(bat) { explorerRoot.requestAddQuestion(bat) }
                 onEditBatteryRequested: function(bat) { explorerRoot.requestEditBattery(bat) }
                 onInspectBatteryRequested: function(bat) { explorerRoot.requestInspectBattery(bat) }
+                onMoveBatteryRequested: function(bat) { explorerRoot.moveBatteryRequested(bat) }
+                onCreateSubBatteryRequested: function(bat) { explorerRoot.createChildBatteryRequested(bat) }
                 onDeleteBatteryRequested: function(batId) { explorerRoot.requestDeleteBattery(batId) }
                 onStartGeneralPracticeRequested: explorerRoot.requestStartGeneralPractice()
                 onCreateBatteryRequested: explorerRoot.requestCreateBattery()

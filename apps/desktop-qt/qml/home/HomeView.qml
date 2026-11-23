@@ -16,6 +16,7 @@ Rectangle {
 
     signal navigateToTab(string tabKey)
     signal openPageId(string pageId)
+    signal createNewNoteRequested()
 
     function refreshDashboard() {
         dashboardData = dataController.getHomeDashboardData()
@@ -64,14 +65,11 @@ Rectangle {
                 onActionClicked: function(tabKey) {
                     homeRoot.navigateToTab(tabKey)
                 }
+                onNewPageRequested: homeRoot.createNewNoteRequested()
                 onHelpRequested: homeRoot.isHelpOpen = true
             }
 
-            // Live Weather and Clock Widget
-            HomeWeatherWidget {
-            }
-
-            // Two-column Main Dashboard Layout (Matching Image 1)
+            // Two-column Main Dashboard Layout
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 24

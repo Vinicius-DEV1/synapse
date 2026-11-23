@@ -27,8 +27,30 @@ Rectangle {
     property string readerFontFamily: "Georgia"
     property string readerTheme: "dark"
     property real zoomFactor: 1.0
+    property bool isFullscreen: false
 
     signal backRequested()
+    signal fullscreenToggled(bool fullscreen)
+
+    Component.onCompleted: {
+        try {
+            var raw = dataController.getConfig("library_reader_prefs", "")
+            if (raw && raw.length > 0) {
+                var prefs = JSON.parse(raw)
+                if (prefs.fontSize) readerFontSize = Number(prefs.fontSize)
+                if (prefs.fontFamily) readerFontFamily = String(prefs.fontFamily)
+                if (prefs.theme) readerTheme = String(prefs.theme)
+            }
+        } catch (e) {}
+    }
+
+    function saveTypographyPrefs() {
+        dataController.setConfig("library_reader_prefs", JSON.stringify({
+            fontSize: readerFontSize,
+            fontFamily: readerFontFamily,
+            theme: readerTheme
+        }))
+    }
 
     function openBook(selectedBook) {
         finishReadingSession()
@@ -393,6 +415,7 @@ Rectangle {
             reader.readerFontSize = size
             reader.readerFontFamily = family
             reader.readerTheme = theme
+            reader.saveTypographyPrefs()
         }
     }
 

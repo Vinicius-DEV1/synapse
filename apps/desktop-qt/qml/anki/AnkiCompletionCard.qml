@@ -12,6 +12,7 @@ Rectangle {
     property int cardsReviewedCount: 0
 
     signal returnToDecksRequested()
+    signal extraStudyRequested()
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -36,25 +37,51 @@ Rectangle {
 
         Item { height: 12 }
 
-        Rectangle {
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            width: 180
-            height: 42
-            radius: 10
-            color: "#6366f1"
+            spacing: 12
 
-            Text {
-                anchors.centerIn: parent
-                text: "Voltar aos Baralhos"
-                color: "#ffffff"
-                font.pixelSize: 14
-                font.bold: true
+            Rectangle {
+                width: 180
+                height: 42
+                radius: 10
+                color: "#6366f1"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "Voltar aos Baralhos"
+                    color: "#ffffff"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: completionRoot.returnToDecksRequested()
+                }
             }
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: completionRoot.returnToDecksRequested()
+            Rectangle {
+                width: 190
+                height: 42
+                radius: 10
+                color: "#1f1d2e"
+                border.color: "#38354d"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Estudo Extra (Todos)")
+                    color: "#c4b5fd"
+                    font.pixelSize: 13
+                    font.bold: true
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: completionRoot.extraStudyRequested()
+                }
             }
         }
     }

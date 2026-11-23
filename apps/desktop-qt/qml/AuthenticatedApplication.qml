@@ -636,6 +636,11 @@ Item {
                             var info = rootWindow.getModuleInfo(tabKey)
                             rootWindow.updateActiveTabModule(tabKey, info.title, info.icon)
                         }
+                        onCreateNewNoteRequested: {
+                            notesView.createNewRootNote()
+                            var info = rootWindow.getModuleInfo("notes")
+                            rootWindow.updateActiveTabModule("notes", notesView.activeTitle || info.title, info.icon, notesView.selectedPageId, notesView.activeIcon)
+                        }
                     }
                     NotesEditorView {
                         id: notesView
@@ -766,7 +771,17 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         visible: rootWindow.aiSidebarOpen
+        availablePages: notesView.allPageTree
         onCloseRequested: rootWindow.aiSidebarOpen = false
+        onInsertIntoNoteRequested: function(txt) {
+            if (!notesView.selectedPageId) return
+            var esc = "<p>" + String(txt || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</p>"
+            notesView.activeContent = (notesView.activeContent || "") + esc
+            notesView.isDirty = true
+            notesView.saveActiveNote()
+            var info = rootWindow.getModuleInfo("notes")
+            rootWindow.updateActiveTabModule("notes", notesView.activeTitle || info.title, info.icon, notesView.selectedPageId, notesView.activeIcon)
+        }
     }
 
     GlobalModalsHost {

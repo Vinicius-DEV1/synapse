@@ -21,6 +21,7 @@ Rectangle {
     signal sessionClosed()
     signal requestReveal()
     signal requestRate(int rating)
+    signal requestExtraStudy()
 
     readonly property var currentCard: (cards.length > 0 && currentCardIndex < cards.length) ? cards[currentCardIndex] : null
 
@@ -118,6 +119,7 @@ Rectangle {
             visible: studyRoot.isStudyFinished || studyRoot.cards.length === 0
             cardsReviewedCount: studyRoot.cardsReviewedThisSession
             onReturnToDecksRequested: studyRoot.sessionClosed()
+            onExtraStudyRequested: studyRoot.requestExtraStudy()
         }
     }
 }

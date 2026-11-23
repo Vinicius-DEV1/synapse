@@ -8,6 +8,7 @@ RowLayout {
     spacing: 8
 
     property string viewMode: "books"
+    property string displayMode: "grid" // "grid" | "compact" | "list"
     property int collectionCount: 0
     property int archivedCount: 0
     property bool hasSelectedCollection: false
@@ -16,6 +17,7 @@ RowLayout {
 
     signal booksRequested()
     signal collectionsRequested()
+    signal displayModeChanged(string mode)
     signal backToCollectionsRequested()
     signal helpRequested()
     signal archiveViewRequested(bool archived)
@@ -42,6 +44,32 @@ RowLayout {
     Button {
         text: modeBar.isViewingArchived ? "← Active library" : "Archive (" + modeBar.archivedCount + ")"
         onClicked: modeBar.archiveViewRequested(!modeBar.isViewingArchived)
+    }
+    Repeater {
+        model: [
+            { id: "grid", label: "Grade" },
+            { id: "compact", label: "Compacto" },
+            { id: "list", label: "Lista" }
+        ]
+        delegate: Button {
+            required property var modelData
+            text: modelData.label
+            onClicked: modeBar.displayModeChanged(modelData.id)
+            background: Rectangle {
+                radius: 7
+                color: modeBar.displayMode === modelData.id ? "#292635" : "#161524"
+                border.color: modeBar.displayMode === modelData.id ? "#558b5cf6" : "#10ffffff"
+            }
+            contentItem: Text {
+                text: parent.text
+                color: modeBar.displayMode === modelData.id ? "#ddd6fe" : "#94a1b2"
+                font.pixelSize: 11
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                leftPadding: 8
+                rightPadding: 8
+            }
+        }
     }
     Button { text: "Guide"; onClicked: modeBar.helpRequested() }
 }
