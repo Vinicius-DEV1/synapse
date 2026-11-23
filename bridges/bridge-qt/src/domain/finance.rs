@@ -329,3 +329,107 @@ pub unsafe extern "C" fn synapse_finance_delete_wishlist_item(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_get_loans(db: *mut Database) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    match FinanceRepository::get_loans(&*db) {
+        Ok(loans) => json_to_c_char(&loans),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_loans failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_create_loan(
+    db: *mut Database,
+    description: *const c_char,
+    person: *const c_char,
+    amount: f64,
+    loan_type: *const c_char,
+    account_id: *const c_char,
+    date: *const c_char,
+) -> c_int {
+    if db.is_null() || description.is_null() || person.is_null() || loan_type.is_null() {
+        return -1;
+    }
+    let desc_str = match to_opt_str(description) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let person_str = match to_opt_str(person) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let type_str = match to_opt_str(loan_type) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let acc_str = to_opt_str(account_id).unwrap_or("");
+    let date_str = to_opt_str(date);
+
+    match FinanceRepository::create_loan(&*db, desc_str, person_str, amount, type_str, acc_str, date_str) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] create_loan failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_record_loan_payment(
+    db: *mut Database,
+    loan_id: *const c_char,
+    amount: f64,
+    account_id: *const c_char,
+    payment_date: *const c_char,
+) -> c_int {
+    if db.is_null() || loan_id.is_null() || account_id.is_null() {
+        return -1;
+    }
+    let id_str = match to_opt_str(loan_id) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let acc_str = match to_opt_str(account_id) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let date_str = to_opt_str(payment_date);
+    let amount_opt = if amount > 0.0 { Some(amount) } else { None };
+
+    match synapse_core::domain::finance::record_loan_payment(&*db, id_str, amount_opt, acc_str, date_str) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] record_loan_payment failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_delete_loan(
+    db: *mut Database,
+    loan_id: *const c_char,
+) -> c_int {
+    if db.is_null() || loan_id.is_null() {
+        return -1;
+    }
+    let id_str = match to_opt_str(loan_id) {
+        Some(s) => s,
+        None => return -1,
+    };
+
+    match synapse_core::domain::finance::delete_transaction_with_links(&*db, id_str) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] delete_loan failed: {}", e);
+            -1
+        }
+    }
+}

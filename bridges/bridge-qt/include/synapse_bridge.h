@@ -83,6 +83,10 @@ char* synapse_finance_get_summary(Database* db);
 char* synapse_finance_get_wishlist(Database* db);
 int synapse_finance_add_wishlist_item(Database* db, const char* title, double price, const char* priority, const char* category, const char* link);
 int synapse_finance_delete_wishlist_item(Database* db, const char* item_id);
+char* synapse_finance_get_loans(Database* db);
+int synapse_finance_create_loan(Database* db, const char* description, const char* person, double amount, const char* loan_type, const char* account_id, const char* date);
+int synapse_finance_record_loan_payment(Database* db, const char* loan_id, double amount, const char* account_id, const char* payment_date);
+int synapse_finance_delete_loan(Database* db, const char* loan_id);
 
 // Domain APIs: Habits
 char* synapse_habits_get_habits(Database* db);
@@ -91,6 +95,7 @@ int synapse_habits_update_habit(Database* db, const char* habit_id, const char* 
 int synapse_habits_delete_habit(Database* db, const char* habit_id);
 char* synapse_habits_get_logs(Database* db, const char* date);
 char* synapse_habits_get_logs_range(Database* db, const char* start_date, const char* end_date);
+char* synapse_habits_get_habit_stats(Database* db, const char* habit_id, const char* today);
 int synapse_habits_toggle_checkin(Database* db, const char* habit_id, const char* date, int* out_checked);
 
 // Domain APIs: Questions & Quiz
@@ -146,9 +151,13 @@ int synapse_culture_delete_episode(Database* db, const char* episode_id);
 char* synapse_calendar_get_events(Database* db);
 char* synapse_calendar_get_events_for_date(Database* db, const char* date_prefix, int include_null, int limit);
 int synapse_calendar_create_event(Database* db, const char* title, const char* description, const char* start_date, const char* end_date, const char* event_type, const char* color, const char* page_id);
+int synapse_calendar_create_event_with_options(Database* db, const char* title, const char* description, const char* start_date, const char* end_date, const char* event_type, const char* color, const char* page_id, const char* reminders_json, const char* recurrence);
 int synapse_calendar_update_event(Database* db, const char* event_id, const char* title, const char* description, const char* start_date, const char* end_date, const char* color, const char* event_type, const char* page_id);
+int synapse_calendar_update_event_with_options(Database* db, const char* event_id, const char* title, const char* description, const char* start_date, const char* end_date, const char* color, const char* event_type, const char* page_id, const char* reminders_json);
 int synapse_calendar_toggle_status(Database* db, const char* event_id);
 int synapse_calendar_delete_event(Database* db, const char* event_id);
+int synapse_calendar_delete_event_series(Database* db, const char* event_id);
+int synapse_calendar_mark_reminder_notified(Database* db, const char* event_id, int reminder_minutes);
 
 // Domain APIs: Focus, Ambient Audio & Alarms
 char* synapse_focus_get_lofis(Database* db);
@@ -157,6 +166,7 @@ int synapse_focus_delete_lofi(Database* db, const char* lofi_id);
 char* synapse_focus_get_sessions(Database* db);
 int synapse_focus_record_session(Database* db, const char* tag, int target_minutes, const char* status, const char* summary, const char* description);
 int synapse_focus_delete_session(Database* db, const char* session_id);
+int synapse_focus_clear_sessions_range(Database* db, const char* range);
 char* synapse_focus_get_alarms(Database* db);
 int synapse_focus_create_alarm(Database* db, const char* time, const char* label, const char* sound, int enabled, const char* days);
 int synapse_focus_update_alarm(Database* db, const char* alarm_id, const char* time, const char* label, const char* sound, int enabled, const char* days);
@@ -301,6 +311,10 @@ char* synapse_diagrams_get(Database* db, const char* id);
 char* synapse_diagrams_create(Database* db, const char* title, const char* icon);
 int synapse_diagrams_save(Database* db, const char* id, const char* title, const char* content, const char* encrypted_content, const char* icon);
 int synapse_diagrams_delete(Database* db, const char* id);
+
+// Domain APIs: Global Config & Preferences
+char* synapse_config_get(Database* db, const char* key);
+int synapse_config_set(Database* db, const char* key, const char* value);
 
 #ifdef __cplusplus
 }

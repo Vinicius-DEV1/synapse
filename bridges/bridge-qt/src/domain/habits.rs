@@ -148,6 +148,30 @@ pub unsafe extern "C" fn synapse_habits_get_logs_range(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_habits_get_habit_stats(
+    db: *mut Database,
+    habit_id: *const c_char,
+    today: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || habit_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let id_str = match to_opt_str(habit_id) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let today_str = to_opt_str(today).unwrap_or("");
+
+    match HabitsRepository::get_habit_stats(&*db, id_str, today_str) {
+        Ok(stats) => json_to_c_char(&stats),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_habit_stats failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_habits_toggle_checkin(
     db: *mut Database,
     habit_id: *const c_char,

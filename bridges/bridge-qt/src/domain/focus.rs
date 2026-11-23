@@ -132,6 +132,24 @@ pub unsafe extern "C" fn synapse_focus_delete_session(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_focus_clear_sessions_range(
+    db: *mut Database,
+    range: *const c_char,
+) -> c_int {
+    if db.is_null() {
+        return -1;
+    }
+    let range_str = to_opt_str(range).unwrap_or("all");
+    match FocusRepository::clear_sessions_range(&*db, range_str) {
+        Ok(count) => count as c_int,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] clear_focus_sessions_range failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_focus_get_alarms(db: *mut Database) -> *mut c_char {
     if db.is_null() {
         return std::ptr::null_mut();

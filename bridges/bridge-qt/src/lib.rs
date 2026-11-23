@@ -413,6 +413,7 @@ pub unsafe extern "C" fn synapse_fsrs_calculate(
         difficulty,
         elapsed_days: elapsed_days.max(0),
         scheduled_days: 0,
+        learning_steps: 0,
         reps: reps.max(0),
         lapses: lapses.max(0),
         state: if reps == 0 { FsrsState::New } else { FsrsState::Review },
