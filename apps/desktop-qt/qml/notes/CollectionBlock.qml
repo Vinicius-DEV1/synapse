@@ -6,11 +6,8 @@ import "../ui"
 Rectangle {
     id: collectionRoot
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + 18
-    radius: 12
-    color: "#13131f"
-    border.color: accentColor + "55"
-    border.width: 1
+    implicitHeight: mainCol.implicitHeight + 8
+    color: "transparent"
 
     property var blockData: ({})
     property var attrs: blockData.attrs || ({})
@@ -70,9 +67,11 @@ Rectangle {
             TextField {
                 Layout.fillWidth: true
                 text: collectionRoot.title
-                color: "#fffffe"
-                font.pixelSize: 13
+                color: "#c4b5fd"
+                font.pixelSize: 11
                 font.weight: Font.DemiBold
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: 1.0
                 background: null
                 onEditingFinished: {
                     collectionRoot.title = text
@@ -90,19 +89,35 @@ Rectangle {
             }
         }
 
-        TextArea {
-            id: bodyArea
+        Item {
             visible: !collectionRoot.collapsed
             Layout.fillWidth: true
-            Layout.leftMargin: 28
-            text: collectionRoot.innerBody
-            placeholderText: qsTr("Conteúdo agrupado...")
-            placeholderTextColor: "#52525b"
-            color: "#cbd5e1"
-            font.pixelSize: 13
-            wrapMode: TextEdit.Wrap
-            background: Rectangle { radius: 6; color: "#0b0b12"; border.color: "#10ffffff" }
-            onEditingFinished: collectionRoot.saveUpdate(text)
+            Layout.leftMargin: 6
+            implicitHeight: Math.max(30, bodyArea.contentHeight + 6)
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: "#1affffff"
+            }
+
+            TextArea {
+                id: bodyArea
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 12
+                padding: 0
+                text: collectionRoot.innerBody
+                placeholderText: qsTr("Conteúdo agrupado...")
+                placeholderTextColor: "#52525b"
+                color: "#cbd5e1"
+                font.pixelSize: 14
+                wrapMode: TextEdit.Wrap
+                background: Item {}
+                onEditingFinished: collectionRoot.saveUpdate(text)
+            }
         }
     }
 }

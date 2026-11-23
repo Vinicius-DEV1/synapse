@@ -96,19 +96,20 @@ ColumnLayout {
 
     Repeater {
         model: blockListRoot.blocks
-        delegate: RowLayout {
+        delegate: Item {
             id: blockRow
             required property var modelData
             required property int index
             Layout.fillWidth: true
-            spacing: 6
+            implicitHeight: Math.max(28, sliceLoader.item ? sliceLoader.item.implicitHeight : 36)
 
             HoverHandler { id: rowHover }
 
             NotesBlockHandle {
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 4
-                activeVisible: rowHover.hovered
+                x: -30
+                y: 4
+                z: 5
+                activeVisible: rowHover.hovered || handleHovered
                 canMoveUp: blockRow.index > 0
                 canMoveDown: blockRow.index < blockListRoot.blocks.length - 1
                 onMoveUpRequested: blockListRoot.moveBlock(blockRow.index, -1)
@@ -118,31 +119,26 @@ ColumnLayout {
                 onDeleteRequested: blockListRoot.deleteBlock(blockRow.index)
             }
 
-            Item {
-                Layout.fillWidth: true
-                implicitHeight: sliceLoader.item ? sliceLoader.item.implicitHeight : 44
-
-                Loader {
-                    id: sliceLoader
-                    width: parent.width
-                    sourceComponent: {
-                        var t = blockRow.modelData.blockType
-                        if (t === "questionBlock") return questionComp
-                        if (t === "habitWidget") return habitComp
-                        if (t === "focusWidget") return focusComp
-                        if (t === "alarmWidget") return alarmComp
-                        if (t === "calendarEventWidget") return eventComp
-                        if (t === "fileWidget") return fileComp
-                        if (t === "documentBundle") return bundleComp
-                        if (t === "toggleBlock" || t === "blockquoteToggle") return toggleComp
-                        if (t === "columnGroup") return columnsComp
-                        if (t === "linkPreview") return linkPreviewComp
-                        if (t === "linkGroup") return linkGroupComp
-                        if (t === "mediaWidget") return mediaComp
-                        if (t === "scrapWidget") return scrapComp
-                        if (t === "collectionBlock") return collectionComp
-                        return richSliceComp
-                    }
+            Loader {
+                id: sliceLoader
+                width: parent.width
+                sourceComponent: {
+                    var t = blockRow.modelData.blockType
+                    if (t === "questionBlock") return questionComp
+                    if (t === "habitWidget") return habitComp
+                    if (t === "focusWidget") return focusComp
+                    if (t === "alarmWidget") return alarmComp
+                    if (t === "calendarEventWidget") return eventComp
+                    if (t === "fileWidget") return fileComp
+                    if (t === "documentBundle") return bundleComp
+                    if (t === "toggleBlock" || t === "blockquoteToggle") return toggleComp
+                    if (t === "columnGroup") return columnsComp
+                    if (t === "linkPreview") return linkPreviewComp
+                    if (t === "linkGroup") return linkGroupComp
+                    if (t === "mediaWidget") return mediaComp
+                    if (t === "scrapWidget") return scrapComp
+                    if (t === "collectionBlock") return collectionComp
+                    return richSliceComp
                 }
             }
 

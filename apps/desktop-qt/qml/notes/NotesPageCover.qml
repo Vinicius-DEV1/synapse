@@ -187,12 +187,12 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         width: Math.max(0, Math.min(parent.width - 96, 928))
-        height: 104
+        height: 96
         visible: !coverRoot.hasCover
 
         Button {
             anchors.left: parent.left
-            anchors.leftMargin: 48
+            anchors.leftMargin: 0
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 8
             text: qsTr("Add cover")
@@ -202,8 +202,8 @@ Item {
             background: Rectangle { radius: 6; color: parent.hovered ? "#0dffffff" : "transparent" }
             contentItem: RowLayout {
                 spacing: 6
-                AppIcon { name: "image"; color: "#a7a9be" }
-                Label { text: parent.parent.text; color: parent.parent.hovered ? "#fffffe" : "#a7a9be"; font.pixelSize: 13; font.weight: Font.Medium }
+                AppIcon { name: "image"; color: parent.parent.hovered ? "#fffffe" : "#a7a9be"; width: 15; height: 15 }
+                Label { text: qsTr("Adicionar capa"); color: parent.parent.hovered ? "#fffffe" : "#a7a9be"; font.pixelSize: 13; font.weight: Font.Medium }
             }
         }
     }

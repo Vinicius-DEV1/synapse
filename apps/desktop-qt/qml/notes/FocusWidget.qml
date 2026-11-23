@@ -5,11 +5,11 @@ import "../ui"
 
 Rectangle {
     id: focusWidgetRoot
-    Layout.fillWidth: true
-    implicitHeight: contentCol.implicitHeight + 22
-    radius: 12
-    color: "#141820"
-    border.color: isCompleted ? "#4010b981" : (isRunning ? "#558b5cf6" : "#18ffffff")
+    implicitWidth: Math.min(parent ? parent.width : 540, contentCol.implicitWidth + 20)
+    implicitHeight: 34
+    radius: 7
+    color: isCompleted ? "#1a10b981" : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")
+    border.color: isCompleted ? "#3310b981" : "#338b5cf6"
     border.width: 1
 
     property var blockData: ({})
@@ -68,119 +68,106 @@ Rectangle {
         }
     }
 
-    ColumnLayout {
+    RowLayout {
         id: contentCol
-        anchors.fill: parent
-        anchors.margins: 12
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: 10
         spacing: 8
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
+        AppIcon {
+            name: focusWidgetRoot.isCompleted ? "check" : "clock"
+            color: focusWidgetRoot.isCompleted ? "#34d399" : "#a78bfa"
+            width: 13
+            height: 13
+        }
 
-            Rectangle {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                radius: 8
-                color: focusWidgetRoot.isCompleted ? "#2010b981" : "#208b5cf6"
-                AppIcon {
-                    anchors.centerIn: parent
-                    name: focusWidgetRoot.isCompleted ? "check" : "focus"
-                    color: focusWidgetRoot.isCompleted ? "#34d399" : "#a78bfa"
-                    width: 16
-                    height: 16
-                }
-            }
+        Text {
+            text: focusWidgetRoot.isCompleted
+                ? (qsTr("Foco concluído: ") + focusWidgetRoot.tagLabel)
+                : (qsTr("Foco: ") + focusWidgetRoot.tagLabel)
+            color: focusWidgetRoot.isCompleted ? "#34d399" : "#c4b5fd"
+            font.pixelSize: 12
+            font.weight: Font.Medium
+            elide: Text.ElideRight
+            Layout.maximumWidth: 260
+        }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text {
-                    text: focusWidgetRoot.description + "  •  #" + focusWidgetRoot.tagLabel
-                    color: "#fffffe"
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-                Text {
-                    text: focusWidgetRoot.isCompleted ? qsTr("Sessão concluída")
-                        : (focusWidgetRoot.isRunning ? qsTr("Em foco") : qsTr("Pausado • ") + focusWidgetRoot.durationMinutes + " min")
-                    color: focusWidgetRoot.isCompleted ? "#34d399" : "#94a1b2"
-                    font.pixelSize: 11
-                }
-            }
+        Text {
+            text: focusWidgetRoot.isCompleted
+                ? (focusWidgetRoot.durationMinutes + "m")
+                : (focusWidgetRoot.isRunning || focusWidgetRoot.remainingSeconds < focusWidgetRoot.durationMinutes * 60
+                    ? focusWidgetRoot.formatTime(focusWidgetRoot.remainingSeconds)
+                    : (focusWidgetRoot.durationMinutes + "m"))
+            color: focusWidgetRoot.isCompleted ? "#34d399" : (focusWidgetRoot.isRunning ? "#fffffe" : "#a78bfa")
+            font.pixelSize: 12
+            font.weight: Font.DemiBold
+            font.family: "monospace"
+        }
 
-            Text {
-                text: focusWidgetRoot.formatTime(focusWidgetRoot.remainingSeconds)
-                color: focusWidgetRoot.isCompleted ? "#34d399" : "#fffffe"
-                font.pixelSize: 20
-                font.bold: true
-                font.family: "monospace"
+        ToolButton {
+            visible: !focusWidgetRoot.isCompleted
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: focusWidgetRoot.isRunning ? qsTr("Pausar") : qsTr("Iniciar")
+            onClicked: {
+                focusWidgetRoot.isRunning = !focusWidgetRoot.isRunning
+                focusWidgetRoot.commitStatus(focusWidgetRoot.isRunning ? "running" : "paused")
             }
+            background: Rectangle {
+                radius: 5
+                color: parent.hovered ? "#448b5cf6" : (focusWidgetRoot.isRunning ? "#338b5cf6" : "transparent")
+            }
+            contentItem: AppIcon {
+                anchors.centerIn: parent
+                name: focusWidgetRoot.isRunning ? "pause" : "play"
+                color: "#c4b5fd"
+                width: 11
+                height: 11
+            }
+        }
 
-            Button {
-                visible: !focusWidgetRoot.isCompleted
-                Layout.preferredHeight: 28
-                Layout.preferredWidth: 74
-                focusPolicy: Qt.NoFocus
-                onClicked: {
-                    focusWidgetRoot.isRunning = !focusWidgetRoot.isRunning
-                    focusWidgetRoot.commitStatus(focusWidgetRoot.isRunning ? "running" : "paused")
-                }
-                background: Rectangle {
-                    radius: 7
-                    color: focusWidgetRoot.isRunning ? "#27272a" : "#7c3aed"
-                }
-                contentItem: Text {
-                    text: focusWidgetRoot.isRunning ? qsTr("Pausar") : qsTr("Iniciar")
-                    color: "#ffffff"
-                    font.pixelSize: 11
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-            }
+        ToolButton {
+            visible: !focusWidgetRoot.isCompleted && (hoverHandler.hovered || focusWidgetRoot.isRunning)
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Concluir agora")
+            onClicked: focusWidgetRoot.completeSession()
+            background: Rectangle { radius: 5; color: parent.hovered ? "#2210b981" : "transparent" }
+            contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 12; height: 12 }
+        }
 
-            ToolButton {
-                visible: !focusWidgetRoot.isCompleted
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Concluir agora")
-                onClicked: focusWidgetRoot.completeSession()
-                background: Rectangle { radius: 6; color: parent.hovered ? "#2210b981" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 14; height: 14 }
+        ToolButton {
+            visible: hoverHandler.hovered && (focusWidgetRoot.isCompleted || focusWidgetRoot.remainingSeconds < focusWidgetRoot.durationMinutes * 60)
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Resetar")
+            onClicked: {
+                focusWidgetRoot.isRunning = false
+                focusWidgetRoot.isCompleted = false
+                focusWidgetRoot.remainingSeconds = focusWidgetRoot.durationMinutes * 60
+                focusWidgetRoot.commitStatus("paused")
             }
+            background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
+            contentItem: AppIcon { anchors.centerIn: parent; name: "refresh"; color: "#94a1b2"; width: 11; height: 11 }
+        }
 
-            ToolButton {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Resetar")
-                onClicked: {
-                    focusWidgetRoot.isRunning = false
-                    focusWidgetRoot.isCompleted = false
-                    focusWidgetRoot.remainingSeconds = focusWidgetRoot.durationMinutes * 60
-                    focusWidgetRoot.commitStatus("paused")
-                }
-                background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "refresh"; color: "#94a1b2"; width: 13; height: 13 }
-            }
-
-            ToolButton {
-                visible: hoverHandler.hovered
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Remover widget")
-                onClicked: focusWidgetRoot.removeRequested()
-                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 13; height: 13 }
-            }
+        ToolButton {
+            visible: hoverHandler.hovered
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Remover widget")
+            onClicked: focusWidgetRoot.removeRequested()
+            background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
+            contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 11; height: 11 }
         }
     }
 }

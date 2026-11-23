@@ -99,65 +99,71 @@ Item {
         RowLayout {
             id: columnsRow
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 0
 
             Repeater {
                 model: colLayoutRoot.columnsData
-                delegate: Rectangle {
-                    id: colDelegate
+                delegate: RowLayout {
+                    id: colWrapper
                     required property var modelData
                     required property int index
-
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(110, colArea.contentHeight + 44)
-                    radius: 10
-                    color: "#141320"
-                    border.color: colArea.activeFocus ? "#7c3aed" : "#24ffffff"
-                    border.width: 1
+                    spacing: 0
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 6
+                    Rectangle {
+                        id: gutterDivider
+                        visible: colWrapper.index > 0
+                        Layout.preferredWidth: dividerHover.hovered ? 3 : 1
+                        Layout.fillHeight: true
+                        Layout.leftMargin: 10
+                        Layout.rightMargin: 10
+                        radius: 1
+                        color: dividerHover.hovered ? "#8b5cf6" : (groupHover.hovered ? "#2effffff" : "#12ffffff")
+                        HoverHandler { id: dividerHover }
+                    }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Text {
-                                text: qsTr("Coluna ") + (colDelegate.index + 1)
-                                color: "#6b7280"
-                                font.pixelSize: 10
-                                font.bold: true
-                                Layout.fillWidth: true
+                    Rectangle {
+                        id: colDelegate
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.max(76, colArea.contentHeight + 18)
+                        radius: 8
+                        color: colArea.activeFocus ? "#08ffffff" : "transparent"
+                        border.color: colArea.activeFocus ? "#448b5cf6" : (groupHover.hovered ? "#0cffffff" : "transparent")
+                        border.width: 1
+
+                        ToolButton {
+                            visible: groupHover.hovered && colLayoutRoot.columnsData.length > 2
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 4
+                            z: 2
+                            width: 18
+                            height: 18
+                            onClicked: {
+                                var next = colLayoutRoot.columnsData.slice()
+                                next.splice(colWrapper.index, 1)
+                                colLayoutRoot.columnsData = next
+                                colLayoutRoot.saveColumns(next)
                             }
-                            ToolButton {
-                                visible: colLayoutRoot.columnsData.length > 2
-                                Layout.preferredWidth: 18
-                                Layout.preferredHeight: 18
-                                onClicked: {
-                                    var next = colLayoutRoot.columnsData.slice()
-                                    next.splice(colDelegate.index, 1)
-                                    colLayoutRoot.columnsData = next
-                                    colLayoutRoot.saveColumns(next)
-                                }
-                                background: Rectangle { radius: 4; color: parent.hovered ? "#22ef4444" : "transparent" }
-                                contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#71717a"; width: 9; height: 9 }
-                            }
+                            background: Rectangle { radius: 4; color: parent.hovered ? "#22ef4444" : "#1affffff" }
+                            contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 9; height: 9 }
                         }
 
                         TextArea {
                             id: colArea
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            text: String(colDelegate.modelData || "")
-                            placeholderText: qsTr("Digite nesta coluna...")
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            padding: 0
+                            text: String(colWrapper.modelData || "")
+                            placeholderText: qsTr("Digite aqui...")
                             placeholderTextColor: "#4b5563"
-                            color: "#fffffe"
-                            font.pixelSize: 13
+                            color: "#e6fffffe"
+                            font.pixelSize: 15
                             wrapMode: TextEdit.Wrap
-                            background: null
+                            background: Item {}
                             onEditingFinished: {
                                 var next = colLayoutRoot.columnsData.slice()
-                                next[colDelegate.index] = text
+                                next[colWrapper.index] = text
                                 colLayoutRoot.columnsData = next
                                 colLayoutRoot.saveColumns(next)
                             }

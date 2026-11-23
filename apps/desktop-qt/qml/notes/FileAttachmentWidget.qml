@@ -6,10 +6,10 @@ import "../ui"
 Rectangle {
     id: fileWidgetRoot
     Layout.fillWidth: true
-    implicitHeight: 64
-    radius: 12
-    color: "#16161e"
-    border.color: hoverHandler.hovered ? accentColor : "#2e2e38"
+    implicitHeight: 54
+    radius: 10
+    color: hoverHandler.hovered ? "#08ffffff" : "#801a1924"
+    border.color: hoverHandler.hovered ? accentColor : "#12ffffff"
     border.width: 1
 
     property var blockData: ({})
@@ -42,10 +42,11 @@ Rectangle {
     }
 
     Rectangle {
+        visible: fileWidgetRoot.accentColor !== "#8b5cf6"
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: 4
+        width: 3
         radius: 2
         color: fileWidgetRoot.accentColor
     }

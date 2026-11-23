@@ -25,73 +25,76 @@ RowLayout {
     signal shareRequested()
     signal richModeRequested(bool enabled)
 
-    spacing: 6
-    opacity: actionsVisible || isDirty || saveFailed ? 1 : 0.15
-    Behavior on opacity { NumberAnimation { duration: 150 } }
+    spacing: 4
 
-    Button {
-        Layout.preferredHeight: 28
-        padding: 8
-        focusPolicy: Qt.NoFocus
-        Accessible.name: qsTr("Move page")
-        onClicked: headerRoot.moveRequested()
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Mover página…")
-        background: Rectangle {
-            radius: 7
-            color: parent.hovered ? "#1a8b5cf6" : "transparent"
-            border.color: parent.hovered ? "#338b5cf6" : "transparent"
-        }
-        contentItem: RowLayout {
-            spacing: 5
-            AppIcon { name: "file-symlink"; color: parent.parent.hovered ? "#ddd6fe" : "#94a1b2"; width: 13; height: 13 }
-            Text { text: qsTr("Mover"); color: parent.parent.hovered ? "#fffffe" : "#94a1b2"; font.pixelSize: 11; font.weight: Font.Medium }
-        }
-    }
+    RowLayout {
+        spacing: 4
+        opacity: headerRoot.actionsVisible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 150 } }
 
-    Button {
-        Layout.preferredHeight: 28
-        padding: 8
-        focusPolicy: Qt.NoFocus
-        Accessible.name: qsTr("Edit history")
-        onClicked: headerRoot.historyRequested()
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Histórico de edições")
-        background: Rectangle {
-            radius: 7
-            color: parent.hovered ? "#1a8b5cf6" : "transparent"
-            border.color: parent.hovered ? "#338b5cf6" : "transparent"
+        Button {
+            Layout.preferredHeight: 30
+            padding: 8
+            focusPolicy: Qt.NoFocus
+            Accessible.name: qsTr("Move page")
+            onClicked: headerRoot.moveRequested()
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Mover página…")
+            background: Rectangle {
+                radius: 8
+                color: parent.hovered ? "#1a8b5cf6" : "transparent"
+            }
+            contentItem: RowLayout {
+                spacing: 6
+                AppIcon { name: "file-symlink"; color: parent.parent.hovered ? "#c4b5fd" : "#a7a9be"; width: 15; height: 15 }
+                Text { text: qsTr("Mover"); color: parent.parent.hovered ? "#c4b5fd" : "#a7a9be"; font.pixelSize: 13; font.weight: Font.Medium }
+            }
         }
-        contentItem: RowLayout {
-            spacing: 5
-            AppIcon { name: "refresh"; color: parent.parent.hovered ? "#ddd6fe" : "#94a1b2"; width: 13; height: 13 }
-            Text { text: qsTr("Histórico"); color: parent.parent.hovered ? "#fffffe" : "#94a1b2"; font.pixelSize: 11; font.weight: Font.Medium }
-        }
-    }
 
-    Button {
-        Layout.preferredHeight: 28
-        padding: 8
-        focusPolicy: Qt.NoFocus
-        Accessible.name: qsTr("Share page")
-        onClicked: headerRoot.shareRequested()
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Compartilhar link…")
-        background: Rectangle {
-            radius: 7
-            color: parent.hovered ? "#1a8b5cf6" : "transparent"
-            border.color: parent.hovered ? "#338b5cf6" : "transparent"
+        Button {
+            Layout.preferredHeight: 30
+            padding: 8
+            focusPolicy: Qt.NoFocus
+            Accessible.name: qsTr("Edit history")
+            onClicked: headerRoot.historyRequested()
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Histórico de edições")
+            background: Rectangle {
+                radius: 8
+                color: parent.hovered ? "#1a8b5cf6" : "transparent"
+            }
+            contentItem: RowLayout {
+                spacing: 6
+                AppIcon { name: "clock"; color: parent.parent.hovered ? "#c4b5fd" : "#a7a9be"; width: 15; height: 15 }
+                Text { text: qsTr("Histórico"); color: parent.parent.hovered ? "#c4b5fd" : "#a7a9be"; font.pixelSize: 13; font.weight: Font.Medium }
+            }
         }
-        contentItem: RowLayout {
-            spacing: 5
-            AppIcon { name: "share"; color: parent.parent.hovered ? "#ddd6fe" : "#94a1b2"; width: 13; height: 13 }
-            Text { text: qsTr("Compartilhar"); color: parent.parent.hovered ? "#fffffe" : "#94a1b2"; font.pixelSize: 11; font.weight: Font.Medium }
+
+        Button {
+            Layout.preferredHeight: 30
+            padding: 8
+            focusPolicy: Qt.NoFocus
+            Accessible.name: qsTr("Share page")
+            onClicked: headerRoot.shareRequested()
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Compartilhar link…")
+            background: Rectangle {
+                radius: 8
+                color: parent.hovered ? "#1a8b5cf6" : "transparent"
+            }
+            contentItem: RowLayout {
+                spacing: 6
+                AppIcon { name: "share"; color: parent.parent.hovered ? "#c4b5fd" : "#a7a9be"; width: 15; height: 15 }
+                Text { text: qsTr("Compartilhar"); color: parent.parent.hovered ? "#c4b5fd" : "#a7a9be"; font.pixelSize: 13; font.weight: Font.Medium }
+            }
         }
     }
 
     ToolButton {
-        Layout.preferredWidth: 74
+        Layout.preferredWidth: 70
         Layout.preferredHeight: 28
+        opacity: headerRoot.isDirty || headerRoot.saveFailed || headerRoot.actionsVisible ? 1 : 0.45
+        Behavior on opacity { NumberAnimation { duration: 150 } }
         focusPolicy: Qt.NoFocus
         Accessible.name: headerRoot.saveFailed ? qsTr("Retry saving note") : qsTr("Save note")
         onClicked: headerRoot.saveRequested()

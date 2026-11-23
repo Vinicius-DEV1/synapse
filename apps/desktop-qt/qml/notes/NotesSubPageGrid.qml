@@ -67,7 +67,7 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         Text {
-            text: qsTr("Sub-pages")
+            text: qsTr("Sub-páginas")
             color: "#a7a9be"
             font.pixelSize: 12
             font.weight: Font.Medium
@@ -274,13 +274,44 @@ ColumnLayout {
             Layout.preferredHeight: 50
             radius: 12
             color: createMouse.containsMouse ? "#0d8b5cf6" : "transparent"
-            border.color: createMouse.containsMouse ? "#558b5cf6" : "#20ffffff"
+            border.width: 0
+
+            Canvas {
+                anchors.fill: parent
+                property color strokeColor: createMouse.containsMouse ? "#808b5cf6" : "#14ffffff"
+                onStrokeColorChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    ctx.save()
+                    ctx.strokeStyle = strokeColor
+                    ctx.lineWidth = 1.2
+                    ctx.setLineDash([5, 4])
+                    var r = 12
+                    var w = width - 1
+                    var h = height - 1
+                    ctx.beginPath()
+                    ctx.moveTo(0.5 + r, 0.5)
+                    ctx.lineTo(w - r, 0.5)
+                    ctx.arcTo(w, 0.5, w, 0.5 + r, r)
+                    ctx.lineTo(w, h - r)
+                    ctx.arcTo(w, h, w - r, h, r)
+                    ctx.lineTo(0.5 + r, h)
+                    ctx.arcTo(0.5, h, 0.5, h - r, r)
+                    ctx.lineTo(0.5, 0.5 + r)
+                    ctx.arcTo(0.5, 0.5, 0.5 + r, 0.5, r)
+                    ctx.stroke()
+                    ctx.restore()
+                }
+            }
 
             RowLayout {
                 anchors.centerIn: parent
                 spacing: 8
-                Text { text: "+"; color: "#a78bfa"; font.pixelSize: 18; font.bold: true }
-                Text { text: qsTr("New sub-page"); color: "#a7a9be"; font.pixelSize: 14 }
+                AppIcon { name: "plus"; color: createMouse.containsMouse ? "#a78bfa" : "#a7a9be"; width: 16; height: 16 }
+                Text { text: qsTr("Nova Sub-página"); color: createMouse.containsMouse ? "#a78bfa" : "#a7a9be"; font.pixelSize: 13; font.weight: Font.Medium }
             }
 
             MouseArea {
@@ -359,18 +390,17 @@ ColumnLayout {
     }
 
     Rectangle {
-        visible: pages.length > 0
+        visible: pages.length > 0 && rootDropArea.containsDrag
         Layout.fillWidth: true
-        Layout.preferredHeight: 36
+        Layout.preferredHeight: visible ? 36 : 0
         radius: 9
-        color: rootDropArea.containsDrag ? "#248b5cf6" : "transparent"
-        border.color: rootDropArea.containsDrag ? "#668b5cf6" : "transparent"
+        color: "#248b5cf6"
+        border.color: "#668b5cf6"
         Text {
             anchors.centerIn: parent
             text: qsTr("Drop a sub-page here to move it to the top level")
-            color: rootDropArea.containsDrag ? "#ddd6fe" : "#77798c"
+            color: "#ddd6fe"
             font.pixelSize: 10
-            visible: rootDropArea.containsDrag
         }
         DropArea {
             id: rootDropArea

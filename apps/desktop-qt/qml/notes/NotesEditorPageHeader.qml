@@ -61,6 +61,7 @@ ColumnLayout {
     }
 
     RowLayout {
+        id: titleHeaderGroup
         Layout.fillWidth: true
         Layout.preferredHeight: 64
         Layout.bottomMargin: 8
@@ -77,6 +78,7 @@ ColumnLayout {
             color: "#fffffe"
             font.pixelSize: 36
             font.bold: true
+            leftPadding: 0
             background: null
             selectByMouse: true
             placeholderText: qsTr("Untitled")
@@ -85,13 +87,13 @@ ColumnLayout {
         }
         NotesEditorHeader {
             id: notesEditorHeader
-            Layout.preferredWidth: 375
+            Layout.preferredWidth: implicitWidth
             isDirty: pageHeader.isDirty
             saveFailed: pageHeader.saveFailed
             isPreviewMode: pageHeader.isPreviewMode
             isRichMode: pageHeader.isRichMode
             canUseRichMode: pageHeader.canUseRichMode
-            actionsVisible: pageTitleHover.hovered || noteTitleInput.activeFocus || notesEditorHeader.activeFocus
+            actionsVisible: pageTitleHover.hovered || headerGroupHover.hovered || noteTitleInput.activeFocus || notesEditorHeader.activeFocus
             pageDate: pageHeader.activeDate
             wordCount: pageHeader.wordCount
             characterCount: pageHeader.characterCount
@@ -104,6 +106,7 @@ ColumnLayout {
             onMoveRequested: pageHeader.moveRequested(pageHeader.activePageId)
             onPreviewToggled: function(preview) { pageHeader.previewToggled(preview) }
         }
+        HoverHandler { id: headerGroupHover }
         HoverHandler { id: pageTitleHover; target: pageTitleRow }
     }
 
@@ -113,6 +116,7 @@ ColumnLayout {
         Layout.preferredHeight: 24
         Layout.leftMargin: 56
         Layout.bottomMargin: 32
+        leftPadding: 0
         text: pageHeader.activeDescription
         color: "#a7a9be"
         font.pixelSize: 16

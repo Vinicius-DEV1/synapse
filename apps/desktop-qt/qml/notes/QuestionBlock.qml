@@ -6,10 +6,10 @@ import "../ui"
 Rectangle {
     id: qBlockRoot
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + 24
+    implicitHeight: mainCol.implicitHeight + 14
     radius: 12
-    color: "#161522"
-    border.color: hoverHandler.hovered ? "#408b5cf6" : "#18ffffff"
+    color: hoverHandler.hovered ? "#0affffff" : "#801a1924"
+    border.color: hoverHandler.hovered ? "#4d8b5cf6" : "#0dffffff"
     border.width: 1
 
     property var blockData: ({})
@@ -76,123 +76,128 @@ Rectangle {
     ColumnLayout {
         id: mainCol
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 10
+        anchors.leftMargin: 12
+        anchors.rightMargin: 10
+        anchors.topMargin: 7
+        anchors.bottomMargin: 7
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
 
             Rectangle {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 radius: 8
-                color: "#228b5cf6"
+                color: "#1a8b5cf6"
                 border.color: "#338b5cf6"
                 AppIcon {
                     anchors.centerIn: parent
-                    name: "questions"
-                    color: "#c4b5fd"
-                    width: 17
-                    height: 17
+                    name: "quiz"
+                    color: "#a78bfa"
+                    width: 14
+                    height: 14
                 }
             }
 
-            ColumnLayout {
+            Text {
                 Layout.fillWidth: true
-                spacing: 2
+                text: qBlockRoot.cachedTitle
+                color: "#fffffe"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+            }
 
+            Rectangle {
+                visible: qBlockRoot.totalCount > 0 && hoverHandler.hovered
+                Layout.preferredHeight: 20
+                Layout.preferredWidth: countPillTxt.implicitWidth + 14
+                radius: 10
+                color: "#0affffff"
+                border.color: "#12ffffff"
                 Text {
-                    Layout.fillWidth: true
-                    text: qBlockRoot.cachedTitle
-                    color: "#fffffe"
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: qBlockRoot.totalCount > 0
-                        ? (qBlockRoot.totalCount + " questões" +
-                           (qBlockRoot.answeredCount > 0
-                            ? " • " + qBlockRoot.answeredCount + "/" + qBlockRoot.totalCount + " (" + qBlockRoot.accuracyPct + "%)"
-                            : ""))
-                        : qsTr("Bloco de exercícios vinculado")
-                    color: "#94a1b2"
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                }
-            }
-
-            Button {
-                Layout.preferredHeight: 30
-                Layout.preferredWidth: 88
-                focusPolicy: Qt.NoFocus
-                onClicked: qBlockRoot.playRequested(qBlockRoot.batteryId, qBlockRoot.questionId, qBlockRoot.cachedTitle)
-                background: Rectangle {
-                    radius: 7
-                    color: parent.hovered ? "#7c3aed" : "#6d28d9"
-                }
-                contentItem: RowLayout {
-                    spacing: 5
+                    id: countPillTxt
                     anchors.centerIn: parent
-                    AppIcon { name: "play"; color: "#ffffff"; width: 12; height: 12 }
-                    Text { text: qsTr("Praticar"); color: "#ffffff"; font.pixelSize: 11; font.weight: Font.DemiBold }
-                }
-            }
-
-            ToolButton {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                visible: qBlockRoot.questionList.length > 0
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qBlockRoot.expanded ? qsTr("Recolher prévia") : qsTr("Pré-visualizar questões")
-                onClicked: qBlockRoot.expanded = !qBlockRoot.expanded
-                background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: qBlockRoot.expanded ? "chevron-down" : "chevron-right"
+                    text: qBlockRoot.totalCount + (qBlockRoot.totalCount === 1 ? " q" : " qs")
                     color: "#a7a9be"
-                    width: 14
-                    height: 14
+                    font.pixelSize: 10
+                    font.family: "monospace"
                 }
             }
 
-            ToolButton {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                visible: qBlockRoot.batteryId.length > 0
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Abrir em Questões")
-                onClicked: qBlockRoot.openInQuestionsRequested(qBlockRoot.batteryId)
-                background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: "external-link"
-                    color: "#a7a9be"
-                    width: 14
-                    height: 14
-                }
+            Text {
+                visible: qBlockRoot.answeredCount > 0 && hoverHandler.hovered
+                text: qBlockRoot.accuracyPct + "% acertos"
+                color: "#34d399"
+                font.pixelSize: 11
+                font.family: "monospace"
+                font.weight: Font.Medium
             }
 
-            ToolButton {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                visible: hoverHandler.hovered
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Remover bloco")
-                onClicked: qBlockRoot.removeRequested()
-                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: "trash"
-                    color: parent.hovered ? "#fda4af" : "#71717a"
-                    width: 13
-                    height: 13
+            RowLayout {
+                opacity: hoverHandler.hovered ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 130 } }
+                spacing: 4
+
+                Button {
+                    Layout.preferredHeight: 26
+                    padding: 8
+                    focusPolicy: Qt.NoFocus
+                    onClicked: qBlockRoot.playRequested(qBlockRoot.batteryId, qBlockRoot.questionId, qBlockRoot.cachedTitle)
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.hovered ? "#4d8b5cf6" : "#338b5cf6"
+                        border.color: "#668b5cf6"
+                    }
+                    contentItem: RowLayout {
+                        spacing: 5
+                        AppIcon { name: "play"; color: "#c4b5fd"; width: 11; height: 11 }
+                        Text { text: qsTr("Iniciar no Modo Foco"); color: "#ddd6fe"; font.pixelSize: 11; font.weight: Font.DemiBold }
+                    }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    visible: qBlockRoot.questionList.length > 0
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qBlockRoot.expanded ? qsTr("Recolher prévia") : qsTr("Pré-visualizar questões")
+                    onClicked: qBlockRoot.expanded = !qBlockRoot.expanded
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon {
+                        anchors.centerIn: parent
+                        name: qBlockRoot.expanded ? "chevron-down" : "chevron-right"
+                        color: "#a7a9be"
+                        width: 13
+                        height: 13
+                    }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    visible: qBlockRoot.batteryId.length > 0
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Abrir em Questões")
+                    onClicked: qBlockRoot.openInQuestionsRequested(qBlockRoot.batteryId)
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "external-link"; color: "#a7a9be"; width: 13; height: 13 }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Remover bloco")
+                    onClicked: qBlockRoot.removeRequested()
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: parent.hovered ? "#fda4af" : "#71717a"; width: 12; height: 12 }
                 }
             }
         }

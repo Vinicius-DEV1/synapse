@@ -6,10 +6,10 @@ import "../ui"
 Rectangle {
     id: linkCardRoot
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + 22
-    radius: 12
-    color: "#151422"
-    border.color: hoverHandler.hovered ? accentColor : "#1fffffff"
+    implicitHeight: mainCol.implicitHeight + 20
+    radius: 10
+    color: hoverHandler.hovered ? "#08ffffff" : "#1a1924"
+    border.color: hoverHandler.hovered ? (accentColor !== "#8b5cf6" ? accentColor : "#33ffffff") : "#1affffff"
     border.width: 1
 
     property var blockData: ({})
@@ -141,75 +141,84 @@ Rectangle {
                 }
             }
 
-            // Watch status pills
-            Button {
-                Layout.preferredHeight: 24
-                padding: 6
-                onClicked: linkCardRoot.saveStatus(linkCardRoot.isWatched, !linkCardRoot.isWatching)
-                background: Rectangle {
-                    radius: 6
-                    color: linkCardRoot.isWatching ? "#263b82f6" : "#1f1e2e"
-                    border.color: linkCardRoot.isWatching ? "#3b82f6" : "#2e2e38"
+            // Watch status pills & action bar (shown on hover or when active)
+            RowLayout {
+                opacity: hoverHandler.hovered || linkCardRoot.isWatching || linkCardRoot.isWatched || linkCardRoot.notesExpanded ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 130 } }
+                spacing: 4
+
+                Button {
+                    Layout.preferredHeight: 24
+                    padding: 6
+                    onClicked: linkCardRoot.saveStatus(linkCardRoot.isWatched, !linkCardRoot.isWatching)
+                    background: Rectangle {
+                        radius: 6
+                        color: linkCardRoot.isWatching ? "#26f59e0b" : "#1affffff"
+                        border.color: linkCardRoot.isWatching ? "#4df59e0b" : "transparent"
+                    }
+                    contentItem: Text {
+                        text: qsTr("Assistindo")
+                        color: linkCardRoot.isWatching ? "#fcd34d" : "#a7a9be"
+                        font.pixelSize: 10
+                        font.weight: Font.Medium
+                    }
                 }
-                contentItem: Text {
-                    text: qsTr("Assistindo")
-                    color: linkCardRoot.isWatching ? "#93c5fd" : "#94a1b2"
-                    font.pixelSize: 10
+
+                Button {
+                    Layout.preferredHeight: 24
+                    padding: 6
+                    onClicked: linkCardRoot.saveStatus(!linkCardRoot.isWatched, false)
+                    background: Rectangle {
+                        radius: 6
+                        color: linkCardRoot.isWatched ? "#2610b981" : "#1affffff"
+                        border.color: linkCardRoot.isWatched ? "#4d10b981" : "transparent"
+                    }
+                    contentItem: Text {
+                        text: linkCardRoot.isWatched ? qsTr("Assistido ✓") : qsTr("Concluir")
+                        color: linkCardRoot.isWatched ? "#6ee7b7" : "#a7a9be"
+                        font.pixelSize: 10
+                        font.weight: Font.Medium
+                    }
                 }
-            }
 
-            Button {
-                Layout.preferredHeight: 24
-                padding: 6
-                onClicked: linkCardRoot.saveStatus(!linkCardRoot.isWatched, false)
-                background: Rectangle {
-                    radius: 6
-                    color: linkCardRoot.isWatched ? "#2610b981" : "#1f1e2e"
-                    border.color: linkCardRoot.isWatched ? "#10b981" : "#2e2e38"
+                Button {
+                    visible: linkCardRoot.isYouTube
+                    Layout.preferredHeight: 24
+                    padding: 6
+                    onClicked: linkCardRoot.youtubeWatchRequested(linkCardRoot.url, linkCardRoot.title)
+                    background: Rectangle { radius: 6; color: "#dc2626" }
+                    contentItem: Text { text: qsTr("Assistir aqui"); color: "#ffffff"; font.pixelSize: 10; font.bold: true }
                 }
-                contentItem: Text {
-                    text: linkCardRoot.isWatched ? qsTr("Assistido ✓") : qsTr("Assistir")
-                    color: linkCardRoot.isWatched ? "#6ee7b7" : "#94a1b2"
-                    font.pixelSize: 10
+
+                ToolButton {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Anotações do link")
+                    onClicked: linkCardRoot.notesExpanded = !linkCardRoot.notesExpanded
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "notes"; color: "#a7a9be"; width: 13; height: 13 }
                 }
-            }
 
-            Button {
-                visible: linkCardRoot.isYouTube
-                Layout.preferredHeight: 24
-                padding: 6
-                onClicked: linkCardRoot.youtubeWatchRequested(linkCardRoot.url, linkCardRoot.title)
-                background: Rectangle { radius: 6; color: "#dc2626" }
-                contentItem: Text { text: qsTr("Assistir aqui"); color: "#ffffff"; font.pixelSize: 10; font.bold: true }
-            }
+                ToolButton {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Abrir no navegador")
+                    onClicked: if (linkCardRoot.url) Qt.openUrlExternally(linkCardRoot.url)
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "external-link"; color: "#a7a9be"; width: 13; height: 13 }
+                }
 
-            ToolButton {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Anotações do link")
-                onClicked: linkCardRoot.notesExpanded = !linkCardRoot.notesExpanded
-                background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "notes"; color: "#a7a9be"; width: 13; height: 13 }
-            }
-
-            ToolButton {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Abrir no navegador")
-                onClicked: if (linkCardRoot.url) Qt.openUrlExternally(linkCardRoot.url)
-                background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "external-link"; color: "#a7a9be"; width: 13; height: 13 }
-            }
-
-            ToolButton {
-                visible: hoverHandler.hovered
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                onClicked: linkCardRoot.removeRequested()
-                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
+                ToolButton {
+                    visible: hoverHandler.hovered
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    onClicked: linkCardRoot.removeRequested()
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
+                }
             }
         }
 

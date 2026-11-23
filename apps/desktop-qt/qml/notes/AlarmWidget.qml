@@ -63,8 +63,8 @@ Rectangle {
         spacing: 8
 
         AppIcon {
-            name: "focus"
-            color: alarmRoot.isTriggered ? "#f59e0b" : (alarmRoot.isPending ? "#a78bfa" : "#6b7280")
+            name: "clock"
+            color: alarmRoot.isTriggered ? "#34d399" : (alarmRoot.isPending ? "#c4b5fd" : "#f87171")
             Layout.preferredWidth: 14
             Layout.preferredHeight: 14
         }

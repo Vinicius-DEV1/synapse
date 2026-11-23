@@ -6,10 +6,10 @@ import "../ui"
 Rectangle {
     id: toggleRoot
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + (isCalloutMode ? 16 : 6)
-    radius: isCalloutMode ? 10 : 6
-    color: isCalloutMode ? (accentColor + "18") : (headerHover.hovered ? "#141420" : "transparent")
-    border.color: isCalloutMode ? (accentColor + "45") : "transparent"
+    implicitHeight: mainCol.implicitHeight + (isCalloutMode ? 16 : 4)
+    radius: isCalloutMode ? 8 : 0
+    color: isCalloutMode ? (accentColor + "18") : "transparent"
+    border.color: isCalloutMode ? (accentColor + "40") : "transparent"
     border.width: isCalloutMode ? 1 : 0
 
     property var blockData: ({})
@@ -179,29 +179,49 @@ Rectangle {
             }
         }
 
-        Rectangle {
+        Item {
             visible: toggleRoot.isOpen
             Layout.fillWidth: true
-            Layout.leftMargin: 28
-            implicitHeight: Math.max(44, bodyArea.contentHeight + 12)
-            radius: 6
-            color: "#0b0b12"
-            border.color: bodyArea.activeFocus ? "#448b5cf6" : "#0effffff"
+            Layout.leftMargin: 10
+            implicitHeight: bodyCol.implicitHeight
 
-            TextArea {
-                id: bodyArea
-                anchors.fill: parent
-                anchors.margins: 6
-                text: toggleRoot.plainSummary(toggleRoot.bodyHtml)
-                placeholderText: qsTr("Escreva dentro da seção recolhível...")
-                placeholderTextColor: "#52525b"
-                color: "#e2e8f0"
-                font.pixelSize: 13
-                wrapMode: TextEdit.Wrap
-                background: null
-                onEditingFinished: {
-                    toggleRoot.bodyHtml = "<p>" + text + "</p>"
-                    toggleRoot.emitUpdate()
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 2
+                color: toggleRoot.isCalloutMode ? (toggleRoot.accentColor + "55") : "#0dffffff"
+            }
+
+            ColumnLayout {
+                id: bodyCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                spacing: 4
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: "#0dffffff"
+                }
+
+                TextArea {
+                    id: bodyArea
+                    Layout.fillWidth: true
+                    implicitHeight: Math.max(32, contentHeight + 6)
+                    padding: 0
+                    text: toggleRoot.plainSummary(toggleRoot.bodyHtml)
+                    placeholderText: qsTr("Escreva dentro da seção recolhível...")
+                    placeholderTextColor: "#4b5563"
+                    color: "#cbd5e1"
+                    font.pixelSize: 14
+                    wrapMode: TextEdit.Wrap
+                    background: Item {}
+                    onEditingFinished: {
+                        toggleRoot.bodyHtml = "<p>" + text + "</p>"
+                        toggleRoot.emitUpdate()
+                    }
                 }
             }
         }

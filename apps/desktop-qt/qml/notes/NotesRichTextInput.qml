@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Item {
     id: inputRoot
@@ -63,7 +64,7 @@ Item {
             return spoilerDescription + " " + qsTr("The block menu is open with no matches. Press Escape to close it.")
         var current = Math.max(0, Math.min(slashCommandMenu.selectedIndex, matches.length - 1))
         return spoilerDescription + " " + qsTr("Block menu, selected %1 of %2: %3. Use Up or Down to choose, Enter to apply, or Escape to close.")
-            .arg(current + 1).arg(matches.length).arg(matches[current].title)
+            .arg(current + 1).arg(matches.length).arg(matches[current].accessibleTitle || matches[current].title)
     }
 
     Component.onCompleted: {
@@ -161,7 +162,9 @@ Item {
         visible: inputRoot.editorRoot.active
         textFormat: TextEdit.RichText
         Accessible.description: inputRoot.editorAccessibleDescription
-        color: "#fffffe"
+        color: "#e6fffffe"
+        selectionColor: "#4d8b5cf6"
+        selectedTextColor: "#fffffe"
         font.pixelSize: 15
         font.family: "Inter, -apple-system, sans-serif"
         wrapMode: TextEdit.Wrap
@@ -344,12 +347,12 @@ Item {
                  inputRoot.editorRoot.active &&
                  !inputRoot.editorRoot.hasInvalidContent
         x: Math.max(8, Math.min(inputRoot.width - width - 8, richEditor.cursorRectangle.x - width / 2))
-        y: Math.max(0, richEditor.cursorRectangle.y - height - 8)
-        width: bubbleRow.implicitWidth + 12
-        height: 32
-        radius: 8
-        color: "#181726"
-        border.color: "#33ffffff"
+        y: Math.max(0, richEditor.cursorRectangle.y - height - 10)
+        width: bubbleRow.implicitWidth + 16
+        height: 36
+        radius: 11
+        color: "#e60f0e17"
+        border.color: "#14ffffff"
         border.width: 1
         z: 99
 
@@ -609,23 +612,21 @@ Item {
             ToolButton {
                 id: bubbleAskAi
                 focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 34
+                Layout.preferredWidth: 28
                 Layout.preferredHeight: 24
                 padding: 2
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Editar ou perguntar à IA")
                 background: Rectangle {
-                    radius: 4
-                    color: bubbleAskAi.hovered ? "#338b5cf6" : "#188b5cf6"
+                    radius: 6
+                    color: bubbleAskAi.hovered ? "#1affffff" : "transparent"
                 }
-                contentItem: Text {
+                contentItem: AppIcon {
                     anchors.centerIn: parent
-                    text: "✨ IA"
-                    color: "#ddd6fe"
-                    font.pixelSize: 10
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                    name: "sparkles"
+                    color: "#a78bfa"
+                    width: 14
+                    height: 14
                 }
                 onClicked: inputRoot.askAiRequested(richEditor.selectedText)
             }
