@@ -19,6 +19,7 @@ These playbooks apply across the four app targets: React Web/Tauri (`apps/web-re
 | [**`parallel-swarm-audit`**](./parallel-swarm-audit/SKILL.md) | Multi-Agent DevOps | Orchestration engine for parallel worker swarms across isolated Git Worktrees (3-Agent or 4-Agent Quad-Swarm), automated multi-way merge, and type reconciliation. | Git Worktrees, Multi-Agent Concurrency |
 | [**`security-audit`**](./security-audit/SKILL.md) | AppSec & Penetration Defense | 8-pillar threat modeling covering WebView sandboxing, Tauri CSP, command/SQL injection defense, path traversal containment, and dependency CVE auditing. | OWASP Top 10, CWE Classification |
 | [**`type-safety-hardening`**](./type-safety-hardening/SKILL.md) | TypeScript & Reliability | Zero-`any` enforcement, discriminated unions with exhaustiveness checks (`assertNever`), type guards, runtime schema validation (Zod), and branded domain types. | Compile-Time Safety, Strict TypeScript |
+| [**`desktop-qt-parity`**](./desktop-qt-parity/SKILL.md) | Multi-Client Parity & Qt 6 | Canonical engineering workflow, visual/functional parity standards, hybrid WYSIWYG block-editor architecture, and Core SSOT delegation rules for bringing Desktop Qt (`apps/desktop-qt/`) to 100% parity with React Web (`apps/web-react/`). | Qt 6 Quick/QML, Rust Core SSOT, Visual Parity |
 
 ---
 
