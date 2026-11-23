@@ -25,6 +25,9 @@ interface QuestionsExplorerProps {
   onMoveBattery?: (batteryId: string, newParentId: string | null) => Promise<void>;
 }
 
+const INITIAL_ROOT_BATTERIES_LIMIT = 30;
+const ROOT_BATTERIES_PAGE_STEP = 30;
+
 export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   batteries,
   onPlayBattery,
@@ -45,6 +48,16 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
   const [expandedBatteryIds, setExpandedBatteryIds] = useState<Set<string>>(new Set());
   const [batteryPendingDelete, setBatteryPendingDelete] = useState<BatteryWithQuestions | null>(null);
   const [batteryToMove, setBatteryToMove] = useState<BatteryWithQuestions | null>(null);
+  const [visibleRootLimit, setVisibleRootLimit] = useState(INITIAL_ROOT_BATTERIES_LIMIT);
+
+  // O(1) lookup map for instant action resolution without O(N) array scans per item
+  const batteryByIdMap = useMemo(() => {
+    const map = new Map<string, BatteryWithQuestions>();
+    for (let i = 0; i < batteries.length; i++) {
+      map.set(batteries[i].id, batteries[i]);
+    }
+    return map;
+  }, [batteries]);
 
   // Expand highlighted battery and its ancestors
   useEffect(() => {
@@ -52,6 +65,7 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
       const breadcrumb = getBatteryBreadcrumb(highlightedBatteryId, batteries);
       const ancestorIds = breadcrumb.map((b) => b.id);
       setExpandedBatteryIds((prev) => new Set([...prev, ...ancestorIds, highlightedBatteryId]));
+      setVisibleRootLimit((prev) => Math.max(prev, batteries.length));
       const timer = setTimeout(() => {
         const el = document.getElementById(`battery-card-${highlightedBatteryId}`);
         if (el) {
@@ -73,19 +87,31 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
 
   const handlePlay = useCallback(
     (node: BatteryWithQuestions) => {
-      const original = batteries.find((b) => b.id === node.id) || node;
+      const original = batteryByIdMap.get(node.id) || node;
       onPlayBattery(original);
     },
-    [batteries, onPlayBattery]
+    [batteryByIdMap, onPlayBattery]
   );
 
   const handleEdit = useCallback(
     (node: BatteryWithQuestions) => {
-      const original = batteries.find((b) => b.id === node.id) || node;
+      const original = batteryByIdMap.get(node.id) || node;
       onEditBattery(original);
     },
-    [batteries, onEditBattery]
+    [batteryByIdMap, onEditBattery]
   );
+
+  const handleRequestDelete = useCallback(
+    (id: string) => {
+      const b = batteryByIdMap.get(id);
+      if (b) setBatteryPendingDelete(b);
+    },
+    [batteryByIdMap]
+  );
+
+  const handleOpenMoveModal = useCallback((b: BatteryWithQuestions) => {
+    setBatteryToMove(b);
+  }, []);
 
   // Build hierarchical tree
   const batteryTree = useMemo(() => buildBatteryHierarchy(batteries), [batteries]);
@@ -152,6 +178,15 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
     return new Set([...expandedBatteryIds, ...autoExpandedIds]);
   }, [expandedBatteryIds, autoExpandedIds]);
 
+  const visibleRoots = useMemo(
+    () =>
+      filteredTree.length > visibleRootLimit
+        ? filteredTree.slice(0, visibleRootLimit)
+        : filteredTree,
+    [filteredTree, visibleRootLimit]
+  );
+  const remainingRootsCount = filteredTree.length - visibleRoots.length;
+
   return (
     <div className="space-y-5 animate-fade-in">
       <QuestionsExplorerFilters
@@ -177,26 +212,35 @@ export const QuestionsExplorer = React.memo(function QuestionsExplorer({
             </p>
           </div>
         ) : (
-          filteredTree.map((rootNode) => (
-            <BatteryTreeItem
-              key={rootNode.id}
-              node={rootNode}
-              depth={0}
-              onPlayBattery={handlePlay}
-              onEditBattery={handleEdit}
-              onDeleteBattery={(id) => {
-                const b = batteries.find((item) => item.id === id);
-                if (b) setBatteryPendingDelete(b);
-              }}
-              onNavigateToPage={onNavigateToPage}
-              onCreateSubgroup={onCreateSubgroup}
-              onOpenMoveModal={(b) => setBatteryToMove(b)}
-              getPageTitle={getPageTitle}
-              highlightedBatteryId={highlightedBatteryId}
-              expandedBatteryIds={effectiveExpandedIds}
-              onToggleExpand={toggleExpand}
-            />
-          ))
+          <>
+            {visibleRoots.map((rootNode) => (
+              <BatteryTreeItem
+                key={rootNode.id}
+                node={rootNode}
+                depth={0}
+                onPlayBattery={handlePlay}
+                onEditBattery={handleEdit}
+                onDeleteBattery={handleRequestDelete}
+                onNavigateToPage={onNavigateToPage}
+                onCreateSubgroup={onCreateSubgroup}
+                onOpenMoveModal={handleOpenMoveModal}
+                getPageTitle={getPageTitle}
+                highlightedBatteryId={highlightedBatteryId}
+                expandedBatteryIds={effectiveExpandedIds}
+                onToggleExpand={toggleExpand}
+              />
+            ))}
+
+            {remainingRootsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setVisibleRootLimit((prev) => prev + ROOT_BATTERIES_PAGE_STEP)}
+                className="w-full py-2.5 rounded-2xl bg-dark-card/50 hover:bg-dark-card border border-white/[0.06] hover:border-brand-500/30 text-xs font-medium text-zinc-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Carregar mais {Math.min(remainingRootsCount, ROOT_BATTERIES_PAGE_STEP)} de {remainingRootsCount} baterias
+              </button>
+            )}
+          </>
         )}
       </div>
 

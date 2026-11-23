@@ -16,7 +16,10 @@ pub async fn drive_open_url(app: AppHandle, url: String) -> Result<(), String> {
     if parsed.host_str().is_none() || parsed.host_str().unwrap().trim().is_empty() {
         return Err("URL deve conter um host válido".into());
     }
-    if url.chars().any(|c| c.is_control() || c == '\n' || c == '\r') {
+    if url
+        .chars()
+        .any(|c| c.is_control() || c == '\n' || c == '\r')
+    {
         return Err("URL contém caracteres de controle inválidos".into());
     }
 
@@ -52,7 +55,10 @@ pub async fn drive_get_credentials(db_state: State<'_, DbState>) -> Result<Optio
 }
 
 #[tauri::command]
-pub async fn drive_save_credentials(data: Value, db_state: State<'_, DbState>) -> Result<(), String> {
+pub async fn drive_save_credentials(
+    data: Value,
+    db_state: State<'_, DbState>,
+) -> Result<(), String> {
     db_state
         .write(move |conn| {
             let str_data = match &data {

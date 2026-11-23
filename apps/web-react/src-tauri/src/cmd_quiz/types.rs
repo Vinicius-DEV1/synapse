@@ -117,7 +117,9 @@ pub struct BatteryWithQuestionsDto {
 
 pub fn parse_json_string_vec(raw: Option<String>) -> Vec<String> {
     match raw {
-        Some(s) if !s.trim().is_empty() => serde_json::from_str::<Vec<String>>(&s).unwrap_or_default(),
+        Some(s) if !s.trim().is_empty() => {
+            serde_json::from_str::<Vec<String>>(&s).unwrap_or_default()
+        }
         _ => Vec::new(),
     }
 }

@@ -267,7 +267,11 @@ pub fn handle_encrypted_protocol(app: &AppHandle, request: Request<Vec<u8>>) -> 
                     return safe_response(builder, data);
                 }
                 Err(e) => {
-                    return safe_error_response(StatusCode::INTERNAL_SERVER_ERROR, &cors_origin, &e);
+                    return safe_error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        &cors_origin,
+                        &e,
+                    );
                 }
             }
         }
@@ -304,7 +308,10 @@ mod tests {
 
         let err_res = safe_error_response(StatusCode::UNAUTHORIZED, "http://localhost", "Locked");
         assert_eq!(
-            err_res.headers().get(header::CACHE_CONTROL).and_then(|v| v.to_str().ok()),
+            err_res
+                .headers()
+                .get(header::CACHE_CONTROL)
+                .and_then(|v| v.to_str().ok()),
             Some("no-store")
         );
     }
@@ -313,7 +320,10 @@ mod tests {
     fn etag_matching_handles_strong_weak_lists_and_wildcard() {
         let etag = "\"1234-1700000000-42\"";
         assert!(if_none_match_matches(Some(etag), etag));
-        assert!(if_none_match_matches(Some("W/\"1234-1700000000-42\""), etag));
+        assert!(if_none_match_matches(
+            Some("W/\"1234-1700000000-42\""),
+            etag
+        ));
         assert!(if_none_match_matches(
             Some("\"other\", \"1234-1700000000-42\""),
             etag

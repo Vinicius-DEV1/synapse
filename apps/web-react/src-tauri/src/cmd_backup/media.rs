@@ -1,6 +1,6 @@
+use crate::cmd_backup::types::BackupStats;
 use std::fs;
 use std::path::Path;
-use crate::cmd_backup::types::BackupStats;
 
 /// Decrypts a chunked encrypted media file to a destination path using the corresponding key.
 pub fn decrypt_media_file(src: &Path, dest: &Path, key_hex: &str) -> Result<u64, String> {
@@ -11,8 +11,7 @@ pub fn decrypt_media_file(src: &Path, dest: &Path, key_hex: &str) -> Result<u64,
         u64::MAX, // Read entire file
     )?;
 
-    fs::write(dest, &result.data)
-        .map_err(|e| format!("Failed to write decrypted file: {}", e))?;
+    fs::write(dest, &result.data).map_err(|e| format!("Failed to write decrypted file: {}", e))?;
 
     Ok(result.data.len() as u64)
 }

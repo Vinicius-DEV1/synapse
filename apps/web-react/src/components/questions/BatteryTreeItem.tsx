@@ -77,7 +77,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
       : 0;
 
   return (
-    <div className="w-full [content-visibility:auto] [contain-intrinsic-size:120px]">
+    <div className="w-full contain-list-item">
       <div
         id={`battery-card-${node.id}`}
         className={`group rounded-2xl p-4 sm:p-5 transition-colors duration-150 shadow-sm ${
@@ -87,7 +87,6 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
               ? 'bg-dark-card/80 hover:bg-dark-card border border-white/[0.08] hover:border-brand-500/30'
               : 'bg-dark-card/60 hover:bg-dark-card/90 border border-white/5 hover:border-brand-500/30'
         }`}
-        style={{ contentVisibility: 'auto', containIntrinsicSize: '160px' }}
       >
         {/* Header Row */}
         <div className="flex items-start justify-between gap-3">
@@ -189,7 +188,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {onCreateSubgroup && (
               <button
                 onClick={() => onCreateSubgroup(node.id)}
-                className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-xs active:scale-95"
                 title={t('questions.explorer.addSubgroupTitle', { title: node.title })}
               >
                 <Plus size={13} className="text-brand-400" />
@@ -200,7 +199,7 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             {/* Play Button */}
             <button
               onClick={() => onPlayBattery(node)}
-              className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
               title={hasChildren ? t('questions.explorer.practiceAllDesc') : t('questions.explorer.practiceDesc')}
             >
               <Play size={13} className="fill-brand-300" />

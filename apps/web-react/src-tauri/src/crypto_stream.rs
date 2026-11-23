@@ -60,11 +60,13 @@ pub fn encrypt_file_chunked_cancellable<P: AsRef<Path>, Q: AsRef<Path>>(
                 return Err("Criptografia cancelada pelo usuário.".into());
             }
         }
-        
+
         // Ensure exact chunk buffer sizing to prevent truncation
         let mut bytes_read = 0;
         while bytes_read < CHUNK_SIZE as usize {
-            let n = input_file.read(&mut buffer[bytes_read..]).map_err(|e| e.to_string())?;
+            let n = input_file
+                .read(&mut buffer[bytes_read..])
+                .map_err(|e| e.to_string())?;
             if n == 0 {
                 break;
             }
@@ -91,7 +93,7 @@ pub fn encrypt_file_chunked_cancellable<P: AsRef<Path>, Q: AsRef<Path>>(
             .map_err(|e| e.to_string())?;
     }
 
-Ok(())
+    Ok(())
 }
 
 pub fn get_encrypted_file_size<P: AsRef<Path>>(input_path: P) -> Result<u64, String> {
@@ -206,8 +208,6 @@ pub fn read_chunked_range<P: AsRef<Path>>(
             .decrypt(nonce, encrypted_buffer.as_ref())
             .map_err(|e| format!("Decryption failed for chunk {}: {:?}", chunk_idx, e))?;
 
-
-
         let copy_start = if start_byte > chunk_start_byte {
             (start_byte - chunk_start_byte) as usize
         } else {
@@ -230,4 +230,3 @@ pub fn read_chunked_range<P: AsRef<Path>>(
 }
 
 pub use crate::crypto_stream_drive::read_network_chunked_range_async;
-

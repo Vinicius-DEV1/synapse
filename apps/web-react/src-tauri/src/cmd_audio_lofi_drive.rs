@@ -149,10 +149,7 @@ pub async fn lofi_download_drive_file(
         let (focus_key, keys_to_try) = {
             let keys_guard = db_state.lock_keys()?;
             let unlocked_keys = keys_guard.as_ref().ok_or("Keys not unlocked")?;
-            let fk = unlocked_keys
-                .focus
-                .clone()
-                .ok_or("Focus key not found")?;
+            let fk = unlocked_keys.focus.clone().ok_or("Focus key not found")?;
             let mut list: Vec<String> = vec![fk.clone()];
             if let Some(ref k) = unlocked_keys.core {
                 list.push(k.clone());
@@ -170,11 +167,9 @@ pub async fn lofi_download_drive_file(
             if final_path.exists() {
                 let _ = std::fs::remove_file(&final_path);
             }
-            if let Err(e) = crate::crypto_stream::encrypt_file_chunked(
-                &temp_path,
-                &final_path,
-                &focus_key,
-            ) {
+            if let Err(e) =
+                crate::crypto_stream::encrypt_file_chunked(&temp_path, &final_path, &focus_key)
+            {
                 let _ = std::fs::remove_file(&temp_path);
                 return Err(e);
             }
@@ -191,8 +186,7 @@ pub async fn lofi_download_drive_file(
             }
 
             if let Some(plain_bytes) = decrypted_data {
-                let plain_temp_path =
-                    lofi_dir.join(format!("{}.plain.tmp", uuid::Uuid::new_v4()));
+                let plain_temp_path = lofi_dir.join(format!("{}.plain.tmp", uuid::Uuid::new_v4()));
                 std::fs::write(&plain_temp_path, plain_bytes).map_err(|e| e.to_string())?;
                 if final_path.exists() {
                     let _ = std::fs::remove_file(&final_path);
@@ -209,11 +203,9 @@ pub async fn lofi_download_drive_file(
                 if final_path.exists() {
                     let _ = std::fs::remove_file(&final_path);
                 }
-                if let Err(e) = crate::crypto_stream::encrypt_file_chunked(
-                    &temp_path,
-                    &final_path,
-                    &focus_key,
-                ) {
+                if let Err(e) =
+                    crate::crypto_stream::encrypt_file_chunked(&temp_path, &final_path, &focus_key)
+                {
                     let _ = std::fs::remove_file(&temp_path);
                     return Err(e);
                 }

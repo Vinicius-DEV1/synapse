@@ -266,7 +266,10 @@ pub async fn quiz_save_questions_batch(
 }
 
 #[tauri::command]
-pub async fn quiz_delete_question(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub async fn quiz_delete_question(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     db_state
         .write(move |conn| {
             let now = Utc::now().to_rfc3339();

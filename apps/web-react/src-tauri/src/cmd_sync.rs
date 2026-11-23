@@ -61,7 +61,10 @@ const ALLOWED_SYNC_TABLES: &[&str] = &[
 
 fn validate_sync_table(table_name: &str) -> Result<(), String> {
     if !ALLOWED_SYNC_TABLES.contains(&table_name) {
-        return Err(format!("Unauthorized or invalid sync table: {}", table_name));
+        return Err(format!(
+            "Unauthorized or invalid sync table: {}",
+            table_name
+        ));
     }
     Ok(())
 }
@@ -231,7 +234,8 @@ fn execute_sync_delete_row(conn: &Connection, table_name: &str, id: &str) -> Res
                 table_name, key_column
             )
         };
-        conn.execute(&query, [&now, id]).map_err(|e| e.to_string())?;
+        conn.execute(&query, [&now, id])
+            .map_err(|e| e.to_string())?;
     } else {
         // Key-value and append-only tables without deleted_at (e.g. config) must be hard-deleted.
         let query = format!("DELETE FROM {} WHERE {} = ?1", table_name, key_column);
@@ -504,14 +508,12 @@ pub(crate) fn build_modified_rows_query(
     let mut params: Vec<rusqlite::types::Value> = Vec::new();
 
     if has_updated_at {
-        where_clauses
-            .push("(updated_at >= ? AND CAST(strftime('%s', updated_at) AS INTEGER) > ?)");
+        where_clauses.push("(updated_at >= ? AND CAST(strftime('%s', updated_at) AS INTEGER) > ?)");
         params.push(index_lower_bound.clone().into());
         params.push(since_epoch_secs.into());
     }
     if has_created_at {
-        where_clauses
-            .push("(created_at >= ? AND CAST(strftime('%s', created_at) AS INTEGER) > ?)");
+        where_clauses.push("(created_at >= ? AND CAST(strftime('%s', created_at) AS INTEGER) > ?)");
         params.push(index_lower_bound.clone().into());
         params.push(since_epoch_secs.into());
     }
@@ -721,8 +723,7 @@ mod tests {
         .unwrap();
 
         let threshold_ms: i64 = 1_700_000_000_000; // ~2023-11-14T22:13:20Z
-        let modified =
-            super::execute_sync_get_modified_rows(&conn, "pages", threshold_ms).unwrap();
+        let modified = super::execute_sync_get_modified_rows(&conn, "pages", threshold_ms).unwrap();
         let mut ids: Vec<String> = modified
             .iter()
             .filter_map(|v| v.get("id").and_then(|s| s.as_str()).map(String::from))
@@ -731,7 +732,8 @@ mod tests {
         assert_eq!(ids, vec!["new-iso", "new-space"]);
 
         // Verify SQLite uses B-tree indexes (SEARCH USING INDEX) instead of full table SCAN
-        let (query, params) = super::build_modified_rows_query("pages", true, true, true, threshold_ms);
+        let (query, params) =
+            super::build_modified_rows_query("pages", true, true, true, threshold_ms);
         let explain_sql = format!("EXPLAIN QUERY PLAN {}", query);
         let mut stmt = conn.prepare(&explain_sql).unwrap();
         let plan_lines: Vec<String> = stmt

@@ -165,7 +165,8 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             }
           }
         }}
-        onPlayFocusMode={() => {
+        onPlayFocusMode={async () => {
+          await loadBatteryData();
           setActiveIndex(0);
           setIsFocusModeOpen(true);
         }}
@@ -181,7 +182,7 @@ function QuestionBlockNodeViewInner(props: NodeViewProps) {
             isOpen={isFocusModeOpen}
             onClose={() => {
               setIsFocusModeOpen(false);
-              loadBatteryData();
+              void loadBatteryData(true);
             }}
             title={title}
             questions={questions}

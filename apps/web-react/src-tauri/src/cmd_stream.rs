@@ -25,7 +25,7 @@ pub struct StreamState {
 
 #[derive(Deserialize)]
 pub struct StreamParams {
-    pub file: String,       // module/path.enc
+    pub file: String,        // module/path.enc
     pub _start: Option<f64>, // start time in seconds
 }
 
@@ -320,7 +320,10 @@ async fn stream_handler(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_RANGE, content_range)
         .header(header::CONTENT_LENGTH, content_length)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, get_stream_cors_origin(&headers))
+        .header(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            get_stream_cors_origin(&headers),
+        )
         .body(axum::body::Body::from_stream(stream))
         .unwrap()
 }
@@ -483,7 +486,10 @@ async fn stream_drive_handler(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_RANGE, content_range)
         .header(header::CONTENT_LENGTH, content_length)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, get_stream_cors_origin(&headers))
+        .header(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            get_stream_cors_origin(&headers),
+        )
         .body(axum::body::Body::from_stream(stream))
         .unwrap()
 }
@@ -540,7 +546,11 @@ async fn youtube_proxy_handler(
     {
         Ok(c) => c,
         Err(e) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to build HTTP client: {}", e)).into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to build HTTP client: {}", e),
+            )
+                .into_response();
         }
     };
 
@@ -554,14 +564,22 @@ async fn youtube_proxy_handler(
         Ok(r) => r,
         Err(e) => {
             println!("[YouTubeProxy] Probe request failed: {}", e);
-            return (StatusCode::BAD_GATEWAY, format!("Failed to probe YouTube stream: {}", e)).into_response();
+            return (
+                StatusCode::BAD_GATEWAY,
+                format!("Failed to probe YouTube stream: {}", e),
+            )
+                .into_response();
         }
     };
 
     if !probe_resp.status().is_success() {
         let status_code = probe_resp.status().as_u16();
         println!("[YouTubeProxy] Probe returned HTTP {}", status_code);
-        return (StatusCode::BAD_GATEWAY, format!("YouTube CDN returned HTTP {}", status_code)).into_response();
+        return (
+            StatusCode::BAD_GATEWAY,
+            format!("YouTube CDN returned HTTP {}", status_code),
+        )
+            .into_response();
     }
 
     // Extract total size from Content-Range: bytes 0-0/<total>
@@ -673,7 +691,10 @@ async fn youtube_proxy_handler(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_RANGE, content_range)
         .header(header::CONTENT_LENGTH, content_length)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, get_stream_cors_origin(&headers))
+        .header(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            get_stream_cors_origin(&headers),
+        )
         .body(axum::body::Body::from_stream(stream))
         .unwrap()
 }

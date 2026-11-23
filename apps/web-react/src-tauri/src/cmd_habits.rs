@@ -1,15 +1,16 @@
 use crate::db::DbState;
-use chrono::{Datelike, Duration, NaiveDate, Utc};
-use rusqlite::{params, Connection};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use synapse_core::domain::habits::{Habit, HabitLog};
+use synapse_core::domain::habits::{
+    calculate_habit_stats, Habit, HabitLog, HabitStats, HabitsRepository,
+};
 use tauri::State;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateHabitPayload {
     pub id: Option<String>,
     pub title: String,
+    pub category: Option<String>,
     pub color: Option<String>,
     pub icon: Option<String>,
     pub target_days_per_week: Option<i32>,
@@ -18,6 +19,7 @@ pub struct CreateHabitPayload {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateHabitPayload {
     pub title: Option<String>,
+    pub category: Option<String>,
     pub color: Option<String>,
     pub icon: Option<String>,
     pub target_days_per_week: Option<i32>,
@@ -35,188 +37,16 @@ pub struct ToggleDayLogResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HabitStats {
-    #[serde(rename = "currentStreak")]
-    pub current_streak: i32,
-    #[serde(rename = "bestStreak")]
-    pub best_streak: i32,
-    #[serde(rename = "totalCompleted")]
-    pub total_completed: i32,
-    #[serde(rename = "completionRate30Days")]
-    pub completion_rate_30_days: i32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HabitWithLogs {
     pub habit: Habit,
     pub logs: Vec<HabitLog>,
     pub stats: HabitStats,
 }
 
-fn calculate_habit_stats(logs: &[HabitLog]) -> HabitStats {
-    let today = Utc::now().date_naive();
-    let date_set: HashSet<NaiveDate> = logs
-        .iter()
-        .filter_map(|l| NaiveDate::parse_from_str(l.date.trim(), "%Y-%m-%d").ok())
-        .collect();
-
-    let total_completed = date_set.len() as i32;
-
-    let mut current_streak = 0;
-    if date_set.contains(&today) {
-        current_streak = 1;
-        let mut prev = today - Duration::days(1);
-        while date_set.contains(&prev) {
-            current_streak += 1;
-            prev -= Duration::days(1);
-        }
-    } else {
-        let yesterday = today - Duration::days(1);
-        if date_set.contains(&yesterday) {
-            current_streak = 1;
-            let mut prev = yesterday - Duration::days(1);
-            while date_set.contains(&prev) {
-                current_streak += 1;
-                prev -= Duration::days(1);
-            }
-        }
-    }
-
-    let mut sorted_dates: Vec<NaiveDate> = date_set.iter().copied().collect();
-    sorted_dates.sort();
-
-    let mut best_streak = 0;
-    let mut current_chain = 0;
-    let mut last_date: Option<NaiveDate> = None;
-
-    for d in sorted_dates {
-        match last_date {
-            None => current_chain = 1,
-            Some(prev) => {
-                if d == prev + Duration::days(1) {
-                    current_chain += 1;
-                } else {
-                    current_chain = 1;
-                }
-            }
-        }
-        if current_chain > best_streak {
-            best_streak = current_chain;
-        }
-        last_date = Some(d);
-    }
-
-    let mut past_30_count = 0;
-    for i in 0..30 {
-        let check = today - Duration::days(i);
-        if date_set.contains(&check) {
-            past_30_count += 1;
-        }
-    }
-    let completion_rate_30_days = ((past_30_count as f64 / 30.0) * 100.0).round() as i32;
-    let _ = today.year();
-
-    HabitStats {
-        current_streak,
-        best_streak,
-        total_completed,
-        completion_rate_30_days,
-    }
-}
-
-fn fetch_habit_by_id(conn: &Connection, id: &str) -> Result<Option<Habit>, String> {
-    let res = conn.query_row(
-        "SELECT id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at
-         FROM habits
-         WHERE id = ?1 AND deleted_at IS NULL",
-        params![id],
-        |row| {
-            Ok(Habit {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                color: row.get(2)?,
-                icon: row.get(3)?,
-                target_days_per_week: row.get(4).unwrap_or(7),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-                deleted_at: row.get(7)?,
-            })
-        },
-    );
-
-    match res {
-        Ok(h) => Ok(Some(h)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-fn fetch_habit_logs(conn: &Connection, habit_id: &str) -> Result<Vec<HabitLog>, String> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, habit_id, date, completed_at, notes, created_at, updated_at, deleted_at
-             FROM habit_logs
-             WHERE habit_id = ?1 AND deleted_at IS NULL
-             ORDER BY date ASC",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let rows = stmt
-        .query_map(params![habit_id], |row| {
-            Ok(HabitLog {
-                id: row.get(0)?,
-                habit_id: row.get(1)?,
-                date: row.get(2)?,
-                completed_at: row.get(3)?,
-                notes: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-                deleted_at: row.get(7)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut list = Vec::new();
-    for r in rows.flatten() {
-        list.push(r);
-    }
-    Ok(list)
-}
-
 #[tauri::command]
 pub async fn habits_get_all(db_state: State<'_, DbState>) -> Result<Vec<Habit>, String> {
     db_state
-        .read(|conn| {
-            let mut stmt = conn
-                .prepare(
-                    "SELECT id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at
-                     FROM habits
-                     WHERE deleted_at IS NULL
-                     ORDER BY title COLLATE NOCASE ASC",
-                )
-                .map_err(|e| e.to_string())?;
-
-            let rows = stmt
-                .query_map([], |row| {
-                    Ok(Habit {
-                        id: row.get(0)?,
-                        title: row.get(1)?,
-                        color: row.get(2)?,
-                        icon: row.get(3)?,
-                        target_days_per_week: row.get(4).unwrap_or(7),
-                        created_at: row.get(5)?,
-                        updated_at: row.get(6)?,
-                        deleted_at: row.get(7)?,
-                    })
-                })
-                .map_err(|e| e.to_string())?;
-
-            let mut items = Vec::new();
-            for r in rows.flatten() {
-                items.push(r);
-            }
-            Ok(items)
-        })
+        .read(|conn| HabitsRepository::get_habits_conn(conn).map_err(|error| error.to_string()))
         .await
 }
 
@@ -226,7 +56,9 @@ pub async fn habits_get_by_id(
     db_state: State<'_, DbState>,
 ) -> Result<Option<Habit>, String> {
     db_state
-        .read(move |conn| fetch_habit_by_id(conn, &id))
+        .read(move |conn| {
+            HabitsRepository::get_habit_conn(conn, &id).map_err(|error| error.to_string())
+        })
         .await
 }
 
@@ -237,40 +69,16 @@ pub async fn habits_create(
 ) -> Result<Habit, String> {
     db_state
         .write(move |conn| {
-            let id = data
-                .id
-                .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-            let now = Utc::now().to_rfc3339();
-            let title = data.title.trim().to_string();
-            let color = data.color.unwrap_or_else(|| "emerald".to_string());
-            let icon = data.icon.unwrap_or_else(|| "Flame".to_string());
-            let target = data.target_days_per_week.unwrap_or(7);
-
-            conn.execute(
-                "INSERT INTO habits (id, title, color, icon, target_days_per_week, created_at, updated_at, deleted_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, NULL)
-                 ON CONFLICT(id) DO UPDATE SET
-                    title = excluded.title,
-                    color = excluded.color,
-                    icon = excluded.icon,
-                    target_days_per_week = excluded.target_days_per_week,
-                    updated_at = excluded.updated_at,
-                    deleted_at = NULL",
-                params![id, title, color, icon, target, now],
+            HabitsRepository::upsert_habit_with_category_conn(
+                conn,
+                data.id.as_deref(),
+                &data.title,
+                data.category.as_deref(),
+                data.color.as_deref(),
+                data.icon.as_deref(),
+                data.target_days_per_week,
             )
-            .map_err(|e| e.to_string())?;
-
-            Ok(Habit {
-                id,
-                title,
-                color: Some(color),
-                icon: Some(icon),
-                target_days_per_week: target,
-                created_at: Some(now.clone()),
-                updated_at: Some(now),
-                deleted_at: None,
-            })
+            .map_err(|error| error.to_string())
         })
         .await
 }
@@ -283,30 +91,29 @@ pub async fn habits_update(
 ) -> Result<UpdateHabitResponse, String> {
     db_state
         .write(move |conn| {
-            let now = Utc::now().to_rfc3339();
-            let count = conn
-                .execute(
-                    "UPDATE habits SET
-                        title = COALESCE(?1, title),
-                        color = COALESCE(?2, color),
-                        icon = COALESCE(?3, icon),
-                        target_days_per_week = COALESCE(?4, target_days_per_week),
-                        updated_at = ?5
-                     WHERE id = ?6 AND deleted_at IS NULL",
-                    params![
-                        data.title.map(|t| t.trim().to_string()),
-                        data.color,
-                        data.icon,
-                        data.target_days_per_week,
-                        now,
-                        id
-                    ],
-                )
-                .map_err(|e| e.to_string())?;
-
-            Ok(UpdateHabitResponse {
-                success: count > 0,
-            })
+            let Some(existing) =
+                HabitsRepository::get_habit_conn(conn, &id).map_err(|error| error.to_string())?
+            else {
+                return Ok(UpdateHabitResponse { success: false });
+            };
+            let title = data.title.unwrap_or(existing.title);
+            let category = data.category.or(existing.category);
+            let color = data.color.or(existing.color);
+            let icon = data.icon.or(existing.icon);
+            let target_days = data
+                .target_days_per_week
+                .unwrap_or(existing.target_days_per_week);
+            HabitsRepository::update_habit_with_category_conn(
+                conn,
+                &id,
+                &title,
+                category.as_deref(),
+                color.as_deref(),
+                icon.as_deref(),
+                Some(target_days),
+            )
+            .map(|()| UpdateHabitResponse { success: true })
+            .map_err(|error| error.to_string())
         })
         .await
 }
@@ -314,18 +121,13 @@ pub async fn habits_update(
 #[tauri::command]
 pub async fn habits_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     db_state
-        .write(move |conn| {
-            let now = Utc::now().to_rfc3339();
-
-            let count = conn
-                .execute(
-                    "UPDATE habits SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
-                    params![now, id],
-                )
-                .map_err(|e| e.to_string())?;
-
-            Ok(count > 0)
-        })
+        .write(
+            move |conn| match HabitsRepository::delete_habit_conn(conn, &id) {
+                Ok(()) => Ok(true),
+                Err(synapse_core::error::SynapseError::NotFound(_)) => Ok(false),
+                Err(error) => Err(error.to_string()),
+            },
+        )
         .await
 }
 
@@ -335,7 +137,10 @@ pub async fn habits_get_logs(
     db_state: State<'_, DbState>,
 ) -> Result<Vec<HabitLog>, String> {
     db_state
-        .read(move |conn| fetch_habit_logs(conn, &habit_id))
+        .read(move |conn| {
+            HabitsRepository::get_logs_for_habit_conn(conn, &habit_id)
+                .map_err(|error| error.to_string())
+        })
         .await
 }
 
@@ -343,35 +148,7 @@ pub async fn habits_get_logs(
 pub async fn habits_get_all_logs(db_state: State<'_, DbState>) -> Result<Vec<HabitLog>, String> {
     db_state
         .read(|conn| {
-            let mut stmt = conn
-                .prepare(
-                    "SELECT id, habit_id, date, completed_at, notes, created_at, updated_at, deleted_at
-                     FROM habit_logs
-                     WHERE deleted_at IS NULL
-                     ORDER BY date ASC",
-                )
-                .map_err(|e| e.to_string())?;
-
-            let rows = stmt
-                .query_map([], |row| {
-                    Ok(HabitLog {
-                        id: row.get(0)?,
-                        habit_id: row.get(1)?,
-                        date: row.get(2)?,
-                        completed_at: row.get(3)?,
-                        notes: row.get(4)?,
-                        created_at: row.get(5)?,
-                        updated_at: row.get(6)?,
-                        deleted_at: row.get(7)?,
-                    })
-                })
-                .map_err(|e| e.to_string())?;
-
-            let mut list = Vec::new();
-            for r in rows.flatten() {
-                list.push(r);
-            }
-            Ok(list)
+            HabitsRepository::get_all_active_logs_conn(conn).map_err(|error| error.to_string())
         })
         .await
 }
@@ -384,73 +161,17 @@ pub async fn habits_toggle_day_log(
 ) -> Result<ToggleDayLogResponse, String> {
     db_state
         .write(move |conn| {
-            let composite_id = format!("{}_{}", habit_id, date);
-            let now = Utc::now().to_rfc3339();
-
-            let existing: Option<(String, Option<String>)> = conn
-                .query_row(
-                    "SELECT id, deleted_at FROM habit_logs WHERE id = ?1 OR (habit_id = ?2 AND date = ?3) LIMIT 1",
-                    params![composite_id, habit_id, date],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
-                )
-                .ok();
-
-            if let Some((row_id, deleted_at)) = existing {
-                if deleted_at.is_none() {
-                    conn.execute(
-                        "UPDATE habit_logs SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
-                        params![now, row_id],
-                    )
-                    .map_err(|e| e.to_string())?;
-                    return Ok(ToggleDayLogResponse {
-                        completed: false,
-                        log: None,
-                    });
-                } else {
-                    conn.execute(
-                        "UPDATE habit_logs SET deleted_at = NULL, completed_at = ?1, updated_at = ?1 WHERE id = ?2",
-                        params![now, row_id],
-                    )
-                    .map_err(|e| e.to_string())?;
-                    let log = HabitLog {
-                        id: row_id,
-                        habit_id,
-                        date,
-                        completed_at: Some(now.clone()),
-                        notes: None,
-                        created_at: Some(now.clone()),
-                        updated_at: Some(now),
-                        deleted_at: None,
-                    };
-                    return Ok(ToggleDayLogResponse {
-                        completed: true,
-                        log: Some(log),
-                    });
-                }
-            }
-
-            conn.execute(
-                "INSERT INTO habit_logs (id, habit_id, date, completed_at, created_at, updated_at, deleted_at)
-                 VALUES (?1, ?2, ?3, ?4, ?4, ?4, NULL)",
-                params![composite_id, habit_id, date, now],
-            )
-            .map_err(|e| e.to_string())?;
-
-            let log = HabitLog {
-                id: composite_id,
-                habit_id,
-                date,
-                completed_at: Some(now.clone()),
-                notes: None,
-                created_at: Some(now.clone()),
-                updated_at: Some(now),
-                deleted_at: None,
+            let completed = HabitsRepository::toggle_habit_checkin_conn(conn, &habit_id, &date)
+                .map_err(|error| error.to_string())?;
+            let log = if completed {
+                HabitsRepository::get_habit_logs_range_conn(conn, &date, &date)
+                    .map_err(|error| error.to_string())?
+                    .into_iter()
+                    .find(|log| log.habit_id == habit_id)
+            } else {
+                None
             };
-
-            Ok(ToggleDayLogResponse {
-                completed: true,
-                log: Some(log),
-            })
+            Ok(ToggleDayLogResponse { completed, log })
         })
         .await
 }
@@ -462,13 +183,12 @@ pub async fn habits_get_with_stats(
 ) -> Result<Option<HabitWithLogs>, String> {
     db_state
         .read(move |conn| {
-            let habit = match fetch_habit_by_id(conn, &habit_id)? {
-                Some(h) => h,
-                None => return Ok(None),
-            };
-            let logs = fetch_habit_logs(conn, &habit_id)?;
-            let stats = calculate_habit_stats(&logs);
-
+            let habit = HabitsRepository::get_habit_conn(conn, &habit_id)
+                .map_err(|error| error.to_string())?;
+            let Some(habit) = habit else { return Ok(None) };
+            let logs: Vec<HabitLog> = HabitsRepository::get_logs_for_habit_conn(conn, &habit_id)
+                .map_err(|error| error.to_string())?;
+            let stats = calculate_habit_stats(&logs, Utc::now().date_naive());
             Ok(Some(HabitWithLogs { habit, logs, stats }))
         })
         .await

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../../../i18n';
 
 function ShortcutRow({ keys, description, color = "text-white" }: { keys: string[], description: string, color?: string }) {
   return (
@@ -19,6 +20,8 @@ function ShortcutRow({ keys, description, color = "text-white" }: { keys: string
 }
 
 export function ShortcutsTab() {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-6 animate-fade-in">
       <h3 className="text-2xl font-bold text-white mb-2">Atalhos de Teclado</h3>
@@ -34,7 +37,14 @@ export function ShortcutsTab() {
         <ShortcutRow keys={['4']} description="Avaliar como: Fácil (Aumenta bastante o intervalo)" color="text-blue-400" />
         <ShortcutRow keys={['Esc']} description="Sair da sessão de estudos" />
       </div>
-      
+
+      <section className="border-t border-white/10 pt-6">
+        <h4 className="text-lg font-bold text-white mb-2">{t('anki.help.androidKeyboardTitle')}</h4>
+        <p className="text-sm text-dark-subtext leading-relaxed">
+          {t('anki.help.androidKeyboardDescription')}
+        </p>
+      </section>
+
       <h4 className="text-lg font-bold text-white mt-8 mb-4 border-t border-white/10 pt-6">Modal de Pré-visualização (Olhinho)</h4>
       <div className="space-y-3">
         <ShortcutRow keys={['Seta Direita (>)']} description="Avançar rapidamente para o próximo cartão da lista atual." />

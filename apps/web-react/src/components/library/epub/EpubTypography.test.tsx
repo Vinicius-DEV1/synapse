@@ -59,6 +59,9 @@ describe('EpubTypography Component', () => {
 
   it('renders all typography sections and controls when visible', () => {
     const { getByText, getByTitle } = render(<EpubTypography />);
+    expect(getByText('Modo de Leitura')).toBeDefined();
+    expect(getByText('Paginado')).toBeDefined();
+    expect(getByText('Rolagem Contínua')).toBeDefined();
     expect(getByText('Tamanho da Fonte')).toBeDefined();
     expect(getByText('Estilo da Fonte')).toBeDefined();
     expect(getByText('Alinhamento')).toBeDefined();
@@ -70,6 +73,17 @@ describe('EpubTypography Component', () => {
 
     expect(getByTitle('Justificado (Livro impresso)')).toBeDefined();
     expect(getByTitle('Alinhado à esquerda')).toBeDefined();
+  });
+
+  it('switches between Paginado and Rolagem Contínua reading modes', () => {
+    const { getByTitle } = render(<EpubTypography />);
+    const continuousBtn = getByTitle('Rolagem contínua vertical');
+    fireEvent.click(continuousBtn);
+    expect(mockSetScrollMode).toHaveBeenCalledWith(true);
+
+    const paginatedBtn = getByTitle('Mudando de página (Paginado)');
+    fireEvent.click(paginatedBtn);
+    expect(mockSetScrollMode).toHaveBeenCalledWith(false);
   });
 
   it('handles text alignment toggling between justified and left', () => {

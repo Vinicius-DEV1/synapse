@@ -1,7 +1,10 @@
-import React from 'react';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
 import type { BatteryTreeNode } from '../../types/quiz';
 import { useI18n } from '../../i18n';
+
+const INITIAL_PREVIEW_LIMIT = 20;
+const PREVIEW_PAGE_STEP = 20;
 
 interface BatteryQuestionsPreviewProps {
   node: BatteryTreeNode;
@@ -11,11 +14,19 @@ export const BatteryQuestionsPreview = React.memo(function BatteryQuestionsPrevi
   node,
 }: BatteryQuestionsPreviewProps) {
   const { t } = useI18n();
+  const [visibleLimit, setVisibleLimit] = useState(INITIAL_PREVIEW_LIMIT);
+
   if (node.questions.length === 0) return null;
+
+  const visibleQuestions =
+    node.questions.length > visibleLimit
+      ? node.questions.slice(0, visibleLimit)
+      : node.questions;
+  const remainingCount = node.questions.length - visibleQuestions.length;
 
   return (
     <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-2.5">
-      {node.questions.map((q, idx) => {
+      {visibleQuestions.map((q, idx) => {
         const attempt = node.latestAttempts?.[q.id];
         const isAnswered = Boolean(attempt);
         const isCorrect = attempt ? attempt.is_correct : false;
@@ -23,8 +34,7 @@ export const BatteryQuestionsPreview = React.memo(function BatteryQuestionsPrevi
         return (
           <div
             key={q.id}
-            style={{ contentVisibility: 'auto', containIntrinsicSize: '56px' }}
-            className="p-3 rounded-xl bg-dark-bg/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs [content-visibility:auto] [contain-intrinsic-size:56px]"
+            className="p-3 rounded-xl bg-dark-bg/60 border border-white/[0.04] flex items-start justify-between gap-3 text-xs contain-list-item"
           >
             <div className="flex items-start gap-2.5 min-w-0">
               <span className="font-mono text-zinc-500 text-[11px] shrink-0 mt-0.5">
@@ -70,6 +80,19 @@ export const BatteryQuestionsPreview = React.memo(function BatteryQuestionsPrevi
           </div>
         );
       })}
+
+      {remainingCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setVisibleLimit((prev) => prev + PREVIEW_PAGE_STEP)}
+          className="w-full py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] text-xs font-medium text-zinc-400 hover:text-zinc-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <ChevronDown size={14} />
+          <span>
+            Ver mais {Math.min(remainingCount, PREVIEW_PAGE_STEP)} de {remainingCount} questões restantes
+          </span>
+        </button>
+      )}
     </div>
   );
 });

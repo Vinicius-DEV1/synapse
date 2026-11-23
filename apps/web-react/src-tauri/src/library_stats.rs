@@ -193,7 +193,9 @@ pub struct ReadingStats {
 }
 
 #[tauri::command]
-pub async fn library_get_reading_stats(db_state: State<'_, DbState>) -> Result<ReadingStats, String> {
+pub async fn library_get_reading_stats(
+    db_state: State<'_, DbState>,
+) -> Result<ReadingStats, String> {
     db_state
         .read(|conn| {
             let started: i32 = conn

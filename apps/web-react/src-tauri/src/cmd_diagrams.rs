@@ -1,6 +1,6 @@
 use crate::db::{run_blocking, DbState};
 use serde::Deserialize;
-use synapse_core::domain::diagrams::{DiagramMeta, DiagramRecord, DiagramsRepository};
+use synapse_core::domain::diagrams::{DiagramMeta, DiagramsRepository};
 use tauri::State;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -21,9 +21,7 @@ pub async fn diagrams_get_content(
     id: String,
     db_state: State<'_, DbState>,
 ) -> Result<DiagramContent, String> {
-    let notes_key = db_state
-        .clone_keys()?
-        .and_then(|keys| keys.notes);
+    let notes_key = db_state.clone_keys()?.and_then(|keys| keys.notes);
     let state = db_state.inner().clone();
 
     run_blocking(move || {
@@ -64,31 +62,18 @@ pub async fn diagrams_create(
 ) -> Result<DiagramMeta, String> {
     db_state
         .write(move |conn| {
-            let id = uuid::Uuid::new_v4().to_string();
             let title = payload.title.unwrap_or_else(|| "Novo Diagrama".into());
             let icon = payload.icon.unwrap_or_else(|| "🎨".into());
-            let now = chrono::Utc::now().to_rfc3339();
-
-            let record = DiagramRecord {
-                id: id.clone(),
-                title: title.clone(),
-                icon: icon.clone(),
-                content: "[]".to_string(),
-                encrypted_content: None,
-                created_at: Some(now.clone()),
-                updated_at: Some(now.clone()),
-                deleted_at: None,
-            };
-
-            DiagramsRepository::create_diagram_conn(conn, &record).map_err(|e| e.to_string())?;
+            let record = DiagramsRepository::create_diagram_record_conn(conn, &title, &icon)
+                .map_err(|e| e.to_string())?;
 
             Ok(DiagramMeta {
-                id,
-                title,
-                icon,
-                created_at: Some(now.clone()),
-                updated_at: Some(now),
-                deleted_at: None,
+                id: record.id,
+                title: record.title,
+                icon: record.icon,
+                created_at: record.created_at,
+                updated_at: record.updated_at,
+                deleted_at: record.deleted_at,
             })
         })
         .await
@@ -159,6 +144,8 @@ pub async fn diagrams_update(
 #[tauri::command]
 pub async fn diagrams_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     db_state
-        .write(move |conn| DiagramsRepository::delete_diagram_conn(conn, &id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            DiagramsRepository::delete_diagram_conn(conn, &id).map_err(|e| e.to_string())
+        })
         .await
 }

@@ -94,7 +94,9 @@ pub async fn finance_delete_transaction(
 }
 
 #[tauri::command]
-pub async fn finance_get_wishlist(db_state: State<'_, DbState>) -> Result<Vec<WishlistItem>, String> {
+pub async fn finance_get_wishlist(
+    db_state: State<'_, DbState>,
+) -> Result<Vec<WishlistItem>, String> {
     db_state
         .read(|conn| FinanceRepository::get_wishlist_conn(conn).map_err(|e| e.to_string()))
         .await

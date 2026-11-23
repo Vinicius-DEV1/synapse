@@ -7,7 +7,7 @@ import type {
   AnkiDeckSettings,
   AnkiReviewRecord,
 } from '../../types/anki';
-import { processReview, parseState } from '../../services/fsrs';
+import { parseState } from '../../services/fsrs';
 
 export const tauriAnkiApi = {
   getDecks: async (): Promise<{ success: boolean; decks: AnkiDeckRecord[]; error?: string }> => {
@@ -105,28 +105,7 @@ export const tauriAnkiApi = {
   },
 
   reviewCard: async (cardId: string, rating: number): Promise<{ success: boolean; error?: string }> => {
-    const card = await invoke<AnkiCard>('anki_get_card', { cardId });
-    if (!card) return { success: false, error: 'Card not found' };
-
-    const settings = await invoke<AnkiDeckSettings>('anki_get_deck_settings', {
-      deckId: card.deck_id,
-    }).catch(() => null);
-
-    const fsrsState = processReview(card, rating, settings);
-
-    const stateObj = {
-      stability: fsrsState.stability,
-      difficulty: fsrsState.difficulty,
-      elapsed_days: fsrsState.elapsed_days,
-      scheduled_days: fsrsState.scheduled_days,
-      reps: fsrsState.reps,
-      lapses: fsrsState.lapses,
-      state: String(fsrsState.state),
-      due_date: fsrsState.due.toISOString(),
-      last_review: fsrsState.last_review?.toISOString() || new Date().toISOString(),
-    };
-
-    await invoke('anki_review_card_fsrs', { cardId, rating, state: stateObj });
+    await invoke('anki_review_card_fsrs', { cardId, rating });
     return { success: true };
   },
 

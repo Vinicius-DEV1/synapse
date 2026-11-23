@@ -117,10 +117,7 @@ pub async fn image_cache_put(
 }
 
 #[tauri::command]
-pub async fn image_cache_delete(
-    id: String,
-    db_state: State<'_, DbState>,
-) -> Result<bool, String> {
+pub async fn image_cache_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     db_state
         .write(move |conn| {
             conn.execute("DELETE FROM image_cache WHERE id = ?", [&id])

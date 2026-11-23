@@ -1,14 +1,14 @@
+use crate::cmd_video::transcode::VIDEO_CANCEL_FLAG;
+use crate::cmd_video::types::ProcessUploadResult;
+#[cfg(target_os = "windows")]
+use crate::video_probe::CREATE_NO_WINDOW;
+use crate::video_probe::{
+    get_videos_dir, normalize_to_mp4_name, sanitize_filename, video_probe_codec,
+};
 use std::fs;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncBufReadExt;
-use crate::cmd_video::transcode::VIDEO_CANCEL_FLAG;
-use crate::cmd_video::types::ProcessUploadResult;
-use crate::video_probe::{
-    get_videos_dir, normalize_to_mp4_name, sanitize_filename, video_probe_codec,
-};
-#[cfg(target_os = "windows")]
-use crate::video_probe::CREATE_NO_WINDOW;
 
 #[derive(serde::Serialize)]
 pub struct VideoStorageStats {
@@ -288,7 +288,8 @@ pub async fn video_read_file(path: String, app: AppHandle) -> Result<Vec<u8>, St
         let canonical_videos = videos_dir.canonicalize().unwrap_or(videos_dir);
         let canonical_app_data = app_data_dir.canonicalize().unwrap_or(app_data_dir);
 
-        if !canonical.starts_with(&canonical_videos) && !canonical.starts_with(&canonical_app_data) {
+        if !canonical.starts_with(&canonical_videos) && !canonical.starts_with(&canonical_app_data)
+        {
             return Err("Acesso negado: o arquivo está fora dos diretórios autorizados".into());
         }
 
@@ -490,13 +491,14 @@ pub async fn video_process_upload(
 
         if web_quality == "remux" {
             let probe_source = source_path.clone();
-            let (v_codec, a_codec) = tokio::task::spawn_blocking(move || -> Result<(String, String), String> {
-                let v = video_probe_codec(&probe_source, "v:0")?;
-                let a = video_probe_codec(&probe_source, "a:0").unwrap_or_default();
-                Ok((v, a))
-            })
-            .await
-            .map_err(|e| format!("Task join error: {}", e))??;
+            let (v_codec, a_codec) =
+                tokio::task::spawn_blocking(move || -> Result<(String, String), String> {
+                    let v = video_probe_codec(&probe_source, "v:0")?;
+                    let a = video_probe_codec(&probe_source, "a:0").unwrap_or_default();
+                    Ok((v, a))
+                })
+                .await
+                .map_err(|e| format!("Task join error: {}", e))??;
 
             if v_codec != "h264" {
                 return Err(format!(

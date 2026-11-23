@@ -134,8 +134,10 @@ pub async fn vault_reorder_groups(
 ) -> Result<(), String> {
     db_state
         .write(move |conn| {
-            let tuples: Vec<(&str, i32)> =
-                updates.iter().map(|u| (u.id.as_str(), u.position)).collect();
+            let tuples: Vec<(&str, i32)> = updates
+                .iter()
+                .map(|u| (u.id.as_str(), u.position))
+                .collect();
             core_groups::reorder_vault_groups(conn, &tuples).map_err(|e| e.to_string())?;
             Ok(())
         })

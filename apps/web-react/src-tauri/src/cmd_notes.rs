@@ -112,8 +112,7 @@ pub struct PageContent {
 pub async fn notes_get_all_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
     db_state
         .read(|conn| {
-            let records =
-                NotesRepository::get_page_metas_conn(conn).map_err(|e| e.to_string())?;
+            let records = NotesRepository::get_page_metas_conn(conn).map_err(|e| e.to_string())?;
             Ok(records.into_iter().map(map_meta_record).collect())
         })
         .await
@@ -443,7 +442,9 @@ pub async fn notes_delete_pages(
 }
 
 #[tauri::command]
-pub async fn notes_get_deleted_pages(db_state: State<'_, DbState>) -> Result<Vec<PageMeta>, String> {
+pub async fn notes_get_deleted_pages(
+    db_state: State<'_, DbState>,
+) -> Result<Vec<PageMeta>, String> {
     db_state
         .read(|conn| {
             let mut stmt = conn

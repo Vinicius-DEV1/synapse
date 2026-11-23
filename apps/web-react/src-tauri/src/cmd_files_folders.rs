@@ -86,6 +86,8 @@ pub async fn file_folders_update(
 #[tauri::command]
 pub async fn file_folders_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     db_state
-        .write(move |conn| FilesRepository::delete_folder_conn(conn, &id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            FilesRepository::delete_folder_conn(conn, &id).map_err(|e| e.to_string())
+        })
         .await
 }

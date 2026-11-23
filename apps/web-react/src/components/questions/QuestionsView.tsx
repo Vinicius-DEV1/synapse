@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { QuestionsHeader } from './QuestionsHeader';
 import { QuestionsMainContent } from './QuestionsMainContent';
-import { QuizSequentialFocusModal } from '../editor-extensions/quiz/components/sequential/QuizSequentialFocusModal';
-import { QuizEditorModal } from '../editor-extensions/quiz/components/QuizEditorModal';
 import { useQuestionsData, resetQuestionsViewCache } from './hooks/useQuestionsData';
 import { useQuestionsFocusSession } from './hooks/useQuestionsFocusSession';
 import {
@@ -12,6 +10,18 @@ import {
 import { useStoreSelector, useStoreDispatch, getStoreState } from '../../store/useStore';
 import type { BatteryWithQuestions } from '../../types/quiz';
 import type { QuestionItem } from '../editor-extensions/quiz/types';
+
+const QuizSequentialFocusModal = lazy(() =>
+  import('../editor-extensions/quiz/components/sequential/QuizSequentialFocusModal').then((m) => ({
+    default: m.QuizSequentialFocusModal,
+  }))
+);
+
+const QuizEditorModal = lazy(() =>
+  import('../editor-extensions/quiz/components/QuizEditorModal').then((m) => ({
+    default: m.QuizEditorModal,
+  }))
+);
 
 export { resetQuestionsViewCache };
 
@@ -39,6 +49,8 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     handleSaveBattery,
   } = useQuestionsData();
 
+  const handleSilentReload = useCallback(() => loadData(true), [loadData]);
+
   // Focus mode session orchestration
   const {
     activePlayingSession,
@@ -52,7 +64,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     evaluatingIds,
     handleEvaluateOpenAnswer,
     handleDeleteQuestionInFocus,
-  } = useQuestionsFocusSession(batteries, () => loadData(true));
+  } = useQuestionsFocusSession(batteries, handleSilentReload);
 
   // Editing / Creation state
   const [editingBattery, setEditingBattery] = useState<BatteryWithQuestions | null>(null);
@@ -115,14 +127,35 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     [dispatch, tabId, activeTab]
   );
 
-  // Resolve live page title from store without subscribing QuestionsView to every page list mutation
+  // Resolve live page title from store with O(1) Map lookup without subscribing QuestionsView to every page list mutation
   const getPageTitle = useCallback(
     (pageId: string) => {
-      const page = getStoreState().pages.find((p) => p.id === pageId);
-      return page?.title || null;
+      const pages = getStoreState().pages;
+      for (let i = 0; i < pages.length; i++) {
+        if (pages[i].id === pageId) return pages[i].title || null;
+      }
+      return null;
     },
     []
   );
+
+  const handleNewBattery = useCallback(() => {
+    setCreationParentId(null);
+    setIsCreatingNew(true);
+  }, []);
+
+  const handleEditBattery = useCallback((b: BatteryWithQuestions) => {
+    setEditingBattery(b);
+  }, []);
+
+  const handleCreateSubgroup = useCallback((parentBatteryId: string) => {
+    setCreationParentId(parentBatteryId);
+    setIsCreatingNew(true);
+  }, []);
+
+  const handleCreateBattery = useCallback(() => {
+    setIsCreatingNew(true);
+  }, []);
 
   // Close Question Editor page and return to Explorer or origin Note
   const handleCloseEditor = useCallback(() => {
@@ -162,49 +195,54 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
     [handleSaveBattery, editingBattery, creationParentId, handleCloseEditor]
   );
 
+  const isEditorOpen = Boolean(editingBattery || isCreatingNew);
+
   const availableParentOptions = useMemo(
-    () => getAvailableParentOptions(editingBattery?.id, batteries),
-    [editingBattery?.id, batteries]
+    () => (isEditorOpen ? getAvailableParentOptions(editingBattery?.id, batteries) : []),
+    [isEditorOpen, editingBattery?.id, batteries]
   );
 
   const activeBreadcrumbs = useMemo(() => {
+    if (!isEditorOpen) return [];
     const parentId = editingBattery ? editingBattery.parent_id : creationParentId;
     return parentId ? getBatteryBreadcrumb(parentId, batteries) : [];
-  }, [editingBattery, creationParentId, batteries]);
+  }, [isEditorOpen, editingBattery, creationParentId, batteries]);
 
   // Full-Page Question Editor View (Preserving Caderno's TabBar and Sidebar)
-  if (editingBattery || isCreatingNew) {
+  if (isEditorOpen) {
     return (
-      <QuizEditorModal
-        isOpen={true}
-        onClose={handleCloseEditor}
-        initialShowAiAssistant={editorInitialAi}
-        batteryTitle={editingBattery?.title || ''}
-        batteryDescription={editingBattery?.description || ''}
-        initialParentId={editingBattery ? editingBattery.parent_id : creationParentId}
-        availableParentOptions={availableParentOptions}
-        breadcrumbs={activeBreadcrumbs}
-        initialQuestions={
-          editingBattery
-            ? editingBattery.questions.map((q) => ({
-                id: q.id,
-                type: q.type,
-                question: q.question,
-                options: q.options || [],
-                correctIndex: q.correct_index,
-                tags: q.tags || [],
-                selectedIndex: null,
-                userTypedAnswer: '',
-                aiFeedback: null,
-                expectedAnswer: q.expected_answer || '',
-                explanation: q.explanation || '',
-                showExplanation: false,
-                answered: false,
-              }))
-            : []
-        }
-        onSave={onSaveBatteryModal}
-      />
+      <Suspense fallback={null}>
+        <QuizEditorModal
+          isOpen={true}
+          onClose={handleCloseEditor}
+          initialShowAiAssistant={editorInitialAi}
+          batteryTitle={editingBattery?.title || ''}
+          batteryDescription={editingBattery?.description || ''}
+          initialParentId={editingBattery ? editingBattery.parent_id : creationParentId}
+          availableParentOptions={availableParentOptions}
+          breadcrumbs={activeBreadcrumbs}
+          initialQuestions={
+            editingBattery
+              ? editingBattery.questions.map((q) => ({
+                  id: q.id,
+                  type: q.type,
+                  question: q.question,
+                  options: q.options || [],
+                  correctIndex: q.correct_index,
+                  tags: q.tags || [],
+                  selectedIndex: null,
+                  userTypedAnswer: '',
+                  aiFeedback: null,
+                  expectedAnswer: q.expected_answer || '',
+                  explanation: q.explanation || '',
+                  showExplanation: false,
+                  answered: false,
+                }))
+              : []
+          }
+          onSave={onSaveBatteryModal}
+        />
+      </Suspense>
     );
   }
 
@@ -215,10 +253,7 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
           totalQuestions={stats.totalQuestions}
           activeTabSection={activeTabSection}
           onSelectTabSection={setActiveTabSection}
-          onNewBattery={() => {
-            setCreationParentId(null);
-            setIsCreatingNew(true);
-          }}
+          onNewBattery={handleNewBattery}
         />
 
         <main className="flex-1 p-5 md:p-8">
@@ -235,17 +270,14 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
                   : undefined
               }
               onPlayBattery={handlePlayBattery}
-              onEditBattery={(b) => setEditingBattery(b)}
+              onEditBattery={handleEditBattery}
               onDeleteBattery={handleDeleteBattery}
               onNavigateToPage={handleNavigateToPage}
               getPageTitle={getPageTitle}
-              onCreateSubgroup={(parentBatteryId) => {
-                setCreationParentId(parentBatteryId);
-                setIsCreatingNew(true);
-              }}
+              onCreateSubgroup={handleCreateSubgroup}
               onMoveBattery={handleMoveBattery}
               onSelectTabSection={setActiveTabSection}
-              onCreateBattery={() => setIsCreatingNew(true)}
+              onCreateBattery={handleCreateBattery}
               onStartSession={handleStartGeneratedSession}
             />
           </div>
@@ -253,31 +285,33 @@ export default function QuestionsView({ tabId }: QuestionsViewProps) {
       </div>
 
       {activePlayingSession && (
-        <QuizSequentialFocusModal
-          isOpen={Boolean(activePlayingSession)}
-          onClose={() => {
-            setActivePlayingSession(null);
-            loadData(true);
-          }}
-          title={activePlayingSession.title}
-          questions={activePlayingSession.questions}
-          onUpdateQuestions={updateQuestionsInFocus}
-          onUpdateSingleQuestion={updateSingleQuestionInFocus}
-          onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
-          evaluatingIds={evaluatingIds}
-          onDiscussInChat={() => {}}
-          activeIndex={activeIndex}
-          onActiveIndexChange={setActiveIndex}
-          onEditQuestion={() => {
-            const b = batteries.find((x) => x.id === activePlayingSession.batteryId);
-            if (b) {
+        <Suspense fallback={null}>
+          <QuizSequentialFocusModal
+            isOpen={Boolean(activePlayingSession)}
+            onClose={() => {
               setActivePlayingSession(null);
-              setEditorInitialAi(false);
-              setEditingBattery(b);
-            }
-          }}
-          onDeleteQuestion={handleDeleteQuestionInFocus}
-        />
+              loadData(true);
+            }}
+            title={activePlayingSession.title}
+            questions={activePlayingSession.questions}
+            onUpdateQuestions={updateQuestionsInFocus}
+            onUpdateSingleQuestion={updateSingleQuestionInFocus}
+            onEvaluateOpenAnswer={handleEvaluateOpenAnswer}
+            evaluatingIds={evaluatingIds}
+            onDiscussInChat={() => {}}
+            activeIndex={activeIndex}
+            onActiveIndexChange={setActiveIndex}
+            onEditQuestion={() => {
+              const b = batteries.find((x) => x.id === activePlayingSession.batteryId);
+              if (b) {
+                setActivePlayingSession(null);
+                setEditorInitialAi(false);
+                setEditingBattery(b);
+              }
+            }}
+            onDeleteQuestion={handleDeleteQuestionInFocus}
+          />
+        </Suspense>
       )}
     </div>
   );

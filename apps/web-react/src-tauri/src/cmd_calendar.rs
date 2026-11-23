@@ -77,11 +77,15 @@ pub async fn calendar_add_event(
             let reminders_str = value_to_string_or_default(&reminders_val, "[]");
             let notified_val = event_obj.get("notified_reminders").cloned();
             let notified_str = value_to_string_or_default(&notified_val, "[]");
+            let recurrence_rule = event_obj
+                .get("recurrence_rule")
+                .and_then(|value| value.as_str())
+                .map(str::to_owned);
             let now = chrono::Utc::now().to_rfc3339();
 
             conn.execute(
-                "INSERT INTO calendar_events (id, title, description, start_date, end_date, type, type_, status, color, page_id, reminders, notified_reminders, created_at, updated_at) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13) \
+                "INSERT INTO calendar_events (id, title, description, start_date, end_date, type, type_, status, color, page_id, reminders, notified_reminders, recurrence_rule, created_at, updated_at) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14) \
                  ON CONFLICT(id) DO UPDATE SET \
                     title = excluded.title, \
                     description = excluded.description, \
@@ -94,6 +98,7 @@ pub async fn calendar_add_event(
                     page_id = excluded.page_id, \
                     reminders = excluded.reminders, \
                     notified_reminders = excluded.notified_reminders, \
+                    recurrence_rule = excluded.recurrence_rule, \
                     updated_at = excluded.updated_at",
                 rusqlite::params![
                     id,
@@ -108,6 +113,7 @@ pub async fn calendar_add_event(
                     page_id,
                     reminders_str,
                     notified_str,
+                    recurrence_rule,
                     now
                 ],
             )
@@ -125,6 +131,7 @@ pub async fn calendar_add_event(
                 page_id,
                 reminders: reminders_val.or(Some(serde_json::json!([]))),
                 notified_reminders: notified_val.or(Some(serde_json::json!([]))),
+                recurrence_rule,
                 created_at: Some(now.clone()),
                 updated_at: Some(now),
             })
@@ -164,7 +171,10 @@ pub async fn calendar_update_event(
                 return Err("ID do evento não fornecido".into());
             }
 
-            let title = event_obj.get("title").and_then(|v| v.as_str()).unwrap_or("");
+            let title = event_obj
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let description = event_obj.get("description").and_then(|v| v.as_str());
             let start_date = event_obj.get("start_date").and_then(|v| v.as_str());
             let end_date = event_obj.get("end_date").and_then(|v| v.as_str());
@@ -177,7 +187,10 @@ pub async fn calendar_update_event(
                 .get("status")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            let color = event_obj.get("color").and_then(|v| v.as_str()).unwrap_or("");
+            let color = event_obj
+                .get("color")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let page_id = event_obj.get("page_id").and_then(|v| v.as_str());
 
             let reminders_opt = event_obj
@@ -227,9 +240,14 @@ pub async fn calendar_update_event(
 }
 
 #[tauri::command]
-pub async fn calendar_delete_event(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub async fn calendar_delete_event(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     db_state
-        .write(move |conn| CalendarRepository::delete_event_conn(conn, &id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            CalendarRepository::delete_event_conn(conn, &id).map_err(|e| e.to_string())
+        })
         .await
 }
 

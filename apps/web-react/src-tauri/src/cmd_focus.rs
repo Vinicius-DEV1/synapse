@@ -15,7 +15,9 @@ pub async fn focus_create_alarm(
     db_state: State<'_, DbState>,
 ) -> Result<FocusAlarm, String> {
     db_state
-        .write(move |conn| FocusRepository::upsert_alarm_conn(conn, alarm).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            FocusRepository::upsert_alarm_conn(conn, alarm).map_err(|e| e.to_string())
+        })
         .await
 }
 

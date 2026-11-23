@@ -130,12 +130,12 @@ describe('QuestionsView Component', () => {
   });
 
   it('opens full-page editor upon clicking "Nova Bateria" and returns to explorer on Voltar click', async () => {
-    const { getByText, getByPlaceholderText, getByTitle } = renderWithI18n(<QuestionsView />);
+    const { getByText, findByPlaceholderText, getByTitle } = renderWithI18n(<QuestionsView />);
 
     const newBtn = getByText('Nova Bateria');
     fireEvent.click(newBtn);
 
-    expect(getByPlaceholderText('Título da Bateria...')).toBeDefined();
+    expect(await findByPlaceholderText('Título da Bateria...')).toBeDefined();
     expect(getByTitle('Voltar')).toBeDefined();
 
     // Clicking Voltar closes the full-page editor and returns to Explorer
@@ -155,7 +155,7 @@ describe('QuestionsView Component', () => {
     window.api.quiz.saveBattery = saveBatteryMock;
     window.api.quiz.saveQuestionsBatch = saveQuestionsBatchMock;
 
-    const { getByText, getByTitle, getByPlaceholderText } = renderWithI18n(<QuestionsView />);
+    const { getByText, getByTitle, findByPlaceholderText } = renderWithI18n(<QuestionsView />);
 
     await waitFor(() => {
       expect(getByText('Bateria Redes')).toBeDefined();
@@ -165,8 +165,8 @@ describe('QuestionsView Component', () => {
     const subBtn = getByTitle('Adicionar subgrupo dentro de "Bateria Redes"');
     fireEvent.click(subBtn);
 
-    // Editor should be open
-    const titleInput = getByPlaceholderText('Título da Bateria...');
+    // Editor should be open (loaded lazily on demand)
+    const titleInput = await findByPlaceholderText('Título da Bateria...');
     fireEvent.change(titleInput, { target: { value: 'TCP em Detalhes' } });
 
     // Save changes

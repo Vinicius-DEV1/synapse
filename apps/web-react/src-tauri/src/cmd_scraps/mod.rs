@@ -3,7 +3,8 @@ use base64::Engine as _;
 use futures::stream::{self, StreamExt};
 use regex::Regex;
 use reqwest::header::{
-    HeaderMap, HeaderValue, ACCEPT, ACCEPT_LANGUAGE, CACHE_CONTROL, DNT, REFERER, UPGRADE_INSECURE_REQUESTS, USER_AGENT,
+    HeaderMap, HeaderValue, ACCEPT, ACCEPT_LANGUAGE, CACHE_CONTROL, DNT, REFERER,
+    UPGRADE_INSECURE_REQUESTS, USER_AGENT,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -46,7 +47,9 @@ fn create_browser_client() -> Result<reqwest::Client, String> {
     headers.insert(REFERER, HeaderValue::from_static("https://www.google.com/"));
     headers.insert(
         "Sec-Ch-Ua",
-        HeaderValue::from_static("\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\""),
+        HeaderValue::from_static(
+            "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+        ),
     );
     headers.insert("Sec-Ch-Ua-Mobile", HeaderValue::from_static("?0"));
     headers.insert("Sec-Ch-Ua-Platform", HeaderValue::from_static("\"Linux\""));
@@ -71,7 +74,10 @@ fn is_private_or_local_url(raw_url: &str) -> bool {
     let Some(host) = parsed.host_str() else {
         return true;
     };
-    let lower = host.trim().trim_matches(|c| c == '[' || c == ']').to_lowercase();
+    let lower = host
+        .trim()
+        .trim_matches(|c| c == '[' || c == ']')
+        .to_lowercase();
     if lower == "localhost"
         || lower.ends_with(".localhost")
         || lower == "0.0.0.0"
@@ -105,7 +111,10 @@ fn is_private_or_local_url(raw_url: &str) -> bool {
 
 fn resolve_url(base: &str, relative: &str) -> Option<String> {
     let clean_rel = relative.trim().trim_matches('\'').trim_matches('"');
-    if clean_rel.starts_with("data:") || clean_rel.starts_with("javascript:") || clean_rel.is_empty() {
+    if clean_rel.starts_with("data:")
+        || clean_rel.starts_with("javascript:")
+        || clean_rel.is_empty()
+    {
         return None;
     }
     if clean_rel.starts_with("//") {
@@ -139,7 +148,13 @@ fn resolve_url(base: &str, relative: &str) -> Option<String> {
 }
 
 fn guess_mime(url: &str, default_mime: &str) -> String {
-    let clean_path = url.split('?').next().unwrap_or(url).split('#').next().unwrap_or(url);
+    let clean_path = url
+        .split('?')
+        .next()
+        .unwrap_or(url)
+        .split('#')
+        .next()
+        .unwrap_or(url);
     if let Some(ext) = clean_path.split('.').last() {
         match ext.to_lowercase().as_str() {
             "png" => "image/png".to_string(),
@@ -243,7 +258,9 @@ async fn fetch_asset_as_text(
 
 fn extract_title(html: &str, fallback_url: &str) -> String {
     // 1. Open Graph Title
-    if let Ok(re) = Regex::new(r#"(?i)<meta[^>]+(?:property|name)=["']og:title["'][^>]+content=["']([^"']+)["']"#) {
+    if let Ok(re) = Regex::new(
+        r#"(?i)<meta[^>]+(?:property|name)=["']og:title["'][^>]+content=["']([^"']+)["']"#,
+    ) {
         if let Some(caps) = re.captures(html) {
             if let Some(m) = caps.get(1) {
                 let t = m.as_str().trim();
@@ -281,7 +298,9 @@ fn extract_title(html: &str, fallback_url: &str) -> String {
 
 fn extract_favicon_urls(html: &str, base_url: &str) -> Vec<String> {
     let mut results = Vec::new();
-    if let Ok(re) = Regex::new(r#"(?i)<link[^>]+rel=["'](?:shortcut icon|icon|apple-touch-icon)["'][^>]*>"#) {
+    if let Ok(re) =
+        Regex::new(r#"(?i)<link[^>]+rel=["'](?:shortcut icon|icon|apple-touch-icon)["'][^>]*>"#)
+    {
         let href_re = Regex::new(r#"(?i)href=["']([^"']+)["']"#).unwrap();
         for cap in re.find_iter(html) {
             if let Some(href_cap) = href_re.captures(cap.as_str()) {
@@ -339,7 +358,9 @@ async fn process_css_content(
             let ref_header = referer.clone();
             async move {
                 let mime = guess_mime(&resolved_url, "application/octet-stream");
-                if let Some(data_uri) = fetch_asset_as_base64(&client, &resolved_url, &ref_header, &mime, &total).await {
+                if let Some(data_uri) =
+                    fetch_asset_as_base64(&client, &resolved_url, &ref_header, &mime, &total).await
+                {
                     Some((raw_path, data_uri))
                 } else {
                     None
@@ -413,7 +434,10 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
     }
 
     let final_url = res.url().to_string();
-    let raw_html = res.text().await.map_err(|e| format!("Falha ao ler o corpo HTML: {}", e))?;
+    let raw_html = res
+        .text()
+        .await
+        .map_err(|e| format!("Falha ao ler o corpo HTML: {}", e))?;
 
     let title = extract_title(&raw_html, &final_url);
     let total_downloaded = Arc::new(AtomicUsize::new(raw_html.len()));
@@ -422,7 +446,15 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
     let favicon_candidates = extract_favicon_urls(&raw_html, &final_url);
     let mut favicon_base64: Option<String> = None;
     for fav_url in favicon_candidates {
-        if let Some(b64) = fetch_asset_as_base64(&client, &fav_url, &final_url, "image/x-icon", &total_downloaded).await {
+        if let Some(b64) = fetch_asset_as_base64(
+            &client,
+            &fav_url,
+            &final_url,
+            "image/x-icon",
+            &total_downloaded,
+        )
+        .await
+        {
             favicon_base64 = Some(b64);
             break;
         }
@@ -456,9 +488,14 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
             let total = total_clone.clone();
             let referer = page_ref.clone();
             async move {
-                if let Some(raw_css) = fetch_asset_as_text(&client, &css_url, &referer, &total).await {
+                if let Some(raw_css) =
+                    fetch_asset_as_text(&client, &css_url, &referer, &total).await
+                {
                     let processed = process_css_content(&client, &raw_css, &css_url, &total).await;
-                    let style_tag = format!("<style data-source=\"{}\">\n{}\n</style>", css_url, processed);
+                    let style_tag = format!(
+                        "<style data-source=\"{}\">\n{}\n</style>",
+                        css_url, processed
+                    );
                     Some((full_tag, style_tag))
                 } else {
                     None
@@ -475,7 +512,8 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
     }
 
     // 4. EXTRAÇÃO & INLINE DE IMAGENS (<img>, <picture>, <source>, style="background: url(...)")
-    let img_src_re = Regex::new(r#"(?i)(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["']"#).unwrap();
+    let img_src_re =
+        Regex::new(r#"(?i)(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["']"#).unwrap();
     let mut image_urls = HashSet::new();
 
     for cap in img_src_re.captures_iter(&processed_html) {
@@ -500,7 +538,9 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
             let referer = page_ref_img.clone();
             async move {
                 let mime = guess_mime(&resolved_url, "image/png");
-                if let Some(data_uri) = fetch_asset_as_base64(&client, &resolved_url, &referer, &mime, &total).await {
+                if let Some(data_uri) =
+                    fetch_asset_as_base64(&client, &resolved_url, &referer, &mime, &total).await
+                {
                     Some((orig_src, data_uri))
                 } else {
                     None
@@ -514,14 +554,27 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
 
     for (orig_src, data_uri) in inlined_images {
         processed_html = processed_html
-            .replace(&format!("src=\"{}\"", orig_src), &format!("src=\"{}\"", data_uri))
-            .replace(&format!("src='{}'", orig_src), &format!("src='{}'", data_uri))
-            .replace(&format!("data-src=\"{}\"", orig_src), &format!("src=\"{}\"", data_uri))
-            .replace(&format!("data-original=\"{}\"", orig_src), &format!("src=\"{}\"", data_uri));
+            .replace(
+                &format!("src=\"{}\"", orig_src),
+                &format!("src=\"{}\"", data_uri),
+            )
+            .replace(
+                &format!("src='{}'", orig_src),
+                &format!("src='{}'", data_uri),
+            )
+            .replace(
+                &format!("data-src=\"{}\"", orig_src),
+                &format!("src=\"{}\"", data_uri),
+            )
+            .replace(
+                &format!("data-original=\"{}\"", orig_src),
+                &format!("src=\"{}\"", data_uri),
+            );
     }
 
     // 5. EXTRAÇÃO & INLINE DE SCRIPTS (<script src="...">)
-    let script_re = Regex::new(r#"(?is)<script[^>]+src=["']([^"']+)["'][^>]*>\s*</script>"#).unwrap();
+    let script_re =
+        Regex::new(r#"(?is)<script[^>]+src=["']([^"']+)["'][^>]*>\s*</script>"#).unwrap();
     let mut script_urls = Vec::new();
 
     for cap in script_re.captures_iter(&processed_html) {
@@ -546,8 +599,13 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
             let total = total_script_clone.clone();
             let referer = page_ref_script.clone();
             async move {
-                if let Some(js_code) = fetch_asset_as_text(&client, &script_url, &referer, &total).await {
-                    let inline_tag = format!("<script data-source=\"{}\">\n{}\n</script>", script_url, js_code);
+                if let Some(js_code) =
+                    fetch_asset_as_text(&client, &script_url, &referer, &total).await
+                {
+                    let inline_tag = format!(
+                        "<script data-source=\"{}\">\n{}\n</script>",
+                        script_url, js_code
+                    );
                     Some((full_tag, inline_tag))
                 } else {
                     None
@@ -607,18 +665,23 @@ pub async fn scrap_capture_page(url: String) -> Result<ScrapPayload, String> {
         let insert_pos = head_idx + 6;
         processed_html.insert_str(insert_pos, &security_and_responsive_shield);
     } else {
-        processed_html = format!("<head>{}</head>{}", security_and_responsive_shield, processed_html);
+        processed_html = format!(
+            "<head>{}</head>{}",
+            security_and_responsive_shield, processed_html
+        );
     }
 
     // 7. Salvar snapshot no disco local
     let scrap_id = Uuid::new_v4().to_string();
     let app_dir = crate::get_app_data_dir();
     let scraps_dir = app_dir.join("scraps");
-    std::fs::create_dir_all(&scraps_dir).map_err(|e| format!("Falha ao criar pasta de scraps: {}", e))?;
+    std::fs::create_dir_all(&scraps_dir)
+        .map_err(|e| format!("Falha ao criar pasta de scraps: {}", e))?;
 
     let relative_path = format!("scraps/{}.html", scrap_id);
     let dest_full_path = app_dir.join(&relative_path);
-    std::fs::write(&dest_full_path, &processed_html).map_err(|e| format!("Falha ao salvar snapshot no disco: {}", e))?;
+    std::fs::write(&dest_full_path, &processed_html)
+        .map_err(|e| format!("Falha ao salvar snapshot no disco: {}", e))?;
 
     let final_size = processed_html.len();
     let now = chrono::Utc::now().to_rfc3339();

@@ -13,16 +13,22 @@ pub async fn practice_get_sessions(
 
 #[tauri::command]
 pub async fn practice_create_session(
-    mut session: TutorSession,
+    session: TutorSession,
     db_state: State<'_, DbState>,
 ) -> Result<TutorSession, String> {
     db_state
         .write(move |conn| {
-            if session.id.is_empty() {
-                session.id = uuid::Uuid::new_v4().to_string();
+            if !session.id.is_empty() {
+                PracticeRepository::save_session_conn(conn, &session).map_err(|e| e.to_string())?;
+                return Ok(session);
             }
-            PracticeRepository::save_session_conn(conn, &session).map_err(|e| e.to_string())?;
-            Ok(session)
+            PracticeRepository::create_session_conn(
+                conn,
+                &session.title,
+                &session.started_at,
+                session.custom_prompt.as_deref(),
+            )
+            .map_err(|e| e.to_string())
         })
         .await
 }
@@ -54,16 +60,22 @@ pub async fn practice_get_messages(
 
 #[tauri::command]
 pub async fn practice_create_message(
-    mut message: TutorMessage,
+    message: TutorMessage,
     db_state: State<'_, DbState>,
 ) -> Result<TutorMessage, String> {
     db_state
         .write(move |conn| {
-            if message.id.is_empty() {
-                message.id = uuid::Uuid::new_v4().to_string();
+            if !message.id.is_empty() {
+                PracticeRepository::save_message_conn(conn, &message).map_err(|e| e.to_string())?;
+                return Ok(message);
             }
-            PracticeRepository::save_message_conn(conn, &message).map_err(|e| e.to_string())?;
-            Ok(message)
+            PracticeRepository::create_message_conn(
+                conn,
+                &message.session_id,
+                &message.role,
+                &message.text_content,
+            )
+            .map_err(|e| e.to_string())
         })
         .await
 }
@@ -79,16 +91,17 @@ pub async fn practice_get_memories(
 
 #[tauri::command]
 pub async fn practice_create_memory(
-    mut memory: TutorMemory,
+    memory: TutorMemory,
     db_state: State<'_, DbState>,
 ) -> Result<TutorMemory, String> {
     db_state
         .write(move |conn| {
-            if memory.id.is_empty() {
-                memory.id = uuid::Uuid::new_v4().to_string();
+            if !memory.id.is_empty() {
+                PracticeRepository::save_memory_conn(conn, &memory).map_err(|e| e.to_string())?;
+                return Ok(memory);
             }
-            PracticeRepository::save_memory_conn(conn, &memory).map_err(|e| e.to_string())?;
-            Ok(memory)
+            PracticeRepository::create_memory_conn(conn, &memory.category, &memory.fact)
+                .map_err(|e| e.to_string())
         })
         .await
 }
@@ -99,6 +112,8 @@ pub async fn practice_delete_memory(
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
     db_state
-        .write(move |conn| PracticeRepository::delete_memory_conn(conn, &id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            PracticeRepository::delete_memory_conn(conn, &id).map_err(|e| e.to_string())
+        })
         .await
 }

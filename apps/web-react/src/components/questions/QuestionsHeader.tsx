@@ -53,12 +53,12 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
       </header>
 
       {/* Action Controls (Sticky) */}
-      <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-4">
+      <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/98 border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-4">
         {/* Section Switcher Tabs */}
         <div className="flex items-center bg-dark-card/50 p-1 rounded-xl border border-white/[0.06] text-xs">
           <button
             onClick={() => onSelectTabSection('explorer')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTabSection === 'explorer'
                 ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
                 : 'text-zinc-400 hover:text-white'
@@ -70,7 +70,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
 
           <button
             onClick={() => onSelectTabSection('dashboard')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTabSection === 'dashboard'
                 ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
                 : 'text-zinc-400 hover:text-white'
@@ -82,7 +82,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
 
           <button
             onClick={() => onSelectTabSection('playlists')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTabSection === 'playlists'
                 ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 font-medium shadow-xs'
                 : 'text-zinc-400 hover:text-white'
@@ -96,7 +96,7 @@ export const QuestionsHeader = React.memo(function QuestionsHeader({
         {/* New Battery Button */}
         <button
           onClick={onNewBattery}
-          className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+          className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm active:scale-95"
         >
           <Plus size={15} />
           <span>{t('questions.header.newBattery')}</span>

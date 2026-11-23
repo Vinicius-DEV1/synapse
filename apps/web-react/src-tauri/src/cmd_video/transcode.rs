@@ -1,15 +1,14 @@
+use crate::cmd_video::types::GenerateWebResult;
+#[cfg(target_os = "windows")]
+use crate::video_probe::CREATE_NO_WINDOW;
+use crate::video_probe::{
+    get_videos_dir, is_file_encrypted, normalize_to_mp4_name, sanitize_filename, video_probe_codec,
+};
 use std::fs;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::AsyncBufReadExt;
-use crate::cmd_video::types::GenerateWebResult;
-use crate::video_probe::{
-    get_videos_dir, is_file_encrypted, normalize_to_mp4_name, sanitize_filename,
-    video_probe_codec,
-};
-#[cfg(target_os = "windows")]
-use crate::video_probe::CREATE_NO_WINDOW;
 
 pub static VIDEO_CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -96,7 +95,8 @@ pub async fn video_generate_web(
     if web_quality == "remux" {
         let probe_input = input_path.clone();
         let (v_codec, a_codec) = tokio::task::spawn_blocking(move || {
-            let v = video_probe_codec(&probe_input, "v:0").unwrap_or_else(|_| "unknown".to_string());
+            let v =
+                video_probe_codec(&probe_input, "v:0").unwrap_or_else(|_| "unknown".to_string());
             let a = video_probe_codec(&probe_input, "a:0").unwrap_or_default();
             (v, a)
         })

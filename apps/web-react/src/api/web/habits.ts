@@ -20,6 +20,7 @@ export const webHabitsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =
   createHabit: async (data: {
     id?: string;
     title: string;
+    category?: string;
     color?: string;
     icon?: string;
     target_days_per_week?: number;
@@ -29,6 +30,7 @@ export const webHabitsApi = (db: IDBPDatabase<CadernoDBSchema>, generateId: () =
     const newHabit: Habit = {
       id,
       title: data.title.trim(),
+      category: data.category?.trim() || 'Geral',
       color: data.color || 'emerald',
       icon: data.icon || 'Flame',
       target_days_per_week: data.target_days_per_week || 7,

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { useI18n } from '../../i18n';
 
 interface FocusHelpModalProps {
   isOpen?: boolean;
@@ -221,6 +222,8 @@ function AlarmsTab() {
 }
 
 function MetricsTab() {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-4">
       <div>
@@ -238,6 +241,10 @@ function MetricsTab() {
         <FeatureItem
           title="Tendência Semanal dos Últimos 7 Dias"
           description="Gráfico comparativo de minutos estudados a cada dia da semana para avaliar sua constância."
+        />
+        <FeatureItem
+          title={t('focus.recentHistory')}
+          description={t('focus.recentHistoryGuide')}
         />
       </div>
     </div>

@@ -33,6 +33,7 @@ pub struct AnkiCard {
     pub scheduled_days: Option<i32>,
     pub reps: Option<i32>,
     pub lapses: Option<i32>,
+    pub learning_steps: Option<i32>,
     pub last_review: Option<String>,
     pub created_at: Option<String>,
 }
@@ -85,6 +86,7 @@ fn map_card_to_anki_card(c: Card) -> AnkiCard {
         scheduled_days: None,
         reps: c.reps,
         lapses: c.lapses,
+        learning_steps: c.learning_steps,
         last_review: None,
         created_at: c.created_at,
     }
@@ -126,8 +128,8 @@ pub async fn anki_create_deck(
             )
             .map_err(|e| e.to_string())?;
 
-            let _ =
-                AnkiRepository::update_deck_settings_conn(conn, &id, AnkiDeckSettings::default());
+            AnkiRepository::update_deck_settings_conn(conn, &id, AnkiDeckSettings::default())
+                .map_err(|error| error.to_string())?;
             Ok(id)
         })
         .await
@@ -146,10 +148,16 @@ pub async fn anki_get_deck_settings(
 }
 
 #[tauri::command]
-pub async fn anki_save_card(card: AnkiCard, db_state: State<'_, DbState>) -> Result<String, String> {
+pub async fn anki_save_card(
+    card: AnkiCard,
+    db_state: State<'_, DbState>,
+) -> Result<String, String> {
     db_state
         .write(move |conn| {
-            let tags_json = card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
+            let tags_json = card
+                .tags
+                .as_ref()
+                .and_then(|t| serde_json::to_string(t).ok());
 
             if card.id.is_empty() {
                 AnkiRepository::create_card_conn(
@@ -198,13 +206,16 @@ pub async fn anki_get_all_cards(
 }
 
 #[tauri::command]
-pub async fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Result<AnkiCard, String> {
+pub async fn anki_get_card(
+    card_id: String,
+    db_state: State<'_, DbState>,
+) -> Result<AnkiCard, String> {
     db_state
         .read(move |conn| {
             let mut stmt = conn
                 .prepare(
                     "SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.card_type, c.validation_mode, c.extra_note, c.media_url, c.created_at,
-                            s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.state, s.due_date, s.last_review
+                            s.stability, s.difficulty, s.elapsed_days, s.scheduled_days, s.reps, s.lapses, s.state, s.due_date, s.last_review, s.learning_steps
                      FROM anki_cards c
                      LEFT JOIN anki_srs_state s ON c.id = s.id
                      WHERE c.id = ? AND c.deleted_at IS NULL",
@@ -248,6 +259,7 @@ pub async fn anki_get_card(card_id: String, db_state: State<'_, DbState>) -> Res
                         state: normalize_state_str(raw_state),
                         due_date: row.get(17).ok().flatten(),
                         last_review: row.get(18).ok().flatten(),
+                        learning_steps: row.get(19).ok().flatten(),
                     })
                 })
                 .map_err(|e| e.to_string())?;
@@ -326,7 +338,9 @@ pub async fn anki_delete_card(
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
     db_state
-        .write(move |conn| AnkiRepository::delete_card_conn(conn, &card_id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            AnkiRepository::delete_card_conn(conn, &card_id).map_err(|e| e.to_string())
+        })
         .await
 }
 
@@ -338,7 +352,10 @@ pub async fn anki_update_card(
 ) -> Result<bool, String> {
     db_state
         .write(move |conn| {
-            let tags_json = card.tags.as_ref().and_then(|t| serde_json::to_string(t).ok());
+            let tags_json = card
+                .tags
+                .as_ref()
+                .and_then(|t| serde_json::to_string(t).ok());
             AnkiRepository::update_card_conn(
                 conn,
                 &card_id,
@@ -374,7 +391,9 @@ pub async fn anki_delete_deck(
     db_state: State<'_, DbState>,
 ) -> Result<bool, String> {
     db_state
-        .write(move |conn| AnkiRepository::delete_deck_conn(conn, &deck_id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            AnkiRepository::delete_deck_conn(conn, &deck_id).map_err(|e| e.to_string())
+        })
         .await
 }
 

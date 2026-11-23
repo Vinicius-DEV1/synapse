@@ -55,7 +55,9 @@ pub async fn files_save_local(
             fs::create_dir_all(&files_dir).map_err(|e| e.to_string())?;
         }
         fs::write(&temp_path, data).map_err(|e| e.to_string())?;
-        if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &dest_path, &master_key) {
+        if let Err(e) =
+            crate::crypto_stream::encrypt_file_chunked(&temp_path, &dest_path, &master_key)
+        {
             let _ = fs::remove_file(&temp_path);
             return Err(e);
         }
@@ -94,12 +96,9 @@ pub async fn read_local_binary_file(path: String) -> Result<Vec<u8>, String> {
         }
 
         const ALLOWED_EXTENSIONS: &[&str] = &[
-            "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "tiff", "avif",
-            "mp3", "wav", "ogg", "m4a", "flac", "aac", "opus",
-            "mp4", "webm", "mkv", "mov", "avi",
-            "pdf", "epub", "txt", "md", "json", "csv",
-            "woff", "woff2", "ttf", "otf",
-            "enc",
+            "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "tiff", "avif", "mp3", "wav",
+            "ogg", "m4a", "flac", "aac", "opus", "mp4", "webm", "mkv", "mov", "avi", "pdf", "epub",
+            "txt", "md", "json", "csv", "woff", "woff2", "ttf", "otf", "enc",
         ];
 
         let ext = canonical

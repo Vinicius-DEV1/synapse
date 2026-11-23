@@ -15,7 +15,9 @@ pub async fn culture_create_item(
     db_state: State<'_, DbState>,
 ) -> Result<CultureItem, String> {
     db_state
-        .write(move |conn| CultureRepository::create_item_conn(conn, item).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            CultureRepository::create_item_conn(conn, item).map_err(|e| e.to_string())
+        })
         .await
 }
 
@@ -37,7 +39,9 @@ pub async fn culture_update_item(
 #[tauri::command]
 pub async fn culture_delete_item(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     db_state
-        .write(move |conn| CultureRepository::delete_item_conn(conn, &id).map_err(|e| e.to_string()))
+        .write(move |conn| {
+            CultureRepository::delete_item_conn(conn, &id).map_err(|e| e.to_string())
+        })
         .await
 }
 

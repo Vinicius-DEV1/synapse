@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine as _;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -49,7 +49,9 @@ pub async fn youtube_fetch_info(url: String, _app: AppHandle) -> Result<Value, S
         let val: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
         Ok(val)
     } else {
-        Err(sanitize_ytdlp_error(&String::from_utf8_lossy(&output.stderr)))
+        Err(sanitize_ytdlp_error(&String::from_utf8_lossy(
+            &output.stderr,
+        )))
     }
 }
 
@@ -63,7 +65,8 @@ pub fn sanitize_ytdlp_error(stderr: &str) -> String {
         || lower.contains("connection refused")
         || lower.contains("timed out")
     {
-        return "Não foi possível conectar ao YouTube. Verifique sua conexão com a internet.".to_string();
+        return "Não foi possível conectar ao YouTube. Verifique sua conexão com a internet."
+            .to_string();
     }
     if lower.contains("the playlist does not exist") || lower.contains("playlist does not exist") {
         return "A playlist informada não existe ou foi removida do YouTube.".to_string();
@@ -146,7 +149,10 @@ pub async fn youtube_download(
     if let Some(sub_langs) = subs {
         let valid_langs: Vec<String> = sub_langs
             .into_iter()
-            .filter(|l| l.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_'))
+            .filter(|l| {
+                l.chars()
+                    .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            })
             .collect();
         if !valid_langs.is_empty() {
             let langs = valid_langs.join(",");
@@ -164,35 +170,36 @@ pub async fn youtube_download(
     args.push(url.clone());
 
     let app_clone = app.clone();
-    let status = tokio::task::spawn_blocking(move || -> Result<std::process::ExitStatus, String> {
-        let mut child = Command::new(ytdlp_path);
-        child.args(&args).stdout(Stdio::piped());
-        #[cfg(target_os = "windows")]
-        child.creation_flags(CREATE_NO_WINDOW);
-        let mut child = child.spawn().map_err(|e| e.to_string())?;
+    let status =
+        tokio::task::spawn_blocking(move || -> Result<std::process::ExitStatus, String> {
+            let mut child = Command::new(ytdlp_path);
+            child.args(&args).stdout(Stdio::piped());
+            #[cfg(target_os = "windows")]
+            child.creation_flags(CREATE_NO_WINDOW);
+            let mut child = child.spawn().map_err(|e| e.to_string())?;
 
-        let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
-        let reader = BufReader::new(stdout);
+            let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+            let reader = BufReader::new(stdout);
 
-        for line in reader.lines() {
-            if let Ok(line_str) = line {
-                if line_str.contains("[download]") && line_str.contains('%') {
-                    if let Some(pct_str) = line_str.split('%').next() {
-                        let parts: Vec<&str> = pct_str.split_whitespace().collect();
-                        if let Some(last) = parts.last() {
-                            if let Ok(pct) = last.parse::<f64>() {
-                                let _ = app_clone.emit("youtube_download_progress", pct);
+            for line in reader.lines() {
+                if let Ok(line_str) = line {
+                    if line_str.contains("[download]") && line_str.contains('%') {
+                        if let Some(pct_str) = line_str.split('%').next() {
+                            let parts: Vec<&str> = pct_str.split_whitespace().collect();
+                            if let Some(last) = parts.last() {
+                                if let Ok(pct) = last.parse::<f64>() {
+                                    let _ = app_clone.emit("youtube_download_progress", pct);
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        child.wait().map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| format!("Task join error: {}", e))??;
+            child.wait().map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))??;
 
     if status.success() {
         let master_key = {
@@ -255,11 +262,11 @@ pub async fn youtube_fetch_playlist_info(
         let val: serde_json::Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
         Ok(val)
     } else {
-        Err(sanitize_ytdlp_error(&String::from_utf8_lossy(&output.stderr)))
+        Err(sanitize_ytdlp_error(&String::from_utf8_lossy(
+            &output.stderr,
+        )))
     }
 }
-
-
 
 #[tauri::command]
 pub async fn youtube_get_watched(
@@ -506,7 +513,10 @@ pub async fn youtube_fetch_transcript(
 
     let ytdlp_path = crate::cmd_binaries::get_bin_path("yt-dlp");
     if !ytdlp_path.exists() {
-        return Err("Binário do yt-dlp não encontrado. Por favor, instale o yt-dlp nas configurações.".into());
+        return Err(
+            "Binário do yt-dlp não encontrado. Por favor, instale o yt-dlp nas configurações."
+                .into(),
+        );
     }
 
     let output = tokio::task::spawn_blocking(move || {
@@ -520,7 +530,9 @@ pub async fn youtube_fetch_transcript(
     .map_err(|e| format!("Task join error: {}", e))??;
 
     if !output.status.success() {
-        return Err(sanitize_ytdlp_error(&String::from_utf8_lossy(&output.stderr)));
+        return Err(sanitize_ytdlp_error(&String::from_utf8_lossy(
+            &output.stderr,
+        )));
     }
 
     let json_str = String::from_utf8_lossy(&output.stdout);
@@ -606,7 +618,9 @@ pub async fn youtube_fetch_transcript(
     }
 
     if selected_url.is_empty() {
-        return Err("Nenhuma legenda ou transcrição disponível para este vídeo no YouTube.".to_string());
+        return Err(
+            "Nenhuma legenda ou transcrição disponível para este vídeo no YouTube.".to_string(),
+        );
     }
 
     let client = reqwest::Client::builder()
@@ -891,4 +905,3 @@ pub async fn youtube_extract_frames(
 
     Ok(results)
 }
-

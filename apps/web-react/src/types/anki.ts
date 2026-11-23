@@ -77,6 +77,7 @@ export interface AnkiCardRecord {
   scheduled_days?: number;
   reps?: number;
   lapses?: number;
+  learning_steps?: number;
   last_review?: string | null;
   srs_state?: AnkiSrsState | null;
   created_at?: string;
@@ -111,6 +112,7 @@ export interface AnkiCard {
   scheduled_days?: number;
   reps?: number;
   lapses?: number;
+  learning_steps?: number;
   last_review?: string | null;
 }
 

@@ -251,7 +251,10 @@ pub async fn quiz_delete_battery(id: String, db_state: State<'_, DbState>) -> Re
 }
 
 #[tauri::command]
-pub async fn quiz_restore_battery(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub async fn quiz_restore_battery(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     db_state
         .write(move |conn| {
             let now = Utc::now().to_rfc3339();

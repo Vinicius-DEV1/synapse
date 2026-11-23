@@ -600,7 +600,9 @@
       "statusIncorrect": "Apenas que Errei",
       "shuffle": "Embaralhar ordem das questões",
       "startSimulation": "Iniciar Simulado",
-      "noQuestionsToast": "Nenhuma questão encontrada para os filtros selecionados."
+      "noQuestionsToast": "Nenhuma questão encontrada para os filtros selecionados.",
+      "customSimHelpTitle": "Filtros do Simulado Personalizado",
+      "customSimHelpDescription": "Combine várias tags, escolha todas as questões, apenas não respondidas ou apenas erradas, defina a quantidade e embaralhe a lista antes de começar."
     },
     "dashboard": {
       "totalQuestions": "Total Questões",
@@ -657,6 +659,10 @@
     "manageDeck": "Gerenciar Baralho",
     "study": "Estudar",
     "studyNow": "Estudar Agora",
+    "help": {
+      "androidKeyboardTitle": "Teclado físico no Android",
+      "androidKeyboardDescription": "Com um teclado físico conectado, pressione Espaço para revelar a resposta, 1–4 para avaliar o cartão e Esc para sair da revisão. Abra Configurações no Synapse → Revisão Anki para ativar ou desativar a virada 3D e os efeitos sonoros."
+    },
     "modal": {
       "newDeck": "Novo Baralho",
       "newSubDeck": "Novo Subbaralho",
@@ -809,6 +815,7 @@
     "success": "Sucesso",
     "weeklyTrend": "Tendência Semanal de Foco",
     "recentHistory": "Histórico Recente",
+    "recentHistoryGuide": "Revise suas sessões de foco recentes, incluindo duração, tag e observações.",
     "noSessions": "Nenhuma sessão registrada ainda.",
     "today": "Hoje",
     "yesterday": "Ontem",

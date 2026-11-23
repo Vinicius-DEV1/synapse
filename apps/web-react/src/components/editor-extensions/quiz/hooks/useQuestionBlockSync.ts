@@ -115,7 +115,9 @@ export function useQuestionBlockSync({
     };
   }, [rawBatteryId, rawQuestions, title, description]);
 
-  // SWR: Load fresh battery & questions from DB silently in background
+  // On-demand lazy loader: fetches full questions & attempts from DB only when requested (e.g. entering Focus Mode)
+  const hasLoadedQuestionsRef = useRef(false);
+  const isFetchingQuestionsRef = useRef(false);
   const cachedTitleRef = useRef(cachedTitle);
   cachedTitleRef.current = cachedTitle;
   const cachedCountRef = useRef(cachedCount);
@@ -123,10 +125,12 @@ export function useQuestionBlockSync({
   const cachedTagsRef = useRef(cachedTags);
   cachedTagsRef.current = cachedTags;
 
-  const loadBatteryData = useCallback(async () => {
+  const loadBatteryData = useCallback(async (force = false) => {
     const idToFetch = batteryId || rawBatteryId;
     if (!idToFetch || !window.api?.quiz) return;
+    if (!force && (hasLoadedQuestionsRef.current || isFetchingQuestionsRef.current)) return;
 
+    isFetchingQuestionsRef.current = true;
     try {
       const data = await window.api.quiz.getBatteryWithQuestions(idToFetch);
       if (!nodeViewMountedRef.current) return;
@@ -151,6 +155,7 @@ export function useQuestionBlockSync({
         });
 
         if (!nodeViewMountedRef.current) return;
+        hasLoadedQuestionsRef.current = true;
         setQuestions(mappedQuestions);
 
         const tagSet = new Set<string>();
@@ -175,6 +180,8 @@ export function useQuestionBlockSync({
       if (nodeViewMountedRef.current) {
         console.warn('[useQuestionBlockSync] Falha ao sincronizar dados da bateria com banco:', err);
       }
+    } finally {
+      isFetchingQuestionsRef.current = false;
     }
   }, [batteryId, rawBatteryId]);
 
@@ -183,11 +190,12 @@ export function useQuestionBlockSync({
     return activeTab?.module ?? null;
   });
 
+  // Only fetch upfront if cached metadata (cachedTitle / cachedCount) is missing; otherwise load strictly on-demand when opened
   useEffect(() => {
-    if (activeModule === 'notes') {
-      loadBatteryData();
+    if (activeModule === 'notes' && (cachedCount === undefined || !cachedTitle)) {
+      void loadBatteryData();
     }
-  }, [activeModule, loadBatteryData]);
+  }, [activeModule, cachedCount, cachedTitle, loadBatteryData]);
 
   return {
     batteryId,

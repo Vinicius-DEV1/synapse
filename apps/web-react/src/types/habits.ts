@@ -3,6 +3,7 @@ export type HabitColor = 'emerald' | 'indigo' | 'amber' | 'rose' | 'sky' | 'purp
 export interface Habit {
   id: string;
   title: string;
+  category?: string;
   color?: HabitColor | string;
   icon?: string;
   target_days_per_week?: number;
@@ -41,6 +42,7 @@ export interface IHabitsApi {
   createHabit: (data: {
     id?: string;
     title: string;
+    category?: string;
     color?: string;
     icon?: string;
     target_days_per_week?: number;

@@ -71,6 +71,7 @@ export const tauriHabitsApi: IHabitsApi = {
   async createHabit(data: {
     id?: string;
     title: string;
+    category?: string;
     color?: string;
     icon?: string;
     target_days_per_week?: number;

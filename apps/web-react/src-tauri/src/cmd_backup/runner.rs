@@ -1,9 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
 
-use crate::cmd_backup::types::{
-    BackupLogPayload, BackupOptions, BackupResult,
-};
+use crate::cmd_backup::types::{BackupLogPayload, BackupOptions, BackupResult};
 use crate::db::DbState;
 
 pub use crate::cmd_backup::pipeline::run_backup;

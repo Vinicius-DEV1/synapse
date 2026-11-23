@@ -173,6 +173,58 @@ describe('QuestionsExplorer Component', () => {
     expect(getByText('Qual a porta do DNS?')).toBeDefined();
   });
 
+  it('renders large expanded question lists on-demand in chunks of 20', () => {
+    const manyQuestionsBattery: BatteryWithQuestions[] = [
+      {
+        id: 'bat-many',
+        title: 'Bateria Grande',
+        description: 'Muitas questões',
+        layout: 'sequential',
+        tags: ['teste'],
+        created_at: '2026-09-08T00:00:00.000Z',
+        updated_at: '2026-09-08T00:00:00.000Z',
+        questions: Array.from({ length: 25 }, (_, i) => ({
+          id: `q-large-${i + 1}`,
+          battery_id: 'bat-many',
+          type: 'multiple_choice' as const,
+          question: `Enunciado da questão ${i + 1}`,
+          options: ['A', 'B'],
+          correct_index: 0,
+          expected_answer: '',
+          explanation: '',
+          tags: [],
+          sort_order: i + 1,
+          created_at: '2026-09-08T00:00:00.000Z',
+          updated_at: '2026-09-08T00:00:00.000Z',
+        })),
+        latestAttempts: {},
+        linkedPages: [],
+      },
+    ];
+
+    const { getByText, queryByText, getByTitle } = renderWithI18n(
+      <QuestionsExplorer
+        batteries={manyQuestionsBattery}
+        onPlayBattery={vi.fn()}
+        onEditBattery={vi.fn()}
+        onDeleteBattery={vi.fn()}
+        onNavigateToPage={vi.fn()}
+        allAvailableTags={['teste']}
+      />
+    );
+
+    fireEvent.click(getByTitle('Expandir questões'));
+
+    expect(getByText('Enunciado da questão 1')).toBeDefined();
+    expect(getByText('Enunciado da questão 20')).toBeDefined();
+    expect(queryByText('Enunciado da questão 21')).toBeNull();
+
+    const loadMoreBtn = getByText(/Ver mais 5 de 5 questões restantes/i);
+    fireEvent.click(loadMoreBtn);
+
+    expect(getByText('Enunciado da questão 25')).toBeDefined();
+  });
+
   it('shows confirmation modal before deleting battery and cancels properly', () => {
     const onDelete = vi.fn();
     const { getAllByTitle, getByText, queryByText } = renderWithI18n(

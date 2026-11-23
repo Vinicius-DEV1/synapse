@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Portal } from '../ui/Portal';
+import { useI18n } from '../../i18n';
 
 interface QuestionsHelpModalProps {
   onClose: () => void;
@@ -229,6 +230,7 @@ function AnalyticsTab() {
 }
 
 function PlaylistsTab() {
+  const { t } = useI18n();
   return (
     <div className="space-y-4">
       <div>
@@ -242,6 +244,10 @@ function PlaylistsTab() {
         <FeatureItem
           title="Filtro de Questões Erradas"
           description="Monte baterias focadas exclusivamente nos pontos onde você tropeçou para fixar o conteúdo de forma definitiva."
+        />
+        <FeatureItem
+          title={t('questions.playlists.customSimHelpTitle')}
+          description={t('questions.playlists.customSimHelpDescription')}
         />
         <FeatureItem
           title="Simulados Cronometrados"

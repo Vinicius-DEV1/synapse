@@ -97,7 +97,9 @@ pub async fn lofi_save_local(
     let path_clone = path.clone();
     tokio::task::spawn_blocking(move || -> Result<(), String> {
         fs::write(&temp_path, buffer).map_err(|e| e.to_string())?;
-        if let Err(e) = crate::crypto_stream::encrypt_file_chunked(&temp_path, &path_clone, &master_key) {
+        if let Err(e) =
+            crate::crypto_stream::encrypt_file_chunked(&temp_path, &path_clone, &master_key)
+        {
             let _ = fs::remove_file(&temp_path);
             return Err(e);
         }

@@ -1,6 +1,6 @@
 /**
  * Synapse WebAssembly Acceleration Adapter
- * Bridges high-performance Rust FSRS v5 & Cryptographic Primitives to Web/Browser React
+ * Bridges Core FSRS-6 primitives and cryptographic operations to browser React
  */
 
 export interface WasmFsrsResult {

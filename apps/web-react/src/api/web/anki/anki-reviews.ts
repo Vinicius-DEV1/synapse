@@ -92,6 +92,7 @@ export async function reviewCard(
       scheduled_days: fsrsCardState.scheduled_days,
       reps: fsrsCardState.reps,
       lapses: fsrsCardState.lapses,
+      learning_steps: fsrsCardState.learning_steps,
       due_date: fsrsCardState.due.toISOString(),
       last_review: fsrsCardState.last_review?.toISOString() || new Date().toISOString(),
       updated_at: new Date().toISOString(),

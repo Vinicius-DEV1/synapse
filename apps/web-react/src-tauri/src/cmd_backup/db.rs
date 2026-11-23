@@ -63,7 +63,9 @@ pub fn decrypt_database_copy(
     // Decrypt diagrams
     if let Some(ref notes_key) = keys.notes {
         let mut stmt = conn
-            .prepare("SELECT id, encrypted_content FROM diagrams WHERE encrypted_content IS NOT NULL")
+            .prepare(
+                "SELECT id, encrypted_content FROM diagrams WHERE encrypted_content IS NOT NULL",
+            )
             .map_err(|e| e.to_string())?;
 
         let rows: Vec<(String, String)> = stmt

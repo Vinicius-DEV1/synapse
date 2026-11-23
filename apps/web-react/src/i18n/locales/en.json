@@ -600,7 +600,9 @@
       "statusIncorrect": "Mistakes Only",
       "shuffle": "Shuffle question order",
       "startSimulation": "Start Simulation",
-      "noQuestionsToast": "No questions found matching selected filters."
+      "noQuestionsToast": "No questions found matching selected filters.",
+      "customSimHelpTitle": "Custom Simulation Filters",
+      "customSimHelpDescription": "Combine multiple tags, choose all, unanswered, or incorrect questions, set a question limit, and shuffle the list before starting."
     },
     "dashboard": {
       "totalQuestions": "Total Questions",
@@ -657,6 +659,10 @@
     "manageDeck": "Manage Deck",
     "study": "Study",
     "studyNow": "Study Now",
+    "help": {
+      "androidKeyboardTitle": "Android hardware keyboard",
+      "androidKeyboardDescription": "With a physical keyboard connected, press Space to reveal an answer, 1–4 to rate the card, and Esc to leave the review. Open Synapse Settings → Anki review to toggle the 3D card flip and sound effects."
+    },
     "modal": {
       "newDeck": "New Deck",
       "newSubDeck": "New Subdeck",
@@ -809,6 +815,7 @@
     "success": "Success",
     "weeklyTrend": "Weekly Focus Trend",
     "recentHistory": "Recent History",
+    "recentHistoryGuide": "Review your latest focus sessions, including their duration, tag, and notes.",
     "noSessions": "No sessions recorded yet.",
     "today": "Today",
     "yesterday": "Yesterday",

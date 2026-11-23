@@ -68,7 +68,10 @@ pub async fn notifications_mark_read(
 }
 
 #[tauri::command]
-pub async fn notifications_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
+pub async fn notifications_delete(
+    id: String,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
     db_state
         .write(move |conn| {
             NotificationsRepository::delete_notification_conn(conn, &id).map_err(|e| e.to_string())

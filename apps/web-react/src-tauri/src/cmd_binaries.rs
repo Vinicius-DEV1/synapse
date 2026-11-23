@@ -111,7 +111,9 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
     }
 
     let mut stream = response.bytes_stream();
-    let mut file = tokio::fs::File::create(dest).await.map_err(|e| e.to_string())?;
+    let mut file = tokio::fs::File::create(dest)
+        .await
+        .map_err(|e| e.to_string())?;
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| e.to_string())?;

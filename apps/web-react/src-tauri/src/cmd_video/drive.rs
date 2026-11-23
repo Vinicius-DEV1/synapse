@@ -1,8 +1,8 @@
+use crate::video_probe::{get_videos_dir, sanitize_filename};
 use futures_util::StreamExt;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncWriteExt;
-use crate::video_probe::{get_videos_dir, sanitize_filename};
 
 /// Downloads a video file from Google Drive via media stream and emits progress events.
 #[tauri::command]
@@ -16,7 +16,10 @@ pub async fn video_download_drive_file(
     let safe_filename = sanitize_filename(&dest_filename);
     let path = videos_dir.join(&safe_filename);
 
-    let url = format!("https://www.googleapis.com/drive/v3/files/{}?alt=media", drive_id);
+    let url = format!(
+        "https://www.googleapis.com/drive/v3/files/{}?alt=media",
+        drive_id
+    );
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
@@ -32,7 +35,9 @@ pub async fn video_download_drive_file(
     let total_size = response.content_length().unwrap_or(0);
 
     let mut stream = response.bytes_stream();
-    let mut file = tokio::fs::File::create(&path).await.map_err(|e| e.to_string())?;
+    let mut file = tokio::fs::File::create(&path)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let mut downloaded: u64 = 0;
     let mut last_percent = 0;

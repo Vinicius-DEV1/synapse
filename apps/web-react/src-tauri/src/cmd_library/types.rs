@@ -20,7 +20,9 @@ where
     }
 }
 
-pub fn deserialize_option_string_flexible<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+pub fn deserialize_option_string_flexible<'de, D>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
