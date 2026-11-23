@@ -343,6 +343,10 @@ Item {
                     var info = rootWindow.getModuleInfo(tabKey)
                     rootWindow.openOrSwitchTab(tabKey, info.title, info.icon)
                 }
+                onSettingsTabSelected: function(tabId) {
+                    rootWindow.openOrSwitchTab("settings", "Configurações", "⚙️")
+                    settingsView.activeTab = tabId
+                }
                 onToggleSidebarRequested: rootWindow.sidebarExpanded = !rootWindow.sidebarExpanded
                 onOpenCommandPaletteRequested: cmdPalette.open()
                 onNotePageSelected: function(pageId) { notesView.selectPage(pageId) }

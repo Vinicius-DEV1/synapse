@@ -323,6 +323,40 @@ Canvas {
             line([4, 20, 8, 20, 20, 8, 16, 4, 4, 16, 4, 20])
             line([14, 6, 18, 10])
             break
+        case "keyboard":
+            rect(3, 6, 18, 12, 2)
+            line([7, 10, 8, 10])
+            line([11, 10, 13, 10])
+            line([16, 10, 17, 10])
+            line([7, 14, 17, 14])
+            break
+        case "zap":
+            line([13, 2, 3, 14, 12, 14, 11, 22, 21, 10, 12, 10, 13, 2])
+            break
+        case "share":
+        case "share-2":
+            circle(18, 5, 2.5)
+            circle(6, 12, 2.5)
+            circle(18, 19, 2.5)
+            line([8.5, 10.5, 15.5, 6.5])
+            line([8.5, 13.5, 15.5, 17.5])
+            break
+        case "layout":
+            rect(3, 3, 18, 18, 2)
+            line([3, 9, 21, 9])
+            line([9, 9, 9, 21])
+            break
+        case "download-cloud":
+        case "backup":
+            ctx.beginPath()
+            ctx.arc(8, 13, 4, Math.PI * 0.7, Math.PI * 1.8)
+            ctx.arc(14, 10, 5, Math.PI * 1.1, Math.PI * 2.1)
+            ctx.arc(17, 14, 3, Math.PI * 1.7, Math.PI * 0.3)
+            ctx.lineTo(6, 17)
+            ctx.stroke()
+            line([12, 12, 12, 20])
+            line([9, 17, 12, 20, 15, 17])
+            break
         default:
             circle(12, 12, 8)
         }

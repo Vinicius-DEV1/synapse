@@ -30,6 +30,7 @@ Rectangle {
     signal openWorkspaceCreateRequested()
     signal openWorkspaceMembersRequested()
     signal openAccountEvolutionRequested()
+    signal settingsTabSelected(string tabId)
 
     Theme { id: theme }
 
@@ -235,9 +236,89 @@ Rectangle {
             }
         }
 
-        // 4. Other Modules Description
+        // 4. Settings Sub-Tabs Navigation (when activeTab === "settings")
         ColumnLayout {
-            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes"
+            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab === "settings"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 4
+
+            Text {
+                text: qsTr("SEÇÕES DE CONFIGURAÇÃO")
+                color: theme.textMuted
+                font.pixelSize: 10
+                font.bold: true
+                font.letterSpacing: 1.1
+                Layout.bottomMargin: 4
+            }
+
+            Flickable {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentHeight: settingsNavCol.implicitHeight
+                clip: true
+
+                ColumnLayout {
+                    id: settingsNavCol
+                    width: parent.width
+                    spacing: 2
+
+                    Repeater {
+                        model: [
+                            { id: "general", label: qsTr("Geral"), icon: "settings" },
+                            { id: "editor", label: qsTr("Editor de Notas"), icon: "layout" },
+                            { id: "security", label: qsTr("Segurança e Cofre"), icon: "shield" },
+                            { id: "ai", label: qsTr("Inteligência Artificial"), icon: "zap" },
+                            { id: "shortcuts", label: qsTr("Atalhos de Teclado"), icon: "keyboard" },
+                            { id: "storage", label: qsTr("Armazenamento"), icon: "hard-drive" },
+                            { id: "video", label: qsTr("Vídeo e Mídia"), icon: "video" },
+                            { id: "backup", label: qsTr("Backup de Dados"), icon: "backup" },
+                            { id: "sync", label: qsTr("Sincronização"), icon: "refresh" },
+                            { id: "sharing", label: qsTr("Compartilhamento"), icon: "share" }
+                        ]
+
+                        delegate: Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 32
+                            radius: 6
+                            color: sMouse.containsMouse ? theme.bgHover : "transparent"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                spacing: 8
+
+                                AppIcon {
+                                    width: 14; height: 14
+                                    name: modelData.icon
+                                    color: theme.brand400
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.label
+                                    color: theme.textDark
+                                    font.pixelSize: 12
+                                }
+                            }
+
+                            MouseArea {
+                                id: sMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: sidebarRoot.settingsTabSelected(modelData.id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Other Modules Description
+        ColumnLayout {
+            visible: sidebarRoot.sidebarExpanded && sidebarRoot.activeTab !== "notes" && sidebarRoot.activeTab !== "settings"
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 2

@@ -44,6 +44,16 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 Button {
+                    text: "❓"
+                    flat: true
+                    onClicked: shareHelpDialog.isOpen = true
+                    contentItem: Text {
+                        text: "❓"
+                        color: "#a7a9be"
+                        font.pixelSize: 14
+                    }
+                }
+                Button {
                     text: "✕"
                     flat: true
                     onClicked: panelRoot.closed()
@@ -137,5 +147,11 @@ Rectangle {
                 onClicked: panelRoot.closed()
             }
         }
+    }
+
+    ShareHelpDialog {
+        id: shareHelpDialog
+        isOpen: false
+        onClosed: shareHelpDialog.isOpen = false
     }
 }
