@@ -44,17 +44,17 @@ This inventory records whether a client has a top-level route or overlay entry p
 | Video | Route | Route | Route | Hosts React app |
 | Flashcards (`anki`) | Route | Route | Route | Hosts React app |
 | Diagrams | Route | Route | Route | Hosts React app |
-| Calendar | Route | Route | Native Core-backed event list/create/edit/complete/delete with month navigation, selected-day filtering, linked-page opening, notification deep links to matching event editing, and date-range validation; recurrence/reminders/Firebase sync are open | Hosts React app |
+| Calendar | Route | Route | Native Core-backed event/task list and CRUD, month navigation, selected-day filtering, linked-page and notification deep links, date-range validation, recurring series creation/deletion, reminder offsets, and local Android alarm scheduling/restoration; cross-device sync and encryption remain open | Hosts React app |
 | Culture | Route | Route | Native catalog with typed Core-backed create/edit/progress/goals/soft-delete and episode checklist; catalog APIs and sync are open | Hosts React app |
 | Finance | Route | Route | Native Compose route with typed core-backed SQLite persistence; no Firebase sync | Hosts React app |
-| Focus | Route | Route | Native Core-backed completed-session statistics/history; timer preset, pause, sound selection, and absolute deadline persist locally across navigation/process recreation; alarms, audio playback, and sync are open | Hosts React app |
+| Focus | Route | Route | Native Core-backed completed-session statistics/history and alarm records; timer state persists locally across navigation/process recreation; SAF-selected Lofi audio plays locally through Media3. Exact-time delivery, global/background playback, device acceptance, sync, and encryption remain open | Hosts React app |
 | Habits | Editor widget/API; no standalone `Tab` or `ViewFactory` route | Editor widget/modal; no standalone sidebar route | Native route with typed Core persistence, check-ins, and shared streak metrics | Hosts React app; no separate shell route |
 | Vault | Route | Route | Route | Hosts React app |
 | Files | Route | Route | Native Core-backed browser with nested folders, recent/Drive metadata, SAF import, move/rename/duplicate, current-list filters, and bounded global file/folder search; Drive sync, bulk actions, export, app-native preview, page links, and encryption are open | Hosts React app |
 | Practice | Route | No route found | Native Core-backed session history, transcript, notes, and memory management; AI provider/voice flows are open | Hosts React app |
 | Trash | Route | Route | Route | Hosts React app |
 | Settings | Route | Route | Native route with locally persisted note text size, spellcheck, Anki flip animation, and study sound preferences; other React settings are open | Hosts React app |
-| Notifications | Global overlay | Global overlay | Native route with typed Core-backed list/read/delete and atomic 15-minute snooze; permission-aware system alerts restore on reboot/app restart and open linked Notes or Calendar events; Calendar reminder generation and sync are open | Hosts React app |
+| Notifications | Global overlay | Global overlay | Native route with typed Core-backed list/read/delete and atomic 15-minute snooze; permission-aware system alerts and Core-backed Calendar reminders restore on reboot/app restart and open linked Notes or Calendar events; cross-device reminder sync and encryption remain open | Hosts React app |
 | Workspaces | Switcher and management modals | No workspace management route found | No route found | Hosts React app |
 | Authentication and cloud sync | Auth and sync flows | No equivalent shell flow found | No equivalent shell flow found | Hosts React app |
 | AI assistant sidebar and sharing | Global overlays/actions | No equivalent flow found | No equivalent flow found | Hosts React app |

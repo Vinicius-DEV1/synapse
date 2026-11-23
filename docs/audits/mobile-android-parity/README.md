@@ -2,6 +2,7 @@
 
 **Status:** In progress; Android is not at feature parity with React.
 **Last inventory checkpoint:** 2026-11-22.
+**Latest completeness review:** 2026-11-22; see the [current verification record](./verification.md).
 **Scope:** Native Kotlin/Jetpack Compose Android (`apps/mobile-android/`) against React Web/Tauri (`apps/web-react/`), with shared Rust Core/UniFFI ownership.
 
 This folder is the living implementation queue for the native Android parity effort. Checklists describe observed source capability separately from build, test, device, security, and cross-client acceptance. Revalidate each item against the current worktree before changing its status.
@@ -22,15 +23,15 @@ This folder is the living implementation queue for the native Android parity eff
 - Android has all 18 canonical top-level route IDs, but feature depth remains incomplete across multiple modules and global React capabilities.
 - Many local Android flows now delegate through typed UniFFI operations to `core/synapse-core/`; this does not establish cloud sync or at-rest encryption.
 - The Android Vault remains intentionally non-persistent until a safe key lifecycle and encrypted Core contract exist. Rich/collaborative Notes and unsupported Tldraw documents remain protected from unsafe writes.
-- The recorded Kotlin compile predates the Trash guide integration. Rebuild the current tree before recording Kotlin compilation as current acceptance; device and instrumentation acceptance remain separate gates.
-- The inventory checkpoint reported a broad in-progress worktree. Before implementation, inspect `git status --short` and preserve unrelated edits already in progress.
+- The initial compile attempt used the discovered Android Studio JDK 25.0.3, which the pinned Gradle 8.9 wrapper rejected. The current `:app:compileDebugKotlin` then passed with JDK 17.0.21.1 and the installed Android SDK, building all three native ABIs and compiling the Trash guide. Instrumentation and device acceptance remain open; binding generation warned that `ktlint` is unavailable.
+- The worktree was clean at this review checkpoint. Inspect `git status --short` again before implementation because later user changes must be preserved.
 
 ### Priority Order
 
 1. **P0 — Shared boundary and data safety:** finish the `WEB-CORE-*` remediation and avoid introducing Android SQL or duplicate domain calculations. Keep protected data writes disabled until their shared Core and key contracts are safe.
 2. **P1 — Identity, encryption, and sync:** design and verify Android account authentication, key ownership, lock/unlock and memory cleanup, migration, atomic encrypted operations, account-scoped synchronization, and recovery.
 3. **P1 — Missing module flows:** use the feature matrix to implement the highest-impact missing React flows in bounded vertical slices.
-4. **P2 — UX and acceptance:** complete help, localization, keyboard/accessibility, back handling, process recreation, and per-device acceptance.
+4. **P2 — UX and acceptance:** finish help, localize direct Compose strings, review keyboard/accessibility and back handling, verify process recreation, and record per-device acceptance.
 
 ## How Future Agents Should Use This Queue
 

@@ -48,3 +48,9 @@ See the [audit dashboard](./README.md) for priorities and handoff rules. This ch
 - [ ] Refactor React/Tauri domain commands that still assemble SQL to delegate to `synapse-core`, so React and Android consume the same canonical operations.
 - [ ] Keep each bridge/store cohesive and below the repository's 250–300-line boundary.
 - [ ] Add repository-level operation/error/loading state consistently without duplicating domain calculations in Kotlin.
+
+## Current Architecture Scan — 2026-11-22
+
+- [x] Static scan found no `RoomDatabase`, `SQLiteOpenHelper`, `SQLiteDatabase`, SQL statements, or Room entities/DAOs under `apps/mobile-android/app/src/main/java`; Android persistence remains behind the typed native bridge in the scanned source.
+- [ ] Decompose `core/synapse-core/src/crypto/stream.rs`, currently 372 lines, into focused units where appropriate. It is the only Core source file above 300 lines in this length scan; no `bridge-uniffi` source file exceeded 300 lines. Preserve cryptographic behavior and follow the cryptography skill before changing it.
+- [ ] Continue the Tauri SQL migration. Current source still contains direct domain SQL in `cmd_calendar.rs`, `cmd_anki.rs`, `cmd_focus.rs`, `cmd_files.rs`, and `cmd_notes.rs`; `cmd_culture.rs` also reads the episode row ID directly before delegating the mutation. `cmd_habits.rs` now uses the Core repository.

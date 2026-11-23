@@ -44,7 +44,7 @@ These findings are retained as the detailed evidence and remediation record for 
 
 - **Severity:** Critical before accepting credentials
 - **Dimension:** Security, correctness
-- **Evidence:** Android has no auth/keychain lifecycle or Vault UniFFI store. The Vault screen starts empty and has no repository. Core Vault CRUD stores supplied field values directly in the existing columns. The canonical crypto skill confirms Android has no account keychain flow, and the native encryption audit confirms no native key migration flow.
+- **Evidence:** `MainActivity` calls `VaultScreen()` with its default empty list. The screen currently renders search/group filters and an empty state, has no connected repository or CRUD flow, and keeps any supplied sample credentials only in Compose state. Core Vault CRUD stores supplied field values directly in the existing columns; it is not safe to connect that CRUD before key ownership and encryption exist. The canonical crypto skill confirms Android has no account keychain flow, and the native encryption audit confirms no native key migration flow.
 - **Impact:** Persisting credentials before Android key management and encrypted persistence exist could expose secrets or imply protection that is not present.
 - **Action:** Define Android key ownership and compatibility with the shared keychain; migrate every existing Vault field transactionally; add typed encrypted Core/UniFFI operations plus lock-time memory cleanup; then build and verify the native CRUD flows before enabling writes.
 - **Status:** Open; keep empty state until the secure path is complete.
@@ -62,7 +62,7 @@ These findings are retained as the detailed evidence and remediation record for 
 
 - **Severity:** High
 - **Dimension:** Architecture, domain duplication
-- **Evidence:** `apps/web-react/src-tauri/src/cmd_calendar.rs` assembles Calendar `INSERT ... ON CONFLICT` and partial `UPDATE` SQL even though `core/synapse-core/src/domain/calendar/` owns a repository. The Core event file is also above the repository's 300-line target.
+- **Evidence:** `apps/web-react/src-tauri/src/cmd_calendar.rs` assembles Calendar `INSERT ... ON CONFLICT` and partial `UPDATE` SQL even though `core/synapse-core/src/domain/calendar/` owns a repository. The Core Calendar repository is now split into `events/mutations.rs` (272 lines), `events/queries.rs` (79), `events/recurrence.rs` (267), and `events/reminders.rs` (66); `calendar/mod.rs` is 290 lines. The prior file-length concern is resolved, but the Tauri command still assembles SQL directly.
 - **Impact:** React/Tauri and Android can apply different defaults and update semantics for the same Calendar entities. New Android operations use Core, while the current React write path still bypasses it.
 - **Action:** Move full event upsert and patch semantics into a decomposed Core Calendar domain, then make Tauri commands typed delegators and keep UniFFI on the same canonical operations.
 - **Status:** Open; record as a React/Core remediation gate before claiming shared Calendar behavior.
@@ -111,3 +111,22 @@ These findings are retained as the detailed evidence and remediation record for 
 - **Impact:** A platform-specific persistence patch would risk corrupting shared diagram data instead of establishing parity.
 - **Action:** Define a versioned shared document contract or a Tldraw-compatible native adapter before connecting Android drawing writes to the canonical content field.
 - **Status:** Partially addressed; Core-backed catalog CRUD, confirmation, error states, and guards for non-empty/encrypted content are implemented. Canvas persistence and interoperability remain open.
+
+
+### ANDROID-PARITY-10 — Direct Compose strings bypass Android locale resources
+
+- **Severity:** Medium
+- **Dimension:** Design, accessibility, localization
+- **Evidence:** A static source scan counted 345 direct `Text("...")` expressions across 60 Kotlin files (245 unique literal expressions) in 15 feature packages. The English and Brazilian Portuguese XML files parse and have 226 matching keys, but many visible screen strings bypass those resources. `NavItem.localizedTitle()` uses a resource for Settings only; the other 17 navigation titles are inline Portuguese values. The scan also identified inline search placeholders in Calendar, Culture, Notes, and Vault.
+- **Impact:** System locale changes do not reliably localize the Android UI, including dialogs, empty states, navigation, and accessibility copy.
+- **Action:** Move all user-visible strings and accessibility descriptions to resource keys with English defaults and matching Brazilian Portuguese values. Add a repeatable static check and verify representative screens in both locales.
+- **Status:** Open; the 226 matching resource keys do not cover the direct Compose strings found in this scan. Counts are a source inventory, not a semantic translation audit.
+
+### CORE-STRUCTURE-01 — Shared Crypto stream source exceeds the file-length target
+
+- **Severity:** Medium
+- **Dimension:** Architecture, maintainability, cryptographic reviewability
+- **Evidence:** The current line-count scan found `core/synapse-core/src/crypto/stream.rs` at 372 lines. It is the only file above 300 lines under `core/synapse-core/src`; no UniFFI bridge source file exceeds 300 lines.
+- **Impact:** A long security-sensitive module is harder to review and change safely.
+- **Action:** Review its responsibilities and split it into cohesive streaming, format, and test units without changing protocol behavior. Use the cryptography skill and targeted protocol tests for any implementation change.
+- **Status:** Open; this is a structural follow-up, not evidence of a cryptographic defect.
