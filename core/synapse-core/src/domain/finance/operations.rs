@@ -4,15 +4,26 @@ use crate::error::{Result, SynapseError};
 
 /// Confirms a pending cashflow row, which changes its effect on account balances.
 pub fn confirm_pending_transaction(database: &Database, transaction_id: &str) -> Result<()> {
+    confirm_pending_transaction_with_details(database, transaction_id, None, None, None, None, None)
+}
+
+/// Confirms a pending cashflow row with updated final parameters on an open database transaction.
+pub fn confirm_pending_transaction_conn(
+    conn: &rusqlite::Connection,
+    transaction_id: &str,
+    amount: Option<f64>,
+    date: Option<&str>,
+    account_id: Option<&str>,
+    description: Option<&str>,
+    category: Option<&str>,
+) -> Result<()> {
     let transaction_id = transaction_id.trim();
     if transaction_id.is_empty() {
         return Err(SynapseError::Validation(
             "Transaction ID cannot be empty".into(),
         ));
     }
-    let mut connection = database.lock().map_err(SynapseError::Database)?;
-    let transaction = connection.transaction()?;
-    let mut item = transactions::get_transactions(&transaction, None, None)?
+    let mut item = transactions::get_transactions(conn, None, None)?
         .into_iter()
         .find(|item| item.id == transaction_id)
         .ok_or_else(|| SynapseError::NotFound(format!("Transaction {transaction_id} not found")))?;
@@ -26,13 +37,69 @@ pub fn confirm_pending_transaction(database: &Database, transaction_id: &str) ->
             "Transaction is not pending".into(),
         ));
     }
+
+    if let Some(amt) = amount {
+        if !amt.is_finite() || amt < 0.0 {
+            return Err(SynapseError::Validation("Invalid transaction amount".into()));
+        }
+        item.amount = amt;
+    }
+    if let Some(d) = date {
+        let d_trimmed = d.trim();
+        if !d_trimmed.is_empty() {
+            item.date = d_trimmed.to_owned();
+        }
+    }
+    if let Some(acc) = account_id {
+        let acc_trimmed = acc.trim();
+        if !acc_trimmed.is_empty() {
+            item.account_id = Some(acc_trimmed.to_owned());
+        }
+    }
+    if let Some(desc) = description {
+        let desc_trimmed = desc.trim();
+        if !desc_trimmed.is_empty() {
+            item.description = desc_trimmed.to_owned();
+        }
+    }
+    if let Some(cat) = category {
+        let cat_trimmed = cat.trim();
+        if !cat_trimmed.is_empty() {
+            item.category = cat_trimmed.to_owned();
+        }
+    }
+
     item.status = Some("completed".to_owned());
     item.is_paid = Some(1);
-    if transactions::update_transaction_struct(&transaction, item)? != 1 {
+    if transactions::update_transaction_struct(conn, item)? != 1 {
         return Err(SynapseError::NotFound(format!(
             "Transaction {transaction_id} not found"
         )));
     }
+    Ok(())
+}
+
+/// Confirms a pending cashflow row with updated final parameters (amount, date, account, description, category).
+pub fn confirm_pending_transaction_with_details(
+    database: &Database,
+    transaction_id: &str,
+    amount: Option<f64>,
+    date: Option<&str>,
+    account_id: Option<&str>,
+    description: Option<&str>,
+    category: Option<&str>,
+) -> Result<()> {
+    let mut connection = database.lock().map_err(SynapseError::Database)?;
+    let transaction = connection.transaction()?;
+    confirm_pending_transaction_conn(
+        &transaction,
+        transaction_id,
+        amount,
+        date,
+        account_id,
+        description,
+        category,
+    )?;
     transaction.commit()?;
     Ok(())
 }

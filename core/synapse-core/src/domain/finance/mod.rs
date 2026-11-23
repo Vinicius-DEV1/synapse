@@ -13,7 +13,8 @@ mod tests;
 pub use calculations::*;
 pub use models::*;
 pub use operations::{
-    acquire_wishlist_item, confirm_pending_transaction, delete_transaction_with_links,
+    acquire_wishlist_item, confirm_pending_transaction, confirm_pending_transaction_conn,
+    confirm_pending_transaction_with_details, delete_transaction_with_links,
     update_transaction_with_links,
 };
 pub use payments::{record_loan_payment, reopen_loan};

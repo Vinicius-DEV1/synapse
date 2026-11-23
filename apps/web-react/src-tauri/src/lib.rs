@@ -252,6 +252,7 @@ pub fn run() {
             cmd_finance::finance_get_transactions,
             cmd_finance::finance_add_transaction,
             cmd_finance::finance_update_transaction,
+            cmd_finance::finance_confirm_pending_transaction,
             cmd_finance::finance_delete_transaction,
             cmd_finance::finance_get_wishlist,
             cmd_finance::finance_add_wishlist,

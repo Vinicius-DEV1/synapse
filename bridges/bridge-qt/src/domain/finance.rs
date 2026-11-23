@@ -154,6 +154,101 @@ pub unsafe extern "C" fn synapse_finance_add_transaction(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_finance_add_transaction_with_status(
+    db: *mut Database,
+    description: *const c_char,
+    amount: f64,
+    type_: *const c_char,
+    category: *const c_char,
+    date: *const c_char,
+    account_id: *const c_char,
+    status: *const c_char,
+) -> c_int {
+    if db.is_null() || description.is_null() || type_.is_null() {
+        return -1;
+    }
+    let desc_str = match to_opt_str(description) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let type_str = match to_opt_str(type_) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let cat_str = to_opt_str(category);
+    let date_str = to_opt_str(date);
+    let acc_str = to_opt_str(account_id);
+    let status_str = to_opt_str(status);
+
+    let conn_res = (&*db).lock();
+    let conn = match conn_res {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] db lock failed: {}", e);
+            return -1;
+        }
+    };
+
+    match synapse_core::domain::finance::transactions::add_transaction_with_status(
+        &conn,
+        desc_str,
+        amount,
+        type_str,
+        cat_str,
+        date_str,
+        acc_str,
+        status_str,
+    ) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] add_transaction_with_status failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_confirm_pending_transaction(
+    db: *mut Database,
+    tx_id: *const c_char,
+    amount: f64,
+    date: *const c_char,
+    account_id: *const c_char,
+    description: *const c_char,
+    category: *const c_char,
+) -> c_int {
+    if db.is_null() || tx_id.is_null() {
+        return -1;
+    }
+    let id_str = match to_opt_str(tx_id) {
+        Some(s) => s,
+        None => return -1,
+    };
+    let amt_opt = if amount.is_finite() && amount >= 0.0 {
+        Some(amount)
+    } else {
+        None
+    };
+    let date_opt = to_opt_str(date);
+    let acc_opt = to_opt_str(account_id);
+    let desc_opt = to_opt_str(description);
+    let cat_opt = to_opt_str(category);
+
+    match FinanceRepository::confirm_pending_transaction(
+        &*db, id_str, amt_opt, date_opt, acc_opt, desc_opt, cat_opt,
+    ) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!(
+                "[Synapse Bridge] confirm_pending_transaction failed: {}",
+                e
+            );
+            -1
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_finance_add_transfer(
     db: *mut Database,
     description: *const c_char,

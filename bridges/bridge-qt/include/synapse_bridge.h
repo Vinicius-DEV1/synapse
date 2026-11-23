@@ -76,6 +76,8 @@ int synapse_finance_update_account(Database* db, const char* account_id, const c
 int synapse_finance_delete_account(Database* db, const char* account_id);
 char* synapse_finance_get_transactions(Database* db, const char* type_filter, const char* account_filter);
 int synapse_finance_add_transaction(Database* db, const char* description, double amount, const char* type, const char* category, const char* date, const char* account_id);
+int synapse_finance_add_transaction_with_status(Database* db, const char* description, double amount, const char* type, const char* category, const char* date, const char* account_id, const char* status);
+int synapse_finance_confirm_pending_transaction(Database* db, const char* tx_id, double amount, const char* date, const char* account_id, const char* description, const char* category);
 int synapse_finance_add_transfer(Database* db, const char* description, double amount, const char* from_account_id, const char* to_account_id, const char* date);
 int synapse_finance_update_transaction(Database* db, const char* tx_id, const char* description, double amount, const char* type, const char* category, const char* date, const char* account_id, const char* destination_account_id);
 int synapse_finance_delete_transaction(Database* db, const char* tx_id);

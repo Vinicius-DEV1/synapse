@@ -13,6 +13,28 @@ pub fn add_transaction(
     date: Option<&str>,
     account_id: Option<&str>,
 ) -> Result<Transaction> {
+    add_transaction_with_status(
+        conn,
+        description,
+        amount,
+        type_,
+        category,
+        date,
+        account_id,
+        None,
+    )
+}
+
+pub fn add_transaction_with_status(
+    conn: &rusqlite::Connection,
+    description: &str,
+    amount: f64,
+    type_: &str,
+    category: Option<&str>,
+    date: Option<&str>,
+    account_id: Option<&str>,
+    status: Option<&str>,
+) -> Result<Transaction> {
     let trimmed_desc = description.trim();
     if trimmed_desc.is_empty() || !amount.is_finite() || amount < 0.0 {
         return Err(SynapseError::Validation(
@@ -44,10 +66,16 @@ pub fn add_transaction(
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
 
+    let resolved_status = status
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("completed");
+    let is_paid_val = if resolved_status == "pending" { 0 } else { 1 };
+
     conn.execute(
         "INSERT INTO transactions (id, description, amount, type, category, date, status, account_id, is_paid, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, 1, ?, ?)",
-        params![id, trimmed_desc, amount, type_, resolved_cat, resolved_date, resolved_acc_id, now, now],
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![id, trimmed_desc, amount, type_, resolved_cat, resolved_date, resolved_status, resolved_acc_id, is_paid_val, now, now],
     )?;
 
     Ok(Transaction {

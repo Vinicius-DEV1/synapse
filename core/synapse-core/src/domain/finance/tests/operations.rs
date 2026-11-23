@@ -249,3 +249,49 @@ fn reopening_a_loan_archives_linked_payments_and_resets_the_balance() {
     assert_eq!(reopened.status.as_deref(), Some("in_progress"));
     assert!(rows.iter().all(|item| item.id != payment.id));
 }
+
+#[test]
+fn confirm_pending_transaction_with_details_updates_all_parameters() {
+    let temp_db = NamedTempFile::new().unwrap();
+    let db = Database::open(temp_db.path()).unwrap();
+    let accounts = FinanceRepository::get_accounts(&db).unwrap();
+    let account = &accounts[0];
+    let pending = {
+        let conn = db.lock().unwrap();
+        FinanceRepository::add_transaction_struct(
+            &conn,
+            Transaction {
+                description: "Estimated electricity".to_owned(),
+                amount: 50.0,
+                type_: "expense".to_owned(),
+                category: "General".to_owned(),
+                date: "2026-11-20".to_owned(),
+                status: Some("pending".to_owned()),
+                is_paid: Some(0),
+                account_id: Some(account.id.clone()),
+                ..Transaction::default()
+            },
+        )
+        .unwrap()
+    };
+
+    confirm_pending_transaction_with_details(
+        &db,
+        &pending.id,
+        Some(58.50),
+        Some("2026-11-23"),
+        Some(&account.id),
+        Some("Electricity Final Bill"),
+        Some("Utilities"),
+    )
+    .unwrap();
+
+    let txs = FinanceRepository::get_transactions(&db, None, None).unwrap();
+    let confirmed = txs.iter().find(|t| t.id == pending.id).unwrap();
+    assert_eq!(confirmed.status.as_deref(), Some("completed"));
+    assert_eq!(confirmed.is_paid, Some(1));
+    assert_eq!(confirmed.amount, 58.50);
+    assert_eq!(confirmed.date, "2026-11-23");
+    assert_eq!(confirmed.description, "Electricity Final Bill");
+    assert_eq!(confirmed.category, "Utilities");
+}

@@ -55,6 +55,19 @@ impl FinanceRepository {
         transactions::add_transaction(conn, description, amount, type_, category, date, account_id)
     }
 
+    pub fn add_transaction_with_status_conn(
+        conn: &rusqlite::Connection,
+        description: &str,
+        amount: f64,
+        type_: &str,
+        category: Option<&str>,
+        date: Option<&str>,
+        account_id: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<Transaction> {
+        transactions::add_transaction_with_status(conn, description, amount, type_, category, date, account_id, status)
+    }
+
     pub fn add_transaction_struct(
         conn: &rusqlite::Connection,
         transaction: Transaction,
@@ -202,5 +215,45 @@ impl FinanceRepository {
             ..Transaction::default()
         };
         Self::add_transaction_struct(&conn, t)
+    }
+
+    pub fn confirm_pending_transaction(
+        db: &Database,
+        tx_id: &str,
+        amount: Option<f64>,
+        date: Option<&str>,
+        account_id: Option<&str>,
+        description: Option<&str>,
+        category: Option<&str>,
+    ) -> Result<()> {
+        super::super::operations::confirm_pending_transaction_with_details(
+            db,
+            tx_id,
+            amount,
+            date,
+            account_id,
+            description,
+            category,
+        )
+    }
+
+    pub fn confirm_pending_transaction_conn(
+        conn: &rusqlite::Connection,
+        tx_id: &str,
+        amount: Option<f64>,
+        date: Option<&str>,
+        account_id: Option<&str>,
+        description: Option<&str>,
+        category: Option<&str>,
+    ) -> Result<()> {
+        super::super::operations::confirm_pending_transaction_conn(
+            conn,
+            tx_id,
+            amount,
+            date,
+            account_id,
+            description,
+            category,
+        )
     }
 }

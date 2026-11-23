@@ -82,6 +82,33 @@ pub async fn finance_update_transaction(
 }
 
 #[tauri::command]
+pub async fn finance_confirm_pending_transaction(
+    id: String,
+    amount: Option<f64>,
+    date: Option<String>,
+    account_id: Option<String>,
+    description: Option<String>,
+    category: Option<String>,
+    db_state: State<'_, DbState>,
+) -> Result<bool, String> {
+    db_state
+        .write(move |conn| {
+            FinanceRepository::confirm_pending_transaction_conn(
+                conn,
+                &id,
+                amount,
+                date.as_deref(),
+                account_id.as_deref(),
+                description.as_deref(),
+                category.as_deref(),
+            )
+            .map(|_| true)
+            .map_err(|e| e.to_string())
+        })
+        .await
+}
+
+#[tauri::command]
 pub async fn finance_delete_transaction(
     id: String,
     db_state: State<'_, DbState>,
