@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: root
@@ -87,8 +88,14 @@ Rectangle {
         // Copy button
         Rectangle {
             width: 28; height: 28; radius: 6
-            color: "#18ffffff"
-            Text { anchors.centerIn: parent; text: "📋"; font.pixelSize: 13 }
+            color: copyMouse.containsMouse ? "#28ffffff" : "#18ffffff"
+            AppIcon {
+                anchors.centerIn: parent
+                width: 14
+                height: 14
+                name: "copy"
+                color: copyMouse.containsMouse ? "#ffffff" : "#a7a9be"
+            }
             ToolTip.visible: copyMouse.containsMouse
             ToolTip.text: "Copiar"
             MouseArea {

@@ -67,8 +67,8 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 32
-        spacing: 24
+        anchors.margins: 24
+        spacing: 16
 
         // Top Header and Search Bar
         CultureHeader {

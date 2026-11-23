@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 ColumnLayout {
     id: mediaGridRoot
@@ -18,81 +19,91 @@ ColumnLayout {
     signal itemDeleted(string itemId)
 
     // Secondary Bar: Filter Pills (Types & Status)
-    RowLayout {
+    Flickable {
         Layout.fillWidth: true
-        spacing: 16
+        Layout.preferredHeight: 34
+        contentWidth: filterPillsLayout.implicitWidth
+        clip: true
+        flickableDirection: Flickable.HorizontalFlick
+        boundsBehavior: Flickable.StopAtBounds
 
-        // Type Pills
         RowLayout {
-            spacing: 6
+            id: filterPillsLayout
+            height: 34
+            spacing: 16
 
-            Repeater {
-                model: [
-                    { key: "all", label: "Todas as Mídias" },
-                    { key: "anime", label: "⛩️ Animes" },
-                    { key: "série", label: "📺 Séries" },
-                    { key: "filme", label: "🎬 Filmes" }
-                ]
+            // Type Pills
+            RowLayout {
+                spacing: 6
 
-                delegate: Rectangle {
-                    width: typePillText.contentWidth + 18
-                    height: 32
-                    radius: 8
-                    color: mediaGridRoot.activeTypeFilter === modelData.key ? "#268b5cf6" : "#1a1924"
-                    border.color: mediaGridRoot.activeTypeFilter === modelData.key ? "#668b5cf6" : "#0fffffff"
+                Repeater {
+                    model: [
+                        { key: "all", label: "Todas as Mídias" },
+                        { key: "anime", label: "⛩️ Animes" },
+                        { key: "série", label: "📺 Séries" },
+                        { key: "filme", label: "🎬 Filmes" }
+                    ]
 
-                    Text {
-                        id: typePillText
-                        anchors.centerIn: parent
-                        text: modelData.label
-                        color: mediaGridRoot.activeTypeFilter === modelData.key ? "#c4b5fd" : "#a7a9be"
-                        font.pixelSize: 12
-                        font.bold: mediaGridRoot.activeTypeFilter === modelData.key
-                    }
+                    delegate: Rectangle {
+                        width: typePillText.contentWidth + 18
+                        height: 32
+                        radius: 8
+                        color: mediaGridRoot.activeTypeFilter === modelData.key ? "#268b5cf6" : "#1a1924"
+                        border.color: mediaGridRoot.activeTypeFilter === modelData.key ? "#668b5cf6" : "#0fffffff"
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: mediaGridRoot.typeFilterChanged(modelData.key)
+                        Text {
+                            id: typePillText
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: mediaGridRoot.activeTypeFilter === modelData.key ? "#c4b5fd" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: mediaGridRoot.activeTypeFilter === modelData.key
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mediaGridRoot.typeFilterChanged(modelData.key)
+                        }
                     }
                 }
             }
-        }
 
-        Rectangle { width: 1; height: 20; color: "#15ffffff" }
+            Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 20; color: "#15ffffff" }
 
-        // Status Pills
-        RowLayout {
-            spacing: 6
+            // Status Pills
+            RowLayout {
+                spacing: 6
 
-            Repeater {
-                model: [
-                    { key: "all", label: "Todos os Status" },
-                    { key: "watching", label: "Assistindo" },
-                    { key: "backlog", label: "Quero Ver" },
-                    { key: "finished", label: "Concluído" }
-                ]
+                Repeater {
+                    model: [
+                        { key: "all", label: "Todos os Status" },
+                        { key: "watching", label: "Assistindo" },
+                        { key: "backlog", label: "Quero Ver" },
+                        { key: "finished", label: "Concluído" }
+                    ]
 
-                delegate: Rectangle {
-                    width: statusPillText.contentWidth + 18
-                    height: 32
-                    radius: 8
-                    color: mediaGridRoot.activeStatusFilter === modelData.key ? "#268b5cf6" : "#1a1924"
-                    border.color: mediaGridRoot.activeStatusFilter === modelData.key ? "#668b5cf6" : "#0fffffff"
+                    delegate: Rectangle {
+                        width: statusPillText.contentWidth + 18
+                        height: 32
+                        radius: 8
+                        color: mediaGridRoot.activeStatusFilter === modelData.key ? "#268b5cf6" : "#1a1924"
+                        border.color: mediaGridRoot.activeStatusFilter === modelData.key ? "#668b5cf6" : "#0fffffff"
 
-                    Text {
-                        id: statusPillText
-                        anchors.centerIn: parent
-                        text: modelData.label
-                        color: mediaGridRoot.activeStatusFilter === modelData.key ? "#c4b5fd" : "#a7a9be"
-                        font.pixelSize: 12
-                        font.bold: mediaGridRoot.activeStatusFilter === modelData.key
-                    }
+                        Text {
+                            id: statusPillText
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: mediaGridRoot.activeStatusFilter === modelData.key ? "#c4b5fd" : "#a7a9be"
+                            font.pixelSize: 12
+                            font.bold: mediaGridRoot.activeStatusFilter === modelData.key
+                        }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: mediaGridRoot.statusFilterChanged(modelData.key)
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mediaGridRoot.statusFilterChanged(modelData.key)
+                        }
                     }
                 }
             }
@@ -105,16 +116,16 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
-        readonly property int columnCount: Math.max(1, Math.floor(width / 340))
-        cellWidth: Math.max(300, Math.floor(width / columnCount))
+        readonly property int columnCount: Math.max(1, Math.floor(width / 310))
+        cellWidth: Math.floor(width / columnCount)
         cellHeight: 170
         model: mediaGridRoot.filteredItems
 
         delegate: Rectangle {
             id: cultureCardDelegate
-            width: Math.max(280, cultureGridView.cellWidth - 16)
+            width: cultureGridView.cellWidth - 16
             height: 154
-            x: Math.max(0, Math.round((cultureGridView.cellWidth - width) / 2))
+            x: 8
             radius: 12
             color: cardMouse.containsMouse ? "#211f30" : "#1a1924"
             border.color: cardMouse.containsMouse ? "#668b5cf6" : "#0fffffff"
@@ -182,8 +193,8 @@ ColumnLayout {
                         }
 
                         Rectangle {
-                            width: typeText.contentWidth + 8
-                            height: 18
+                            Layout.preferredWidth: typeText.contentWidth + 8
+                            Layout.preferredHeight: 18
                             radius: 4
                             color: "#1a8b5cf6"
 
@@ -214,7 +225,7 @@ ColumnLayout {
                     // Progress bar preview
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 4
+                        Layout.preferredHeight: 4
                         radius: 2
                         color: "#15141b"
                         Rectangle {
@@ -241,7 +252,7 @@ ColumnLayout {
 
                         // -1 Ep Stepper
                         Rectangle {
-                            width: 28; height: 26; radius: 6
+                            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 6
                             color: "#262438"; border.color: "#12ffffff"
                             Text { anchors.centerIn: parent; text: "-1"; color: "#fffffe"; font.pixelSize: 10; font.bold: true }
                             MouseArea {
@@ -255,7 +266,7 @@ ColumnLayout {
 
                         // +1 Ep Stepper
                         Rectangle {
-                            width: 44; height: 26; radius: 6
+                            Layout.preferredWidth: 44; Layout.preferredHeight: 26; radius: 6
                             color: "#268b5cf6"; border.color: "#668b5cf6"
                             Text { anchors.centerIn: parent; text: "+1 Ep"; color: "#c4b5fd"; font.pixelSize: 10; font.bold: true }
                             MouseArea {
@@ -266,10 +277,16 @@ ColumnLayout {
 
                         // Delete Button
                         Rectangle {
-                            width: 28; height: 26; radius: 6
+                            Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 6
                             color: delCultureMouse.containsMouse ? "#26f43f5e" : "transparent"
                             border.color: delCultureMouse.containsMouse ? "#55f43f5e" : "transparent"
-                            Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+                            AppIcon {
+                                anchors.centerIn: parent
+                                width: 13
+                                height: 13
+                                name: "trash"
+                                color: delCultureMouse.containsMouse ? "#f43f5e" : "#71717a"
+                            }
                             MouseArea {
                                 id: delCultureMouse
                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

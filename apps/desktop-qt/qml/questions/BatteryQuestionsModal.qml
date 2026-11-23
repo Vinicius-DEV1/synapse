@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: questionsModalRoot
@@ -230,7 +231,13 @@ Rectangle {
                                     radius: 6
                                     color: editQMouse.containsMouse ? "#206366f1" : "#106366f1"
 
-                                    Text { anchors.centerIn: parent; text: "✏️"; font.pixelSize: 11 }
+                                    AppIcon {
+                                        anchors.centerIn: parent
+                                        width: 13
+                                        height: 13
+                                        name: "edit"
+                                        color: editQMouse.containsMouse ? "#c4b5fd" : "#a78bfa"
+                                    }
 
                                     MouseArea {
                                         id: editQMouse
@@ -248,7 +255,13 @@ Rectangle {
                                     radius: 6
                                     color: delQMouse.containsMouse ? "#30f43f5e" : "#1af43f5e"
 
-                                    Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+                                    AppIcon {
+                                        anchors.centerIn: parent
+                                        width: 13
+                                        height: 13
+                                        name: "trash"
+                                        color: delQMouse.containsMouse ? "#f43f5e" : "#fda4af"
+                                    }
 
                                     MouseArea {
                                         id: delQMouse

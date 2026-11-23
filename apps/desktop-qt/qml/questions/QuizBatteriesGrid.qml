@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 ColumnLayout {
     id: gridRoot
@@ -34,15 +35,17 @@ ColumnLayout {
         id: batteryGrid
         Layout.fillWidth: true
         visible: gridRoot.batteries.length > 0
-        Layout.preferredHeight: visible ? Math.max(300, Math.ceil(gridRoot.batteries.length / Math.max(1, Math.floor(width / 340))) * 180) : 0
-        clip: true
-        cellWidth: 340
+        readonly property int columnCount: Math.max(1, Math.floor(width / 320))
+        cellWidth: Math.floor(width / columnCount)
         cellHeight: 180
+        Layout.preferredHeight: visible ? (Math.ceil(gridRoot.batteries.length / columnCount) * 180 + 20) : 0
+        clip: true
         model: gridRoot.batteries
 
         delegate: Rectangle {
-            width: 320
+            width: batteryGrid.cellWidth - 16
             height: 160
+            x: 8
             radius: 12
             color: "#1a1924"
             border.color: batMouse.containsMouse ? "#666366f1" : "#0fffffff"
@@ -99,7 +102,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 32
                         radius: 8
-                        color: "#6366f1"
+                        color: resolveMouse.containsMouse ? "#4f46e5" : "#6366f1"
 
                         RowLayout {
                             anchors.centerIn: parent
@@ -109,7 +112,9 @@ ColumnLayout {
                         }
 
                         MouseArea {
+                            id: resolveMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: gridRoot.startBatteryRequested(modelData)
                         }
@@ -119,12 +124,22 @@ ColumnLayout {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
                         radius: 8
-                        color: "#0affffff"
+                        color: inspectMouse.containsMouse ? "#262438" : "#0affffff"
+                        border.color: inspectMouse.containsMouse ? "#408b5cf6" : "#0fffffff"
+                        border.width: 1
 
-                        Text { anchors.centerIn: parent; text: "📋"; font.pixelSize: 11 }
+                        AppIcon {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            name: "eye"
+                            color: inspectMouse.containsMouse ? "#fffffe" : "#a7a9be"
+                        }
 
                         MouseArea {
+                            id: inspectMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: gridRoot.inspectBatteryRequested(modelData)
                         }
@@ -134,12 +149,22 @@ ColumnLayout {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
                         radius: 8
-                        color: "#0affffff"
+                        color: editMouse.containsMouse ? "#262438" : "#0affffff"
+                        border.color: editMouse.containsMouse ? "#408b5cf6" : "#0fffffff"
+                        border.width: 1
 
-                        Text { anchors.centerIn: parent; text: "✏️"; font.pixelSize: 11 }
+                        AppIcon {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            name: "edit"
+                            color: editMouse.containsMouse ? "#fffffe" : "#a7a9be"
+                        }
 
                         MouseArea {
+                            id: editMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: gridRoot.editBatteryRequested(modelData)
                         }
@@ -149,12 +174,22 @@ ColumnLayout {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
                         radius: 8
-                        color: "#0affffff"
+                        color: addQMouse.containsMouse ? "#262438" : "#0affffff"
+                        border.color: addQMouse.containsMouse ? "#408b5cf6" : "#0fffffff"
+                        border.width: 1
 
-                        Text { anchors.centerIn: parent; text: "+"; color: "#a7a9be"; font.pixelSize: 16; font.bold: true }
+                        AppIcon {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            name: "plus"
+                            color: addQMouse.containsMouse ? "#fffffe" : "#a7a9be"
+                        }
 
                         MouseArea {
+                            id: addQMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: gridRoot.addQuestionRequested(modelData)
                         }
@@ -164,12 +199,22 @@ ColumnLayout {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
                         radius: 8
-                        color: "#0affffff"
+                        color: delBatMouse.containsMouse ? "#26f43f5e" : "#0affffff"
+                        border.color: delBatMouse.containsMouse ? "#55f43f5e" : "#0fffffff"
+                        border.width: 1
 
-                        Text { anchors.centerIn: parent; text: "🗑️"; font.pixelSize: 11 }
+                        AppIcon {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            name: "trash"
+                            color: delBatMouse.containsMouse ? "#f43f5e" : "#71717a"
+                        }
 
                         MouseArea {
+                            id: delBatMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: gridRoot.deleteBatteryRequested(modelData.id)
                         }
