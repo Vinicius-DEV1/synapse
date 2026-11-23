@@ -79,6 +79,23 @@ QVariantList SynapseDataController::getHabitLogsRange(const QString &startDate, 
     return parseJsonArrayAndFree(raw);
 }
 
+QVariantMap SynapseDataController::getHabitStats(const QString &habitId, const QString &todayStr) {
+    if (!m_db || habitId.trimmed().isEmpty()) return QVariantMap();
+    const QByteArray idBytes = habitId.toUtf8();
+    const QByteArray todayBytes = todayStr.toUtf8();
+    char *raw = synapse_habits_get_habit_stats(
+        m_db,
+        idBytes.constData(),
+        todayStr.trimmed().isEmpty() ? nullptr : todayBytes.constData()
+    );
+    if (!raw) return QVariantMap();
+    const QByteArray bytes(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(bytes);
+    if (!doc.isObject()) return QVariantMap();
+    return doc.object().toVariantMap();
+}
+
 bool SynapseDataController::toggleHabitCheckin(const QString &habitId, const QString &dateStr) {
     if (!m_db || habitId.trimmed().isEmpty() || dateStr.trimmed().isEmpty()) return false;
     const QByteArray idBytes = habitId.toUtf8();

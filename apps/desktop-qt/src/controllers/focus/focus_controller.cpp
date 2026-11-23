@@ -194,6 +194,20 @@ bool SynapseDataController::deleteFocusSession(const QString &sessionId) {
     return false;
 }
 
+bool SynapseDataController::clearFocusSessions(const QString &range) {
+    if (!m_db) return false;
+    const QByteArray rangeBytes = range.trimmed().toUtf8();
+    const int ret = synapse_focus_clear_sessions_range(
+        m_db,
+        rangeBytes.isEmpty() ? "all" : rangeBytes.constData()
+    );
+    if (ret >= 0) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}
+
 QVariantList SynapseDataController::getAlarms() {
     if (!m_db) return {};
     char *jsonStr = synapse_focus_get_alarms(m_db);

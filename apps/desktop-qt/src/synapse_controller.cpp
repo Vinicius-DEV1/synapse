@@ -169,6 +169,21 @@ bool SynapseDataController::executeSql(const QString &sql) {
     return true;
 }
 
+QString SynapseDataController::getConfig(const QString &key, const QString &defaultValue) {
+    if (!m_db || key.trimmed().isEmpty()) return defaultValue;
+    char *val = synapse_config_get(m_db, key.trimmed().toUtf8().constData());
+    if (!val) return defaultValue;
+    QString result = QString::fromUtf8(val);
+    synapse_free_string(val);
+    return result;
+}
+
+bool SynapseDataController::setConfig(const QString &key, const QString &value) {
+    if (!m_db || key.trimmed().isEmpty()) return false;
+    int res = synapse_config_set(m_db, key.trimmed().toUtf8().constData(), value.toUtf8().constData());
+    return res == 1;
+}
+
 void SynapseDataController::refreshStats() {
     if (!m_db || !m_isVaultUnlocked) {
         clearStats();

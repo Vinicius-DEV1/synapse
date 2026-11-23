@@ -20,12 +20,14 @@
 #include <QtCore/QTimer>
 #include <QtCore/QMap>
 #include <QtCore/QTemporaryFile>
+#include <QtCore/QPointer>
 #include <atomic>
 #include <functional>
 #include <memory>
 #include "synapse_bridge.h"
 
 class QNetworkReply;
+class QNetworkAccessManager;
 
 struct PasswordRemovalFileMigration {
     QString id;
@@ -112,6 +114,8 @@ public:
 
     Q_INVOKABLE void refreshStats();
     Q_INVOKABLE bool executeSql(const QString &sql);
+    Q_INVOKABLE QString getConfig(const QString &key, const QString &defaultValue = QString());
+    Q_INVOKABLE bool setConfig(const QString &key, const QString &value);
 
     // 1. Pages / Editor (Hierarchical & Pinned Support)
     Q_INVOKABLE QVariantList getPages(const QString &filter = "");
@@ -228,6 +232,10 @@ public:
     Q_INVOKABLE QVariantList getWishlist();
     Q_INVOKABLE bool addWishlistItem(const QString &title, double price, const QString &priority, const QString &category, const QString &link = "");
     Q_INVOKABLE bool deleteWishlistItem(const QString &itemId);
+    Q_INVOKABLE QVariantList getLoans();
+    Q_INVOKABLE bool createLoan(const QString &description, const QString &person, double amount, const QString &loanType, const QString &accountId = "", const QString &date = "");
+    Q_INVOKABLE bool recordLoanPayment(const QString &loanId, double amount, const QString &accountId, const QString &paymentDate = "");
+    Q_INVOKABLE bool deleteLoan(const QString &loanId);
 
     // 6. Hábitos & Rotina Diária
     Q_INVOKABLE QVariantList getHabits();
@@ -235,15 +243,18 @@ public:
     Q_INVOKABLE bool updateHabit(const QString &habitId, const QString &title, const QString &color = "#10b981", const QString &icon = "⭐", int targetDays = 7);
     Q_INVOKABLE QVariantList getHabitLogs(const QString &dateStr);
     Q_INVOKABLE QVariantList getHabitLogsRange(const QString &startDate, const QString &endDate);
+    Q_INVOKABLE QVariantMap getHabitStats(const QString &habitId, const QString &todayStr = "");
     Q_INVOKABLE bool toggleHabitCheckin(const QString &habitId, const QString &dateStr);
     Q_INVOKABLE bool deleteHabit(const QString &habitId);
 
     // 7. Calendário & Agenda
     Q_INVOKABLE QVariantList getCalendarEvents();
-    Q_INVOKABLE bool createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type = "event", const QString &color = "#3b82f6", const QString &pageId = "");
-    Q_INVOKABLE bool updateCalendarEvent(const QString &eventId, const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &color, const QString &type = "", const QString &pageId = "");
+    Q_INVOKABLE bool createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type = "event", const QString &color = "#3b82f6", const QString &pageId = "", const QVariantList &reminders = {}, const QString &recurrence = "none");
+    Q_INVOKABLE bool updateCalendarEvent(const QString &eventId, const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &color, const QString &type = "", const QString &pageId = "", const QVariantList &reminders = {});
     Q_INVOKABLE bool toggleEventStatus(const QString &eventId);
     Q_INVOKABLE bool deleteCalendarEvent(const QString &eventId);
+    Q_INVOKABLE bool deleteCalendarEventSeries(const QString &eventId);
+    Q_INVOKABLE bool markCalendarReminderNotified(const QString &eventId, int reminderMinutes);
 
     // 8. Biblioteca & E-Reader
     Q_INVOKABLE QVariantList getLibraryBooks(const QString &filter = "");
@@ -312,6 +323,7 @@ public:
     Q_INVOKABLE QVariantList getFocusSessions();
     Q_INVOKABLE bool recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary = "", const QString &description = "");
     Q_INVOKABLE bool deleteFocusSession(const QString &sessionId);
+    Q_INVOKABLE bool clearFocusSessions(const QString &range = "all");
 
     // Alarmes
     Q_INVOKABLE QVariantList getAlarms();
@@ -341,6 +353,8 @@ public:
     Q_INVOKABLE void refreshVaultLockout();
     Q_INVOKABLE int checkPasswordStrength(const QString &password);
     Q_INVOKABLE QVariantMap checkPasswordBreach(const QString &password);
+    Q_INVOKABLE void checkPasswordBreachAsync(const QString &password);
+    Q_INVOKABLE void cancelPasswordBreachCheck();
 
     // 12. Utilitários & Manutenção do Sistema
     Q_INVOKABLE void copyToClipboard(const QString &text);
@@ -442,6 +456,7 @@ signals:
     void filePreviewsInvalidated();
     void tasksChanged();
     void taskCancelled(const QString &taskId);
+    void passwordBreachChecked(const QString &password, const QVariantMap &result);
 
 private:
     void startNotesRichImageOperation(std::function<QVariantMap()> operation,
@@ -492,6 +507,8 @@ private:
     QHash<QFutureWatcher<QVariantMap> *, PageReferenceSearchTask> m_pageReferenceSearchTasks;
     int m_latestPageReferenceSearchRequestId = 0;
     QVariantList m_activeTasks;
+    QPointer<QNetworkReply> m_activeBreachReply;
+    QNetworkAccessManager *m_networkManager = nullptr;
 
     void checkKeychainState();
     void clearUnlockedKeys();

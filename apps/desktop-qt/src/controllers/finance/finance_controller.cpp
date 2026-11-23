@@ -227,3 +227,67 @@ bool SynapseDataController::deleteWishlistItem(const QString &itemId) {
     const int res = synapse_finance_delete_wishlist_item(m_db, idBytes.constData());
     return res == 0;
 }
+
+QVariantList SynapseDataController::getLoans() {
+    if (!m_db) return QVariantList();
+    char *raw = synapse_finance_get_loans(m_db);
+    return parseJsonArrayAndFree(raw);
+}
+
+bool SynapseDataController::createLoan(const QString &description, const QString &person,
+                                       double amount, const QString &loanType,
+                                       const QString &accountId, const QString &date) {
+    if (!m_db || description.trimmed().isEmpty() || person.trimmed().isEmpty() || !std::isfinite(amount) || amount <= 0.0) return false;
+    const QByteArray descBytes = description.toUtf8();
+    const QByteArray personBytes = person.toUtf8();
+    const QByteArray typeBytes = loanType.toUtf8();
+    const QByteArray accBytes = accountId.toUtf8();
+    const QByteArray dateBytes = date.toUtf8();
+
+    const int res = synapse_finance_create_loan(
+        m_db,
+        descBytes.constData(),
+        personBytes.constData(),
+        amount,
+        typeBytes.constData(),
+        accountId.trimmed().isEmpty() ? nullptr : accBytes.constData(),
+        date.trimmed().isEmpty() ? nullptr : dateBytes.constData()
+    );
+    if (res == 0) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}
+
+bool SynapseDataController::recordLoanPayment(const QString &loanId, double amount,
+                                             const QString &accountId, const QString &paymentDate) {
+    if (!m_db || loanId.trimmed().isEmpty() || accountId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = loanId.toUtf8();
+    const QByteArray accBytes = accountId.toUtf8();
+    const QByteArray dateBytes = paymentDate.toUtf8();
+
+    const int res = synapse_finance_record_loan_payment(
+        m_db,
+        idBytes.constData(),
+        amount,
+        accBytes.constData(),
+        paymentDate.trimmed().isEmpty() ? nullptr : dateBytes.constData()
+    );
+    if (res == 0) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}
+
+bool SynapseDataController::deleteLoan(const QString &loanId) {
+    if (!m_db || loanId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = loanId.toUtf8();
+    const int res = synapse_finance_delete_loan(m_db, idBytes.constData());
+    if (res == 0) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}

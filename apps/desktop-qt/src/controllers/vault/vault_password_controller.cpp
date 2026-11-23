@@ -210,6 +210,88 @@ int SynapseDataController::checkPasswordStrength(const QString &password) {
     return score;
 }
 
+void SynapseDataController::cancelPasswordBreachCheck() {
+    if (m_activeBreachReply) {
+        m_activeBreachReply->abort();
+        m_activeBreachReply->deleteLater();
+        m_activeBreachReply = nullptr;
+    }
+}
+
+void SynapseDataController::checkPasswordBreachAsync(const QString &password) {
+    cancelPasswordBreachCheck();
+
+    QVariantMap res;
+    res["breached"] = false;
+    res["count"] = 0;
+
+    if (password.isEmpty()) {
+        emit passwordBreachChecked(password, res);
+        return;
+    }
+
+    QByteArray sha1 = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha1).toHex().toUpper();
+    if (sha1.length() < 5) {
+        res["error"] = "Falha ao gerar hash SHA-1";
+        emit passwordBreachChecked(password, res);
+        return;
+    }
+
+    QString prefix = QString::fromLatin1(sha1.left(5));
+    QString suffix = QString::fromLatin1(sha1.mid(5));
+
+    if (!m_networkManager) {
+        m_networkManager = new QNetworkAccessManager(this);
+    }
+
+    QNetworkRequest req(QUrl("https://api.pwnedpasswords.com/range/" + prefix));
+    req.setHeader(QNetworkRequest::UserAgentHeader, "Synapse-Desktop/1.0");
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
+
+    QNetworkReply *reply = m_networkManager->get(req);
+    m_activeBreachReply = reply;
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply, password, suffix]() {
+        if (reply != m_activeBreachReply) {
+            reply->deleteLater();
+            return;
+        }
+        m_activeBreachReply = nullptr;
+
+        QVariantMap result;
+        result["breached"] = false;
+        result["count"] = 0;
+
+        if (reply->error() != QNetworkReply::NoError) {
+            if (reply->error() != QNetworkReply::OperationCanceledError) {
+                result["error"] = reply->errorString();
+            }
+            reply->deleteLater();
+            emit passwordBreachChecked(password, result);
+            return;
+        }
+
+        const QByteArray body = reply->readAll();
+        reply->deleteLater();
+
+        const QString text = QString::fromUtf8(body);
+        const QStringList lines = text.split(QLatin1String("\r\n"), Qt::SkipEmptyParts);
+        for (const QString &line : lines) {
+            int idx = line.indexOf(':');
+            if (idx != -1) {
+                QString hashSuff = line.left(idx).trimmed();
+                if (hashSuff.compare(suffix, Qt::CaseInsensitive) == 0) {
+                    qint64 count = line.mid(idx + 1).trimmed().toLongLong();
+                    result["breached"] = (count > 0);
+                    result["count"] = count;
+                    break;
+                }
+            }
+        }
+        emit passwordBreachChecked(password, result);
+    });
+}
+
 QVariantMap SynapseDataController::checkPasswordBreach(const QString &password) {
     QVariantMap res;
     res["breached"] = false;
