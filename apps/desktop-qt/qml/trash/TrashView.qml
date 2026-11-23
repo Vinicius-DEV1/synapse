@@ -89,11 +89,10 @@ Rectangle {
 
     AppConfirmDialog {
         id: singleDeleteConfirm
-        anchors.centerIn: parent
         titleText: qsTr("Excluir Permanentemente")
         messageText: qsTr("Tem certeza que deseja excluir este item permanentemente? Esta ação não pode ser desfeita.")
-        confirmLabel: qsTr("Excluir")
-        isDestructive: true
+        confirmButtonText: qsTr("Excluir")
+        kind: "error"
         onConfirmed: {
             if (trashRoot.pendingDeleteId.length > 0) {
                 dataController.deleteTrashItemPermanently(trashRoot.pendingDeleteId, trashRoot.pendingDeleteType)

@@ -158,7 +158,7 @@ Rectangle {
                 libraryRoot.activeViewMode = "collections"
                 libraryRoot.selectedCollectionId = ""
             }
-            onDisplayModeChanged: function(mode) { libraryRoot.displayMode = mode }
+            onDisplayModeSelected: function(mode) { libraryRoot.displayMode = mode }
             onBackToCollectionsRequested: {
                 libraryRoot.selectedCollectionId = ""
                 libraryRoot.activeViewMode = "collections"

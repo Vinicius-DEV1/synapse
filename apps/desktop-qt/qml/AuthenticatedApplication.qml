@@ -60,6 +60,7 @@ Item {
         }
         return null
     }
+    readonly property string activeTitle: currentTabObj && currentTabObj.title ? String(currentTabObj.title) : ""
 
     readonly property string activeSubSection: {
         if (activeTab === "settings" && settingsView) return settingsView.activeTab

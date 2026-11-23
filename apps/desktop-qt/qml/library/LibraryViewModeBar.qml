@@ -17,7 +17,7 @@ RowLayout {
 
     signal booksRequested()
     signal collectionsRequested()
-    signal displayModeChanged(string mode)
+    signal displayModeSelected(string mode)
     signal backToCollectionsRequested()
     signal helpRequested()
     signal archiveViewRequested(bool archived)
@@ -54,7 +54,7 @@ RowLayout {
         delegate: Button {
             required property var modelData
             text: modelData.label
-            onClicked: modeBar.displayModeChanged(modelData.id)
+            onClicked: modeBar.displayModeSelected(modelData.id)
             background: Rectangle {
                 radius: 7
                 color: modeBar.displayMode === modelData.id ? "#292635" : "#161524"
