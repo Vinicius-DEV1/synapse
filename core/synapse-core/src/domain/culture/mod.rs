@@ -172,6 +172,13 @@ impl CultureRepository {
         episodes::toggle_episode_watched(conn, episode_id, item_id)
     }
 
+    pub fn toggle_episode_watched_by_id_conn(
+        conn: &rusqlite::Connection,
+        episode_id: &str,
+    ) -> Result<bool> {
+        episodes::toggle_episode_watched_by_id(conn, episode_id)
+    }
+
     pub fn bulk_create_episodes(db: &Database, item_id: &str, count: i32) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         episodes::bulk_create_episodes(&conn, item_id, count)

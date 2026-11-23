@@ -235,6 +235,80 @@ pub fn restore_page(conn: &Connection, page_id: &str) -> Result<bool> {
     Ok(rows > 0)
 }
 
+/// Soft-deletes a batch of pages and their linked calendar events in one transaction.
+pub fn soft_delete_pages_batch(conn: &Connection, ids: &[String]) -> Result<bool> {
+    if ids.is_empty() {
+        return Ok(true);
+    }
+    let tx = conn.unchecked_transaction()?;
+    let now = Utc::now().to_rfc3339();
+    for id in ids {
+        tx.execute(
+            "UPDATE pages SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+            params![now, id],
+        )?;
+        tx.execute(
+            "UPDATE calendar_events SET deleted_at = ?1, updated_at = ?1 WHERE page_id = ?2",
+            params![now, id],
+        )?;
+    }
+    tx.commit()?;
+    Ok(true)
+}
+
+/// Batch updates `sort_order` for pages.
+pub fn reorder_pages_batch(conn: &Connection, updates: &[(String, f64)]) -> Result<bool> {
+    if updates.is_empty() {
+        return Ok(true);
+    }
+    let tx = conn.unchecked_transaction()?;
+    let now = Utc::now().to_rfc3339();
+    for (id, sort_order) in updates {
+        tx.execute(
+            "UPDATE pages SET sort_order = ?1, updated_at = ?2 WHERE id = ?3",
+            params![sort_order, now, id],
+        )?;
+    }
+    tx.commit()?;
+    Ok(true)
+}
+
+/// Lists metadata of all soft-deleted pages sorted by deletion time descending.
+pub fn get_deleted_page_metas(conn: &Connection) -> Result<Vec<super::models::PageMetaRecord>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, parent_id, title, icon, sort_order, created_at, updated_at, deleted_at, \
+         is_locked, is_pinned, pinned_order, cover_image, description \
+         FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            let sort_order = match row.get_ref(4)? {
+                rusqlite::types::ValueRef::Integer(v) => v as f64,
+                rusqlite::types::ValueRef::Real(v) => v,
+                _ => 0.0,
+            };
+            Ok(super::models::PageMetaRecord {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                icon: row
+                    .get::<_, Option<String>>(3)?
+                    .unwrap_or_else(|| "📄".to_string()),
+                sort_order,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+                deleted_at: row.get(7)?,
+                is_locked: row.get::<_, Option<i32>>(8)?.unwrap_or(0),
+                is_pinned: row.get::<_, Option<i32>>(9)?.unwrap_or(0),
+                pinned_order: row.get::<_, Option<f64>>(10)?.unwrap_or(0.0),
+                cover_image: row.get(11)?,
+                description: row.get(12)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(rows)
+}
+
 fn map_page_row(row: &rusqlite::Row) -> rusqlite::Result<PageRecord> {
     let sort_order = match row.get_ref(5)? {
         rusqlite::types::ValueRef::Integer(value) => value as i32,

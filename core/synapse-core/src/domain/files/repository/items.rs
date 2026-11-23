@@ -225,4 +225,63 @@ impl FilesRepository {
     pub fn create_files_conn(conn: &rusqlite::Connection, files: &[FileRecord]) -> Result<bool> {
         items::create_files(conn, files)
     }
+
+    pub fn list_files_optional_folder_conn(
+        conn: &rusqlite::Connection,
+        folder_id: Option<&str>,
+    ) -> Result<Vec<FileRecord>> {
+        items::list_files_optional_folder(conn, folder_id)
+    }
+
+    pub fn upsert_file_record_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        name: &str,
+        file_type: &str,
+        file_size: i64,
+        enc_path: Option<&str>,
+        enc_drive: Option<&str>,
+        folder_id: Option<&str>,
+        mime_type: Option<&str>,
+        created_at: Option<&str>,
+        updated_at: &str,
+    ) -> Result<()> {
+        items::upsert_file_record(
+            conn, id, name, file_type, file_size, enc_path, enc_drive, folder_id, mime_type,
+            created_at, updated_at,
+        )
+    }
+
+    pub fn update_file_record_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        name: &str,
+        file_type: &str,
+        file_size: i64,
+        enc_path: Option<&str>,
+        enc_drive: Option<&str>,
+        folder_id: Option<&str>,
+        mime_type: Option<&str>,
+        updated_at: &str,
+    ) -> Result<i32> {
+        items::update_file_record(
+            conn, id, name, file_type, file_size, enc_path, enc_drive, folder_id, mime_type,
+            updated_at,
+        )
+    }
+
+    pub fn delete_file_with_annotations_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+    ) -> Result<bool> {
+        items::delete_file_with_annotations(conn, id)
+    }
+
+    pub fn move_file_raw_conn(
+        conn: &rusqlite::Connection,
+        id: &str,
+        folder_id: Option<&str>,
+    ) -> Result<bool> {
+        items::move_file_raw(conn, id, folder_id)
+    }
 }

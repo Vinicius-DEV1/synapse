@@ -216,6 +216,14 @@ impl AnkiRepository {
         cards::delete_card(conn, card_id)
     }
 
+    pub fn move_cards_conn(
+        conn: &rusqlite::Connection,
+        card_ids: &[String],
+        new_deck_id: &str,
+    ) -> Result<bool> {
+        cards::move_cards(conn, card_ids, new_deck_id)
+    }
+
     // --- Review ---
     pub fn record_card_review(db: &Database, card_id: &str, rating: i32) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;

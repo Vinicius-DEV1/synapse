@@ -319,15 +319,8 @@ pub async fn anki_move_cards(
     }
     db_state
         .write(move |conn| {
-            let now = chrono::Utc::now().to_rfc3339();
-            for cid in card_ids {
-                conn.execute(
-                    "UPDATE anki_cards SET deck_id = ?1, updated_at = ?2 WHERE id = ?3",
-                    rusqlite::params![new_deck_id, now, cid],
-                )
-                .map_err(|e| e.to_string())?;
-            }
-            Ok(true)
+            AnkiRepository::move_cards_conn(conn, &card_ids, &new_deck_id)
+                .map_err(|e| e.to_string())
         })
         .await
 }

@@ -227,3 +227,18 @@ pub fn delete_culture_episode(conn: &rusqlite::Connection, episode_id: &str) -> 
     )?;
     Ok(rows > 0)
 }
+
+pub fn toggle_episode_watched_by_id(conn: &rusqlite::Connection, episode_id: &str) -> Result<bool> {
+    use rusqlite::OptionalExtension;
+    let item_id: Option<String> = conn
+        .query_row(
+            "SELECT item_id FROM culture_episodes WHERE id = ?1 AND deleted_at IS NULL",
+            params![episode_id.trim()],
+            |row| row.get(0),
+        )
+        .optional()?;
+    match item_id {
+        Some(iid) => toggle_episode_watched(conn, episode_id, &iid),
+        None => Ok(false),
+    }
+}

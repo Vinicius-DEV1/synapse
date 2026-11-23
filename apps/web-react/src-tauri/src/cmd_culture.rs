@@ -93,15 +93,7 @@ pub async fn culture_toggle_episode_watched(
     db_state
         .write(move |conn| {
             let _ = is_watched;
-            let item_id: String = conn
-                .query_row(
-                    "SELECT item_id FROM culture_episodes WHERE id = ?1",
-                    [&episode_id],
-                    |row| row.get(0),
-                )
-                .map_err(|e| e.to_string())?;
-
-            CultureRepository::toggle_episode_watched_conn(conn, &episode_id, &item_id)
+            CultureRepository::toggle_episode_watched_by_id_conn(conn, &episode_id)
                 .map_err(|e| e.to_string())
         })
         .await

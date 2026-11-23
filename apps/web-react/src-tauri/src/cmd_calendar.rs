@@ -1,5 +1,7 @@
 use crate::db::DbState;
-pub use synapse_core::domain::calendar::{CalendarEvent, CalendarRepository};
+pub use synapse_core::domain::calendar::{
+    patch_calendar_event_raw, upsert_calendar_event_raw, CalendarEvent, CalendarRepository,
+};
 use tauri::State;
 
 fn value_to_string_or_default(v: &Option<serde_json::Value>, default_str: &str) -> String {
@@ -83,39 +85,21 @@ pub async fn calendar_add_event(
                 .map(str::to_owned);
             let now = chrono::Utc::now().to_rfc3339();
 
-            conn.execute(
-                "INSERT INTO calendar_events (id, title, description, start_date, end_date, type, type_, status, color, page_id, reminders, notified_reminders, recurrence_rule, created_at, updated_at) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14) \
-                 ON CONFLICT(id) DO UPDATE SET \
-                    title = excluded.title, \
-                    description = excluded.description, \
-                    start_date = excluded.start_date, \
-                    end_date = excluded.end_date, \
-                    type = excluded.type, \
-                    type_ = excluded.type_, \
-                    status = excluded.status, \
-                    color = excluded.color, \
-                    page_id = excluded.page_id, \
-                    reminders = excluded.reminders, \
-                    notified_reminders = excluded.notified_reminders, \
-                    recurrence_rule = excluded.recurrence_rule, \
-                    updated_at = excluded.updated_at",
-                rusqlite::params![
-                    id,
-                    title,
-                    description,
-                    start_date,
-                    end_date,
-                    type_,
-                    type_,
-                    status,
-                    color,
-                    page_id,
-                    reminders_str,
-                    notified_str,
-                    recurrence_rule,
-                    now
-                ],
+            upsert_calendar_event_raw(
+                conn,
+                &id,
+                &title,
+                description.as_deref(),
+                start_date.as_deref(),
+                end_date.as_deref(),
+                &type_,
+                &status,
+                &color,
+                page_id.as_deref(),
+                &reminders_str,
+                &notified_str,
+                recurrence_rule.as_deref(),
+                &now,
             )
             .map_err(|e| e.to_string())?;
 
@@ -201,40 +185,22 @@ pub async fn calendar_update_event(
                 .map(|n| value_to_string_or_default(&Some(n.clone()), "[]"));
             let now = chrono::Utc::now().to_rfc3339();
 
-            let count = conn
-                .execute(
-                    "UPDATE calendar_events SET \
-                        title = CASE WHEN ?1 != '' THEN ?1 ELSE title END, \
-                        description = COALESCE(?2, description), \
-                        start_date = COALESCE(?3, start_date), \
-                        end_date = COALESCE(?4, end_date), \
-                        type = CASE WHEN ?5 != '' THEN ?5 ELSE type END, \
-                        type_ = CASE WHEN ?5 != '' THEN ?5 ELSE type_ END, \
-                        status = CASE WHEN ?6 != '' THEN ?6 ELSE status END, \
-                        color = CASE WHEN ?7 != '' THEN ?7 ELSE color END, \
-                        page_id = COALESCE(?8, page_id), \
-                        reminders = COALESCE(?9, reminders), \
-                        notified_reminders = COALESCE(?10, notified_reminders), \
-                        updated_at = ?12 \
-                     WHERE id = ?11",
-                    rusqlite::params![
-                        title,
-                        description,
-                        start_date,
-                        end_date,
-                        type_,
-                        status,
-                        color,
-                        page_id,
-                        reminders_opt,
-                        notified_opt,
-                        event_id,
-                        now
-                    ],
-                )
-                .map_err(|e| e.to_string())?;
-
-            Ok(count as i32)
+            patch_calendar_event_raw(
+                conn,
+                &event_id,
+                title,
+                description,
+                start_date,
+                end_date,
+                type_,
+                status,
+                color,
+                page_id,
+                reminders_opt.as_deref(),
+                notified_opt.as_deref(),
+                &now,
+            )
+            .map_err(|e| e.to_string())
         })
         .await
 }

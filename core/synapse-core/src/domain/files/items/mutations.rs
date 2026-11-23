@@ -176,3 +176,84 @@ pub fn create_file(
     )?;
     Ok(rows == 1)
 }
+
+pub fn upsert_file_record(
+    conn: &rusqlite::Connection,
+    id: &str,
+    name: &str,
+    file_type: &str,
+    file_size: i64,
+    enc_path: Option<&str>,
+    enc_drive: Option<&str>,
+    folder_id: Option<&str>,
+    mime_type: Option<&str>,
+    created_at: Option<&str>,
+    updated_at: &str,
+) -> Result<()> {
+    conn.execute(
+        "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) \
+         ON CONFLICT(id) DO UPDATE SET \
+            name = excluded.name, \
+            file_type = excluded.file_type, \
+            file_size = excluded.file_size, \
+            local_path = excluded.local_path, \
+            drive_file_id = excluded.drive_file_id, \
+            folder_id = excluded.folder_id, \
+            mime_type = excluded.mime_type, \
+            deleted_at = NULL, \
+            updated_at = excluded.updated_at",
+        params![id, name, file_type, file_size, enc_path, enc_drive, folder_id, mime_type, created_at, updated_at],
+    )?;
+    Ok(())
+}
+
+pub fn update_file_record(
+    conn: &rusqlite::Connection,
+    id: &str,
+    name: &str,
+    file_type: &str,
+    file_size: i64,
+    enc_path: Option<&str>,
+    enc_drive: Option<&str>,
+    folder_id: Option<&str>,
+    mime_type: Option<&str>,
+    updated_at: &str,
+) -> Result<i32> {
+    let count = conn.execute(
+        "UPDATE files SET name = ?1, file_type = ?2, file_size = ?3, local_path = ?4, \
+         drive_file_id = ?5, folder_id = ?6, mime_type = ?7, updated_at = ?8 WHERE id = ?9",
+        params![name, file_type, file_size, enc_path, enc_drive, folder_id, mime_type, updated_at, id],
+    )?;
+    Ok(count as i32)
+}
+
+pub fn delete_file_with_annotations(conn: &rusqlite::Connection, id: &str) -> Result<bool> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE files SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+        params![now, id],
+    )?;
+    let _ = conn.execute(
+        "UPDATE library_highlights SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2",
+        params![now, id],
+    );
+    let _ = conn.execute(
+        "UPDATE library_bookmarks SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2",
+        params![now, id],
+    );
+    Ok(true)
+}
+
+pub fn move_file_raw(
+    conn: &rusqlite::Connection,
+    id: &str,
+    folder_id: Option<&str>,
+) -> Result<bool> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE files SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
+        params![folder_id, now, id],
+    )?;
+    Ok(true)
+}

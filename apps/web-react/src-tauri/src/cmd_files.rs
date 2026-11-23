@@ -1,6 +1,6 @@
 use crate::db::{run_blocking, DbState};
-use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use synapse_core::domain::files::FilesRepository;
 use tauri::State;
 use uuid::Uuid;
 
@@ -18,6 +18,25 @@ pub struct FileRecord {
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
     pub deleted_at: Option<String>,
+}
+
+fn map_core_file_record(
+    rec: synapse_core::domain::files::FileRecord,
+    enc_key: &Option<String>,
+) -> FileRecord {
+    FileRecord {
+        id: rec.id,
+        name: rec.name,
+        file_type: rec.file_type,
+        file_size: rec.file_size,
+        local_path: decrypt_opt(&rec.local_path, enc_key),
+        drive_file_id: decrypt_opt(&rec.drive_file_id, enc_key),
+        folder_id: rec.folder_id,
+        mime_type: rec.mime_type,
+        created_at: rec.created_at,
+        updated_at: rec.updated_at,
+        deleted_at: None,
+    }
 }
 
 fn encrypt_opt(val: &Option<String>, key: &Option<String>) -> Option<String> {
@@ -46,48 +65,12 @@ pub async fn files_get_all(
     db_state
         .read_with_keys(move |conn, keys| {
             let enc_key = keys.and_then(|k| k.files);
-
-            let mut query = String::from("SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE deleted_at IS NULL");
-
-            let mut stmt = if folder_id.is_some() {
-                query.push_str(" AND folder_id = ?");
-                conn.prepare(&query).map_err(|e| e.to_string())?
-            } else {
-                conn.prepare(&query).map_err(|e| e.to_string())?
-            };
-
-            let map_fn = |row: &rusqlite::Row| -> Result<FileRecord, rusqlite::Error> {
-                let mut rec = FileRecord {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    file_type: row.get(2)?,
-                    file_size: row.get(3)?,
-                    local_path: row.get(4)?,
-                    drive_file_id: row.get(5)?,
-                    folder_id: row.get(6)?,
-                    mime_type: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
-                    deleted_at: row.get(10)?,
-                };
-                rec.local_path = decrypt_opt(&rec.local_path, &enc_key);
-                rec.drive_file_id = decrypt_opt(&rec.drive_file_id, &enc_key);
-                Ok(rec)
-            };
-
-            let iter = if let Some(f_id) = folder_id {
-                stmt.query_map([f_id], map_fn).map_err(|e| e.to_string())?
-            } else {
-                stmt.query_map([], map_fn).map_err(|e| e.to_string())?
-            };
-
-            let mut items = Vec::new();
-            for i in iter {
-                if let Ok(item) = i {
-                    items.push(item);
-                }
-            }
-            Ok(items)
+            let rows = FilesRepository::list_files_optional_folder_conn(conn, folder_id.as_deref())
+                .map_err(|e| e.to_string())?;
+            Ok(rows
+                .into_iter()
+                .map(|r| map_core_file_record(r, &enc_key))
+                .collect())
         })
         .await
 }
@@ -100,35 +83,8 @@ pub async fn files_get_by_id(
     db_state
         .read_with_keys(move |conn, keys| {
             let enc_key = keys.and_then(|k| k.files);
-
-            let result = conn.query_row(
-                "SELECT id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at, deleted_at FROM files WHERE id = ? AND deleted_at IS NULL",
-                [&id],
-                |row| {
-                    let mut rec = FileRecord {
-                        id: row.get(0)?,
-                        name: row.get(1)?,
-                        file_type: row.get(2)?,
-                        file_size: row.get(3)?,
-                        local_path: row.get(4)?,
-                        drive_file_id: row.get(5)?,
-                        folder_id: row.get(6)?,
-                        mime_type: row.get(7)?,
-                        created_at: row.get(8)?,
-                        updated_at: row.get(9)?,
-                        deleted_at: row.get(10)?,
-                    };
-                    rec.local_path = decrypt_opt(&rec.local_path, &enc_key);
-                    rec.drive_file_id = decrypt_opt(&rec.drive_file_id, &enc_key);
-                    Ok(rec)
-                },
-            );
-
-            match result {
-                Ok(res) => Ok(Some(res)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e.to_string()),
-            }
+            let rec = FilesRepository::get_file_conn(conn, &id).map_err(|e| e.to_string())?;
+            Ok(rec.map(|r| map_core_file_record(r, &enc_key)))
         })
         .await
 }
@@ -162,31 +118,18 @@ pub async fn files_create(
         let guard = state.lock_conn()?;
         let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-        conn.execute(
-            "INSERT INTO files (id, name, file_type, file_size, local_path, drive_file_id, folder_id, mime_type, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                file_type = excluded.file_type,
-                file_size = excluded.file_size,
-                local_path = excluded.local_path,
-                drive_file_id = excluded.drive_file_id,
-                folder_id = excluded.folder_id,
-                mime_type = excluded.mime_type,
-                deleted_at = NULL,
-                updated_at = excluded.updated_at",
-            params![
-                file.id,
-                file.name,
-                file.file_type,
-                file.file_size,
-                enc_path,
-                enc_drive,
-                file.folder_id,
-                file.mime_type,
-                file.created_at,
-                now
-            ],
+        FilesRepository::upsert_file_record_conn(
+            conn,
+            &file.id,
+            &file.name,
+            &file.file_type,
+            file.file_size,
+            enc_path.as_deref(),
+            enc_drive.as_deref(),
+            file.folder_id.as_deref(),
+            file.mime_type.as_deref(),
+            file.created_at.as_deref(),
+            &now,
         )
         .map_err(|e| e.to_string())?;
 
@@ -208,24 +151,19 @@ pub async fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Res
         let guard = state.lock_conn()?;
         let conn = guard.as_ref().ok_or("Banco não inicializado")?;
 
-        let count = conn
-            .execute(
-                "UPDATE files SET name = ?, file_type = ?, file_size = ?, local_path = ?, drive_file_id = ?, folder_id = ?, mime_type = ?, updated_at = ? WHERE id = ?",
-                params![
-                    file.name,
-                    file.file_type,
-                    file.file_size,
-                    enc_path,
-                    enc_drive,
-                    file.folder_id,
-                    file.mime_type,
-                    now,
-                    file.id
-                ],
-            )
-            .map_err(|e| e.to_string())?;
-
-        Ok(count as i32)
+        FilesRepository::update_file_record_conn(
+            conn,
+            &file.id,
+            &file.name,
+            &file.file_type,
+            file.file_size,
+            enc_path.as_deref(),
+            enc_drive.as_deref(),
+            file.folder_id.as_deref(),
+            file.mime_type.as_deref(),
+            &now,
+        )
+        .map_err(|e| e.to_string())
     })
     .await
 }
@@ -234,25 +172,8 @@ pub async fn files_update(file: FileRecord, db_state: State<'_, DbState>) -> Res
 pub async fn files_delete(id: String, db_state: State<'_, DbState>) -> Result<bool, String> {
     db_state
         .write(move |conn| {
-            let now = chrono::Utc::now().to_rfc3339();
-
-            conn.execute(
-                "UPDATE files SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
-                [&now, &id],
-            )
-            .map_err(|e| e.to_string())?;
-
-            // Clean up annotations when standalone file is removed (Soft Delete)
-            let _ = conn.execute(
-                "UPDATE library_highlights SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2",
-                [&now, &id],
-            );
-            let _ = conn.execute(
-                "UPDATE library_bookmarks SET deleted_at = ?1, updated_at = ?1 WHERE book_id = ?2",
-                [&now, &id],
-            );
-
-            Ok(true)
+            FilesRepository::delete_file_with_annotations_conn(conn, &id)
+                .map_err(|e| e.to_string())
         })
         .await
 }
@@ -265,15 +186,8 @@ pub async fn files_move(
 ) -> Result<bool, String> {
     db_state
         .write(move |conn| {
-            let now = chrono::Utc::now().to_rfc3339();
-
-            conn.execute(
-                "UPDATE files SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
-                params![folder_id, now, id],
-            )
-            .map_err(|e| e.to_string())?;
-
-            Ok(true)
+            FilesRepository::move_file_raw_conn(conn, &id, folder_id.as_deref())
+                .map_err(|e| e.to_string())
         })
         .await
 }

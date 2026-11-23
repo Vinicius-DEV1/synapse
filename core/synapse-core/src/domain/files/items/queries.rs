@@ -102,6 +102,30 @@ pub fn get_file(conn: &rusqlite::Connection, file_id: &str) -> Result<Option<Fil
         .optional()?)
 }
 
+pub fn list_files_optional_folder(
+    conn: &rusqlite::Connection,
+    folder_id: Option<&str>,
+) -> Result<Vec<FileRecord>> {
+    let mut sql = String::from(
+        "SELECT id, name, file_type, file_size, local_path, drive_file_id, \
+         CASE WHEN drive_file_id IS NOT NULL AND drive_file_id != '' THEN 1 ELSE 0 END AS has_drive_copy, \
+         folder_id, mime_type, created_at, updated_at \
+         FROM files WHERE deleted_at IS NULL",
+    );
+    if folder_id.is_some() {
+        sql.push_str(" AND folder_id = ?1");
+    }
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = if let Some(fid) = folder_id {
+        stmt.query_map([fid], map_file_record)?
+            .collect::<rusqlite::Result<Vec<_>>>()?
+    } else {
+        stmt.query_map([], map_file_record)?
+            .collect::<rusqlite::Result<Vec<_>>>()?
+    };
+    Ok(rows)
+}
+
 fn map_file_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<FileRecord> {
     Ok(FileRecord {
         id: row.get(0)?,

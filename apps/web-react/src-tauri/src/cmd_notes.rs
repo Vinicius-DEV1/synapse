@@ -266,24 +266,14 @@ pub async fn notes_update_page(
                 params_vec.push(enc.clone().into());
 
                 if should_record_page_history(conn, &page.id) {
-                    let hist_id = uuid::Uuid::new_v4().to_string();
-                    let now_utc = chrono::Utc::now().to_rfc3339();
-                    let _ = conn.execute(
-                        "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES (?, ?, '', ?, ?)",
-                        params![hist_id, page.id, enc, now_utc],
-                    );
+                    let _ = NotesRepository::record_page_history_conn(conn, &page.id, "", Some(&enc));
                 }
             } else {
                 query.push_str(" content = ?, encrypted_content = NULL");
                 params_vec.push(c.clone().into());
 
                 if should_record_page_history(conn, &page.id) {
-                    let hist_id = uuid::Uuid::new_v4().to_string();
-                    let now_utc = chrono::Utc::now().to_rfc3339();
-                    let _ = conn.execute(
-                        "INSERT INTO page_history (id, page_id, content, encrypted_content, created_at) VALUES (?, ?, ?, NULL, ?)",
-                        params![hist_id, page.id, c, now_utc],
-                    );
+                    let _ = NotesRepository::record_page_history_conn(conn, &page.id, &c, None);
                 }
             }
             has_updates = true;
@@ -411,32 +401,7 @@ pub async fn notes_delete_pages(
     }
     db_state
         .write(move |conn| {
-            let now = chrono::Utc::now().to_rfc3339();
-            let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let query_pages = format!(
-                "UPDATE pages SET deleted_at = ?, updated_at = ? WHERE id IN ({})",
-                placeholders
-            );
-            let mut params_pages: Vec<rusqlite::types::Value> =
-                vec![now.clone().into(), now.clone().into()];
-            for id in &ids {
-                params_pages.push(id.clone().into());
-            }
-            conn.execute(&query_pages, rusqlite::params_from_iter(params_pages))
-                .map_err(|e| e.to_string())?;
-
-            let query_events = format!(
-                "UPDATE calendar_events SET deleted_at = ?, updated_at = ? WHERE page_id IN ({})",
-                placeholders
-            );
-            let mut params_events: Vec<rusqlite::types::Value> =
-                vec![now.clone().into(), now.into()];
-            for id in &ids {
-                params_events.push(id.clone().into());
-            }
-            let _ = conn.execute(&query_events, rusqlite::params_from_iter(params_events));
-
-            Ok(true)
+            NotesRepository::soft_delete_pages_batch_conn(conn, &ids).map_err(|e| e.to_string())
         })
         .await
 }
@@ -447,37 +412,9 @@ pub async fn notes_get_deleted_pages(
 ) -> Result<Vec<PageMeta>, String> {
     db_state
         .read(|conn| {
-            let mut stmt = conn
-                .prepare("SELECT id, parent_id, title, icon, sort_order, created_at, updated_at, deleted_at, is_locked, is_pinned, pinned_order, cover_image, description FROM pages WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
-                .map_err(|e| e.to_string())?;
-
-            let page_iter = stmt
-                .query_map([], |row| {
-                    Ok(PageMeta {
-                        id: row.get(0)?,
-                        parent_id: row.get(1)?,
-                        title: row.get(2)?,
-                        icon: row.get(3)?,
-                        sort_order: row.get(4)?,
-                        crdt_state: None,
-                        created_at: row.get(5)?,
-                        updated_at: row.get(6)?,
-                        deleted_at: row.get(7)?,
-                        is_locked: row.get(8)?,
-                        is_pinned: row.get(9).unwrap_or(0),
-                        pinned_order: row.get(10).unwrap_or(0.0),
-                        cover_image: row.get(11)?,
-                        description: row.get(12)?,
-                    })
-                })
-                .map_err(|e| e.to_string())?;
-
-            let mut pages = Vec::new();
-            for page in page_iter {
-                pages.push(page.map_err(|e| e.to_string())?);
-            }
-
-            Ok(pages)
+            let pages =
+                NotesRepository::get_deleted_page_metas_conn(conn).map_err(|e| e.to_string())?;
+            Ok(pages.into_iter().map(map_meta_record).collect())
         })
         .await
 }
@@ -499,17 +436,9 @@ pub async fn notes_reorder_pages(
     }
     db_state
         .write(move |conn| {
-            let now = chrono::Utc::now().to_rfc3339();
-            let tx = conn.transaction().map_err(|e| e.to_string())?;
-            for u in updates {
-                tx.execute(
-                    "UPDATE pages SET sort_order = ?1, updated_at = ?2 WHERE id = ?3",
-                    params![u.sort_order, now, u.id],
-                )
-                .map_err(|e| e.to_string())?;
-            }
-            tx.commit().map_err(|e| e.to_string())?;
-            Ok(true)
+            let pairs: Vec<(String, f64)> =
+                updates.into_iter().map(|u| (u.id, u.sort_order)).collect();
+            NotesRepository::reorder_pages_batch_conn(conn, &pairs).map_err(|e| e.to_string())
         })
         .await
 }

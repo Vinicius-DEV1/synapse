@@ -199,6 +199,35 @@ impl NotesRepository {
         history::record_page_history(&conn, page_id, content, encrypted_content)
     }
 
+    pub fn record_page_history_conn(
+        conn: &rusqlite::Connection,
+        page_id: &str,
+        content: &str,
+        encrypted_content: Option<&str>,
+    ) -> Result<String> {
+        history::record_page_history(conn, page_id, content, encrypted_content)
+    }
+
+    pub fn soft_delete_pages_batch_conn(
+        conn: &rusqlite::Connection,
+        ids: &[String],
+    ) -> Result<bool> {
+        pages::soft_delete_pages_batch(conn, ids)
+    }
+
+    pub fn get_deleted_page_metas_conn(
+        conn: &rusqlite::Connection,
+    ) -> Result<Vec<PageMetaRecord>> {
+        pages::get_deleted_page_metas(conn)
+    }
+
+    pub fn reorder_pages_batch_conn(
+        conn: &rusqlite::Connection,
+        updates: &[(String, f64)],
+    ) -> Result<bool> {
+        pages::reorder_pages_batch(conn, updates)
+    }
+
     pub fn get_page_history(db: &Database, page_id: &str) -> Result<Vec<PageRevision>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         history::get_page_history(&conn, page_id)

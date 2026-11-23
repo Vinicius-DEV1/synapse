@@ -170,6 +170,25 @@ pub fn delete_card(conn: &rusqlite::Connection, card_id: &str) -> Result<bool> {
     Ok(count > 0)
 }
 
+pub fn move_cards(
+    conn: &rusqlite::Connection,
+    card_ids: &[String],
+    new_deck_id: &str,
+) -> Result<bool> {
+    let trimmed_deck = new_deck_id.trim();
+    if card_ids.is_empty() || trimmed_deck.is_empty() {
+        return Ok(true);
+    }
+    let now = Utc::now().to_rfc3339();
+    for card_id in card_ids {
+        conn.execute(
+            "UPDATE anki_cards SET deck_id = ?1, updated_at = ?2 WHERE id = ?3",
+            params![trimmed_deck, now, card_id.trim()],
+        )?;
+    }
+    Ok(true)
+}
+
 pub fn get_due_cards_count(conn: &rusqlite::Connection) -> Result<i64> {
     let mut stmt = conn.prepare(
         "SELECT count(*) FROM anki_cards c \
