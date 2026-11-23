@@ -10,12 +10,13 @@ Rectangle {
 
     property string selectedColor: "#3b82f6"
     property string selectedType: "event"
+    property string selectedRecurrence: "none"
     property string initialDateStr: ""
     property var initialEvent: null
     property string errorMessage: ""
 
-    signal eventSubmitted(string title, string desc, string dateTime, string color, string type, string pageId)
-    signal eventDeleted(string eventId)
+    signal eventSubmitted(string title, string desc, string dateTime, string color, string type, string pageId, var reminders, string recurrence)
+    signal eventDeleted(string eventId, bool deleteAll)
     signal closed()
 
     function loadInitialEvent() {
@@ -26,6 +27,12 @@ Rectangle {
             eventDateInput.text = initialEvent.start_date || initialEvent.start_time || ""
             selectedColor = initialEvent.color || "#3b82f6"
             selectedType = initialEvent.type || initialEvent.type_ || "event"
+            selectedRecurrence = "none"
+            var rems = initialEvent.reminders
+            if (typeof rems === "string") {
+                try { rems = JSON.parse(rems) } catch (e) { rems = [] }
+            }
+            remindersPicker.setFromMinutesArray(rems)
             return
         }
         resetFields()
@@ -46,6 +53,8 @@ Rectangle {
         eventDateInput.text = Qt.formatDateTime(new Date(), "yyyy-MM-ddThh:mm:ss")
         selectedColor = "#3b82f6"
         selectedType = "event"
+        selectedRecurrence = "none"
+        remindersPicker.setFromMinutesArray([15])
     }
 
     MouseArea {
@@ -204,25 +213,55 @@ Rectangle {
                 }
             }
 
-            // Color Tag Picker
-            ColumnLayout {
+            // Color Tag Picker & Recurrence
+            RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
-                Text { text: "Etiqueta de Cor"; color: "#a7a9be"; font.pixelSize: 12 }
-                RowLayout {
-                    spacing: 10
-                    Repeater {
-                        model: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4"]
-                        delegate: Rectangle {
-                            width: 28; height: 28; radius: 14
-                            color: modelData
-                            border.color: modalRoot.selectedColor === modelData ? "#ffffff" : "transparent"
-                            border.width: 2
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: modalRoot.selectedColor = modelData
+                spacing: 16
+
+                ColumnLayout {
+                    Layout.fillWidth: modalRoot.initialEvent !== null
+                    spacing: 6
+                    Text { text: "Etiqueta de Cor"; color: "#a7a9be"; font.pixelSize: 12 }
+                    RowLayout {
+                        spacing: 8
+                        Repeater {
+                            model: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4"]
+                            delegate: Rectangle {
+                                width: 26; height: 26; radius: 13
+                                color: modelData
+                                border.color: modalRoot.selectedColor === modelData ? "#ffffff" : "transparent"
+                                border.width: 2
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: modalRoot.selectedColor = modelData
+                                }
                             }
+                        }
+                    }
+                }
+
+                // Recurrence Selector (visible when creating new event)
+                ColumnLayout {
+                    visible: modalRoot.initialEvent === null
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Text { text: "Repetição"; color: "#a7a9be"; font.pixelSize: 12 }
+                    ComboBox {
+                        id: recurrenceCombo
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 34
+                        model: [
+                            { key: "none", label: "Não repetir" },
+                            { key: "daily", label: "Todos os dias" },
+                            { key: "weekly", label: "Toda semana" },
+                            { key: "monthly", label: "Todo mês" },
+                            { key: "yearly", label: "Todo ano" }
+                        ]
+                        textRole: "label"
+                        currentIndex: 0
+                        onActivated: function(index) {
+                            modalRoot.selectedRecurrence = model[index].key
                         }
                     }
                 }
@@ -238,12 +277,12 @@ Rectangle {
             // Actions Footer
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: 10
 
                 // Delete Button (when editing)
                 Rectangle {
                     visible: modalRoot.initialEvent !== null
-                    width: 80; height: 38; radius: 8; color: "#26f43f5e"
+                    width: 75; height: 38; radius: 8; color: "#26f43f5e"
                     border.color: "#f43f5e"
                     Text { anchors.centerIn: parent; text: "Excluir"; color: "#f43f5e"; font.pixelSize: 12; font.bold: true }
                     MouseArea {
@@ -251,7 +290,25 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (modalRoot.initialEvent && modalRoot.initialEvent.id) {
-                                modalRoot.eventDeleted(modalRoot.initialEvent.id)
+                                modalRoot.eventDeleted(modalRoot.initialEvent.id, false)
+                            }
+                            modalRoot.closed()
+                        }
+                    }
+                }
+
+                // Delete Series Button (when editing a recurring event)
+                Rectangle {
+                    visible: modalRoot.initialEvent !== null && modalRoot.initialEvent.recurrence_rule && modalRoot.initialEvent.recurrence_rule.indexOf("group_") === 0
+                    width: 120; height: 38; radius: 8; color: "#33ef4444"
+                    border.color: "#ef4444"
+                    Text { anchors.centerIn: parent; text: "Excluir Série"; color: "#fca5a5"; font.pixelSize: 11; font.bold: true }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (modalRoot.initialEvent && modalRoot.initialEvent.id) {
+                                modalRoot.eventDeleted(modalRoot.initialEvent.id, true)
                             }
                             modalRoot.closed()
                         }
@@ -280,7 +337,16 @@ Rectangle {
                                 return
                             }
                             modalRoot.errorMessage = ""
-                            modalRoot.eventSubmitted(eventTitleInput.text, eventDescInput.text, eventDateInput.text, modalRoot.selectedColor, modalRoot.selectedType, "")
+                            modalRoot.eventSubmitted(
+                                eventTitleInput.text,
+                                eventDescInput.text,
+                                eventDateInput.text,
+                                modalRoot.selectedColor,
+                                modalRoot.selectedType,
+                                "",
+                                remindersPicker.getMinutesArray(),
+                                modalRoot.selectedRecurrence
+                            )
                         }
                     }
                 }

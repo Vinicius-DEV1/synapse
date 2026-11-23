@@ -10,9 +10,10 @@ Rectangle {
     z: 130
 
     property var loan: null
+    property var accounts: []
 
     signal closeRequested()
-    signal paymentRecorded(string loanId, double amount, string date, string notes)
+    signal paymentRecorded(string loanId, double amount, string accountId, string date, string notes)
 
     Shortcut {
         sequence: "Escape"
@@ -93,6 +94,16 @@ Rectangle {
                 }
             }
 
+            // Account Selector
+            Text { text: "Conta:"; color: "#d4d4d8"; font.pixelSize: 12; font.bold: true; visible: paymentModalRoot.accounts.length > 0 }
+            ComboBox {
+                id: accountCombo
+                Layout.fillWidth: true
+                visible: paymentModalRoot.accounts.length > 0
+                model: paymentModalRoot.accounts
+                textRole: "name"
+            }
+
             // Footer
             RowLayout {
                 Layout.fillWidth: true
@@ -114,8 +125,15 @@ Rectangle {
                     contentItem: Text { text: parent.text; color: "#ffffff"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: {
                         var amt = Number(amountInput.text.replace(",", "."))
-                        if (amt > 0 && paymentModalRoot.loan) {
-                            paymentModalRoot.paymentRecorded(paymentModalRoot.loan.id, amt, dateInput.text, "")
+                        var accId = ""
+                        if (paymentModalRoot.accounts && paymentModalRoot.accounts.length > 0) {
+                            var idx = Math.max(0, accountCombo.currentIndex)
+                            accId = paymentModalRoot.accounts[idx].id || ""
+                        } else if (paymentModalRoot.loan && paymentModalRoot.loan.account_id) {
+                            accId = paymentModalRoot.loan.account_id
+                        }
+                        if (amt > 0 && paymentModalRoot.loan && accId.length > 0) {
+                            paymentModalRoot.paymentRecorded(paymentModalRoot.loan.id, amt, accId, dateInput.text, "")
                             paymentModalRoot.closeRequested()
                         }
                     }

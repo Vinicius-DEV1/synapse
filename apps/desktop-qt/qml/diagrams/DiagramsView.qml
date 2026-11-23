@@ -158,10 +158,12 @@ Rectangle {
                 dataController.saveLocalTextFile(filePath, diagramsRoot.exportToSvg())
             } else if (filePath.endsWith(".json") || filePath.endsWith(".excalidraw")) {
                 dataController.saveLocalTextFile(filePath, JSON.stringify(diagramsRoot.shapes, null, 2))
+            } else if (filePath.endsWith(".png")) {
+                whiteboardCanvas.grabToImage(function(result) {
+                    result.saveToFile(filePath)
+                })
             } else {
-                whiteboardCanvas.requestPaint()
-                // PNG image export fallback
-                dataController.saveLocalTextFile(filePath + ".json", JSON.stringify(diagramsRoot.shapes))
+                dataController.saveLocalTextFile(filePath, JSON.stringify(diagramsRoot.shapes, null, 2))
             }
             diagramsRoot.isExportModalOpen = false
         }

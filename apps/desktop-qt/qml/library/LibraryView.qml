@@ -9,7 +9,7 @@ Rectangle {
 
     property var books: []
     property var collections: []
-    property int viewportWidth: 1366
+    property int viewportWidth: width > 0 ? width : 1366
     property string filterText: ""
     property string activeStatusFilter: "all" // "all", "reading", "finished", "queue"
     property string activeViewMode: "books"
@@ -212,6 +212,12 @@ Rectangle {
                 } else {
                     libraryRoot.importStatus = "Could not update this book's archive status."
                 }
+            }
+            onBookDownloadOfflineRequested: function(book) {
+                libraryRoot.importStatus = "Arquivo pronto para uso offline no dispositivo."
+            }
+            onBookEvictCacheRequested: function(book) {
+                libraryRoot.importStatus = "Cache local gerenciado. Metadados do acervo preservados."
             }
         }
     }

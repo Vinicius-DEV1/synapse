@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import Synapse.Media 1.0
 
 Rectangle {
     id: root
@@ -12,24 +13,59 @@ Rectangle {
     property var fileItem: null
     property bool isPlaying: false
     property double currentTime: 0
-    property double duration: 180
+    property double duration: 0
     property double volume: 0.8
     property bool isMuted: false
 
     signal closeRequested()
 
+    MpvPlayerItem {
+        id: audioPlayer
+        visible: false
+        width: 1
+        height: 1
+        volume: root.volume * 100
+        muted: root.isMuted
+        onPositionChanged: {
+            if (!scrubSlider.pressed) root.currentTime = position
+        }
+        onDurationChanged: {
+            if (duration > 0) root.duration = duration
+        }
+        onPausedChanged: {
+            root.isPlaying = !paused
+        }
+        onEndOfFile: {
+            root.isPlaying = false
+            root.currentTime = 0
+        }
+        onPlaybackError: function(msg) {
+            console.warn("[FilesAudioPlayerModal] Erro de reprodução:", msg)
+        }
+    }
+
     function openForFile(item) {
         fileItem = item
         currentTime = 0
-        duration = 180
-        isPlaying = true
+        duration = 0
         visible = true
-        playbackTimer.start()
+        var path = ""
+        if (item) {
+            path = item.local_path || item.file_path || item.path || ""
+        }
+        if (path.length > 0) {
+            audioPlayer.source = path
+            audioPlayer.play()
+            isPlaying = true
+        } else {
+            isPlaying = false
+        }
     }
 
     function closeModal() {
+        audioPlayer.pause()
+        audioPlayer.source = ""
         isPlaying = false
-        playbackTimer.stop()
         visible = false
         closeRequested()
     }
@@ -39,20 +75,6 @@ Rectangle {
         var m = Math.floor(secs / 60)
         var s = Math.floor(secs % 60)
         return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
-    }
-
-    Timer {
-        id: playbackTimer
-        interval: 1000
-        repeat: true
-        running: root.isPlaying
-        onTriggered: {
-            if (root.currentTime < root.duration) {
-                root.currentTime += 1
-            } else {
-                root.isPlaying = false
-            }
-        }
     }
 
     MouseArea {
@@ -95,7 +117,7 @@ Rectangle {
                         Layout.maximumWidth: 320
                     }
                     Text {
-                        text: "Decodificação nativa • E2EE AES-256-GCM"
+                        text: "Decodificação MPV nativa de alta fidelidade"
                         color: "#818cf8"
                         font.pixelSize: 11
                     }
@@ -125,9 +147,9 @@ Rectangle {
                     model: 28
                     delegate: Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 12 + Math.abs(Math.sin((index + root.currentTime) * 0.4)) * 32
+                        Layout.preferredHeight: 12 + Math.abs(Math.sin((index + root.currentTime) * 0.4)) * (root.isPlaying ? 32 : 10)
                         radius: 2
-                        color: (index / 28.0) <= (root.currentTime / root.duration) ? "#818cf8" : "#28273c"
+                        color: root.duration > 0 && (index / 28.0) <= (root.currentTime / root.duration) ? "#818cf8" : "#28273c"
                     }
                 }
             }
@@ -138,11 +160,15 @@ Rectangle {
                 spacing: 4
 
                 Slider {
+                    id: scrubSlider
                     Layout.fillWidth: true
                     from: 0
-                    to: root.duration
+                    to: Math.max(1, root.duration)
                     value: root.currentTime
-                    onMoved: root.currentTime = value
+                    onMoved: {
+                        root.currentTime = value
+                        audioPlayer.position = value
+                    }
 
                     background: Rectangle {
                         x: parent.leftPadding
@@ -155,7 +181,7 @@ Rectangle {
                         color: "#28273c"
 
                         Rectangle {
-                            width: parent.width * (root.currentTime / root.duration)
+                            width: root.duration > 0 ? (parent.width * (root.currentTime / root.duration)) : 0
                             height: parent.height
                             color: "#6366f1"
                             radius: 2
@@ -191,7 +217,7 @@ Rectangle {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
                     text: "⏪"
-                    onClicked: root.currentTime = Math.max(0, root.currentTime - 5)
+                    onClicked: audioPlayer.seekRelative(-5)
                     background: Rectangle { color: parent.hovered ? "#28273c" : "transparent"; radius: 18 }
                     contentItem: Text { text: parent.text; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
@@ -201,7 +227,7 @@ Rectangle {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     text: root.isPlaying ? "❚❚" : "▶"
-                    onClicked: root.isPlaying = !root.isPlaying
+                    onClicked: audioPlayer.togglePlay()
                     background: Rectangle { color: "#6366f1"; radius: 24 }
                     contentItem: Text { text: parent.text; color: "#ffffff"; font.pixelSize: 16; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
@@ -211,7 +237,7 @@ Rectangle {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
                     text: "⏩"
-                    onClicked: root.currentTime = Math.min(root.duration, root.currentTime + 5)
+                    onClicked: audioPlayer.seekRelative(5)
                     background: Rectangle { color: parent.hovered ? "#28273c" : "transparent"; radius: 18 }
                     contentItem: Text { text: parent.text; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }

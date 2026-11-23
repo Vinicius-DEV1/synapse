@@ -102,4 +102,34 @@ ColumnLayout {
         var arr = selectedReminders.filter(function(k) { return k !== key })
         selectedReminders = arr
     }
+
+    function getMinutesArray() {
+        var map = { "0m": 0, "5m": 5, "15m": 15, "30m": 30, "1h": 60, "1d": 1440 }
+        var result = []
+        for (var i = 0; i < selectedReminders.length; i++) {
+            var k = selectedReminders[i]
+            if (typeof k === "number") {
+                result.push(k)
+            } else if (map[k] !== undefined) {
+                result.push(map[k])
+            }
+        }
+        return result
+    }
+
+    function setFromMinutesArray(arr) {
+        if (!arr || !Array.isArray(arr)) {
+            selectedReminders = ["15m"]
+            return
+        }
+        var revMap = { 0: "0m", 5: "5m", 15: "15m", 30: "30m", 60: "1h", 1440: "1d" }
+        var res = []
+        for (var i = 0; i < arr.length; i++) {
+            var m = arr[i]
+            if (revMap[m] !== undefined) {
+                res.push(revMap[m])
+            }
+        }
+        selectedReminders = res
+    }
 }

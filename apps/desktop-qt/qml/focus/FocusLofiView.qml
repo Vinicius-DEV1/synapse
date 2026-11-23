@@ -350,13 +350,8 @@ Rectangle {
         visible: focusRoot.isSettingsModalOpen
         onClosed: focusRoot.isSettingsModalOpen = false
         onClearHistoryRequested: function(range) {
-            if (focusRoot.focusSessions.length > 0) {
-                // soft delete sessions matching range
-                for (var i = 0; i < focusRoot.focusSessions.length; i++) {
-                    dataController.deleteFocusSession(String(focusRoot.focusSessions[i].id))
-                }
-                focusRoot.refreshData()
-            }
+            dataController.clearFocusSessions(range)
+            focusRoot.refreshData()
             focusRoot.isSettingsModalOpen = false
         }
     }
@@ -389,11 +384,64 @@ Rectangle {
         }
     }
 
+    property var activeAlarmData: null
+    property string lastTriggeredMinute: ""
+
+    Timer {
+        id: alarmSchedulerTimer
+        interval: 10000 // checks every 10 seconds
+        running: true
+        repeat: true
+        onTriggered: {
+            var now = new Date()
+            var currentMinuteStr = Qt.formatDateTime(now, "yyyy-MM-dd HH:mm")
+            var currentTime = Qt.formatDateTime(now, "HH:mm")
+            var dayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, etc.
+
+            if (focusRoot.lastTriggeredMinute === currentMinuteStr) return
+
+            for (var i = 0; i < focusRoot.alarms.length; i++) {
+                var alm = focusRoot.alarms[i]
+                if (alm.enabled && alm.time === currentTime) {
+                    var days = alm.days
+                    if (typeof days === "string") {
+                        try { days = JSON.parse(days) } catch(e) { days = [] }
+                    }
+                    var matchDay = (!days || days.length === 0 || days.indexOf(dayOfWeek) !== -1)
+                    if (matchDay) {
+                        focusRoot.lastTriggeredMinute = currentMinuteStr
+                        focusRoot.activeAlarmData = alm
+                        alarmTriggerModal.timeStr = alm.time
+                        alarmTriggerModal.label = alm.label || "Alarme de Foco"
+                        focusRoot.isAlarmTriggerModalOpen = true
+                        break
+                    }
+                }
+            }
+        }
+    }
+
     AlarmTriggerModal {
+        id: alarmTriggerModal
         visible: focusRoot.isAlarmTriggerModalOpen
-        onDismiss: focusRoot.isAlarmTriggerModalOpen = false
+        onDismiss: {
+            if (focusRoot.activeAlarmData && focusRoot.activeAlarmData.id) {
+                var days = focusRoot.activeAlarmData.days
+                if (typeof days === "string") {
+                    try { days = JSON.parse(days) } catch(e) { days = [] }
+                }
+                if (!days || days.length === 0) {
+                    dataController.toggleAlarm(focusRoot.activeAlarmData.id)
+                    focusRoot.refreshData()
+                }
+            }
+            focusRoot.isAlarmTriggerModalOpen = false
+            focusRoot.activeAlarmData = null
+        }
         onSnooze: function(mins) {
             focusRoot.isAlarmTriggerModalOpen = false
+            var snoozeDate = new Date(new Date().getTime() + mins * 60000)
+            focusRoot.lastTriggeredMinute = Qt.formatDateTime(snoozeDate, "yyyy-MM-dd HH:mm")
         }
     }
 

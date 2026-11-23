@@ -11,9 +11,56 @@ Rectangle {
 
     property string importedContent: "[]"
     property string diagramTitle: "Diagrama Importado"
+    property string errorMessage: ""
 
     signal closed()
     signal importConfirmed(string title, string content)
+
+    function normalizeDiagramContent(rawText) {
+        try {
+            var data = JSON.parse(rawText)
+            if (Array.isArray(data)) return JSON.stringify(data)
+            // Excalidraw format: { elements: [ ... ] }
+            if (data.elements && Array.isArray(data.elements)) {
+                var converted = []
+                for (var i = 0; i < data.elements.length; i++) {
+                    var el = data.elements[i]
+                    if (el.isDeleted) continue
+                    var stroke = el.strokeColor || "#8b5cf6"
+                    var lw = el.strokeWidth || 2
+                    if (el.type === "rectangle") {
+                        converted.push({ type: "rect", x: el.x || 0, y: el.y || 0, w: el.width || 100, h: el.height || 100, color: stroke, lineWidth: lw })
+                    } else if (el.type === "ellipse") {
+                        converted.push({ type: "circle", x: el.x || 0, y: el.y || 0, w: el.width || 100, h: el.height || 100, color: stroke, lineWidth: lw })
+                    } else if (el.type === "freedraw" && el.points && el.points.length > 0) {
+                        var pts = []
+                        for (var p = 0; p < el.points.length; p++) {
+                            pts.push({ x: (el.x || 0) + el.points[p][0], y: (el.y || 0) + el.points[p][1] })
+                        }
+                        converted.push({ type: "path", points: pts, color: stroke, lineWidth: lw })
+                    }
+                }
+                return JSON.stringify(converted)
+            }
+            // Tldraw format
+            if (data.records && Array.isArray(data.records)) {
+                var tldrawConverted = []
+                for (var r = 0; r < data.records.length; r++) {
+                    var rec = data.records[r]
+                    if (rec.typeName === "shape") {
+                        var props = rec.props || {}
+                        if (rec.type === "geo") {
+                            tldrawConverted.push({ type: props.geo === "ellipse" ? "circle" : "rect", x: rec.x || 0, y: rec.y || 0, w: props.w || 100, h: props.h || 100, color: props.color || "#8b5cf6", lineWidth: 2 })
+                        }
+                    }
+                }
+                if (tldrawConverted.length > 0) return JSON.stringify(tldrawConverted)
+            }
+        } catch (e) {
+            console.warn("[DiagramImport] Falha ao analisar JSON:", e)
+        }
+        return rawText
+    }
 
     MouseArea {
         anchors.fill: parent
@@ -21,8 +68,8 @@ Rectangle {
     }
 
     Rectangle {
-        width: Math.min(500, parent.width - 40)
-        height: Math.min(480, parent.height - 40)
+        width: Math.min(520, parent.width - 40)
+        height: Math.min(500, parent.height - 40)
         radius: 20
         color: "#161524"
         border.color: "#338b5cf6"
@@ -58,7 +105,7 @@ Rectangle {
             }
 
             Text {
-                text: "Importe diagramas a partir de arquivos .excalidraw, .tldr ou JSON estruturado."
+                text: "Importe diagramas vetoriais a partir de arquivos JSON estruturados ou formatos Excalidraw / Tldraw."
                 color: "#a7a9be"
                 font.pixelSize: 12
                 wrapMode: Text.WordWrap
@@ -108,7 +155,7 @@ Rectangle {
                     spacing: 8
                     Text { text: "📂"; font.pixelSize: 16 }
                     Text {
-                        text: "Selecionar Arquivo (.excalidraw, .tldr, .json)..."
+                        text: "Selecionar Arquivo (.json, .excalidraw, .tldr)..."
                         color: "#c4b5fd"
                         font.pixelSize: 13
                         font.bold: true
@@ -124,7 +171,7 @@ Rectangle {
                 spacing: 6
 
                 Text {
-                    text: "CONTEÚDO JSON / VETORIAL"
+                    text: "CONTEÚDO ESTRUTURADO"
                     color: "#a7a9be"
                     font.pixelSize: 11
                     font.bold: true
@@ -146,6 +193,13 @@ Rectangle {
                         border.color: contentArea.activeFocus ? "#8b5cf6" : "#2e2f3e"
                         border.width: 1
                     }
+                }
+
+                Text {
+                    visible: importModalRoot.errorMessage.length > 0
+                    text: importModalRoot.errorMessage
+                    color: "#fb7185"
+                    font.pixelSize: 11
                 }
             }
 
@@ -193,9 +247,17 @@ Rectangle {
                     }
                     onClicked: {
                         var title = titleField.text.trim() || "Diagrama Importado"
-                        var content = contentArea.text.trim() || "[]"
-                        importModalRoot.importConfirmed(title, content)
-                        importModalRoot.closed()
+                        var raw = contentArea.text.trim()
+                        if (raw.length === 0) raw = "[]"
+                        var normalized = importModalRoot.normalizeDiagramContent(raw)
+                        try {
+                            JSON.parse(normalized)
+                            importModalRoot.errorMessage = ""
+                            importModalRoot.importConfirmed(title, normalized)
+                            importModalRoot.closed()
+                        } catch (err) {
+                            importModalRoot.errorMessage = "Formato de arquivo ou JSON inválido. Verifique o conteúdo."
+                        }
                     }
                 }
             }
@@ -205,17 +267,17 @@ Rectangle {
     FileDialog {
         id: openFileDialog
         title: "Selecionar Arquivo de Diagrama"
-        nameFilters: ["Arquivos de Diagrama (*.excalidraw *.tldr *.json)", "Todos os Arquivos (*.*)"]
+        nameFilters: ["Arquivos de Diagrama (*.json *.excalidraw *.tldr)", "Todos os Arquivos (*.*)"]
         onAccepted: {
             var path = selectedFile.toString()
             if (path.indexOf("file://") === 0) path = path.substring(7)
             var parts = path.split("/")
             var fileName = parts[parts.length - 1]
-            titleField.text = fileName.replace(/\\.[^/.]+$/, "")
-            // Read file content
+            titleField.text = fileName.replace(/\.[^/.]+$/, "")
             var content = dataController.readLocalTextFile(path)
             if (content && content.length > 0) {
                 contentArea.text = content
+                importModalRoot.errorMessage = ""
             }
         }
     }

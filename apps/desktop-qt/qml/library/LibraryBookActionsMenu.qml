@@ -16,6 +16,8 @@ ToolButton {
     signal collectionToggleRequested(var book, string collectionId, bool checked)
     signal statusChangeRequested(var book, string status)
     signal archiveToggleRequested(var book, bool archived)
+    signal downloadOfflineRequested(var book)
+    signal clearCacheRequested(var book)
 
     visible: cardHovered
     text: "⋮"
@@ -58,6 +60,17 @@ ToolButton {
         MenuItem {
             text: actionsMenu.archived ? "Restore to library" : "Archive book"
             onTriggered: actionsMenu.archiveToggleRequested(actionsMenu.book, !actionsMenu.archived)
+        }
+        MenuSeparator { visible: !!actionsMenu.book.drive_file_id }
+        MenuItem {
+            visible: !!actionsMenu.book.drive_file_id && !actionsMenu.book.is_local
+            text: "📥 Baixar para uso offline"
+            onTriggered: actionsMenu.downloadOfflineRequested(actionsMenu.book)
+        }
+        MenuItem {
+            visible: !!actionsMenu.book.drive_file_id && !!actionsMenu.book.is_local
+            text: "🗑 Liberar espaço (remover cache local)"
+            onTriggered: actionsMenu.clearCacheRequested(actionsMenu.book)
         }
         MenuSeparator {}
         Menu {

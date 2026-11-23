@@ -33,12 +33,7 @@ Rectangle {
         accounts = dataController.getAccounts()
         transactions = dataController.getTransactions(transactionTypeFilter, selectedAccountId)
         wishlistItems = dataController.getWishlist()
-        if (loans.length === 0) {
-            loans = [
-                { id: "1", title: "Empréstimo Amigo - João", type: "lent", amount: 500, paid_amount: 200 },
-                { id: "2", title: "Financiamento Equipamento", type: "borrowed", amount: 1200, paid_amount: 600 }
-            ]
-        }
+        loans = dataController.getLoans()
     }
 
     function filteredTransactions() {
@@ -153,8 +148,8 @@ Rectangle {
                     financeRoot.isPaymentModalOpen = true
                 }
                 onDeleteLoanRequested: function(id) {
-                    var arr = financeRoot.loans.filter(function(l) { return l.id !== id })
-                    financeRoot.loans = arr
+                    dataController.deleteLoan(id)
+                    financeRoot.refreshData()
                 }
             }
         }
@@ -256,17 +251,10 @@ Rectangle {
     FinancePaymentModal {
         visible: financeRoot.isPaymentModalOpen
         loan: financeRoot.selectedLoan
+        accounts: financeRoot.accounts
         onCloseRequested: financeRoot.isPaymentModalOpen = false
-        onPaymentRecorded: function(loanId, amount, date, notes) {
-            var arr = [...financeRoot.loans]
-            for (var i = 0; i < arr.length; i++) {
-                if (arr[i].id === loanId) {
-                    arr[i].paid_amount = Number(arr[i].paid_amount || 0) + amount
-                    break
-                }
-            }
-            financeRoot.loans = arr
-            dataController.addTransaction("Pagamento Empréstimo", amount, "expense", "Empréstimos", date, "")
+        onPaymentRecorded: function(loanId, amount, accountId, date, notes) {
+            dataController.recordLoanPayment(loanId, amount, accountId, date)
             financeRoot.refreshData()
         }
     }

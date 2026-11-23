@@ -26,6 +26,7 @@ Rectangle {
     property int readerFontSize: 19
     property string readerFontFamily: "Georgia"
     property string readerTheme: "dark"
+    property real zoomFactor: 1.0
 
     signal backRequested()
 
@@ -180,6 +181,10 @@ Rectangle {
             onSearchRequested: searchHost.openSearch()
             onTypographyRequested: typographyModal.openAt(reader.width - 340, 76)
             onBookmarkRequested: annotationActions.saveCurrentBookmark()
+            onZoomInRequested: reader.zoomFactor = Math.min(2.5, reader.zoomFactor + 0.15)
+            onZoomOutRequested: reader.zoomFactor = Math.max(0.5, reader.zoomFactor - 0.15)
+            onFitWidthRequested: reader.zoomFactor = 1.0
+            onPageJumpRequested: function(p) { reader.navigateToPage(p) }
         }
 
         RowLayout {
@@ -197,14 +202,24 @@ Rectangle {
                 border.color: "#12ffffff"
                 clip: true
 
-                Image {
+                Flickable {
+                    id: pdfFlickable
                     anchors.fill: parent
                     anchors.margins: 16
-                    source: reader.pdfImageUrl
-                    fillMode: Image.PreserveAspectFit
-                    asynchronous: true
-                    cache: false
+                    clip: true
                     visible: reader.format === "pdf" && reader.pdfImageUrl.length > 0
+                    contentWidth: Math.max(width, pdfImg.width)
+                    contentHeight: Math.max(height, pdfImg.height)
+
+                    Image {
+                        id: pdfImg
+                        width: parent.width * reader.zoomFactor
+                        height: implicitHeight > 0 && implicitWidth > 0 ? (width * implicitHeight / implicitWidth) : parent.height * reader.zoomFactor
+                        source: reader.pdfImageUrl
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                        cache: false
+                    }
                 }
 
                 ScrollView {
@@ -227,7 +242,7 @@ Rectangle {
                         color: reader.readerTheme === "sepia" ? "#5b4636"
                              : (reader.readerTheme === "light" ? "#18181b" : "#e8e8ee")
                         selectionColor: "#6d4fc2"
-                        font.pixelSize: reader.readerFontSize
+                        font.pixelSize: Math.round(reader.readerFontSize * reader.zoomFactor)
                         font.family: reader.readerFontFamily
                         onSelectedTextChanged: {
                             if (selectedText.length > 0) {
@@ -238,6 +253,56 @@ Rectangle {
                             var target = String(link).toLowerCase()
                             if (target.startsWith("https://") || target.startsWith("http://") || target.startsWith("mailto:")) {
                                 Qt.openUrlExternally(link)
+                            }
+                        }
+                    }
+                }
+
+                // Highlights on current page indicator bar
+                RowLayout {
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottomMargin: 14
+                    spacing: 8
+                    z: 50
+                    visible: {
+                        if (!reader.highlights || reader.highlights.length === 0) return false
+                        for (var i = 0; i < reader.highlights.length; i++) {
+                            if (reader.highlights[i].page_number === reader.currentPage) return true
+                        }
+                        return false
+                    }
+
+                    Repeater {
+                        model: {
+                            var list = []
+                            if (reader.highlights) {
+                                for (var i = 0; i < reader.highlights.length; i++) {
+                                    var hl = reader.highlights[i]
+                                    if (hl.page_number === reader.currentPage) list.push(hl)
+                                }
+                            }
+                            return list
+                        }
+                        delegate: Rectangle {
+                            height: 24
+                            radius: 12
+                            color: "#cc161524"
+                            border.color: modelData.color || "#8b5cf6"
+                            border.width: 1
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                spacing: 6
+                                Rectangle { width: 8; height: 8; radius: 4; color: modelData.color || "#8b5cf6" }
+                                Text {
+                                    text: (modelData.text_content || modelData.selected_text || "").substring(0, 28) + ((modelData.text_content || modelData.selected_text || "").length > 28 ? "…" : "")
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                    Layout.maximumWidth: 200
+                                }
                             }
                         }
                     }

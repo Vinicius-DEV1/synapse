@@ -20,7 +20,7 @@ ColumnLayout {
     property string filterText: ""
     property string selectedCollectionName: ""
     property int totalBooksCount: 0
-    property int viewportWidth: 1366
+    property int viewportWidth: width > 0 ? width : 1366
     readonly property int columnCount: viewportWidth >= 1280 ? 6
                                    : viewportWidth >= 1024 ? 5
                                    : viewportWidth >= 768 ? 4
@@ -43,6 +43,8 @@ ColumnLayout {
     signal bookAiEnrichRequested(var book)
     signal bookCollectionToggleRequested(var book, string collectionId, bool checked)
     signal bookStatusChangeRequested(var book, string status)
+    signal bookDownloadOfflineRequested(var book)
+    signal bookEvictCacheRequested(var book)
     signal bookArchiveToggleRequested(var book, bool archived)
 
     function progressFor(book) {
@@ -159,6 +161,12 @@ ColumnLayout {
                         }
                         onArchiveToggleRequested: function(selectedBook, archived) {
                             gridRoot.bookArchiveToggleRequested(selectedBook, archived)
+                        }
+                        onDownloadOfflineRequested: function(selectedBook) {
+                            gridRoot.bookDownloadOfflineRequested(selectedBook)
+                        }
+                        onEvictCacheRequested: function(selectedBook) {
+                            gridRoot.bookEvictCacheRequested(selectedBook)
                         }
                     }
                     Image {

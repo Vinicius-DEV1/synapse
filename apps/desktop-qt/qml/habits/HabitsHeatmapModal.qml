@@ -10,9 +10,56 @@ Rectangle {
     z: 130
 
     property var habit: null
-    property int totalCheckinsCount: 42
-    property int currentStreakDays: 8
-    property int longestStreakDays: 21
+    property int totalCheckinsCount: 0
+    property int currentStreakDays: 0
+    property int longestStreakDays: 0
+    property var logDateSet: ({})
+    property var dateList: []
+
+    function reloadData() {
+        if (!habit || !habit.id) return
+        var now = new Date()
+        var todayIso = Qt.formatDate(now, "yyyy-MM-dd")
+        var stats = dataController.getHabitStats(habit.id, todayIso)
+        totalCheckinsCount = stats.totalCompleted || 0
+        currentStreakDays = stats.currentStreak || 0
+        longestStreakDays = stats.bestStreak || 0
+
+        // 52 weeks = 364 days ending today
+        var start = new Date(now.getTime() - 363 * 86400000)
+        var startIso = Qt.formatDate(start, "yyyy-MM-dd")
+        var logs = dataController.getHabitLogsRange(startIso, todayIso)
+        var set = {}
+        if (logs && logs.length > 0) {
+            for (var i = 0; i < logs.length; i++) {
+                var l = logs[i]
+                if (l.habit_id === habit.id) {
+                    set[l.date] = true
+                }
+            }
+        }
+        logDateSet = set
+
+        // Precompute dates for 52 columns x 7 rows
+        var days = []
+        for (var w = 0; w < 52; w++) {
+            var weekDays = []
+            for (var d = 0; d < 7; d++) {
+                var dayOffset = w * 7 + d
+                var dayDate = new Date(start.getTime() + dayOffset * 86400000)
+                var dIso = Qt.formatDate(dayDate, "yyyy-MM-dd")
+                weekDays.push({
+                    date: dIso,
+                    completed: (set[dIso] === true)
+                })
+            }
+            days.push(weekDays)
+        }
+        dateList = days
+    }
+
+    onHabitChanged: reloadData()
+    onVisibleChanged: if (visible) reloadData()
 
     signal closeRequested()
 
@@ -148,11 +195,12 @@ Rectangle {
                         spacing: 3
 
                         Repeater {
-                            model: 52 // 52 weeks
+                            model: heatmapModalRoot.dateList.length > 0 ? heatmapModalRoot.dateList.length : 52
 
                             ColumnLayout {
                                 id: weekCol
                                 property int weekIndex: index
+                                property var weekDays: (heatmapModalRoot.dateList.length > weekIndex) ? heatmapModalRoot.dateList[weekIndex] : []
                                 spacing: 3
 
                                 Repeater {
@@ -164,17 +212,14 @@ Rectangle {
                                         height: 11
                                         radius: 2
 
-                                        property int dayVal: ((weekCol.weekIndex * 7 + index) % 4 === 0) ? 1 : (((weekCol.weekIndex * 3 + index) % 5 === 0) ? 2 : 0)
+                                        property var dayInfo: (weekCol.weekDays.length > index) ? weekCol.weekDays[index] : null
+                                        property bool isCompleted: dayInfo ? dayInfo.completed : false
+                                        property string dayDateStr: dayInfo ? dayInfo.date : ""
 
-                                        color: {
-                                            if (dayVal === 0) return "#1f1d2e"
-                                            if (dayVal === 1) return "#065f46"
-                                            if (dayVal === 2) return "#10b981"
-                                            return "#34d399"
-                                        }
+                                        color: isCompleted ? (heatmapModalRoot.habit && heatmapModalRoot.habit.color ? heatmapModalRoot.habit.color : "#10b981") : "#1f1d2e"
 
                                         ToolTip.visible: cellMouse.containsMouse
-                                        ToolTip.text: "Dia " + (weekCol.weekIndex * 7 + index + 1) + ": " + (dayVal > 0 ? "Concluído" : "Pendente")
+                                        ToolTip.text: (dayDateStr ? dayDateStr : ("Dia " + (weekCol.weekIndex * 7 + index + 1))) + ": " + (isCompleted ? "Concluído" : "Pendente")
 
                                         MouseArea {
                                             id: cellMouse

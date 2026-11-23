@@ -11,6 +11,7 @@ Rectangle {
 
     property bool isSearching: false
     property var searchResults: []
+    property string statusMessage: "Digite o nome de uma obra e pressione Pesquisar."
 
     signal closeRequested()
     signal mediaSelected(var mediaData)
@@ -80,7 +81,8 @@ Rectangle {
                 }
 
                 Button {
-                    text: "Pesquisar"
+                    text: searchModalRoot.isSearching ? "Buscando…" : "Pesquisar"
+                    enabled: !searchModalRoot.isSearching
                     background: Rectangle { color: "#8b5cf6"; radius: 8 }
                     contentItem: Text { text: parent.text; color: "#ffffff"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: performSearch()
@@ -105,7 +107,7 @@ Rectangle {
 
                     delegate: Rectangle {
                         width: resList.width
-                        height: 72
+                        height: 76
                         radius: 8
                         color: "#1a1829"
                         border.color: "#2e2b44"
@@ -117,10 +119,23 @@ Rectangle {
 
                             Rectangle {
                                 width: 36
-                                height: 50
+                                height: 54
                                 radius: 4
                                 color: "#232135"
-                                Text { anchors.centerIn: parent; text: "🎬"; font.pixelSize: 16 }
+                                clip: true
+
+                                Image {
+                                    anchors.fill: parent
+                                    source: modelData.cover || ""
+                                    fillMode: Image.PreserveAspectCrop
+                                    visible: (modelData.cover || "").length > 0
+                                }
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "🎬"
+                                    font.pixelSize: 16
+                                    visible: !(modelData.cover && modelData.cover.length > 0)
+                                }
                             }
 
                             ColumnLayout {
@@ -137,9 +152,17 @@ Rectangle {
                                 }
 
                                 Text {
-                                    text: (modelData.type || "Obra") + " • " + (modelData.year || "2024") + " • " + (modelData.episodes ? modelData.episodes + " eps" : "Filme")
+                                    text: (modelData.type || "Obra") + " • " + (modelData.year || "—") + (modelData.episodes ? " • " + modelData.episodes + " eps" : "")
                                     color: "#94a1b2"
                                     font.pixelSize: 11
+                                }
+
+                                Text {
+                                    text: modelData.synopsis || ""
+                                    color: "#6b7280"
+                                    font.pixelSize: 10
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
                             }
 
@@ -157,7 +180,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: searchModalRoot.isSearching ? "Buscando metadados..." : "Digite o nome de uma obra e pressione Pesquisar."
+                        text: searchModalRoot.statusMessage
                         color: "#5c587a"
                         font.pixelSize: 12
                         visible: searchModalRoot.searchResults.length === 0
@@ -171,13 +194,42 @@ Rectangle {
         var query = qInput.text.trim()
         if (query.length === 0) return
         isSearching = true
+        searchResults = []
+        statusMessage = "Buscando metadados na base aberta TVMaze/Jikan..."
 
-        // Simulated fast multi-provider lookup results
-        searchResults = [
-            { title: query, type: "anime", year: "2024", episodes: 24, synopsis: "Sinopse detalhada e metadados sincronizados para " + query + "." },
-            { title: query + " (Movie)", type: "filme", year: "2023", episodes: 1, synopsis: "Edição cinematográfica e lançamento de " + query + "." },
-            { title: query + " Season 2", type: "série", year: "2025", episodes: 12, synopsis: "Continuação com novos arcos e episódios de " + query + "." }
-        ]
-        isSearching = false
+        var xhr = new XMLHttpRequest()
+        xhr.open("GET", "https://api.tvmaze.com/search/shows?q=" + encodeURIComponent(query))
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                isSearching = false
+                if (xhr.status === 200) {
+                    try {
+                        var list = JSON.parse(xhr.responseText)
+                        if (list && list.length > 0) {
+                            var parsed = []
+                            for (var i = 0; i < list.length && i < 10; i++) {
+                                var show = list[i].show
+                                var cleanSummary = show.summary ? show.summary.replace(/<[^>]*>/g, "") : ""
+                                parsed.push({
+                                    title: show.name || query,
+                                    type: show.type && show.type.toLowerCase() === "animation" ? "anime" : "série",
+                                    year: show.premiered ? show.premiered.substring(0, 4) : "—",
+                                    episodes: show.weight ? Math.min(100, Math.max(1, show.weight)) : 1,
+                                    synopsis: cleanSummary,
+                                    cover: show.image && show.image.medium ? show.image.medium : ""
+                                })
+                            }
+                            searchResults = parsed
+                            statusMessage = ""
+                            return
+                        }
+                    } catch (e) {
+                        console.warn("[CultureSearch] JSON parse error:", e)
+                    }
+                }
+                statusMessage = "Nenhum resultado externo encontrado para ‘" + query + "’. Verifique o nome ou conexão."
+            }
+        }
+        xhr.send()
     }
 }

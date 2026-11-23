@@ -26,6 +26,25 @@ Rectangle {
         }
     }
 
+    function formatReadingStatus(status) {
+        if (status === "finished" || (totalPages > 0 && currentPage >= totalPages)) return "Concluído"
+        if (status === "reading" || currentPage > 0) return "Lendo"
+        return "Não Iniciado"
+    }
+
+    function formatTimestamp(ts) {
+        if (!ts || ts.length === 0) return "—"
+        try {
+            var d = new Date(ts)
+            if (isNaN(d.getTime())) return ts
+            return (d.getDate() < 10 ? "0" : "") + d.getDate() + "/" +
+                   (d.getMonth() + 1 < 10 ? "0" : "") + (d.getMonth() + 1) + "/" +
+                   d.getFullYear()
+        } catch (e) {
+            return ts
+        }
+    }
+
     MouseArea {
         anchors.fill: parent
         onClicked: detailsRoot.closed()
@@ -71,31 +90,38 @@ Rectangle {
 
     Rectangle {
         anchors.centerIn: parent
-        width: 480
-        height: 440
+        width: Math.min(560, parent.width - 40)
+        height: Math.min(640, parent.height - 40)
         radius: 16
         color: "#161524"
-        border.color: "#14ffffff"
+        border.color: "#22ffffff"
         border.width: 1
+        clip: true
 
-        MouseArea {
-            anchors.fill: parent
-        }
+        MouseArea { anchors.fill: parent }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 28
-            spacing: 20
+            spacing: 0
 
-            // Modal Header
+            // Header
             RowLayout {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 64
+                Layout.leftMargin: 24
+                Layout.rightMargin: 24
+                spacing: 14
+
                 Rectangle {
-                    width: 36; height: 36; radius: 8
+                    width: 40
+                    height: 40
+                    radius: 10
                     color: detailsRoot.book ? (detailsRoot.book.cover_color || "#7c3aed") : "#7c3aed"
-                    Text { anchors.centerIn: parent; text: "📖"; font.pixelSize: 18 }
+                    Text { anchors.centerIn: parent; text: "📖"; font.pixelSize: 20 }
                 }
+
                 ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: 2
                     Text {
                         text: detailsRoot.book ? detailsRoot.book.title : ""
@@ -103,19 +129,22 @@ Rectangle {
                         font.pixelSize: 16
                         font.bold: true
                         elide: Text.ElideRight
-                        Layout.preferredWidth: 320
+                        Layout.fillWidth: true
                     }
                     Text {
                         text: detailsRoot.book ? (detailsRoot.book.author || "Autor Desconhecido") : ""
                         color: "#a7a9be"
                         font.pixelSize: 12
+                        elide: Text.ElideRight
                     }
                 }
-                Item { Layout.fillWidth: true }
-                Text {
-                    text: "✕"
-                    color: "#a7a9be"
-                    font.pixelSize: 16
+
+                Rectangle {
+                    width: 32
+                    height: 32
+                    radius: 8
+                    color: "#18ffffff"
+                    Text { anchors.centerIn: parent; text: "✕"; color: "#a7a9be"; font.pixelSize: 13 }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -124,88 +153,233 @@ Rectangle {
                 }
             }
 
-            // Progress Preview Bar
-            ColumnLayout {
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#14ffffff" }
+
+            // Scrollable Content
+            ScrollView {
                 Layout.fillWidth: true
-                spacing: 8
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: availableWidth
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    Text {
-                        text: "Progresso de Leitura: " + (detailsRoot.totalPages > 0 ? Math.round((detailsRoot.currentPage / detailsRoot.totalPages) * 100) : 0) + "%"
-                        color: "#a7a9be"
-                        font.pixelSize: 12
-                    }
-                    Item { Layout.fillWidth: true }
-                    Text {
-                        text: detailsRoot.currentPage + " de " + detailsRoot.totalPages + " págs"
-                        color: "#c4b5fd"
-                        font.pixelSize: 12
-                        font.bold: true
-                    }
-                }
+                ColumnLayout {
+                    width: parent.width
+                    anchors.margins: 24
+                    spacing: 16
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 8
-                    radius: 4
-                    color: "#15141b"
+                    // Sync & Storage Status Cards
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        // Cloud Status
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 74
+                            radius: 10
+                            color: "#12111c"
+                            border.color: "#18ffffff"
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 4
+
+                                RowLayout {
+                                    spacing: 6
+                                    Text { text: "☁️"; font.pixelSize: 12 }
+                                    Text { text: "Status na Nuvem"; color: "#94a3b8"; font.pixelSize: 11; font.bold: true }
+                                }
+
+                                Text {
+                                    text: detailsRoot.book && detailsRoot.book.drive_file_id ? "Sincronizado no Drive" : "Disponível Apenas Localmente"
+                                    color: detailsRoot.book && detailsRoot.book.drive_file_id ? "#4ade80" : "#fbbf24"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                }
+                            }
+                        }
+
+                        // Local Storage Status
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 74
+                            radius: 10
+                            color: "#12111c"
+                            border.color: "#18ffffff"
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 4
+
+                                RowLayout {
+                                    spacing: 6
+                                    Text { text: "💾"; font.pixelSize: 12 }
+                                    Text { text: "Arquivo Local"; color: "#94a3b8"; font.pixelSize: 11; font.bold: true }
+                                }
+
+                                Text {
+                                    text: detailsRoot.book && detailsRoot.book.file_path ? "Disponível no Dispositivo" : "Caminho não indexado"
+                                    color: detailsRoot.book && detailsRoot.book.file_path ? "#38bdf8" : "#94a3b8"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                }
+                            }
+                        }
+                    }
+
+                    // Reading Stats Card
                     Rectangle {
-                        width: parent.width * (detailsRoot.totalPages > 0 ? Math.min(1.0, detailsRoot.currentPage / detailsRoot.totalPages) : 0.05)
-                        height: parent.height
-                        radius: 4
-                        color: detailsRoot.currentPage >= detailsRoot.totalPages ? "#10b981" : "#7c3aed"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                        radius: 12
+                        color: "#12111c"
+                        border.color: "#18ffffff"
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: "Progresso de Leitura"; color: "#a78bfa"; font.pixelSize: 12; font.bold: true }
+                                Item { Layout.fillWidth: true }
+                                Text {
+                                    text: detailsRoot.currentPage + " / " + detailsRoot.totalPages + " págs (" +
+                                          (detailsRoot.totalPages > 0 ? Math.round((detailsRoot.currentPage / detailsRoot.totalPages) * 100) : 0) + "%)"
+                                    color: "#c4b5fd"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                }
+                            }
+
+                            // Progress Bar
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 8
+                                radius: 4
+                                color: "#1f1d2e"
+                                Rectangle {
+                                    width: parent.width * (detailsRoot.totalPages > 0 ? Math.min(1.0, detailsRoot.currentPage / detailsRoot.totalPages) : 0.05)
+                                    height: parent.height
+                                    radius: 4
+                                    color: detailsRoot.currentPage >= detailsRoot.totalPages && detailsRoot.totalPages > 0 ? "#10b981" : "#7c3aed"
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text {
+                                    text: "Status: " + detailsRoot.formatReadingStatus(detailsRoot.book ? detailsRoot.book.reading_status : "")
+                                    color: "#94a3b8"
+                                    font.pixelSize: 11
+                                }
+                                Item { Layout.fillWidth: true }
+                                Text {
+                                    text: "Última leitura: " + detailsRoot.formatTimestamp(detailsRoot.book ? detailsRoot.book.last_read_at : "")
+                                    color: "#94a3b8"
+                                    font.pixelSize: 11
+                                }
+                            }
+                        }
+                    }
+
+                    // Metadata Details Grid
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 104
+                        radius: 12
+                        color: "#12111c"
+                        border.color: "#18ffffff"
+
+                        GridLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            columns: 2
+                            rowSpacing: 8
+                            columnSpacing: 16
+
+                            ColumnLayout {
+                                spacing: 2
+                                Text { text: "EDITORA"; color: "#64748b"; font.pixelSize: 10; font.bold: true }
+                                Text { text: detailsRoot.book && detailsRoot.book.publisher ? detailsRoot.book.publisher : "—"; color: "#fffffe"; font.pixelSize: 12; elide: Text.ElideRight }
+                            }
+
+                            ColumnLayout {
+                                spacing: 2
+                                Text { text: "ANO DE PUBLICAÇÃO"; color: "#64748b"; font.pixelSize: 10; font.bold: true }
+                                Text { text: detailsRoot.book && detailsRoot.book.published_year ? "" + detailsRoot.book.published_year : "—"; color: "#fffffe"; font.pixelSize: 12 }
+                            }
+
+                            ColumnLayout {
+                                spacing: 2
+                                Text { text: "IDIOMA"; color: "#64748b"; font.pixelSize: 10; font.bold: true }
+                                Text { text: detailsRoot.book && detailsRoot.book.language ? detailsRoot.book.language.toUpperCase() : "PORTUGUÊS"; color: "#fffffe"; font.pixelSize: 12 }
+                            }
+
+                            ColumnLayout {
+                                spacing: 2
+                                Text { text: "ADICIONADO EM"; color: "#64748b"; font.pixelSize: 10; font.bold: true }
+                                Text { text: detailsRoot.book ? detailsRoot.formatTimestamp(detailsRoot.book.created_at) : "—"; color: "#fffffe"; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+
+                    // Open In Reader Button
+                    Rectangle {
+                        visible: detailsRoot.book && detailsRoot.book.file_path
+                        Layout.fillWidth: true
+                        height: 42
+                        radius: 8
+                        color: "#252139"
+                        border.color: "#3d8b5cf6"
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            Text { text: "📖"; font.pixelSize: 14 }
+                            Text {
+                                text: detailsRoot.book && detailsRoot.book.current_page > 0 ? "Continuar Leitura no Leitor Nativo" : "Abrir no Leitor Nativo"
+                                color: "#ddd6fe"
+                                font.pixelSize: 13
+                                font.bold: true
+                            }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (detailsRoot.book) detailsRoot.bookOpenRequested(detailsRoot.book)
+                            }
+                        }
+                    }
+
+                    // Progress Stepper
+                    BookProgressStepper {
+                        currentPage: detailsRoot.currentPage
+                        totalPages: detailsRoot.totalPages
+                        onPageChanged: function(newPage) {
+                            detailsRoot.currentPage = newPage
+                        }
                     }
                 }
             }
 
-            // Page Adjustment Steppers
-            Rectangle {
-                visible: detailsRoot.book && detailsRoot.book.file_path
-                Layout.fillWidth: true
-                height: 38
-                radius: 8
-                color: "#252139"
-                border.color: "#3d8b5cf6"
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 7
-                    Text { text: "▸"; color: "#c4b5fd"; font.pixelSize: 14; font.bold: true }
-                    Text {
-                        text: detailsRoot.book && detailsRoot.book.current_page > 0 ? "Continuar leitura" : "Abrir no leitor nativo"
-                        color: "#ddd6fe"
-                        font.pixelSize: 12
-                        font.bold: true
-                    }
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (detailsRoot.book) detailsRoot.bookOpenRequested(detailsRoot.book)
-                    }
-                }
-            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#14ffffff" }
 
-            BookProgressStepper {
-                currentPage: detailsRoot.currentPage
-                totalPages: detailsRoot.totalPages
-                onPageChanged: function(newPage) {
-                    detailsRoot.currentPage = newPage
-                }
-            }
-
-            Item { Layout.fillHeight: true }
-
-            // Actions Footer: Delete and Save
+            // Actions Footer
             RowLayout {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 64
+                Layout.leftMargin: 24
+                Layout.rightMargin: 24
                 spacing: 12
 
                 // Delete Button
                 Rectangle {
                     width: 110
-                    height: 40
+                    height: 38
                     radius: 8
                     color: "#18f43f5e"
                     border.color: "#40f43f5e"
@@ -220,9 +394,7 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            deleteBookDialog.open()
-                        }
+                        onClicked: deleteBookDialog.open()
                     }
                 }
 
@@ -231,7 +403,7 @@ Rectangle {
                 // Cancel Button
                 Rectangle {
                     width: 90
-                    height: 40
+                    height: 38
                     radius: 8
                     color: "#211f30"
                     border.color: "#12ffffff"
@@ -245,8 +417,8 @@ Rectangle {
 
                 // Save Button
                 Rectangle {
-                    width: 140
-                    height: 40
+                    width: 150
+                    height: 38
                     radius: 8
                     color: "#7c3aed"
 

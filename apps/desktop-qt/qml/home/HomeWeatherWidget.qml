@@ -12,9 +12,8 @@ Rectangle {
     border.width: 1
 
     property string currentTimeString: ""
-    property string weatherTemp: "24°C"
-    property string weatherDesc: "Parcialmente nublado"
-    property string weatherCity: "Local"
+    property string currentDateString: ""
+    property string greetingString: ""
 
     function updateTime() {
         var d = new Date()
@@ -22,6 +21,14 @@ Rectangle {
         var m = d.getMinutes()
         var s = d.getSeconds()
         currentTimeString = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+
+        if (h >= 5 && h < 12) greetingString = "Bom dia"
+        else if (h >= 12 && h < 18) greetingString = "Boa tarde"
+        else greetingString = "Boa noite"
+
+        var days = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"]
+        var months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        currentDateString = days[d.getDay()] + ", " + d.getDate() + " de " + months[d.getMonth()]
     }
 
     Timer {
@@ -65,15 +72,15 @@ Rectangle {
 
         Item { Layout.fillWidth: true }
 
-        // Live Weather
+        // Live Date & Greeting
         RowLayout {
             spacing: 12
             Text {
                 text: {
                     var h = new Date().getHours()
                     if (h >= 18 || h < 6) return "🌙"
-                    if (root.weatherDesc.indexOf("nublado") !== -1) return "⛅"
-                    return "☀️"
+                    if (h >= 12) return "☀️"
+                    return "🌅"
                 }
                 font.pixelSize: 24
             }
@@ -82,19 +89,19 @@ Rectangle {
                 RowLayout {
                     spacing: 6
                     Text {
-                        text: root.weatherTemp
+                        text: root.greetingString
                         color: "#fffffe"
-                        font.pixelSize: 17
+                        font.pixelSize: 16
                         font.bold: true
                     }
                     Text {
-                        text: "• " + root.weatherDesc
+                        text: "• " + root.currentDateString
                         color: "#c4b5fd"
                         font.pixelSize: 12
                     }
                 }
                 Text {
-                    text: root.weatherCity + " • Clima Atual"
+                    text: "Painel do Estudante • Modo Foco"
                     color: "#94a3b8"
                     font.pixelSize: 11
                 }

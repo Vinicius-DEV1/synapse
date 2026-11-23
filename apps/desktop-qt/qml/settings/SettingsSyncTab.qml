@@ -11,24 +11,25 @@ Rectangle {
     border.color: "#18ffffff"
     border.width: 1
 
-    property string syncStatus: "Sincronizado"
-    property string syncFrequency: "30s"
+    property string syncStatus: "Modo Local Offline (Zero-Knowledge)"
     property bool isSyncing: false
-    property string lastSyncTime: "Há poucos minutos"
+    property string lastSyncTime: "Persistência direta via SQLite WAL"
 
-    function triggerSync() {
+    function triggerCheckpoint() {
         isSyncing = true
-        syncTimer.start()
+        syncStatus = "Executando checkpoint SQLite WAL..."
+        checkpointTimer.start()
     }
 
     Timer {
-        id: syncTimer
-        interval: 900
+        id: checkpointTimer
+        interval: 400
         repeat: false
         onTriggered: {
+            dataController.executeSql("PRAGMA wal_checkpoint(PASSIVE);")
             root.isSyncing = false
-            root.lastSyncTime = "Agora mesmo"
-            root.syncStatus = "Sincronizado com a nuvem"
+            root.lastSyncTime = "Último checkpoint: agora mesmo"
+            root.syncStatus = "Base Local Íntegra (SQLite WAL Ativo)"
         }
     }
 
@@ -47,13 +48,13 @@ Rectangle {
             ColumnLayout {
                 spacing: 2
                 Text {
-                    text: "Sincronização em Nuvem (Zero-Knowledge)"
+                    text: "Sincronização em Nuvem & Armazenamento"
                     color: "#fffffe"
                     font.pixelSize: 16
                     font.bold: true
                 }
                 Text {
-                    text: "Seus dados são criptografados antes do envio; a nuvem não possui suas chaves"
+                    text: "Cliente Desktop opera em modo local soberano com persistência SQLite WAL de alta performance"
                     color: "#94a3b8"
                     font.pixelSize: 12
                 }
@@ -63,16 +64,16 @@ Rectangle {
 
             Rectangle {
                 height: 26
-                width: 130
+                width: 140
                 radius: 13
-                color: "#1a22c55e"
-                border.color: "#3322c55e"
+                color: "#1a818cf8"
+                border.color: "#33818cf8"
 
                 RowLayout {
                     anchors.centerIn: parent
                     spacing: 6
                     Text { text: "🔒"; font.pixelSize: 11 }
-                    Text { text: "Zero-Knowledge"; color: "#4ade80"; font.pixelSize: 11; font.bold: true }
+                    Text { text: "Zero-Knowledge"; color: "#a78bfa"; font.pixelSize: 11; font.bold: true }
                 }
             }
         }
@@ -87,25 +88,26 @@ Rectangle {
             ColumnLayout {
                 spacing: 2
                 Text { text: "Status: " + root.syncStatus; color: "#fffffe"; font.pixelSize: 13; font.bold: true }
-                Text { text: "Última sincronização: " + root.lastSyncTime; color: "#94a3b8"; font.pixelSize: 11 }
+                Text { text: root.lastSyncTime; color: "#94a3b8"; font.pixelSize: 11 }
             }
 
             Item { Layout.fillWidth: true }
 
             Button {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: 170
                 Layout.preferredHeight: 38
-                text: root.isSyncing ? "Sincronizando…" : "↻ Sincronizar Agora"
+                text: root.isSyncing ? "Otimizando…" : "⚡ Checkpoint WAL"
                 enabled: !root.isSyncing
-                onClicked: root.triggerSync()
+                onClicked: root.triggerCheckpoint()
 
                 background: Rectangle {
-                    color: parent.enabled ? (parent.hovered ? "#4f46e5" : "#6366f1") : "#242332"
+                    color: parent.hovered ? "#342b58" : "#242335"
                     radius: 8
+                    border.color: "#30ffffff"
                 }
                 contentItem: Text {
                     text: parent.text
-                    color: parent.enabled ? "#ffffff" : "#64748b"
+                    color: "#ddd6fe"
                     font.pixelSize: 12
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
@@ -114,45 +116,25 @@ Rectangle {
             }
         }
 
-        // Sync Frequency
-        RowLayout {
+        // Info Banner
+        Rectangle {
             Layout.fillWidth: true
-            spacing: 12
-
-            Text { text: "Frequência de Sincronização Automática:"; color: "#d4d4dc"; font.pixelSize: 13 }
-            Item { Layout.fillWidth: true }
+            height: 52
+            radius: 8
+            color: "#18201a35"
+            border.color: "#33818cf8"
 
             RowLayout {
-                spacing: 6
-                Repeater {
-                    model: [
-                        { id: "instant", label: "Instantâneo" },
-                        { id: "30s",     label: "30 seg" },
-                        { id: "5m",      label: "5 min" },
-                        { id: "manual",  label: "Manual" }
-                    ]
-                    delegate: Rectangle {
-                        width: freqText.contentWidth + 18
-                        height: 28
-                        radius: 6
-                        color: root.syncFrequency === modelData.id ? "#6366f1" : "#1a1928"
-                        border.color: "#20ffffff"
-
-                        Text {
-                            id: freqText
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: "#fffffe"
-                            font.pixelSize: 11
-                            font.bold: true
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.syncFrequency = modelData.id
-                        }
-                    }
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 10
+                Text { text: "ℹ️"; font.pixelSize: 16 }
+                Text {
+                    text: "Sincronização remota via nuvem centralizada não está configurada neste perfil local. Seus dados estão 100% gravados no seu disco com chaves locais."
+                    color: "#c4b5fd"
+                    font.pixelSize: 11
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
                 }
             }
         }

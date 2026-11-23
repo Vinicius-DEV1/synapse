@@ -9,7 +9,7 @@ GridView {
 
     property var collections: []
     property var books: []
-    property int viewportWidth: 1366
+    property int viewportWidth: width > 0 ? width : 1366
     property var collectionItems: []
     property var booksByCollection: ({})
     readonly property int columnCount: viewportWidth >= 1280 ? 6

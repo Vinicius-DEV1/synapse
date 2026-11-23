@@ -11,6 +11,16 @@ Item {
     implicitWidth: badgeContent.implicitWidth
     implicitHeight: badgeContent.implicitHeight
 
+    Connections {
+        target: dataController
+        function onPasswordBreachChecked(pwd, res) {
+            if (pwd === breachBadgeRoot.password) {
+                breachBadgeRoot.breachResult = res
+                breachBadgeRoot.isChecking = false
+            }
+        }
+    }
+
     function checkBreach() {
         if (!password || password.length === 0) {
             breachResult = null
@@ -23,11 +33,10 @@ Item {
 
     Timer {
         id: checkTimer
-        interval: 600
+        interval: 300
         repeat: false
         onTriggered: {
-            breachBadgeRoot.breachResult = dataController.checkPasswordBreach(breachBadgeRoot.password)
-            breachBadgeRoot.isChecking = false
+            dataController.checkPasswordBreachAsync(breachBadgeRoot.password)
         }
     }
 

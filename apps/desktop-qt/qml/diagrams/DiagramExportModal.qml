@@ -87,7 +87,7 @@ Rectangle {
                         model: [
                             { id: "png", label: "PNG", desc: "Imagem Raster" },
                             { id: "svg", label: "SVG", desc: "Vetor Escalável" },
-                            { id: "json", label: "Excalidraw/JSON", desc: "Dados Editáveis" }
+                            { id: "json", label: "JSON", desc: "Dados Estruturados" }
                         ]
                         delegate: Button {
                             Layout.fillWidth: true
@@ -206,12 +206,12 @@ Rectangle {
         fileMode: FileDialog.SaveFile
         nameFilters: {
             if (exportModalRoot.exportFormat === "svg") return ["Arquivos SVG (*.svg)"]
-            if (exportModalRoot.exportFormat === "json") return ["Arquivos Excalidraw / JSON (*.json *.excalidraw)"]
+            if (exportModalRoot.exportFormat === "json") return ["Arquivos JSON (*.json *.excalidraw)"]
             return ["Imagens PNG (*.png)"]
         }
         currentFile: {
-            var ext = exportModalRoot.exportFormat === "svg" ? ".svg" : (exportModalRoot.exportFormat === "json" ? ".excalidraw" : ".png")
-            return "file://" + exportModalRoot.diagramTitle.toLowerCase().replace(/\\s+/g, "-") + ext
+            var ext = exportModalRoot.exportFormat === "svg" ? ".svg" : (exportModalRoot.exportFormat === "json" ? ".json" : ".png")
+            return "file://" + exportModalRoot.diagramTitle.toLowerCase().replace(/\s+/g, "-") + ext
         }
         onAccepted: {
             var path = selectedFile.toString()

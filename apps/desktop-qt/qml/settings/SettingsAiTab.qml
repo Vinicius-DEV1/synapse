@@ -12,25 +12,66 @@ Rectangle {
     border.width: 1
 
     property string selectedModel: "gemini-1.5-flash"
-    property string apiKeyText: "AIzaSy..."
+    property string apiKeyText: ""
     property double temperature: 0.7
     property bool isTesting: false
     property string testResult: ""
+    property bool testSuccess: false
 
-    function testKey() {
-        isTesting = true
-        testResult = ""
-        testTimer.start()
+    Component.onCompleted: {
+        var m = dataController.getConfig("ai_selected_model", "gemini-1.5-flash")
+        if (m && m.length > 0) root.selectedModel = m
+        var k = dataController.getConfig("ai_gemini_api_key", "")
+        if (k) {
+            root.apiKeyText = k
+            keyField.text = k
+        }
+        var t = parseFloat(dataController.getConfig("ai_temperature", "0.7"))
+        if (!isNaN(t) && t >= 0.1 && t <= 1.0) root.temperature = t
     }
 
-    Timer {
-        id: testTimer
-        interval: 800
-        repeat: false
-        onTriggered: {
-            root.isTesting = false
-            root.testResult = "✓ Conexão estabelecida com sucesso com Google Gemini API!"
+    onSelectedModelChanged: {
+        dataController.setConfig("ai_selected_model", root.selectedModel)
+    }
+
+    onTemperatureChanged: {
+        dataController.setConfig("ai_temperature", root.temperature.toFixed(2))
+    }
+
+    function saveKey(k) {
+        root.apiKeyText = k
+        dataController.setConfig("ai_gemini_api_key", k)
+    }
+
+    function testKey() {
+        var key = keyField.text.trim()
+        if (key.length === 0) {
+            testSuccess = false
+            testResult = "Por favor, insira uma chave de API para testar."
+            return
         }
+        saveKey(key)
+        isTesting = true
+        testResult = "Testando conexão com a API Gemini..."
+
+        var xhr = new XMLHttpRequest()
+        xhr.open("GET", "https://generativelanguage.googleapis.com/v1beta/models?key=" + encodeURIComponent(key))
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                root.isTesting = false
+                if (xhr.status === 200) {
+                    root.testSuccess = true
+                    root.testResult = "✓ Conexão estabelecida com sucesso com Google Gemini API!"
+                } else if (xhr.status === 400 || xhr.status === 403) {
+                    root.testSuccess = false
+                    root.testResult = "✗ Chave rejeitada pela API Gemini (HTTP " + xhr.status + "). Verifique suas credenciais."
+                } else {
+                    root.testSuccess = false
+                    root.testResult = "✗ Falha na conexão (status " + xhr.status + "). Verifique sua conexão com a internet."
+                }
+            }
+        }
+        xhr.send()
     }
 
     ColumnLayout {
@@ -54,7 +95,7 @@ Rectangle {
                     font.bold: true
                 }
                 Text {
-                    text: "Gerencie modelos e chaves de API para transcrição, tutoria e assistentes"
+                    text: "Gerencie modelos e chaves de API com persistência local criptografada"
                     color: "#94a3b8"
                     font.pixelSize: 12
                 }
@@ -124,6 +165,7 @@ Rectangle {
                     color: "#fffffe"
                     font.pixelSize: 13
                     background: Rectangle { color: "#1a1928"; radius: 8; border.color: "#20ffffff" }
+                    onEditingFinished: root.saveKey(text.trim())
                 }
 
                 Button {
@@ -141,7 +183,7 @@ Rectangle {
             Text {
                 visible: root.testResult.length > 0
                 text: root.testResult
-                color: "#4ade80"
+                color: root.testSuccess ? "#4ade80" : "#fb7185"
                 font.pixelSize: 12
                 font.bold: true
             }

@@ -15,10 +15,14 @@ ColumnLayout {
     signal deleteLoanRequested(string loanId)
     signal newLoanRequested()
 
+    function isLent(item) {
+        return item && (item.type === "lent" || item.type === "loan_made")
+    }
+
     function calculateTotalLent() {
         var sum = 0
         for (var i = 0; i < loansList.length; i++) {
-            if (loansList[i].type === "lent") {
+            if (isLent(loansList[i])) {
                 sum += Math.max(0, Number(loansList[i].amount || 0) - Number(loansList[i].paid_amount || 0))
             }
         }
@@ -28,7 +32,7 @@ ColumnLayout {
     function calculateTotalBorrowed() {
         var sum = 0
         for (var i = 0; i < loansList.length; i++) {
-            if (loansList[i].type !== "lent") {
+            if (!isLent(loansList[i])) {
                 sum += Math.max(0, Number(loansList[i].amount || 0) - Number(loansList[i].paid_amount || 0))
             }
         }
@@ -38,7 +42,7 @@ ColumnLayout {
     function getFilteredLoans() {
         if (typeFilter === 0) return loansList
         return loansList.filter(function(l) {
-            return typeFilter === 1 ? l.type === "lent" : l.type !== "lent"
+            return typeFilter === 1 ? isLent(l) : !isLent(l)
         })
     }
 

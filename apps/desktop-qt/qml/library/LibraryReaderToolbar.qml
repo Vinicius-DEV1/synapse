@@ -22,6 +22,10 @@ Rectangle {
     signal searchRequested()
     signal typographyRequested()
     signal bookmarkRequested()
+    signal zoomInRequested()
+    signal zoomOutRequested()
+    signal fitWidthRequested()
+    signal pageJumpRequested(int page)
 
     RowLayout {
         anchors.fill: parent
@@ -65,12 +69,35 @@ Rectangle {
             contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
 
-        Text {
-            text: toolbar.totalPages > 0 ? toolbar.currentPage + " / " + toolbar.totalPages : "—"
-            color: "#c4c5d4"
-            font.pixelSize: 12
-            Layout.minimumWidth: 54
-            horizontalAlignment: Text.AlignHCenter
+        RowLayout {
+            spacing: 4
+            TextField {
+                id: pageInput
+                text: "" + toolbar.currentPage
+                Layout.preferredWidth: 42
+                Layout.preferredHeight: 28
+                horizontalAlignment: TextInput.AlignHCenter
+                font.pixelSize: 12
+                color: "#fffffe"
+                background: Rectangle {
+                    color: "#242331"
+                    radius: 6
+                    border.color: pageInput.activeFocus ? "#8b5cf6" : "#20ffffff"
+                }
+                onAccepted: {
+                    var p = parseInt(text, 10)
+                    if (!isNaN(p) && p >= 1 && p <= toolbar.totalPages) {
+                        toolbar.pageJumpRequested(p)
+                    } else {
+                        text = "" + toolbar.currentPage
+                    }
+                }
+            }
+            Text {
+                text: "/ " + (toolbar.totalPages > 0 ? toolbar.totalPages : "—")
+                color: "#c4c5d4"
+                font.pixelSize: 12
+            }
         }
 
         Button {
@@ -79,6 +106,40 @@ Rectangle {
             onClicked: toolbar.nextRequested()
             background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
             contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+
+        // Zoom Controls
+        Button {
+            text: "-"
+            Accessible.name: "Zoom out"
+            ToolTip.visible: hovered
+            ToolTip.text: "Reduzir zoom"
+            enabled: !toolbar.busy
+            onClicked: toolbar.zoomOutRequested()
+            background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
+            contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; font.pixelSize: 15; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+
+        Button {
+            text: "+"
+            Accessible.name: "Zoom in"
+            ToolTip.visible: hovered
+            ToolTip.text: "Aumentar zoom"
+            enabled: !toolbar.busy
+            onClicked: toolbar.zoomInRequested()
+            background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
+            contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; font.pixelSize: 15; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+
+        Button {
+            text: "⤢"
+            Accessible.name: "Fit width"
+            ToolTip.visible: hovered
+            ToolTip.text: "Ajustar largura"
+            enabled: !toolbar.busy
+            onClicked: toolbar.fitWidthRequested()
+            background: Rectangle { color: parent.enabled ? "#242331" : "#191823"; radius: 7 }
+            contentItem: Text { text: parent.text; color: parent.enabled ? "#d4d4dc" : "#595968"; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
 
         Button {

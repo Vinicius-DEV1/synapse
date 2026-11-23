@@ -265,16 +265,20 @@ Rectangle {
             calendarRoot.isCreatingEvent = false
             calendarRoot.editingEvent = null
         }
-        onEventDeleted: function(eventId) {
-            dataController.deleteCalendarEvent(eventId)
+        onEventDeleted: function(eventId, deleteAll) {
+            if (deleteAll) {
+                dataController.deleteCalendarEventSeries(eventId)
+            } else {
+                dataController.deleteCalendarEvent(eventId)
+            }
             calendarRoot.isCreatingEvent = false
             calendarRoot.editingEvent = null
             calendarRoot.refreshEvents()
         }
-        onEventSubmitted: function(title, desc, dateTime, color, type, pageId) {
+        onEventSubmitted: function(title, desc, dateTime, color, type, pageId, reminders, recurrence) {
             var saved = calendarRoot.editingEvent
-                ? dataController.updateCalendarEvent(calendarRoot.editingEvent.id, title, desc, dateTime, dateTime, color, type, pageId)
-                : dataController.createCalendarEvent(title, desc, dateTime, dateTime, type, color, pageId)
+                ? dataController.updateCalendarEvent(calendarRoot.editingEvent.id, title, desc, dateTime, dateTime, color, type, pageId, reminders)
+                : dataController.createCalendarEvent(title, desc, dateTime, dateTime, type, color, pageId, reminders, recurrence)
             if (!saved) {
                 createModal.errorMessage = qsTr("The event could not be saved. Check the title and date.")
                 return
