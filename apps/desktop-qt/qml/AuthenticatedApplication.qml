@@ -88,21 +88,73 @@ Item {
         }
     }
 
-    function openOrSwitchTab(moduleKey, title, icon) {
+    function updateActiveTabModule(moduleKey, title, icon) {
         flushActiveNotes()
-        for (var i = 0; i < tabsList.length; i++) {
-            if (tabsList[i].module === moduleKey) {
-                currentTabId = tabsList[i].id
-                activeTab = moduleKey
+        var mod = moduleKey || "notes"
+        var info = getModuleInfo(mod)
+        var tabTitle = title || info.title
+        var tabIcon = icon || info.icon
+
+        var newTabs = tabsList.slice()
+        var targetIndex = -1
+
+        for (var i = 0; i < newTabs.length; ++i) {
+            if (newTabs[i].id === currentTabId) {
+                targetIndex = i
+                break
+            }
+        }
+
+        // If the current tab is pinned, don't overwrite it; use first unpinned tab or open new
+        if (targetIndex !== -1 && newTabs[targetIndex].isPinned) {
+            var unpinnedIndex = -1
+            for (var u = 0; u < newTabs.length; ++u) {
+                if (!newTabs[u].isPinned) {
+                    unpinnedIndex = u
+                    break
+                }
+            }
+            if (unpinnedIndex !== -1) {
+                targetIndex = unpinnedIndex
+                currentTabId = newTabs[unpinnedIndex].id
+            } else {
+                addNewTab(mod, tabTitle, tabIcon)
                 return
             }
         }
-        var newId = "tab-" + moduleKey + "-" + Date.now()
-        var newTabs = tabsList.slice()
-        newTabs.push({ id: newId, module: moduleKey, title: title, icon: icon, isPinned: false })
+
+        if (targetIndex !== -1) {
+            newTabs[targetIndex] = {
+                id: newTabs[targetIndex].id,
+                module: mod,
+                title: tabTitle,
+                icon: tabIcon,
+                isPinned: newTabs[targetIndex].isPinned === true
+            }
+        } else if (newTabs.length > 0) {
+            newTabs[0] = {
+                id: newTabs[0].id,
+                module: mod,
+                title: tabTitle,
+                icon: tabIcon,
+                isPinned: newTabs[0].isPinned === true
+            }
+            currentTabId = newTabs[0].id
+        } else {
+            var newId = "tab-" + mod + "-" + Date.now()
+            newTabs.push({ id: newId, module: mod, title: tabTitle, icon: tabIcon, isPinned: false })
+            currentTabId = newId
+        }
+
         tabsList = newTabs
-        currentTabId = newId
-        activeTab = moduleKey
+        activeTab = mod
+        if (mod === "notes" && notesView && notesView.selectedPageId === "") {
+            notesView.loadPages()
+        }
+    }
+
+    function openOrSwitchTab(moduleKey, title, icon) {
+        updateActiveTabModule(moduleKey, title, icon)
     }
 
     function closeTab(tabId) {
@@ -241,21 +293,21 @@ Item {
 
     function handleGlobalAction(actionKey) {
         if (actionKey === "new_note") {
-            rootWindow.openOrSwitchTab("notes", "Caderno", "📖")
+            rootWindow.updateActiveTabModule("notes", "Caderno", "notes")
             notesView.createNewRootNote()
         } else if (actionKey === "new_event") {
-            rootWindow.openOrSwitchTab("calendar", "Agenda", "📅")
+            rootWindow.updateActiveTabModule("calendar", "Agenda", "calendar")
             calendarView.isCreatingEvent = true
         } else if (actionKey === "new_transaction") {
-            rootWindow.openOrSwitchTab("finance", "Finanças", "💵")
+            rootWindow.updateActiveTabModule("finance", "Finanças", "finance")
             financeView.isAddingTransaction = true
         } else if (actionKey === "new_vault") {
-            rootWindow.openOrSwitchTab("vault", "Cofre", "🔒")
+            rootWindow.updateActiveTabModule("vault", "Cofre", "vault")
             vaultView.isAddingItem = true
         } else if (actionKey === "command_palette") {
             cmdPalette.open()
         } else if (actionKey === "settings") {
-            rootWindow.openOrSwitchTab("settings", "Configurações", "⚙️")
+            rootWindow.updateActiveTabModule("settings", "Configurações", "settings")
         }
     }
 
@@ -266,7 +318,7 @@ Item {
             else cmdPalette.open()
         }
         onNewPageRequested: {
-            rootWindow.openOrSwitchTab("notes", "Caderno", "📖")
+            rootWindow.updateActiveTabModule("notes", "Caderno", "notes")
             notesView.createNewRootNote()
         }
         onNewTabRequested: rootWindow.addNewTab("notes", "Nova Nota", "notes")
@@ -280,7 +332,7 @@ Item {
             else rootWindow.windowRoot.showFullScreen()
         }
         onOpenTabRequested: function(modKey, title, icon) {
-            rootWindow.openOrSwitchTab(modKey, title, icon)
+            rootWindow.updateActiveTabModule(modKey, title, icon)
         }
     }
 
@@ -341,20 +393,26 @@ Item {
                 selectedNotePageId: notesView.selectedPageId
                 onTabSelected: function(tabKey) {
                     var info = rootWindow.getModuleInfo(tabKey)
-                    rootWindow.openOrSwitchTab(tabKey, info.title, info.icon)
+                    rootWindow.updateActiveTabModule(tabKey, info.title, info.icon)
                 }
                 onSettingsTabSelected: function(tabId) {
-                    rootWindow.openOrSwitchTab("settings", "Configurações", "⚙️")
+                    var info = rootWindow.getModuleInfo("settings")
+                    rootWindow.updateActiveTabModule("settings", info.title, info.icon)
                     settingsView.activeTab = tabId
                 }
                 onToggleSidebarRequested: rootWindow.sidebarExpanded = !rootWindow.sidebarExpanded
                 onOpenCommandPaletteRequested: cmdPalette.open()
-                onNotePageSelected: function(pageId) { notesView.selectPage(pageId) }
-                onOpenInNewTabRequested: function(pageId) {
+                onNotePageSelected: function(pageId) {
                     notesView.selectPage(pageId)
                     var p = dataController.getPage(pageId)
-                    var title = (p && p.title) ? p.title : "Nota"
-                    rootWindow.openOrSwitchTab("notes", title, "📖")
+                    var title = (p && p.title) ? p.title : "Caderno"
+                    rootWindow.updateActiveTabModule("notes", title, "notes")
+                }
+                onOpenInNewTabRequested: function(pageId) {
+                    var p = dataController.getPage(pageId)
+                    var title = (p && p.title) ? p.title : "Caderno"
+                    rootWindow.addNewTab("notes", title, "notes")
+                    notesView.selectPage(pageId)
                 }
                 onCreateNoteRequested: notesView.createNewRootNote()
                 onCreateSubNoteRequested: function(parentId) { notesView.createNewSubNote(parentId) }
@@ -421,10 +479,13 @@ Item {
                         id: homeView
                         onOpenPageId: function(pageId) {
                             notesView.selectPage(pageId)
+                            var p = dataController.getPage(pageId)
+                            var title = (p && p.title) ? p.title : "Caderno"
+                            rootWindow.updateActiveTabModule("notes", title, "notes")
                         }
                         onNavigateToTab: function(tabKey) {
                             var info = rootWindow.getModuleInfo(tabKey)
-                            rootWindow.openOrSwitchTab(tabKey, info.title, info.icon)
+                            rootWindow.updateActiveTabModule(tabKey, info.title, info.icon)
                         }
                     }
                     NotesEditorView { id: notesView }
@@ -476,10 +537,13 @@ Item {
         id: cmdPalette
         onOpenPage: function(pageId) {
             notesView.selectPage(pageId)
+            var p = dataController.getPage(pageId)
+            var title = (p && p.title) ? p.title : "Caderno"
+            rootWindow.updateActiveTabModule("notes", title, "notes")
         }
         onNavigateToTab: function(tabKey) {
             var info = rootWindow.getModuleInfo(tabKey)
-            rootWindow.openOrSwitchTab(tabKey, info.title, info.icon)
+            rootWindow.updateActiveTabModule(tabKey, info.title, info.icon)
         }
         onTriggerAction: function(actionKey) {
             rootWindow.handleGlobalAction(actionKey)
@@ -492,8 +556,9 @@ Item {
         onClosed: rootWindow.notificationsOpen = false
         onOpenPage: function(pageId) {
             notesView.selectPage(pageId)
-            var info = rootWindow.getModuleInfo("notes")
-            rootWindow.openOrSwitchTab("notes", info.title, info.icon)
+            var p = dataController.getPage(pageId)
+            var title = (p && p.title) ? p.title : "Caderno"
+            rootWindow.updateActiveTabModule("notes", title, "notes")
             rootWindow.notificationsOpen = false
         }
     }
