@@ -165,6 +165,11 @@ public:
     Q_INVOKABLE QVariantMap setLinkEntityNotes(const QString &url, const QString &notes);
     Q_INVOKABLE QVariantMap setLinkEntityColor(const QString &url, const QString &color);
     Q_INVOKABLE bool copyLinkUrlToClipboard(const QString &url);
+    Q_INVOKABLE QVariantList parseNoteBlocks(const QString &html);
+    Q_INVOKABLE QString serializeNoteBlocks(const QVariantList &blocks);
+    Q_INVOKABLE QVariantMap applyNoteSearchReplace(const QString &original, const QString &aiResponse);
+    Q_INVOKABLE QString computeNoteWordDiffHtml(const QString &oldText, const QString &newText);
+    Q_INVOKABLE QVariantList findDuplicateNoteLinks(const QString &url, const QString &excludePageId = "");
     Q_INVOKABLE void copyNotesRichImage(const QString &imageDataUrl);
     Q_INVOKABLE void saveNotesRichImage(const QString &imageDataUrl, const QUrl &destinationUrl);
     Q_INVOKABLE QUrl suggestedNotesRichImageSaveUrl(const QString &imageDataUrl,
@@ -199,6 +204,7 @@ public:
     Q_INVOKABLE QVariantList getVideoWords(const QString &videoId);
     Q_INVOKABLE bool addVideoWord(const QString &videoId, const QString &word, const QString &context, double timestamp);
     Q_INVOKABLE bool deleteVideoWord(const QString &wordId);
+    Q_INVOKABLE QVariantList parseSubtitleCues(const QString &subtitleContent);
 
     // 3. Anki & Flashcards (Hierarchical Tree & FSRS v5)
     Q_INVOKABLE QVariantList getDecks();
@@ -232,11 +238,18 @@ public:
     Q_INVOKABLE bool updateQuizQuestion(const QString &questionId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation = "", const QString &tagsJson = "[]");
     Q_INVOKABLE bool deleteQuizQuestion(const QString &questionId);
     Q_INVOKABLE bool recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect);
+    Q_INVOKABLE QVariantList getQuizBatteryTree();
+    Q_INVOKABLE QString createChildQuizBattery(const QString &parentId, const QString &title, const QString &description = "");
+    Q_INVOKABLE QVariantList getAvailableQuizParentOptions(const QString &movingBatteryId = "");
+    Q_INVOKABLE bool moveQuizBattery(const QString &batteryId, const QString &newParentId = "");
+    Q_INVOKABLE QVariantList parseQuizImportText(const QString &rawText);
 
     // 5. Finanças & Wishlist
     Q_INVOKABLE QVariantList getTransactions(const QString &typeFilter = "", const QString &accountIdFilter = "");
     Q_INVOKABLE QVariantList getAccounts();
     Q_INVOKABLE QVariantMap getFinancialSummary();
+    Q_INVOKABLE QVariantMap getFinancialPeriodMetrics(const QString &accountId = "all", const QString &period = "");
+    Q_INVOKABLE bool reopenLoan(const QString &loanId);
     Q_INVOKABLE bool createAccount(const QString &name, const QString &color = "#10b981", const QString &icon = "wallet", double initialBalance = 0.0);
     Q_INVOKABLE bool updateAccount(const QString &accountId, const QString &name, const QString &color = "#10b981", const QString &icon = "wallet", double initialBalance = 0.0);
     Q_INVOKABLE bool deleteAccount(const QString &accountId);
@@ -262,6 +275,7 @@ public:
     Q_INVOKABLE QVariantMap getHabitStats(const QString &habitId, const QString &todayStr = "");
     Q_INVOKABLE bool toggleHabitCheckin(const QString &habitId, const QString &dateStr);
     Q_INVOKABLE bool deleteHabit(const QString &habitId);
+    Q_INVOKABLE QString resolveDateFromPageTitle(const QString &pageTitle, const QString &fallbackDate = "");
 
     // 7. Calendário & Agenda
     Q_INVOKABLE QVariantList getCalendarEvents();
@@ -393,6 +407,9 @@ public:
     Q_INVOKABLE bool saveDiagram(const QString &diagramId, const QString &title, const QString &content, const QString &icon = "🎨");
     Q_INVOKABLE QString createDiagram(const QString &title, const QString &icon = "🎨");
     Q_INVOKABLE bool deleteDiagram(const QString &diagramId);
+    Q_INVOKABLE QVariantList extractQtDiagramShapes(const QString &rawContent);
+    Q_INVOKABLE QString encodeQtDiagramAsTldrawV2(const QVariantList &shapes, const QString &existingRaw = "");
+    Q_INVOKABLE QString exportQtDiagramToSvg(const QVariantList &shapes);
     Q_INVOKABLE QString readLocalTextFile(const QString &filePath);
     Q_INVOKABLE bool saveLocalTextFile(const QString &filePath, const QString &content);
 

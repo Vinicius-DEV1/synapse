@@ -1,6 +1,8 @@
 pub mod attempts;
 pub mod authoring;
 pub mod batteries;
+pub mod hierarchy;
+pub mod import_parser;
 pub mod models;
 pub mod questions;
 mod repository_attempts;
@@ -11,6 +13,11 @@ mod tests;
 pub use attempts::*;
 pub use authoring::*;
 pub use batteries::*;
+pub use hierarchy::{
+    build_battery_tree, create_child_quiz_battery, get_available_parent_options,
+    move_quiz_battery, AvailableParentOption, BatteryTreeSummary,
+};
+pub use import_parser::{parse_import_questions, ParsedImportQuestion};
 pub use models::*;
 pub use questions::*;
 
@@ -242,5 +249,37 @@ impl QuizRepository {
         question_id: &str,
     ) -> Result<bool> {
         authoring::delete_quiz_question(conn, question_id)
+    }
+
+    pub fn build_battery_tree(db: &Database) -> Result<Vec<BatteryTreeSummary>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        hierarchy::build_battery_tree(&conn)
+    }
+
+    pub fn create_child_quiz_battery(
+        db: &Database,
+        parent_id: Option<&str>,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<String> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        hierarchy::create_child_quiz_battery(&conn, parent_id, title, description)
+    }
+
+    pub fn get_available_parent_options(
+        db: &Database,
+        moving_battery_id: Option<&str>,
+    ) -> Result<Vec<AvailableParentOption>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        hierarchy::get_available_parent_options(&conn, moving_battery_id)
+    }
+
+    pub fn move_quiz_battery(
+        db: &Database,
+        battery_id: &str,
+        new_parent_id: Option<&str>,
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        hierarchy::move_quiz_battery(&conn, battery_id, new_parent_id)
     }
 }

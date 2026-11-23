@@ -1,8 +1,11 @@
 //! Notes & Pages domain module: page tree, rich text revisions, links metadata, and hierarchy.
 
+pub mod block_ast;
 pub mod content;
+pub mod diff_engine;
 pub mod hierarchy;
 pub mod history;
+pub mod link_index;
 pub mod links;
 pub mod metadata;
 pub mod models;
@@ -13,6 +16,12 @@ pub mod tests;
 
 use crate::db::Database;
 use crate::error::{Result, SynapseError};
+pub use block_ast::{parse_note_blocks, serialize_note_blocks, NoteBlock};
+pub use diff_engine::{
+    apply_search_replace, compute_word_diff_html, parse_search_replace_blocks, SearchReplaceBlock,
+    SearchReplaceResult,
+};
+pub use link_index::{find_duplicate_links, normalize_link_url, DuplicateLinkMatch};
 pub use models::{LinkMetadata, PageMetaRecord, PageNode, PageRecord, PageRevision};
 
 pub struct NotesRepository;
@@ -232,5 +241,14 @@ impl NotesRepository {
     pub fn save_link_entity(db: &Database, canonical_url: &str, entity_json: &str) -> Result<bool> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         links::save_link_entity(&conn, canonical_url, entity_json)
+    }
+
+    pub fn find_duplicate_links(
+        db: &Database,
+        url: &str,
+        exclude_page_id: Option<&str>,
+    ) -> Result<Vec<DuplicateLinkMatch>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        link_index::find_duplicate_links(&conn, url, exclude_page_id)
     }
 }

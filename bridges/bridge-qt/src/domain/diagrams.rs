@@ -131,3 +131,38 @@ pub unsafe extern "C" fn synapse_diagrams_delete(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_diagrams_extract_qt_shapes(raw_content: *const c_char) -> *mut c_char {
+    let raw = to_opt_str(raw_content).unwrap_or("");
+    let shapes = synapse_core::domain::diagrams::extract_qt_shapes(raw);
+    json_to_c_char(&shapes)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_diagrams_encode_tldraw_v2(
+    shapes_json: *const c_char,
+    existing_raw: *const c_char,
+) -> *mut c_char {
+    let raw_shapes = to_opt_str(shapes_json).unwrap_or("[]");
+    let prev = to_opt_str(existing_raw);
+    let shapes: Vec<synapse_core::domain::diagrams::QtCanvasShape> =
+        serde_json::from_str(raw_shapes).unwrap_or_default();
+    let tldraw_json = synapse_core::domain::diagrams::encode_qt_shapes_as_tldraw_v2(&shapes, prev);
+    match std::ffi::CString::new(tldraw_json) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_diagrams_export_svg(shapes_json: *const c_char) -> *mut c_char {
+    let raw_shapes = to_opt_str(shapes_json).unwrap_or("[]");
+    let shapes: Vec<synapse_core::domain::diagrams::QtCanvasShape> =
+        serde_json::from_str(raw_shapes).unwrap_or_default();
+    let svg = synapse_core::domain::diagrams::export_shapes_to_svg(&shapes);
+    match std::ffi::CString::new(svg) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}

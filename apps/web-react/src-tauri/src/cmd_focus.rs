@@ -83,9 +83,6 @@ pub async fn focus_delete_sessions(
 ) -> Result<bool, String> {
     db_state
         .write(move |conn| {
-            let now = chrono::Utc::now();
-            let now_str = now.to_rfc3339();
-
             let mode = options.as_ref().map(|o| o.type_.as_str()).unwrap_or("all");
             match mode {
                 "specific" => {
@@ -103,30 +100,18 @@ pub async fn focus_delete_sessions(
                         .map_err(|e| e.to_string())
                 }
                 "today" => {
-                    let today_prefix = now.format("%Y-%m-%d").to_string();
-                    conn.execute(
-                        "UPDATE focus_sessions SET deleted_at = ?1, updated_at = ?1 WHERE deleted_at IS NULL AND substr(created_at, 1, 10) >= ?2",
-                        rusqlite::params![now_str, today_prefix],
-                    )
-                    .map_err(|e| e.to_string())?;
+                    FocusRepository::clear_sessions_range_conn(conn, "today")
+                        .map_err(|e| e.to_string())?;
                     Ok(true)
                 }
                 "last7days" => {
-                    let seven_days_ago =
-                        (now - chrono::Duration::days(7)).format("%Y-%m-%d").to_string();
-                    conn.execute(
-                        "UPDATE focus_sessions SET deleted_at = ?1, updated_at = ?1 WHERE deleted_at IS NULL AND substr(created_at, 1, 10) >= ?2",
-                        rusqlite::params![now_str, seven_days_ago],
-                    )
-                    .map_err(|e| e.to_string())?;
+                    FocusRepository::clear_sessions_range_conn(conn, "week")
+                        .map_err(|e| e.to_string())?;
                     Ok(true)
                 }
                 _ => {
-                    conn.execute(
-                        "UPDATE focus_sessions SET deleted_at = ?1, updated_at = ?1 WHERE deleted_at IS NULL",
-                        rusqlite::params![now_str],
-                    )
-                    .map_err(|e| e.to_string())?;
+                    FocusRepository::clear_sessions_range_conn(conn, "all")
+                        .map_err(|e| e.to_string())?;
                     Ok(true)
                 }
             }

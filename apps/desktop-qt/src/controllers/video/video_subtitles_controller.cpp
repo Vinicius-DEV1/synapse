@@ -135,3 +135,13 @@ void SynapseDataController::removeStagedVideoSubtitleFiles(
         }
     }
 }
+
+QVariantList SynapseDataController::parseSubtitleCues(const QString &subtitleContent) {
+    const QByteArray rawBytes = subtitleContent.toUtf8();
+    char *raw = synapse_video_parse_subtitle_cues(rawBytes.constData());
+    if (!raw) return QVariantList();
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}

@@ -264,3 +264,60 @@ QString SynapseDataController::createRandomPageCoverUrl() const {
     const QString seed = QString::number(QRandomGenerator::global()->generate64(), 36);
     return QStringLiteral("https://picsum.photos/seed/%1/1600/400").arg(seed);
 }
+
+QVariantList SynapseDataController::parseNoteBlocks(const QString &html) {
+    const QByteArray htmlBytes = html.toUtf8();
+    char *raw = synapse_notes_parse_blocks(htmlBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QString SynapseDataController::serializeNoteBlocks(const QVariantList &blocks) {
+    const QJsonDocument doc(QJsonArray::fromVariantList(blocks));
+    const QByteArray jsonBytes = doc.toJson(QJsonDocument::Compact);
+    char *raw = synapse_notes_serialize_blocks(jsonBytes.constData());
+    if (!raw) return {};
+    const QString html = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return html;
+}
+
+QVariantMap SynapseDataController::applyNoteSearchReplace(const QString &original, const QString &aiResponse) {
+    const QByteArray origBytes = original.toUtf8();
+    const QByteArray aiBytes = aiResponse.toUtf8();
+    char *raw = synapse_notes_apply_search_replace(origBytes.constData(), aiBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isObject() ? doc.object().toVariantMap() : QVariantMap();
+}
+
+QString SynapseDataController::computeNoteWordDiffHtml(const QString &oldText, const QString &newText) {
+    const QByteArray oldBytes = oldText.toUtf8();
+    const QByteArray newBytes = newText.toUtf8();
+    char *raw = synapse_notes_compute_word_diff_html(oldBytes.constData(), newBytes.constData());
+    if (!raw) return {};
+    const QString diff = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return diff;
+}
+
+QVariantList SynapseDataController::findDuplicateNoteLinks(const QString &url, const QString &excludePageId) {
+    if (!m_db || url.trimmed().isEmpty()) return {};
+    const QByteArray urlBytes = url.trimmed().toUtf8();
+    const QByteArray exclBytes = excludePageId.trimmed().toUtf8();
+    char *raw = synapse_notes_find_duplicate_links(
+        m_db,
+        urlBytes.constData(),
+        excludePageId.trimmed().isEmpty() ? nullptr : exclBytes.constData()
+    );
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}

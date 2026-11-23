@@ -502,3 +502,10 @@ pub unsafe extern "C" fn synapse_video_delete_word(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_video_parse_subtitle_cues(subtitle_content: *const c_char) -> *mut c_char {
+    let raw = to_opt_str(subtitle_content).unwrap_or("");
+    let cues = synapse_core::domain::video::parse_subtitle_cues(raw);
+    json_to_c_char(&cues)
+}

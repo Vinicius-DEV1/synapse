@@ -116,3 +116,16 @@ bool SynapseDataController::deleteHabit(const QString &habitId) {
     }
     return false;
 }
+
+QString SynapseDataController::resolveDateFromPageTitle(const QString &pageTitle, const QString &fallbackDate) {
+    const QByteArray titleBytes = pageTitle.toUtf8();
+    const QByteArray fallbackBytes = fallbackDate.toUtf8();
+    char *raw = synapse_habits_resolve_date_from_title(
+        titleBytes.constData(),
+        fallbackDate.trimmed().isEmpty() ? nullptr : fallbackBytes.constData()
+    );
+    if (!raw) return fallbackDate;
+    const QString resolved = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return resolved;
+}

@@ -339,3 +339,92 @@ pub unsafe extern "C" fn synapse_quiz_get_stats(db: *mut Database) -> *mut c_cha
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_get_battery_tree(db: *mut Database) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    match QuizRepository::build_battery_tree(&*db) {
+        Ok(tree) => json_to_c_char(&tree),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_battery_tree failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_create_child_battery(
+    db: *mut Database,
+    parent_id: *const c_char,
+    title: *const c_char,
+    description: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || title.is_null() {
+        return std::ptr::null_mut();
+    }
+    let Some(t) = to_opt_str(title) else {
+        return std::ptr::null_mut();
+    };
+    let pid = to_opt_str(parent_id);
+    let desc = to_opt_str(description);
+    match QuizRepository::create_child_quiz_battery(&*db, pid, t, desc) {
+        Ok(id) => match CString::new(id) {
+            Ok(c) => c.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(e) => {
+            eprintln!("[Synapse Bridge] create_child_battery failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_get_available_parent_options(
+    db: *mut Database,
+    moving_battery_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    let mid = to_opt_str(moving_battery_id);
+    match QuizRepository::get_available_parent_options(&*db, mid) {
+        Ok(opts) => json_to_c_char(&opts),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_available_parent_options failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_move_battery(
+    db: *mut Database,
+    battery_id: *const c_char,
+    new_parent_id: *const c_char,
+) -> c_int {
+    if db.is_null() || battery_id.is_null() {
+        return -1;
+    }
+    let Some(bid) = to_opt_str(battery_id) else {
+        return -1;
+    };
+    let pid = to_opt_str(new_parent_id);
+    match QuizRepository::move_quiz_battery(&*db, bid, pid) {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] move_battery failed: {}", e);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_parse_import_text(raw_text: *const c_char) -> *mut c_char {
+    let raw = to_opt_str(raw_text).unwrap_or("");
+    let parsed = synapse_core::domain::questions::parse_import_questions(raw);
+    json_to_c_char(&parsed)
+}

@@ -82,6 +82,8 @@ int synapse_finance_add_transfer(Database* db, const char* description, double a
 int synapse_finance_update_transaction(Database* db, const char* tx_id, const char* description, double amount, const char* type, const char* category, const char* date, const char* account_id, const char* destination_account_id);
 int synapse_finance_delete_transaction(Database* db, const char* tx_id);
 char* synapse_finance_get_summary(Database* db);
+char* synapse_finance_get_period_metrics(Database* db, const char* account_id, const char* period);
+int synapse_finance_reopen_loan(Database* db, const char* loan_id);
 char* synapse_finance_get_wishlist(Database* db);
 int synapse_finance_add_wishlist_item(Database* db, const char* title, double price, const char* priority, const char* category, const char* link);
 int synapse_finance_delete_wishlist_item(Database* db, const char* item_id);
@@ -99,10 +101,16 @@ char* synapse_habits_get_logs(Database* db, const char* date);
 char* synapse_habits_get_logs_range(Database* db, const char* start_date, const char* end_date);
 char* synapse_habits_get_habit_stats(Database* db, const char* habit_id, const char* today);
 int synapse_habits_toggle_checkin(Database* db, const char* habit_id, const char* date, int* out_checked);
+char* synapse_habits_resolve_date_from_title(const char* page_title, const char* fallback_date);
 
 // Domain APIs: Questions & Quiz
 char* synapse_quiz_get_batteries(Database* db);
+char* synapse_quiz_get_battery_tree(Database* db);
 char* synapse_quiz_create_battery(Database* db, const char* title, const char* description);
+char* synapse_quiz_create_child_battery(Database* db, const char* parent_id, const char* title, const char* description);
+char* synapse_quiz_get_available_parent_options(Database* db, const char* moving_battery_id);
+int synapse_quiz_move_battery(Database* db, const char* battery_id, const char* new_parent_id);
+char* synapse_quiz_parse_import_text(const char* raw_text);
 int synapse_quiz_update_battery(Database* db, const char* battery_id, const char* title, const char* description);
 int synapse_quiz_delete_battery(Database* db, const char* battery_id);
 char* synapse_quiz_get_battery_questions(Database* db, const char* battery_id);
@@ -244,6 +252,7 @@ char* synapse_video_remove_subtitle(Database* db, const char* video_id, const ch
 char* synapse_video_get_words(Database* db, const char* video_id);
 int synapse_video_add_word(Database* db, const char* video_id, const char* word, const char* context, double timestamp);
 int synapse_video_delete_word(Database* db, const char* word_id);
+char* synapse_video_parse_subtitle_cues(const char* subtitle_content);
 
 // Domain APIs: Library & Reader
 char* synapse_library_get_books(Database* db, const char* filter);
@@ -297,6 +306,11 @@ char* synapse_notes_get_link_metadata(Database* db, const char* url);
 int synapse_notes_save_link_metadata(Database* db, const char* metadata_json);
 char* synapse_notes_get_link_entity(Database* db, const char* canonical_url);
 int synapse_notes_save_link_entity(Database* db, const char* canonical_url, const char* entity_json);
+char* synapse_notes_parse_blocks(const char* html);
+char* synapse_notes_serialize_blocks(const char* blocks_json);
+char* synapse_notes_apply_search_replace(const char* original, const char* ai_response);
+char* synapse_notes_compute_word_diff_html(const char* old_text, const char* new_text);
+char* synapse_notes_find_duplicate_links(Database* db, const char* url, const char* exclude_page_id);
 
 // Domain APIs: Practice & AI Tutor
 char* synapse_practice_get_sessions(Database* db);
@@ -315,6 +329,9 @@ char* synapse_diagrams_get(Database* db, const char* id);
 char* synapse_diagrams_create(Database* db, const char* title, const char* icon);
 int synapse_diagrams_save(Database* db, const char* id, const char* title, const char* content, const char* encrypted_content, const char* icon);
 int synapse_diagrams_delete(Database* db, const char* id);
+char* synapse_diagrams_extract_qt_shapes(const char* raw_content);
+char* synapse_diagrams_encode_tldraw_v2(const char* shapes_json, const char* existing_raw);
+char* synapse_diagrams_export_svg(const char* shapes_json);
 
 // Domain APIs: Global Config & Preferences
 char* synapse_config_get(Database* db, const char* key);

@@ -189,3 +189,54 @@ bool SynapseDataController::recordQuizAttempt(const QString &batteryId, const QS
     }
     return false;
 }
+
+QVariantList SynapseDataController::getQuizBatteryTree() {
+    if (!m_db) return QVariantList();
+    char *raw = synapse_quiz_get_battery_tree(m_db);
+    return parseJsonArray(raw).toVariantList();
+}
+
+QString SynapseDataController::createChildQuizBattery(const QString &parentId, const QString &title, const QString &description) {
+    if (!m_db || title.trimmed().isEmpty()) return QString();
+    const QByteArray pidUtf8 = parentId.trimmed().toUtf8();
+    const QByteArray tUtf8 = title.trimmed().toUtf8();
+    const QByteArray dUtf8 = description.trimmed().toUtf8();
+    char *idRaw = synapse_quiz_create_child_battery(
+        m_db,
+        parentId.trimmed().isEmpty() ? nullptr : pidUtf8.constData(),
+        tUtf8.constData(),
+        dUtf8.isEmpty() ? nullptr : dUtf8.constData()
+    );
+    if (!idRaw) return QString();
+    const QString id = QString::fromUtf8(idRaw);
+    synapse_free_string(idRaw);
+    refreshStats();
+    return id;
+}
+
+QVariantList SynapseDataController::getAvailableQuizParentOptions(const QString &movingBatteryId) {
+    if (!m_db) return QVariantList();
+    const QByteArray midUtf8 = movingBatteryId.trimmed().toUtf8();
+    char *raw = synapse_quiz_get_available_parent_options(
+        m_db,
+        movingBatteryId.trimmed().isEmpty() ? nullptr : midUtf8.constData()
+    );
+    return parseJsonArray(raw).toVariantList();
+}
+
+bool SynapseDataController::moveQuizBattery(const QString &batteryId, const QString &newParentId) {
+    if (!m_db || batteryId.trimmed().isEmpty()) return false;
+    const QByteArray bUtf8 = batteryId.trimmed().toUtf8();
+    const QByteArray pUtf8 = newParentId.trimmed().toUtf8();
+    return synapse_quiz_move_battery(
+        m_db,
+        bUtf8.constData(),
+        newParentId.trimmed().isEmpty() ? nullptr : pUtf8.constData()
+    ) == 1;
+}
+
+QVariantList SynapseDataController::parseQuizImportText(const QString &rawText) {
+    const QByteArray rawUtf8 = rawText.toUtf8();
+    char *raw = synapse_quiz_parse_import_text(rawUtf8.constData());
+    return parseJsonArray(raw).toVariantList();
+}

@@ -320,3 +320,26 @@ bool SynapseDataController::deleteLoan(const QString &loanId) {
     }
     return false;
 }
+
+QVariantMap SynapseDataController::getFinancialPeriodMetrics(const QString &accountId, const QString &period) {
+    if (!m_db) return QVariantMap();
+    const QByteArray accBytes = accountId.trimmed().toUtf8();
+    const QByteArray perBytes = period.trimmed().toUtf8();
+    char *raw = synapse_finance_get_period_metrics(
+        m_db,
+        accountId.trimmed().isEmpty() ? nullptr : accBytes.constData(),
+        period.trimmed().isEmpty() ? nullptr : perBytes.constData()
+    );
+    return parseJsonObjectAndFree(raw);
+}
+
+bool SynapseDataController::reopenLoan(const QString &loanId) {
+    if (!m_db || loanId.trimmed().isEmpty()) return false;
+    const QByteArray idBytes = loanId.trimmed().toUtf8();
+    const int res = synapse_finance_reopen_loan(m_db, idBytes.constData());
+    if (res == 0) {
+        refreshStats();
+        return true;
+    }
+    return false;
+}

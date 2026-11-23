@@ -203,3 +203,17 @@ pub unsafe extern "C" fn synapse_habits_toggle_checkin(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_habits_resolve_date_from_title(
+    page_title: *const c_char,
+    fallback_date: *const c_char,
+) -> *mut c_char {
+    let title = to_opt_str(page_title).unwrap_or("");
+    let fallback = to_opt_str(fallback_date);
+    let resolved = synapse_core::domain::habits::resolve_date_from_page_title(title, fallback);
+    match std::ffi::CString::new(resolved) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}

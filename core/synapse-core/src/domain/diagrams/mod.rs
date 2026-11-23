@@ -2,12 +2,16 @@
 
 pub mod models;
 pub mod repository;
+pub mod tldraw;
 #[cfg(test)]
 pub mod tests;
 
 use crate::db::Database;
 use crate::error::{Result, SynapseError};
 pub use models::{DiagramMeta, DiagramRecord};
+pub use tldraw::{
+    encode_qt_shapes_as_tldraw_v2, export_shapes_to_svg, extract_qt_shapes, QtCanvasShape,
+};
 
 /// Diagrams repository providing high-level typed domain access.
 pub struct DiagramsRepository;

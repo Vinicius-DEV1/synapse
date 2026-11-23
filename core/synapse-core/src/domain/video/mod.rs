@@ -3,12 +3,14 @@
 pub mod catalog;
 pub mod folders;
 pub mod models;
+pub mod subtitle_parser;
 pub mod subtitles;
 pub mod words;
 
 pub use catalog::*;
 pub use folders::*;
 pub use models::*;
+pub use subtitle_parser::{parse_subtitle_cues, SubtitleCue};
 pub use subtitles::*;
 pub use words::*;
 

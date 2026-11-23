@@ -528,3 +528,43 @@ pub unsafe extern "C" fn synapse_finance_delete_loan(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_get_period_metrics(
+    db: *mut Database,
+    account_id: *const c_char,
+    period: *const c_char,
+) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    let acc = to_opt_str(account_id);
+    let per = to_opt_str(period);
+    match synapse_core::domain::finance::get_period_dashboard_metrics(&*db, acc, per) {
+        Ok(metrics) => json_to_c_char(&metrics),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] get_period_metrics failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_finance_reopen_loan(
+    db: *mut Database,
+    loan_id: *const c_char,
+) -> c_int {
+    if db.is_null() || loan_id.is_null() {
+        return -1;
+    }
+    let Some(id_str) = to_opt_str(loan_id) else {
+        return -1;
+    };
+    match synapse_core::domain::finance::reopen_loan(&*db, id_str) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("[Synapse Bridge] reopen_loan failed: {}", e);
+            -1
+        }
+    }
+}

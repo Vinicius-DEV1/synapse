@@ -184,3 +184,75 @@ pub unsafe extern "C" fn synapse_notes_save_link_entity(
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_parse_blocks(html: *const c_char) -> *mut c_char {
+    let raw = to_opt_str(html).unwrap_or("");
+    let blocks = synapse_core::domain::notes::parse_note_blocks(raw);
+    json_to_c_char(&blocks)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_serialize_blocks(blocks_json: *const c_char) -> *mut c_char {
+    let raw = match to_opt_str(blocks_json) {
+        Some(s) => s,
+        None => return std::ptr::null_mut(),
+    };
+    let blocks: Vec<synapse_core::domain::notes::NoteBlock> = match serde_json::from_str(raw) {
+        Ok(b) => b,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let html = synapse_core::domain::notes::serialize_note_blocks(&blocks);
+    match CString::new(html) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_apply_search_replace(
+    original: *const c_char,
+    ai_response: *const c_char,
+) -> *mut c_char {
+    let orig = to_opt_str(original).unwrap_or("");
+    let ai = to_opt_str(ai_response).unwrap_or("");
+    let blocks = synapse_core::domain::notes::parse_search_replace_blocks(ai);
+    let result = synapse_core::domain::notes::apply_search_replace(orig, &blocks);
+    json_to_c_char(&result)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_compute_word_diff_html(
+    old_text: *const c_char,
+    new_text: *const c_char,
+) -> *mut c_char {
+    let old_s = to_opt_str(old_text).unwrap_or("");
+    let new_s = to_opt_str(new_text).unwrap_or("");
+    let diff = synapse_core::domain::notes::compute_word_diff_html(old_s, new_s);
+    match CString::new(diff) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_notes_find_duplicate_links(
+    db: *mut Database,
+    url: *const c_char,
+    exclude_page_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || url.is_null() {
+        return std::ptr::null_mut();
+    }
+    let Some(u) = to_opt_str(url) else {
+        return std::ptr::null_mut();
+    };
+    let excl = to_opt_str(exclude_page_id);
+    match NotesRepository::find_duplicate_links(&*db, u, excl) {
+        Ok(matches) => json_to_c_char(&matches),
+        Err(e) => {
+            eprintln!("[Synapse Bridge] find_duplicate_links failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}

@@ -412,6 +412,40 @@ bool SynapseDataController::deleteDiagram(const QString &diagramId) {
     return synapse_diagrams_delete(m_db, did.constData()) == 1;
 }
 
+QVariantList SynapseDataController::extractQtDiagramShapes(const QString &rawContent) {
+    const QByteArray rawBytes = rawContent.toUtf8();
+    char *raw = synapse_diagrams_extract_qt_shapes(rawBytes.constData());
+    if (!raw) return QVariantList();
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QString SynapseDataController::encodeQtDiagramAsTldrawV2(const QVariantList &shapes, const QString &existingRaw) {
+    const QJsonDocument doc(QJsonArray::fromVariantList(shapes));
+    const QByteArray shapesBytes = doc.toJson(QJsonDocument::Compact);
+    const QByteArray prevBytes = existingRaw.toUtf8();
+    char *raw = synapse_diagrams_encode_tldraw_v2(
+        shapesBytes.constData(),
+        existingRaw.trimmed().isEmpty() ? nullptr : prevBytes.constData()
+    );
+    if (!raw) return QStringLiteral("[]");
+    const QString result = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return result;
+}
+
+QString SynapseDataController::exportQtDiagramToSvg(const QVariantList &shapes) {
+    const QJsonDocument doc(QJsonArray::fromVariantList(shapes));
+    const QByteArray shapesBytes = doc.toJson(QJsonDocument::Compact);
+    char *raw = synapse_diagrams_export_svg(shapesBytes.constData());
+    if (!raw) return QString();
+    const QString svg = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return svg;
+}
+
 QString SynapseDataController::readLocalTextFile(const QString &filePath) {
     if (filePath.trimmed().isEmpty()) return QString();
     QString path = filePath.trimmed();
