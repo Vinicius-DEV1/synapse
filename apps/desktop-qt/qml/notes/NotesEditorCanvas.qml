@@ -30,12 +30,13 @@ ScrollView {
     property bool saveFailed: false
     property bool isPreviewMode: false
     property bool isRichMode: false
+    property bool isBlockMode: false
     property string copiedLinkUrl: ""
     onActivePageIdChanged: copiedLinkUrl = ""
     readonly property bool isEmojiPickerOpen: pageHeader.isEmojiPickerOpen
     readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible ||
                                          sourceEditorSurface.isDialogOpen || previewSurface.isDialogOpen
-    readonly property bool contentEditorFocused: isRichMode ? richTextEditor.editor.activeFocus : sourceEditorSurface.editor.activeFocus
+    readonly property bool contentEditorFocused: isRichMode && !isBlockMode ? richTextEditor.editor.activeFocus : sourceEditorSurface.editor.activeFocus
     readonly property bool canUseRichMode: richTextEditor.canEditSource
     readonly property bool richContentInvalid: richTextEditor.hasInvalidContent
 
@@ -61,6 +62,15 @@ ScrollView {
     signal coverModified(string imageUrl)
     signal externalLinkRequested(string link)
     signal shareRequested()
+    signal widgetSlashCommandRequested(string commandId, int blockIndex)
+    signal askAiRequested(string selection, string blockHtml)
+    signal playQuestionRequested(string batteryId, string questionId, string title)
+    signal openInQuestionsRequested(string batteryId)
+    signal habitStatsRequested(string habitId)
+    signal openMediaRequested(string mediaType, string mediaId, string title)
+    signal openInNewTabRequested(string pageId)
+    signal subPageIconChanged(string pageId, string emoji)
+    signal createSubPageWithContentRequested(string title, string html)
 
     property var hierarchyActions: NotesHierarchyActions {
         controller: canvasRoot.controller
@@ -207,7 +217,17 @@ ScrollView {
     }
 
     function flushRichEditor() {
-        return !isRichMode || richTextEditor.commitEditorText()
+        return !isRichMode || isBlockMode || richTextEditor.commitEditorText()
+    }
+
+    function insertWidgetAtBlock(blockIdx, widgetHtml) {
+        if (isBlockMode) {
+            blockListEditor.insertWidgetHtmlAfter(blockIdx, widgetHtml)
+        } else {
+            flushRichEditor()
+            var nextHtml = (activeContent || "") + widgetHtml
+            richContentModified(nextHtml)
+        }
     }
 
     ColumnLayout {
@@ -264,6 +284,8 @@ ScrollView {
                 onRichModeRequested: function(enabled) { canvasRoot.richModeRequested(enabled) }
                 onMoveRequested: function(pageId) { movePageDialog.openForPage(pageId) }
                 onPreviewToggled: function(preview) { canvasRoot.previewToggled(preview) }
+                onOpenInNewTabRequested: function(pid) { canvasRoot.openInNewTabRequested(pid) }
+                onSubPageIconChanged: function(pid, emoji) { canvasRoot.subPageIconChanged(pid, emoji) }
             }
 
             Rectangle {
@@ -330,18 +352,9 @@ ScrollView {
                 }
             }
 
-            NotesEditorFormattingToolbar {
-                isPreviewMode: canvasRoot.isPreviewMode
-                isRichMode: canvasRoot.isRichMode
-                richEditor: richTextEditor
-                sourceEditor: sourceEditorSurface.editor
-                linkInsertionDialog: sourceEditorSurface.linkInsertionDialog
-                onFormatRequested: function(prefix, suffix) { canvasRoot.formatSelection(prefix, suffix) }
-            }
-
             NotesRichTextEditor {
                 id: richTextEditor
-                visible: !canvasRoot.isPreviewMode && canvasRoot.isRichMode
+                visible: !canvasRoot.isPreviewMode && canvasRoot.isRichMode && !canvasRoot.isBlockMode
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(300, richTextEditor.editor.contentHeight + 40)
                 sourceHtml: canvasRoot.activeContent
@@ -353,6 +366,8 @@ ScrollView {
                 onContentModified: function(html) { canvasRoot.richContentModified(html) }
                 onPagePreviewRequested: function(pageId) { canvasRoot.pageReferencePreviewRequested(pageId) }
                 onExternalLinkRequested: function(link) { canvasRoot.openExternalLink(link) }
+                onWidgetSlashCommandRequested: function(cmd) { canvasRoot.widgetSlashCommandRequested(cmd, 0) }
+                onAskAiRequested: function(sel) { canvasRoot.askAiRequested(sel, canvasRoot.activeContent) }
                 onPageHierarchyChanged: canvasRoot.pageHierarchyChanged()
                 onValidationChanged: function(invalid, message) {
                     canvasRoot.richValidationChanged(invalid)
@@ -360,9 +375,35 @@ ScrollView {
                 }
             }
 
+            NotesBlockListEditor {
+                id: blockListEditor
+                visible: !canvasRoot.isPreviewMode && canvasRoot.isBlockMode
+                active: visible
+                sourceHtml: canvasRoot.activeContent
+                pageId: canvasRoot.activePageId
+                pageTitle: canvasRoot.activeTitle
+                pageList: canvasRoot.allPages
+                controller: canvasRoot.controller
+                textOperations: canvasRoot.textOperations
+                onHtmlChanged: function(serializedHtml) { canvasRoot.contentModified(serializedHtml) }
+                onPagePreviewRequested: function(pid) { canvasRoot.pageReferencePreviewRequested(pid) }
+                onPageOpenRequested: function(pid) { canvasRoot.pageNavigationRequested(pid) }
+                onExternalLinkRequested: function(lnk) { canvasRoot.openExternalLink(lnk) }
+                onAskAiRequested: function(sel, html) { canvasRoot.askAiRequested(sel, html) }
+                onSlashWidgetRequested: function(cmd, idx) { canvasRoot.widgetSlashCommandRequested(cmd, idx) }
+                onPlayQuestionRequested: function(bid, qid, title) { canvasRoot.playQuestionRequested(bid, qid, title) }
+                onOpenInQuestionsRequested: function(bid) { canvasRoot.openInQuestionsRequested(bid) }
+                onYoutubeWatchRequested: function(u, t) {
+                    canvasRoot.externalLinkRequested("synapse-youtube://watch?url=" + encodeURIComponent(u) + "&title=" + encodeURIComponent(t))
+                }
+                onCreateSubPageWithContent: function(t, h) { canvasRoot.createSubPageWithContentRequested(t, h) }
+                onHabitStatsRequested: function(hid) { canvasRoot.habitStatsRequested(hid) }
+                onOpenMediaRequested: function(mt, mid, t) { canvasRoot.openMediaRequested(mt, mid, t) }
+            }
+
             NotesSourceEditorSurface {
                 id: sourceEditorSurface
-                visible: !canvasRoot.isPreviewMode && !canvasRoot.isRichMode
+                visible: !canvasRoot.isPreviewMode && !canvasRoot.isRichMode && !canvasRoot.isBlockMode
                 sourceHtml: canvasRoot.activeContent
                 Layout.fillWidth: true
                 onContentModified: function(content) { canvasRoot.contentModified(content) }

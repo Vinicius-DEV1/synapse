@@ -44,34 +44,11 @@ Rectangle {
         if (!newText || newText.length === 0) {
             return "<span style=\"background-color:rgba(244,63,94,0.25);color:#fda4af;text-decoration:line-through;\">" + oldText + "</span>"
         }
-        var oldWords = oldText.split(/\s+/)
-        var newWords = newText.split(/\s+/)
-        var oldSet = ({})
-        for (var i = 0; i < oldWords.length; i++) oldSet[oldWords[i]] = true
-
-        var newSet = ({})
-        for (var j = 0; j < newWords.length; j++) newSet[newWords[j]] = true
-
-        var diffResult = ""
-        // Track deletions from old words
-        for (var d = 0; d < oldWords.length; d++) {
-            var ow = oldWords[d]
-            if (!newSet[ow]) {
-                diffResult += "<span style=\"background-color:rgba(244,63,94,0.25);color:#fda4af;text-decoration:line-through;padding:1px 3px;\">" + ow + "</span> "
-            }
+        if (typeof dataController !== "undefined" && dataController &&
+                typeof dataController.computeNoteWordDiffHtml === "function") {
+            return dataController.computeNoteWordDiffHtml(oldText, newText)
         }
-        if (diffResult.length > 0) diffResult += "<br/><br/>"
-
-        // Render new words with additions highlighted
-        for (var n = 0; n < newWords.length; n++) {
-            var nw = newWords[n]
-            if (!oldSet[nw]) {
-                diffResult += "<span style=\"background-color:rgba(16,185,129,0.25);color:#6ee7b7;padding:1px 3px;font-weight:bold;\">+" + nw + "</span> "
-            } else {
-                diffResult += nw + " "
-            }
-        }
-        return diffResult
+        return newText
     }
 
     onVisibleChanged: if (visible) selectedIndex = 0

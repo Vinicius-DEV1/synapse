@@ -28,7 +28,12 @@ Rectangle {
     property bool saveFailed: false
     property bool isPreviewMode: false
     property bool isRichMode: true
+    property bool isBlockMode: false
+    property int pendingWidgetBlockIndex: -1
     property bool isHistoryOpen: false
+
+    signal openInNewTabRequested(string pageId)
+    signal navigateModuleRequested(string moduleId)
     property bool isHelpOpen: false
     property bool isPageEncrypted: false
     property bool isPageUnlocked: false
@@ -108,8 +113,13 @@ Rectangle {
         activeDescription = p.description || ""
         activeContent = p.content || ""
         var canRich = notesTextOperations.supportsRichSource(activeContent)
+        var parsedBlocks = !canRich && typeof dataController.parseNoteBlocks === "function"
+            ? (dataController.parseNoteBlocks(activeContent) || []) : []
+        var hasInteractiveBlocks = parsedBlocks.length > 1 ||
+            (parsedBlocks.length === 1 && parsedBlocks[0].blockType !== "richText")
         isRichMode = canRich
-        isPreviewMode = !canRich
+        isBlockMode = !canRich && hasInteractiveBlocks
+        isPreviewMode = !canRich && !hasInteractiveBlocks
         activeIcon = p.icon || "📄"
         activeCoverImage = p.cover_image || ""
         activeDate = p.updated_at ? p.updated_at.substring(0, 10) : ""
@@ -345,6 +355,42 @@ Rectangle {
             saveFailed: notesRoot.saveFailed
             isPreviewMode: notesRoot.isPreviewMode
             isRichMode: notesRoot.isRichMode
+            isBlockMode: notesRoot.isBlockMode
+
+            onWidgetSlashCommandRequested: function(commandId, blockIndex) {
+                notesRoot.handleWidgetSlashCommand(commandId, blockIndex)
+            }
+            onAskAiRequested: function(sel, blockHtml) {
+                notesAiModal.openModal(sel, blockHtml || notesRoot.activeContent)
+            }
+            onPlayQuestionRequested: function(bid, qid, title) {
+                notesRoot.openQuestionSession(bid, qid, title)
+            }
+            onOpenInQuestionsRequested: function(bid) {
+                notesRoot.navigateModuleRequested("quiz")
+            }
+            onHabitStatsRequested: function(hid) {
+                notesRoot.openHabitHeatmap(hid)
+            }
+            onOpenMediaRequested: function(mt, mid, title) {
+                notesRoot.navigateModuleRequested(mt === "book" ? "library" : "video")
+            }
+            onOpenInNewTabRequested: function(pid) {
+                notesRoot.openInNewTabRequested(pid)
+            }
+            onSubPageIconChanged: function(pid, emoji) {
+                if (typeof dataController.updatePageIcon === "function" && dataController.updatePageIcon(pid, emoji)) {
+                    notesRoot.loadPages()
+                }
+            }
+            onCreateSubPageWithContentRequested: function(title, html) {
+                if (!notesRoot.selectedPageId) return
+                var newId = dataController.createSubPage(notesRoot.selectedPageId, title || "Nova Sub-página", "📄")
+                if (newId) {
+                    dataController.savePage(newId, title || "Nova Sub-página", html || "<p></p>", "📄", "")
+                    notesRoot.loadPages()
+                }
+            }
 
             onSaveRequested: notesRoot.saveActiveNote()
             onDeleteRequested: notesRoot.requestDeleteActiveNote()
@@ -510,6 +556,152 @@ Rectangle {
     NotesHelpDialog {
         isOpen: notesRoot.isHelpOpen
         onClosed: notesRoot.isHelpOpen = false
+    }
+
+    function handleWidgetSlashCommand(commandId, blockIndex) {
+        pendingWidgetBlockIndex = blockIndex
+        if (commandId === "ia") {
+            notesAiModal.openModal("", activeContent)
+            return
+        }
+        if (commandId === "question" || commandId === "foco" || commandId === "alarme" ||
+                commandId === "evento" || commandId === "habito") {
+            setupWidgetsModal.openMode(commandId)
+            return
+        }
+        if (commandId === "documento" || commandId === "scrap" || commandId === "video" || commandId === "livro") {
+            mediaPickerModal.openMode(commandId)
+            return
+        }
+        var widgetHtml = ""
+        if (commandId === "toggle") {
+            widgetHtml = "<div data-type=\"toggle-block\" data-title=\"Seção recolhível\" data-open=\"true\"><p></p></div>"
+        } else if (commandId === "blockquoteToggle") {
+            widgetHtml = "<div data-type=\"blockquote-toggle\" data-title=\"Nota expandível\" data-color=\"#8b5cf6\" data-open=\"true\"><p></p></div>"
+        } else if (commandId === "agrupar") {
+            widgetHtml = "<div data-type=\"document-bundle\" data-title=\"Pacote de Documentos\" data-items=\"[]\"></div>"
+        } else if (commandId === "group") {
+            widgetHtml = "<div data-type=\"groupBlock\" data-title=\"Coleção\" data-color=\"#8b5cf6\" data-collapsed=\"false\"><p></p></div>"
+        }
+        if (widgetHtml.length > 0) insertWidgetIntoNote(widgetHtml)
+    }
+
+    function insertWidgetIntoNote(widgetHtml) {
+        if (!isBlockMode) {
+            editorCanvas.flushRichEditor()
+            activeContent = (activeContent || "") + widgetHtml
+            isRichMode = false
+            isPreviewMode = false
+            isBlockMode = true
+        } else {
+            editorCanvas.insertWidgetAtBlock(pendingWidgetBlockIndex, widgetHtml)
+        }
+        isDirty = true
+        autoSaveTimer.restart()
+    }
+
+    function openQuestionSession(batteryId, questionId, title) {
+        var qs = []
+        if (typeof dataController.getAllQuizQuestions === "function") {
+            var all = dataController.getAllQuizQuestions() || []
+            qs = all.filter(function(q) {
+                return (batteryId && q.battery_id === batteryId) || (questionId && q.id === questionId)
+            })
+        }
+        quizModalLoader.active = true
+        if (quizModalLoader.item) {
+            quizModalLoader.item.batteryId = batteryId
+            quizModalLoader.item.batteryTitle = title || qsTr("Prática Rápida")
+            quizModalLoader.item.questions = qs
+            quizModalLoader.item.currentIndex = 0
+            quizModalLoader.item.selectedOption = -1
+            quizModalLoader.item.isConfirmed = false
+            quizModalLoader.item.isCompleted = false
+            quizModalLoader.item.score = 0
+            quizModalLoader.item.elapsedSeconds = 0
+            quizModalLoader.item.visible = true
+        }
+    }
+
+    function openHabitHeatmap(habitId) {
+        if (typeof dataController.getHabits !== "function") return
+        var list = dataController.getHabits() || []
+        var target = null
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].id === habitId) { target = list[i]; break }
+        }
+        if (!target) return
+        habitHeatmapLoader.active = true
+        if (habitHeatmapLoader.item) {
+            habitHeatmapLoader.item.habit = target
+            habitHeatmapLoader.item.reloadData()
+            habitHeatmapLoader.item.visible = true
+        }
+    }
+
+    NotesAiPromptModal {
+        id: notesAiModal
+        onApplyHtmlRequested: function(html) {
+            notesRoot.activeContent = html
+            editorCanvas.setEditorText(html)
+            if (notesRoot.isRichMode) editorCanvas.reloadRichEditor()
+            notesRoot.isDirty = true
+            autoSaveTimer.restart()
+        }
+        onInsertTextRequested: function(text) {
+            var esc = "<p>" + String(text || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</p>"
+            notesRoot.activeContent = (notesRoot.activeContent || "") + esc
+            editorCanvas.setEditorText(notesRoot.activeContent)
+            if (notesRoot.isRichMode) editorCanvas.reloadRichEditor()
+            notesRoot.isDirty = true
+            autoSaveTimer.restart()
+        }
+        onClosed: notesAiModal.isOpen = false
+    }
+
+    NotesSetupWidgetsModal {
+        id: setupWidgetsModal
+        onInsertWidgetRequested: function(html) { notesRoot.insertWidgetIntoNote(html) }
+    }
+
+    NotesMediaWidgetPickerModal {
+        id: mediaPickerModal
+        onInsertWidgetRequested: function(html) { notesRoot.insertWidgetIntoNote(html) }
+    }
+
+    Loader {
+        id: quizModalLoader
+        active: false
+        anchors.fill: parent
+        z: 145
+        source: "../questions/QuizSequentialFocusModal.qml"
+    }
+
+    Connections {
+        target: quizModalLoader.item
+        ignoreUnknownSignals: true
+        function onClosed() { quizModalLoader.active = false }
+        function onRecordAttemptRequested(bId, qId, selIndex, correct) {
+            dataController.recordQuizAttempt(bId, qId, selIndex, correct)
+        }
+    }
+
+    Loader {
+        id: habitHeatmapLoader
+        active: false
+        anchors.fill: parent
+        z: 145
+        source: "../habits/HabitsHeatmapModal.qml"
+    }
+
+    Connections {
+        target: habitHeatmapLoader.item
+        ignoreUnknownSignals: true
+        function onVisibleChanged() {
+            if (habitHeatmapLoader.item && !habitHeatmapLoader.item.visible) {
+                habitHeatmapLoader.active = false
+            }
+        }
     }
 
     NotesDeleteDialog {

@@ -1,25 +1,45 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import ".."
+import "../ui"
 
 Rectangle {
     id: bundleWidgetRoot
     Layout.fillWidth: true
-    Layout.preferredHeight: contentCol.implicitHeight + 24
+    implicitHeight: contentCol.implicitHeight + 24
     radius: 12
     color: "#16161e"
-    border.color: "#2e2e38"
+    border.color: hoverHandler.hovered ? "#448b5cf6" : "#2e2e38"
     border.width: 1
 
-    property string bundleId: ""
-    property string title: "Pacote de Documentos"
-    property var items: []
-
-    signal documentClicked(var doc)
-    signal removeDocument(int index)
-
+    property var blockData: ({})
+    property var attrs: blockData.attrs || ({})
+    property string title: attrs["data-title"] || attrs["title"] || qsTr("Pacote de Documentos")
+    property var items: {
+        var raw = attrs["data-items"] || attrs["items"] || "[]"
+        try {
+            var parsed = JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
+            return Array.isArray(parsed) ? parsed : []
+        } catch (e) {
+            return []
+        }
+    }
     property bool isModalOpen: false
+
+    signal attrsUpdated(var newAttrs)
+    signal pageOpenRequested(string pageId)
+    signal removeRequested()
+
+    HoverHandler { id: hoverHandler }
+
+    function saveItems(nextItems) {
+        var next = Object.assign({}, attrs)
+        next["data-type"] = "document-bundle"
+        next["data-title"] = title
+        next["data-items"] = JSON.stringify(nextItems)
+        attrsUpdated(next)
+    }
 
     ColumnLayout {
         id: contentCol
@@ -31,96 +51,91 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 8
 
-            AppIcon {
-                name: "notes"
-                color: "#7c3aed"
-                Layout.preferredWidth: 16
-                Layout.preferredHeight: 16
-            }
-
+            AppIcon { name: "notes"; color: "#8b5cf6"; Layout.preferredWidth: 16; Layout.preferredHeight: 16 }
             Text {
                 text: bundleWidgetRoot.title
                 color: "#fffffe"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                elide: Text.ElideRight
             }
 
-            Rectangle {
+            Button {
                 Layout.preferredHeight: 26
-                Layout.preferredWidth: 80
-                radius: 6
-                color: addMouse.containsMouse ? "#2e2e38" : "#1f1f2e"
-                border.color: "#3a3a4c"
-                border.width: 1
-
-                RowLayout {
+                Layout.preferredWidth: 88
+                focusPolicy: Qt.NoFocus
+                onClicked: bundleWidgetRoot.isModalOpen = true
+                background: Rectangle { radius: 6; color: parent.hovered ? "#2e2e38" : "#1f1f2e"; border.color: "#3a3a4c" }
+                contentItem: RowLayout {
                     anchors.centerIn: parent
                     spacing: 4
-                    AppIcon { name: "plus"; color: "#a78bfa"; Layout.preferredWidth: 12; Layout.preferredHeight: 12 }
-                    Text { text: "Adicionar"; color: "#c4b5fd"; font.pixelSize: 11 }
+                    AppIcon { name: "plus"; color: "#a78bfa"; width: 12; height: 12 }
+                    Text { text: qsTr("Adicionar"); color: "#c4b5fd"; font.pixelSize: 11 }
                 }
+            }
 
-                MouseArea {
-                    id: addMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: bundleWidgetRoot.isModalOpen = true
-                }
+            ToolButton {
+                visible: hoverHandler.hovered
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                focusPolicy: Qt.NoFocus
+                onClicked: bundleWidgetRoot.removeRequested()
+                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
+                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
             }
         }
 
-        // Empty state
         Text {
-            visible: !bundleWidgetRoot.items || bundleWidgetRoot.items.length === 0
-            text: "Nenhuma página vinculada ao pacote. Clique em Adicionar para incluir páginas."
+            visible: bundleWidgetRoot.items.length === 0
+            text: qsTr("Nenhuma página vinculada. Clique em Adicionar para agrupar páginas.")
             color: "#6b7280"
             font.pixelSize: 11
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
-        // Badges grid
         Flow {
             Layout.fillWidth: true
             spacing: 6
-            visible: bundleWidgetRoot.items && bundleWidgetRoot.items.length > 0
+            visible: bundleWidgetRoot.items.length > 0
 
             Repeater {
                 model: bundleWidgetRoot.items
-
                 delegate: Rectangle {
                     id: itemDelegate
                     required property var modelData
                     required property int index
-
                     height: 28
                     width: itemRow.implicitWidth + 16
                     radius: 6
                     color: itemMouse.containsMouse ? "#281b38" : "#0f0e17"
-                    border.color: "#2e2e38"
-                    border.width: 1
+                    border.color: itemMouse.containsMouse ? "#7c3aed" : "#2e2e38"
 
                     RowLayout {
                         id: itemRow
                         anchors.centerIn: parent
                         spacing: 6
-
+                        Text { text: itemDelegate.modelData.icon || "📄"; font.pixelSize: 12 }
                         Text {
-                            text: itemDelegate.modelData.title || "Documento"
-                            color: "#fffffe"
+                            text: itemDelegate.modelData.title || qsTr("Página")
+                            color: "#e2e8f0"
                             font.pixelSize: 11
+                            font.weight: Font.Medium
                         }
-
                         AppIcon {
                             name: "close"
-                            color: "#9ca3af"
-                            Layout.preferredWidth: 10
-                            Layout.preferredHeight: 10
-
+                            color: "#71717a"
+                            width: 10
+                            height: 10
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: bundleWidgetRoot.removeDocument(itemDelegate.index)
+                                onClicked: {
+                                    var next = bundleWidgetRoot.items.slice()
+                                    next.splice(itemDelegate.index, 1)
+                                    bundleWidgetRoot.saveItems(next)
+                                }
                             }
                         }
                     }
@@ -128,9 +143,10 @@ Rectangle {
                     MouseArea {
                         id: itemMouse
                         anchors.fill: parent
+                        z: -1
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: bundleWidgetRoot.documentClicked(itemDelegate.modelData)
+                        onClicked: if (itemDelegate.modelData.id) bundleWidgetRoot.pageOpenRequested(itemDelegate.modelData.id)
                     }
                 }
             }
@@ -139,11 +155,15 @@ Rectangle {
 
     DocumentBundleModal {
         isOpen: bundleWidgetRoot.isModalOpen
-        onClosed: bundleWidgetRoot.isModalOpen = false
         onPageSelected: function(page) {
-            var copy = bundleWidgetRoot.items ? bundleWidgetRoot.items.slice(0) : []
-            copy.push(page)
-            bundleWidgetRoot.items = copy
+            var next = bundleWidgetRoot.items.slice()
+            var exists = next.some(function(it) { return it.id === page.id })
+            if (!exists) {
+                next.push({ id: page.id, title: page.title || "Sem título", icon: page.icon || "📄" })
+                bundleWidgetRoot.saveItems(next)
+            }
+            bundleWidgetRoot.isModalOpen = false
         }
+        onClosed: bundleWidgetRoot.isModalOpen = false
     }
 }

@@ -642,6 +642,16 @@ Item {
                         onSelectedPageIdChanged: rootWindow.syncActiveNotesTabMeta()
                         onActiveTitleChanged: rootWindow.syncActiveNotesTabMeta()
                         onActiveIconChanged: rootWindow.syncActiveNotesTabMeta()
+                        onOpenInNewTabRequested: function(pageId) {
+                            var p = dataController.getPage(pageId)
+                            var title = (p && p.title) ? p.title : "Caderno"
+                            var emoji = (p && p.icon) ? p.icon : "📄"
+                            rootWindow.addNewTab("notes", title, "notes", pageId, emoji)
+                        }
+                        onNavigateModuleRequested: function(modKey) {
+                            var info = rootWindow.getModuleInfo(modKey)
+                            rootWindow.updateActiveTabModule(modKey, info.title, info.icon)
+                        }
                     }
                     ZenQuizView { id: quizView }
                     LibraryView {

@@ -36,6 +36,8 @@ ColumnLayout {
     signal richModeRequested(bool enabled)
     signal moveRequested(string pageId)
     signal previewToggled(bool preview)
+    signal openInNewTabRequested(string pageId)
+    signal subPageIconChanged(string pageId, string emoji)
 
     function setTitleText(value) { noteTitleInput.text = value }
     function setDescriptionText(value) { noteDescriptionInput.text = value }
@@ -83,7 +85,7 @@ ColumnLayout {
         }
         NotesEditorHeader {
             id: notesEditorHeader
-            Layout.preferredWidth: 278
+            Layout.preferredWidth: 375
             isDirty: pageHeader.isDirty
             saveFailed: pageHeader.saveFailed
             isPreviewMode: pageHeader.isPreviewMode
@@ -127,12 +129,15 @@ ColumnLayout {
     NotesSubPageGrid {
         visible: pageHeader.childPages.length > 0
         pages: pageHeader.childPages
+        allPages: pageHeader.pages
         actionStatus: pageHeader.actionStatus
         Layout.fillWidth: true
         onPageSelected: function(pageId) { pageHeader.pageSelected(pageId) }
+        onOpenInNewTabRequested: function(pageId) { pageHeader.openInNewTabRequested(pageId) }
         onCreateRequested: pageHeader.createSubPageRequested()
         onReorderRequested: function(orderedPageIds) { pageHeader.hierarchyActions.reorder(orderedPageIds) }
         onMoveRequested: function(pageId, newParentId) { pageHeader.hierarchyActions.move(pageId, newParentId) }
         onMoveToRequested: function(pageId) { pageHeader.moveRequested(pageId) }
+        onIconChanged: function(pageId, emoji) { pageHeader.subPageIconChanged(pageId, emoji) }
     }
 }

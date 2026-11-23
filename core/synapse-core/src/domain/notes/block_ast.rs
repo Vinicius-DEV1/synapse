@@ -140,21 +140,37 @@ fn detect_block_type(tag_name: &str, tag_open: &str) -> Option<&'static str> {
             "document-bundle" | "documentBundle" => Some("documentBundle"),
             "media-widget" | "mediaWidget" => Some("mediaWidget"),
             "scrap-widget" | "scrapWidget" => Some("scrapWidget"),
-            "link-preview" | "linkPreview" => Some("linkPreview"),
+            "link-preview" | "linkPreview" | "youtube-video" | "youtubeVideo" => Some("linkPreview"),
             "link-group" | "linkGroup" => Some("linkGroup"),
             "toggle-block" | "toggleBlock" => Some("toggleBlock"),
             "blockquote-toggle" | "blockquoteToggle" => Some("blockquoteToggle"),
             "columnGroup" | "column-group" => Some("columnGroup"),
-            "collectionBlock" | "collection-block" => Some("collectionBlock"),
+            "groupBlock" | "group-block" | "collectionBlock" | "collection-block" => {
+                Some("collectionBlock")
+            }
             _ => None,
         };
     }
-    match tag_name {
-        "blockquote" if attr_value(tag_open, "data-color").is_some() => Some("colorBlockquote"),
-        "pre" => Some("codeBlock"),
-        "table" => Some("tableBlock"),
-        _ => None,
+    if tag_name == "div" {
+        if let Some(cls) = attr_value(tag_open, "class") {
+            if cls.contains("group-collection") {
+                return Some("collectionBlock");
+            }
+            if cls.contains("link-group-block") {
+                return Some("linkGroup");
+            }
+            if cls.contains("question-block") {
+                return Some("questionBlock");
+            }
+            if cls.contains("document-bundle") {
+                return Some("documentBundle");
+            }
+            if cls.contains("youtube-video") {
+                return Some("linkPreview");
+            }
+        }
     }
+    None
 }
 
 /// Parses TipTap HTML into an ordered sequence of rich-text and live widget blocks.
@@ -209,10 +225,12 @@ pub fn parse_note_blocks(html: &str) -> Vec<NoteBlock> {
                 .rfind(&close_tag)
                 .unwrap_or(full_html.len());
             let inner_start = tag_open.len().min(inner_end);
+            let mut attrs = parse_all_data_attrs(tag_open);
+            attrs.insert("_tag".to_string(), tag_name);
             blocks.push(NoteBlock {
                 id: format!("blk_{}", idx),
                 block_type: block_type.to_string(),
-                attrs: parse_all_data_attrs(tag_open),
+                attrs,
                 inner_html: full_html[inner_start..inner_end].to_string(),
                 html: full_html,
             });
@@ -247,12 +265,15 @@ pub fn serialize_note_blocks(blocks: &[NoteBlock]) -> String {
             }
             continue;
         }
-        let tag = match block.block_type.as_str() {
-            "colorBlockquote" => "blockquote",
-            "codeBlock" => "pre",
-            "tableBlock" => "table",
-            _ => "div",
-        };
+        let tag = block
+            .attrs
+            .get("_tag")
+            .map(String::as_str)
+            .filter(|t| !t.is_empty())
+            .unwrap_or_else(|| match block.block_type.as_str() {
+                "focusWidget" | "alarmWidget" | "habitWidget" | "calendarEventWidget" => "span",
+                _ => "div",
+            });
         if block.attrs.is_empty() && !block.html.trim().is_empty() {
             out.push_str(&block.html);
             continue;
@@ -260,6 +281,9 @@ pub fn serialize_note_blocks(blocks: &[NoteBlock]) -> String {
         out.push('<');
         out.push_str(tag);
         for (k, v) in &block.attrs {
+            if k == "_tag" {
+                continue;
+            }
             out.push(' ');
             out.push_str(k);
             out.push_str("=\"");

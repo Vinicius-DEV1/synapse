@@ -21,6 +21,8 @@ Item {
     readonly property alias editor: richEditor
     signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
+    signal widgetSlashCommandRequested(string commandId)
+    signal askAiRequested(string selectedText)
     readonly property string editorAccessibleDescription: {
         var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
             ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
@@ -106,6 +108,19 @@ Item {
             pageReferenceFlow.openForPosition(
                         commandStart, initialQuery, createMode, richEditor.cursorRectangle.x,
                         richEditor.cursorRectangle.y + richEditor.cursorRectangle.height + 6)
+            return true
+        }
+        var widgetCommands = [
+            "toggle", "blockquoteToggle", "question", "foco", "alarme", "evento",
+            "habito", "documento", "agrupar", "scrap", "group", "video", "livro", "ia"
+        ]
+        if (widgetCommands.indexOf(commandId) >= 0) {
+            if (editorRoot && editorRoot.textOperations && typeof editorRoot.textOperations.replace === "function") {
+                editorRoot.textOperations.replace(richEditor.textDocument, commandStart, commandEnd, "")
+                richEditor.cursorPosition = commandStart
+            }
+            closeSlashMenu()
+            widgetSlashCommandRequested(commandId)
             return true
         }
         var executed = richCommands.executeSlashCommand(commandStart, commandEnd, commandId)
@@ -523,6 +538,75 @@ Item {
                 onClicked: {
                     if (inputRoot.richCommands) inputRoot.richCommands.openLinkDialog()
                 }
+            }
+
+            NotesRichColorPalette {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                richMode: true
+                onColorSelected: function(background, color) {
+                    if (inputRoot.editorRoot && inputRoot.editorRoot.tableActions) {
+                        inputRoot.editorRoot.tableActions.setColor(background, color)
+                    }
+                }
+            }
+
+            ToolButton {
+                id: bubblePageRef
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 24
+                padding: 1
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Linkar página ([[)")
+                background: Rectangle {
+                    radius: 4
+                    color: bubblePageRef.hovered ? "#1affffff" : "transparent"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "[["
+                    color: bubblePageRef.hovered ? "#ffffff" : "#94a1b2"
+                    font.pixelSize: 10
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    pageReferenceFlow.openForPosition(
+                        richEditor.selectionEnd, "", false,
+                        richEditor.cursorRectangle.x, richEditor.cursorRectangle.y + 20)
+                }
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 14
+                color: "#18ffffff"
+            }
+
+            ToolButton {
+                id: bubbleAskAi
+                focusPolicy: Qt.NoFocus
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 24
+                padding: 2
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Editar ou perguntar à IA")
+                background: Rectangle {
+                    radius: 4
+                    color: bubbleAskAi.hovered ? "#338b5cf6" : "#188b5cf6"
+                }
+                contentItem: Text {
+                    anchors.centerIn: parent
+                    text: "✨ IA"
+                    color: "#ddd6fe"
+                    font.pixelSize: 10
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: inputRoot.askAiRequested(richEditor.selectedText)
             }
         }
     }

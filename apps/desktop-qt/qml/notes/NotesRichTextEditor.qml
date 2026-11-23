@@ -44,6 +44,8 @@ Item {
     signal validationChanged(bool invalid, string message)
     signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
+    signal widgetSlashCommandRequested(string commandId)
+    signal askAiRequested(string selectedText)
     signal pageHierarchyChanged()
 
     function createLinkedPage(title) {
@@ -216,6 +218,13 @@ Item {
         commitTimer: commitTimer
         onPagePreviewRequested: function(pageId) { richRoot.pagePreviewRequested(pageId) }
         onExternalLinkRequested: function(link) { richRoot.externalLinkRequested(link) }
+        onWidgetSlashCommandRequested: function(cmd) { richRoot.widgetSlashCommandRequested(cmd) }
+        onAskAiRequested: function(txt) { richRoot.askAiRequested(txt) }
+    }
+
+    NotesTableExcelGrips {
+        tableActions: richTableActions
+        textEditor: richTextInput.editor
     }
 
     NotesRichTextCommands {

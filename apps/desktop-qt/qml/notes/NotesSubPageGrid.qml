@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 ColumnLayout {
     id: subPageGrid
@@ -8,13 +9,31 @@ ColumnLayout {
     spacing: 8
 
     property var pages: []
+    property var allPages: []
     property string actionStatus: ""
+    property int pageLimit: 12
+    property var expandedChildrenMap: ({})
+    property string emojiTargetPageId: ""
 
     signal pageSelected(string pageId)
+    signal openInNewTabRequested(string pageId)
     signal createRequested()
     signal reorderRequested(var orderedPageIds)
     signal moveRequested(string pageId, string newParentId)
     signal moveToRequested(string pageId)
+    signal iconChanged(string pageId, string emoji)
+
+    function childrenOf(parentId) {
+        if (!allPages || allPages.length === 0) return []
+        return allPages.filter(function(p) { return p.parent_id === parentId })
+    }
+
+    function toggleExpand(pageId) {
+        var copy = Object.assign({}, expandedChildrenMap)
+        if (copy[pageId]) delete copy[pageId]
+        else copy[pageId] = true
+        expandedChildrenMap = copy
+    }
 
     function columnWidth() {
         var columnCount = childPageGrid.columns
@@ -73,11 +92,14 @@ ColumnLayout {
         columnSpacing: 8
 
         Repeater {
-            model: subPageGrid.pages
+            model: subPageGrid.pages.slice(0, subPageGrid.pageLimit)
             delegate: Rectangle {
                 id: childCard
                 required property var modelData
                 readonly property var pageData: modelData
+                readonly property var grandChildren: subPageGrid.childrenOf(modelData.id)
+                readonly property bool hasChildren: grandChildren.length > 0
+                readonly property bool isExpanded: Boolean(subPageGrid.expandedChildrenMap[modelData.id])
                 property bool nestTargetActive: false
                 property bool orderTargetActive: false
                 property bool nestedDropHandled: false
@@ -141,13 +163,24 @@ ColumnLayout {
                         Rectangle {
                             anchors.fill: parent
                             radius: 8
-                            color: nestedDropArea.containsDrag ? "#558b5cf6" : "transparent"
+                            color: nestedDropArea.containsDrag ? "#558b5cf6" : iconClickArea.containsMouse ? "#1affffff" : "transparent"
                             border.color: nestedDropArea.containsDrag ? "#a78bfa" : "transparent"
                         }
                         Text {
                             anchors.centerIn: parent
                             text: childCard.pageData.icon || "📄"
                             font.pixelSize: 20
+                        }
+                        MouseArea {
+                            id: iconClickArea
+                            anchors.fill: parent
+                            z: 2
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                subPageGrid.emojiTargetPageId = childCard.pageData.id
+                                subEmojiPopover.open()
+                            }
                         }
                         DropArea {
                             id: nestedDropArea
@@ -181,22 +214,38 @@ ColumnLayout {
                         elide: Text.ElideRight
                     }
                     ToolButton {
+                        visible: childCard.hasChildren
+                        implicitWidth: 24
+                        implicitHeight: 24
+                        onClicked: subPageGrid.toggleExpand(childCard.pageData.id)
+                        ToolTip.visible: hovered
+                        ToolTip.text: childCard.grandChildren.length + " sub-páginas"
+                        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 6 }
+                        contentItem: AppIcon {
+                            anchors.centerIn: parent
+                            name: childCard.isExpanded ? "chevron-down" : "chevron-right"
+                            color: "#a78bfa"
+                            width: 12
+                            height: 12
+                        }
+                    }
+
+                    ToolButton {
                         id: movePageButton
-                        text: "↗"
-                        implicitWidth: 30
-                        implicitHeight: 30
+                        implicitWidth: 28
+                        implicitHeight: 28
                         visible: childMouse.containsMouse || hovered || activeFocus
                         Accessible.name: qsTr("Move page")
                         onClicked: subPageGrid.moveToRequested(childCard.pageData.id)
                         ToolTip.visible: hovered
-                        ToolTip.text: qsTr("Move to…")
+                        ToolTip.text: qsTr("Mover para…")
                         background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 7 }
-                        contentItem: Text {
-                            text: parent.text
+                        contentItem: AppIcon {
+                            anchors.centerIn: parent
+                            name: "file-symlink"
                             color: parent.hovered ? "#ddd6fe" : "#a7a9be"
-                            font.pixelSize: 15
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+                            width: 13
+                            height: 13
                         }
                     }
                 }
@@ -206,8 +255,15 @@ ColumnLayout {
                     anchors.fill: parent
                     z: -1
                     hoverEnabled: true
+                    acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: subPageGrid.pageSelected(childCard.pageData.id)
+                    onClicked: function(mouse) {
+                        if (mouse.button === Qt.MiddleButton) {
+                            subPageGrid.openInNewTabRequested(childCard.pageData.id)
+                        } else {
+                            subPageGrid.pageSelected(childCard.pageData.id)
+                        }
+                    }
                 }
             }
         }
@@ -241,6 +297,64 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: subPageGrid.columnWidth()
             Layout.preferredHeight: 50
+        }
+    }
+
+    Button {
+        visible: subPageGrid.pages.length > subPageGrid.pageLimit
+        Layout.alignment: Qt.AlignLeft
+        Layout.preferredHeight: 28
+        padding: 10
+        onClicked: subPageGrid.pageLimit += 12
+        background: Rectangle { radius: 8; color: parent.hovered ? "#1f8b5cf6" : "#161522"; border.color: "#22ffffff" }
+        contentItem: Text {
+            text: qsTr("Mostrar mais (") + (subPageGrid.pages.length - subPageGrid.pageLimit) + qsTr(" restantes)")
+            color: "#c4b5fd"
+            font.pixelSize: 11
+            font.weight: Font.Medium
+        }
+    }
+
+    // Expanded grandchildren strip
+    Flow {
+        Layout.fillWidth: true
+        spacing: 6
+        visible: Object.keys(subPageGrid.expandedChildrenMap).length > 0
+
+        Repeater {
+            model: {
+                var out = []
+                for (var i = 0; i < subPageGrid.pages.length; i++) {
+                    var p = subPageGrid.pages[i]
+                    if (subPageGrid.expandedChildrenMap[p.id]) {
+                        var ch = subPageGrid.childrenOf(p.id)
+                        for (var c = 0; c < ch.length; c++) out.push(ch[c])
+                    }
+                }
+                return out
+            }
+            delegate: Button {
+                required property var modelData
+                height: 28
+                padding: 8
+                onClicked: subPageGrid.pageSelected(modelData.id)
+                background: Rectangle { radius: 8; color: parent.hovered ? "#228b5cf6" : "#141320"; border.color: "#1affffff" }
+                contentItem: Text {
+                    text: (modelData.icon || "📄") + " " + (modelData.title || qsTr("Untitled"))
+                    color: "#cbd5e1"
+                    font.pixelSize: 11
+                }
+            }
+        }
+    }
+
+    AppEmojiPopover {
+        id: subEmojiPopover
+        onEmojiSelected: function(emoji) {
+            if (subPageGrid.emojiTargetPageId.length > 0) {
+                subPageGrid.iconChanged(subPageGrid.emojiTargetPageId, emoji)
+            }
+            subPageGrid.emojiTargetPageId = ""
         }
     }
 

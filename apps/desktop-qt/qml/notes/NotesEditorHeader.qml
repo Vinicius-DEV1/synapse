@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 RowLayout {
     id: headerRoot
@@ -24,105 +25,96 @@ RowLayout {
     signal shareRequested()
     signal richModeRequested(bool enabled)
 
-    spacing: 4
-    opacity: actionsVisible ? 1 : 0
+    spacing: 6
+    opacity: actionsVisible || isDirty || saveFailed ? 1 : 0.15
     Behavior on opacity { NumberAnimation { duration: 150 } }
 
-    ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: headerRoot.isRichMode ? "⌨" : "¶"
-        enabled: headerRoot.isRichMode || headerRoot.canUseRichMode
-        Accessible.name: headerRoot.isRichMode ? qsTr("Switch to source editing") : qsTr("Switch to visual editing")
-        ToolTip.visible: hovered
-        ToolTip.text: headerRoot.isRichMode ? qsTr("Source editing") : headerRoot.canUseRichMode ? qsTr("Visual editing") : qsTr("This note uses formatting not supported in visual editing")
-        onClicked: headerRoot.richModeRequested(!headerRoot.isRichMode)
-        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
-        contentItem: Text { text: parent.text; color: parent.enabled ? "#a7a9be" : "#51515d"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-    }
-
-    ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: "?"
-        Accessible.name: qsTr("Notes guide")
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Notes guide")
-        onClicked: headerRoot.helpRequested()
-    }
-
-    ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: headerRoot.isPreviewMode ? "✎" : "◉"
-        Accessible.name: headerRoot.isPreviewMode ? qsTr("Edit note") : qsTr("Preview note")
-        onClicked: headerRoot.previewToggled(!headerRoot.isPreviewMode)
-        ToolTip.visible: hovered
-        ToolTip.text: headerRoot.isPreviewMode ? qsTr("Edit") : qsTr("Preview")
-        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
-        contentItem: Text { text: parent.text; color: parent.hovered ? "#ddd6fe" : "#a7a9be"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-    }
-
-    ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: "↗"
+    Button {
+        Layout.preferredHeight: 28
+        padding: 8
+        focusPolicy: Qt.NoFocus
         Accessible.name: qsTr("Move page")
         onClicked: headerRoot.moveRequested()
         ToolTip.visible: hovered
-        ToolTip.text: qsTr("Move to…")
-        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
-        contentItem: Text { text: parent.text; color: parent.hovered ? "#ddd6fe" : "#a7a9be"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        ToolTip.text: qsTr("Mover página…")
+        background: Rectangle {
+            radius: 7
+            color: parent.hovered ? "#1a8b5cf6" : "transparent"
+            border.color: parent.hovered ? "#338b5cf6" : "transparent"
+        }
+        contentItem: RowLayout {
+            spacing: 5
+            AppIcon { name: "file-symlink"; color: parent.parent.hovered ? "#ddd6fe" : "#94a1b2"; width: 13; height: 13 }
+            Text { text: qsTr("Mover"); color: parent.parent.hovered ? "#fffffe" : "#94a1b2"; font.pixelSize: 11; font.weight: Font.Medium }
+        }
     }
 
-    ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: "🔗"
-        Accessible.name: qsTr("Share page")
-        onClicked: headerRoot.shareRequested()
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Share with link…")
-        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
-        contentItem: Text { text: parent.text; color: parent.hovered ? "#ddd6fe" : "#a7a9be"; font.pixelSize: 13; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-    }
-
-    ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: "◷"
+    Button {
+        Layout.preferredHeight: 28
+        padding: 8
+        focusPolicy: Qt.NoFocus
         Accessible.name: qsTr("Edit history")
         onClicked: headerRoot.historyRequested()
         ToolTip.visible: hovered
-        ToolTip.text: qsTr("History")
-        background: Rectangle { color: parent.hovered ? "#1a8b5cf6" : "transparent"; radius: 8 }
-        contentItem: Text { text: parent.text; color: parent.hovered ? "#ddd6fe" : "#a7a9be"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        ToolTip.text: qsTr("Histórico de edições")
+        background: Rectangle {
+            radius: 7
+            color: parent.hovered ? "#1a8b5cf6" : "transparent"
+            border.color: parent.hovered ? "#338b5cf6" : "transparent"
+        }
+        contentItem: RowLayout {
+            spacing: 5
+            AppIcon { name: "refresh"; color: parent.parent.hovered ? "#ddd6fe" : "#94a1b2"; width: 13; height: 13 }
+            Text { text: qsTr("Histórico"); color: parent.parent.hovered ? "#fffffe" : "#94a1b2"; font.pixelSize: 11; font.weight: Font.Medium }
+        }
+    }
+
+    Button {
+        Layout.preferredHeight: 28
+        padding: 8
+        focusPolicy: Qt.NoFocus
+        Accessible.name: qsTr("Share page")
+        onClicked: headerRoot.shareRequested()
+        ToolTip.visible: hovered
+        ToolTip.text: qsTr("Compartilhar link…")
+        background: Rectangle {
+            radius: 7
+            color: parent.hovered ? "#1a8b5cf6" : "transparent"
+            border.color: parent.hovered ? "#338b5cf6" : "transparent"
+        }
+        contentItem: RowLayout {
+            spacing: 5
+            AppIcon { name: "share"; color: parent.parent.hovered ? "#ddd6fe" : "#94a1b2"; width: 13; height: 13 }
+            Text { text: qsTr("Compartilhar"); color: parent.parent.hovered ? "#fffffe" : "#94a1b2"; font.pixelSize: 11; font.weight: Font.Medium }
+        }
     }
 
     ToolButton {
         Layout.preferredWidth: 74
-        Layout.preferredHeight: 30
+        Layout.preferredHeight: 28
+        focusPolicy: Qt.NoFocus
         Accessible.name: headerRoot.saveFailed ? qsTr("Retry saving note") : qsTr("Save note")
         onClicked: headerRoot.saveRequested()
         readonly property int readingTimeMinutes: Math.max(1, Math.ceil(headerRoot.wordCount / 200))
         ToolTip.visible: hovered
         ToolTip.text: headerRoot.saveFailed
-                       ? qsTr("The note is still unsaved. Check that the vault is unlocked, then retry.")
-                       : qsTr("%1 · %2 words · %3 characters · %4 min read").arg(headerRoot.pageDate).arg(headerRoot.wordCount).arg(headerRoot.characterCount).arg(readingTimeMinutes)
+            ? qsTr("Falha ao salvar. Clique para tentar novamente.")
+            : qsTr("%1 · %2 palavras · %3 min leitura").arg(headerRoot.pageDate).arg(headerRoot.wordCount).arg(readingTimeMinutes)
         background: Rectangle {
             color: headerRoot.saveFailed ? "#24f43f5e" : headerRoot.isDirty ? "#8b5cf6" : "#0d10b981"
             border.color: headerRoot.saveFailed ? "#66f43f5e" : headerRoot.isDirty ? "#668b5cf6" : "#3310b981"
-            radius: 8
+            radius: 7
         }
         contentItem: RowLayout {
             spacing: 4
+            anchors.centerIn: parent
             Text {
                 text: headerRoot.saveFailed ? "⚠" : headerRoot.isDirty ? "●" : "✓"
                 color: headerRoot.saveFailed ? "#fb7185" : headerRoot.isDirty ? "white" : "#34d399"
                 font.pixelSize: 10
             }
             Text {
-                text: headerRoot.saveFailed ? qsTr("Retry") : headerRoot.isDirty ? qsTr("Save") : qsTr("Saved")
+                text: headerRoot.saveFailed ? qsTr("Tentar") : headerRoot.isDirty ? qsTr("Salvar") : qsTr("Salvo")
                 color: headerRoot.saveFailed ? "#fda4af" : headerRoot.isDirty ? "white" : "#34d399"
                 font.pixelSize: 10
                 font.bold: true
@@ -131,14 +123,31 @@ RowLayout {
     }
 
     ToolButton {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        text: "▤"
-        Accessible.name: qsTr("Delete note")
-        onClicked: headerRoot.deleteRequested()
-        ToolTip.visible: hovered
-        ToolTip.text: qsTr("Move to Trash")
-        background: Rectangle { color: parent.hovered ? "#24f43f5e" : "#10f43f5e"; radius: 8 }
-        contentItem: Text { text: parent.text; color: "#fda4af"; font.pixelSize: 14; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        Layout.preferredWidth: 28
+        Layout.preferredHeight: 28
+        focusPolicy: Qt.NoFocus
+        Accessible.name: qsTr("More options")
+        onClicked: moreMenu.open()
+        background: Rectangle { color: parent.hovered ? "#1affffff" : "transparent"; radius: 7 }
+        contentItem: AppIcon { anchors.centerIn: parent; name: "more-horizontal"; color: "#94a1b2"; width: 15; height: 15 }
+
+        Menu {
+            id: moreMenu
+            background: Rectangle { color: "#181726"; radius: 10; border.color: "#22ffffff" }
+            MenuItem {
+                text: headerRoot.isRichMode ? qsTr("Editar código-fonte HTML") : qsTr("Modo visual")
+                enabled: headerRoot.isRichMode || headerRoot.canUseRichMode
+                onTriggered: headerRoot.richModeRequested(!headerRoot.isRichMode)
+            }
+            MenuItem {
+                text: qsTr("Guia do Caderno")
+                onTriggered: headerRoot.helpRequested()
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: qsTr("Mover para Lixeira")
+                onTriggered: headerRoot.deleteRequested()
+            }
+        }
     }
 }

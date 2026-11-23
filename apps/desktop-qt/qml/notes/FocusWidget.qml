@@ -1,113 +1,186 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: focusWidgetRoot
-    implicitWidth: 320
-    implicitHeight: 140
+    Layout.fillWidth: true
+    implicitHeight: contentCol.implicitHeight + 22
     radius: 12
-    color: "#161524"
-    border.color: "#12ffffff"
+    color: "#141820"
+    border.color: isCompleted ? "#4010b981" : (isRunning ? "#558b5cf6" : "#18ffffff")
     border.width: 1
 
-    property int totalSeconds: 25 * 60
-    property int remainingSeconds: totalSeconds
+    property var blockData: ({})
+    property var attrs: blockData.attrs || ({})
+    property int durationMinutes: Math.max(1, parseInt(attrs["data-duration"] || attrs["duration"] || "25", 10) || 25)
+    property int remainingSeconds: {
+        var left = parseInt(attrs["data-time-left"] || "", 10)
+        return !isNaN(left) && left >= 0 ? left : durationMinutes * 60
+    }
+    property string tagLabel: attrs["data-tag"] || attrs["tag"] || "Estudo"
+    property string description: attrs["data-description"] || attrs["description"] || qsTr("Sessão de Foco")
+    property bool isCompleted: (attrs["data-status"] || attrs["status"] || "") === "completed"
     property bool isRunning: false
 
+    signal attrsUpdated(var newAttrs)
+    signal removeRequested()
+
+    HoverHandler { id: hoverHandler }
+
     function formatTime(s) {
-        var mins = Math.floor(s / 60);
-        var secs = s % 60;
-        return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
+        var mins = Math.floor(s / 60)
+        var secs = s % 60
+        return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs
+    }
+
+    function commitStatus(statusStr) {
+        var next = Object.assign({}, attrs)
+        next["data-duration"] = String(durationMinutes)
+        next["data-tag"] = tagLabel
+        next["data-description"] = description
+        next["data-status"] = statusStr
+        next["data-time-left"] = String(remainingSeconds)
+        attrsUpdated(next)
+    }
+
+    function completeSession() {
+        isRunning = false
+        isCompleted = true
+        remainingSeconds = 0
+        if (typeof dataController !== "undefined" && dataController && typeof dataController.recordFocusSession === "function") {
+            dataController.recordFocusSession(tagLabel, durationMinutes, "completed", "", description)
+        }
+        commitStatus("completed")
     }
 
     Timer {
-        id: pomodoroTimer
         interval: 1000
         repeat: true
-        running: focusWidgetRoot.isRunning
+        running: focusWidgetRoot.isRunning && !focusWidgetRoot.isCompleted
         onTriggered: {
-            if (focusWidgetRoot.remainingSeconds > 0) {
-                focusWidgetRoot.remainingSeconds--;
+            if (focusWidgetRoot.remainingSeconds > 1) {
+                focusWidgetRoot.remainingSeconds -= 1
             } else {
-                focusWidgetRoot.isRunning = false;
+                focusWidgetRoot.completeSession()
             }
         }
     }
 
     ColumnLayout {
+        id: contentCol
         anchors.fill: parent
-        anchors.margins: 14
+        anchors.margins: 12
         spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
-            Text {
-                text: "⏱️ Foco Pomodoro"
-                color: "#a1a1aa"
-                font.pixelSize: 13
-                font.weight: Font.Medium
-            }
-            Item { Layout.fillWidth: true }
-            Text {
-                text: focusWidgetRoot.isRunning ? "Em andamento" : "Pausado"
-                color: focusWidgetRoot.isRunning ? "#34d399" : "#71717a"
-                font.pixelSize: 11
-            }
-        }
+            spacing: 10
 
-        // Large time display
-        Text {
-            Layout.alignment: Qt.AlignHCenter
-            text: focusWidgetRoot.formatTime(focusWidgetRoot.remainingSeconds)
-            color: "#ffffff"
-            font.pixelSize: 32
-            font.bold: true
-            font.family: "Monospace"
-        }
+            Rectangle {
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                radius: 8
+                color: focusWidgetRoot.isCompleted ? "#2010b981" : "#208b5cf6"
+                AppIcon {
+                    anchors.centerIn: parent
+                    name: focusWidgetRoot.isCompleted ? "check" : "focus"
+                    color: focusWidgetRoot.isCompleted ? "#34d399" : "#a78bfa"
+                    width: 16
+                    height: 16
+                }
+            }
 
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 12
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                Text {
+                    text: focusWidgetRoot.description + "  •  #" + focusWidgetRoot.tagLabel
+                    color: "#fffffe"
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+                Text {
+                    text: focusWidgetRoot.isCompleted ? qsTr("Sessão concluída")
+                        : (focusWidgetRoot.isRunning ? qsTr("Em foco") : qsTr("Pausado • ") + focusWidgetRoot.durationMinutes + " min")
+                    color: focusWidgetRoot.isCompleted ? "#34d399" : "#94a1b2"
+                    font.pixelSize: 11
+                }
+            }
+
+            Text {
+                text: focusWidgetRoot.formatTime(focusWidgetRoot.remainingSeconds)
+                color: focusWidgetRoot.isCompleted ? "#34d399" : "#fffffe"
+                font.pixelSize: 20
+                font.bold: true
+                font.family: "monospace"
+            }
 
             Button {
-                implicitHeight: 28
-                implicitWidth: 80
+                visible: !focusWidgetRoot.isCompleted
+                Layout.preferredHeight: 28
+                Layout.preferredWidth: 74
+                focusPolicy: Qt.NoFocus
+                onClicked: {
+                    focusWidgetRoot.isRunning = !focusWidgetRoot.isRunning
+                    focusWidgetRoot.commitStatus(focusWidgetRoot.isRunning ? "running" : "paused")
+                }
                 background: Rectangle {
-                    color: focusWidgetRoot.isRunning ? "#27272a" : "#6366f1"
-                    radius: 6
+                    radius: 7
+                    color: focusWidgetRoot.isRunning ? "#27272a" : "#7c3aed"
                 }
                 contentItem: Text {
-                    text: focusWidgetRoot.isRunning ? "Pausar" : "Iniciar"
+                    text: focusWidgetRoot.isRunning ? qsTr("Pausar") : qsTr("Iniciar")
                     color: "#ffffff"
-                    font.pixelSize: 12
+                    font.pixelSize: 11
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
-                onClicked: focusWidgetRoot.isRunning = !focusWidgetRoot.isRunning
             }
 
-            Button {
-                implicitHeight: 28
-                implicitWidth: 80
-                background: Rectangle {
-                    color: "#27272a"
-                    radius: 6
-                }
-                contentItem: Text {
-                    text: "Resetar"
-                    color: "#a1a1aa"
-                    font.pixelSize: 12
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+            ToolButton {
+                visible: !focusWidgetRoot.isCompleted
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Concluir agora")
+                onClicked: focusWidgetRoot.completeSession()
+                background: Rectangle { radius: 6; color: parent.hovered ? "#2210b981" : "transparent" }
+                contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 14; height: 14 }
+            }
+
+            ToolButton {
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Resetar")
                 onClicked: {
-                    focusWidgetRoot.isRunning = false;
-                    focusWidgetRoot.remainingSeconds = focusWidgetRoot.totalSeconds;
+                    focusWidgetRoot.isRunning = false
+                    focusWidgetRoot.isCompleted = false
+                    focusWidgetRoot.remainingSeconds = focusWidgetRoot.durationMinutes * 60
+                    focusWidgetRoot.commitStatus("paused")
                 }
+                background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                contentItem: AppIcon { anchors.centerIn: parent; name: "refresh"; color: "#94a1b2"; width: 13; height: 13 }
+            }
+
+            ToolButton {
+                visible: hoverHandler.hovered
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Remover widget")
+                onClicked: focusWidgetRoot.removeRequested()
+                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
+                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 13; height: 13 }
             }
         }
     }
 }
-
