@@ -692,6 +692,14 @@ Qt vault setup now encrypts referenced, readable media in the managed `files/`, 
   - `ShareHelpDialog.qml`: Categorized in-app guide detailing public link generation, view vs edit permissions, password protection, revocation, and security best practices.
 - Evidence: `cmake --build apps/desktop-qt/build --target synapse-desktop synapse-desktop-tests -j 4` builds cleanly. `qmllint` on `AppEmojiPopover.qml`, `NotesIconPicker.qml`, `WorkspaceCreateModal.qml`, and `ShareHelpDialog.qml` exits with code 0. `git diff --check` passes.
 
+### Notes work item: Caderno visual parity pass and startup QML runtime fixes (`2db3ceb1`, `a785d367`)
+
+- Expected: align `apps/desktop-qt/qml/notes/` layout geometry, spacing, hover reveals, slash command copy, and embedded widgets (`QuestionBlock`, `HabitWidget`, `FocusWidget`, `AlarmWidget`, `NotesColumnLayout`, `NotesToggleBlock`, `CollectionBlock`, `LinkPreviewCard`, `FileAttachmentWidget`) visually with React's TipTap/PageView canvas without modifying `apps/web-react/` or breaking native QML tests.
+- Implementation:
+  - Fixed QML startup signal/property collisions in `apps/desktop-qt/qml/library/LibraryViewModeBar.qml`, `apps/desktop-qt/qml/trash/TrashView.qml`, and `apps/desktop-qt/qml/AuthenticatedApplication.qml` (`2db3ceb1`).
+  - Removed the `30px` inline block handle offset by moving `NotesBlockHandle.qml` into the negative left gutter (`x: -30`, hover/menu visibility), anchored header `HoverHandler` onto `titleHeaderGroup` in `NotesEditorPageHeader.qml`, aligned `NotesPageCover.qml` to `leftMargin: 0` with Portuguese controls, collapsed inactive `rootDropArea` and painted dashed border via `Canvas` in `NotesSubPageGrid.qml`, aligned PT-BR `NotesRichSlashCommandMenu.qml` labels while preserving accessibility test identifiers (`accessibleTitle`), styled `selectionBubble` and transparent editor colors in `NotesRichTextInput.qml`, and compacted embedded widget cards/pills to match React Web density (`a785d367`).
+- Evidence: `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` succeeds (`[100%] Built target synapse-desktop`); `ctest --test-dir apps/desktop-qt/build --output-on-failure -j1` passes `3/3` suites (`native-priority-modules`, `native-notes-rich-qml`, `native-notes-table-qml`); `QT_QPA_PLATFORM=offscreen ./apps/desktop-qt/build/synapse-desktop` loads cleanly without `QQmlApplicationEngine` component errors.
+
 - Keep React and web code unchanged while adding native capabilities.
 - Preserve native QML/Qt rendering; do not embed a WebView or React runtime in the desktop target.
 - Native persistence and orchestration are split into module-focused C++ controllers; new module files target fewer than 300 lines.
