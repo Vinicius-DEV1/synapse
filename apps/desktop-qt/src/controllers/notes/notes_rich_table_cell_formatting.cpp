@@ -129,7 +129,13 @@ bool supportsCellAttributes(const QString &tagName, const QXmlStreamAttributes &
     bool hasStyle = false;
     for (const auto &attribute : attributes) {
         const QString name = attribute.name().toString();
-        if (name == QStringLiteral("colspan") || name == QStringLiteral("rowspan")) {
+        if (name == QStringLiteral("colspan") || name == QStringLiteral("rowspan") ||
+            name == QStringLiteral("colwidth") ||
+            (tagName == QStringLiteral("th") &&
+             (name == QStringLiteral("data-column-type") ||
+              name == QStringLiteral("data-column-options") ||
+              name == QStringLiteral("data-number-format") ||
+              name == QStringLiteral("data-date-format")))) {
             continue;
         }
         if (name == QStringLiteral("data-bg-color")) {

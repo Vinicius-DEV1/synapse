@@ -58,6 +58,7 @@ Item {
     function removeReference(start, end) {
         if (!textOperations.removeRichPageReference(textEditor.textDocument, start, end)) return false
         textEditor.cursorPosition = start
+        editorRoot.hasEditedSinceLoad = true
         editorRoot.hasPendingChanges = true
         commitTimer.restart()
         textEditor.forceActiveFocus()

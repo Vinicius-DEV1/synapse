@@ -25,8 +25,8 @@ private slots:
             "<table><tr><th><p>A</p></th></tr><tr><td><p>B</p></td><td><p>C</p></td></tr></table>"));
         QVERIFY(NotesRichDocument::supportsSource(
             "<table><tbody><tr><th colspan=\"2\"><p>Merged</p></th></tr></tbody></table>"));
-        QVERIFY(!NotesRichDocument::supportsSource(
-            "<table><tr><th data-column-type=\"number\"><p>Number</p></th></tr></table>"));
+        QVERIFY(NotesRichDocument::supportsSource(
+            "<table><tbody><tr><th data-column-type=\"number\"><p>Number</p></th></tr></tbody></table>"));
         QVERIFY(!NotesRichDocument::supportsSource(
             "<table><tr><td style=\"width:120px\"><p>Resized</p></td></tr></table>"));
         QVERIFY(NotesRichDocument::supportsSource(

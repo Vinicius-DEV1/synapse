@@ -79,6 +79,11 @@ class SynapseDataController : public QObject {
     Q_PROPERTY(int autoLockMinutes READ autoLockMinutes WRITE setAutoLockMinutes NOTIFY autoLockMinutesChanged)
     Q_PROPERTY(QString vaultLockError READ vaultLockError NOTIFY vaultLockErrorChanged)
     Q_PROPERTY(QVariantList activeTasks READ getActiveTasks NOTIFY tasksChanged)
+    Q_PROPERTY(bool focusRunning READ focusRunning NOTIFY focusTimerStateChanged)
+    Q_PROPERTY(int focusRemainingSeconds READ focusRemainingSeconds NOTIFY focusTimerStateChanged)
+    Q_PROPERTY(int focusTotalSeconds READ focusTotalSeconds NOTIFY focusTimerStateChanged)
+    Q_PROPERTY(QString focusTag READ focusTag NOTIFY focusTimerStateChanged)
+    Q_PROPERTY(QString focusDescription READ focusDescription NOTIFY focusTimerStateChanged)
 
 public:
     explicit SynapseDataController(QObject *parent = nullptr, bool initializeDefaultDatabase = true);
@@ -163,6 +168,7 @@ public:
     Q_INVOKABLE QVariantMap getLinkEntity(const QString &url);
     Q_INVOKABLE QVariantMap setLinkEntityStatus(const QString &url, bool watched, bool watching);
     Q_INVOKABLE QVariantMap setLinkEntityNotes(const QString &url, const QString &notes);
+    Q_INVOKABLE void captureWebScrap(const QString &url, const QString &requestId);
     Q_INVOKABLE QVariantMap setLinkEntityColor(const QString &url, const QString &color);
     Q_INVOKABLE bool copyLinkUrlToClipboard(const QString &url);
     Q_INVOKABLE QVariantList parseNoteBlocks(const QString &html);
@@ -170,6 +176,33 @@ public:
     Q_INVOKABLE QVariantMap applyNoteSearchReplace(const QString &original, const QString &aiResponse);
     Q_INVOKABLE QString computeNoteWordDiffHtml(const QString &oldText, const QString &newText);
     Q_INVOKABLE QVariantList findDuplicateNoteLinks(const QString &url, const QString &excludePageId = "");
+    Q_INVOKABLE QVariantMap splitRichHtml(const QString &html, int textOffset);
+    Q_INVOKABLE QVariantList parseTableColumns(const QString &tableHtml);
+    Q_INVOKABLE QVariantList parseTableColumnsAt(const QString &noteHtml, int tableIndex);
+    Q_INVOKABLE QString updateTableColumnSchemaAt(const QString &noteHtml, int tableIndex,
+                                                   int columnIndex, const QString &columnType,
+                                                   const QVariantList &options,
+                                                   const QString &numberFormat,
+                                                   const QString &dateFormat);
+    Q_INVOKABLE QString updateTableColumnWidthAt(const QString &noteHtml, int tableIndex,
+                                                 int columnIndex, int widthPx);
+    Q_INVOKABLE QVariantList validateTableCells(const QString &tableHtml);
+    Q_INVOKABLE QVariantList validateTableCellsAt(const QString &noteHtml, int tableIndex);
+    Q_INVOKABLE QVariantList evaluateTableFilter(const QString &tableHtml, const QString &filtersJson);
+    Q_INVOKABLE QVariantList evaluateTableFilterAt(const QString &noteHtml, int tableIndex, const QString &filtersJson);
+    Q_INVOKABLE QVariantMap filterTableRowsForView(const QString &noteHtml, int tableIndex, const QString &filtersJson);
+    Q_INVOKABLE QString moveTableColumn(const QString &tableHtml, int fromCol, int toCol);
+    Q_INVOKABLE QString moveTableColumnAt(const QString &noteHtml, int tableIndex, int fromCol, int toCol);
+    Q_INVOKABLE QString moveTableRow(const QString &tableHtml, int fromRow, int toRow);
+    Q_INVOKABLE QString moveTableRowAt(const QString &noteHtml, int tableIndex, int fromRow, int toRow);
+    Q_INVOKABLE QVariantList extractLooseFileWidgetIds(const QString &html);
+    Q_INVOKABLE QString renderMermaidDataUri(const QString &chart);
+    Q_INVOKABLE QString renderMermaidSvg(const QString &chart);
+    Q_INVOKABLE QString canonicalLinkUrl(const QString &rawUrl);
+    Q_INVOKABLE QString getCachedImageDataUri(const QString &imageId);
+    Q_INVOKABLE bool saveCachedImageDataUrl(const QString &imageId, const QString &dataUrl);
+    Q_INVOKABLE bool saveCachedImageFromFile(const QString &imageId, const QUrl &fileUrl);
+    Q_INVOKABLE bool deleteCachedImage(const QString &imageId);
     Q_INVOKABLE void copyNotesRichImage(const QString &imageDataUrl);
     Q_INVOKABLE void saveNotesRichImage(const QString &imageDataUrl, const QUrl &destinationUrl);
     Q_INVOKABLE QUrl suggestedNotesRichImageSaveUrl(const QString &imageDataUrl,
@@ -354,6 +387,16 @@ public:
     Q_INVOKABLE bool recordFocusSession(const QString &tag, int targetMinutes, const QString &status, const QString &summary = "", const QString &description = "");
     Q_INVOKABLE bool deleteFocusSession(const QString &sessionId);
     Q_INVOKABLE bool clearFocusSessions(const QString &range = "all");
+    bool focusRunning() const { return m_focusRunning; }
+    int focusRemainingSeconds() const { return m_focusRemainingSeconds; }
+    int focusTotalSeconds() const { return m_focusTotalSeconds; }
+    QString focusTag() const { return m_focusTag; }
+    QString focusDescription() const { return m_focusDescription; }
+    Q_INVOKABLE void startFocusTimer(int minutes, const QString &tag = "Estudo", const QString &description = "Sessão de foco");
+    Q_INVOKABLE void toggleFocusTimer();
+    Q_INVOKABLE void addFocusMinutes(int deltaMinutes);
+    Q_INVOKABLE void resetFocusTimer();
+    Q_INVOKABLE void stopFocusTimer(bool completed);
 
     // Alarmes
     Q_INVOKABLE QVariantList getAlarms();
@@ -461,7 +504,8 @@ public:
                                            const QString &linkType = "link",
                                            const QString &widgetId = "");
     Q_INVOKABLE bool deleteFilePageLink(const QString &linkId);
-    Q_INVOKABLE void importLocalFile(const QString &sourcePath, const QString &folderId = "");
+    Q_INVOKABLE void importLocalFile(const QString &sourcePath, const QString &folderId = "",
+                                     const QString &requestId = "");
     Q_INVOKABLE void exportLocalFile(const QString &fileId, const QString &destinationPath);
     Q_INVOKABLE void previewLocalFile(const QString &fileId);
     Q_INVOKABLE QVariantMap readFilePreviewText(const QString &temporaryPath);
@@ -495,6 +539,9 @@ signals:
     void youtubeDownloadProgress(double progress, const QString &status);
     void youtubeDownloadFinished(bool success, const QString &error, const QString &videoPath);
     void audioRecordingLevelChanged(int level);
+    void webScrapCaptured(const QString &requestId, const QVariantMap &result);
+    void focusTimerStateChanged();
+    void focusTimerCompleted(const QString &tag, const QString &description, int minutes);
 
 private:
     void startNotesRichImageOperation(std::function<QVariantMap()> operation,
@@ -553,6 +600,12 @@ private:
     QString m_activeAudioRecordPath;
     QTimer *m_audioLevelTimer = nullptr;
     int m_audioRecordingLevel = 0;
+    QTimer *m_focusTimer = nullptr;
+    bool m_focusRunning = false;
+    int m_focusRemainingSeconds = 25 * 60;
+    int m_focusTotalSeconds = 25 * 60;
+    QString m_focusTag = QStringLiteral("Estudo");
+    QString m_focusDescription = QStringLiteral("Sessão de foco");
 
     void checkKeychainState();
     void clearUnlockedKeys();

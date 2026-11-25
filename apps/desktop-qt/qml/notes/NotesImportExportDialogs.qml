@@ -4,6 +4,7 @@ import QtQuick.Dialogs
 Item {
     id: dialogsRoot
 
+    property var controller: null
     property string importParentId: ""
     property string exportPageId: ""
 
@@ -28,7 +29,8 @@ Item {
         onAccepted: {
             var rawPath = selectedFile.toString()
             var cleanPath = rawPath.indexOf("file://") === 0 ? decodeURIComponent(rawPath.substring(7)) : rawPath
-            var text = dataController.readLocalTextFile(cleanPath)
+            var ctrl = dialogsRoot.controller || dataController
+            var text = ctrl.readLocalTextFile(cleanPath)
             if (!text || text.length === 0) return
 
             var parts = cleanPath.split("/")
@@ -39,9 +41,10 @@ Item {
             var isHtml = /\.html?$/i.test(fileName)
             var htmlBody = isHtml ? text : ("<p>" + text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br/>") + "</p>")
 
-            var newId = dataController.createSubPage(dialogsRoot.importParentId, title, "📄")
+            var ctrl = dialogsRoot.controller || dataController
+            var newId = ctrl.createSubPage(dialogsRoot.importParentId, title, "📄")
             if (newId) {
-                dataController.savePage(newId, title, htmlBody, "📄", "")
+                ctrl.savePage(newId, title, htmlBody, "📄", "")
                 dialogsRoot.imported(newId)
             }
         }
@@ -53,7 +56,8 @@ Item {
         title: qsTr("Exportar página")
         nameFilters: ["HTML (*.html)", "Markdown (*.md)"]
         onAccepted: {
-            var p = dataController.getPage(dialogsRoot.exportPageId)
+            var ctrl = dialogsRoot.controller || dataController
+            var p = ctrl.getPage(dialogsRoot.exportPageId)
             if (!p || !p.id) return
             var rawPath = selectedFile.toString()
             var cleanPath = rawPath.indexOf("file://") === 0 ? decodeURIComponent(rawPath.substring(7)) : rawPath
@@ -63,7 +67,7 @@ Item {
             } else {
                 body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + (p.title || "Página") + "</title></head><body><h1>" + (p.title || "") + "</h1>\n" + body + "\n</body></html>"
             }
-            if (dataController.saveLocalTextFile(cleanPath, body)) {
+            if (ctrl.saveLocalTextFile(cleanPath, body)) {
                 dialogsRoot.exported(cleanPath)
             }
         }

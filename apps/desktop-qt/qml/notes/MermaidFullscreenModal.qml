@@ -10,6 +10,7 @@ Rectangle {
     visible: false
     color: "#09090b"
 
+    property var controller: null
     property string chart: ""
     signal closeRequested()
 
@@ -72,6 +73,7 @@ Rectangle {
 
             MermaidViewer {
                 anchors.fill: parent
+                controller: fullscreenModalRoot.controller
                 chart: fullscreenModalRoot.chart
             }
         }

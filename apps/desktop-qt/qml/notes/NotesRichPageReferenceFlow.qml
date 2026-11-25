@@ -95,6 +95,7 @@ Item {
         targetPosition = -1
         textEditor.cursorPosition = insertedPosition
         referenceInserted()
+        editorRoot.hasEditedSinceLoad = true
         editorRoot.hasPendingChanges = true
         commitTimer.restart()
         textEditor.forceActiveFocus()

@@ -1,121 +1,61 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import "../ui"
+import "../editor-extensions/image"
 
+// Encrypted E2EE image block hydrating from core image_cache via controller.getCachedImageDataUri.
 Item {
     id: encImgWrap
     Layout.fillWidth: true
-    implicitHeight: encCol.implicitHeight + 6
+    implicitHeight: frame.implicitHeight
 
     property var blockData: ({})
-    property var attrs: blockData.attrs || ({})
-    property string imageSrc: attrs["src"] || attrs["data-src"] || ""
+    property var controller: null
+    property var attrs: blockData && blockData.attrs ? blockData.attrs : ({})
+    property string rawSrc: attrs["src"] || attrs["data-src"] || ""
     property string driveFileId: attrs["data-drive-file-id"] || ""
+    property string resolvedDataUri: ""
     property string caption: attrs["data-caption"] || ""
+    property string alignMode: attrs["data-align"] || "center"
     property int imageWidth: parseInt(attrs["data-width"] || attrs["width"] || "460", 10) || 460
-    property int imageHeight: parseInt(attrs["data-height"] || attrs["height"] || "260", 10) || 260
-    readonly property bool isUnlocked: typeof dataController !== "undefined" && dataController
-        ? Boolean(dataController.isVaultUnlocked) : false
+    readonly property bool isUnlocked: controller ? Boolean(controller.isVaultUnlocked) : false
 
     signal attrsUpdated(var newAttrs)
     signal removeRequested()
 
-    HoverHandler { id: encHover }
+    function resolveEncryptedImage() {
+        if (!isUnlocked || !controller) { resolvedDataUri = ""; return }
+        if (driveFileId.length > 0 && typeof controller.getCachedImageDataUri === "function") {
+            var uri = controller.getCachedImageDataUri(driveFileId)
+            if (uri && uri.length > 0) { resolvedDataUri = uri; return }
+        }
+        resolvedDataUri = rawSrc
+    }
 
-    ColumnLayout {
-        id: encCol
-        width: Math.min(encImgWrap.imageWidth, parent.width)
-        anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 6
+    function savePatch(patch) {
+        attrsUpdated(Object.assign({}, attrs, patch))
+    }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: encImgWrap.imageHeight
-            radius: 12
-            color: "#14131f"
-            border.color: encHover.hovered ? "#408b5cf6" : "#22ffffff"
-            border.width: 1
-            clip: true
+    Component.onCompleted: resolveEncryptedImage()
+    onIsUnlockedChanged: resolveEncryptedImage()
+    onDriveFileIdChanged: resolveEncryptedImage()
 
-            Image {
-                anchors.fill: parent
-                visible: encImgWrap.isUnlocked && encImgWrap.imageSrc.length > 0
-                source: encImgWrap.isUnlocked ? encImgWrap.imageSrc : ""
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-            }
-
-            ColumnLayout {
-                anchors.centerIn: parent
-                visible: !encImgWrap.isUnlocked || encImgWrap.imageSrc.length === 0
-                spacing: 8
-
-                Rectangle {
-                    Layout.preferredWidth: 44
-                    Layout.preferredHeight: 44
-                    Layout.alignment: Qt.AlignHCenter
-                    radius: 10
-                    color: "#281b38"
-                    border.color: "#7c3aed"
-                    border.width: 1
-
-                    AppIcon {
-                        anchors.centerIn: parent
-                        name: "vault"
-                        color: "#a78bfa"
-                        width: 20
-                        height: 20
-                    }
-                }
-
-                Text {
-                    text: encImgWrap.isUnlocked ? qsTr("Imagem Criptografada (Cofre)") : qsTr("Imagem Criptografada")
-                    color: "#fffffe"
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                    Layout.alignment: Qt.AlignHCenter
-                }
-
-                Text {
-                    text: encImgWrap.isUnlocked
-                        ? (encImgWrap.driveFileId.length > 0 ? ("ID: " + encImgWrap.driveFileId) : qsTr("Mídia protegida E2EE"))
-                        : qsTr("Desbloqueie o cofre para visualizar")
-                    color: "#a7a9be"
-                    font.pixelSize: 11
-                    Layout.alignment: Qt.AlignHCenter
-                }
-            }
-
-            ToolButton {
-                visible: encHover.hovered
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.margins: 8
-                width: 24
-                height: 24
-                focusPolicy: Qt.NoFocus
-                onClicked: encImgWrap.removeRequested()
-                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "#cc0f0e17" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fb7185"; width: 12; height: 12 }
+    ImageFrame {
+        id: frame
+        width: parent.width
+        src: encImgWrap.resolvedDataUri
+        caption: encImgWrap.caption
+        alignMode: encImgWrap.alignMode
+        imgWidth: encImgWrap.imageWidth
+        showEncryptedBadge: true
+        isLocked: !encImgWrap.isUnlocked
+        onAlignChanged: function(a) { encImgWrap.savePatch({ "data-align": a }) }
+        onWidthCommitted: function(w) { encImgWrap.savePatch({ "data-width": String(w), "width": String(w) }) }
+        onCaptionCommitted: function(c) { encImgWrap.savePatch({ "data-caption": c }) }
+        onCopyRequested: {
+            if (encImgWrap.controller && typeof encImgWrap.controller.copyToClipboard === "function") {
+                encImgWrap.controller.copyToClipboard(encImgWrap.resolvedDataUri || encImgWrap.rawSrc)
             }
         }
-
-        TextField {
-            visible: encImgWrap.caption.length > 0 || encHover.hovered || activeFocus
-            Layout.fillWidth: true
-            text: encImgWrap.caption
-            placeholderText: qsTr("Legenda da imagem...")
-            placeholderTextColor: "#52525b"
-            color: "#a7a9be"
-            font.pixelSize: 12
-            horizontalAlignment: Text.AlignHCenter
-            background: null
-            onEditingFinished: {
-                var next = Object.assign({}, encImgWrap.attrs)
-                next["data-caption"] = text
-                encImgWrap.attrsUpdated(next)
-            }
-        }
+        onDeleteRequested: encImgWrap.removeRequested()
     }
 }

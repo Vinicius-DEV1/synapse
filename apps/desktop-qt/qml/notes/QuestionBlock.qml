@@ -15,6 +15,7 @@ Rectangle {
     Behavior on border.color { ColorAnimation { duration: 150 } }
 
     property var blockData: ({})
+    property var controller: null
     property string pageId: ""
     property var attrs: blockData.attrs || ({})
     property string batteryId: (attrs["data-battery-id"] || attrs["battery-id"] || attrs["batteryId"] || "")
@@ -42,9 +43,10 @@ Rectangle {
     HoverHandler { id: hoverHandler }
 
     function refreshFromCore() {
-        if (typeof dataController === "undefined" || !dataController) return
-        if (batteryId.length > 0 && typeof dataController.getQuizBatteries === "function") {
-            var batteries = dataController.getQuizBatteries() || []
+        var c = qBlockRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        if (!c) return
+        if (batteryId.length > 0 && typeof c.getQuizBatteries === "function") {
+            var batteries = c.getQuizBatteries() || []
             for (var i = 0; i < batteries.length; i++) {
                 if (batteries[i].id === batteryId) {
                     batteryInfo = batteries[i]
@@ -65,8 +67,8 @@ Rectangle {
                 console.warn("[QuestionBlock] Failed to parse data-questions:", e)
             }
         }
-        if (questionList.length === 0 && typeof dataController.getAllQuizQuestions === "function") {
-            var allQ = dataController.getAllQuizQuestions() || []
+        if (questionList.length === 0 && typeof c.getAllQuizQuestions === "function") {
+            var allQ = c.getAllQuizQuestions() || []
             var matched = []
             for (var j = 0; j < allQ.length; j++) {
                 if ((batteryId.length > 0 && allQ[j].battery_id === batteryId) ||

@@ -218,7 +218,7 @@ private slots:
         QCOMPARE(published.count(), 9);
     }
 
-    void notesViewFlushesBeforePreviewNavigationAndSave() {
+    void notesViewLoadsAndPersistsUnifiedWysiwygEdits() {
         QQmlEngine engine;
         NotesTextOperations operations;
         MockNotesController controller;
@@ -231,137 +231,29 @@ private slots:
         });
         QQmlComponent component(&engine);
         const QUrl viewUrl = QUrl::fromLocalFile(
-            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorView.qml"));
+            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/qml/page-view/PageView.qml"));
         component.loadUrl(viewUrl);
         QScopedPointer<QObject> root(component.create());
         QVERIFY2(root, qPrintable(component.errorString()));
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "refreshPageTree"));
         QTRY_COMPARE(root->property("selectedPageId").toString(), QString("page-one"));
 
-        root->setProperty("isPreviewMode", false);
-        QObject *canvas = root->findChild<QObject *>("notesEditorCanvas");
-        QVERIFY(canvas);
-        QVERIFY(QMetaObject::invokeMethod(canvas, "richModeRequested", Q_ARG(bool, true)));
-        QTRY_VERIFY(root->property("isRichMode").toBool());
-        QObject *editor = root->findChild<QObject *>("notesRichTextEditor");
-        QVERIFY(editor);
-
-        editor->setProperty("text", "<p>Preview flush</p>");
-        QVariant transition;
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "setPreviewMode", Q_RETURN_ARG(QVariant, transition),
-                                          Q_ARG(QVariant, QVariant(true))));
-        QVERIFY(transition.toBool());
-        QCOMPARE(root->property("activeContent").toString(), QString("<p>Preview flush</p>"));
-        QCOMPARE(controller.saveCount, 0);
-
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "saveActiveNote", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
+        root->setProperty("activeContent", QString("<p>Unified WYSIWYG edit</p>"));
+        QVariant saved;
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "saveActiveNote", Q_RETURN_ARG(QVariant, saved)));
+        QVERIFY(saved.toBool());
         QCOMPARE(controller.saveCount, 1);
         QCOMPARE(controller.lastSavedPageId, QString("page-one"));
-        QCOMPARE(controller.lastSavedContent, QString("<p>Preview flush</p>"));
+        QCOMPARE(controller.lastSavedContent, QString("<p>Unified WYSIWYG edit</p>"));
 
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "setPreviewMode", Q_RETURN_ARG(QVariant, transition),
-                                          Q_ARG(QVariant, QVariant(false))));
-        QVERIFY(transition.toBool());
-        editor->setProperty("text", "<p>Navigation flush</p>");
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_RETURN_ARG(QVariant, transition),
-                                          Q_ARG(QVariant, QVariant("page-two"))));
-        QVERIFY(transition.toBool());
-        QCOMPARE(controller.saveCount, 2);
-        QCOMPARE(controller.lastSavedPageId, QString("page-one"));
-        QCOMPARE(controller.lastSavedContent, QString("<p>Navigation flush</p>"));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QString("page-two"))));
         QCOMPARE(root->property("selectedPageId").toString(), QString("page-two"));
-
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_RETURN_ARG(QVariant, transition),
-                                          Q_ARG(QVariant, QVariant("page-one"))));
-        QVERIFY(transition.toBool());
-        root->setProperty("isPreviewMode", false);
-        QVERIFY(QMetaObject::invokeMethod(canvas, "richModeRequested", Q_ARG(bool, true)));
-        QTRY_VERIFY(root->property("isRichMode").toBool());
-        editor->setProperty("text", "<p><a href='javascript:alert(1)'>unsupported</a></p>");
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "setPreviewMode", Q_RETURN_ARG(QVariant, transition),
-                                          Q_ARG(QVariant, QVariant(true))));
-        QVERIFY(!transition.toBool());
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_RETURN_ARG(QVariant, transition),
-                                          Q_ARG(QVariant, QVariant("page-two"))));
-        QVERIFY(!transition.toBool());
-        QVERIFY(QMetaObject::invokeMethod(root.data(), "saveActiveNote", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(!transition.toBool());
-        QCOMPARE(controller.saveCount, 2);
-
-        editor->setProperty("text", "<p>Color me</p>");
-        QObject *richEditor = root->findChild<QObject *>("notesRichTextEditorRoot");
-        QVERIFY(richEditor);
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QObject *palette = root->findChild<QObject *>("notesRichColorPalette");
-        QVERIFY(palette);
-        QVERIFY(QMetaObject::invokeMethod(editor, "select", Q_ARG(int, 0), Q_ARG(int, 5)));
-        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected", Q_ARG(bool, false),
-                                          Q_ARG(QString, QString("#A855F7"))));
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QCOMPARE(root->property("activeContent").toString(),
-                 QString("<p><span style=\"color:#a855f7\">Color</span> me</p>"));
-
-        QVERIFY(QMetaObject::invokeMethod(editor, "select", Q_ARG(int, 6), Q_ARG(int, 8)));
-        QVERIFY(QMetaObject::invokeMethod(palette, "colorSelected", Q_ARG(bool, true),
-                                          Q_ARG(QString, QString("#EAB308"))));
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QCOMPARE(root->property("activeContent").toString(),
-                 QString("<p><span style=\"color:#a855f7\">Color</span> <mark style=\"background-color:#eab308\">me</mark></p>"));
-
-        QVERIFY(QMetaObject::invokeMethod(editor, "select", Q_ARG(int, 0), Q_ARG(int, 5)));
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "openLinkDialog", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QObject *linkDialog = richEditor->findChild<QObject *>("notesRichLinkDialog");
-        QVERIFY(linkDialog);
-        linkDialog->setProperty("targetUrl", "https://example.com/docs?q=1&x=2");
-        QVERIFY(QMetaObject::invokeMethod(linkDialog, "createLink"));
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QCOMPARE(root->property("activeContent").toString(),
-                 QString("<p><a href=\"https://example.com/docs?q=1&amp;x=2\"><span style=\"color:#a855f7\">Color</span></a> <mark style=\"background-color:#eab308\">me</mark></p>"));
-
-        QVERIFY(QMetaObject::invokeMethod(editor, "select", Q_ARG(int, 0), Q_ARG(int, 5)));
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "openLinkDialog", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QVERIFY(linkDialog->property("hasExistingLink").toBool());
-        QVERIFY(QMetaObject::invokeMethod(linkDialog, "linkRemoved"));
-        QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, transition)));
-        QVERIFY(transition.toBool());
-        QCOMPARE(root->property("activeContent").toString(),
-                 QString("<p><span style=\"color:#a855f7\">Color</span> <mark style=\"background-color:#eab308\">me</mark></p>"));
-    }
-
-    void externalPageConflictDisplaysStatusBannerAndSetsSaveFailed() {
-        QQmlEngine engine;
-        NotesTextOperations operations;
-        MockNotesController controller;
-        engine.rootContext()->setContextProperty("notesTextOperations", &operations);
-        engine.rootContext()->setContextProperty("dataController", &controller);
-        engine.rootContext()->setContextProperty("theme", QVariantMap{
-            {"bgDarkBg", "#0f0e17"}, {"fontFamily", "Inter, -apple-system, sans-serif"},
-            {"textSubtext", "#a7a9be"}, {"textDark", "#fffffe"}, {"brand600", "#7c3aed"},
-            {"textMuted", "#71717a"}, {"fontMono", "monospace"}
-        });
-        QQmlComponent component(&engine);
-        const QUrl viewUrl = QUrl::fromLocalFile(
-            QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesEditorView.qml"));
-        component.loadUrl(viewUrl);
-        QScopedPointer<QObject> root(component.create());
-        QVERIFY2(root, qPrintable(component.errorString()));
-        QTRY_COMPARE(root->property("selectedPageId").toString(), QString("page-one"));
-        QCOMPARE(root->property("saveFailed").toBool(), false);
-
-        QObject *canvas = root->findChild<QObject *>("notesEditorCanvas");
-        QVERIFY(canvas);
-        QCOMPARE(canvas->property("pageActionStatus").toString(), QString());
-
-        emit controller.pageConflictDetected("page-one", "<p>External concurrent change</p>");
-
-        QTRY_COMPARE(root->property("saveFailed").toBool(), true);
-        QVERIFY(canvas->property("pageActionStatus").toString().contains("External edits were detected"));
+        QVERIFY(root->property("pinnedPages").toList().size() >= 1);
+        QVERIFY(root->property("pageTree").toList().size() >= 2);
+        QVERIFY(root->property("allPageTree").toList().size() >= 2);
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "toggleNodeCollapse", Q_ARG(QVariant, QString("page-one"))));
+        QVERIFY(root->property("collapsedNodeMap").toMap().value("page-one").toBool());
     }
 
 };

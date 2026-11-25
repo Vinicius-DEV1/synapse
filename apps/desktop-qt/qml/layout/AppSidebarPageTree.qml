@@ -65,21 +65,26 @@ Rectangle {
         return c
     }
 
+    // Pre-index page parent links so ancestor visibility checks stay O(depth) instead of scanning pageTree per node.
+    readonly property var parentByIdMap: {
+        var map = ({})
+        if (!pageTree) return map
+        for (var i = 0; i < pageTree.length; ++i) {
+            var p = pageTree[i]
+            if (p && p.id) map[String(p.id)] = p.parent_id ? String(p.parent_id) : ""
+        }
+        return map
+    }
+
     function isNodeVisible(page) {
         if (!page) return false
         if (!page.depth || page.depth === 0) return true
-        var pid = page.parent_id
-        while (pid && pid !== "" && pid !== "null") {
+        var pid = page.parent_id ? String(page.parent_id) : ""
+        var visited = ({})
+        while (pid && pid !== "null" && !visited[pid]) {
             if (pageTreeRoot.collapsedNodeMap[pid]) return false
-            var found = false
-            for (var i = 0; i < pageTreeRoot.pageTree.length; ++i) {
-                if (pageTreeRoot.pageTree[i].id === pid) {
-                    pid = pageTreeRoot.pageTree[i].parent_id
-                    found = true
-                    break
-                }
-            }
-            if (!found) break
+            visited[pid] = true
+            pid = pageTreeRoot.parentByIdMap[pid] || ""
         }
         return true
     }

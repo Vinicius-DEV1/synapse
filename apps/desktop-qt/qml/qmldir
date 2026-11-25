@@ -1,5 +1,6 @@
 AppIcon 1.0 ui/AppIcon.qml
 Theme 1.0 ui/Theme.qml
+Colors 1.0 ui/Colors.qml
 AppConfirmDialog 1.0 ui/AppConfirmDialog.qml
 AiClient 1.0 ui/AiClient.qml
 AppEmojiPopover 1.0 ui/AppEmojiPopover.qml

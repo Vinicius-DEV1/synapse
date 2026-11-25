@@ -30,7 +30,9 @@ Item {
                  !overlayRoot.pageReferenceMenuOpen &&
                  overlayRoot.editorRoot &&
                  overlayRoot.editorRoot.active &&
-                 !overlayRoot.editorRoot.hasInvalidContent
+                 !overlayRoot.editorRoot.hasInvalidContent &&
+                 !(overlayRoot.richCommands && overlayRoot.richCommands.codeBlockActive) &&
+                 !(overlayRoot.editorRoot.tableActions && overlayRoot.editorRoot.tableActions.isInsideTable)
         x: overlayRoot.richEditor
             ? Math.max(8, Math.min(overlayRoot.width - width - 8, overlayRoot.richEditor.cursorRectangle.x - width / 2))
             : 8
@@ -158,7 +160,11 @@ Item {
                     width: 13
                     height: 13
                 }
-                onClicked: if (overlayRoot.richCommands) overlayRoot.richCommands.openLinkDialog()
+                onClicked: {
+                    if (overlayRoot.richCommands && overlayRoot.richCommands.openLinkDialog) {
+                        overlayRoot.richCommands.openLinkDialog()
+                    }
+                }
             }
 
             NotesRichColorPalette {

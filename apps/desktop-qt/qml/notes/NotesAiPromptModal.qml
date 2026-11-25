@@ -9,10 +9,12 @@ Item {
     visible: isOpen
     z: 140
 
+    property var controller: null
     property bool isOpen: false
     property string selectedText: ""
     property string noteContextHtml: ""
     property bool isGenerating: false
+    property var chatHistory: []
     property string aiReply: ""
     property string previewHtml: ""
     property string previewDiffHtml: ""
@@ -25,6 +27,7 @@ Item {
     function openModal(selection, fullHtml) {
         selectedText = String(selection || "")
         noteContextHtml = String(fullHtml || "")
+        chatHistory = []
         aiReply = ""
         previewHtml = ""
         previewDiffHtml = ""
@@ -38,7 +41,6 @@ Item {
         if (isGenerating || !instruction.trim()) return
         isGenerating = true
         errorText = ""
-        aiReply = ""
         previewHtml = ""
         previewDiffHtml = ""
 
@@ -47,23 +49,30 @@ Item {
             : noteContextHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 3500)
 
         var sysPrompt = "Você é um assistente de edição de notas no Synapse. Responda de forma clara e direta em português. Quando reescrever ou editar um trecho existente, devolva o novo texto limpo em HTML simples (<p>, <ul>, <li>, <strong>, <em>)."
-        var userPrompt = baseText.length > 0
+        var userPrompt = (chatHistory.length === 0 && baseText.length > 0)
             ? ("Instrução: " + instruction + "\n\nConteúdo de referência:\n" + baseText)
             : instruction
 
-        aiClient.promptText(sysPrompt, userPrompt, [], function(ok, reply, err) {
+        var c = aiModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        var historySnapshot = chatHistory.slice()
+        aiClient.promptText(sysPrompt, userPrompt, historySnapshot, function(ok, reply, err) {
             aiModalRoot.isGenerating = false
             if (!ok) {
                 aiModalRoot.errorText = err || qsTr("Falha ao consultar IA.")
                 return
             }
-            aiModalRoot.aiReply = String(reply || "").trim()
-            if (aiModalRoot.noteContextHtml.length > 0 && typeof dataController !== "undefined" && dataController &&
-                    typeof dataController.applyNoteSearchReplace === "function") {
-                var patched = dataController.applyNoteSearchReplace(aiModalRoot.noteContextHtml, aiModalRoot.aiReply)
+            var replyStr = String(reply || "").trim()
+            aiModalRoot.aiReply = replyStr
+            aiModalRoot.chatHistory = historySnapshot.concat([
+                { role: "user", content: userPrompt },
+                { role: "assistant", content: replyStr }
+            ])
+            customInput.text = ""
+            if (aiModalRoot.noteContextHtml.length > 0 && c && typeof c.applyNoteSearchReplace === "function") {
+                var patched = c.applyNoteSearchReplace(aiModalRoot.noteContextHtml, replyStr)
                 if (patched && patched.success && patched.replacedCount > 0) {
                     aiModalRoot.previewHtml = patched.result
-                    aiModalRoot.previewDiffHtml = dataController.computeNoteWordDiffHtml(aiModalRoot.noteContextHtml, patched.result)
+                    aiModalRoot.previewDiffHtml = c.computeNoteWordDiffHtml(aiModalRoot.noteContextHtml, patched.result)
                     return
                 }
             }
@@ -73,7 +82,7 @@ Item {
 
     AiClient {
         id: aiClient
-        dataController: typeof dataController !== "undefined" ? dataController : null
+        dataController: aiModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
     }
 
     Rectangle {

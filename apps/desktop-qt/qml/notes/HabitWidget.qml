@@ -9,6 +9,7 @@ Item {
     implicitHeight: contentFlow.implicitHeight + 4
 
     property var blockData: ({})
+    property var controller: null
     property var attrs: blockData.attrs || ({})
     property string pageTitle: ""
     property string targetHabitId: attrs["data-habit-id"] || attrs["habit-id"] || attrs["habitId"] || ""
@@ -34,18 +35,16 @@ Item {
 
     function refreshHabits() {
         var today = todayIso()
+        var c = habitWidgetRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (explicitDate.length > 0) {
             resolvedDate = explicitDate
-        } else if (typeof dataController !== "undefined" && dataController &&
-                   typeof dataController.resolveDateFromPageTitle === "function") {
-            resolvedDate = dataController.resolveDateFromPageTitle(pageTitle, today)
+        } else if (c && typeof c.resolveDateFromPageTitle === "function") {
+            resolvedDate = c.resolveDateFromPageTitle(pageTitle, today)
         } else {
             resolvedDate = today
         }
 
-        var all = (typeof dataController !== "undefined" && dataController &&
-                   typeof dataController.getHabits === "function")
-                  ? (dataController.getHabits() || []) : []
+        var all = (c && typeof c.getHabits === "function") ? (c.getHabits() || []) : []
 
         if (targetHabitId.length > 0 && targetHabitId !== "all") {
             var matched = all.filter(function(h) { return h.id === targetHabitId })
@@ -82,9 +81,7 @@ Item {
             }]
         }
 
-        var logs = (typeof dataController !== "undefined" && dataController &&
-                    typeof dataController.getHabitLogs === "function")
-                   ? (dataController.getHabitLogs(resolvedDate) || []) : []
+        var logs = (c && typeof c.getHabitLogs === "function") ? (c.getHabitLogs(resolvedDate) || []) : []
         var nextMap = ({})
         for (var i = 0; i < logs.length; i++) {
             if (logs[i].completed || logs[i].status === "completed") {
@@ -95,8 +92,9 @@ Item {
     }
 
     function toggleHabit(habitId) {
-        if (typeof dataController === "undefined" || !dataController || !habitId || isNotFound) return
-        if (dataController.toggleHabitCheckin(habitId, resolvedDate)) {
+        var c = habitWidgetRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        if (!c || !habitId || isNotFound) return
+        if (c.toggleHabitCheckin(habitId, resolvedDate)) {
             refreshHabits()
         }
     }

@@ -278,16 +278,6 @@ Rectangle {
             Layout.preferredHeight: 30
             onClearRequested: toolbarRoot.richTableSelectionFormattingClearRequested()
         }
-
-        Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#15ffffff" }
-        NotesSourceFormattingActions {
-            richMode: toolbarRoot.richMode
-            Layout.preferredWidth: implicitWidth
-            Layout.preferredHeight: implicitHeight
-            onFormatRequested: function(prefix, suffix) {
-                toolbarRoot.formatRequested(prefix, suffix)
-            }
-        }
     }
 
 }

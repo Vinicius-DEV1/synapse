@@ -10,12 +10,13 @@ Item {
     implicitHeight: mainCol.implicitHeight + 8
 
     property var blockData: ({})
+    property var controller: null
     property var attrs: blockData.attrs || ({})
     property var childLinkBlocks: {
         var inner = blockData.innerHtml || ""
-        if (inner.length > 0 && typeof dataController !== "undefined" && dataController &&
-                typeof dataController.parseNoteBlocks === "function") {
-            var parsed = dataController.parseNoteBlocks(inner) || []
+        var c = linkGroupRoot.controller
+        if (inner.length > 0 && c && typeof c.parseNoteBlocks === "function") {
+            var parsed = c.parseNoteBlocks(inner) || []
             var cards = parsed.filter(function(b) { return b.blockType === "linkPreview" })
             if (cards.length > 0) return cards
         }
@@ -173,6 +174,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignTop
                     blockData: modelData
+                    controller: linkGroupRoot.controller
                     onAttrsUpdated: function(na) {
                         var next = linkGroupRoot.childLinkBlocks.slice()
                         var copy = Object.assign({}, next[index])

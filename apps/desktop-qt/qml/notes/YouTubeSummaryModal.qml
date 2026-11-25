@@ -8,8 +8,9 @@ Rectangle {
     anchors.fill: parent
     z: 120
     visible: false
-    color: "#0a0a0c"
+    color: lightReaderTheme ? "#f8fafc" : "#0a0a0c"
 
+    property var controller: null
     property string url: ""
     property string videoTitle: "Vídeo do YouTube"
     property string channelName: ""
@@ -18,6 +19,8 @@ Rectangle {
     property bool isLoading: false
     property bool showTranscript: false
     property bool copiedNotice: false
+    property bool lightReaderTheme: false
+    readonly property int estimatedReadMinutes: Math.max(1, Math.round(String(summaryText || "").split(/\s+/).length / 200))
 
     signal closeRequested()
     signal regenerateRequested(string videoUrl)
@@ -77,7 +80,7 @@ Rectangle {
                         Layout.fillWidth: true
                     }
                     Text {
-                        text: ytSummaryRoot.channelName.length > 0 ? ytSummaryRoot.channelName : ytSummaryRoot.url
+                        text: (ytSummaryRoot.channelName.length > 0 ? ytSummaryRoot.channelName : ytSummaryRoot.url) + " · ~" + ytSummaryRoot.estimatedReadMinutes + " min"
                         color: "#71717a"
                         font.pixelSize: 11
                         elide: Text.ElideRight
@@ -85,12 +88,21 @@ Rectangle {
                     }
                 }
 
+                // Theme Toggle
+                ToolButton {
+                    text: ytSummaryRoot.lightReaderTheme ? "🌙" : "☀"
+                    implicitWidth: 32; implicitHeight: 32
+                    onClicked: ytSummaryRoot.lightReaderTheme = !ytSummaryRoot.lightReaderTheme
+                    background: Rectangle { color: parent.hovered ? "#22ffffff" : "transparent"; radius: 6 }
+                }
+
                 // Copy Button
                 Button {
                     text: ytSummaryRoot.copiedNotice ? qsTr("Copiado! ✓") : qsTr("Copiar Resumo")
                     flat: true
                     onClicked: {
-                        controller.copyToClipboard(ytSummaryRoot.summaryText)
+                        var c = ytSummaryRoot.controller || dataController
+                        if (c && typeof c.copyToClipboard === "function") c.copyToClipboard(ytSummaryRoot.summaryText)
                         ytSummaryRoot.copiedNotice = true
                         copyTimer.restart()
                     }

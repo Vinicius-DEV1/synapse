@@ -294,6 +294,10 @@ int NotesTextOperations::insertRichParagraphBelowDivider(QQuickTextDocument *doc
     return NotesRichDividerEditing::insertParagraphBelow(*document->textDocument(), position);
 }
 
+bool NotesTextOperations::isRichDocumentModified(QQuickTextDocument *document) const {
+    return document && document->textDocument() && document->textDocument()->isModified();
+}
+
 bool NotesTextOperations::replaceDocumentText(QTextDocument *document, int start, int end, const QString &replacement) {
     if (!document || start < 0 || end < start || end > document->characterCount() - 1) return false;
     QTextCursor cursor(document);

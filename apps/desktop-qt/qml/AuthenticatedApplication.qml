@@ -7,6 +7,8 @@ import "diagrams"
 import "video"
 import "questions"
 import "notes"
+import "page-view"
+import "modals"
 import "anki"
 import "finance"
 import "calendar"
@@ -174,7 +176,11 @@ Item {
     }
 
     function flushActiveNotes() {
-        if (notesView && (notesView.isDirty || notesView.isRichMode)) {
+        if (!notesView || !notesView.selectedPageId) return
+        if (typeof notesView.flushPendingEdits === "function") {
+            notesView.flushPendingEdits()
+        }
+        if (notesView.isDirty) {
             notesView.saveActiveNote()
         }
     }
@@ -557,7 +563,6 @@ Item {
                 onToggleSidebarRequested: rootWindow.sidebarExpanded = !rootWindow.sidebarExpanded
                 onOpenCommandPaletteRequested: cmdPalette.open()
                 onNotePageSelected: function(pageId) {
-                    notesView.selectPage(pageId)
                     var p = dataController.getPage(pageId)
                     var title = (p && p.title) ? p.title : "Caderno"
                     var emoji = (p && p.icon) ? p.icon : "📄"
@@ -589,6 +594,9 @@ Item {
                     dataController.updatePageIcon(pageId, emoji)
                     if (notesView.selectedPageId === pageId) {
                         notesView.activeIcon = emoji
+                        if (typeof notesView.syncPageMetadataFromController === "function") {
+                            notesView.syncPageMetadataFromController(pageId)
+                        }
                     }
                     notesView.loadPages()
                     rootWindow.syncActiveNotesTabMeta()
@@ -651,7 +659,6 @@ Item {
                     HomeView {
                         id: homeView
                         onOpenPageId: function(pageId) {
-                            notesView.selectPage(pageId)
                             var p = dataController.getPage(pageId)
                             var title = (p && p.title) ? p.title : "Caderno"
                             var emoji = (p && p.icon) ? p.icon : "📄"
@@ -662,16 +669,22 @@ Item {
                             rootWindow.updateActiveTabModule(tabKey, info.title, info.icon)
                         }
                         onCreateNewNoteRequested: {
-                            notesView.createNewRootNote()
                             var info = rootWindow.getModuleInfo("notes")
-                            rootWindow.updateActiveTabModule("notes", notesView.activeTitle || info.title, info.icon, notesView.selectedPageId, notesView.activeIcon)
+                            rootWindow.updateActiveTabModule("notes", info.title, info.icon)
+                            notesView.createNewRootNote()
+                            rootWindow.syncActiveNotesTabMeta()
                         }
                     }
-                    NotesEditorView {
+                    PageView {
                         id: notesView
+                        controller: dataController
                         onSelectedPageIdChanged: rootWindow.syncActiveNotesTabMeta()
                         onActiveTitleChanged: rootWindow.syncActiveNotesTabMeta()
                         onActiveIconChanged: rootWindow.syncActiveNotesTabMeta()
+                        onShareRequested: function(pageId) {
+                            var p = dataController.getPage(pageId)
+                            globalModals.openShare(pageId, (p && p.title) ? p.title : "Página")
+                        }
                         onOpenInNewTabRequested: function(pageId) {
                             var p = dataController.getPage(pageId)
                             var title = (p && p.title) ? p.title : "Caderno"
@@ -731,7 +744,6 @@ Item {
     CommandPalette {
         id: cmdPalette
         onOpenPage: function(pageId) {
-            notesView.selectPage(pageId)
             var p = dataController.getPage(pageId)
             var title = (p && p.title) ? p.title : "Caderno"
             var emoji = (p && p.icon) ? p.icon : "📄"
@@ -758,6 +770,9 @@ Item {
             dataController.renamePage(pageId, newTitle)
             if (notesView.selectedPageId === pageId) {
                 notesView.activeTitle = newTitle
+                if (typeof notesView.syncPageMetadataFromController === "function") {
+                    notesView.syncPageMetadataFromController(pageId)
+                }
             }
             notesView.loadPages()
             rootWindow.syncActiveNotesTabMeta()
@@ -783,10 +798,10 @@ Item {
         isOpen: rootWindow.notificationsOpen
         onClosed: rootWindow.notificationsOpen = false
         onOpenPage: function(pageId) {
-            notesView.selectPage(pageId)
             var p = dataController.getPage(pageId)
             var title = (p && p.title) ? p.title : "Caderno"
-            rootWindow.updateActiveTabModule("notes", title, "notes")
+            var emoji = (p && p.icon) ? p.icon : "📄"
+            rootWindow.updateActiveTabModule("notes", title, "notes", pageId, emoji)
             rootWindow.notificationsOpen = false
         }
         onOpenCalendarRequested: function(eventId) {
@@ -807,9 +822,13 @@ Item {
         onInsertIntoNoteRequested: function(txt) {
             if (!notesView.selectedPageId) return
             var esc = "<p>" + String(txt || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</p>"
-            notesView.activeContent = (notesView.activeContent || "") + esc
-            notesView.isDirty = true
-            notesView.saveActiveNote()
+            if (typeof notesView.appendExternalHtml === "function") {
+                notesView.appendExternalHtml(esc)
+            } else {
+                notesView.activeContent = (notesView.activeContent || "") + esc
+                notesView.isDirty = true
+                notesView.saveActiveNote()
+            }
             var info = rootWindow.getModuleInfo("notes")
             rootWindow.updateActiveTabModule("notes", notesView.activeTitle || info.title, info.icon, notesView.selectedPageId, notesView.activeIcon)
         }

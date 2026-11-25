@@ -9,13 +9,18 @@ Item {
     property string parentPageId: ""
     property var textOperations: notesTextOperations
     property bool active: false
+    property bool autoHeight: false
     property bool isLoading: false
+    property bool isComponentReady: false
     property bool hasPendingChanges: false
+    property bool hasVisualTableFilter: false
+    property bool hasEditedSinceLoad: false
     property bool hasInvalidContent: false
     property string validationMessage: ""
     property bool canEditSource: sourceHtml.length === 0
     readonly property int commitDelayMs: 180
     readonly property alias editor: richTextInput.editor
+    readonly property alias lastSlashQuery: richTextInput.lastSlashQuery
     property alias tableActions: richTableActions
     property alias calloutRevision: richCommands.calloutRevision
     property alias codeBlockRevision: richCommands.codeBlockRevision
@@ -48,6 +53,9 @@ Item {
     signal askAiRequested(string selectedText)
     signal convertUrlToCardRequested(string url)
     signal pageHierarchyChanged()
+    signal navigatePrevRequested()
+    signal navigateNextRequested()
+    signal mergePrevRequested()
 
     function createLinkedPage(title) {
         var pageTitle = String(title || "").trim()
@@ -124,16 +132,28 @@ Item {
         }
         taskListControls.refreshCheckboxes()
         spoilerRevealControl.refresh()
+        richTextInput.syncLoadedPlainText()
         isLoading = false
+        lastLoadedSource = sourceHtml
         lastPublishedHtml = sourceHtml
+        hasEditedSinceLoad = false
         hasPendingChanges = false
         hasInvalidContent = false
         validationMessage = ""
         return true
     }
 
+    function hasPendingEdits() {
+        if (hasVisualTableFilter) return false
+        return hasPendingChanges || commitTimer.running
+    }
+
     function commitEditorText() {
         commitTimer.stop()
+        if (hasVisualTableFilter) {
+            hasPendingChanges = false
+            return !hasInvalidContent
+        }
         if (!hasPendingChanges) return !hasInvalidContent
         var result = textOperations.serializeRich(editor.textDocument)
         if (!result.ok) {
@@ -147,16 +167,27 @@ Item {
         validationMessage = ""
         if (result.html !== sourceHtml) {
             lastPublishedHtml = result.html
+            lastLoadedSource = result.html
             sourceHtml = result.html
             contentModified(result.html)
         } else {
             lastPublishedHtml = result.html
+            lastLoadedSource = sourceHtml
         }
         validationChanged(false, "")
         return true
     }
 
     function toggleMark(mark) { return richCommands.toggleMark(mark) }
+    function setBlockColor(color, background) {
+        if (!active || hasInvalidContent || hasVisualTableFilter || !editor || !editor.textDocument ||
+                !textOperations || typeof textOperations.setRichColor !== "function") return false
+        var value = color === "inherit" || color === "transparent" || color === "default" ? "" : color
+        if (!textOperations.setRichColor(editor.textDocument, 0, editor.length, value, background)) return false
+        richCommands.contentModified()
+        editor.forceActiveFocus()
+        return true
+    }
     function setSpoilerVisibility(position, action) { return richCommands.setSpoilerVisibility(position, action) }
     function toggleBlock(blockType) { return richCommands.toggleBlock(blockType) }
     function dropDividerAt(targetPosition, afterTarget) {
@@ -190,12 +221,24 @@ Item {
     function viewRichImage() { return richImageActions.openImageViewer() }
 
     onSourceHtmlChanged: {
-        if (!isLoading && sourceHtml !== lastPublishedHtml) eligibilityTimer.restart()
+        if (isComponentReady && !isLoading && sourceHtml !== lastPublishedHtml && sourceHtml !== lastLoadedSource) eligibilityTimer.restart()
     }
-    onActiveChanged: if (active && !hasPendingChanges) loadSource()
-    Component.onCompleted: eligibilityTimer.restart()
+    onActiveChanged: {
+        if (!isComponentReady) return
+        if (active && !hasPendingChanges && sourceHtml !== lastLoadedSource) loadSource()
+        else if (!active) eligibilityTimer.stop()
+    }
+    Component.onCompleted: {
+        isComponentReady = true
+        if (active && sourceHtml !== lastLoadedSource) loadSource()
+    }
+    Component.onDestruction: {
+        commitTimer.stop()
+        eligibilityTimer.stop()
+    }
 
     property string lastPublishedHtml: ""
+    property string lastLoadedSource: "__UNLOADED__"
 
     Timer {
         id: commitTimer
@@ -208,12 +251,19 @@ Item {
         id: eligibilityTimer
         interval: richRoot.commitDelayMs
         repeat: false
-        onTriggered: richRoot.loadSource()
+        onTriggered: {
+            if (richRoot.active && !richRoot.hasPendingChanges && richRoot.sourceHtml !== richRoot.lastLoadedSource) {
+                richRoot.loadSource()
+            }
+        }
     }
 
     NotesRichTextInput {
         id: richTextInput
-        anchors.fill: parent
+        x: 0
+        y: 0
+        width: parent.width
+        height: richRoot.autoHeight ? implicitHeight : parent.height
         editorRoot: richRoot
         taskListControls: taskListControls
         spoilerRevealControl: spoilerRevealControl
@@ -224,10 +274,14 @@ Item {
         onWidgetSlashCommandRequested: function(cmd) { richRoot.widgetSlashCommandRequested(cmd) }
         onAskAiRequested: function(txt) { richRoot.askAiRequested(txt) }
         onConvertUrlToCardRequested: function(url) { richRoot.convertUrlToCardRequested(url) }
+        onNavigatePrevRequested: richRoot.navigatePrevRequested()
+        onNavigateNextRequested: richRoot.navigateNextRequested()
+        onMergePrevRequested: richRoot.mergePrevRequested()
     }
 
     NotesTableExcelGrips {
         tableActions: richTableActions
+        richCommands: richCommands
         textEditor: richTextInput.editor
     }
 
@@ -243,6 +297,7 @@ Item {
     Connections {
         target: richCommands
         function onContentModified() {
+            richRoot.hasEditedSinceLoad = true
             richRoot.hasPendingChanges = true
             commitTimer.restart()
         }
@@ -255,6 +310,7 @@ Item {
         active: richRoot.active
         invalid: richRoot.hasInvalidContent
         onContentModified: {
+            richRoot.hasEditedSinceLoad = true
             richRoot.hasPendingChanges = true
             commitTimer.restart()
         }
@@ -270,6 +326,7 @@ Item {
         pageId: richRoot.parentPageId
         active: richRoot.active && !richRoot.hasInvalidContent
         onContentModified: {
+            richRoot.hasEditedSinceLoad = true
             richRoot.hasPendingChanges = true
             commitTimer.restart()
         }
@@ -282,6 +339,7 @@ Item {
         active: richRoot.active
         invalid: richRoot.hasInvalidContent
         onContentModified: {
+            richRoot.hasEditedSinceLoad = true
             richRoot.hasPendingChanges = true
             commitTimer.restart()
         }

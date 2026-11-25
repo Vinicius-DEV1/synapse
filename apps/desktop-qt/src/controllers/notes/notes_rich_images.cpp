@@ -225,6 +225,7 @@ bool prepare(QTextDocument &document, const QString &source) {
         QTextCursor blockCursor(block);
         blockCursor.setBlockFormat(blockFormat);
     }
+    document.setModified(false);
     return imageIndex == metadata.size();
 }
 

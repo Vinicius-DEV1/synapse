@@ -86,6 +86,7 @@ public:
     Q_INVOKABLE bool applyRichPendingMarks(QQuickTextDocument *document, const QString &previousText,
                                            const QString &currentText, int cursorPosition) const;
     Q_INVOKABLE QString richPlainText(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool isRichDocumentModified(QQuickTextDocument *document) const;
     Q_INVOKABLE bool toggleRichBlock(QQuickTextDocument *document, int start, int end, const QString &blockType) const;
     Q_INVOKABLE int executeRichSlashCommand(QQuickTextDocument *document, int start, int end,
                                              const QString &commandId) const;
@@ -121,6 +122,11 @@ public:
     Q_INVOKABLE bool setRichTableCellBackground(QQuickTextDocument *document, int position,
                                                 const QString &color, const QString &scope,
                                                 int selectionStart, int selectionEnd) const;
+    Q_INVOKABLE QVariantMap richTableGeometry(QQuickTextDocument *document, int position) const;
+    Q_INVOKABLE bool setRichTableCellText(QQuickTextDocument *document, int position,
+                                          const QString &value) const;
+    Q_INVOKABLE bool applyRichTableValidationHighlights(QQuickTextDocument *document, int position,
+                                                        const QVariantList &validations) const;
     Q_INVOKABLE bool setRichColor(QQuickTextDocument *document, int start, int end,
                                   const QString &color, bool background) const;
     Q_INVOKABLE bool setRichLink(QQuickTextDocument *document, int start, int end, const QString &url) const;

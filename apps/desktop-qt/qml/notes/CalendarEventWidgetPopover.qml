@@ -14,8 +14,10 @@ Item {
     property string dateStr: ""
     property string eventColor: "#3b82f6"
     property string status: "pending"
+    property bool isEditing: false
 
     signal toggleStatus()
+    signal editSaved(string newTitle, string newDate)
     signal deleteRequested()
     signal closed()
 
@@ -78,6 +80,51 @@ Item {
                         color: "#a7a9be"
                         font.pixelSize: 11
                     }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    onClicked: {
+                        editTitleInput.text = popoverRoot.title
+                        editDateInput.text = popoverRoot.dateStr
+                        popoverRoot.isEditing = !popoverRoot.isEditing
+                    }
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "edit"; color: "#a7a9be"; width: 13; height: 13 }
+                }
+            }
+
+            ColumnLayout {
+                visible: popoverRoot.isEditing
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    id: editTitleInput
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    color: "#fffffe"
+                    font.pixelSize: 12
+                    background: Rectangle { radius: 6; color: "#0f0e17"; border.color: "#2e2e38" }
+                }
+                TextField {
+                    id: editDateInput
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    placeholderText: "YYYY-MM-DD"
+                    color: "#fffffe"
+                    font.pixelSize: 12
+                    background: Rectangle { radius: 6; color: "#0f0e17"; border.color: "#2e2e38" }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    onClicked: {
+                        popoverRoot.isEditing = false
+                        popoverRoot.editSaved(editTitleInput.text.trim() || popoverRoot.title, editDateInput.text.trim() || popoverRoot.dateStr)
+                    }
+                    background: Rectangle { radius: 6; color: "#7c3aed" }
+                    contentItem: Text { text: qsTr("Salvar alterações"); color: "#fff"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
             }
 

@@ -14,9 +14,11 @@
 
 // Native encrypted file import and export operations.
 
-void SynapseDataController::importLocalFile(const QString &sourcePath, const QString &folderId) {
-    const auto fail = [this](const QString &message) {
-        emit fileOperationFinished({{"success", false}, {"error", message}, {"operation", "import"}});
+void SynapseDataController::importLocalFile(const QString &sourcePath, const QString &folderId,
+                                            const QString &requestId) {
+    const auto fail = [this, requestId](const QString &message) {
+        emit fileOperationFinished({{"success", false}, {"error", message}, {"operation", "import"},
+                                    {"requestId", requestId}});
     };
     if (m_fileOperationRunning) return fail("Another file operation is already running.");
     if (!m_isVaultConfigured || !m_isVaultUnlocked || m_unlockedKeys.value("files").isEmpty()) {
@@ -61,7 +63,7 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
     m_fileOperationWatcher = watcher;
     m_activeFileOperation = operation;
     connect(watcher, &QFutureWatcher<QVariantMap>::finished, this,
-            [this, watcher, id, name, mimeType, fileSize, folderId, destination,
+            [this, watcher, id, name, mimeType, fileSize, folderId, requestId, destination,
              temporaryDestination, encryptedLocalPath, operation]() {
         const QVariantMap operationResult = watcher->result();
         watcher->deleteLater();
@@ -103,6 +105,7 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
         emit fileOperationStateChanged();
         QVariantMap result{{"success", success}, {"id", id}, {"name", name}, {"error", error}};
         result["operation"] = "import";
+        result["requestId"] = requestId;
         if (m_activeFileOperation == operation) m_activeFileOperation = nullptr;
         m_fileOperationWatcher = nullptr;
         synapse_file_operation_close(operation);

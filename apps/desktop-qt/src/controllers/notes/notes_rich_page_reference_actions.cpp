@@ -86,6 +86,7 @@ bool NotesTextOperations::prepareRichPageReferenceBoundaries(QQuickTextDocument 
         cursor.setCharFormat(format);
     }
     textDocument->setUndoRedoEnabled(undoEnabled);
+    textDocument->setModified(false);
     return true;
 }
 

@@ -10,6 +10,7 @@ Rectangle {
     radius: 8
 
     property var blockData: ({})
+    property var controller: null
     property var attrs: blockData.attrs || ({})
     property string eventId: attrs["data-event-id"] || attrs["event-id"] || attrs["eventId"] || ""
     property string title: attrs["data-title"] || attrs["title"] || qsTr("Novo Evento")
@@ -19,19 +20,25 @@ Rectangle {
     property bool isPopoverOpen: false
 
     readonly property bool isCompleted: status === "completed"
+    readonly property bool isExpired: !isCompleted && dateStr.length >= 10 &&
+        dateStr.substring(0, 10) < Qt.formatDate(new Date(), "yyyy-MM-dd")
     readonly property bool hasCustomColor: eventColor.length > 0 && eventColor !== "default" && eventColor !== "#8b5cf6"
-    readonly property string resolvedAccent: hasCustomColor ? eventColor : "#a78bfa"
+    readonly property string resolvedAccent: isExpired ? "#fb7185" : (hasCustomColor ? eventColor : "#a78bfa")
 
     color: isCompleted
         ? "#1a10b981"
-        : (hasCustomColor
-            ? (eventColor + "18")
-            : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6"))
+        : (isExpired
+            ? "#1af43f5e"
+            : (hasCustomColor
+                ? (eventColor + "18")
+                : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")))
     border.color: isCompleted
         ? "#4d10b981"
-        : (hasCustomColor
-            ? (hoverHandler.hovered || isPopoverOpen ? eventColor : (eventColor + "60"))
-            : (hoverHandler.hovered || isPopoverOpen ? "#808b5cf6" : "#4d8b5cf6"))
+        : (isExpired
+            ? "#66f43f5e"
+            : (hasCustomColor
+                ? (hoverHandler.hovered || isPopoverOpen ? eventColor : (eventColor + "60"))
+                : (hoverHandler.hovered || isPopoverOpen ? "#808b5cf6" : "#4d8b5cf6")))
     border.width: 1
     opacity: isCompleted ? 0.82 : 1.0
     Behavior on color { ColorAnimation { duration: 150 } }
@@ -54,8 +61,9 @@ Rectangle {
     }
 
     function syncFromCore() {
-        if (!eventId || typeof dataController === "undefined" || !dataController || typeof dataController.getCalendarEvents !== "function") return
-        var events = dataController.getCalendarEvents() || []
+        var c = eventWidgetRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        if (!eventId || !c || typeof c.getCalendarEvents !== "function") return
+        var events = c.getCalendarEvents() || []
         for (var i = 0; i < events.length; i++) {
             if (events[i].id === eventId) {
                 title = events[i].title || title
@@ -182,6 +190,14 @@ Rectangle {
         eventColor: eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#8b5cf6"
         status: eventWidgetRoot.status
         onToggleStatus: eventWidgetRoot.toggleStatus()
+        onEditSaved: function(nt, nd) {
+            eventWidgetRoot.title = nt
+            eventWidgetRoot.dateStr = nd
+            var next = Object.assign({}, eventWidgetRoot.attrs)
+            next["data-title"] = nt
+            next["data-date"] = nd
+            eventWidgetRoot.attrsUpdated(next)
+        }
         onDeleteRequested: {
             if (eventWidgetRoot.eventId && typeof dataController !== "undefined" && dataController) {
                 dataController.deleteCalendarEvent(eventWidgetRoot.eventId)

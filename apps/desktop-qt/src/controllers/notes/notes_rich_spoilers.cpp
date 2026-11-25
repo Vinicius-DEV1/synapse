@@ -286,6 +286,7 @@ bool prepare(QTextDocument &document) {
     document.setUndoRedoEnabled(false);
     applyChanges(document, changes);
     document.setUndoRedoEnabled(true);
+    document.setModified(false);
     return true;
 }
 

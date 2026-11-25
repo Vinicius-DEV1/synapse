@@ -14,6 +14,7 @@ Item {
     property bool isHelpOpen: false
     property bool isPageEncrypted: false
     property bool isPageUnlocked: true
+    property string deleteTargetTitle: ""
     readonly property bool anyBlockingOverlayVisible: isHistoryOpen || isHelpOpen || deleteNoteDialog.visible
 
     signal pageUnlocked()
@@ -26,21 +27,58 @@ Item {
     signal insertAiTextRequested(string text)
     signal insertWidgetRequested(string widgetHtml)
     signal deleteNoteConfirmed()
+    signal deleteCancelled()
+
+    property var pendingYtWatch: null
+    property var pendingYtPlaylist: null
+    property var pendingYtSummary: null
+    property string pendingMermaidCode: ""
+    property var pendingQuizSession: null
+    property var pendingHabitTarget: null
 
     function openYoutubeModal(url, title) {
+        if (/[?&]list=/i.test(url || "")) {
+            pendingYtPlaylist = { url: url, title: title || qsTr("Playlist do YouTube") }
+            ytPlaylistLoader.active = true
+            if (ytPlaylistLoader.item) {
+                ytPlaylistLoader.item.controller = modalsHost.controller
+                ytPlaylistLoader.item.playlistUrl = pendingYtPlaylist.url
+                ytPlaylistLoader.item.playlistTitle = pendingYtPlaylist.title
+                ytPlaylistLoader.item.visible = true
+                pendingYtPlaylist = null
+            }
+            return
+        }
+        pendingYtWatch = { url: url, title: title || "" }
         ytWatchLoader.active = true
         if (ytWatchLoader.item) {
-            ytWatchLoader.item.url = url
-            ytWatchLoader.item.videoTitle = title
+            ytWatchLoader.item.url = pendingYtWatch.url
+            ytWatchLoader.item.videoTitle = pendingYtWatch.title
             ytWatchLoader.item.visible = true
+            pendingYtWatch = null
+        }
+    }
+
+    function openYoutubeSummary(url, title) {
+        pendingYtSummary = { url: url, title: title || qsTr("Resumo do Vídeo") }
+        ytSummaryLoader.active = true
+        if (ytSummaryLoader.item) {
+            ytSummaryLoader.item.controller = modalsHost.controller
+            ytSummaryLoader.item.url = pendingYtSummary.url
+            ytSummaryLoader.item.videoTitle = pendingYtSummary.title
+            ytSummaryLoader.item.visible = true
+            pendingYtSummary = null
         }
     }
 
     function openMermaidModal(code) {
+        pendingMermaidCode = String(code || "")
         mermaidLoader.active = true
         if (mermaidLoader.item) {
-            mermaidLoader.item.chart = code
+            mermaidLoader.item.controller = modalsHost.controller
+            mermaidLoader.item.chart = pendingMermaidCode
             mermaidLoader.item.visible = true
+            pendingMermaidCode = ""
         }
     }
 
@@ -52,12 +90,12 @@ Item {
         notesAiModal.openModal(selectionText, contextHtml)
     }
 
-    function openSetupWidget(mode) {
-        setupWidgetsModal.openMode(mode)
+    function openSetupWidget(mode, prefill) {
+        setupWidgetsModal.openMode(mode, prefill)
     }
 
-    function openMediaWidgetPicker(mode) {
-        mediaPickerModal.openMode(mode)
+    function openMediaWidgetPicker(mode, prefillUrl) {
+        mediaPickerModal.openMode(mode, prefillUrl)
     }
 
     function openDeleteDialog(errMessage) {
@@ -73,19 +111,30 @@ Item {
                 return (batteryId && q.battery_id === batteryId) || (questionId && q.id === questionId)
             })
         }
+        pendingQuizSession = {
+            batteryId: batteryId,
+            title: title || qsTr("Prática Rápida"),
+            questions: qs
+        }
         quizModalLoader.active = true
         if (quizModalLoader.item) {
-            quizModalLoader.item.batteryId = batteryId
-            quizModalLoader.item.batteryTitle = title || qsTr("Prática Rápida")
-            quizModalLoader.item.questions = qs
-            quizModalLoader.item.currentIndex = 0
-            quizModalLoader.item.selectedOption = -1
-            quizModalLoader.item.isConfirmed = false
-            quizModalLoader.item.isCompleted = false
-            quizModalLoader.item.score = 0
-            quizModalLoader.item.elapsedSeconds = 0
-            quizModalLoader.item.visible = true
+            applyPendingQuizSession(quizModalLoader.item)
         }
+    }
+
+    function applyPendingQuizSession(item) {
+        if (!item || !pendingQuizSession) return
+        item.batteryId = pendingQuizSession.batteryId
+        item.batteryTitle = pendingQuizSession.title
+        item.questions = pendingQuizSession.questions
+        item.currentIndex = 0
+        item.selectedOption = -1
+        item.isConfirmed = false
+        item.isCompleted = false
+        item.score = 0
+        item.elapsedSeconds = 0
+        item.visible = true
+        pendingQuizSession = null
     }
 
     function openHabitHeatmap(habitId) {
@@ -96,19 +145,14 @@ Item {
             if (list[i].id === habitId) { target = list[i]; break }
         }
         if (!target) return
+        pendingHabitTarget = target
         habitHeatmapLoader.active = true
         if (habitHeatmapLoader.item) {
-            habitHeatmapLoader.item.habit = target
+            habitHeatmapLoader.item.habit = pendingHabitTarget
             habitHeatmapLoader.item.reloadData()
             habitHeatmapLoader.item.visible = true
+            pendingHabitTarget = null
         }
-    }
-
-    NotesPageUnlockForm {
-        anchors.fill: parent
-        z: 95
-        visible: modalsHost.selectedPageId !== "" && modalsHost.isPageEncrypted && !modalsHost.isPageUnlocked
-        onUnlocked: modalsHost.pageUnlocked()
     }
 
     Loader {
@@ -117,13 +161,68 @@ Item {
         anchors.fill: parent
         z: 120
         source: "YouTubeWatchModal.qml"
-        onLoaded: if (item) item.visible = true
+        onLoaded: {
+            if (!item) return
+            if (modalsHost.pendingYtWatch) {
+                item.url = modalsHost.pendingYtWatch.url
+                item.videoTitle = modalsHost.pendingYtWatch.title
+                modalsHost.pendingYtWatch = null
+            }
+            item.visible = true
+        }
     }
 
     Connections {
         target: ytWatchLoader.item
         ignoreUnknownSignals: true
+        function onSummaryRequested(u, t) { ytWatchLoader.active = false; modalsHost.openYoutubeSummary(u, t) }
         function onCloseRequested() { ytWatchLoader.active = false }
+    }
+
+    Loader {
+        id: ytPlaylistLoader
+        active: false; anchors.fill: parent; z: 122
+        source: "YouTubePlaylistModal.qml"
+        onLoaded: {
+            if (!item) return
+            if (modalsHost.pendingYtPlaylist) {
+                item.controller = modalsHost.controller
+                item.playlistUrl = modalsHost.pendingYtPlaylist.url
+                item.playlistTitle = modalsHost.pendingYtPlaylist.title
+                modalsHost.pendingYtPlaylist = null
+            }
+            item.visible = true
+        }
+    }
+
+    Connections {
+        target: ytPlaylistLoader.item
+        ignoreUnknownSignals: true
+        function onVideoWatchRequested(u, t) { ytPlaylistLoader.active = false; modalsHost.openYoutubeModal(u, t) }
+        function onVideoSummaryRequested(u, t) { ytPlaylistLoader.active = false; modalsHost.openYoutubeSummary(u, t) }
+        function onCloseRequested() { ytPlaylistLoader.active = false }
+    }
+
+    Loader {
+        id: ytSummaryLoader
+        active: false; anchors.fill: parent; z: 124
+        source: "YouTubeSummaryModal.qml"
+        onLoaded: {
+            if (!item) return
+            if (modalsHost.pendingYtSummary) {
+                item.controller = modalsHost.controller
+                item.url = modalsHost.pendingYtSummary.url
+                item.videoTitle = modalsHost.pendingYtSummary.title
+                modalsHost.pendingYtSummary = null
+            }
+            item.visible = true
+        }
+    }
+
+    Connections {
+        target: ytSummaryLoader.item
+        ignoreUnknownSignals: true
+        function onCloseRequested() { ytSummaryLoader.active = false }
     }
 
     Loader {
@@ -132,7 +231,15 @@ Item {
         anchors.fill: parent
         z: 130
         source: "MermaidFullscreenModal.qml"
-        onLoaded: if (item) item.visible = true
+        onLoaded: {
+            if (!item) return
+            if (modalsHost.pendingMermaidCode.length > 0) {
+                item.controller = modalsHost.controller
+                item.chart = modalsHost.pendingMermaidCode
+                modalsHost.pendingMermaidCode = ""
+            }
+            item.visible = true
+        }
     }
 
     Connections {
@@ -142,6 +249,7 @@ Item {
     }
 
     PageHistoryModal {
+        controller: modalsHost.controller
         visible: modalsHost.isHistoryOpen
         pageTitle: modalsHost.activeTitle
         history: modalsHost.pageHistoryEntries
@@ -168,6 +276,7 @@ Item {
 
     NotesAiPromptModal {
         id: notesAiModal
+        controller: modalsHost.controller
         onApplyHtmlRequested: function(html) { modalsHost.applyAiHtmlRequested(html) }
         onInsertTextRequested: function(txt) { modalsHost.insertAiTextRequested(txt) }
         onClosed: notesAiModal.isOpen = false
@@ -175,11 +284,13 @@ Item {
 
     NotesSetupWidgetsModal {
         id: setupWidgetsModal
+        controller: modalsHost.controller
         onInsertWidgetRequested: function(html) { modalsHost.insertWidgetRequested(html) }
     }
 
     NotesMediaWidgetPickerModal {
         id: mediaPickerModal
+        controller: modalsHost.controller
         onInsertWidgetRequested: function(html) { modalsHost.insertWidgetRequested(html) }
     }
 
@@ -189,6 +300,7 @@ Item {
         anchors.fill: parent
         z: 145
         source: "../questions/QuizSequentialFocusModal.qml"
+        onLoaded: if (item) modalsHost.applyPendingQuizSession(item)
     }
 
     Connections {
@@ -208,6 +320,13 @@ Item {
         anchors.fill: parent
         z: 145
         source: "../habits/HabitsHeatmapModal.qml"
+        onLoaded: {
+            if (!item || !modalsHost.pendingHabitTarget) return
+            item.habit = modalsHost.pendingHabitTarget
+            item.reloadData()
+            item.visible = true
+            modalsHost.pendingHabitTarget = null
+        }
     }
 
     Connections {
@@ -223,7 +342,8 @@ Item {
     NotesDeleteDialog {
         id: deleteNoteDialog
         anchors.centerIn: parent
-        noteTitle: modalsHost.activeTitle
+        noteTitle: modalsHost.deleteTargetTitle || modalsHost.activeTitle
         onConfirmed: modalsHost.deleteNoteConfirmed()
+        onRejected: modalsHost.deleteCancelled()
     }
 }

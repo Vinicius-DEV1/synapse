@@ -10,6 +10,7 @@ Rectangle {
     radius: 8
 
     property var blockData: ({})
+    property var controller: null
     property var attrs: blockData.attrs || ({})
     property string pageId: ""
     property string url: attrs["url"] || attrs["data-url"] || attrs["src"] || ""
@@ -62,9 +63,10 @@ Rectangle {
     }
 
     function refreshMetadata() {
-        if (!url || typeof dataController === "undefined" || !dataController) return
-        if (typeof dataController.getLinkMetadata === "function") {
-            var meta = dataController.getLinkMetadata(url) || ({})
+        var c = linkCardRoot.controller
+        if (!url || !c) return
+        if (typeof c.getLinkMetadata === "function") {
+            var meta = c.getLinkMetadata(url) || ({})
             if (meta.title && title.length === 0) title = String(meta.title)
             if (meta.channel && channel.length === 0) channel = String(meta.channel)
             if (meta.duration && durationSec <= 0) durationSec = Number(meta.duration) || 0
@@ -72,23 +74,23 @@ Rectangle {
             if (meta.playlistCount && playlistCount <= 0) playlistCount = Number(meta.playlistCount) || 0
             if (meta.uploadDate && uploadDate.length === 0) uploadDate = String(meta.uploadDate)
         }
-        if (typeof dataController.getLinkEntity === "function") {
-            var ent = dataController.getLinkEntity(url) || ({})
+        if (typeof c.getLinkEntity === "function") {
+            var ent = c.getLinkEntity(url) || ({})
             if (ent.watched !== undefined) isWatched = Boolean(ent.watched)
             if (ent.watching !== undefined) isWatching = Boolean(ent.watching)
             if (ent.notes !== undefined && notesText.length === 0) notesText = String(ent.notes)
             if (ent.color && ent.color !== "default" && !hasCustomColor) accentColor = String(ent.color)
         }
-        if (typeof dataController.findDuplicateNoteLinks === "function") {
-            duplicatePages = dataController.findDuplicateNoteLinks(url, pageId) || []
+        if (typeof c.findDuplicateNoteLinks === "function") {
+            duplicatePages = c.findDuplicateNoteLinks(url, pageId) || []
         }
     }
 
     function saveStatus(nextWatched, nextWatching) {
         isWatched = nextWatched
         isWatching = nextWatching
-        if (typeof dataController !== "undefined" && dataController && typeof dataController.setLinkEntityStatus === "function") {
-            dataController.setLinkEntityStatus(url, nextWatched, nextWatching)
+        if (linkCardRoot.controller && typeof linkCardRoot.controller.setLinkEntityStatus === "function") {
+            linkCardRoot.controller.setLinkEntityStatus(url, nextWatched, nextWatching)
         }
         var next = Object.assign({}, attrs)
         next["watched"] = nextWatched ? "true" : "false"
@@ -98,8 +100,8 @@ Rectangle {
 
     function saveColor(nextColor) {
         accentColor = nextColor
-        if (typeof dataController !== "undefined" && dataController && typeof dataController.setLinkEntityColor === "function") {
-            dataController.setLinkEntityColor(url, nextColor)
+        if (linkCardRoot.controller && typeof linkCardRoot.controller.setLinkEntityColor === "function") {
+            linkCardRoot.controller.setLinkEntityColor(url, nextColor)
         }
         var next = Object.assign({}, attrs)
         if (nextColor && nextColor !== "default") next["data-color"] = nextColor
@@ -108,6 +110,8 @@ Rectangle {
     }
 
     Component.onCompleted: refreshMetadata()
+    onControllerChanged: refreshMetadata()
+    onUrlChanged: refreshMetadata()
     onBlockDataChanged: refreshMetadata()
 
     ColumnLayout {
@@ -308,8 +312,8 @@ Rectangle {
             onDuplicatePageClicked: function(pid) { linkCardRoot.openDuplicatePageRequested(pid) }
             onNotesSaved: function(text) {
                 linkCardRoot.notesText = text
-                if (typeof dataController !== "undefined" && dataController && typeof dataController.setLinkEntityNotes === "function") {
-                    dataController.setLinkEntityNotes(linkCardRoot.url, text)
+                if (linkCardRoot.controller && typeof linkCardRoot.controller.setLinkEntityNotes === "function") {
+                    linkCardRoot.controller.setLinkEntityNotes(linkCardRoot.url, text)
                 }
                 var next = Object.assign({}, linkCardRoot.attrs)
                 next["notes"] = text

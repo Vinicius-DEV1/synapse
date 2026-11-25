@@ -49,6 +49,24 @@ SynapseDataController::SynapseDataController(QObject *parent, bool initializeDef
     m_autoLockTimer->setSingleShot(true);
     connect(m_autoLockTimer, &QTimer::timeout, this, &SynapseDataController::lockVault);
 
+    m_focusTimer = new QTimer(this);
+    m_focusTimer->setInterval(1000);
+    connect(m_focusTimer, &QTimer::timeout, this, [this]() {
+        if (!m_focusRunning) return;
+        if (m_focusRemainingSeconds > 0) {
+            m_focusRemainingSeconds -= 1;
+            emit focusTimerStateChanged();
+            return;
+        }
+        m_focusRunning = false;
+        m_focusTimer->stop();
+        const int mins = qMax(1, m_focusTotalSeconds / 60);
+        recordFocusSession(m_focusTag, mins, QStringLiteral("completed"),
+                           QStringLiteral("Sessão de foco concluída"), m_focusDescription);
+        emit focusTimerStateChanged();
+        emit focusTimerCompleted(m_focusTag, m_focusDescription, mins);
+    });
+
     if (!initializeDefaultDatabase) return;
 
     // Automatically locate user's canonical Caderno SQLite database

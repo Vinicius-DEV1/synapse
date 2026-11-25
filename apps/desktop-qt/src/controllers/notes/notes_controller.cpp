@@ -334,3 +334,146 @@ QVariantList SynapseDataController::findDuplicateNoteLinks(const QString &url, c
     const QJsonDocument doc = QJsonDocument::fromJson(json);
     return doc.isArray() ? doc.array().toVariantList() : QVariantList();
 }
+
+QVariantMap SynapseDataController::splitRichHtml(const QString &html, int textOffset) {
+    const QByteArray bytes = html.toUtf8();
+    char *raw = synapse_notes_split_rich_html(bytes.constData(), textOffset);
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isObject() ? doc.object().toVariantMap() : QVariantMap();
+}
+
+QVariantList SynapseDataController::parseTableColumns(const QString &tableHtml) {
+    const QByteArray bytes = tableHtml.toUtf8();
+    char *raw = synapse_notes_parse_table_columns(bytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QVariantList SynapseDataController::parseTableColumnsAt(const QString &noteHtml, int tableIndex) {
+    if (tableIndex < 0) return {};
+    const QByteArray bytes = noteHtml.toUtf8();
+    char *raw = synapse_notes_parse_table_columns_at(bytes.constData(), tableIndex);
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QString SynapseDataController::updateTableColumnSchemaAt(const QString &noteHtml, int tableIndex,
+                                                         int columnIndex, const QString &columnType,
+                                                         const QVariantList &options,
+                                                         const QString &numberFormat,
+                                                         const QString &dateFormat) {
+    if (tableIndex < 0 || columnIndex < 0) return noteHtml;
+    const QByteArray htmlBytes = noteHtml.toUtf8();
+    const QByteArray typeBytes = columnType.toUtf8();
+    const QByteArray optionsBytes = QJsonDocument(QJsonArray::fromVariantList(options))
+                                       .toJson(QJsonDocument::Compact);
+    const QByteArray numberBytes = numberFormat.toUtf8();
+    const QByteArray dateBytes = dateFormat.toUtf8();
+    char *raw = synapse_notes_update_table_column_schema_at(
+        htmlBytes.constData(), tableIndex, columnIndex, typeBytes.constData(), optionsBytes.constData(),
+        numberBytes.constData(), dateBytes.constData());
+    if (!raw) return noteHtml;
+    const QString result = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return result;
+}
+
+QString SynapseDataController::updateTableColumnWidthAt(const QString &noteHtml, int tableIndex,
+                                                        int columnIndex, int widthPx) {
+    if (tableIndex < 0 || columnIndex < 0 || widthPx < 0) return noteHtml;
+    const QByteArray bytes = noteHtml.toUtf8();
+    char *raw = synapse_notes_update_table_column_width_at(bytes.constData(), tableIndex, columnIndex, widthPx);
+    if (!raw) return noteHtml;
+    const QString result = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return result;
+}
+
+QVariantList SynapseDataController::validateTableCells(const QString &tableHtml) {
+    const QByteArray bytes = tableHtml.toUtf8();
+    char *raw = synapse_notes_validate_table_cells(bytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QVariantList SynapseDataController::validateTableCellsAt(const QString &noteHtml, int tableIndex) {
+    if (tableIndex < 0) return {};
+    const QByteArray bytes = noteHtml.toUtf8();
+    char *raw = synapse_notes_validate_table_cells_at(bytes.constData(), tableIndex);
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QVariantList SynapseDataController::evaluateTableFilter(const QString &tableHtml, const QString &filtersJson) {
+    const QByteArray tBytes = tableHtml.toUtf8();
+    const QByteArray fBytes = filtersJson.toUtf8();
+    char *raw = synapse_notes_evaluate_table_filter(tBytes.constData(), fBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QVariantList SynapseDataController::evaluateTableFilterAt(const QString &noteHtml, int tableIndex,
+                                                          const QString &filtersJson) {
+    if (tableIndex < 0) return {};
+    const QByteArray tBytes = noteHtml.toUtf8();
+    const QByteArray fBytes = filtersJson.toUtf8();
+    char *raw = synapse_notes_evaluate_table_filter_at(tBytes.constData(), tableIndex, fBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
+}
+
+QVariantMap SynapseDataController::filterTableRowsForView(const QString &noteHtml, int tableIndex,
+                                                          const QString &filtersJson) {
+    if (tableIndex < 0) return {};
+    const QByteArray tBytes = noteHtml.toUtf8();
+    const QByteArray fBytes = filtersJson.toUtf8();
+    char *raw = synapse_notes_filter_table_rows_for_view(tBytes.constData(), tableIndex, fBytes.constData());
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isObject() ? doc.object().toVariantMap() : QVariantMap();
+}
+
+QString SynapseDataController::moveTableColumnAt(const QString &noteHtml, int tableIndex,
+                                                 int fromCol, int toCol) {
+    if (tableIndex < 0 || fromCol < 0 || toCol < 0) return noteHtml;
+    const QByteArray bytes = noteHtml.toUtf8();
+    char *raw = synapse_notes_move_table_column_at(bytes.constData(), tableIndex, fromCol, toCol);
+    if (!raw) return noteHtml;
+    const QString result = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return result;
+}
+
+QString SynapseDataController::moveTableRowAt(const QString &noteHtml, int tableIndex,
+                                              int fromRow, int toRow) {
+    if (tableIndex < 0 || fromRow < 0 || toRow < 0) return noteHtml;
+    const QByteArray bytes = noteHtml.toUtf8();
+    char *raw = synapse_notes_move_table_row_at(bytes.constData(), tableIndex, fromRow, toRow);
+    if (!raw) return noteHtml;
+    const QString result = QString::fromUtf8(raw);
+    synapse_free_string(raw);
+    return result;
+}

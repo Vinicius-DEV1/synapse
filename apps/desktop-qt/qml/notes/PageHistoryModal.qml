@@ -10,6 +10,7 @@ Rectangle {
     visible: false
     color: "#0f0f11"
 
+    property var controller: null
     property string pageTitle: ""
     property var history: []
     property int selectedIndex: 0
@@ -44,9 +45,9 @@ Rectangle {
         if (!newText || newText.length === 0) {
             return "<span style=\"background-color:rgba(244,63,94,0.25);color:#fda4af;text-decoration:line-through;\">" + oldText + "</span>"
         }
-        if (typeof dataController !== "undefined" && dataController &&
-                typeof dataController.computeNoteWordDiffHtml === "function") {
-            return dataController.computeNoteWordDiffHtml(oldText, newText)
+        var c = historyRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        if (c && typeof c.computeNoteWordDiffHtml === "function") {
+            return c.computeNoteWordDiffHtml(oldText, newText)
         }
         return newText
     }

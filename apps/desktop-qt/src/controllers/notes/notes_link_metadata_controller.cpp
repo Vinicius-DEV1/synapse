@@ -3,7 +3,11 @@
 #include <cmath>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QUrl>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
 
 namespace {
 
@@ -78,4 +82,60 @@ bool SynapseDataController::saveLinkMetadata(const QVariantMap &entry) {
 
     const QByteArray jsonBytes = QJsonDocument(obj).toJson(QJsonDocument::Compact);
     return synapse_notes_save_link_metadata(m_db, jsonBytes.constData()) == 1;
+}
+
+void SynapseDataController::captureWebScrap(const QString &url, const QString &requestId) {
+    QString cleanUrl = url.trimmed();
+    if (!cleanUrl.startsWith("http://", Qt::CaseInsensitive) &&
+        !cleanUrl.startsWith("https://", Qt::CaseInsensitive)) {
+        cleanUrl = QStringLiteral("https://") + cleanUrl;
+    }
+    if (!isHttpUrl(cleanUrl)) {
+        QVariantMap err;
+        err["status"] = "error";
+        err["url"] = cleanUrl;
+        err["error_reason"] = QStringLiteral("URL inválida.");
+        emit webScrapCaptured(requestId, err);
+        return;
+    }
+
+    auto *nam = new QNetworkAccessManager(this);
+    QNetworkRequest req{QUrl(cleanUrl)};
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Mozilla/5.0 SynapseDesktop/1.0"));
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(15000);
+
+    QNetworkReply *reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, nam, reply, requestId, cleanUrl]() {
+        reply->deleteLater();
+        nam->deleteLater();
+        QVariantMap res;
+        res["url"] = cleanUrl;
+        if (reply->error() != QNetworkReply::NoError) {
+            res["status"] = "error";
+            res["error_reason"] = reply->errorString();
+            emit webScrapCaptured(requestId, res);
+            return;
+        }
+        const QByteArray rawBytes = reply->readAll();
+        const QString html = QString::fromUtf8(rawBytes);
+        QString title;
+        const QRegularExpression titleRe(QStringLiteral("<title[^>]*>([\\s\\S]*?)</title>"),
+                                         QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch tm = titleRe.match(html);
+        if (tm.hasMatch()) title = tm.captured(1).simplified();
+        if (title.isEmpty()) title = QUrl(cleanUrl).host();
+
+        QString bodyText = html;
+        bodyText.remove(QRegularExpression(QStringLiteral("<(script|style|noscript)[^>]*>[\\s\\S]*?</\\1>"),
+                                           QRegularExpression::CaseInsensitiveOption));
+        bodyText.remove(QRegularExpression(QStringLiteral("<[^>]+>")));
+        bodyText = bodyText.simplified().left(4000);
+
+        res["status"] = "ready";
+        res["title"] = title;
+        res["file_size"] = rawBytes.size();
+        res["excerpt"] = QStringLiteral("<p>%1</p>").arg(bodyText.toHtmlEscaped());
+        emit webScrapCaptured(requestId, res);
+    });
 }

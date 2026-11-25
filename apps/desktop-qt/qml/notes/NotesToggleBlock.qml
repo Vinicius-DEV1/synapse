@@ -26,10 +26,12 @@ Rectangle {
     property bool isCalloutMode: true
     property string accentColor: "default"
     property string titleText: ""
+    property string lastCommittedTitle: ""
     property string bodyHtml: "<p></p>"
     property bool isOpen: true
     property bool showColorPicker: false
     property bool isSyncingBlock: false
+    property bool isEmittingUpdate: false
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
     readonly property string resolvedLeftBarColor: hasCustomColor ? accentColor : "#33ffffff"
@@ -40,11 +42,18 @@ Rectangle {
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
+    signal playQuestionRequested(string batteryId, string questionId, string title)
+    signal openInQuestionsRequested(string batteryId)
+    signal youtubeWatchRequested(string videoUrl, string videoTitle)
+    signal mermaidFullscreenRequested(string code)
+    signal habitStatsRequested(string habitId)
+    signal openMediaRequested(string mediaType, string mediaId, string title)
     signal removeRequested()
 
     HoverHandler { id: blockHover }
 
     function syncFromBlockData() {
+        if (isEmittingUpdate) return
         var a = (blockData && blockData.attrs) ? blockData.attrs : ({})
         isSyncingBlock = true
         isCalloutMode = (blockData && blockData.blockType === "blockquoteToggle") ||
@@ -55,6 +64,7 @@ Rectangle {
             ? String(a["data-title"])
             : String(a["title"] || "")
         titleText = incomingTitle
+        lastCommittedTitle = incomingTitle
         if (!titleInput.activeFocus && titleInput.text !== incomingTitle) {
             titleInput.text = incomingTitle
         }
@@ -68,12 +78,40 @@ Rectangle {
         if (incomingHtml === "<p></p>") incomingHtml = "<p><br/></p>"
         if (incomingHtml !== bodyHtml) {
             bodyHtml = incomingHtml
+            if (nestedLoader.item && !nestedLoader.item.hasActiveRichFocus && nestedLoader.item.sourceHtml !== incomingHtml) {
+                nestedLoader.item.sourceHtml = incomingHtml
+            }
         }
         isSyncingBlock = false
     }
 
+    function flushPendingEdits() {
+        if (titleSaveDebounce.running) {
+            titleSaveDebounce.stop()
+            if (titleInput.text !== lastCommittedTitle) emitUpdate()
+        }
+        if (nestedLoader.item) {
+            if (typeof nestedLoader.item.flushActiveRichSlices === "function") nestedLoader.item.flushActiveRichSlices()
+            else if (typeof nestedLoader.item.commitEditorText === "function") nestedLoader.item.commitEditorText()
+        }
+        return true
+    }
+
+    function hasPendingEdits() {
+        if (titleSaveDebounce.running) return true
+        if (nestedLoader.item) {
+            if (typeof nestedLoader.item.hasPendingEdits === "function" && nestedLoader.item.hasPendingEdits()) return true
+            if (nestedLoader.item.hasPendingChanges === true) return true
+        }
+        return false
+    }
+
     Component.onCompleted: syncFromBlockData()
+    Component.onDestruction: titleSaveDebounce.stop()
     onBlockDataChanged: syncFromBlockData()
+    onPageListChanged: {
+        if (nestedLoader.item && nestedLoader.item.hasOwnProperty("pageList")) nestedLoader.item.pageList = pageList
+    }
 
     Timer {
         id: titleSaveDebounce
@@ -94,6 +132,8 @@ Rectangle {
 
     function emitUpdate() {
         if (isSyncingBlock) return
+        isEmittingUpdate = true
+        lastCommittedTitle = titleInput.text
         var baseAttrs = (blockData && blockData.attrs) ? blockData.attrs : ({})
         var nextAttrs = Object.assign({}, baseAttrs)
         nextAttrs["_tag"] = "div"
@@ -113,6 +153,7 @@ Rectangle {
             innerHtml: bodyHtml && bodyHtml.trim().length > 0 ? bodyHtml : "<p></p>",
             html: ""
         })
+        isEmittingUpdate = false
     }
 
     function plainSummary(html) {
@@ -175,7 +216,7 @@ Rectangle {
                 onEditingFinished: {
                     titleSaveDebounce.stop()
                     toggleRoot.titleText = text
-                    toggleRoot.emitUpdate()
+                    if (text !== toggleRoot.lastCommittedTitle) toggleRoot.emitUpdate()
                 }
             }
 
@@ -361,10 +402,12 @@ Rectangle {
                 target: nestedLoader.item
                 ignoreUnknownSignals: true
                 function onHtmlChanged(serializedHtml) {
+                    if (serializedHtml === toggleRoot.bodyHtml) return
                     toggleRoot.bodyHtml = serializedHtml
                     toggleRoot.emitUpdate()
                 }
                 function onContentModified(html) {
+                    if (html === toggleRoot.bodyHtml) return
                     toggleRoot.bodyHtml = html
                     toggleRoot.emitUpdate()
                 }
@@ -372,6 +415,12 @@ Rectangle {
                 function onPageOpenRequested(pid) { toggleRoot.pageOpenRequested(pid) }
                 function onExternalLinkRequested(lnk) { toggleRoot.externalLinkRequested(lnk) }
                 function onAskAiRequested(sel) { toggleRoot.askAiRequested(sel) }
+                function onPlayQuestionRequested(bid, qid, t) { toggleRoot.playQuestionRequested(bid, qid, t) }
+                function onOpenInQuestionsRequested(bid) { toggleRoot.openInQuestionsRequested(bid) }
+                function onYoutubeWatchRequested(u, t) { toggleRoot.youtubeWatchRequested(u, t) }
+                function onMermaidFullscreenRequested(c) { toggleRoot.mermaidFullscreenRequested(c) }
+                function onHabitStatsRequested(hid) { toggleRoot.habitStatsRequested(hid) }
+                function onOpenMediaRequested(mt, mid, t) { toggleRoot.openMediaRequested(mt, mid, t) }
             }
         }
     }

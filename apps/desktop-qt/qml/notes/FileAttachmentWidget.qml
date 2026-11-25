@@ -10,6 +10,7 @@ Rectangle {
     radius: 8
 
     property var blockData: ({})
+    property var controller: null
     property var attrs: blockData.attrs || ({})
     property string fileId: attrs["data-file-id"] || attrs["file-id"] || attrs["fileId"] || ""
     property string fileName: attrs["data-name"] || attrs["name"] || attrs["data-file-name"] || attrs["file-name"] || qsTr("Arquivo")

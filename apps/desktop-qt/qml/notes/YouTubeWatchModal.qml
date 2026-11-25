@@ -16,6 +16,7 @@ Rectangle {
     property bool isFullscreen: false
 
     signal closeRequested()
+    signal summaryRequested(string videoUrl, string videoTitle)
 
     function formatTime(seconds) {
         if (!seconds || isNaN(seconds) || seconds < 0) return "00:00"
@@ -140,6 +141,14 @@ Rectangle {
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
+                }
+
+                Button {
+                    text: qsTr("✨ Resumo IA")
+                    flat: true
+                    onClicked: ytWatchRoot.summaryRequested(ytWatchRoot.url, ytWatchRoot.videoTitle)
+                    background: Rectangle { radius: 6; color: parent.hovered ? "#268b5cf6" : "#181822"; border.color: "#338b5cf6" }
+                    contentItem: Text { text: parent.text; color: "#c4b5fd"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
 
                 Button {

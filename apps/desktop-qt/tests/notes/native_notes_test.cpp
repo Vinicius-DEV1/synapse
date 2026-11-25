@@ -8,11 +8,14 @@
 #include "controllers/notes/notes_rich_task_lists.h"
 
 #include <QtCore/QObject>
+#include <QtCore/QPointer>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QUrl>
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
+#include <QtQuick/QQuickItem>
+#include <QtQuick/QQuickWindow>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 #include <QtGui/QColor>
@@ -936,23 +939,20 @@ private slots:
             {"duration", 65}, {"isPlaylist", true}, {"playlistCount", 4}}));
 
         QQmlEngine engine;
-        engine.rootContext()->setContextProperty("metadataController", &controller);
         QQmlComponent component(&engine);
-        component.setData(QByteArrayLiteral(
-            "import QtQuick\n"
-            "import \"../../qml/notes/NotesRichLinkPreviewRenderer.js\" as Renderer\n"
-            "Item {\n"
-            " property string sourceHtml: \"<div class=\\\"link-preview-block\\\" url=\\\"https://cached.example/watch?id=8\\\"></div>\"\n"
-            " property string renderedHtml: Renderer.render(sourceHtml, metadataController)\n"
-            "}\n"), QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/LinkPreviewTest.qml")));
-        QScopedPointer<QObject> renderer(component.create());
-        QVERIFY2(renderer, qPrintable(component.errorString()));
-        const QString rendered = renderer->property("renderedHtml").toString();
-        QVERIFY(rendered.contains("<b>Cached title</b>"));
-        QVERIFY(rendered.contains("Cached channel"));
-        QVERIFY(rendered.contains("1:05"));
-        QVERIFY(rendered.contains("4 videos"));
-        QVERIFY(!rendered.contains("Unsupported link preview"));
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/LinkPreviewCard.qml")));
+        QScopedPointer<QObject> card(component.create());
+        QVERIFY2(card, qPrintable(component.errorString()));
+        card->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        card->setProperty("blockData", QVariantMap{
+            {"id", "blk_cached"}, {"blockType", "linkPreview"},
+            {"attrs", QVariantMap{{"url", url}}}
+        });
+        QCOMPARE(card->property("title").toString(), QString("Cached title"));
+        QCOMPARE(card->property("channel").toString(), QString("Cached channel"));
+        QCOMPARE(card->property("durationSec").toInt(), 65);
+        QCOMPARE(card->property("playlistCount").toInt(), 4);
     }
 
     void nativeLinkStatusActionPreservesVaultFieldsAndReactBlockMarkup() {
@@ -988,41 +988,21 @@ private slots:
         QCOMPARE(cached.value("notes").toString(), "Preserve these notes");
 
         QQmlEngine engine;
-        engine.rootContext()->setContextProperty("metadataController", &controller);
         QQmlComponent component(&engine);
-        component.setData(QByteArrayLiteral(
-            "import QtQuick\n"
-            "import \"../../qml/notes/NotesRichLinkPreviewRenderer.js\" as Renderer\n"
-            "import \"../../qml/notes/NotesRichLinkPreviewActions.js\" as Actions\n"
-            "Item {\n"
-            " property string sourceHtml: \"<div class=\\\"link-preview-block\\\" url=\\\"https://www.youtube.com/watch?v=native123\\\" watched=\\\"false\\\" watching=\\\"true\\\" data-extra=\\\"keep\\\"></div>\"\n"
-            " property string renderedHtml: Renderer.render(sourceHtml, metadataController)\n"
-            " property var previewActions: Renderer.actionItems(sourceHtml, metadataController, \"\")\n"
-            " property int previewActionCount: previewActions.length\n"
-            " property string firstPreviewAction: previewActions.length > 0 ? previewActions[0].label : \"\"\n"
-            " property var statusAction: Actions.activate(\"synapse-link://status?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dnative123&watched=true&watching=false\", sourceHtml, metadataController, Renderer)\n"
-            " property bool actionSucceeded: statusAction.success === true\n"
-            " property string updatedSource: statusAction.content || \"\"\n"
-            " property var copyAction: Actions.activate(\"synapse-link://copy?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dnative123\", sourceHtml, metadataController, Renderer)\n"
-            " property bool copySucceeded: copyAction.success === true\n"
-            " property string copiedHtml: Renderer.render(sourceHtml, metadataController, \"https://www.youtube.com/watch?v=native123\")\n"
-            "}\n"), QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/LinkPreviewTest.qml")));
-        QScopedPointer<QObject> preview(component.create());
-        QVERIFY2(preview, qPrintable(component.errorString()));
-        const QString rendered = preview->property("renderedHtml").toString();
-        QVERIFY(rendered.contains("Status: Watching"));
-        QVERIFY(rendered.contains("Mark as completed"));
-        QVERIFY(rendered.contains("Copy URL"));
-        QCOMPARE(preview->property("previewActionCount").toInt(), 8);
-        QCOMPARE(preview->property("firstPreviewAction").toString(), "Open link: Saved title");
-        QVERIFY(preview->property("actionSucceeded").toBool());
-        QVERIFY(preview->property("copySucceeded").toBool());
-        QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Clipboard), canonicalUrl);
-        QVERIFY(preview->property("copiedHtml").toString().contains(">Copied</a>"));
-        const QString updatedSource = preview->property("updatedSource").toString();
-        QVERIFY(updatedSource.contains("data-extra=\"keep\""));
-        QVERIFY(updatedSource.contains("watched=\"true\""));
-        QVERIFY(updatedSource.contains("watching=\"false\""));
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/LinkPreviewCard.qml")));
+        QScopedPointer<QObject> card(component.create());
+        QVERIFY2(card, qPrintable(component.errorString()));
+        card->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        card->setProperty("blockData", QVariantMap{
+            {"id", "blk_yt"}, {"blockType", "linkPreview"},
+            {"attrs", QVariantMap{{"url", canonicalUrl}, {"watched", "false"}, {"watching", "true"}, {"data-extra", "keep"}}}
+        });
+        QVERIFY(card->property("isWatching").toBool());
+        QCOMPARE(card->property("notesText").toString(), QString("Preserve these notes"));
+        QVERIFY(QMetaObject::invokeMethod(card.data(), "saveStatus", Q_ARG(QVariant, true), Q_ARG(QVariant, false)));
+        QVERIFY(card->property("isWatched").toBool());
+        QVERIFY(!card->property("isWatching").toBool());
 
         const QVariantMap updated = controller.getLinkEntity(canonicalUrl);
         QVERIFY(updated.value("watched").toBool());
@@ -1213,6 +1193,358 @@ private slots:
         QCOMPARE(toggles.at(0)->property("titleText").toString(), QString::fromUtf8("Primeiro \u2014 Aten\u00e7\u00e3o \U0001F680"));
         QCOMPARE(toggles.at(1)->property("titleText").toString(), QString("Lista Recolhida"));
         QCOMPARE(toggles.at(2)->property("titleText").toString(), QString("Terceiro Callout Final"));
+    }
+
+    void pageViewBlockquoteAndRichLayoutSettling() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(tempDir.filePath("layout_test.db")));
+        NotesTextOperations ops;
+
+        const QString pageId = controller.createSubPage("", "MURAL", "📄");
+        QVERIFY(!pageId.isEmpty());
+        const QString contentHtml = QStringLiteral(
+            "<p>Intro paragraph</p><hr/><blockquote data-color=\"#3b82f6\">"
+            "<p>MODO CAVERNA DEFINITIVO 20-09-2026</p></blockquote><p>Outro</p>");
+        QVERIFY(controller.savePage(pageId, "MURAL", contentHtml, "📄"));
+
+        QQuickWindow window;
+        window.resize(1280, 800);
+        window.show();
+
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("notesTextOperations", &ops);
+        QQmlComponent comp(&engine);
+        comp.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/page-view/PageView.qml")));
+        QScopedPointer<QObject> root(comp.create());
+        QVERIFY2(root, qPrintable(comp.errorString()));
+        QQuickItem *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        rootItem->setWidth(1000);
+        rootItem->setHeight(800);
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(pageId))));
+        QTest::qWait(500);
+
+        QQuickItem *blockquoteItem = nullptr;
+        std::function<void(QQuickItem *)> findQuote = [&](QQuickItem *item) {
+            if (!item || blockquoteItem) return;
+            if (item->property("quoteColor").isValid() && item->property("contentHtml").isValid()) {
+                blockquoteItem = item;
+                return;
+            }
+            for (QQuickItem *ch : item->childItems()) findQuote(ch);
+        };
+        QTRY_VERIFY(([&]() {
+            blockquoteItem = nullptr;
+            findQuote(rootItem);
+            return blockquoteItem != nullptr;
+        })());
+
+        qInfo() << "Blockquote geometry:" << blockquoteItem->width() << blockquoteItem->height()
+                << "implicitHeight:" << blockquoteItem->implicitHeight()
+                << "y:" << blockquoteItem->y();
+        QVERIFY2(blockquoteItem->width() > 300.0, qPrintable(QString::number(blockquoteItem->width())));
+        QVERIFY2(blockquoteItem->height() < 160.0, qPrintable(QString::number(blockquoteItem->height())));
+        QVERIFY2(blockquoteItem->implicitHeight() < 160.0, qPrintable(QString::number(blockquoteItem->implicitHeight())));
+
+        // Also test StackLayout 0-width startup -> visible switch (mimics AuthenticatedApplication.qml)
+        QQmlComponent stackComp(&engine);
+        stackComp.setData(R"(
+            import QtQuick 2.15
+            import QtQuick.Layouts 1.15
+            import "apps/desktop-qt/qml/page-view" as PV
+            Item {
+                width: 1200; height: 800
+                property alias pageView: pv
+                StackLayout {
+                    id: sl
+                    anchors.fill: parent
+                    currentIndex: 0
+                    Item { }
+                    PV.PageView { id: pv }
+                }
+                function switchToNotes() { sl.currentIndex = 1 }
+            }
+        )", QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR "/../../dummy.qml")));
+        QScopedPointer<QObject> stackRoot(stackComp.create());
+        QVERIFY2(stackRoot, qPrintable(stackComp.errorString()));
+        QQuickItem *stackItem = qobject_cast<QQuickItem *>(stackRoot.data());
+        stackItem->setParentItem(window.contentItem());
+        QObject *pv = stackRoot->property("pageView").value<QObject *>();
+        pv->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QVERIFY(QMetaObject::invokeMethod(pv, "refreshPageTree"));
+        QTest::qWait(250);
+        QVERIFY(QMetaObject::invokeMethod(stackRoot.data(), "switchToNotes"));
+        QTest::qWait(400);
+        QQuickItem *q2 = nullptr;
+        std::function<void(QQuickItem *)> findQuote2 = [&](QQuickItem *item) {
+            if (!item || q2) return;
+            if (item->property("quoteColor").isValid() && item->property("contentHtml").isValid()) { q2 = item; return; }
+            for (QQuickItem *ch : item->childItems()) findQuote2(ch);
+        };
+        findQuote2(qobject_cast<QQuickItem *>(pv));
+        QVERIFY(q2);
+        qInfo() << "StackLayout Blockquote geometry:" << q2->width() << q2->height() << "implicitHeight:" << q2->implicitHeight();
+        QVERIFY2(q2->height() < 160.0, qPrintable(QString::number(q2->height())));
+
+        // Regression test: ColorBlockquote blank-paragraph roundtrip must be strictly idempotent (zero 2^N doubling)
+        // and pre-existing pathological empty-<p><br/></p> runs must collapse safely without infinite height.
+        QString bloatedHtml = QStringLiteral("<blockquote data-color=\"#3b82f6\"><p>Header line</p>");
+        for (int i = 0; i < 400; ++i) bloatedHtml += QStringLiteral("<p><br/></p>");
+        bloatedHtml += QStringLiteral("<p>Footer line</p></blockquote>");
+        const QString bloatPageId = controller.createSubPage("", "Bloat Guard", "📄");
+        QVERIFY(controller.savePage(bloatPageId, "Bloat Guard", bloatedHtml, "📄"));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(bloatPageId))));
+        QTest::qWait(350);
+        blockquoteItem = nullptr;
+        findQuote(rootItem);
+        QVERIFY(blockquoteItem);
+        QVERIFY2(blockquoteItem->height() < 240.0, qPrintable(QString::number(blockquoteItem->height())));
+
+        QVariant plainOut;
+        const QString singleGapHtml = QStringLiteral("<p>First</p><p><br/></p><p>Second</p>");
+        QVERIFY(QMetaObject::invokeMethod(blockquoteItem, "htmlToPlain", Q_RETURN_ARG(QVariant, plainOut),
+                                          Q_ARG(QVariant, QVariant(singleGapHtml))));
+        QVariant roundTripHtml;
+        QVERIFY(QMetaObject::invokeMethod(blockquoteItem, "plainToHtml", Q_RETURN_ARG(QVariant, roundTripHtml),
+                                          Q_ARG(QVariant, plainOut)));
+        QCOMPARE(roundTripHtml.toString(), singleGapHtml);
+
+        // Editing inside ColorBlockquote must preserve active delegate/focus without Repeater rebuild or doubling.
+        QQuickItem *quoteArea = nullptr;
+        for (QQuickItem *ch : blockquoteItem->childItems()) {
+            if (QString::fromLatin1(ch->metaObject()->className()).contains("TextArea")) {
+                quoteArea = ch;
+                break;
+            }
+        }
+        QVERIFY(quoteArea);
+        QVariant editedHtml;
+        QVERIFY(QMetaObject::invokeMethod(blockquoteItem, "plainToHtml", Q_RETURN_ARG(QVariant, editedHtml),
+                                          Q_ARG(QVariant, QVariant("First\n\nSecond\n\nThird"))));
+        QVERIFY(QMetaObject::invokeMethod(blockquoteItem, "htmlToPlain", Q_RETURN_ARG(QVariant, plainOut),
+                                          Q_ARG(QVariant, editedHtml)));
+        QCOMPARE(plainOut.toString(), QStringLiteral("First\n\nSecond\n\nThird"));
+    }
+
+    void pageViewIdleDoesNotAutoSave() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(tempDir.filePath("idle_autosave_test.db")));
+        NotesTextOperations ops;
+
+        const QString refTargetId = controller.createSubPage("", "Referenced Target", "🔗");
+        QVERIFY(!refTargetId.isEmpty());
+
+        const QList<QPair<QString, QString>> cases = {
+            {"empty", ""},
+            {"plain", "<p>Plain paragraph with <strong>bold</strong> and <em>italic</em>.</p>"},
+            {"heading_task", "<h1>Heading</h1><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"false\"><p>Todo item</p></li></ul>"},
+            {"spoiler", "<p>Secret <span data-type=\"spoiler\" class=\"caderno-spoiler\">hidden text</span> end.</p>"},
+            {"page_ref", QStringLiteral("<p>See <span class=\"page-reference\" data-page-id=\"%1\" title=\"Referenced Target\"></span></p>").arg(refTargetId)},
+            {"deleted_page_ref", "<p>Missing <span class=\"page-reference\" data-page-id=\"nonexistent-id\" title=\"Gone\"></span></p>"},
+            {"code", "<pre><code class=\"language-typescript\">const x = 1;</code></pre>"},
+            {"quote", "<blockquote data-color=\"#3b82f6\"><p>Callout line</p></blockquote>"},
+            {"nested_quote_in_columns",
+             "<div data-type=\"columnGroup\" class=\"group-layout column-group\" data-columns=\"2\">"
+             "<div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: 50;\">"
+             "<blockquote data-color=\"#3b82f6\"><p>Quote in column</p></blockquote></div>"
+             "<div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: 50;\"><p>Col 2</p></div>"
+             "</div>"},
+            {"nested_quote_in_toggle",
+             "<div data-type=\"toggle-block\" data-title=\"Toggle Title\" data-is-open=\"true\">"
+             "<blockquote data-color=\"#8b5cf6\"><p>Quote in toggle</p></blockquote></div>"},
+            {"toggle", "<div data-type=\"toggle-block\" data-title=\"Toggle Title\" data-is-open=\"true\"><p>Inside toggle</p></div>"},
+            {"collection", "<div data-type=\"groupBlock\" data-title=\"Collection\" data-collapsed=\"false\"><p>Inside collection</p></div>"},
+            {"columns", "<div data-type=\"columnGroup\" class=\"group-layout column-group\" data-columns=\"2\">"
+                        "<div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: 50;\"><p>Col 1</p></div>"
+                        "<div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: 50;\"><p>Col 2</p></div>"
+                        "</div>"},
+            {"mermaid", "<div data-type=\"mermaid\" code=\"graph TD\n  A --&gt; B\"></div>"},
+            {"table", "<table><tbody><tr><th><p>A</p></th><th><p>B</p></th></tr><tr><td><p>1</p></td><td><p>2</p></td></tr></tbody></table>"},
+            {"link_preview", "<div class=\"link-preview-block\" data-type=\"link-preview\" url=\"https://example.com\" title=\"Example\"></div>"},
+            {"bundle", "<div data-type=\"document-bundle\" data-title=\"Docs\" data-items=\"[]\"></div>"},
+            {"widgets", "<span data-type=\"focus-widget\" data-duration=\"25\" data-tag=\"Estudo\" data-status=\"idle\"></span>"
+                        "<span data-type=\"alarm-widget\" data-time=\"08:00\" data-label=\"Wake\" data-status=\"pending\"></span>"
+                        "<span data-type=\"calendar-event-widget\" data-title=\"Meeting\" data-date=\"2026-12-01\" data-status=\"pending\"></span>"
+                        "<span data-type=\"habit-widget\" data-title=\"Read\" data-streak=\"3\"></span>"}
+        };
+
+        QQuickWindow window;
+        window.resize(1280, 800);
+        window.show();
+
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("notesTextOperations", &ops);
+        QQmlComponent comp(&engine);
+        comp.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/page-view/PageView.qml")));
+        QScopedPointer<QObject> root(comp.create());
+        QVERIFY2(root, qPrintable(comp.errorString()));
+        QQuickItem *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        rootItem->setWidth(1000);
+        rootItem->setHeight(800);
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+
+        for (const auto &c : cases) {
+            const QString pageId = controller.createSubPage("", "Case " + c.first, "📄");
+            QVERIFY(!pageId.isEmpty());
+            QVERIFY(controller.savePage(pageId, "Case " + c.first, c.second, "📄"));
+            const QString initialUpdatedAt = controller.getPage(pageId).value("updated_at").toString();
+
+            QSignalSpy savedSpy(root.data(), SIGNAL(pageSavedExternal(QString,QString)));
+            QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(pageId))));
+            QTest::qWait(1400);
+            QVERIFY2(savedSpy.count() == 0,
+                     qPrintable(QString("Idle save triggered for case %1 (count=%2, activeContent=%3, savedContent=%4)")
+                                    .arg(c.first)
+                                    .arg(savedSpy.count())
+                                    .arg(root->property("activeContent").toString(),
+                                         controller.getPage(pageId).value("content").toString())));
+            QVERIFY2(!root->property("isDirty").toBool(),
+                     qPrintable(QString("isDirty remained true for case %1").arg(c.first)));
+            QCOMPARE(controller.getPage(pageId).value("updated_at").toString(), initialUpdatedAt);
+        }
+
+        // Verify PageHeader title binding stays intact when switching pages after editing a title
+        const QString pageA = controller.createSubPage("", "Alpha Page", "📄");
+        const QString pageB = controller.createSubPage("", "Beta Page", "📄");
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(pageA))));
+        QTest::qWait(150);
+        QQuickItem *titleArea = nullptr;
+        std::function<void(QQuickItem *)> findTitleArea = [&](QQuickItem *item) {
+            if (!item || titleArea) return;
+            if (QString::fromLatin1(item->metaObject()->className()).contains("TextArea") &&
+                item->property("text").toString() == QLatin1String("Alpha Page")) {
+                titleArea = item;
+                return;
+            }
+            for (QQuickItem *ch : item->childItems()) findTitleArea(ch);
+        };
+        findTitleArea(rootItem);
+        QVERIFY(titleArea);
+        titleArea->setProperty("text", QStringLiteral("Alpha Edited"));
+        QVERIFY(root->property("isDirty").toBool());
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(pageB))));
+        QTest::qWait(150);
+        QCOMPARE(titleArea->property("text").toString(), QStringLiteral("Beta Page"));
+        QCOMPARE(controller.getPage(pageA).value("title").toString(), QStringLiteral("Alpha Edited"));
+        QVERIFY(!root->property("isDirty").toBool());
+    }
+
+    void pageViewEditsFlushAndStateParity() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(tempDir.filePath("edits_parity_test.db")));
+        NotesTextOperations ops;
+
+        // 1. Word count & encrypted stub guard
+        const QString docPageId = controller.createSubPage("", "Doc Page", "📄");
+        QVERIFY(controller.savePage(docPageId, "Doc Page", "<p>One two three four five</p>", "📄"));
+
+        const QString lockedStubId = controller.createSubPage("", "Locked Encrypted", "🔒");
+        QVERIFY(controller.savePage(lockedStubId, "Locked Encrypted", QStringLiteral("🔒 [Encrypted note]"), "🔒"));
+
+        const QString colQuoteId = controller.createSubPage("", "Columns Quote Page", "📄");
+        const QString colQuoteHtml =
+            "<div data-type=\"columnGroup\" class=\"group-layout column-group\" data-columns=\"2\">"
+            "<div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: 50;\">"
+            "<blockquote data-color=\"#3b82f6\"><p>Col callout</p></blockquote></div>"
+            "<div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: 50;\">"
+            "<pre><code class=\"language-typescript\">const v = 1;</code></pre></div></div>";
+        QVERIFY(controller.savePage(colQuoteId, "Columns Quote Page", colQuoteHtml, "📄"));
+
+        QQuickWindow window;
+        window.resize(1280, 800);
+        window.show();
+
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("notesTextOperations", &ops);
+        QQmlComponent comp(&engine);
+        comp.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/page-view/PageView.qml")));
+        QScopedPointer<QObject> root(comp.create());
+        QVERIFY2(root, qPrintable(comp.errorString()));
+        QQuickItem *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        rootItem->setWidth(1000);
+        rootItem->setHeight(800);
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+
+        // Verify word count on load and after edit
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(docPageId))));
+        QTest::qWait(150);
+        QCOMPARE(root->property("wordCount").toInt(), 5);
+        QVERIFY(!root->property("activeIsEncrypted").toBool());
+
+        // Verify encrypted stub blocks saving while locked
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(lockedStubId))));
+        QTest::qWait(150);
+        QVERIFY(root->property("activeIsEncrypted").toBool());
+        QVERIFY(!root->property("isPageUnlocked").toBool());
+        QVariant saveBlocked;
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "saveActiveNote", Q_RETURN_ARG(QVariant, saveBlocked)));
+        QVERIFY(!saveBlocked.toBool());
+
+        // Verify editing inside ColorBlockquote + CodeBlock nested inside NotesColumnLayout preserves delegates and saves once
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(colQuoteId))));
+        QTest::qWait(250);
+
+        QQuickItem *quoteArea = nullptr;
+        QQuickItem *codeArea = nullptr;
+        std::function<void(QQuickItem *)> findNestedAreas = [&](QQuickItem *item) {
+            if (!item) return;
+            if (QString::fromLatin1(item->metaObject()->className()).contains("TextArea")) {
+                const QString txt = item->property("text").toString();
+                if (txt == QLatin1String("Col callout")) quoteArea = item;
+                else if (txt == QLatin1String("const v = 1;")) codeArea = item;
+            }
+            for (QQuickItem *ch : item->childItems()) findNestedAreas(ch);
+        };
+        findNestedAreas(rootItem);
+        QVERIFY(quoteArea);
+        QVERIFY(codeArea);
+
+        QPointer<QQuickItem> stableQuoteArea(quoteArea);
+        QPointer<QQuickItem> stableCodeArea(codeArea);
+        QSignalSpy savedSpy(root.data(), SIGNAL(pageSavedExternal(QString,QString)));
+
+        quoteArea->setProperty("text", QStringLiteral("Col callout edited"));
+        codeArea->setProperty("text", QStringLiteral("const v = 42;"));
+        QTRY_VERIFY_WITH_TIMEOUT(savedSpy.count() >= 1, 2500);
+        QTest::qWait(500);
+        QCOMPARE(savedSpy.count(), 1);
+        QVERIFY2(stableQuoteArea, "ColorBlockquote delegate should remain alive inside NotesColumnLayout across edits");
+        QVERIFY2(stableCodeArea, "CodeBlock delegate should remain alive inside NotesColumnLayout across edits");
+
+        const QString savedHtml = controller.getPage(colQuoteId).value("content").toString();
+        QVERIFY2(savedHtml.contains("Col callout edited"), qPrintable(savedHtml));
+        QVERIFY2(savedHtml.contains("const v = 42;"), qPrintable(savedHtml));
+
+        // Verify metadata update + subsequent save does not trigger a false conflict
+        QSignalSpy conflictSpy(&controller, SIGNAL(pageConflictDetected(QString,QString)));
+        QTest::qWait(1100); // ensure timestamp ticks past previous second/ms
+        QVERIFY(controller.updatePageDescription(colQuoteId, "Updated summary"));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "syncPageMetadataFromController", Q_ARG(QVariant, QVariant(colQuoteId))));
+        QVariant appended;
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "appendExternalHtml", Q_RETURN_ARG(QVariant, appended),
+                                          Q_ARG(QVariant, QVariant("<p>Extra AI text</p>"))));
+        QVERIFY(appended.toBool());
+        QCOMPARE(conflictSpy.count(), 0);
+        QCOMPARE(root->property("saveStatus").toString(), QStringLiteral("saved"));
+        QVERIFY(controller.getPage(colQuoteId).value("content").toString().contains("Extra AI text"));
     }
 };
 

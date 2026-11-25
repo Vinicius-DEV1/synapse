@@ -11,6 +11,8 @@ Rectangle {
     radius: 8
 
     property var blockData: ({})
+    property var controller: null
+    property string pageId: ""
     property var attrs: blockData.attrs || ({})
     property string title: attrs["data-title"] || attrs["title"] || qsTr("Documentos")
     property string accentColor: attrs["data-color"] || attrs["color"] || "default"
@@ -45,6 +47,14 @@ Rectangle {
     property bool showColorPicker: false
     property bool expanded: false
     property bool isModalOpen: false
+    property bool autoOpenConsumed: false
+
+    Component.onCompleted: {
+        if (!autoOpenConsumed && (attrs["data-auto-open"] || "") === "true" && items.length === 0) {
+            autoOpenConsumed = true
+            isModalOpen = true
+        }
+    }
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
 
@@ -70,6 +80,7 @@ Rectangle {
         next["data-title"] = nextTitle
         if (nextColor && nextColor !== "default") next["data-color"] = nextColor
         else delete next["data-color"]
+        delete next["data-auto-open"]
         next["data-items"] = JSON.stringify(nextItems)
         attrsUpdated(next)
     }
@@ -378,12 +389,9 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
+                            var c = bundleWidgetRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
                             var targetId = itemDelegate.modelData.fileId || itemDelegate.modelData.id || ""
-                            if (targetId && typeof dataController !== "undefined" && dataController &&
-                                    typeof dataController.previewLocalFile === "function") {
-                                dataController.previewLocalFile(targetId)
-                            }
-                            if (itemDelegate.modelData.id) bundleWidgetRoot.pageOpenRequested(itemDelegate.modelData.id)
+                            if (targetId && c && typeof c.previewLocalFile === "function") c.previewLocalFile(targetId)
                         }
                     }
                 }
@@ -392,16 +400,37 @@ Rectangle {
     }
 
     DocumentBundleModal {
+        controller: bundleWidgetRoot.controller
+        pageId: bundleWidgetRoot.pageId
         isOpen: bundleWidgetRoot.isModalOpen
-        onPageSelected: function(page) {
+        existingIds: bundleWidgetRoot.items.map(function(it) { return it.fileId || it.id || "" })
+        onFileSelected: function(fileItem) {
             var next = bundleWidgetRoot.items.slice()
-            var exists = next.some(function(it) { return (it.id || it.fileId) === page.id })
+            var exists = next.some(function(it) { return (it.fileId || it.id) === fileItem.id })
             if (!exists) {
-                next.push({ id: page.id, fileId: page.id, name: page.title || "Sem título", title: page.title || "Sem título", icon: page.icon || "📄", fileType: "note" })
+                next.push({ id: fileItem.id, fileId: fileItem.id, name: fileItem.name || "Documento", fileType: fileItem.file_type || "doc", fileSize: Number(fileItem.file_size || 0) })
                 bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
             }
             bundleWidgetRoot.isModalOpen = false
         }
-        onClosed: bundleWidgetRoot.isModalOpen = false
+        onAbsorbFilesRequested: function(filesList) {
+            var next = bundleWidgetRoot.items.slice()
+            for (var i = 0; i < filesList.length; ++i) {
+                var f = filesList[i]
+                if (!next.some(function(it) { return (it.fileId || it.id) === f.id })) {
+                    next.push({ id: f.id, fileId: f.id, name: f.name || "Documento", fileType: f.file_type || "doc", fileSize: Number(f.file_size || 0) })
+                }
+            }
+            bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
+            bundleWidgetRoot.isModalOpen = false
+        }
+        onClosed: {
+            bundleWidgetRoot.isModalOpen = false
+            if ((bundleWidgetRoot.attrs["data-auto-open"] || "") === "true") {
+                var cleaned = Object.assign({}, bundleWidgetRoot.attrs)
+                delete cleaned["data-auto-open"]
+                bundleWidgetRoot.attrsUpdated(cleaned)
+            }
+        }
     }
 }

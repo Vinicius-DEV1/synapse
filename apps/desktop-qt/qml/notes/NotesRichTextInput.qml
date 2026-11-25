@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "RichTextMarkdownRules.js" as MdRules
 import "../ui"
 
 Item {
@@ -16,6 +17,7 @@ Item {
     property int slashStart: -1
     property int pendingSlashStart: -1
     property string slashQuery: ""
+    property string lastSlashQuery: ""
     property real slashAnchorX: 0
     property real slashAnchorY: 0
     property string detectedPasteUrl: ""
@@ -27,6 +29,9 @@ Item {
     signal widgetSlashCommandRequested(string commandId)
     signal askAiRequested(string selectedText)
     signal convertUrlToCardRequested(string url)
+    signal navigatePrevRequested()
+    signal navigateNextRequested()
+    signal mergePrevRequested()
 
     Timer {
         id: urlDetectTimer
@@ -81,11 +86,15 @@ Item {
             .arg(current + 1).arg(matches.length).arg(matches[current].accessibleTitle || matches[current].title)
     }
 
-    Component.onCompleted: {
+    function syncLoadedPlainText() {
         if (editorRoot && editorRoot.textOperations && typeof editorRoot.textOperations.richPlainText === "function" && richEditor.textDocument) {
             previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
+        } else {
+            previousPlainText = ""
         }
     }
+
+    Component.onCompleted: syncLoadedPlainText()
 
     function closeSlashMenu() {
         slashMenuOpen = false
@@ -150,9 +159,11 @@ Item {
         }
         var widgetCommands = [
             "toggle", "blockquoteToggle", "question", "foco", "alarme", "evento",
-            "habito", "documento", "agrupar", "scrap", "group", "video", "livro", "ia", "mermaid"
+            "habito", "documento", "agrupar", "scrap", "group", "video", "livro", "ia", "mermaid",
+            "cols2", "cols3"
         ]
         if (widgetCommands.indexOf(commandId) >= 0) {
+            lastSlashQuery = slashQuery
             if (editorRoot && editorRoot.textOperations && typeof editorRoot.textOperations.replace === "function") {
                 editorRoot.textOperations.replace(richEditor.textDocument, commandStart, commandEnd, "")
                 richEditor.cursorPosition = commandStart
@@ -174,12 +185,21 @@ Item {
 
     function closePageReferenceMenu() { pageReferenceFlow.close() }
 
+    readonly property bool autoHeight: editorRoot ? Boolean(editorRoot.autoHeight) : false
+    implicitHeight: richEditor.implicitHeight + 8
+
     TextArea {
         id: richEditor
         objectName: "notesRichTextEditor"
-        anchors.fill: parent
+        property bool tableFilterProjection: false
+        property bool suppressProjectionTextChange: false
+        x: 0
+        anchors.top: parent.top
+        anchors.bottom: inputRoot.autoHeight ? undefined : parent.bottom
+        width: Math.max(120, inputRoot.width)
         visible: inputRoot.editorRoot.active
         textFormat: TextEdit.RichText
+        readOnly: tableFilterProjection
         Accessible.description: inputRoot.editorAccessibleDescription
         color: "#e6fffffe"
         selectionColor: "#4d8b5cf6"
@@ -190,8 +210,21 @@ Item {
         selectByMouse: true
         selectByKeyboard: true
         background: null
+        function replaceTableProjection(html, isFiltered) {
+            tableFilterProjection = isFiltered
+            suppressProjectionTextChange = true
+            text = html
+            Qt.callLater(function() {
+                suppressProjectionTextChange = false
+                inputRoot.syncLoadedPlainText()
+            })
+        }
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
+            if (richEditor.tableFilterProjection) {
+                event.accepted = true
+                return
+            }
             var commandModifier = (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) !== 0
             if (inputRoot.slashMenuOpen) {
                 if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
@@ -249,6 +282,57 @@ Item {
                 event.accepted = true
                 return
             }
+            if (commandModifier && (event.modifiers & Qt.ShiftModifier) !== 0 && event.key === Qt.Key_V) {
+                inputRoot.detectedPasteUrl = ""
+                return
+            }
+            if (event.key === Qt.Key_Space && !inputRoot.slashMenuOpen && !inputRoot.pageReferenceMenuOpen &&
+                    richEditor.selectionStart === richEditor.selectionEnd &&
+                    inputRoot.editorRoot && inputRoot.editorRoot.textOperations) {
+                var plainNow = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
+                var lineInfo = MdRules.currentLineBeforeCursor(plainNow, richEditor.cursorPosition)
+                var rule = MdRules.matchBlockInputRule(lineInfo.text)
+                if (rule) {
+                    inputRoot.editorRoot.textOperations.replace(richEditor.textDocument, lineInfo.start, richEditor.cursorPosition, "")
+                    richEditor.cursorPosition = lineInfo.start
+                    if (rule.type === "hr") {
+                        inputRoot.richCommands.insertHorizontalRule()
+                    } else if (rule.type === "blockquote") {
+                        inputRoot.widgetSlashCommandRequested("blockquote")
+                    } else if (rule.type === "codeBlock") {
+                        inputRoot.widgetSlashCommandRequested("codeBlock")
+                    } else if (rule.type === "taskList") {
+                        inputRoot.richCommands.toggleTaskList()
+                    } else if (rule.type === "orderedList") {
+                        inputRoot.richCommands.toggleOrderedList()
+                    }
+                    event.accepted = true
+                    return
+                }
+            }
+            if (event.key === Qt.Key_Up && !inputRoot.slashMenuOpen && !inputRoot.pageReferenceMenuOpen &&
+                    richEditor.cursorPosition === 0 && richEditor.selectionStart === richEditor.selectionEnd) {
+                inputRoot.navigatePrevRequested()
+                event.accepted = true
+                return
+            }
+            if (event.key === Qt.Key_Down && !inputRoot.slashMenuOpen && !inputRoot.pageReferenceMenuOpen &&
+                    richEditor.cursorPosition >= richEditor.length && richEditor.selectionStart === richEditor.selectionEnd) {
+                inputRoot.navigateNextRequested()
+                event.accepted = true
+                return
+            }
+            if (event.key === Qt.Key_Backspace && !inputRoot.slashMenuOpen && !inputRoot.pageReferenceMenuOpen &&
+                    richEditor.cursorPosition === 0 && richEditor.selectionStart === richEditor.selectionEnd) {
+                inputRoot.mergePrevRequested()
+                event.accepted = true
+                return
+            }
+            if (commandModifier && (event.modifiers & Qt.ShiftModifier) !== 0 && event.key === Qt.Key_S) {
+                inputRoot.richCommands.toggleMark("spoiler")
+                event.accepted = true
+                return
+            }
             if (event.key === Qt.Key_R && (event.modifiers & Qt.AltModifier) !== 0 &&
                     inputRoot.spoilerRevealControl.spoilerPosition >= 0) {
                 inputRoot.spoilerRevealControl.setRevealed(!inputRoot.spoilerRevealControl.revealed)
@@ -297,6 +381,11 @@ Item {
                 typeof inputRoot.editorRoot.textOperations.richPlainText !== "function" ||
                 !richEditor.textDocument) return
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
+            if (richEditor.suppressProjectionTextChange) {
+                inputRoot.previousPlainText = currentPlainText
+                inputRoot.closeSlashMenu()
+                return
+            }
             if (inputRoot.editorRoot.isLoading || !inputRoot.editorRoot.canEditSource) {
                 inputRoot.previousPlainText = currentPlainText
                 inputRoot.closeSlashMenu()
@@ -308,19 +397,34 @@ Item {
                 inputRoot.editorRoot.textOperations.applyRichPendingMarks(
                     richEditor.textDocument, prev, currentPlainText, richEditor.cursorPosition)
                 inputRoot.detectPastedStandaloneUrl(prev, currentPlainText)
+            } else if (!inputRoot.editorRoot.hasEditedSinceLoad &&
+                       typeof inputRoot.editorRoot.textOperations.isRichDocumentModified === "function" &&
+                       !inputRoot.editorRoot.textOperations.isRichDocumentModified(richEditor.textDocument)) {
+                // Ignore deferred TextEdit componentComplete / syntax-highlighter layout textChanged signals when nothing changed.
+                return
             }
             inputRoot.updateSlashMenu(currentPlainText)
+            inputRoot.editorRoot.hasEditedSinceLoad = true
             inputRoot.editorRoot.hasPendingChanges = true
             inputRoot.commitTimer.restart()
             inputRoot.spoilerRevealControl.refresh()
         }
     }
 
+    MouseArea {
+        anchors.fill: richEditor
+        visible: richEditor.tableFilterProjection
+        z: 3
+        acceptedButtons: Qt.AllButtons
+        hoverEnabled: true
+    }
+
     NotesRichImageDropArea {
         anchors.fill: richEditor
         editorRoot: inputRoot.editorRoot
         textEditor: richEditor
-        active: inputRoot.editorRoot.active && !inputRoot.editorRoot.hasInvalidContent
+        active: inputRoot.editorRoot.active && !inputRoot.editorRoot.hasInvalidContent &&
+                !inputRoot.editorRoot.hasVisualTableFilter
     }
 
     NotesRichSlashCommandMenu {

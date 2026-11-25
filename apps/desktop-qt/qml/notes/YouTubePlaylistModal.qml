@@ -10,13 +10,22 @@ Rectangle {
     visible: false
     color: "#0a0a0c"
 
+    property var controller: null
     property string playlistUrl: ""
     property string playlistTitle: "Playlist do YouTube"
     property var videos: []
     property var watchedMap: ({})
     property bool isLoading: false
+    readonly property int watchedCount: {
+        var count = 0
+        for (var i = 0; i < videos.length; ++i) {
+            if (videos[i] && watchedMap[videos[i].id]) count += 1
+        }
+        return count
+    }
 
     signal closeRequested()
+    signal refreshRequested(string playlistUrl)
     signal videoWatchRequested(string videoUrl, string title, string channel)
     signal videoSummaryRequested(string videoUrl, string title, string channel)
     signal toggleWatchedRequested(string videoId)
@@ -69,12 +78,21 @@ Rectangle {
                         Layout.fillWidth: true
                     }
                     Text {
-                        text: ytPlaylistRoot.videos.length + " " + qsTr("vídeos na playlist")
+                        text: ytPlaylistRoot.watchedCount + "/" + ytPlaylistRoot.videos.length + " " + qsTr("assistidos na playlist")
                         color: "#71717a"
                         font.pixelSize: 11
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
+                }
+
+                ToolButton {
+                    text: "↻"
+                    implicitWidth: 32; implicitHeight: 32
+                    ToolTip.visible: hovered; ToolTip.text: qsTr("Atualizar playlist")
+                    onClicked: ytPlaylistRoot.refreshRequested(ytPlaylistRoot.playlistUrl)
+                    contentItem: Text { text: parent.text; color: "#a1a1aa"; font.pixelSize: 15; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { color: parent.hovered ? "#22ffffff" : "transparent"; radius: 6 }
                 }
 
                 ToolButton {

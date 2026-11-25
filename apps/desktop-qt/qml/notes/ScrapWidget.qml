@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../ui"
+import "../modals"
 
 Rectangle {
     id: scrapWidgetRoot
@@ -10,6 +11,7 @@ Rectangle {
     radius: 12
 
     property var blockData: ({})
+    property var controller: null
     property var attrs: blockData.attrs || ({})
     property string scrapUrl: attrs["data-url"] || attrs["url"] || ""
     property string title: attrs["data-title"] || attrs["title"] || ""
@@ -133,6 +135,22 @@ Rectangle {
                     Layout.preferredHeight: 22
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Abrir em tela cheia (Desktop/Tablet/Mobile)")
+                    onClicked: {
+                        scrapModal.scrapTitle = scrapWidgetRoot.title || scrapWidgetRoot.cleanDomain
+                        scrapModal.scrapUrl = scrapWidgetRoot.scrapUrl
+                        scrapModal.htmlContent = scrapWidgetRoot.excerpt
+                        scrapModal.open()
+                    }
+                    background: Rectangle { radius: 4; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "maximize"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
                     ToolTip.text: scrapWidgetRoot.viewerOpen ? qsTr("Fechar prévia") : qsTr("Visualizar captura")
                     onClicked: scrapWidgetRoot.viewerOpen = !scrapWidgetRoot.viewerOpen
                     background: Rectangle { radius: 4; color: parent.hovered ? "#1affffff" : "transparent" }
@@ -208,6 +226,9 @@ Rectangle {
                     wrapMode: Text.WordWrap
                 }
             }
+        }
+        ScrapViewerModal {
+            id: scrapModal
         }
     }
 }

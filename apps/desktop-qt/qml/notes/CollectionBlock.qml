@@ -23,23 +23,34 @@ Rectangle {
     property bool active: true
 
     property string titleText: ""
+    property string lastCommittedTitle: ""
     property bool collapsed: false
     property string bodyHtml: "<p></p>"
     property bool isSyncingBlock: false
+    property bool isEmittingUpdate: false
 
     signal blockChanged(var updatedBlock)
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
+    signal askAiRequested(string selection, string blockHtml)
+    signal playQuestionRequested(string batteryId, string questionId, string title)
+    signal openInQuestionsRequested(string batteryId)
+    signal youtubeWatchRequested(string videoUrl, string videoTitle)
+    signal mermaidFullscreenRequested(string code)
+    signal habitStatsRequested(string habitId)
+    signal openMediaRequested(string mediaType, string mediaId, string title)
     signal removeRequested()
 
     HoverHandler { id: hoverHandler }
 
     function syncFromBlockData() {
+        if (isEmittingUpdate) return
         var a = (blockData && blockData.attrs) ? blockData.attrs : ({})
         isSyncingBlock = true
         var nextTitle = a["data-title"] || a["title"] || ""
         titleText = nextTitle
+        lastCommittedTitle = nextTitle
         if (!titleInput.activeFocus && titleInput.text !== nextTitle) {
             titleInput.text = nextTitle
         }
@@ -48,12 +59,42 @@ Rectangle {
             ? String(blockData.innerHtml)
             : "<p><br/></p>"
         if (nextHtml === "<p></p>") nextHtml = "<p><br/></p>"
-        if (nextHtml !== bodyHtml) bodyHtml = nextHtml
+        if (nextHtml !== bodyHtml) {
+            bodyHtml = nextHtml
+            if (innerLoader.item && !innerLoader.item.hasActiveRichFocus && innerLoader.item.sourceHtml !== nextHtml) {
+                innerLoader.item.sourceHtml = nextHtml
+            }
+        }
         isSyncingBlock = false
     }
 
+    function flushPendingEdits() {
+        if (titleDebounce.running) {
+            titleDebounce.stop()
+            if (titleInput.text !== lastCommittedTitle) emitUpdate()
+        }
+        if (innerLoader.item) {
+            if (typeof innerLoader.item.flushActiveRichSlices === "function") innerLoader.item.flushActiveRichSlices()
+            else if (typeof innerLoader.item.commitEditorText === "function") innerLoader.item.commitEditorText()
+        }
+        return true
+    }
+
+    function hasPendingEdits() {
+        if (titleDebounce.running) return true
+        if (innerLoader.item) {
+            if (typeof innerLoader.item.hasPendingEdits === "function" && innerLoader.item.hasPendingEdits()) return true
+            if (innerLoader.item.hasPendingChanges === true) return true
+        }
+        return false
+    }
+
     Component.onCompleted: syncFromBlockData()
+    Component.onDestruction: titleDebounce.stop()
     onBlockDataChanged: syncFromBlockData()
+    onPageListChanged: {
+        if (innerLoader.item && innerLoader.item.hasOwnProperty("pageList")) innerLoader.item.pageList = pageList
+    }
 
     Timer {
         id: titleDebounce
@@ -64,6 +105,8 @@ Rectangle {
 
     function emitUpdate() {
         if (isSyncingBlock) return
+        isEmittingUpdate = true
+        lastCommittedTitle = titleInput.text
         var baseAttrs = (blockData && blockData.attrs) ? blockData.attrs : ({})
         var nextAttrs = Object.assign({}, baseAttrs)
         nextAttrs["_tag"] = "div"
@@ -79,6 +122,7 @@ Rectangle {
             innerHtml: bodyHtml && bodyHtml.trim().length > 0 ? bodyHtml : "<p></p>",
             html: ""
         })
+        isEmittingUpdate = false
     }
 
     ColumnLayout {
@@ -147,7 +191,7 @@ Rectangle {
                     onEditingFinished: {
                         titleDebounce.stop()
                         collectionRoot.titleText = text
-                        collectionRoot.emitUpdate()
+                        if (text !== collectionRoot.lastCommittedTitle) collectionRoot.emitUpdate()
                     }
                 }
 
@@ -216,16 +260,25 @@ Rectangle {
                 target: innerLoader.item
                 ignoreUnknownSignals: true
                 function onHtmlChanged(serializedHtml) {
+                    if (serializedHtml === collectionRoot.bodyHtml) return
                     collectionRoot.bodyHtml = serializedHtml
                     collectionRoot.emitUpdate()
                 }
                 function onContentModified(html) {
+                    if (html === collectionRoot.bodyHtml) return
                     collectionRoot.bodyHtml = html
                     collectionRoot.emitUpdate()
                 }
                 function onPagePreviewRequested(pid) { collectionRoot.pagePreviewRequested(pid) }
                 function onPageOpenRequested(pid) { collectionRoot.pageOpenRequested(pid) }
                 function onExternalLinkRequested(lnk) { collectionRoot.externalLinkRequested(lnk) }
+                function onAskAiRequested(sel, bHtml) { collectionRoot.askAiRequested(sel, bHtml) }
+                function onPlayQuestionRequested(bid, qid, t) { collectionRoot.playQuestionRequested(bid, qid, t) }
+                function onOpenInQuestionsRequested(bid) { collectionRoot.openInQuestionsRequested(bid) }
+                function onYoutubeWatchRequested(u, t) { collectionRoot.youtubeWatchRequested(u, t) }
+                function onMermaidFullscreenRequested(c) { collectionRoot.mermaidFullscreenRequested(c) }
+                function onHabitStatsRequested(hid) { collectionRoot.habitStatsRequested(hid) }
+                function onOpenMediaRequested(mt, mid, t) { collectionRoot.openMediaRequested(mt, mid, t) }
             }
         }
     }
