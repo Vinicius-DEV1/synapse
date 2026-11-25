@@ -21,6 +21,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Preserve empty paragraph, trailing paragraph, soft/hard breaks, nested marks, entities, emoji, combining characters and links.
 - [ ] Verify custom node attributes for question, habit, focus, alarm, calendar event, file, bundle, media, scrap, Mermaid, link preview, link group, toggle, callout toggle, collection, column group, page reference, divider, image and encrypted image.
 - [ ] Verify malformed HTML has a safe, user-visible recovery path and cannot silently drop unsupported content.
+- [ ] Escape all dynamic HTML text/attribute interpolation once at serialization boundaries and preserve the raw values sent to Core; test ampersands, quotes, apostrophes and angle brackets on every widget type.
 - [ ] Resolve the UTF-16/Core offset mismatch for Qt insertion, selection and split APIs.
 - [ ] Make entity decoding/escaping complete and canonical without double-decoding.
 - [ ] Preserve block colors/highlights in the same semantic representation as React.
@@ -53,13 +54,18 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 ## E. Slash commands
 
-- [ ] Compare all 31 React command IDs and React keyword aliases with Qt; keep Mermaid as additive Qt-only command.
+- [ ] Complete source and runtime review of all 31 React command IDs and exact keyword aliases using [08-slash-command-crosswalk.md](08-slash-command-crosswalk.md); keep Mermaid as additive Qt-only command.
 - [ ] Compare command titles, descriptions, icons, grouping, localization, search normalization and result ordering.
+- [ ] Match each selected command's real React outcome, including `/foco` starting a global timer and Qt's current paused inline widget behavior; preserve an inline widget as a separate action only if it remains reachable without changing React slash semantics.
 - [ ] Verify keyboard navigation: arrows, Enter, Escape, Left, Space, Backspace, and modifier keys.
 - [ ] Verify menu no-result state, error message, selected option announcement and focus restoration.
 - [ ] Verify caret location and query deletion for every command.
 - [ ] Verify insertion at beginning, middle, end, after a widget, and inside each nested block type.
 - [ ] Verify setup modal cancellation, validation, successful record creation and returned widget IDs.
+- [ ] Match alarm time (`HH:mm`) and optional-label length constraints; verify incomplete fields cannot create alarms.
+- [ ] Return and serialize the created calendar event ID and page ID into the note widget; verify the widget refreshes status/title/date from Core.
+- [ ] Match the React event form's tomorrow/14:00 default, title default, event types, reminder choices/defaults, validation, and async submission feedback.
+- [ ] Verify Scrap preflight rejects incomplete protocols, whitespace, and bare-domain prefixes with trailing text; confirm invalid entries stay editable and cause no capture request.
 - [ ] Verify command behavior after undo, redo, save, page switch and reopen.
 
 ## F. Tables
@@ -115,6 +121,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Prevent excessive full-list Core serialization and unnecessary delegate rebuilds; preserve native focus/caret while optimizing.
 - [ ] Verify cancellation/cleanup for timers, connections, async import, metadata requests, preview tasks and media playback.
 - [ ] Compare React/Qt at matched window size, DPI, font environment, theme and content for page header, toolbar, editor, every widget, table, modal, hover and focus.
+- [ ] Split `NotesSetupWidgetsModal.qml` and `src/controllers/notes/notes_controller.cpp` along focused responsibilities; current source lengths exceed the 300-line target and must be remeasured after the split.
 - [ ] Compare keyboard-only and screen-reader paths, accessible names, roles, state, order and selected-item announcements.
 - [ ] Compare English and Portuguese labels, errors, empty states and shortcut help.
 - [ ] Update `NotesHelpDialog.qml` so all descriptions match active controls and do not mention removed source/preview modes.

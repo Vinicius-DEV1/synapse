@@ -11,12 +11,12 @@ The source audit and follow-up fixes were built and format-checked as noted belo
 | `cargo check --manifest-path core/synapse-core/Cargo.toml` | Passed | Core library compiles in the dev profile. |
 | `cargo build --manifest-path bridges/bridge-qt/Cargo.toml` | Passed | Debug Qt bridge library exports the updated Notes FFI. |
 | `cargo build --release --manifest-path bridges/bridge-qt/Cargo.toml` | Passed | Release Qt bridge library used by the configured desktop build. |
-| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed after rebuilding the release bridge | Builds and links the desktop application. It does not execute the application or validate runtime QML behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed after rebuilding the release bridge and moving the Notes width adapter | Builds and links the desktop application. The configured target does not parse/load QML or execute the application. |
 | Focused `rustfmt --edition 2021 --config skip_children=true --check` across changed Notes Core and Qt bridge Rust files | Passed | Every changed Rust file in the Notes Core and Qt bridge modules was formatted and checked. Repository-wide `cargo fmt --check` reports formatting differences in unrelated modules and is not used as a Notes result. |
+| QML JavaScript helper syntax | Passed | `node --check` parsed the three Notes script modules after removing QML `.pragma`/`.import` directives. This checks JavaScript syntax only, not QML integration or Qt-engine behavior. |
+| Slash catalog source crosswalk | Passed | A focused source extraction compared all 31 React command IDs, titles, subtitles and keyword arrays with Qt; all 31 matched, with Qt-only Mermaid as the single additional command. This does not validate action behavior or UI rendering. |
 | `git diff --check` | Passed | No whitespace errors in the diff at the time of the check. |
-| Tests, `qmllint`, visual and interaction checks | Not run | Test execution was not requested; `qmllint` was unavailable in the environment; UI acceptance remains open. |
-
-The first Qt link attempt used an older `target/release/libsynapse_bridge_qt.a`, which lacked the new table symbols. Building the release bridge and repeating the same CMake target resolved the undefined references.
+| Tests, `qmllint`, visual and interaction checks | Not run | The existing Qt slash-menu test expectation was updated from the Qt-only `assistente` alias to React's `prompt` alias, but the test was not executed. No `qmllint`, `qmlformat`, or QML runtime executable was found on `PATH`; UI acceptance remains open. |
 
 ## Focused source and Core checks
 

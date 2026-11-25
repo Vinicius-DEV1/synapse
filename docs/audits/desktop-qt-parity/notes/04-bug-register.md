@@ -88,6 +88,80 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Row attributes survive column movement; merged or malformed tables remain unchanged; ordinary tables move columns without losing content or formatting.
 - **Fix status:** Source fix applied: row framing is preserved and Core returns the original table for inconsistent grids or merged spans. Runtime acceptance remains unverified.
 
+## QT-NOTES-010: Slash command arguments do not reach native setup flows
+
+- **Severity:** Medium; selecting a command can lose the user's typed data or initialize a modal with the command name as content.
+- **Evidence:** React `useSlashCommand.ts` extracts command arguments before opening focus, alarm, event, habit, page-reference, and Scrap flows. The Qt editor previously passed the entire slash query to some setup modals, did not strip Portuguese/English aliases from page search, and opened Scrap with an empty URL even though the picker supports URL prefill and automatic capture.
+- **Reproduction:** Enter `/foco 25 #Revisão Leitura`, `/alarme 15:30`, `/evento Prova`, `/habito Corrida`, `/page Minha página`, or `/scrap https://example.com`, select the matching command, and inspect the native dialog or captured URL.
+- **Root cause:** Qt routed menu IDs but did not share React's longest-alias-first argument extraction contract with the setup and media dialogs.
+- **Required fix:** Extract the remainder after the longest matching command alias; map focus duration/tag/description, alarm time, event title, habit query, page query, and Scrap URL into the native flow. Normalize a bare domain to HTTPS and leave invalid Scrap text editable without starting capture.
+- **Fix status:** Source fix applied in `NotesSlashCommandArguments.js`, `NotesSlashCommandActions.js`, `NotesRichTextInput.qml`, `NotesEditorModalsHost.qml`, and `NotesMediaWidgetPickerModal.qml`. Per-command dialog, capture, cancellation, and persistence acceptance remains unverified.
+
+## QT-NOTES-011: Focus slash form has different defaults and accepts incomplete data
+
+- **Severity:** Medium; `/foco` opened with values that did not match React and could insert an unusable focus widget.
+- **Evidence:** React `useSlashCommand.ts` defaults to 30 minutes with an empty tag and description. `focus/SetupModal.tsx` requires all three values and disables start until they are valid. Qt previously defaulted to 25 minutes and `Estudo`, then allowed insertion with an empty description.
+- **Reproduction:** Select `/foco` without arguments and compare the form; then submit without entering a description or tag.
+- **Required fix:** Use React's 30-minute, blank-tag and blank-description defaults. Keep insertion disabled until description/tag are non-empty and duration is a positive integer.
+- **Fix status:** Source fix applied in `NotesSetupWidgetsModal.qml`. Runtime keyboard, validation and insertion acceptance is unverified; the command outcome mismatch is tracked separately in QT-NOTES-013.
+
+## QT-NOTES-012: Native slash menu had mismatched geometry and command icons
+
+- **Severity:** Low; command selection remained possible, but the menu differed in placement, sizing, padding, empty-state language, and icon concepts.
+- **Evidence:** React `components/SlashMenu.tsx` uses a 288 px panel capped at 320 px, 56 px rows, 4 px list padding, a 33 px heading and Lucide icons. Qt used different header/row geometry, opened upward based on current menu height, had no list inset, and substituted several unrelated icons.
+- **Required fix:** Align native dimensions, cursor overflow placement, and the fade/reveal, draw equivalent icon concepts, and match the Portuguese empty state without adding WebView/browser UI.
+- **Fix status:** Source fix applied in `NotesRichSlashCommandMenu.qml` and `NotesSlashCommandIcon.qml`. Side-by-side screenshot, hover/keyboard state, stroke fidelity and text wrapping acceptance remain unverified.
+
+## QT-NOTES-013: Focus and alarm slash actions have different outcomes
+
+- **Severity:** High; selecting a command creates different application state across clients.
+- **Evidence:** React `useSlashCommand.ts` opens `focus/SetupModal.tsx`; submit calls `handleStartTimer`, starting the global focus timer. Qt routes `/foco` to `NotesSetupWidgetsModal.qml`, whose submit inserts a paused inline focus widget. React `/alarme` opens `focus/AlarmSetupModal.tsx` and saves through `handleSaveAlarm`; Qt creates/selects an alarm and inserts an inline alarm widget.
+- **Required fix:** Make the native slash flows produce the same timer/alarm state as React through the Qt/Core contract. Keep an inline note widget as a separate Notes action if it is not part of the React slash behavior.
+- **Acceptance:** With identical inputs, both clients create/start the same timer or alarm record, show equivalent status, persist/reopen consistently, and do not create a Qt-only inline widget from the slash action.
+- **Fix status:** Not fixed. Native controller/Core action contracts and timer/alarm behavior need a focused follow-up before command parity can be claimed.
+
+## QT-NOTES-014: Widget HTML interpolation does not consistently escape entity characters
+
+- **Severity:** Medium; names containing ampersands, angle brackets, quotes, or apostrophes can change value during HTML parse/serialize and metadata may not round-trip as typed.
+- **Evidence:** `NotesSetupWidgetsModal.qml`, `NotesMediaWidgetPickerModal.qml`, and `BlockDelegateRouter.qml` assemble widget nodes from strings. Several paths escaped only double quotes or did not escape attribute values. The editor's dropped-file path had a narrower local escaper. React creates structured Tiptap nodes and does not construct these HTML strings in its UI.
+- **Reproduction:** Create a habit, alarm, focus widget, or Scrap/file/media card whose title includes `A & B`, `<topic>`, or quotes; save, reload, and compare the original label and parsed attributes.
+- **Required fix:** Use one Notes-local escaping helper for HTML text and quoted attribute values. Keep raw values for Core persistence and escape only at the HTML serialization boundary.
+- **Fix status:** Source fix applied in `NotesHtmlEscaping.js` and used by the Qt editor, setup/media pickers, link dialog, and link-preview conversion. Recheck the complete Notes module for raw-HTML interpolation and validate metadata round-trip in Qt and React before closing.
+
+## QT-NOTES-015: Native alarm setup accepts invalid time strings
+
+- **Severity:** Medium; arbitrary text can be saved as an alarm time and embedded into a note widget, while React uses a native time input.
+- **Evidence:** Qt `NotesSetupWidgetsModal.qml` used an unrestricted `TextField` and left the create button enabled. React `focus/AlarmSetupModal.tsx` uses `<input type="time" required>` and caps the optional label at 30 characters.
+- **Reproduction:** Open `/alarme`, enter an invalid time such as `xx:yy`, and try creating an alarm.
+- **Required fix:** Enforce 24-hour `HH:mm`, disable creation until the field is acceptable, and cap the label at 30 characters. Keep the raw accepted time for Core persistence and escape it only in the serialized widget attribute.
+- **Fix status:** Source fix applied in `NotesSetupWidgetsModal.qml`. Verify intermediate typing, keyboard submission, Core rejection, and saved widget values at runtime; action semantics are tracked separately in QT-NOTES-013.
+
+## QT-NOTES-016: Scrap URL detection accepts a domain prefix with trailing invalid text
+
+- **Severity:** Medium; malformed input can be treated as a capture URL and fail only after the capture request starts.
+- **Evidence:** The prior Qt helper and React flow both tested bare-domain patterns without anchoring the full string. Qt's native picker now reports validation errors before capture, so its preflight must reject `site.example trailing text` and protocol-only strings consistently.
+- **Reproduction:** Select `/scrap site.example extra` or enter `https://` and start capture.
+- **Required fix:** Accept complete HTTP/HTTPS URLs with a host, or complete bare domains (including a path/query) and normalize those to HTTPS. Leave invalid input editable and do not send a capture request.
+- **Fix status:** Source fix applied in `NotesSlashCommandArguments.js`; URL edge cases and the controller capture boundary still require runtime verification.
+
+## QT-NOTES-017: Calendar event card is not linked to the created event
+
+- **Severity:** High; the note card cannot resolve or reflect the event that the slash command creates.
+- **Evidence:** Qt `NotesSetupWidgetsModal.qml` calls `createCalendarEvent(...)`, whose C++/FFI contract returns only `bool`, then inserts `calendar-event-widget` without `data-event-id` or `data-page-id`. `CalendarEventWidget.qml::syncFromCore()` returns immediately when `eventId` is empty. React's `CalendarEventModal` receives the created event ID and inserts it with the page ID.
+- **Reproduction:** Run `/evento Revisão`, save the modal, then inspect the note block attributes and change the event in its calendar record.
+- **Required fix:** Keep creation in Core, return the created event ID through a typed bridge result, pass the current page ID, and serialize both IDs into the canonical note node. Handle recurrence explicitly so the note links to the intended occurrence/series.
+- **Acceptance:** The block contains stable event/page IDs; reopening loads current title, time, color and status from Core; delete/missing-record and save failure show a recoverable state; React can read the same node.
+- **Fix status:** Not fixed. The FFI currently discards Core's `CalendarEvent` ID and the QML card has no link ID.
+
+## QT-NOTES-018: Event setup fields and defaults differ from React
+
+- **Severity:** High; the same slash command produces different event dates, times, types and reminders.
+- **Evidence:** React `CalendarEventModal.tsx` defaults to tomorrow at 14:00, uses a required title, exposes event type and four reminder options selected by default, and keeps the current page association. Qt currently defaults its date to today, has no time field, uses a fixed `event` type, offers a different single reminder choice, and does not pass a page ID.
+- **Reproduction:** Open `/evento` in both clients at the same local date/time and compare the form, then save without editing values.
+- **Required fix:** Match React's fields, defaults, validation, reminder selection and page binding while retaining the native QML implementation and Core persistence.
+- **Acceptance:** Identical defaults and submitted event data, including timezone-aware start/end timestamps and all selected reminders; invalid/duplicate submissions are prevented and errors are visible.
+- **Fix status:** Not fixed. Source review confirms the differences; same-viewport and data-level acceptance remains open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities and tags; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

@@ -2,6 +2,8 @@
 
 Use this inventory when reviewing every menu, keyboard route, contextual tool, widget, and nested editor. A feature is incomplete if its normal action exists but its undo, error, cancellation, accessibility, or persistence behavior differs.
 
+The command-by-command ID, display-copy, keyword, Qt-route, and remaining-gap comparison is in [08-slash-command-crosswalk.md](08-slash-command-crosswalk.md).
+
 ## Page lifecycle
 
 Review: create root page; create child page; create page from a reference; rename; edit description; change icon; pin/unpin; move; reorder; duplicate; export/import; share; delete/restore; lock/unlock; cover add/replace/remove; save now; autosave; history; navigate breadcrumb; open sibling/child; open in new tab; return from modal; handle empty, loading, stale, missing, locked, encrypted, conflict, and failed states.
@@ -37,7 +39,10 @@ Current typed filters in Core include text matching, equality, numeric compariso
 | `/question` | Open question setup; query may inform generation but must not be lost silently |
 | `/ia` | Open AI prompt with selected text and block context |
 | `/divider` | Insert divider at current position |
-| `/foco`, `/alarme`, `/documento`, `/agrupar`, `/scrap`, `/video`, `/livro`, `/evento`, `/habito` | Open the matching setup/picker or insert widget, bind the resulting entity ID, and handle cancellation/failure |
+| `/foco` | React opens the Focus setup form and starts the global timer; Qt opens its setup form and inserts a paused inline focus widget. This is a confirmed action-semantic mismatch to resolve. |
+| `/alarme` | React saves an alarm through its alarm flow; Qt creates or selects an alarm and inserts an inline alarm widget. Compare the resulting record, activation state, and note representation. |
+| `/evento` | React creates a calendar event and inserts a widget with its event ID and linked page. Qt currently inserts the card without an event ID/page ID; the card cannot refresh from the created event record. Compare tomorrow/14:00 defaults, type, reminders, timezone and failure feedback. |
+| `/documento`, `/agrupar`, `/scrap`, `/video`, `/livro`, `/evento`, `/habito` | Compare the actual React result with Qt's setup/picker or inserted widget; bind returned entity IDs and handle cancellation/failure. See the command crosswalk for current routes. |
 
 Qt-only `/mermaid` should remain an additive native capability; it must not alter or replace React behavior.
 

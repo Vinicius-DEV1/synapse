@@ -33,6 +33,7 @@ Qt and React do not currently share a live Yjs editor implementation. Qt must no
 - Block edits currently call Core serialization across the block list. Benchmark 100, 500 and 1,000 blocks; if cost is material, add an incremental Core API or batch transaction without creating a second serializer in QML.
 - Inspect layout churn, syntax highlighting, Mermaid rendering, media surfaces, image decode/resize, timers and signal connections. Heavy work should not block the GUI thread; asynchronous operations need cancellation and teardown.
 - Keep interaction feedback native and quick. Avoid full-document reloads when changing a single block, filter, icon or metadata field.
+- Existing Notes implementation debt: `NotesSetupWidgetsModal.qml` and `src/controllers/notes/notes_controller.cpp` exceed the 300-line target in the current worktree. Split the modal into cohesive native views and move controller adapters by domain before expanding these files further; verify QML imports and CMake registration with each extraction.
 
 ## Performance budgets to record
 
