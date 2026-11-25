@@ -7,26 +7,42 @@ pub mod diff_engine;
 pub mod hierarchy;
 pub mod history;
 pub mod html_normalizer;
+pub mod image_cache;
 pub mod link_index;
 pub mod links;
+pub mod mermaid_svg;
 pub mod metadata;
 pub mod models;
 pub mod pages;
 pub mod plain_text;
+pub mod table_schema;
 #[cfg(test)]
 pub mod tests;
 
 use crate::db::Database;
 use crate::error::{Result, SynapseError};
-pub use block_ast::{parse_note_blocks, serialize_note_blocks, NoteBlock};
+pub use block_ast::{
+    compute_equal_column_widths, extract_loose_file_widget_ids, parse_note_blocks,
+    serialize_note_blocks, split_rich_html_at_text_offset, NoteBlock,
+};
 pub use crdt_hydrator::hydrate_html_from_crdt;
-pub use html_normalizer::normalize_tiptap_rich_html;
 pub use diff_engine::{
     apply_search_replace, compute_word_diff_html, parse_search_replace_blocks, SearchReplaceBlock,
     SearchReplaceResult,
 };
-pub use link_index::{find_duplicate_links, normalize_link_url, DuplicateLinkMatch};
+pub use html_normalizer::normalize_tiptap_rich_html;
+pub use link_index::{
+    build_default_link_entity_json, canonical_link_url, find_duplicate_links, normalize_link_url,
+    DuplicateLinkMatch,
+};
+pub use mermaid_svg::{render_mermaid_data_uri, render_mermaid_svg};
 pub use models::{LinkMetadata, PageMetaRecord, PageNode, PageRecord, PageRevision};
+pub use table_schema::{
+    evaluate_table_filter, evaluate_table_filter_at, filter_table_rows_for_view, move_table_column,
+    move_table_column_at, move_table_row, move_table_row_at, parse_table_columns,
+    parse_table_columns_at, update_table_column_schema_at, update_table_column_width_at,
+    validate_table_cells, validate_table_cells_at, TableCellValidation, TableColumnConfig,
+};
 
 pub struct NotesRepository;
 
@@ -219,9 +235,7 @@ impl NotesRepository {
         pages::soft_delete_pages_batch(conn, ids)
     }
 
-    pub fn get_deleted_page_metas_conn(
-        conn: &rusqlite::Connection,
-    ) -> Result<Vec<PageMetaRecord>> {
+    pub fn get_deleted_page_metas_conn(conn: &rusqlite::Connection) -> Result<Vec<PageMetaRecord>> {
         pages::get_deleted_page_metas(conn)
     }
 
@@ -283,5 +297,30 @@ impl NotesRepository {
     ) -> Result<Vec<DuplicateLinkMatch>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         link_index::find_duplicate_links(&conn, url, exclude_page_id)
+    }
+
+    pub fn get_cached_image_data_uri(
+        db: &Database,
+        image_id: &str,
+        key_hex: Option<&str>,
+    ) -> Result<Option<String>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        image_cache::get_cached_image_data_uri(&conn, image_id, key_hex)
+    }
+
+    pub fn put_cached_image_bytes(
+        db: &Database,
+        image_id: &str,
+        raw_bytes: &[u8],
+        mime_type: Option<&str>,
+        key_hex: Option<&str>,
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        image_cache::put_cached_image_bytes(&conn, image_id, raw_bytes, mime_type, key_hex)
+    }
+
+    pub fn delete_cached_image(db: &Database, image_id: &str) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        image_cache::delete_cached_image(&conn, image_id)
     }
 }

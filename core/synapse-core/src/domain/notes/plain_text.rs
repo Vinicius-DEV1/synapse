@@ -116,15 +116,5 @@ fn escape_html(value: &str) -> String {
 }
 
 fn decode_html_entities(value: &str) -> Option<String> {
-    let mut decoded = value.to_owned();
-    for (entity, character) in [
-        ("&lt;", "<"),
-        ("&gt;", ">"),
-        ("&quot;", "\""),
-        ("&#39;", "'"),
-        ("&amp;", "&"),
-    ] {
-        decoded = decoded.replace(entity, character);
-    }
-    Some(decoded)
+    Some(super::block_ast::helpers::html_unescape(value))
 }

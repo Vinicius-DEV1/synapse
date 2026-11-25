@@ -312,6 +312,32 @@ char* synapse_notes_hydrate_from_crdt(const char* html, const char* crdt_base64)
 char* synapse_notes_apply_search_replace(const char* original, const char* ai_response);
 char* synapse_notes_compute_word_diff_html(const char* old_text, const char* new_text);
 char* synapse_notes_find_duplicate_links(Database* db, const char* url, const char* exclude_page_id);
+char* synapse_notes_split_rich_html(const char* html, int text_offset);
+char* synapse_notes_parse_table_columns(const char* table_html);
+char* synapse_notes_parse_table_columns_at(const char* note_html, int table_index);
+char* synapse_notes_update_table_column_schema_at(const char* note_html, int table_index,
+                                                  int column_index, const char* column_type,
+                                                  const char* options_json, const char* number_format,
+                                                  const char* date_format);
+char* synapse_notes_update_table_column_width_at(const char* note_html, int table_index,
+                                                 int column_index, int width_px);
+char* synapse_notes_validate_table_cells(const char* table_html);
+char* synapse_notes_validate_table_cells_at(const char* note_html, int table_index);
+char* synapse_notes_evaluate_table_filter(const char* table_html, const char* filters_json);
+char* synapse_notes_evaluate_table_filter_at(const char* note_html, int table_index, const char* filters_json);
+char* synapse_notes_filter_table_rows_for_view(const char* note_html, int table_index, const char* filters_json);
+char* synapse_notes_move_table_column(const char* table_html, int from_col, int to_col);
+char* synapse_notes_move_table_column_at(const char* note_html, int table_index, int from_col, int to_col);
+char* synapse_notes_move_table_row(const char* table_html, int from_row, int to_row);
+char* synapse_notes_move_table_row_at(const char* note_html, int table_index, int from_row, int to_row);
+char* synapse_notes_extract_loose_file_ids(const char* html);
+char* synapse_notes_render_mermaid_data_uri(const char* chart);
+char* synapse_notes_render_mermaid_svg(const char* chart);
+char* synapse_notes_canonical_link_url(const char* raw_url);
+char* synapse_notes_default_link_entity(const char* canonical_url, const char* original_url);
+char* synapse_notes_get_cached_image_data_uri(Database* db, const char* image_id, const char* key_hex);
+int synapse_notes_put_cached_image_bytes(Database* db, const char* image_id, const unsigned char* data, int data_len, const char* mime_type, const char* key_hex);
+int synapse_notes_delete_cached_image(Database* db, const char* image_id);
 
 // Domain APIs: Practice & AI Tutor
 char* synapse_practice_get_sessions(Database* db);
