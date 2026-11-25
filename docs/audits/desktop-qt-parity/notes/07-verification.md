@@ -2,28 +2,50 @@
 
 ## Current pass boundary
 
-The source audit and follow-up fixes were built and format-checked as noted below. Tests, QML lint, screenshots, accessibility checks and benchmarks were not run. Do not treat prior test counts or earlier parity-document entries as verification for this worktree. The scenarios below remain the implementation acceptance plan; run them only when authorized by the task and repository instructions.
+The current source audit and event-widget fixes were built, QML-linted and format-checked as noted below. No tests, screenshots, accessibility checks or benchmarks were run. Do not treat prior test counts or earlier parity-document entries as verification for this worktree. The scenarios below remain the implementation acceptance plan; source/build checks do not establish runtime or visual parity.
 
 ## Checks completed in this pass
 
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | `cargo check --manifest-path core/synapse-core/Cargo.toml` | Passed | Core library compiles in the dev profile. |
-| `cargo build --manifest-path bridges/bridge-qt/Cargo.toml` | Passed | Debug Qt bridge library exports the updated Notes FFI. |
-| `cargo build --release --manifest-path bridges/bridge-qt/Cargo.toml` | Passed | Release Qt bridge library used by the configured desktop build. |
-| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed after rebuilding the release bridge and moving the Notes width adapter | Builds and links the desktop application. The configured target does not parse/load QML or execute the application. |
-| Focused `rustfmt --edition 2021 --config skip_children=true --check` across changed Notes Core and Qt bridge Rust files | Passed | Every changed Rust file in the Notes Core and Qt bridge modules was formatted and checked. Repository-wide `cargo fmt --check` reports formatting differences in unrelated modules and is not used as a Notes result. |
-| QML JavaScript helper syntax | Passed | `node --check` parsed the three Notes script modules after removing QML `.pragma`/`.import` directives. This checks JavaScript syntax only, not QML integration or Qt-engine behavior. |
-| Slash catalog source crosswalk | Passed | A focused source extraction compared all 31 React command IDs, titles, subtitles and keyword arrays with Qt; all 31 matched, with Qt-only Mermaid as the single additional command. This does not validate action behavior or UI rendering. |
-| `git diff --check` | Passed | No whitespace errors in the diff at the time of the check. |
-| Tests, `qmllint`, visual and interaction checks | Not run | The existing Qt slash-menu test expectation was updated from the Qt-only `assistente` alias to React's `prompt` alias, but the test was not executed. No `qmllint`, `qmlformat`, or QML runtime executable was found on `PATH`; UI acceptance remains open. |
+| `cargo build --release --manifest-path bridges/bridge-qt/Cargo.toml` | Passed | Release Qt bridge library exports the new result-returning event creation FFI. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Builds and links the desktop application against the configured bridge. The target does not instantiate QML or run the application. |
+| `rustfmt --edition 2021 --config skip_children=true --check core/synapse-core/src/domain/calendar/events/mutations.rs bridges/bridge-qt/src/domain/calendar.rs` | Passed | The changed Rust Core/bridge files are formatted. |
+| Focused changed-file QML lint | Passed with warnings | The exact command is below. Changed event, setup, deletion, move, nested-navigation, editor, and PageView QML parses. No warning points to the new event action or its forwarding connections. Existing warnings remain for dynamic `Loader.item` access, untyped `Repeater.itemAt()`/`Loader.item`, dynamic delegate APIs, layout sizing, unqualified globals, and unused imports across the edited QML. Qt minimum remains 6.2. |
+| `git diff --check` | Passed | No whitespace errors in the current diff. |
+| Tests, runtime interaction, screenshots, accessibility and performance checks | Not run | QML lint and linking do not instantiate the popup, exercise event persistence, compare React/Qt visuals, or validate keyboard/screen-reader behavior. Parity remains `Partial`. |
+
+Exact QML lint command for this pass:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/CalendarEventWidget.qml \
+  apps/desktop-qt/qml/notes/CalendarEventWidgetState.qml \
+  apps/desktop-qt/qml/notes/CalendarEventWidgetPopover.qml \
+  apps/desktop-qt/qml/notes/NotesCalendarDateTimeFields.qml \
+  apps/desktop-qt/qml/notes/NotesCalendarEventForm.qml \
+  apps/desktop-qt/qml/notes/NotesCalendarEventOptions.qml \
+  apps/desktop-qt/qml/notes/NotesCalendarWidgetColorPicker.qml \
+  apps/desktop-qt/qml/notes/NotesSetupWidgetPickerPanel.qml \
+  apps/desktop-qt/qml/notes/NotesSetupWidgetsModal.qml \
+  apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml \
+  apps/desktop-qt/qml/notes/NotesColumnLayout.qml \
+  apps/desktop-qt/qml/notes/NotesToggleBlock.qml \
+  apps/desktop-qt/qml/notes/CollectionBlock.qml \
+  apps/desktop-qt/qml/notes/Editor.qml \
+  apps/desktop-qt/qml/page-view/PageView.qml \
+  apps/desktop-qt/qml/notes/NotesHelpDialog.qml
+```
 
 ## Focused source and Core checks
 
 1. Review the current `core/synapse-core` Notes module and run the focused Notes Core tests from the active Cargo workspace; capture the exact command and result.
 2. Build the Qt Notes bridge and desktop targets with the repository's documented `cmake` configuration.
 3. Run the focused Qt Notes native/QML test targets only; do not run the global application test sweep for iteration.
-4. Run `qmllint` on every changed Notes QML file, including newly moved/subdirectory files and `qmldir` registrations.
+4. Keep `qmllint` clean for changed Notes QML; resolve the remaining dynamic `Loader.item` warnings with a typed component contract if that file is next modified.
 5. Run `git diff --check` and inspect changed paths for accidental React layout/behavior modifications or unrelated modules.
 
 Use `docs/guides/setup-and-build.md`, `docs/guides/testing-and-quality.md`, and the active CMake targets as the authoritative current commands. Names of test targets can change; verify them from `apps/desktop-qt/CMakeLists.txt` instead of copying historical totals.
@@ -40,6 +62,7 @@ Use `docs/guides/setup-and-build.md`, `docs/guides/testing-and-quality.md`, and 
 - Resize existing columns, drop a block into the column group, undo and confirm widths/attributes/content.
 - Exercise image import, clipboard, batch drop, resize, caption, alignment, crop, undo, locked key and unsupported format paths.
 - Exercise history, restore, save conflict, autosave failure, page/tab switch, app close, encrypted page lock/unlock and recovered backup.
+- Link multiple event widgets, update/create/delete events in the Qt Agenda, confirm every visible linked widget refreshes, and resolve one event outside the 300-row list limit.
 
 ## Visual and accessibility comparison
 

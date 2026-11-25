@@ -41,7 +41,7 @@ Current typed filters in Core include text matching, equality, numeric compariso
 | `/divider` | Insert divider at current position |
 | `/foco` | React opens the Focus setup form and starts the global timer; Qt opens its setup form and inserts a paused inline focus widget. This is a confirmed action-semantic mismatch to resolve. |
 | `/alarme` | React saves an alarm through its alarm flow; Qt creates or selects an alarm and inserts an inline alarm widget. Compare the resulting record, activation state, and note representation. |
-| `/evento` | React creates a calendar event and inserts a widget with its event ID and linked page. Qt currently inserts the card without an event ID/page ID; the card cannot refresh from the created event record. Compare tomorrow/14:00 defaults, type, reminders, timezone and failure feedback. |
+| `/evento` | React creates a calendar event and inserts a widget with its event ID and linked page. Qt now returns event/page IDs through Core and matches tomorrow/14:00, category, and reminder defaults. Verify timezone conversion, create failure, status/title/date persistence, reminder/color controls, anchored popup placement, nested open-agenda routing, confirmation/unlinked/missing/expiry/series deletion, live-state timing, hover reorder, event lookup beyond the agenda list limit, and cross-client round-trip. |
 | `/documento`, `/agrupar`, `/scrap`, `/video`, `/livro`, `/evento`, `/habito` | Compare the actual React result with Qt's setup/picker or inserted widget; bind returned entity IDs and handle cancellation/failure. See the command crosswalk for current routes. |
 
 Qt-only `/mermaid` should remain an additive native capability; it must not alter or replace React behavior.

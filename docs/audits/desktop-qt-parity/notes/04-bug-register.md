@@ -78,7 +78,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Evidence:** `NotesHelpDialog.qml` contains a large paragraph that describes source/preview modes and unsupported structures staying in source mode, while the active worktree routes notes through a unified block editor and removes legacy source/preview QML surfaces.
 - **Required fix:** Reconcile the guide with the current native block editor, including limitations still real today. Keep UI help in the Qt module and technical status in the audit docs.
 - **Acceptance:** Every guide instruction names a visible control or keyboard action, and no removed mode is described as available.
-- **Fix status:** Source fix applied in `NotesHelpDialog.qml`: removed instructions for source/preview modes and the obsolete Ctrl/Cmd+E shortcut. Verify the guide against the running UI and localization before closing.
+- **Fix status:** Source fix applied in `NotesHelpDialog.qml`: removed instructions for source/preview modes and the obsolete Ctrl/Cmd+E shortcut, and documented the linked event widget's actions, expiry rule, reorder controls, and live window. Verify the guide against the running UI and localization before closing.
 
 ## QT-NOTES-009: Table column movement rewrites row markup
 
@@ -147,20 +147,122 @@ Findings are based on source inspection of the active worktree. Severity is base
 ## QT-NOTES-017: Calendar event card is not linked to the created event
 
 - **Severity:** High; the note card cannot resolve or reflect the event that the slash command creates.
-- **Evidence:** Qt `NotesSetupWidgetsModal.qml` calls `createCalendarEvent(...)`, whose C++/FFI contract returns only `bool`, then inserts `calendar-event-widget` without `data-event-id` or `data-page-id`. `CalendarEventWidget.qml::syncFromCore()` returns immediately when `eventId` is empty. React's `CalendarEventModal` receives the created event ID and inserts it with the page ID.
+- **Evidence:** Qt previously called `createCalendarEvent(...)`, whose C++/FFI contract returned only `bool`, then inserted `calendar-event-widget` without `data-event-id` or `data-page-id`. `CalendarEventWidget.qml::syncFromCore()` returned immediately when `eventId` was empty. React's `CalendarEventModal` receives the created event ID and inserts it with the page ID.
 - **Reproduction:** Run `/evento Revisão`, save the modal, then inspect the note block attributes and change the event in its calendar record.
 - **Required fix:** Keep creation in Core, return the created event ID through a typed bridge result, pass the current page ID, and serialize both IDs into the canonical note node. Handle recurrence explicitly so the note links to the intended occurrence/series.
 - **Acceptance:** The block contains stable event/page IDs; reopening loads current title, time, color and status from Core; delete/missing-record and save failure show a recoverable state; React can read the same node.
-- **Fix status:** Not fixed. The FFI currently discards Core's `CalendarEvent` ID and the QML card has no link ID.
+- **Fix status:** Source fix applied. The Notes form now calls a result-returning Qt bridge operation backed by `CalendarRepository`, passes the current page ID, and serializes the returned event/page IDs into the canonical widget. Core remains the persistence owner. C++/Rust builds passed; QML load, event creation, recurrence selection, save/reopen, deletion, and React round-trip remain unverified.
 
 ## QT-NOTES-018: Event setup fields and defaults differ from React
 
 - **Severity:** High; the same slash command produces different event dates, times, types and reminders.
-- **Evidence:** React `CalendarEventModal.tsx` defaults to tomorrow at 14:00, uses a required title, exposes event type and four reminder options selected by default, and keeps the current page association. Qt currently defaults its date to today, has no time field, uses a fixed `event` type, offers a different single reminder choice, and does not pass a page ID.
+- **Evidence:** React `CalendarEventModal.tsx` defaults to tomorrow at 14:00, uses a required title, exposes five event categories and four reminder options selected by default, and keeps the current page association. Qt previously defaulted to today, had no time field, used different event types and a single reminder choice, and did not pass a page ID.
 - **Reproduction:** Open `/evento` in both clients at the same local date/time and compare the form, then save without editing values.
 - **Required fix:** Match React's fields, defaults, validation, reminder selection and page binding while retaining the native QML implementation and Core persistence.
 - **Acceptance:** Identical defaults and submitted event data, including timezone-aware start/end timestamps and all selected reminders; invalid/duplicate submissions are prevented and errors are visible.
-- **Fix status:** Not fixed. Source review confirms the differences; same-viewport and data-level acceptance remains open.
+- **Fix status:** Source fix applied. The native form now follows the React title/date/time/type/reminder defaults, validates title/date/time, carries the page link, and reports failed creation. Core preserves the React event category values. The Qt-only recurrence and calendar-record color options remain available. Same-viewport, timezone, and persisted-value acceptance remains open.
+
+## QT-NOTES-019: Event widget status changes are not persisted
+
+- **Severity:** High; the widget can appear completed until the note is reloaded, then revert to the Core event's previous status.
+- **Evidence:** `CalendarEventWidget.qml::toggleStatus()` previously updated only local QML state and node attributes. React updates the linked Core event through `window.api.calendar.updateEvent()`.
+- **Reproduction:** Toggle a linked event widget to completed, reload the page, and compare its status with the calendar record.
+- **Required fix:** Toggle the linked event through the controller/Core API first, update the node only after success, and show a recoverable message on failure. Keep legacy widgets without an event ID editable locally.
+- **Acceptance:** Status survives editor save, page reload, and calendar refresh; failed Core writes do not leave a false completed state.
+- **Fix status:** Source fix applied in `CalendarEventWidget.qml`. The widget now requires `toggleEventStatus()` to succeed before changing the local status or node attributes; missing records and Core failures leave the prior status intact and show contextual feedback. Runtime persistence is unverified.
+
+## QT-NOTES-020: Calendar record color overrides widget color
+
+- **Severity:** Medium; changing an event's agenda color can unexpectedly restyle the note widget even though React stores widget color as a separate node attribute.
+- **Evidence:** Qt `syncFromCore()` previously copied `CalendarEvent.color` into `eventColor`, the same property used for the widget's `data-color`. React's widget styling reads the node attribute and keeps it independent from the agenda record color.
+- **Required fix:** Keep the note widget color sourced from its serialized node attributes; do not replace it with the linked event's color during Core synchronization.
+- **Acceptance:** A default widget remains the default purple after Core refresh; custom widget colors survive refresh, save/reopen and React round-trip independently of event record color.
+- **Fix status:** Source fix applied in `CalendarEventWidget.qml`. Core refresh now changes event title/date/status without copying the calendar record color into the independent note widget color; the popover stores its color in the node attribute. Visual comparison and persistence round-trip are unverified.
+
+## QT-NOTES-021: Removing an event widget bypasses React's confirmation and expiry rules
+
+- **Severity:** High; one path can delete an agenda record without confirmation, including an expired event.
+- **Evidence:** Qt's hover remove button and the `NotesBlockHandle` block menu removed the node directly, while the popover delete action immediately called `deleteCalendarEvent()` and removed the node. React opens `CalendarEventDeleteModal` and avoids deleting an expired agenda event when removing its widget.
+- **Reproduction:** Use the widget control, popover action, and block handle on a linked future event, an expired event, and a missing event; compare the confirmation and agenda record afterward.
+- **Required fix:** Route every native deletion entry point, including the generic block handle, through one confirmation flow matching React's linked-event title and delete intent. On confirmation, remove the widget and delete only eligible non-expired records; on cancel, retain both. Report Core failures without dropping the linked widget.
+- **Acceptance:** Cancel changes neither record nor note; confirmation matches React for current, expired, and missing records; Core failure leaves a recoverable linked widget.
+- **Fix status:** Source fix applied in `CalendarEventWidget.qml` and `BlockListEditor.qml` with `AppConfirmDialog`. Widget, popover, and generic block-handle removal now share the confirmation path. Cancel keeps both records; confirming removes only the widget for missing/expired events, and removes the linked Core event only for a current event. A failed Core deletion keeps the widget and reports an error. Runtime confirmation, expiry, and error acceptance remain open.
+
+## QT-NOTES-022: Event editing only updates the inline widget
+
+- **Severity:** High; the note could show a changed title/date while the calendar record remained unchanged.
+- **Evidence:** `CalendarEventWidget.qml` previously handled `onEditSaved` by updating only local properties and serialized widget attributes; `SynapseDataController::updateCalendarEvent()` was not called.
+- **Reproduction:** Open an event widget, edit its title or date, save the note, then refresh the calendar or reopen the note.
+- **Root cause:** The native popover's edit form updated the node view but had no persistence path to the linked Core event.
+- **Required fix:** Validate the edited title/date, preserve the event duration and reminders, update the record through the typed controller/Core API, and update the note attributes only after Core succeeds.
+- **Acceptance:** A successful edit appears in both the note and calendar after reload; invalid dates and Core failures leave the previous note and event values intact.
+- **Fix status:** Source fix applied in `CalendarEventWidget.qml`; edits now normalize timestamps, preserve duration/reminders, call `updateCalendarEvent()`, and update widget attributes only after success. Runtime validation and persistence remain unverified.
+
+## QT-NOTES-023: Event popover blocks the entire Notes window
+
+- **Severity:** Medium; event actions dim and block unrelated editor content, unlike the React anchored popover.
+- **Evidence:** `CalendarEventWidgetPopover.qml` was an `Item` stretched across the editor with a full-window dark overlay and a centered card. React `CalendarEventPopover.tsx` uses Floating UI anchored to the event widget, flips/shifts near viewport boundaries, and closes on outside click or Escape.
+- **Reproduction:** Click a linked event widget and try to read or select nearby note text.
+- **Root cause:** The native popover used modal overlay geometry for a lightweight contextual menu.
+- **Required fix:** Use a non-modal native `Popup` anchored to the widget, position it within the application overlay, and close it on Escape or outside click without dimming the note.
+- **Acceptance:** The popup remains adjacent to the widget, stays within window bounds after scrolling/resizing, allows unrelated editor content to remain visible, and restores focus/interaction after closing.
+- **Fix status:** Source fix applied in `CalendarEventWidgetPopover.qml` using a non-modal `Popup`, overlay-relative anchor placement, edge clamping, a short active-only position refresh, outside-click close, and Escape close. Runtime placement, scrolling, and keyboard behavior remain unverified.
+
+## QT-NOTES-024: Event popover cannot open the linked calendar record
+
+- **Severity:** Medium; the note view lacks the direct route to the source event that React provides.
+- **Evidence:** React `CalendarEventWidgetNodeView.tsx::openCalendarModule()` dispatches the active tab to the calendar module, and `CalendarEventPopover.tsx` exposes an “Abrir na Agenda” action. Qt previously had no corresponding route from the event widget through nested Notes editors.
+- **Reproduction:** Open a linked event widget in Qt and compare its actions with React; try to navigate directly to that event in the agenda.
+- **Root cause:** The native event widget is not connected to the Notes editor's app-level module-navigation contract.
+- **Required fix:** Add a native “Open in Agenda” action and route navigation through the Notes/editor host to the active tab's calendar view without adding direct shell-state mutations inside the widget. React switches modules but does not select or scroll to the linked record.
+- **Acceptance:** The action opens the calendar module, works from top-level and nested Notes blocks, and leaves the note and event unchanged.
+- **Fix status:** Source fix applied in `CalendarEventWidgetPopover.qml`, the event delegate/router chain, nested block wrappers, `Editor.qml`, and `PageView.qml`. It uses the existing app-level module navigation signal; runtime navigation and nested-editor acceptance remain open.
+
+## QT-NOTES-025: Event widget lacks hover reorder actions
+
+- **Severity:** Low; block movement exists in the generic handle, but the event widget does not expose the same quick actions as React.
+- **Evidence:** React `CalendarEventWidgetNodeView.tsx` renders hover-only up/down controls and calls `moveBlockUp()`/`moveBlockDown()`. Qt previously exposed move actions only through `NotesBlockHandle`.
+- **Required fix:** Show hover-only move-up/down controls on the native event pill and route them through `BlockListEditor`'s existing block movement operation.
+- **Acceptance:** Both controls move exactly one block, disable or safely no-op at list boundaries, preserve event IDs and other node attributes, and remain usable inside nested editors.
+- **Fix status:** Source fix applied in `CalendarEventWidget.qml`, `BlockDelegateRouter.qml`, and `BlockListEditor.qml`; runtime boundary, nested-editor and visual acceptance remain open.
+
+## QT-NOTES-026: Live events lack React's time-window highlight
+
+- **Severity:** Low; events starting soon or recently started have no distinct live state in the native widget.
+- **Evidence:** React computes `isLive` from the linked event start time and highlights from 15 minutes before until 60 minutes after start, unless completed or missing. Qt previously only compared the calendar day for its expired style and never entered the amber live state.
+- **Required fix:** Use the linked Core start timestamp to derive the same live window, stop highlighting completed/missing events, and keep the clock update native and bounded.
+- **Acceptance:** Verify timestamps just before/at the −15 minute boundary, at start, at +60 minutes, after completion, after record deletion, and after a time-zone transition; the live animation/timer must stop when the delegate is destroyed.
+- **Fix status:** Source fix applied in `CalendarEventWidgetState.qml` and `CalendarEventWidget.qml`. A one-shot timer schedules the next state boundary and the pill uses an amber pulse only while live. Runtime boundary, animation and lifecycle acceptance remain open.
+
+## QT-NOTES-027: Recurring event widget deletion leaves orphaned occurrences
+
+- **Severity:** Medium; deleting a linked widget can leave future events from its series in the agenda with no corresponding note widget.
+- **Evidence:** The Qt `/evento` form supports recurring daily, weekly, monthly, and yearly series. Core marks each generated occurrence with a shared `recurrence_rule`, while the widget's delete path previously called only `deleteCalendarEvent(eventId)` for the first occurrence.
+- **Reproduction:** Create a future recurring event from a note, confirm the widget deletion, and inspect the agenda for the remaining occurrences.
+- **Root cause:** The widget removal flow treated a series-generated event like a standalone calendar record.
+- **Required fix:** When an active linked event has a Core recurrence group, explain and delete the whole series through the existing typed controller/Core API. Keep expired-event behavior consistent with React by removing only the note widget and retaining the agenda data.
+- **Acceptance:** Confirm cancellation leaves all occurrences and the widget unchanged; confirming deletion removes every active occurrence in the group and the widget; failed series deletion preserves the widget; expired linked events retain the series.
+- **Fix status:** Source fix applied in `CalendarEventWidgetState.qml`; confirmation text now names full-series deletion and Core series deletion is used only for active recurring events. Runtime confirmation, failure, expiry and recurrence acceptance remain open.
+
+## QT-NOTES-028: Unlinked event widget cannot be removed
+
+- **Severity:** Low; older or imported event widgets without a Core event ID can become stuck in the note.
+- **Evidence:** React's `deleteWidget()` deletes the linked event only when a record can be resolved, then always removes the note node after confirmation. Qt previously treated an empty event ID as an active linked event and failed deletion when no controller record existed.
+- **Reproduction:** Open a legacy `calendar-event-widget` with no `data-event-id`, use its remove action, and confirm. The widget remains because no calendar record can be deleted.
+- **Root cause:** The native confirmation path did not distinguish an unlinked widget from an existing or missing linked event.
+- **Required fix:** Confirm removal of the note widget without calling Core when the event ID or event record is absent. Continue to show the distinct missing-record message when an ID exists but its record is gone.
+- **Acceptance:** Confirming an unlinked widget removes only that node; cancellation preserves it; no calendar API is called; missing-linked and expired-linked behavior stays unchanged.
+- **Fix status:** Source fix applied in `CalendarEventWidgetState.qml` using explicit linked-record state and a confirmation message for unlinked widgets. Runtime removal and cancellation acceptance remain open.
+
+## QT-NOTES-029: Linked event widgets scan a capped calendar list
+
+- **Severity:** Medium; many linked widgets repeat full-list reads, and events beyond the Core query limit can appear deleted.
+- **Evidence:** `CalendarEventWidgetState.qml::syncFromCore()` previously called `getCalendarEvents()` and linearly scanned its result for each widget. Core `get_calendar_events()` sorts and limits the result to 300 rows, so an event outside that page was reported missing even when it existed.
+- **Reproduction:** Create more than 300 calendar events and link a note widget to an event outside the returned page, or open a note with several linked event widgets and inspect repeated full-list lookups.
+- **Root cause:** The widget used a list API for an identity lookup and had no focused change notification after Qt event mutations.
+- **Required fix:** Add a typed event-by-ID Core/bridge/controller query and a dedicated Qt calendar mutation signal. Widgets should load only their linked record and refresh when relevant Qt calendar mutations succeed.
+- **Acceptance:** An event outside the first 300 records resolves correctly; a note with multiple widgets performs one indexed identity lookup per widget rather than repeated 300-row scans; create/update/status/delete refreshes all visible linked widgets; failed mutations do not emit false refreshes.
+- **Fix status:** Source fix applied through the existing Core ID query, `bridge-qt`, `SynapseDataController`, and `CalendarEventWidgetState.qml`. Build and QML lint acceptance remain pending; runtime scale and synchronization acceptance remain open.
 
 ## Second-pass review
 

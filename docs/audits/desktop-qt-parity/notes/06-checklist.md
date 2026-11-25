@@ -64,6 +64,19 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify setup modal cancellation, validation, successful record creation and returned widget IDs.
 - [ ] Match alarm time (`HH:mm`) and optional-label length constraints; verify incomplete fields cannot create alarms.
 - [ ] Return and serialize the created calendar event ID and page ID into the note widget; verify the widget refreshes status/title/date from Core.
+- [ ] Verify a linked event status toggle updates Core before the widget node and survives reload; failure must leave the prior status intact and visible.
+- [ ] Add and verify React-equivalent event deletion confirmation, including cancellation, missing events, expired events, and Core failure; the agenda record must not be silently deleted.
+- [ ] Verify every event deletion entry point, including the widget control, popover, and generic block handle, uses the same confirmation path.
+- [ ] Verify the new native event popover stays anchored at all editor edges, repositions while scrolling, closes on Escape/outside click, and never blocks unrelated note content.
+- [ ] Verify the native “Abrir na Agenda” popover action opens the calendar module from top-level and nested Notes editors without changing the note or event.
+- [ ] Verify recurring event widget deletion asks clearly, deletes the complete active Core series on confirmation, preserves it on cancellation/failure, and keeps expired-series records when removing the note widget.
+- [ ] Verify a legacy event widget without an event ID can be confirmed and removed without calling calendar persistence; cancellation keeps the node.
+- [ ] Verify linked widgets use the Core event-by-ID query, resolve events outside the 300-row agenda list, and refresh after successful Qt event mutations without repeated full-list scans.
+- [ ] Verify hover move-up/down controls at first/last positions and inside nested block lists; IDs, attributes and undo behavior must remain intact.
+- [ ] Verify live-event highlighting at the exact −15/+60 minute boundaries, completion/missing-record states, time-zone transitions, and delegate destruction.
+- [ ] Verify linked event editing persists title/date through Core, preserves event duration/reminders, and leaves both Core and note unchanged on validation or write failure.
+- [ ] Compare event widget color controls and reminder labels with React; verify widget color survives Core refresh and cross-client save/reopen.
+- [ ] Keep the widget's serialized color independent from the linked calendar event color during refresh and React round-trip.
 - [ ] Match the React event form's tomorrow/14:00 default, title default, event types, reminder choices/defaults, validation, and async submission feedback.
 - [ ] Verify Scrap preflight rejects incomplete protocols, whitespace, and bare-domain prefixes with trailing text; confirm invalid entries stay editable and cause no capture request.
 - [ ] Verify command behavior after undo, redo, save, page switch and reopen.
