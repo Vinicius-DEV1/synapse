@@ -33,28 +33,31 @@ export const BlockquoteToggle = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'div.blockquote-toggle',
+        tag: 'div.blockquote-toggle, div[data-type="blockquote-toggle"]',
         getAttrs: (node) => {
           if (typeof node === 'string') return {};
           const element = node as HTMLElement;
           return {
-            title: element.getAttribute('data-title') || '',
-            isOpen: element.getAttribute('data-is-open') !== 'false',
-            color: element.getAttribute('data-color') || 'default',
+            title: element.getAttribute('data-title') || element.getAttribute('title') || '',
+            isOpen:
+              element.getAttribute('data-is-open') !== 'false' &&
+              element.getAttribute('data-open') !== 'false',
+            color: element.getAttribute('data-color') || element.getAttribute('color') || 'default',
           };
         },
       },
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
         class: 'blockquote-toggle',
-        'data-title': HTMLAttributes.title || '',
-        'data-is-open': HTMLAttributes.isOpen,
-        'data-color': HTMLAttributes.color || 'default',
+        'data-type': 'blockquote-toggle',
+        'data-title': node.attrs.title || HTMLAttributes['data-title'] || '',
+        'data-is-open': String(node.attrs.isOpen !== false),
+        'data-color': node.attrs.color || HTMLAttributes['data-color'] || 'default',
       }),
       0,
     ];

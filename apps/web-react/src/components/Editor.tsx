@@ -49,6 +49,7 @@ function Editor({
 
   const onSaveRef = useRef(onSave);
   const latestContentRef = useRef<{ html: string; crdt: string } | null>(null);
+  const onExternalHtmlReloadRef = useRef<((html: string) => void) | null>(null);
 
   useEffect(() => {
     onSaveRef.current = onSave;
@@ -66,6 +67,7 @@ function Editor({
     initialCrdtState,
     onSaveRef,
     latestContentRef,
+    onExternalHtmlReloadRef,
     instanceId,
     isActive,
   });
@@ -207,6 +209,12 @@ function Editor({
 
   useEffect(() => {
     editorRef.current = editor;
+    onExternalHtmlReloadRef.current = (nextHtml: string) => {
+      if (!editor || editor.isDestroyed) return;
+      if (editor.getHTML() !== nextHtml) {
+        editor.commands.setContent(nextHtml, { emitUpdate: false });
+      }
+    };
   }, [editor]);
 
   // Cell validation: applies visual CSS classes for typed columns (number, date, select, checkbox)

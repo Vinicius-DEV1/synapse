@@ -60,11 +60,20 @@ export const ScrapWidgetBlock = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div.scrap-widget-block' }];
+    return [
+      { tag: 'div.scrap-widget-block' },
+      { tag: 'div[data-type="scrap-widget"]' },
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { class: 'scrap-widget-block' })];
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, {
+        class: 'scrap-widget-block',
+        'data-type': 'scrap-widget',
+      }),
+    ];
   },
 
   addNodeView() {

@@ -145,7 +145,12 @@ pub async fn notes_get_page_content(
         // Decrypt on-the-fly after releasing the pooled reader connection
         if let (Some(enc), Some(key)) = (&content.encrypted_content, &notes_key) {
             if let Ok(decrypted) = crate::crypto::decrypt_content(key, enc) {
-                content.content = decrypted;
+                content.content = match &content.crdt_state {
+                    Some(crdt) if !crdt.is_empty() => {
+                        synapse_core::domain::notes::hydrate_html_from_crdt(&decrypted, crdt)
+                    }
+                    _ => decrypted,
+                };
             }
         }
 

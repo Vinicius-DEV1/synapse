@@ -12,11 +12,20 @@ interface UseEditorSyncProps {
   initialCrdtState?: string | null;
   onSaveRef: MutableRefObject<EditorSaveCallback>;
   latestContentRef: MutableRefObject<{ html: string; crdt: string } | null>;
+  onExternalHtmlReloadRef?: MutableRefObject<((html: string) => void) | null>;
   instanceId?: string;
   isActive?: boolean;
 }
 
-export function useEditorSync({ pageId, initialCrdtState, latestContentRef, instanceId, isActive = true }: UseEditorSyncProps) {
+export function useEditorSync({
+  pageId,
+  initialCrdtState,
+  onSaveRef,
+  latestContentRef,
+  onExternalHtmlReloadRef,
+  instanceId,
+  isActive = true,
+}: UseEditorSyncProps) {
   const hasMeaningfulCrdt = !!initialCrdtState && initialCrdtState.length > 8;
 
   // Track if CRDT application failed so Editor can fall back to HTML
@@ -127,10 +136,18 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
 
             const remoteCrdt = pageData.crdt_state;
             // If the database row has no CRDT state, it was updated externally (e.g. by native Qt).
-            // Clear any stale in-memory CRDT backup so it does not overwrite the newer HTML.
+            // Clear any stale in-memory CRDT backup and reload the live editor if HTML changed.
             if (!remoteCrdt || remoteCrdt.length <= 8) {
               getEditorBackupMap().delete(pageId);
               lastAppliedCrdtRef.current = null;
+              if (
+                typeof pageData.content === 'string' &&
+                pageData.content !== latestContentRef.current?.html &&
+                onExternalHtmlReloadRef?.current
+              ) {
+                latestContentRef.current = { html: pageData.content, crdt: '' };
+                onExternalHtmlReloadRef.current(pageData.content);
+              }
               return;
             }
 
@@ -182,10 +199,15 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
     };
   }, [pageId, isActive, latestContentRef]);
 
-  // 4. Destroy Y.Doc on unmount after synchronous editor flush completes
+  // 4. Flush any unpersisted latest snapshot and destroy Y.Doc on unmount
   useEffect(() => {
     const docInstance = ydocRef.current;
     return () => {
+      const latest = latestContentRef.current;
+      if (latest && latest.crdt && latest.crdt !== lastAppliedCrdtRef.current) {
+        onSaveRef.current(latest.html, latest.crdt, [], instanceId);
+        lastAppliedCrdtRef.current = latest.crdt;
+      }
       queueMicrotask(() => {
         try {
           docInstance.destroy();
@@ -194,7 +216,7 @@ export function useEditorSync({ pageId, initialCrdtState, latestContentRef, inst
         }
       });
     };
-  }, []);
+  }, [latestContentRef, onSaveRef, instanceId]);
 
   // Signal CRDT failure on first render so Editor can fall back to HTML
   useEffect(() => {

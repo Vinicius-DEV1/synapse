@@ -107,11 +107,20 @@ export const LinkPreviewBlock = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div.link-preview-block' }];
+    return [
+      { tag: 'div.link-preview-block' },
+      { tag: 'div[data-type="link-preview"]' },
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { class: 'link-preview-block' })];
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, {
+        class: 'link-preview-block',
+        'data-type': 'link-preview',
+      }),
+    ];
   },
 
   addNodeView() {

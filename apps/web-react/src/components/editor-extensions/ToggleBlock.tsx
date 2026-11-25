@@ -14,36 +14,45 @@ export const ToggleBlock = Node.create({
     return {
       title: { 
         default: '',
-        parseHTML: (element) => element.getAttribute('data-title') || '',
+        parseHTML: (element) => element.getAttribute('data-title') || element.getAttribute('title') || '',
         renderHTML: (attributes) => ({ 'data-title': attributes.title || '' }),
       },
-      isOpen: { default: true },
+      isOpen: {
+        default: true,
+        parseHTML: (element) =>
+          element.getAttribute('data-is-open') !== 'false' &&
+          element.getAttribute('data-open') !== 'false',
+        renderHTML: (attributes) => ({ 'data-is-open': String(attributes.isOpen !== false) }),
+      },
     };
   },
 
   parseHTML() {
     return [
       {
-        tag: 'div.toggle-block',
+        tag: 'div.toggle-block, div[data-type="toggle-block"]',
         getAttrs: (node) => {
           if (typeof node === 'string') return {};
           const element = node as HTMLElement;
           return {
-            title: element.getAttribute('data-title') || '',
-            isOpen: element.getAttribute('data-is-open') !== 'false',
+            title: element.getAttribute('data-title') || element.getAttribute('title') || '',
+            isOpen:
+              element.getAttribute('data-is-open') !== 'false' &&
+              element.getAttribute('data-open') !== 'false',
           };
         },
       },
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
         class: 'toggle-block',
-        'data-title': HTMLAttributes.title || '',
-        'data-is-open': HTMLAttributes.isOpen,
+        'data-type': 'toggle-block',
+        'data-title': node.attrs.title || HTMLAttributes['data-title'] || '',
+        'data-is-open': String(node.attrs.isOpen !== false),
       }),
       0,
     ];

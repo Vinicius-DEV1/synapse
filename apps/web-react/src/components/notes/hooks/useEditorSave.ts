@@ -5,6 +5,7 @@ import * as Y from 'yjs';
 import { Editor } from '@tiptap/core';
 import { getEditorBackupMap } from './editorBackupStore';
 import { triggerToast } from '../../ui/ToastContext';
+import { canonicalizeNoteHtmlForPersistence } from '../utils/canonicalNoteHtml';
 
 export type EditorSaveCallback = (
   content: string,
@@ -56,7 +57,7 @@ export function useEditorSave({
       const editor = editorRef.current;
       if (editor.isDestroyed) return;
 
-      const html = editor.getHTML();
+      const html = canonicalizeNoteHtmlForPersistence(editor.getHTML());
       if (lastSavedHtmlRef.current === html) {
         hasPendingChangesRef.current = false;
         return;
