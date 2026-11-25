@@ -275,3 +275,49 @@ bool SynapseDataController::deleteAlarm(const QString &alarmId) {
     const int ret = synapse_focus_delete_alarm(m_db, alarmId.trimmed().toUtf8().constData());
     return ret == 1;
 }
+
+void SynapseDataController::startFocusTimer(int minutes, const QString &tag, const QString &description) {
+    const int clamped = qBound(1, minutes, 240);
+    m_focusTotalSeconds = clamped * 60;
+    m_focusRemainingSeconds = m_focusTotalSeconds;
+    m_focusTag = tag.trimmed().isEmpty() ? QStringLiteral("Estudo") : tag.trimmed();
+    m_focusDescription = description.trimmed().isEmpty() ? QStringLiteral("Sessão de foco") : description.trimmed();
+    m_focusRunning = true;
+    if (m_focusTimer) m_focusTimer->start();
+    emit focusTimerStateChanged();
+}
+
+void SynapseDataController::toggleFocusTimer() {
+    m_focusRunning = !m_focusRunning;
+    if (m_focusTimer) {
+        if (m_focusRunning) m_focusTimer->start();
+        else m_focusTimer->stop();
+    }
+    emit focusTimerStateChanged();
+}
+
+void SynapseDataController::addFocusMinutes(int deltaMinutes) {
+    const int delta = deltaMinutes * 60;
+    m_focusTotalSeconds = qMax(60, m_focusTotalSeconds + delta);
+    m_focusRemainingSeconds = qMax(0, m_focusRemainingSeconds + delta);
+    emit focusTimerStateChanged();
+}
+
+void SynapseDataController::resetFocusTimer() {
+    m_focusRunning = false;
+    if (m_focusTimer) m_focusTimer->stop();
+    m_focusRemainingSeconds = m_focusTotalSeconds;
+    emit focusTimerStateChanged();
+}
+
+void SynapseDataController::stopFocusTimer(bool completed) {
+    m_focusRunning = false;
+    if (m_focusTimer) m_focusTimer->stop();
+    if (completed) {
+        const int elapsedMins = qMax(1, (m_focusTotalSeconds - m_focusRemainingSeconds) / 60);
+        recordFocusSession(m_focusTag, elapsedMins, QStringLiteral("completed"),
+                           QStringLiteral("Sessão concluída"), m_focusDescription);
+    }
+    m_focusRemainingSeconds = m_focusTotalSeconds;
+    emit focusTimerStateChanged();
+}

@@ -7,11 +7,15 @@ Rectangle {
     color: "#0f0e17" // bg-dark-bg
 
     property string currentTab: "dashboard" // "dashboard", "timer", "stats", "lofi", "alarms"
-    property int totalSeconds: 25 * 60
-    property int remainingSeconds: 25 * 60
-    property bool isRunning: false
-    property string activeTag: "Estudo"
-    property string activeDescription: "Sessão de foco"
+    property int totalSeconds: (typeof dataController !== "undefined" && dataController && dataController.focusTotalSeconds > 0)
+        ? dataController.focusTotalSeconds : (25 * 60)
+    property int remainingSeconds: (typeof dataController !== "undefined" && dataController && dataController.focusRemainingSeconds > 0)
+        ? dataController.focusRemainingSeconds : (25 * 60)
+    property bool isRunning: (typeof dataController !== "undefined" && dataController) ? dataController.focusRunning : false
+    property string activeTag: (typeof dataController !== "undefined" && dataController && dataController.focusTag.length > 0)
+        ? dataController.focusTag : "Estudo"
+    property string activeDescription: (typeof dataController !== "undefined" && dataController && dataController.focusDescription.length > 0)
+        ? dataController.focusDescription : "Sessão de foco"
     property var lofis: []
     property var focusSessions: []
     property var alarms: []
@@ -44,44 +48,53 @@ Rectangle {
     }
 
     function setPreset(minutes) {
+        if (typeof dataController !== "undefined" && dataController && typeof dataController.stopFocusTimer === "function") {
+            dataController.stopFocusTimer(false)
+        }
         isRunning = false
-        timer.stop()
         totalSeconds = minutes * 60
         remainingSeconds = totalSeconds
     }
 
     function toggleTimer() {
-        isRunning = !isRunning
-        if (isRunning) {
-            timer.start()
-            currentTab = "timer"
-        } else {
-            timer.stop()
+        if (typeof dataController !== "undefined" && dataController &&
+                typeof dataController.startFocusTimer === "function" &&
+                typeof dataController.toggleFocusTimer === "function") {
+            if (!dataController.focusRunning && dataController.focusRemainingSeconds <= 0) {
+                dataController.startFocusTimer(Math.max(1, Math.round(totalSeconds / 60)), activeTag, activeDescription)
+            } else if (!dataController.focusRunning && dataController.focusTag !== activeTag) {
+                dataController.startFocusTimer(Math.max(1, Math.round(totalSeconds / 60)), activeTag, activeDescription)
+            } else {
+                dataController.toggleFocusTimer()
+            }
+            if (dataController.focusRunning) currentTab = "timer"
+            return
         }
+        isRunning = !isRunning
+        if (isRunning) currentTab = "timer"
     }
 
     function resetTimer() {
+        if (typeof dataController !== "undefined" && dataController && typeof dataController.resetFocusTimer === "function") {
+            dataController.resetFocusTimer()
+        }
         isRunning = false
-        timer.stop()
         remainingSeconds = totalSeconds
         currentTab = "dashboard"
     }
 
-    Timer {
-        id: timer
-        interval: 1000
-        repeat: true
-        onTriggered: {
-            if (focusRoot.remainingSeconds > 0) {
-                focusRoot.remainingSeconds--
-            } else {
-                focusRoot.isRunning = false
-                timer.stop()
-                dataController.recordFocusSession(focusRoot.activeTag, Math.floor(focusRoot.totalSeconds / 60), "completed", "Sessão de foco concluída", focusRoot.activeDescription)
-                focusRoot.refreshData()
-                focusRoot.currentTab = "dashboard"
-                focusRoot.isSessionCompletedModalOpen = true
-            }
+    Connections {
+        target: typeof dataController !== "undefined" ? dataController : null
+        ignoreUnknownSignals: true
+        function onFocusTimerStateChanged() {
+            focusRoot.isRunning = dataController.focusRunning
+            if (dataController.focusTotalSeconds > 0) focusRoot.totalSeconds = dataController.focusTotalSeconds
+            if (dataController.focusRemainingSeconds >= 0) focusRoot.remainingSeconds = dataController.focusRemainingSeconds
+        }
+        function onFocusTimerCompleted() {
+            focusRoot.refreshData()
+            focusRoot.currentTab = "dashboard"
+            focusRoot.isSessionCompletedModalOpen = true
         }
     }
 
