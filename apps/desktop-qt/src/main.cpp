@@ -1,4 +1,5 @@
 #include <QtGui/QGuiApplication>
+#include <QtGui/QIcon>
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/QQmlContext>
 #include <QtCore/QStandardPaths>
@@ -27,6 +28,15 @@ int main(int argc, char *argv[]) {
     app.setOrganizationName("Synapse");
     app.setApplicationName("Synapse Desktop");
     app.setApplicationVersion("2.0.0");
+    app.setDesktopFileName("synapse-desktop");
+
+    QIcon appIcon;
+    appIcon.addFile(QStringLiteral(":/icons/32x32.png"));
+    appIcon.addFile(QStringLiteral(":/icons/64x64.png"));
+    appIcon.addFile(QStringLiteral(":/icons/128x128.png"));
+    appIcon.addFile(QStringLiteral(":/icons/128x128@2x.png"));
+    appIcon.addFile(QStringLiteral(":/icons/icon.png"));
+    app.setWindowIcon(appIcon);
 
     // Allow isolated native UI checks to use a temporary database without touching user data.
     const QString configuredDatabasePath = qEnvironmentVariable("SYNAPSE_DATABASE_PATH").trimmed();

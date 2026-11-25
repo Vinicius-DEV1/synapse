@@ -43,6 +43,7 @@ ApplicationWindow {
 
     VaultUnlockScreen {
         anchors.fill: parent
+        windowRoot: appWindow
         visible: dataController.isVaultConfigured && !dataController.isVaultUnlocked
         z: 20
     }

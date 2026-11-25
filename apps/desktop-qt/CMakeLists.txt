@@ -22,6 +22,7 @@ else()
 endif()
 
 add_executable(synapse-desktop
+    resources/app_icons.qrc
     src/main.cpp
     src/synapse_controller.cpp
     src/synapse_controller.h

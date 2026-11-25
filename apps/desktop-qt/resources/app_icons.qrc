@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="32x32.png">../../web-react/src-tauri/icons/32x32.png</file>
+        <file alias="64x64.png">../../web-react/src-tauri/icons/64x64.png</file>
+        <file alias="128x128.png">../../web-react/src-tauri/icons/128x128.png</file>
+        <file alias="128x128@2x.png">../../web-react/src-tauri/icons/128x128@2x.png</file>
+        <file alias="icon.png">../../web-react/src-tauri/icons/icon.png</file>
+    </qresource>
+</RCC>

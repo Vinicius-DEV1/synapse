@@ -404,6 +404,154 @@ Canvas {
             line([10, 14, 21, 3])
             line([18, 13, 18, 20, 4, 20, 4, 6, 11, 6])
             break
+        case "play":
+            ctx.beginPath()
+            ctx.moveTo(6, 4)
+            ctx.lineTo(20, 12)
+            ctx.lineTo(6, 20)
+            ctx.closePath()
+            ctx.stroke()
+            break
+        case "pause":
+            rect(6, 4, 4, 16, 1)
+            rect(14, 4, 4, 16, 1)
+            break
+        case "check-circle":
+            circle(12, 12, 9)
+            line([8.5, 12.5, 11, 15, 16, 9.5])
+            break
+        case "flame":
+            ctx.beginPath()
+            ctx.moveTo(12, 3)
+            ctx.bezierCurveTo(13, 7, 18, 8.5, 18, 14)
+            ctx.bezierCurveTo(18, 18, 15.3, 21, 12, 21)
+            ctx.bezierCurveTo(8.7, 21, 6, 18, 6, 14)
+            ctx.bezierCurveTo(6, 10.5, 8.5, 8.5, 9.5, 6.5)
+            ctx.bezierCurveTo(10, 8.5, 11, 9, 12, 3)
+            ctx.closePath()
+            ctx.stroke()
+            break
+        case "activity":
+        case "analytics":
+            line([22, 12, 18, 12, 15, 21, 9, 3, 6, 12, 2, 12])
+            break
+        case "layers":
+            line([12, 2, 2, 7, 12, 12, 22, 7, 12, 2])
+            line([2, 12, 12, 17, 22, 12])
+            line([2, 17, 12, 22, 22, 17])
+            break
+        case "globe":
+            circle(12, 12, 9)
+            line([3, 12, 21, 12])
+            ctx.beginPath()
+            ctx.ellipse(8.5, 3, 7, 18)
+            ctx.stroke()
+            break
+        case "book-open":
+            ctx.beginPath()
+            ctx.moveTo(2, 4)
+            ctx.lineTo(8, 4)
+            ctx.quadraticCurveTo(12, 4, 12, 8)
+            ctx.lineTo(12, 20)
+            ctx.quadraticCurveTo(12, 17, 8, 17)
+            ctx.lineTo(2, 17)
+            ctx.closePath()
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(22, 4)
+            ctx.lineTo(16, 4)
+            ctx.quadraticCurveTo(12, 4, 12, 8)
+            ctx.lineTo(12, 20)
+            ctx.quadraticCurveTo(12, 17, 16, 17)
+            ctx.lineTo(22, 17)
+            ctx.closePath()
+            ctx.stroke()
+            break
+        case "film":
+            rect(3, 3, 18, 18, 2)
+            line([7, 3, 7, 21])
+            line([17, 3, 17, 21])
+            line([3, 12, 21, 12])
+            line([3, 7, 7, 7])
+            line([3, 17, 7, 17])
+            line([17, 7, 21, 7])
+            line([17, 17, 21, 17])
+            break
+        case "file-text":
+            line([14, 2, 6, 2, 4, 4, 4, 20, 6, 22, 18, 22, 20, 20, 20, 8, 14, 2])
+            line([14, 2, 14, 8, 20, 8])
+            line([8, 13, 16, 13])
+            line([8, 17, 16, 17])
+            line([8, 9, 10, 9])
+            break
+        case "tag":
+            line([12, 2, 2, 2, 2, 12, 12, 22, 22, 12, 12, 2])
+            circle(7, 7, 1.2)
+            break
+        case "hourglass":
+            line([5, 2, 19, 2])
+            line([5, 22, 19, 22])
+            line([6, 2, 6, 7, 12, 12, 6, 17, 6, 22])
+            line([18, 2, 18, 7, 12, 12, 18, 17, 18, 22])
+            break
+        case "list-video":
+            line([12, 12, 3, 12])
+            line([16, 6, 3, 6])
+            line([12, 18, 3, 18])
+            ctx.beginPath()
+            ctx.moveTo(16, 12)
+            ctx.lineTo(21, 15)
+            ctx.lineTo(16, 18)
+            ctx.closePath()
+            ctx.stroke()
+            break
+        case "list-tree":
+            line([9, 6, 20, 6])
+            line([13, 12, 20, 12])
+            line([13, 18, 20, 18])
+            line([5, 6, 5, 18, 9, 18])
+            line([5, 12, 9, 12])
+            break
+        case "arrow-up":
+            line([12, 19, 12, 5])
+            line([6, 11, 12, 5, 18, 11])
+            break
+        case "arrow-down":
+            line([12, 5, 12, 19])
+            line([6, 13, 12, 19, 18, 13])
+            break
+        case "link":
+            ctx.beginPath()
+            ctx.arc(9, 12, 4, Math.PI * 0.5, Math.PI * 1.5, false)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(15, 12, 4, Math.PI * 1.5, Math.PI * 0.5, false)
+            ctx.stroke()
+            line([8, 12, 16, 12])
+            break
+        case "maximize":
+            line([15, 3, 21, 3, 21, 9])
+            line([9, 21, 3, 21, 3, 15])
+            line([21, 3, 14, 10])
+            line([3, 21, 10, 14])
+            break
+        case "quote":
+            rect(4, 7, 6, 6, 1.5)
+            line([10, 13, 8, 18])
+            rect(14, 7, 6, 6, 1.5)
+            line([20, 13, 18, 18])
+            break
+        case "minus":
+            line([4, 12, 20, 12])
+            break
+        case "list":
+            line([8, 6, 21, 6])
+            line([8, 12, 21, 12])
+            line([8, 18, 21, 18])
+            circle(4, 6, 1)
+            circle(4, 12, 1)
+            circle(4, 18, 1)
+            break
         default:
             circle(12, 12, 8)
         }
