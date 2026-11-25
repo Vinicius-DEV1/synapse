@@ -1,5 +1,4 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 
 Item {
     id: modalsHost
@@ -285,6 +284,8 @@ Item {
     NotesSetupWidgetsModal {
         id: setupWidgetsModal
         controller: modalsHost.controller
+        pageId: modalsHost.selectedPageId
+        pageTitle: modalsHost.activeTitle
         onInsertWidgetRequested: function(html) { modalsHost.insertWidgetRequested(html) }
     }
 

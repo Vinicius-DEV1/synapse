@@ -92,9 +92,14 @@ pub fn create_calendar_event_with_reminders(
     } else {
         "#3b82f6"
     };
-    let resolved_type = match event_type {
+    let resolved_type = match event_type.trim() {
         "task" => "task",
         "reminder" => "reminder",
+        "mentoria" => "mentoria",
+        "reuniao" => "reuniao",
+        "aula" => "aula",
+        "estudo" => "estudo",
+        "geral" => "geral",
         _ => "event",
     };
     let reminders = normalize_reminders(reminders)?;
@@ -207,6 +212,11 @@ pub fn update_calendar_event_with_reminders(
             let event_type = match event_type {
                 "task" => "task",
                 "reminder" => "reminder",
+                "mentoria" => "mentoria",
+                "reuniao" => "reuniao",
+                "aula" => "aula",
+                "estudo" => "estudo",
+                "geral" => "geral",
                 _ => "event",
             };
             conn.execute(

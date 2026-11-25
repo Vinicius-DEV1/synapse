@@ -16,6 +16,16 @@ QVariantList SynapseDataController::getCalendarEvents() {
     return doc.array().toVariantList();
 }
 
+QVariantMap SynapseDataController::getCalendarEvent(const QString &eventId) {
+    if (!m_db || eventId.trimmed().isEmpty()) return {};
+    char *jsonStr = synapse_calendar_get_event_by_id(m_db, eventId.trimmed().toUtf8().constData());
+    if (!jsonStr) return {};
+
+    const QJsonDocument document = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+    return document.isObject() ? document.object().toVariantMap() : QVariantMap{};
+}
+
 bool SynapseDataController::createCalendarEvent(const QString &title, const QString &description,
                                                 const QString &startDate, const QString &endDate,
                                                 const QString &type, const QString &color,
@@ -53,6 +63,7 @@ bool SynapseDataController::createCalendarEvent(const QString &title, const QStr
 
     if (ret == 1) {
         refreshStats();
+        emit calendarEventsChanged();
         return true;
     }
     return false;
@@ -95,6 +106,7 @@ bool SynapseDataController::updateCalendarEvent(const QString &eventId, const QS
 
     if (ret == 1) {
         refreshStats();
+        emit calendarEventsChanged();
         return true;
     }
     return false;
@@ -103,6 +115,7 @@ bool SynapseDataController::updateCalendarEvent(const QString &eventId, const QS
 bool SynapseDataController::toggleEventStatus(const QString &eventId) {
     if (!m_db || eventId.trimmed().isEmpty()) return false;
     const int ret = synapse_calendar_toggle_status(m_db, eventId.trimmed().toUtf8().constData());
+    if (ret == 1) emit calendarEventsChanged();
     return ret == 1;
 }
 
@@ -111,6 +124,7 @@ bool SynapseDataController::deleteCalendarEvent(const QString &eventId) {
     const int ret = synapse_calendar_delete_event(m_db, eventId.trimmed().toUtf8().constData());
     if (ret == 1) {
         refreshStats();
+        emit calendarEventsChanged();
         return true;
     }
     return false;
@@ -121,6 +135,7 @@ bool SynapseDataController::deleteCalendarEventSeries(const QString &eventId) {
     const int ret = synapse_calendar_delete_event_series(m_db, eventId.trimmed().toUtf8().constData());
     if (ret >= 1) {
         refreshStats();
+        emit calendarEventsChanged();
         return true;
     }
     return false;

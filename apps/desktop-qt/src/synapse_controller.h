@@ -178,6 +178,11 @@ public:
     Q_INVOKABLE QVariantList findDuplicateNoteLinks(const QString &url, const QString &excludePageId = "");
     Q_INVOKABLE QVariantMap splitRichHtml(const QString &html, int textOffset);
     Q_INVOKABLE QVariantList computeEqualNoteColumnWidths(int columnCount);
+    Q_INVOKABLE QVariantMap createNoteCalendarEvent(const QString &title, const QString &description,
+                                                    const QString &startDate, const QString &endDate,
+                                                    const QString &type, const QString &color,
+                                                    const QString &pageId, const QVariantList &reminders,
+                                                    const QString &recurrence = "none");
     Q_INVOKABLE QVariantList parseTableColumns(const QString &tableHtml);
     Q_INVOKABLE QVariantList parseTableColumnsAt(const QString &noteHtml, int tableIndex);
     Q_INVOKABLE QString updateTableColumnSchemaAt(const QString &noteHtml, int tableIndex,
@@ -313,6 +318,7 @@ public:
 
     // 7. Calendário & Agenda
     Q_INVOKABLE QVariantList getCalendarEvents();
+    Q_INVOKABLE QVariantMap getCalendarEvent(const QString &eventId);
     Q_INVOKABLE bool createCalendarEvent(const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &type = "event", const QString &color = "#3b82f6", const QString &pageId = "", const QVariantList &reminders = {}, const QString &recurrence = "none");
     Q_INVOKABLE bool updateCalendarEvent(const QString &eventId, const QString &title, const QString &description, const QString &startDate, const QString &endDate, const QString &color, const QString &type = "", const QString &pageId = "", const QVariantList &reminders = {});
     Q_INVOKABLE bool toggleEventStatus(const QString &eventId);
@@ -543,6 +549,7 @@ signals:
     void webScrapCaptured(const QString &requestId, const QVariantMap &result);
     void focusTimerStateChanged();
     void focusTimerCompleted(const QString &tag, const QString &description, int minutes);
+    void calendarEventsChanged();
 
 private:
     void startNotesRichImageOperation(std::function<QVariantMap()> operation,

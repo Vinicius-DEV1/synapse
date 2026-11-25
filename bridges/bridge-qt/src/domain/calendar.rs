@@ -18,6 +18,28 @@ pub unsafe extern "C" fn synapse_calendar_get_events(db: *mut Database) -> *mut 
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_calendar_get_event_by_id(
+    db: *mut Database,
+    event_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || event_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let event_id = match to_opt_str(event_id) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => return std::ptr::null_mut(),
+    };
+    match CalendarRepository::get_event(&*db, event_id) {
+        Ok(Some(event)) => json_to_c_char(&event),
+        Ok(None) => json_to_c_char(&serde_json::json!({ "found": false })),
+        Err(error) => {
+            eprintln!("[Synapse Bridge] get_calendar_event_by_id failed: {error}");
+            json_to_c_char(&serde_json::json!({ "error": error.to_string() }))
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_calendar_create_event(
     db: *mut Database,
     title: *const c_char,
@@ -48,7 +70,9 @@ pub unsafe extern "C" fn synapse_calendar_create_event(
     let color_str = to_opt_str(color).unwrap_or("#3b82f6");
     let page_str = to_opt_str(page_id);
 
-    match CalendarRepository::create_event(&*db, title_str, desc_str, start_str, end_str, type_str, color_str, page_str) {
+    match CalendarRepository::create_event(
+        &*db, title_str, desc_str, start_str, end_str, type_str, color_str, page_str,
+    ) {
         Ok(Some(_)) => 1,
         Ok(None) => 0,
         Err(e) => {
@@ -106,18 +130,16 @@ pub unsafe extern "C" fn synapse_calendar_create_event_with_options(
 
     if rec_str != "none" && !rec_str.is_empty() {
         match CalendarRepository::create_event_series(
-            &*db,
-            title_str,
-            desc_str,
-            start_str,
-            end_str,
-            type_str,
-            color_str,
-            page_str,
-            &reminders,
-            rec_str,
+            &*db, title_str, desc_str, start_str, end_str, type_str, color_str, page_str,
+            &reminders, rec_str,
         ) {
-            Ok(events) => if !events.is_empty() { 1 } else { 0 },
+            Ok(events) => {
+                if !events.is_empty() {
+                    1
+                } else {
+                    0
+                }
+            }
             Err(e) => {
                 eprintln!("[Synapse Bridge] create_event_series failed: {}", e);
                 -1
@@ -125,14 +147,7 @@ pub unsafe extern "C" fn synapse_calendar_create_event_with_options(
         }
     } else {
         match CalendarRepository::create_event_with_reminders(
-            &*db,
-            title_str,
-            desc_str,
-            start_str,
-            end_str,
-            type_str,
-            color_str,
-            page_str,
+            &*db, title_str, desc_str, start_str, end_str, type_str, color_str, page_str,
             &reminders,
         ) {
             Ok(Some(_)) => 1,
@@ -141,6 +156,64 @@ pub unsafe extern "C" fn synapse_calendar_create_event_with_options(
                 eprintln!("[Synapse Bridge] create_event_with_reminders failed: {}", e);
                 -1
             }
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_calendar_create_event_with_options_result(
+    db: *mut Database,
+    title: *const c_char,
+    description: *const c_char,
+    start_date: *const c_char,
+    end_date: *const c_char,
+    event_type: *const c_char,
+    color: *const c_char,
+    page_id: *const c_char,
+    reminders_json: *const c_char,
+    recurrence: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || title.is_null() || start_date.is_null() || end_date.is_null() {
+        return std::ptr::null_mut();
+    }
+    let title_str = match to_opt_str(title) {
+        Some(value) => value,
+        None => return std::ptr::null_mut(),
+    };
+    let start_str = match to_opt_str(start_date) {
+        Some(value) => value,
+        None => return std::ptr::null_mut(),
+    };
+    let end_str = match to_opt_str(end_date) {
+        Some(value) => value,
+        None => return std::ptr::null_mut(),
+    };
+    let desc_str = to_opt_str(description).unwrap_or("");
+    let type_str = to_opt_str(event_type).unwrap_or("event");
+    let color_str = to_opt_str(color).unwrap_or("#3b82f6");
+    let page_str = to_opt_str(page_id);
+    let reminders = parse_reminders_json(reminders_json);
+    let rec_str = to_opt_str(recurrence).unwrap_or("none");
+
+    let created = if rec_str != "none" && !rec_str.is_empty() {
+        CalendarRepository::create_event_series(
+            &*db, title_str, desc_str, start_str, end_str, type_str, color_str, page_str,
+            &reminders, rec_str,
+        )
+        .map(|events| events.into_iter().next())
+    } else {
+        CalendarRepository::create_event_with_reminders(
+            &*db, title_str, desc_str, start_str, end_str, type_str, color_str, page_str,
+            &reminders,
+        )
+    };
+
+    match created {
+        Ok(Some(event)) => json_to_c_char(&event),
+        Ok(None) => json_to_c_char(&serde_json::Value::Null),
+        Err(error) => {
+            eprintln!("[Synapse Bridge] create_calendar_event_with_options_result failed: {error}");
+            json_to_c_char(&serde_json::json!({ "error": error.to_string() }))
         }
     }
 }
@@ -157,7 +230,13 @@ pub unsafe extern "C" fn synapse_calendar_update_event(
     event_type: *const c_char,
     page_id: *const c_char,
 ) -> c_int {
-    if db.is_null() || event_id.is_null() || title.is_null() || start_date.is_null() || end_date.is_null() || color.is_null() {
+    if db.is_null()
+        || event_id.is_null()
+        || title.is_null()
+        || start_date.is_null()
+        || end_date.is_null()
+        || color.is_null()
+    {
         return -1;
     }
     let id_str = match to_opt_str(event_id) {
@@ -184,7 +263,9 @@ pub unsafe extern "C" fn synapse_calendar_update_event(
     let type_str = to_opt_str(event_type);
     let page_str = to_opt_str(page_id);
 
-    match CalendarRepository::update_event(&*db, id_str, title_str, desc_str, start_str, end_str, color_str, type_str, page_str) {
+    match CalendarRepository::update_event(
+        &*db, id_str, title_str, desc_str, start_str, end_str, color_str, type_str, page_str,
+    ) {
         Ok(true) => 1,
         Ok(false) => 0,
         Err(e) => {
@@ -207,7 +288,13 @@ pub unsafe extern "C" fn synapse_calendar_update_event_with_options(
     page_id: *const c_char,
     reminders_json: *const c_char,
 ) -> c_int {
-    if db.is_null() || event_id.is_null() || title.is_null() || start_date.is_null() || end_date.is_null() || color.is_null() {
+    if db.is_null()
+        || event_id.is_null()
+        || title.is_null()
+        || start_date.is_null()
+        || end_date.is_null()
+        || color.is_null()
+    {
         return -1;
     }
     let id_str = match to_opt_str(event_id) {
@@ -236,15 +323,7 @@ pub unsafe extern "C" fn synapse_calendar_update_event_with_options(
     let reminders = parse_reminders_json(reminders_json);
 
     match CalendarRepository::update_event_with_reminders(
-        &*db,
-        id_str,
-        title_str,
-        desc_str,
-        start_str,
-        end_str,
-        color_str,
-        type_str,
-        page_str,
+        &*db, id_str, title_str, desc_str, start_str, end_str, color_str, type_str, page_str,
         &reminders,
     ) {
         Ok(true) => 1,

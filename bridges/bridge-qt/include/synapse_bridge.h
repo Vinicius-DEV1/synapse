@@ -159,9 +159,11 @@ int synapse_culture_delete_episode(Database* db, const char* episode_id);
 
 // Domain APIs: Calendar
 char* synapse_calendar_get_events(Database* db);
+char* synapse_calendar_get_event_by_id(Database* db, const char* event_id);
 char* synapse_calendar_get_events_for_date(Database* db, const char* date_prefix, int include_null, int limit);
 int synapse_calendar_create_event(Database* db, const char* title, const char* description, const char* start_date, const char* end_date, const char* event_type, const char* color, const char* page_id);
 int synapse_calendar_create_event_with_options(Database* db, const char* title, const char* description, const char* start_date, const char* end_date, const char* event_type, const char* color, const char* page_id, const char* reminders_json, const char* recurrence);
+char* synapse_calendar_create_event_with_options_result(Database* db, const char* title, const char* description, const char* start_date, const char* end_date, const char* event_type, const char* color, const char* page_id, const char* reminders_json, const char* recurrence);
 int synapse_calendar_update_event(Database* db, const char* event_id, const char* title, const char* description, const char* start_date, const char* end_date, const char* color, const char* event_type, const char* page_id);
 int synapse_calendar_update_event_with_options(Database* db, const char* event_id, const char* title, const char* description, const char* start_date, const char* end_date, const char* color, const char* event_type, const char* page_id, const char* reminders_json);
 int synapse_calendar_toggle_status(Database* db, const char* event_id);
