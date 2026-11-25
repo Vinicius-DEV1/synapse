@@ -14,9 +14,9 @@ pub fn get_lofis(conn: &rusqlite::Connection) -> Result<Vec<LofiTrack>> {
             id: row.get(0)?,
             title: row.get(1)?,
             original_name: row.get(2)?,
-            duration: row.get(3)?,
-            file_path: row.get(4)?,
-            is_local: row.get(5)?,
+            duration: row.get::<_, Option<f64>>(3)?.unwrap_or(0.0),
+            file_path: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
+            is_local: row.get::<_, Option<i32>>(5)?.unwrap_or(0),
             drive_file_id: row.get(6)?,
             created_at: row.get(7)?,
             updated_at: row.get(8)?,
@@ -76,7 +76,9 @@ pub fn get_deleted_file_path(conn: &rusqlite::Connection, id: &str) -> Result<Op
 }
 
 pub fn get_deleted_file_paths(conn: &rusqlite::Connection) -> Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT file_path FROM lofis WHERE deleted_at IS NOT NULL")?;
+    let mut stmt = conn.prepare(
+        "SELECT file_path FROM lofis WHERE deleted_at IS NOT NULL AND file_path IS NOT NULL",
+    )?;
     let iter = stmt.query_map([], |row| row.get(0))?;
     Ok(iter.collect::<rusqlite::Result<Vec<_>>>()?)
 }
