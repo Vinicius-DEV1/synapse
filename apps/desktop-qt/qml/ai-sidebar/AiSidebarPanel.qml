@@ -420,12 +420,13 @@ Rectangle {
         onCloseRequested: sessionListPopup.visible = false
     }
 
-    // Mention Popup (Floats above input bar, outside ColumnLayout)
+    // Mention Popup (Floats above input bar, anchored to parent)
     AiPageMentionMenu {
         id: mentionMenu
-        anchors.bottom: inputRect.top
-        anchors.bottomMargin: 6
-        anchors.left: inputRect.left
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: inputRect.height + 18
+        anchors.left: parent.left
+        anchors.leftMargin: 12
         pagesList: sidebarRoot.availablePages
         onPageSelected: function(pageId, pageTitle) {
             var txt = promptInput.text
