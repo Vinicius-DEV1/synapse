@@ -10,7 +10,7 @@ pub use quiz::migrate_quiz_schema;
 mod tests;
 
 // Released migration numbers are explicit in `apply_versioned_migration`; append, never renumber.
-const CURRENT_SCHEMA_VERSION: i64 = 9;
+const CURRENT_SCHEMA_VERSION: i64 = 10;
 
 /// Applies all pending schema changes atomically and records the applied version.
 pub fn run_migrations(conn: &Connection) -> Result<(), String> {
@@ -87,6 +87,7 @@ fn apply_versioned_migration(conn: &Connection, version: i64) -> Result<(), Stri
             "INTEGER NOT NULL DEFAULT 0",
         ),
         9 => add_column_if_table_exists(conn, "notifications", "event_reminder_minutes", "INTEGER"),
+        10 => add_column_if_table_exists(conn, "quiz_attempts", "deleted_at", "DATETIME"),
         _ => Err(format!(
             "SQLite schema migration {version} is not registered."
         )),
