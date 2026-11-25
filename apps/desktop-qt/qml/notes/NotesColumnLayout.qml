@@ -33,6 +33,7 @@ Item {
     signal askAiRequested(string selection, string blockHtml)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
+    signal openCalendarRequested()
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
@@ -317,6 +318,7 @@ Item {
                             function onAskAiRequested(sel, bHtml) { colLayoutRoot.askAiRequested(sel, bHtml) }
                             function onPlayQuestionRequested(bid, qid, t) { colLayoutRoot.playQuestionRequested(bid, qid, t) }
                             function onOpenInQuestionsRequested(bid) { colLayoutRoot.openInQuestionsRequested(bid) }
+                            function onOpenCalendarRequested() { colLayoutRoot.openCalendarRequested() }
                             function onYoutubeWatchRequested(u, t) { colLayoutRoot.youtubeWatchRequested(u, t) }
                             function onMermaidFullscreenRequested(c) { colLayoutRoot.mermaidFullscreenRequested(c) }
                             function onHabitStatsRequested(hid) { colLayoutRoot.habitStatsRequested(hid) }

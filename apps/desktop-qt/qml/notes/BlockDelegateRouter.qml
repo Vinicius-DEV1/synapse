@@ -18,6 +18,7 @@ Loader {
 
     signal blockChanged(int idx, var updatedBlock)
     signal deleteRequested(int idx)
+    signal moveBlockRequested(int idx, int delta)
     signal unwrapColumnGroupRequested(int idx, var columnsList)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
@@ -30,6 +31,7 @@ Loader {
     signal slashWidgetRequested(string commandId, int blockIndex)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
+    signal openCalendarRequested()
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
     signal mermaidFullscreenRequested(string code)
     signal createSubPageWithContent(string title, string html)
@@ -175,7 +177,7 @@ Loader {
     Component { id: habitComp; HabitWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; pageTitle: routerLoader.pageTitle; onStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: focusComp; FocusWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: alarmComp; AlarmWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
-    Component { id: eventComp; CalendarEventWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
+    Component { id: eventComp; CalendarEventWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex); onMoveUpRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, -1); onMoveDownRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, 1); onOpenCalendarRequested: routerLoader.openCalendarRequested() } }
     Component { id: fileComp; FileAttachmentWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: bundleComp; DocumentBundleWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; pageId: routerLoader.pageId; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: mediaComp; MediaWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
@@ -196,6 +198,7 @@ Loader {
             onExternalLinkRequested: function(lnk) { routerLoader.externalLinkRequested(lnk) }
             onPlayQuestionRequested: function(bid, qid, t) { routerLoader.playQuestionRequested(bid, qid, t) }
             onOpenInQuestionsRequested: function(bid) { routerLoader.openInQuestionsRequested(bid) }
+            onOpenCalendarRequested: routerLoader.openCalendarRequested()
             onYoutubeWatchRequested: function(u, t) { routerLoader.youtubeWatchRequested(u, t) }
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
@@ -217,6 +220,7 @@ Loader {
             onAskAiRequested: function(sel, bHtml) { routerLoader.askAiRequested(sel, bHtml) }
             onPlayQuestionRequested: function(bid, qid, t) { routerLoader.playQuestionRequested(bid, qid, t) }
             onOpenInQuestionsRequested: function(bid) { routerLoader.openInQuestionsRequested(bid) }
+            onOpenCalendarRequested: routerLoader.openCalendarRequested()
             onYoutubeWatchRequested: function(u, t) { routerLoader.youtubeWatchRequested(u, t) }
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
@@ -240,6 +244,7 @@ Loader {
             onAskAiRequested: function(sel, bHtml) { routerLoader.askAiRequested(sel, bHtml) }
             onPlayQuestionRequested: function(bid, qid, t) { routerLoader.playQuestionRequested(bid, qid, t) }
             onOpenInQuestionsRequested: function(bid) { routerLoader.openInQuestionsRequested(bid) }
+            onOpenCalendarRequested: routerLoader.openCalendarRequested()
             onYoutubeWatchRequested: function(u, t) { routerLoader.youtubeWatchRequested(u, t) }
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }

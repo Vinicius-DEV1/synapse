@@ -36,6 +36,7 @@ Rectangle {
     signal askAiRequested(string selection, string blockHtml)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
+    signal openCalendarRequested()
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
@@ -275,6 +276,7 @@ Rectangle {
                 function onAskAiRequested(sel, bHtml) { collectionRoot.askAiRequested(sel, bHtml) }
                 function onPlayQuestionRequested(bid, qid, t) { collectionRoot.playQuestionRequested(bid, qid, t) }
                 function onOpenInQuestionsRequested(bid) { collectionRoot.openInQuestionsRequested(bid) }
+                function onOpenCalendarRequested() { collectionRoot.openCalendarRequested() }
                 function onYoutubeWatchRequested(u, t) { collectionRoot.youtubeWatchRequested(u, t) }
                 function onMermaidFullscreenRequested(c) { collectionRoot.mermaidFullscreenRequested(c) }
                 function onHabitStatsRequested(hid) { collectionRoot.habitStatsRequested(hid) }

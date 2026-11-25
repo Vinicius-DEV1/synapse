@@ -39,6 +39,7 @@ ColumnLayout {
     signal slashWidgetRequested(string commandId, int blockIndex)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
+    signal openCalendarRequested()
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
     signal mermaidFullscreenRequested(string code)
     signal createSubPageWithContent(string title, string html)
@@ -94,6 +95,25 @@ ColumnLayout {
         var serialized = controller.serializeNoteBlocks(nextBlocks)
         lastEmittedHtml = serialized
         htmlChanged(serialized)
+    }
+
+    function requestBlockDeletion(index, widget) {
+        if (index < 0 || index >= blocks.length) return
+        var block = blocks[index]
+        if (block && block.blockType === "calendarEventWidget") {
+            if (!widget || typeof widget["requestDeleteConfirmation"] !== "function") {
+                console.warn("[Notes:BlockListEditor] Event widget is not ready; keeping the block.")
+                return
+            }
+            if (widget["removalConfirmed"]) {
+                widget["removalConfirmed"] = false
+                commitBlocks(Helpers.deleteBlockInArray(blocks, index))
+            } else {
+                widget["requestDeleteConfirmation"]()
+            }
+            return
+        }
+        commitBlocks(Helpers.deleteBlockInArray(blocks, index))
     }
 
     function updateBlockAt(idx, updater) {
@@ -304,7 +324,7 @@ ColumnLayout {
                             typeof richEditor.setBlockColor !== "function") return
                     richEditor.setBlockColor(c, isBg)
                 }
-                onDeleteRequested: blockListRoot.commitBlocks(Helpers.deleteBlockInArray(blockListRoot.blocks, blockRow.index))
+                onDeleteRequested: blockListRoot.requestBlockDeletion(blockRow.index, sliceRouter.item)
                 onDragStarted: blockListRoot.draggingBlockIndex = blockRow.index
                 onDragMoved: function(gx, gy) {
                     var pt = blockListRoot.mapFromGlobal(gx, gy)
@@ -328,7 +348,10 @@ ColumnLayout {
                 controller: blockListRoot.controller; textOperations: blockListRoot.textOperations
                 active: blockListRoot.active; nestingDepth: blockListRoot.nestingDepth
                 onBlockChanged: function(idx, updated) { blockListRoot.updateBlockAt(idx, function() { return updated }) }
-                onDeleteRequested: function(idx) { blockListRoot.commitBlocks(Helpers.deleteBlockInArray(blockListRoot.blocks, idx)) }
+                onDeleteRequested: function(idx) { blockListRoot.requestBlockDeletion(idx, sliceRouter.item) }
+                onMoveBlockRequested: function(idx, delta) {
+                    blockListRoot.commitBlocks(Helpers.moveBlockInArray(blockListRoot.blocks, idx, delta))
+                }
                 onUnwrapColumnGroupRequested: function(idx, cols) { blockListRoot.unwrapColumnGroup(idx, cols) }
                 onInsertAfterRequested: function(idx, html) { blockListRoot.insertWidgetHtmlAfter(idx, html) }
                 onFocusRichSliceChanged: function(slice) {
@@ -346,6 +369,7 @@ ColumnLayout {
                 onSlashWidgetRequested: function(cmd, idx) { blockListRoot.slashWidgetRequested(cmd, idx) }
                 onPlayQuestionRequested: function(bid, qid, t) { blockListRoot.playQuestionRequested(bid, qid, t) }
                 onOpenInQuestionsRequested: function(bid) { blockListRoot.openInQuestionsRequested(bid) }
+                onOpenCalendarRequested: blockListRoot.openCalendarRequested()
                 onYoutubeWatchRequested: function(u, t) { blockListRoot.youtubeWatchRequested(u, t) }
                 onMermaidFullscreenRequested: function(c) { blockListRoot.mermaidFullscreenRequested(c) }
                 onCreateSubPageWithContent: function(t, h) { blockListRoot.createSubPageWithContent(t, h) }

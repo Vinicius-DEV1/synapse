@@ -44,6 +44,7 @@ Rectangle {
     signal externalLinkRequested(string link)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
+    signal openCalendarRequested()
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
@@ -417,6 +418,7 @@ Rectangle {
                 function onAskAiRequested(sel) { toggleRoot.askAiRequested(sel) }
                 function onPlayQuestionRequested(bid, qid, t) { toggleRoot.playQuestionRequested(bid, qid, t) }
                 function onOpenInQuestionsRequested(bid) { toggleRoot.openInQuestionsRequested(bid) }
+                function onOpenCalendarRequested() { toggleRoot.openCalendarRequested() }
                 function onYoutubeWatchRequested(u, t) { toggleRoot.youtubeWatchRequested(u, t) }
                 function onMermaidFullscreenRequested(c) { toggleRoot.mermaidFullscreenRequested(c) }
                 function onHabitStatsRequested(hid) { toggleRoot.habitStatsRequested(hid) }

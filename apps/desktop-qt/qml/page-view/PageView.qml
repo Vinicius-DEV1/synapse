@@ -313,6 +313,7 @@ Rectangle {
                     onPageHierarchyChanged: pageViewRoot.refreshPageTree()
                     onPlayQuestionRequested: function(bid, qid, t) { viewModals.innerModalsHost.openQuestionSession(bid, qid, t) }
                     onOpenInQuestionsRequested: function() { pageViewRoot.navigateModuleRequested("questions") }
+                    onOpenCalendarRequested: pageViewRoot.navigateModuleRequested("calendar")
                     onYoutubeWatchRequested: function(u, t) { viewModals.innerModalsHost.openYoutubeModal(u, t) }
                     onMermaidFullscreenRequested: function(c) { viewModals.innerModalsHost.openMermaidModal(c) }
                     onHabitStatsRequested: function(hid) { viewModals.innerModalsHost.openHabitHeatmap(hid) }

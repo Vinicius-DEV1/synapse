@@ -11,87 +11,105 @@ Rectangle {
 
     property var blockData: ({})
     property var controller: null
-    property var attrs: blockData.attrs || ({})
-    property string eventId: attrs["data-event-id"] || attrs["event-id"] || attrs["eventId"] || ""
-    property string title: attrs["data-title"] || attrs["title"] || qsTr("Novo Evento")
-    property string dateStr: attrs["data-date"] || attrs["data-start-date"] || attrs["dateStr"] || ""
-    property string eventColor: attrs["data-color"] || attrs["color"] || "default"
-    property string status: attrs["data-status"] || attrs["status"] || "pending"
+    readonly property var attrs: eventState.attrs
+    readonly property string eventId: eventState.eventId
+    readonly property string title: eventState.title
+    readonly property string dateStr: eventState.dateStr
+    readonly property string eventColor: eventState.eventColor
+    readonly property string status: eventState.status
+    readonly property string statusErrorMessage: eventState.statusErrorMessage
+    readonly property var eventRecord: eventState.eventRecord
+    readonly property bool isCompleted: eventState.isCompleted
+    readonly property bool isMissingEvent: eventState.isMissingEvent
+    readonly property bool hasLinkedEvent: eventState.hasLinkedEvent
+    readonly property bool isLive: eventState.isLive
+    readonly property bool hasCustomColor: eventState.hasCustomColor
     property bool isPopoverOpen: false
+    property bool removalConfirmed: false
+    property real livePulseOpacity: 1.0
+    readonly property real livePulseMinimumOpacity: 0.72
+    readonly property int livePulsePhaseDurationMs: 800
 
-    readonly property bool isCompleted: status === "completed"
-    readonly property bool isExpired: !isCompleted && dateStr.length >= 10 &&
-        dateStr.substring(0, 10) < Qt.formatDate(new Date(), "yyyy-MM-dd")
-    readonly property bool hasCustomColor: eventColor.length > 0 && eventColor !== "default" && eventColor !== "#8b5cf6"
-    readonly property string resolvedAccent: isExpired ? "#fb7185" : (hasCustomColor ? eventColor : "#a78bfa")
-
-    color: isCompleted
-        ? "#1a10b981"
-        : (isExpired
-            ? "#1af43f5e"
-            : (hasCustomColor
-                ? (eventColor + "18")
-                : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")))
-    border.color: isCompleted
-        ? "#4d10b981"
-        : (isExpired
-            ? "#66f43f5e"
-            : (hasCustomColor
-                ? (hoverHandler.hovered || isPopoverOpen ? eventColor : (eventColor + "60"))
-                : (hoverHandler.hovered || isPopoverOpen ? "#808b5cf6" : "#4d8b5cf6")))
+    color: isMissingEvent
+        ? (hoverHandler.hovered ? "#33ef4444" : "#1aef4444")
+        : (isCompleted
+            ? "#1a10b981"
+            : (isLive
+                ? (hoverHandler.hovered ? "#33f59e0b" : "#1af59e0b")
+                : (hasCustomColor
+                    ? (eventColor + "18")
+                    : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6"))))
+    border.color: isMissingEvent
+        ? (hoverHandler.hovered || isPopoverOpen ? "#ef4444" : "#66ef4444")
+        : (isCompleted
+            ? "#4d10b981"
+            : (isLive
+                ? (hoverHandler.hovered || isPopoverOpen ? "#f59e0b" : "#66f59e0b")
+                : (hasCustomColor
+                    ? (hoverHandler.hovered || isPopoverOpen ? eventColor : (eventColor + "60"))
+                    : (hoverHandler.hovered || isPopoverOpen ? "#808b5cf6" : "#4d8b5cf6"))))
     border.width: 1
-    opacity: isCompleted ? 0.82 : 1.0
+    opacity: isCompleted ? 0.82 : (isLive ? livePulseOpacity : 1.0)
     Behavior on color { ColorAnimation { duration: 150 } }
     Behavior on border.color { ColorAnimation { duration: 150 } }
 
+    SequentialAnimation on livePulseOpacity {
+        running: eventWidgetRoot.isLive
+        loops: Animation.Infinite
+        NumberAnimation { to: eventWidgetRoot.livePulseMinimumOpacity; duration: eventWidgetRoot.livePulsePhaseDurationMs }
+        NumberAnimation { to: 1.0; duration: eventWidgetRoot.livePulsePhaseDurationMs }
+    }
+
     signal attrsUpdated(var newAttrs)
     signal removeRequested()
+    signal moveUpRequested()
+    signal moveDownRequested()
+    signal openCalendarRequested()
 
     HoverHandler { id: hoverHandler }
+
+    CalendarEventWidgetState {
+        id: eventState
+        controller: eventWidgetRoot.controller
+        blockData: eventWidgetRoot.blockData
+        onAttrsUpdated: function(newAttrs) { eventWidgetRoot.attrsUpdated(newAttrs) }
+        onRemoveRequested: {
+            eventWidgetRoot.removalConfirmed = true
+            eventWidgetRoot.removeRequested()
+        }
+    }
+
+    Timer {
+        interval: Math.max(1, Math.min(eventState.maxLiveTimerIntervalMs,
+            eventState.nextLiveTransitionTimestamp - eventState.currentTimestamp))
+        repeat: false
+        running: eventState.nextLiveTransitionTimestamp > eventState.currentTimestamp
+        onTriggered: eventState.currentTimestamp = Date.now()
+    }
 
     function formatDateDisplay(raw) {
         if (!raw || raw.length === 0) return ""
         var clean = String(raw).trim()
-        // Convert YYYY-MM-DD or ISO YYYY-MM-DDTHH:mm to DD/MM or DD/MM HH:mm
-        var m = clean.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}:\d{2}))?/)
-        if (m) {
-            return m[3] + "/" + m[2] + (m[4] ? (", " + m[4]) : "")
-        }
+        var match = clean.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}:\d{2}))?/)
+        if (match) return match[3] + "/" + match[2] + (match[4] ? (", " + match[4]) : "")
         return clean.substring(0, 16)
     }
 
-    function syncFromCore() {
-        var c = eventWidgetRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
-        if (!eventId || !c || typeof c.getCalendarEvents !== "function") return
-        var events = c.getCalendarEvents() || []
-        for (var i = 0; i < events.length; i++) {
-            if (events[i].id === eventId) {
-                title = events[i].title || title
-                dateStr = String(events[i].start_date || dateStr).substring(0, 16)
-                if (events[i].color) eventColor = events[i].color
-                status = events[i].status || (events[i].completed ? "completed" : status)
-                break
-            }
-        }
+    function requestDeleteConfirmation() {
+        eventState.requestDeleteConfirmation(eventDeleteConfirmation)
     }
 
-    function toggleStatus() {
-        status = isCompleted ? "pending" : "completed"
-        var next = Object.assign({}, attrs)
-        next["data-status"] = status
-        next["data-title"] = title
-        next["data-date"] = dateStr
-        if (hasCustomColor) next["data-color"] = eventColor
-        attrsUpdated(next)
-    }
-
-    Component.onCompleted: syncFromCore()
-    onBlockDataChanged: syncFromCore()
+    ToolTip.visible: statusErrorMessage.length > 0
+    ToolTip.text: statusErrorMessage
+    ToolTip.timeout: 5000
 
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: eventWidgetRoot.isPopoverOpen = !eventWidgetRoot.isPopoverOpen
+        onClicked: {
+            if (eventWidgetRoot.isMissingEvent) eventWidgetRoot.requestDeleteConfirmation()
+            else eventWidgetRoot.isPopoverOpen = !eventWidgetRoot.isPopoverOpen
+        }
     }
 
     RowLayout {
@@ -101,8 +119,8 @@ Rectangle {
         anchors.leftMargin: 10
         spacing: 6
 
-        // 14x14 Checkbox matching CalendarEventWidgetNodeView.tsx
         Rectangle {
+            visible: !eventWidgetRoot.isMissingEvent
             Layout.preferredWidth: 14
             Layout.preferredHeight: 14
             radius: 3.5
@@ -129,25 +147,29 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: function(mouse) {
                     mouse.accepted = true
-                    eventWidgetRoot.toggleStatus()
+                    eventState.toggleStatus()
                 }
             }
         }
 
         AppIcon {
-            name: "calendar"
+            Layout.preferredWidth: 13
+            Layout.preferredHeight: 13
+            name: eventWidgetRoot.isMissingEvent ? "alert" : "calendar"
             color: eventWidgetRoot.isCompleted
                 ? "#34d399"
-                : (eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#c4b5fd")
-            width: 13
-            height: 13
+                : (eventWidgetRoot.isMissingEvent
+                    ? "#f87171"
+                    : (eventWidgetRoot.isLive ? "#fcd34d" : (eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#c4b5fd")))
         }
 
         Text {
-            text: eventWidgetRoot.title
+            text: eventWidgetRoot.title + (eventWidgetRoot.isMissingEvent ? qsTr(" (Evento Excluído)") : "")
             color: eventWidgetRoot.isCompleted
                 ? "#34d399"
-                : (eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#c4b5fd")
+                : (eventWidgetRoot.isMissingEvent
+                    ? "#f87171"
+                    : (eventWidgetRoot.isLive ? "#fcd34d" : (eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#c4b5fd")))
             font.pixelSize: 12
             font.weight: Font.Medium
             font.strikeout: eventWidgetRoot.isCompleted
@@ -158,25 +180,68 @@ Rectangle {
         Text {
             visible: eventWidgetRoot.dateStr.length > 0
             text: "• " + eventWidgetRoot.formatDateDisplay(eventWidgetRoot.dateStr)
-            color: eventWidgetRoot.isCompleted
-                ? "#bf34d399"
-                : (eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#bfc4b5fd")
+            color: eventWidgetRoot.isMissingEvent
+                ? "#bff87171"
+                : (eventWidgetRoot.isCompleted
+                    ? "#bf34d399"
+                    : (eventWidgetRoot.isLive
+                        ? "#bffcd34d"
+                        : (eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#bfc4b5fd")))
             font.pixelSize: 10
         }
 
         ToolButton {
+            id: moveUpButton
+            visible: hoverHandler.hovered
+            Layout.preferredWidth: 18
+            Layout.preferredHeight: 18
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Subir bloco")
+            onClicked: eventWidgetRoot.moveUpRequested()
+            background: Rectangle { radius: 4; color: moveUpButton.hovered ? "#1affffff" : "transparent" }
+            contentItem: AppIcon {
+                anchors.centerIn: parent
+                name: "arrow-up"
+                color: moveUpButton.hovered ? "#fffffe" : "#a7a9be"
+                width: 11
+                height: 11
+            }
+        }
+
+        ToolButton {
+            id: moveDownButton
+            visible: hoverHandler.hovered
+            Layout.preferredWidth: 18
+            Layout.preferredHeight: 18
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Descer bloco")
+            onClicked: eventWidgetRoot.moveDownRequested()
+            background: Rectangle { radius: 4; color: moveDownButton.hovered ? "#1affffff" : "transparent" }
+            contentItem: AppIcon {
+                anchors.centerIn: parent
+                name: "arrow-down"
+                color: moveDownButton.hovered ? "#fffffe" : "#a7a9be"
+                width: 11
+                height: 11
+            }
+        }
+
+        ToolButton {
+            id: removeWidgetButton
             visible: hoverHandler.hovered
             Layout.preferredWidth: 20
             Layout.preferredHeight: 20
             focusPolicy: Qt.NoFocus
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Remover widget")
-            onClicked: eventWidgetRoot.removeRequested()
-            background: Rectangle { radius: 4; color: parent.hovered ? "#22ef4444" : "transparent" }
+            onClicked: eventWidgetRoot.requestDeleteConfirmation()
+            background: Rectangle { radius: 4; color: removeWidgetButton.hovered ? "#22ef4444" : "transparent" }
             contentItem: AppIcon {
                 anchors.centerIn: parent
                 name: "close"
-                color: parent.hovered ? "#f87171" : "#a7a9be"
+                color: removeWidgetButton.hovered ? "#f87171" : "#a7a9be"
                 width: 10
                 height: 10
             }
@@ -185,26 +250,25 @@ Rectangle {
 
     CalendarEventWidgetPopover {
         isOpen: eventWidgetRoot.isPopoverOpen
+        anchorItem: eventWidgetRoot
         title: eventWidgetRoot.title
         dateStr: eventWidgetRoot.dateStr
-        eventColor: eventWidgetRoot.hasCustomColor ? eventWidgetRoot.eventColor : "#8b5cf6"
+        dateDisplay: eventWidgetRoot.formatDateDisplay(eventWidgetRoot.dateStr)
+        eventColor: eventWidgetRoot.eventColor
         status: eventWidgetRoot.status
-        onToggleStatus: eventWidgetRoot.toggleStatus()
-        onEditSaved: function(nt, nd) {
-            eventWidgetRoot.title = nt
-            eventWidgetRoot.dateStr = nd
-            var next = Object.assign({}, eventWidgetRoot.attrs)
-            next["data-title"] = nt
-            next["data-date"] = nd
-            eventWidgetRoot.attrsUpdated(next)
-        }
-        onDeleteRequested: {
-            if (eventWidgetRoot.eventId && typeof dataController !== "undefined" && dataController) {
-                dataController.deleteCalendarEvent(eventWidgetRoot.eventId)
-            }
-            eventWidgetRoot.isPopoverOpen = false
-            eventWidgetRoot.removeRequested()
-        }
-        onClosed: eventWidgetRoot.isPopoverOpen = false
+        remindersLabel: eventState.formatRemindersLabel(eventWidgetRoot.eventRecord.reminders)
+        onEventColorSelected: function(color) { eventState.setWidgetColor(color) }
+        onToggleStatus: eventState.toggleStatus()
+        onEditSaved: function(newTitle, newDate) { eventState.saveEventDetails(newTitle, newDate) }
+        onDeleteRequested: eventWidgetRoot.requestDeleteConfirmation()
+        onOpenCalendarRequested: eventWidgetRoot.openCalendarRequested()
+        onCloseRequested: eventWidgetRoot.isPopoverOpen = false
     }
+
+    AppConfirmDialog {
+        id: eventDeleteConfirmation
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+    }
+
 }

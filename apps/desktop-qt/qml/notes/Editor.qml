@@ -41,6 +41,7 @@ ColumnLayout {
     signal pageHierarchyChanged()
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
+    signal openCalendarRequested()
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
@@ -226,6 +227,7 @@ ColumnLayout {
             onSlashWidgetRequested: function(cmd, idx) { editorRoot.handleSlashWidgetCommand(cmd, idx) }
             onPlayQuestionRequested: function(bid, qid, t) { editorRoot.playQuestionRequested(bid, qid, t) }
             onOpenInQuestionsRequested: function(bid) { editorRoot.openInQuestionsRequested(bid) }
+            onOpenCalendarRequested: editorRoot.openCalendarRequested()
             onYoutubeWatchRequested: function(u, t) { editorRoot.youtubeWatchRequested(u, t) }
             onMermaidFullscreenRequested: function(c) { editorRoot.mermaidFullscreenRequested(c) }
             onCreateSubPageWithContent: function(title, html) {
