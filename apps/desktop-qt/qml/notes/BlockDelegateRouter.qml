@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
+import "NotesHtmlEscaping.js" as HtmlEscaping
 
 // Routes a canonical core AST block to its matching native QML component and forwards all nested events upward.
 Loader {
@@ -119,7 +120,7 @@ Loader {
             onNavigateNextRequested: routerLoader.navigateNextRequested(routerLoader.blockIndex)
             onMergePrevRequested: routerLoader.mergePrevRequested(routerLoader.blockIndex)
             onConvertUrlToCardRequested: function(url) {
-                var safeUrl = String(url || "").replace(/"/g, "&quot;")
+                var safeUrl = HtmlEscaping.escapeHtmlAttribute(url)
                 routerLoader.insertAfterRequested(routerLoader.blockIndex,
                     "<div class=\"link-preview-block\" data-type=\"link-preview\" url=\"" + safeUrl + "\"></div>")
             }

@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesHtmlEscaping.js" as HtmlEscaping
 
 Dialog {
     id: linkDialog
@@ -35,22 +36,13 @@ Dialog {
             ? value : ""
     }
 
-    function escapeHtml(value) {
-        return String(value || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;")
-    }
-
     function createLink() {
         var safeUrl = normalizedUrl()
         var label = labelText.trim()
         if (!safeUrl || !label) return
         var content = originalHtml.length > 0 && label === originalLabel
-            ? originalHtml : escapeHtml(label)
-        linkCreated("<a href=\"" + escapeHtml(safeUrl) + "\">" + content + "</a>")
+            ? originalHtml : HtmlEscaping.escapeHtmlText(label)
+        linkCreated("<a href=\"" + HtmlEscaping.escapeHtmlAttribute(safeUrl) + "\">" + content + "</a>")
         close()
     }
 

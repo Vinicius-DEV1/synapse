@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Dialogs
+import "NotesHtmlEscaping.js" as HtmlEscaping
 
 Item {
     id: dialogsRoot
@@ -65,7 +66,8 @@ Item {
             if (/\.md$/i.test(cleanPath)) {
                 body = "# " + (p.title || "Sem título") + "\n\n" + body.replace(/<\/p>/gi, "\n\n").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
             } else {
-                body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + (p.title || "Página") + "</title></head><body><h1>" + (p.title || "") + "</h1>\n" + body + "\n</body></html>"
+                var safeTitle = HtmlEscaping.escapeHtmlText(p.title || "")
+                body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" + safeTitle + "</title></head><body><h1>" + safeTitle + "</h1>\n" + body + "\n</body></html>"
             }
             if (ctrl.saveLocalTextFile(cleanPath, body)) {
                 dialogsRoot.exported(cleanPath)
