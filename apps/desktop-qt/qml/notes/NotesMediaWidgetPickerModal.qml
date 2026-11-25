@@ -2,6 +2,8 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
+import "NotesHtmlEscaping.js" as HtmlEscaping
+import "NotesSlashCommandArguments.js" as SlashArgs
 import "../ui"
 
 Item {
@@ -23,7 +25,7 @@ Item {
     signal insertWidgetRequested(string html)
     signal closed()
 
-    function openMode(mode, prefillUrl) {
+    function openMode(mode, prefillUrl, autoCaptureScrap) {
         activeMode = mode
         listItems = []
         searchFilter = ""
@@ -31,8 +33,10 @@ Item {
         scrapError = ""
         if (mode === "scrap" && prefillUrl && String(prefillUrl).trim().length > 0) {
             scrapUrlInput.text = String(prefillUrl).trim()
-            startScrapCapture()
-            return
+            if (autoCaptureScrap === true) {
+                startScrapCapture()
+                return
+            }
         }
         var c = mediaPickerRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (!c) return
@@ -46,8 +50,11 @@ Item {
     }
 
     function startScrapCapture() {
-        var u = scrapUrlInput.text.trim()
-        if (!u) return
+        var u = SlashArgs.normalizeWebUrl(scrapUrlInput.text)
+        if (!u) {
+            scrapError = qsTr("Informe um endereço válido, como https://site.com.")
+            return
+        }
         scrapError = ""
         var c = mediaPickerRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (c && typeof c.captureWebScrap === "function") {
@@ -55,8 +62,8 @@ Item {
             pendingScrapRequestId = "scrap_" + Date.now()
             c.captureWebScrap(u, pendingScrapRequestId)
         } else {
-            var t = (scrapTitleInput.text.trim() || "Captura Web").replace(/"/g, "&quot;")
-            var eu = u.replace(/"/g, "&quot;")
+            var t = HtmlEscaping.escapeHtmlAttribute(scrapTitleInput.text.trim() || "Captura Web")
+            var eu = HtmlEscaping.escapeHtmlAttribute(u)
             mediaPickerRoot.insertWidgetRequested("<div class=\"scrap-widget-block\" data-type=\"scrap-widget\" title=\"" + t + "\" data-title=\"" + t + "\" url=\"" + eu + "\" data-url=\"" + eu + "\"></div>")
             mediaPickerRoot.close()
         }
@@ -83,10 +90,10 @@ Item {
                 mediaPickerRoot.scrapError = result.error_reason || qsTr("Falha ao capturar página.")
                 return
             }
-            var t = String(scrapTitleInput.text.trim() || result.title || "Captura Web").replace(/"/g, "&quot;")
-            var u = String(result.url || scrapUrlInput.text.trim()).replace(/"/g, "&quot;")
+            var t = HtmlEscaping.escapeHtmlAttribute(scrapTitleInput.text.trim() || result.title || "Captura Web")
+            var u = HtmlEscaping.escapeHtmlAttribute(result.url || scrapUrlInput.text.trim())
             var sz = Number(result.file_size || 0)
-            var exc = String(result.excerpt || "").replace(/"/g, "&quot;")
+            var exc = HtmlEscaping.escapeHtmlAttribute(result.excerpt || "")
             mediaPickerRoot.insertWidgetRequested(
                 "<div class=\"scrap-widget-block\" data-type=\"scrap-widget\" data-status=\"ready\" title=\"" + t +
                 "\" data-title=\"" + t + "\" url=\"" + u + "\" data-url=\"" + u + "\" data-file-size=\"" + sz +
@@ -101,11 +108,13 @@ Item {
             if (files.length > mediaPickerRoot.preUploadCount) {
                 mediaPickerRoot.waitingLocalUpload = false
                 var newest = files[0]
-                var label = String(newest.name || "Arquivo").replace(/"/g, "&quot;")
+                var label = HtmlEscaping.escapeHtmlAttribute(newest.name || "Arquivo")
+                var fileId = HtmlEscaping.escapeHtmlAttribute(newest.id)
+                var fileType = HtmlEscaping.escapeHtmlAttribute(newest.file_type || "document")
                 mediaPickerRoot.insertWidgetRequested(
-                    "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + newest.id +
+                    "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
                     "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
-                    (newest.file_type || "document") + "\" data-file-size=\"" + (newest.file_size || 0) + "\"></div>"
+                    fileType + "\" data-file-size=\"" + (newest.file_size || 0) + "\"></div>"
                 )
                 mediaPickerRoot.close()
             }
@@ -219,12 +228,14 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 40
                             onClicked: {
-                                var label = String(itemBtn.modelData.name || itemBtn.modelData.title || "Item").replace(/"/g, "&quot;")
+                                var label = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.name || itemBtn.modelData.title || "Item")
+                                var mediaId = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.id)
                                 if (mediaPickerRoot.activeMode === "documento") {
-                                    mediaPickerRoot.insertWidgetRequested("<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + itemBtn.modelData.id + "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" + (itemBtn.modelData.file_type || "document") + "\" data-file-size=\"" + (itemBtn.modelData.file_size || 0) + "\"></div>")
+                                    var fileType = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.file_type || "document")
+                                    mediaPickerRoot.insertWidgetRequested("<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + mediaId + "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" + fileType + "\" data-file-size=\"" + (itemBtn.modelData.file_size || 0) + "\"></div>")
                                 } else {
                                     var mType = mediaPickerRoot.activeMode === "livro" ? "book" : "video"
-                                    mediaPickerRoot.insertWidgetRequested("<span class=\"media-widget\" data-type=\"media-widget\" data-media-type=\"" + mType + "\" data-media-id=\"" + itemBtn.modelData.id + "\" data-title=\"" + label + "\"></span>")
+                                    mediaPickerRoot.insertWidgetRequested("<span class=\"media-widget\" data-type=\"media-widget\" data-media-type=\"" + mType + "\" data-media-id=\"" + mediaId + "\" data-title=\"" + label + "\"></span>")
                                 }
                                 mediaPickerRoot.close()
                             }

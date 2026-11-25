@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesHtmlEscaping.js" as HtmlEscaping
 import "../ui"
 
 Item {
@@ -28,8 +29,8 @@ Item {
         var pf = (typeof prefill === "string") ? ({ query: prefill, title: prefill, desc: prefill }) : (prefill || ({}))
         if (mode === "foco") {
             mainTitleField.text = pf.desc || ""
-            secondaryField.text = String(pf.time || 25)
-            tagField.text = pf.tag || "Estudo"
+            secondaryField.text = String(pf.time || 30)
+            tagField.text = pf.tag || ""
         } else if (mode === "evento") {
             mainTitleField.text = pf.title || ""
             secondaryField.text = new Date().toISOString().substring(0, 10)
@@ -133,15 +134,17 @@ Item {
                         if (setupRoot.activeMode === "habito" && typeof c.createHabit === "function") {
                             var hid = c.createHabit(title, 7)
                             if (hid) {
-                                var escH = title.replace(/"/g, "&quot;")
-                                setupRoot.insertWidgetRequested("<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" + hid + "\" data-title=\"" + escH + "\" data-streak=\"0\"></span>")
+                                var escH = HtmlEscaping.escapeHtmlAttribute(title)
+                                var safeHabitId = HtmlEscaping.escapeHtmlAttribute(hid)
+                                setupRoot.insertWidgetRequested("<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" + safeHabitId + "\" data-title=\"" + escH + "\" data-streak=\"0\"></span>")
                                 setupRoot.close()
                             }
                         } else if (setupRoot.activeMode === "question" && typeof c.createQuizBattery === "function") {
                             var bid = c.createQuizBattery(title, "")
                             if (bid) {
-                                var escB = title.replace(/"/g, "&quot;")
-                                setupRoot.insertWidgetRequested("<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" + bid + "\" data-cached-title=\"" + escB + "\" data-title=\"" + escB + "\"></div>")
+                                var escB = HtmlEscaping.escapeHtmlAttribute(title)
+                                var safeBatteryId = HtmlEscaping.escapeHtmlAttribute(bid)
+                                setupRoot.insertWidgetRequested("<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" + safeBatteryId + "\" data-cached-title=\"" + escB + "\" data-title=\"" + escB + "\"></div>")
                                 setupRoot.close()
                             }
                         }
@@ -162,6 +165,7 @@ Item {
                     Layout.preferredHeight: 32
                     text: "12:00"
                     placeholderText: "HH:mm"
+                    validator: RegularExpressionValidator { regularExpression: /^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/ }
                     color: "#fffffe"
                     font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter
@@ -172,6 +176,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
                     placeholderText: qsTr("Rótulo do novo alarme...")
+                    maximumLength: 30
                     color: "#fffffe"
                     font.pixelSize: 12
                     background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
@@ -180,15 +185,19 @@ Item {
                     Layout.preferredHeight: 32
                     leftPadding: 10
                     rightPadding: 10
+                    enabled: alarmTimeField.acceptableInput
                     onClicked: {
-                        var tStr = alarmTimeField.text.trim() || "12:00"
-                        var lbl = (alarmLabelField.text.trim() || "Alarme").replace(/"/g, "&quot;")
+                        var rawTime = alarmTimeField.text.trim()
+                        var tStr = HtmlEscaping.escapeHtmlAttribute(rawTime)
+                        var rawLabel = alarmLabelField.text.trim() || "Alarme"
+                        var lbl = HtmlEscaping.escapeHtmlAttribute(rawLabel)
                         var aid = ""
                         var c = setupRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
                         if (c && typeof c.createAlarm === "function") {
-                            aid = c.createAlarm(tStr, lbl, true) || ""
+                            aid = c.createAlarm(rawTime, rawLabel, true) || ""
                         }
-                        setupRoot.insertWidgetRequested("<span class=\"alarm-widget\" data-type=\"alarm-widget\" data-alarm-id=\"" + aid + "\" data-time=\"" + tStr + "\" data-label=\"" + lbl + "\" data-status=\"pending\"></span>")
+                        var safeAlarmId = HtmlEscaping.escapeHtmlAttribute(aid)
+                        setupRoot.insertWidgetRequested("<span class=\"alarm-widget\" data-type=\"alarm-widget\" data-alarm-id=\"" + safeAlarmId + "\" data-time=\"" + tStr + "\" data-label=\"" + lbl + "\" data-status=\"pending\"></span>")
                         setupRoot.close()
                     }
                     background: Rectangle { radius: 8; color: "#7c3aed" }
@@ -227,15 +236,19 @@ Item {
                             Layout.preferredHeight: 40
                             onClicked: {
                                 if (setupRoot.activeMode === "question") {
-                                    var t = String(modelData.title || "Bateria").replace(/"/g, "&quot;")
-                                    setupRoot.insertWidgetRequested("<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" + modelData.id + "\" data-cached-title=\"" + t + "\" data-title=\"" + t + "\"></div>")
+                                    var t = HtmlEscaping.escapeHtmlAttribute(modelData.title || "Bateria")
+                                    var batteryId = HtmlEscaping.escapeHtmlAttribute(modelData.id)
+                                    setupRoot.insertWidgetRequested("<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" + batteryId + "\" data-cached-title=\"" + t + "\" data-title=\"" + t + "\"></div>")
                                 } else if (setupRoot.activeMode === "habito") {
-                                    var hTitle = String(modelData.title || modelData.name || "Hábito").replace(/"/g, "&quot;")
+                                    var hTitle = HtmlEscaping.escapeHtmlAttribute(modelData.title || modelData.name || "Hábito")
                                     var hStreak = Number(modelData.current_streak || 0)
-                                    setupRoot.insertWidgetRequested("<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" + modelData.id + "\" data-title=\"" + hTitle + "\" data-streak=\"" + hStreak + "\"></span>")
+                                    var habitId = HtmlEscaping.escapeHtmlAttribute(modelData.id)
+                                    setupRoot.insertWidgetRequested("<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" + habitId + "\" data-title=\"" + hTitle + "\" data-streak=\"" + hStreak + "\"></span>")
                                 } else if (setupRoot.activeMode === "alarme") {
-                                    var lbl = String(modelData.label || "Alarme").replace(/"/g, "&quot;")
-                                    setupRoot.insertWidgetRequested("<span class=\"alarm-widget\" data-type=\"alarm-widget\" data-alarm-id=\"" + modelData.id + "\" data-time=\"" + (modelData.time || "08:00") + "\" data-label=\"" + lbl + "\" data-status=\"pending\"></span>")
+                                    var lbl = HtmlEscaping.escapeHtmlAttribute(modelData.label || "Alarme")
+                                    var alarmId = HtmlEscaping.escapeHtmlAttribute(modelData.id)
+                                    var alarmTime = HtmlEscaping.escapeHtmlAttribute(modelData.time || "08:00")
+                                    setupRoot.insertWidgetRequested("<span class=\"alarm-widget\" data-type=\"alarm-widget\" data-alarm-id=\"" + alarmId + "\" data-time=\"" + alarmTime + "\" data-label=\"" + lbl + "\" data-status=\"pending\"></span>")
                                 }
                                 setupRoot.close()
                             }
@@ -269,7 +282,7 @@ Item {
                     visible: setupRoot.activeMode === "foco"
                     Layout.fillWidth: true
                     placeholderText: qsTr("Tag (ex: Estudo, Código)")
-                    text: "Estudo"
+                    text: ""
                     color: "#fffffe"
                     background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
                 }
@@ -297,7 +310,7 @@ Item {
                     id: secondaryField
                     Layout.fillWidth: true
                     placeholderText: setupRoot.activeMode === "foco" ? qsTr("Duração em minutos (ex: 25)") : qsTr("Data YYYY-MM-DD (ex: 2026-11-24)")
-                    text: setupRoot.activeMode === "foco" ? "25" : new Date().toISOString().substring(0, 10)
+                    text: setupRoot.activeMode === "foco" ? "30" : new Date().toISOString().substring(0, 10)
                     color: "#fffffe"
                     background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
                 }
@@ -374,18 +387,23 @@ Item {
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
+                    enabled: setupRoot.activeMode !== "foco" ||
+                        (mainTitleField.text.trim().length > 0 && tagField.text.trim().length > 0 &&
+                         Number(secondaryField.text) >= 1 && Number(secondaryField.text) % 1 === 0)
                     onClicked: {
-                        var title = (mainTitleField.text.trim() || (setupRoot.activeMode === "foco" ? "Sessão de Foco" : "Evento")).replace(/"/g, "&quot;")
+                        var rawTitle = mainTitleField.text.trim() || (setupRoot.activeMode === "foco" ? "Sessão de Foco" : "Evento")
+                        var title = HtmlEscaping.escapeHtmlAttribute(rawTitle)
                         if (setupRoot.activeMode === "foco") {
-                            var mins = Math.max(1, parseInt(secondaryField.text || "25", 10) || 25)
-                            var tag = (tagField.text.trim() || "Estudo").replace(/"/g, "&quot;")
+                            var mins = Math.max(1, parseInt(secondaryField.text || "30", 10) || 30)
+                            var tag = HtmlEscaping.escapeHtmlAttribute(tagField.text.trim() || "Estudo")
                             setupRoot.insertWidgetRequested("<span data-type=\"focus-widget\" data-duration=\"" + mins + "\" data-tag=\"" + tag + "\" data-description=\"" + title + "\" data-status=\"paused\"></span>")
                         } else {
-                            var dt = secondaryField.text.trim() || new Date().toISOString().substring(0, 10)
+                            var rawDate = secondaryField.text.trim() || new Date().toISOString().substring(0, 10)
+                            var dt = HtmlEscaping.escapeHtmlAttribute(rawDate)
                             var rems = setupRoot.eventReminderMins > 0 ? [setupRoot.eventReminderMins] : []
                             var c = setupRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
                             if (c && typeof c.createCalendarEvent === "function") {
-                                c.createCalendarEvent(title, "", dt, dt, setupRoot.eventType, setupRoot.eventColor, "", rems, setupRoot.eventRecurrence)
+                                c.createCalendarEvent(rawTitle, "", rawDate, rawDate, setupRoot.eventType, setupRoot.eventColor, "", rems, setupRoot.eventRecurrence)
                             }
                             setupRoot.insertWidgetRequested("<span data-type=\"calendar-event-widget\" data-title=\"" + title + "\" data-date=\"" + dt + "\" data-color=\"" + setupRoot.eventColor + "\" data-status=\"pending\"></span>")
                         }

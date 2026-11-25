@@ -78,6 +78,14 @@ pub unsafe extern "C" fn synapse_notes_split_rich_html(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_notes_compute_equal_column_widths(
+    column_count: c_int,
+) -> *mut c_char {
+    let count = column_count.clamp(1, 5) as usize;
+    json_to_c_char(&notes::compute_equal_column_widths(count))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_notes_parse_table_columns(
     table_html: *const c_char,
 ) -> *mut c_char {

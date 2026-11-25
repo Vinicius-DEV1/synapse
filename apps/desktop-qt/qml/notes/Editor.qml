@@ -1,6 +1,8 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesHtmlEscaping.js" as HtmlEscaping
+import "NotesSlashCommandActions.js" as SlashActions
 import "../ui"
 
 // Unified native WYSIWYG Editor mirroring apps/web-react/src/components/notes/Editor.tsx
@@ -62,68 +64,7 @@ ColumnLayout {
     }
 
     function handleSlashWidgetCommand(cmdId, blockIdx) {
-        pendingWidgetBlockIndex = blockIdx
-        if (cmdId === "youtube") {
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<div data-type=\"youtube-widget\" url=\"\"></div>")
-            return
-        }
-        if (cmdId === "mermaid") {
-            blockListEditor.insertWidgetHtmlAfter(blockIdx,
-                "<div data-type=\"mermaid\" code=\"graph TD\n  A[Inicio] --&gt; B[Fim]\"></div>")
-            return
-        }
-        if (cmdId === "columns" || cmdId === "columns2" || cmdId === "cols2" || cmdId === "columns3" || cmdId === "cols3") {
-            var cols = (cmdId === "columns3" || cmdId === "cols3") ? 3 : 2
-            var w = cols === 3 ? "33.3" : "50"
-            var inner = ""
-            for (var i = 0; i < cols; ++i) {
-                inner += "<div data-type=\"columnBlock\" data-width=\"" + w + "\" data-group-child=\"\" class=\"column-block\" style=\"--group-flex: " + w + ";\"><p></p></div>"
-            }
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<div data-type=\"columnGroup\" class=\"group-layout column-group\" data-columns=\"" + cols + "\">" + inner + "</div>")
-            return
-        }
-        if (cmdId === "toggle" || cmdId === "blockquoteToggle") {
-            var tag = cmdId === "blockquoteToggle" ? "blockquote-toggle" : "toggle"
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<div data-type=\"" + tag + "\" open=\"true\" title=\"Novo tópico\"><p></p></div>")
-            return
-        }
-        if (cmdId === "collection" || cmdId === "group") {
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<div data-type=\"collection\" title=\"Nova Coleção\" open=\"true\"><p></p></div>")
-            return
-        }
-        if (cmdId === "codeBlock" || cmdId === "code") {
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<pre><code class=\"language-plaintext\"></code></pre>")
-            return
-        }
-        if (cmdId === "blockquote" || cmdId === "callout") {
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<blockquote data-color=\"default\"><p></p></blockquote>")
-            return
-        }
-        if (cmdId === "agrupar" || cmdId === "bundle") {
-            blockListEditor.insertWidgetHtmlAfter(blockIdx, "<div data-type=\"document-bundle\" data-auto-open=\"true\" data-items=\"[]\"></div>")
-            return
-        }
-        var setupMode = cmdId === "focus" ? "foco"
-            : cmdId === "alarm" ? "alarme"
-            : cmdId === "calendar" ? "evento"
-            : cmdId === "habit" ? "habito" : cmdId
-        if (modalsHost && typeof modalsHost.openSetupWidget === "function" &&
-            (setupMode === "question" || setupMode === "habito" || setupMode === "foco" ||
-             setupMode === "alarme" || setupMode === "evento")) {
-            modalsHost.openSetupWidget(setupMode, { query: blockListEditor.lastSlashQuery || "" })
-            return
-        }
-        var mediaMode = cmdId === "file" ? "documento"
-            : cmdId === "book" ? "livro" : cmdId
-        if (modalsHost && typeof modalsHost.openMediaWidgetPicker === "function" &&
-            (mediaMode === "documento" || mediaMode === "media" || mediaMode === "livro" ||
-             mediaMode === "video" || mediaMode === "scrap")) {
-            modalsHost.openMediaWidgetPicker(mediaMode, "")
-            return
-        }
-        if ((cmdId === "askAi" || cmdId === "ia") && modalsHost && typeof modalsHost.openAiPrompt === "function") {
-            modalsHost.openAiPrompt("", editorRoot.activeContent)
-        }
+        return SlashActions.handleSlashWidgetCommand(editorRoot, blockListEditor, cmdId, blockIdx)
     }
 
     function applyAiResult(htmlOrText) {
@@ -140,8 +81,7 @@ ColumnLayout {
     }
 
     function escapeHtmlAttribute(value) {
-        return String(value || "").replace(/&/g, "&amp;").replace(/\"/g, "&quot;")
-            .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        return HtmlEscaping.escapeHtmlAttribute(value)
     }
 
     function localPathFromFileUrl(rawUrl) {

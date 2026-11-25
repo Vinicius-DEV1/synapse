@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesSlashCommandArguments.js" as SlashArgs
 import "RichTextMarkdownRules.js" as MdRules
 import "../ui"
 
@@ -143,8 +144,14 @@ Item {
         if (commandId === "page" || commandId === "page-create") {
             var createMode = commandId === "page-create"
             var initialQuery = createMode
-                ? slashQuery.replace(/^\s*(?:page-create|page create|create page|new page|subpage|criar pagina|nova pagina|create|new|criar|nova)\b/i, "").trim()
-                : slashQuery.replace(/^\s*page(?:-link)?/i, "").trim()
+                ? SlashArgs.extractSlashCommandArgument(slashQuery, [
+                    "criar pagina", "criar-pagina", "nova pagina", "nova-pagina", "subpagina",
+                    "page create", "new page", "criar", "nova"
+                ])
+                : SlashArgs.extractSlashCommandArgument(slashQuery, [
+                    "vincular pagina", "vincular-pagina", "link pagina", "page-link",
+                    "vincular", "vinculo", "pagina", "page"
+                ])
             var pageCommandApplied = richCommands.executeSlashCommand(commandStart, commandEnd, "page")
             if (!pageCommandApplied) {
                 slashCommandMenu.errorMessage = qsTr("This page reference could not be started safely.")

@@ -177,6 +177,7 @@ public:
     Q_INVOKABLE QString computeNoteWordDiffHtml(const QString &oldText, const QString &newText);
     Q_INVOKABLE QVariantList findDuplicateNoteLinks(const QString &url, const QString &excludePageId = "");
     Q_INVOKABLE QVariantMap splitRichHtml(const QString &html, int textOffset);
+    Q_INVOKABLE QVariantList computeEqualNoteColumnWidths(int columnCount);
     Q_INVOKABLE QVariantList parseTableColumns(const QString &tableHtml);
     Q_INVOKABLE QVariantList parseTableColumnsAt(const QString &noteHtml, int tableIndex);
     Q_INVOKABLE QString updateTableColumnSchemaAt(const QString &noteHtml, int tableIndex,

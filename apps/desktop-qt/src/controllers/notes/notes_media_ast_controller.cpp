@@ -3,6 +3,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QtGlobal>
 #include <QtCore/QUrl>
 
 QString SynapseDataController::moveTableColumn(const QString &tableHtml, int fromCol, int toCol) {
@@ -21,6 +22,16 @@ QString SynapseDataController::moveTableRow(const QString &tableHtml, int fromRo
     const QString out = QString::fromUtf8(raw);
     synapse_free_string(raw);
     return out;
+}
+
+QVariantList SynapseDataController::computeEqualNoteColumnWidths(int columnCount) {
+    const int boundedCount = qBound(1, columnCount, 5);
+    char *raw = synapse_notes_compute_equal_column_widths(boundedCount);
+    if (!raw) return {};
+    const QByteArray json(raw);
+    synapse_free_string(raw);
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray() ? doc.array().toVariantList() : QVariantList();
 }
 
 QVariantList SynapseDataController::extractLooseFileWidgetIds(const QString &html) {

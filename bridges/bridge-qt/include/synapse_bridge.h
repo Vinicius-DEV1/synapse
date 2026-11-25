@@ -313,6 +313,7 @@ char* synapse_notes_apply_search_replace(const char* original, const char* ai_re
 char* synapse_notes_compute_word_diff_html(const char* old_text, const char* new_text);
 char* synapse_notes_find_duplicate_links(Database* db, const char* url, const char* exclude_page_id);
 char* synapse_notes_split_rich_html(const char* html, int text_offset);
+char* synapse_notes_compute_equal_column_widths(int column_count);
 char* synapse_notes_parse_table_columns(const char* table_html);
 char* synapse_notes_parse_table_columns_at(const char* note_html, int table_index);
 char* synapse_notes_update_table_column_schema_at(const char* note_html, int table_index,

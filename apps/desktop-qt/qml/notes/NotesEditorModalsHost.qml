@@ -94,8 +94,8 @@ Item {
         setupWidgetsModal.openMode(mode, prefill)
     }
 
-    function openMediaWidgetPicker(mode, prefillUrl) {
-        mediaPickerModal.openMode(mode, prefillUrl)
+    function openMediaWidgetPicker(mode, prefillUrl, autoCaptureScrap) {
+        mediaPickerModal.openMode(mode, prefillUrl, autoCaptureScrap)
     }
 
     function openDeleteDialog(errMessage) {

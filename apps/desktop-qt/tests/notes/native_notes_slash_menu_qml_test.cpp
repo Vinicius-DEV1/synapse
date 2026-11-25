@@ -279,7 +279,7 @@ private slots:
         filtered = menu->property("filteredCommands").toList();
         QVERIFY(!filtered.isEmpty());
         QCOMPARE(filtered.first().toMap().value("id").toString(), QString("group"));
-        menu->setProperty("query", "assistente");
+        menu->setProperty("query", "prompt");
         filtered = menu->property("filteredCommands").toList();
         QVERIFY(!filtered.isEmpty());
         QCOMPARE(filtered.first().toMap().value("id").toString(), QString("ia"));
