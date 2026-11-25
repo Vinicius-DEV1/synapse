@@ -2,9 +2,11 @@
 
 pub mod block_ast;
 pub mod content;
+pub mod crdt_hydrator;
 pub mod diff_engine;
 pub mod hierarchy;
 pub mod history;
+pub mod html_normalizer;
 pub mod link_index;
 pub mod links;
 pub mod metadata;
@@ -17,6 +19,8 @@ pub mod tests;
 use crate::db::Database;
 use crate::error::{Result, SynapseError};
 pub use block_ast::{parse_note_blocks, serialize_note_blocks, NoteBlock};
+pub use crdt_hydrator::hydrate_html_from_crdt;
+pub use html_normalizer::normalize_tiptap_rich_html;
 pub use diff_engine::{
     apply_search_replace, compute_word_diff_html, parse_search_replace_blocks, SearchReplaceBlock,
     SearchReplaceResult,

@@ -236,6 +236,20 @@ pub unsafe extern "C" fn synapse_notes_compute_word_diff_html(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_notes_hydrate_from_crdt(
+    html: *const c_char,
+    crdt_base64: *const c_char,
+) -> *mut c_char {
+    let raw_html = to_opt_str(html).unwrap_or("");
+    let raw_crdt = to_opt_str(crdt_base64).unwrap_or("");
+    let hydrated = synapse_core::domain::notes::hydrate_html_from_crdt(raw_html, raw_crdt);
+    match CString::new(hydrated) {
+        Ok(c) => c.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_notes_find_duplicate_links(
     db: *mut Database,
     url: *const c_char,

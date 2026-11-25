@@ -315,11 +315,19 @@ fn map_page_row(row: &rusqlite::Row) -> rusqlite::Result<PageRecord> {
         rusqlite::types::ValueRef::Real(value) => value as i32,
         _ => 0,
     };
+    let raw_content = row.get::<_, Option<String>>(3)?.unwrap_or_default();
+    let crdt_state: Option<String> = row.get(12)?;
+    let content = match (&crdt_state, raw_content.is_empty()) {
+        (Some(crdt), false) if !crdt.is_empty() => {
+            super::crdt_hydrator::hydrate_html_from_crdt(&raw_content, crdt)
+        }
+        _ => raw_content,
+    };
     Ok(PageRecord {
         id: row.get(0)?,
         parent_id: row.get(1)?,
         title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
-        content: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+        content,
         icon: row
             .get::<_, Option<String>>(4)?
             .unwrap_or_else(|| "📄".to_string()),
@@ -330,7 +338,7 @@ fn map_page_row(row: &rusqlite::Row) -> rusqlite::Result<PageRecord> {
         cover_image: row.get(9)?,
         description: row.get(10)?,
         password_salt: row.get(11)?,
-        crdt_state: row.get(12)?,
+        crdt_state,
         encrypted_content: row.get(13)?,
         is_pinned: row.get::<_, Option<i32>>(14)?.unwrap_or(0),
         pinned_order: row.get::<_, Option<f64>>(15)?.unwrap_or(0.0),

@@ -308,6 +308,7 @@ char* synapse_notes_get_link_entity(Database* db, const char* canonical_url);
 int synapse_notes_save_link_entity(Database* db, const char* canonical_url, const char* entity_json);
 char* synapse_notes_parse_blocks(const char* html);
 char* synapse_notes_serialize_blocks(const char* blocks_json);
+char* synapse_notes_hydrate_from_crdt(const char* html, const char* crdt_base64);
 char* synapse_notes_apply_search_replace(const char* original, const char* ai_response);
 char* synapse_notes_compute_word_diff_html(const char* old_text, const char* new_text);
 char* synapse_notes_find_duplicate_links(Database* db, const char* url, const char* exclude_page_id);
