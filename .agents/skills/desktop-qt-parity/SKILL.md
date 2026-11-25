@@ -21,29 +21,42 @@ Use this skill whenever auditing, implementing, refactoring, or verifying featur
    - C++ controllers in `apps/desktop-qt/src/controllers/` and QML/JS files in `apps/desktop-qt/qml/` MUST NOT construct raw SQL queries or duplicate domain algorithms.
 4. **Anti-Monolith File Limit (< 300 Lines)**:
    - Every QML component, C++ controller file, and Rust module file must remain focused, atomic, and strictly under **250–300 lines**.
-5. **No Extraneous "Invented" Chrome in Qt**:
+5. **Mirror React Web Folder, File & Function Naming**:
+   - Keep directory structure, component/file names, and public action/method names in `apps/desktop-qt/` as close as possible to `apps/web-react/` (e.g., `FloatingToolbar`, `TableToolbar`, `TableExcelGrips`, `BlockHandle`, `SlashMenu`, `PageCover`, `PageHeader`, `SubPageGrid`, `PageUnlockForm`) to simplify cross-platform maintenance.
+6. **No Extraneous "Invented" Chrome in Qt**:
    - Do not add permanent KPI headers, top formatting toolbars, extra sidebar search boxes, numerical module count badges, or unrequested help buttons in Qt where React Web intentionally uses a cleaner, minimalist layout (such as hover-revealed headers, floating `BubbleMenu` toolbars, or sidebar-driven sub-tabs).
 
 ---
 
-## 2. Caderno (`notes`) Unified WYSIWYG Block & Widget Architecture
+## 2. Caderno (`notes`) React-to-Qt Parity Workflow
 
-In `apps/web-react/`, Caderno (`Editor.tsx`) is a single unified WYSIWYG canvas where rich text blocks and 20+ interactive NodeView widgets coexist seamlessly. To achieve 100% parity in `apps/desktop-qt/qml/notes/`:
+React is the behavioral and visual reference. Desktop Qt is the target. Inspect the current worktree before following historical notes: Qt Notes is being reorganized around a native block AST editor, and older source/preview-mode descriptions may no longer match current files. The detailed living comparison is [`docs/audits/desktop-qt-parity/notes/README.md`](../../../docs/audits/desktop-qt-parity/notes/README.md).
 
-1. **Eliminate the 3-Mode Fallback Trap (`Rich` / `Source` / `Preview`)**:
-   - Opening a note containing custom widgets (`question-block`, `habit-widget`, `focus-widget`, `alarm-widget`, `calendar-event-widget`, `file-widget`, `document-bundle`, `media-widget`, `scrap-widget`, `link-preview`, `linkGroup`, `toggle-block`, `blockquote-toggle`, `columnGroup`, `collectionBlock`, `codeBlock`, `colorBlockquote`, `resizableImage`, `encryptedImage`, `pageReference`, `customDivider`) MUST NOT disable visual editing or kick the user into a read-only preview (`NotesPreviewSurface.qml`) or raw HTML editor (`NotesSourceEditorSurface.qml`).
-2. **Block-Document Composition Model**:
-   - Parse the note's HTML/AST into a live sequence of **Document Blocks** rendered in a unified vertical Flickable/ListView (or hybrid block-container canvas):
-     - **Rich Text Blocks** (`p`, `h1-h3`, `ul`, `ol`, `todo`, `blockquote`): Rendered via lightweight interactive `TextArea`/`QQuickTextDocument` delegates with seamless arrow-key, Backspace/Enter, and selection transitions across blocks.
-     - **Interactive Widget Blocks**: Instantiate the actual interactive QML widget components (`QuestionBlock.qml`, `HabitWidget.qml`, `FocusWidget.qml`, `AlarmWidget.qml`, `CalendarEventWidget.qml`, `FileAttachmentWidget.qml`, `DocumentBundleWidget.qml`, `NotesToggleBlock.qml`, `NotesColumnLayout.qml`, `CodeBlock.qml`, `ColorBlockquote.qml`, `LinkPreviewCard.qml`, `ScrapWidget.qml`, `CollectionBlock.qml`, `MediaWidget.qml`) directly inline inside the live editor canvas, bound to real `dataController` / `synapse-core` persistence (zero hardcoded demo strings).
-3. **Contextual Floating Chrome (Zero Persistent Top Toolbar)**:
-   - Remove the persistent top `NotesEditorFormattingToolbar.qml`.
-   - Use **Floating Bubble Menus**:
-     - `FloatingToolbar`: Appears above text selections with Bold, Italic, Underline, Strike, Inline Code, Spoiler, Color & Highlight Palette (10 text colors + 10 highlight swatches), Page Reference (`[[`), and AI Assistant (`Sparkles`).
-     - `TableToolbar` & `TableExcelGrips`: Appears on tables with Excel column headers (`A`, `B`, `C`...), row handles (`1`, `2`, `3`...), typed columns (`text`, `number`, `date`, `select`, `checkbox`), cell overlays, column filtering, and interactive column width resizing.
-     - `BlockHandle` (`⋮⋮`): Appears in the left gutter on block hover with click menu (Move Up, Move Down, Add Line Below, Color submenu, Delete) and drag-to-reorder / drag-into-columns (`ColumnGroup`).
-4. **All 31 Slash Commands & 12 Modals**:
-   - Every item in `NotesRichSlashCommandMenu.qml` must either insert the live block directly or open its dedicated setup/selection modal (`FocusSetupModal`, `AlarmSetupModal`, `CalendarEventModal`, `HabitSelectModal`, `FileUploadModal` / `FileSelectModal`, `DocumentBundleModal`, `MediaSelectModal`, `QuestionCreateModal`, `ScrapInputModal`, `AiPromptModal`).
+1. **Trace the full React behavior first**:
+   - Compare `apps/web-react/src/components/Editor.tsx`, `notes/hooks/`, `notes/components/`, `editor-extensions/`, and `page-view/` with the Qt presentation, controller, bridge, and Core call chain.
+   - Include creation, edit, cancellation, keyboard behavior, errors, save/restore, undo, nested blocks, and cross-client HTML round-trip. A matching component name is not evidence of parity.
+2. **Keep the Qt implementation native**:
+   - Use Qt Quick/QML, C++ Qt document adapters and `synapse-core`; do not embed WebEngine for the Notes editor.
+   - Keep presentation in QML, lifecycle orchestration in thin controllers, shared Notes rules/persistence in Core, and platform APIs in adapters.
+   - Preserve active cursor, selection, focus, undo history, stable block identity and all supported attributes while editing.
+3. **Preserve the shared Notes schema**:
+   - Canonical parser, serializer, HTML normalization, table behavior, hierarchy, history/diff, link rules and persistence belong in `core/synapse-core/src/domain/notes/`.
+   - Current Rust sources are split into `block_ast/`, `html_normalizer/`, and `table_schema/` submodules alongside `diff_engine.rs`, `link_index.rs`, and page/history modules. Do not refer to removed monolithic `block_ast.rs` or `html_normalizer.rs` files as current paths.
+   - Keep typed Qt FFI split into cohesive modules under `bridges/bridge-qt/src/domain/notes/`; do not add raw SQL or duplicate shared business logic in C++ or QML.
+4. **Compare the full interaction inventory**:
+   - Compare all 31 React slash commands, their aliases and nested behavior. Qt-only additions such as Mermaid must remain additive.
+   - Compare text marks, headings, lists, callouts, code, tables, images, page references, file/bundle widgets, media, question/focus/alarm/calendar/habit widgets, toggles, collections, columns, link previews/groups, history and all modal states.
+   - Resolve differences in the native target. Never reduce React behavior or alter its layout to make parity easier.
+5. **Protect content and async lifecycles**:
+   - Treat filtered/editor-rendered HTML as a projection until a deliberate edit is committed; never save a display-only subset as canonical page content.
+   - Test supplementary Unicode offsets, entities, unknown/legacy attributes, malformed input, multiple tables, nested blocks, failed save, page switch, vault lock, and external modification.
+   - Cancel or disconnect timers, media, asynchronous imports and signal handlers when the native editor or widget is replaced.
+6. **Keep structure maintainable**:
+   - Keep the Qt `page-view/`, `notes/components/table/`, and `editor-extensions/` groupings aligned with React concepts when that improves navigation. Preserve public QML type names and update `qmldir`/imports with moves.
+   - Avoid oversized QML, C++, Rust, and bridge files; split each by cohesive responsibility and document why platform-specific adapters exist.
+7. **Use evidence-based status**:
+   - Track each feature as `Partial`, `Missing`, or `Unverified` until its behavior, persistence/error states, accessibility, performance and same-viewport appearance have been checked.
+   - Follow the focused verification and second-pass review plan in the Notes audit. Do not copy historical passing test counts or mark full parity from source inspection alone.
 
 ---
 

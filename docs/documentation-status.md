@@ -15,6 +15,7 @@ This page identifies the current sources of truth across the repository. Older a
 | Testing & quality gates | [Testing and quality guide](./guides/testing-and-quality.md) | Targeted Vitest, Cargo, Qt CTest, and Android instrumentation workflows |
 | Build and setup commands | [Setup and build guide](./guides/setup-and-build.md) | Current build commands and platform prerequisites |
 | Qt desktop feature parity | [Native desktop parity matrix](./native-desktop-parity.md) | Verified Qt coverage and remaining React parity gaps |
+| Qt Caderno / Notes parity | [Caderno React-to-Qt audit](./audits/desktop-qt-parity/notes/README.md) | Notes-only source map, parity matrix, Qt bug register, architecture review, checklist, and verification plan |
 | Native Android Finance | [Android Finance module](./modules/mobile-android-finance.md) | Compose UI, UniFFI API, local SQLite persistence, verification, and explicit cloud/encryption gaps |
 | Native Android feature parity | [React-to-Android parity checklist](./audits/mobile-android-parity/README.md) | Feature-by-feature React comparison, native route gaps, implementation checklist, and ongoing acceptance evidence |
 | Synchronization engine | [Sync Engine Architecture](./architecture/sync-engine.md) | Cloud synchronization, transactional batch upserts, indexed delta queries, and table sync inventory |
