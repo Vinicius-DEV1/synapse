@@ -107,12 +107,14 @@ Item {
                             onClicked: {
                                 if (setupRoot.activeMode === "question") {
                                     var t = String(modelData.title || "Bateria").replace(/"/g, "&quot;")
-                                    setupRoot.insertWidgetRequested("<div data-type=\"question-block\" data-battery-id=\"" + modelData.id + "\" data-cached-title=\"" + t + "\"></div>")
+                                    setupRoot.insertWidgetRequested("<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" + modelData.id + "\" data-cached-title=\"" + t + "\" data-title=\"" + t + "\"></div>")
                                 } else if (setupRoot.activeMode === "habito") {
-                                    setupRoot.insertWidgetRequested("<span data-type=\"habit-widget\" data-habit-id=\"" + modelData.id + "\"></span>")
+                                    var hTitle = String(modelData.title || modelData.name || "Hábito").replace(/"/g, "&quot;")
+                                    var hStreak = Number(modelData.current_streak || 0)
+                                    setupRoot.insertWidgetRequested("<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" + modelData.id + "\" data-title=\"" + hTitle + "\" data-streak=\"" + hStreak + "\"></span>")
                                 } else if (setupRoot.activeMode === "alarme") {
                                     var lbl = String(modelData.label || "Alarme").replace(/"/g, "&quot;")
-                                    setupRoot.insertWidgetRequested("<span data-type=\"alarm-widget\" data-alarm-id=\"" + modelData.id + "\" data-time=\"" + (modelData.time || "08:00") + "\" data-label=\"" + lbl + "\" data-status=\"pending\"></span>")
+                                    setupRoot.insertWidgetRequested("<span class=\"alarm-widget\" data-type=\"alarm-widget\" data-alarm-id=\"" + modelData.id + "\" data-time=\"" + (modelData.time || "08:00") + "\" data-label=\"" + lbl + "\" data-status=\"pending\"></span>")
                                 }
                                 setupRoot.close()
                             }

@@ -5,66 +5,132 @@ import "../ui"
 
 Rectangle {
     id: toggleRoot
+    objectName: "notesToggleBlockRoot"
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + (isCalloutMode ? 16 : 4)
-    radius: isCalloutMode ? 8 : 0
-    color: isCalloutMode ? (accentColor + "18") : "transparent"
-    border.color: isCalloutMode ? (accentColor + "40") : "transparent"
-    border.width: isCalloutMode ? 1 : 0
+    implicitHeight: mainCol.implicitHeight + (isCalloutMode ? 20 : 8)
+    radius: isCalloutMode ? 6 : 0
+    color: isCalloutMode
+        ? (hasCustomColor ? (accentColor + "18") : "#0dffffff")
+        : "transparent"
+    border.width: 0
 
     property var blockData: ({})
-    property var attrs: blockData.attrs || ({})
-    property bool isCalloutMode: blockData.blockType === "blockquoteToggle"
-    property string accentColor: attrs["data-color"] || "#8b5cf6"
-    property string title: attrs["data-title"] || attrs["title"] || qsTr("Seção recolhível")
-    property string bodyHtml: blockData.innerHtml || ""
-    property bool isOpen: (attrs["data-open"] || "true") !== "false"
+    property var controller: typeof dataController !== "undefined" ? dataController : null
+    property var textOperations: typeof notesTextOperations !== "undefined" ? notesTextOperations : null
+    property var pageList: []
+    property string pageId: ""
+    property string pageTitle: ""
+    property int nestingDepth: 0
+    property bool active: true
+
+    property bool isCalloutMode: true
+    property string accentColor: "default"
+    property string titleText: ""
+    property string bodyHtml: "<p></p>"
+    property bool isOpen: true
+    property bool showColorPicker: false
+    property bool isSyncingBlock: false
+
+    readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
+    readonly property string resolvedLeftBarColor: hasCustomColor ? accentColor : "#33ffffff"
 
     signal blockChanged(var updatedBlock)
     signal convertToSubPageRequested(string title, string html)
     signal askAiRequested(string text)
-    signal duplicateRequested()
+    signal pagePreviewRequested(string pageId)
+    signal pageOpenRequested(string pageId)
+    signal externalLinkRequested(string link)
     signal removeRequested()
 
-    HoverHandler { id: headerHover }
+    HoverHandler { id: blockHover }
+
+    function syncFromBlockData() {
+        var a = (blockData && blockData.attrs) ? blockData.attrs : ({})
+        isSyncingBlock = true
+        isCalloutMode = (blockData && blockData.blockType === "blockquoteToggle") ||
+            a["data-type"] === "blockquote-toggle" ||
+            String(a["class"] || "").indexOf("blockquote-toggle") >= 0
+        accentColor = a["data-color"] || a["color"] || "default"
+        var incomingTitle = a["data-title"] !== undefined && a["data-title"] !== ""
+            ? String(a["data-title"])
+            : String(a["title"] || "")
+        titleText = incomingTitle
+        if (!titleInput.activeFocus && titleInput.text !== incomingTitle) {
+            titleInput.text = incomingTitle
+        }
+        var rawOpen = a["data-is-open"] !== undefined
+            ? String(a["data-is-open"])
+            : (a["data-open"] !== undefined ? String(a["data-open"]) : String(a["isopen"] || "true"))
+        isOpen = rawOpen !== "false"
+        var incomingHtml = (blockData && blockData.innerHtml && String(blockData.innerHtml).trim().length > 0)
+            ? String(blockData.innerHtml)
+            : "<p><br/></p>"
+        if (incomingHtml === "<p></p>") incomingHtml = "<p><br/></p>"
+        if (incomingHtml !== bodyHtml) {
+            bodyHtml = incomingHtml
+        }
+        isSyncingBlock = false
+    }
+
+    Component.onCompleted: syncFromBlockData()
+    onBlockDataChanged: syncFromBlockData()
+
+    Timer {
+        id: titleSaveDebounce
+        interval: 180
+        repeat: false
+        onTriggered: toggleRoot.emitUpdate()
+    }
 
     Rectangle {
         visible: toggleRoot.isCalloutMode
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: 4
-        radius: 2
-        color: toggleRoot.accentColor
+        width: 3
+        radius: 1.5
+        color: toggleRoot.resolvedLeftBarColor
     }
 
     function emitUpdate() {
-        var nextAttrs = Object.assign({}, attrs)
+        if (isSyncingBlock) return
+        var baseAttrs = (blockData && blockData.attrs) ? blockData.attrs : ({})
+        var nextAttrs = Object.assign({}, baseAttrs)
+        nextAttrs["_tag"] = "div"
+        nextAttrs["class"] = isCalloutMode ? "blockquote-toggle" : "toggle-block"
         nextAttrs["data-type"] = isCalloutMode ? "blockquote-toggle" : "toggle-block"
         nextAttrs["data-title"] = titleInput.text
-        nextAttrs["data-open"] = isOpen ? "true" : "false"
-        if (isCalloutMode) nextAttrs["data-color"] = accentColor
+        nextAttrs["data-is-open"] = isOpen ? "true" : "false"
+        if (isCalloutMode) {
+            nextAttrs["data-color"] = accentColor || "default"
+        } else {
+            delete nextAttrs["data-color"]
+        }
         blockChanged({
-            id: blockData.id || "",
-            blockType: blockData.blockType || (isCalloutMode ? "blockquoteToggle" : "toggleBlock"),
+            id: (blockData && blockData.id) || "",
+            blockType: isCalloutMode ? "blockquoteToggle" : "toggleBlock",
             attrs: nextAttrs,
-            innerHtml: bodyArea.text,
+            innerHtml: bodyHtml && bodyHtml.trim().length > 0 ? bodyHtml : "<p></p>",
             html: ""
         })
     }
 
     function plainSummary(html) {
-        return String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+        return String(html || "")
+            .replace(/<\/p>\s*<p[^>]*>/gi, "\n")
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<[^>]+>/g, "")
+            .trim()
     }
 
     ColumnLayout {
         id: mainCol
         anchors.fill: parent
-        anchors.leftMargin: toggleRoot.isCalloutMode ? 14 : 6
-        anchors.rightMargin: 8
-        anchors.topMargin: toggleRoot.isCalloutMode ? 8 : 2
-        anchors.bottomMargin: toggleRoot.isCalloutMode ? 8 : 2
-        spacing: 4
+        anchors.leftMargin: toggleRoot.isCalloutMode ? 16 : 4
+        anchors.rightMargin: toggleRoot.isCalloutMode ? 14 : 6
+        anchors.topMargin: toggleRoot.isCalloutMode ? 10 : 4
+        anchors.bottomMargin: toggleRoot.isCalloutMode ? 10 : 4
+        spacing: 6
 
         RowLayout {
             Layout.fillWidth: true
@@ -78,103 +144,177 @@ Rectangle {
                     toggleRoot.isOpen = !toggleRoot.isOpen
                     toggleRoot.emitUpdate()
                 }
-                background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
+                background: Rectangle {
+                    radius: 5
+                    color: parent.hovered ? "#1affffff" : "transparent"
+                }
                 contentItem: AppIcon {
                     anchors.centerIn: parent
                     name: toggleRoot.isOpen ? "chevron-down" : "chevron-right"
-                    color: toggleRoot.isOpen ? "#c4b5fd" : "#94a1b2"
-                    width: 13
-                    height: 13
+                    color: parent.hovered ? "#fffffe" : "#a7a9be"
+                    width: 15
+                    height: 15
                 }
             }
 
             TextField {
                 id: titleInput
                 Layout.fillWidth: true
-                text: toggleRoot.title
+                text: toggleRoot.titleText
                 color: "#fffffe"
-                font.pixelSize: 14
+                font.pixelSize: 15
                 font.weight: Font.DemiBold
-                placeholderText: qsTr("Título do toggle...")
-                placeholderTextColor: "#52525b"
+                leftPadding: 2
+                placeholderText: toggleRoot.isCalloutMode ? qsTr("Título do destaque...") : qsTr("Lista oculta...")
+                placeholderTextColor: "#66a7a9be"
                 background: null
+                onTextEdited: {
+                    toggleRoot.titleText = text
+                    titleSaveDebounce.restart()
+                }
                 onEditingFinished: {
-                    toggleRoot.title = text
+                    titleSaveDebounce.stop()
+                    toggleRoot.titleText = text
                     toggleRoot.emitUpdate()
                 }
             }
 
-            RowLayout {
-                visible: headerHover.hovered || titleInput.activeFocus || bodyArea.activeFocus
-                spacing: 2
+            Rectangle {
+                visible: toggleRoot.isCalloutMode && toggleRoot.showColorPicker
+                Layout.preferredHeight: 26
+                Layout.preferredWidth: calloutSwatchRow.implicitWidth + 14
+                radius: 8
+                color: "#1a1924"
+                border.color: "#1affffff"
+                border.width: 1
 
-                Repeater {
-                    model: toggleRoot.isCalloutMode ? ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"] : []
-                    delegate: Rectangle {
-                        required property string modelData
-                        Layout.preferredWidth: 12
-                        Layout.preferredHeight: 12
-                        radius: 6
-                        color: modelData
-                        border.color: toggleRoot.accentColor === modelData ? "#ffffff" : "transparent"
-                        border.width: 1.5
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                toggleRoot.accentColor = modelData
-                                toggleRoot.emitUpdate()
+                RowLayout {
+                    id: calloutSwatchRow
+                    anchors.centerIn: parent
+                    spacing: 5
+                    Repeater {
+                        model: ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"]
+                        delegate: Rectangle {
+                            required property string modelData
+                            width: 14
+                            height: 14
+                            radius: 7
+                            color: modelData
+                            border.color: toggleRoot.accentColor === modelData ? "#ffffff" : "#33ffffff"
+                            border.width: toggleRoot.accentColor === modelData ? 1.5 : 1
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    toggleRoot.accentColor = parent.modelData
+                                    toggleRoot.showColorPicker = false
+                                    toggleRoot.emitUpdate()
+                                }
                             }
                         }
                     }
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Pedir à IA")
-                    onClicked: toggleRoot.askAiRequested(titleInput.text + "\n" + toggleRoot.plainSummary(bodyArea.text))
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#228b5cf6" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "sparkles"; color: "#c4b5fd"; width: 12; height: 12 }
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: toggleRoot.isCalloutMode ? qsTr("Converter em Toggle simples") : qsTr("Converter em Callout")
-                    onClicked: {
-                        toggleRoot.isCalloutMode = !toggleRoot.isCalloutMode
-                        toggleRoot.blockData.blockType = toggleRoot.isCalloutMode ? "blockquoteToggle" : "toggleBlock"
-                        toggleRoot.emitUpdate()
+                    ToolButton {
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Cor padrão")
+                        onClicked: {
+                            toggleRoot.accentColor = "default"
+                            toggleRoot.showColorPicker = false
+                            toggleRoot.emitUpdate()
+                        }
+                        background: Rectangle { radius: 8; color: "transparent"; border.color: "#33ffffff" }
+                        contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 8; height: 8 }
                     }
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "palette"; color: "#a7a9be"; width: 12; height: 12 }
                 }
+            }
 
-                ToolButton {
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Converter em sub-página")
-                    onClicked: toggleRoot.convertToSubPageRequested(titleInput.text || "Sub-página", bodyArea.text)
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "file-symlink"; color: "#a7a9be"; width: 12; height: 12 }
-                }
+            Rectangle {
+                opacity: blockHover.hovered || titleInput.activeFocus || toggleRoot.showColorPicker ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+                Layout.preferredHeight: 26
+                Layout.preferredWidth: actionRow.implicitWidth + 8
+                radius: 8
+                color: "#cc0f0e17"
+                border.color: "#0dffffff"
+                border.width: 1
 
-                ToolButton {
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Remover toggle")
-                    onClicked: toggleRoot.removeRequested()
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
+                RowLayout {
+                    id: actionRow
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    ToolButton {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Converter em Página")
+                        onClicked: toggleRoot.convertToSubPageRequested(titleInput.text || qsTr("Sub-página"), toggleRoot.bodyHtml)
+                        background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
+                        contentItem: AppIcon { anchors.centerIn: parent; name: "file-text"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 13; height: 13 }
+                    }
+
+                    ToolButton {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Assistente de IA")
+                        onClicked: toggleRoot.askAiRequested(titleInput.text + "\n" + toggleRoot.plainSummary(toggleRoot.bodyHtml))
+                        background: Rectangle { radius: 5; color: parent.hovered ? "#338b5cf6" : "transparent" }
+                        contentItem: AppIcon { anchors.centerIn: parent; name: "sparkles"; color: "#a78bfa"; width: 13; height: 13 }
+                    }
+
+                    ToolButton {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: toggleRoot.isCalloutMode ? qsTr("Converter em Toggle simples") : qsTr("Converter em Callout")
+                        onClicked: {
+                            toggleRoot.isCalloutMode = !toggleRoot.isCalloutMode
+                            toggleRoot.emitUpdate()
+                        }
+                        background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
+                        contentItem: AppIcon { anchors.centerIn: parent; name: "list-tree"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 13; height: 13 }
+                    }
+
+                    ToolButton {
+                        visible: toggleRoot.isCalloutMode
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Cor do Destaque")
+                        onClicked: toggleRoot.showColorPicker = !toggleRoot.showColorPicker
+                        background: Rectangle {
+                            radius: 5
+                            color: toggleRoot.showColorPicker || parent.hovered ? "#1affffff" : "transparent"
+                        }
+                        contentItem: AppIcon { anchors.centerIn: parent; name: "palette"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 13; height: 13 }
+                    }
+
+                    Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 12; color: "#1affffff" }
+
+                    ToolButton {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Excluir bloco")
+                        onClicked: toggleRoot.removeRequested()
+                        background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
+                        contentItem: AppIcon {
+                            anchors.centerIn: parent
+                            name: toggleRoot.isCalloutMode ? "close" : "trash"
+                            color: parent.hovered ? "#f87171" : "#a7a9be"
+                            width: 13
+                            height: 13
+                        }
+                    }
                 }
             }
         }
@@ -182,47 +322,56 @@ Rectangle {
         Item {
             visible: toggleRoot.isOpen
             Layout.fillWidth: true
-            Layout.leftMargin: 10
-            implicitHeight: bodyCol.implicitHeight
+            Layout.leftMargin: toggleRoot.isCalloutMode ? 6 : 11
+            implicitHeight: Math.max(36, nestedLoader.item ? nestedLoader.item.implicitHeight : 36)
 
             Rectangle {
+                visible: !toggleRoot.isCalloutMode
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                width: 2
-                color: toggleRoot.isCalloutMode ? (toggleRoot.accentColor + "55") : "#0dffffff"
+                width: 1.5
+                color: blockHover.hovered ? "#26ffffff" : "#12ffffff"
             }
 
-            ColumnLayout {
-                id: bodyCol
+            Loader {
+                id: nestedLoader
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.leftMargin: 16
-                spacing: 4
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: "#0dffffff"
+                anchors.leftMargin: toggleRoot.isCalloutMode ? 18 : 14
+                active: toggleRoot.active && toggleRoot.isOpen
+                source: toggleRoot.nestingDepth < 3 && toggleRoot.controller && typeof toggleRoot.controller.parseNoteBlocks === "function"
+                    ? "NotesBlockListEditor.qml"
+                    : "NotesRichTextEditor.qml"
+                onLoaded: {
+                    if (!item) return
+                    item.sourceHtml = toggleRoot.bodyHtml
+                    item.pageList = toggleRoot.pageList
+                    item.controller = toggleRoot.controller
+                    item.textOperations = toggleRoot.textOperations
+                    if (item.hasOwnProperty("pageId")) item.pageId = toggleRoot.pageId
+                    if (item.hasOwnProperty("parentPageId")) item.parentPageId = toggleRoot.pageId
+                    if (item.hasOwnProperty("pageTitle")) item.pageTitle = toggleRoot.pageTitle
+                    if (item.hasOwnProperty("nestingDepth")) item.nestingDepth = toggleRoot.nestingDepth + 1
+                    item.active = true
                 }
+            }
 
-                TextArea {
-                    id: bodyArea
-                    Layout.fillWidth: true
-                    implicitHeight: Math.max(32, contentHeight + 6)
-                    padding: 0
-                    text: toggleRoot.plainSummary(toggleRoot.bodyHtml)
-                    placeholderText: qsTr("Escreva dentro da seção recolhível...")
-                    placeholderTextColor: "#4b5563"
-                    color: "#cbd5e1"
-                    font.pixelSize: 14
-                    wrapMode: TextEdit.Wrap
-                    background: Item {}
-                    onEditingFinished: {
-                        toggleRoot.bodyHtml = "<p>" + text + "</p>"
-                        toggleRoot.emitUpdate()
-                    }
+            Connections {
+                target: nestedLoader.item
+                ignoreUnknownSignals: true
+                function onHtmlChanged(serializedHtml) {
+                    toggleRoot.bodyHtml = serializedHtml
+                    toggleRoot.emitUpdate()
                 }
+                function onContentModified(html) {
+                    toggleRoot.bodyHtml = html
+                    toggleRoot.emitUpdate()
+                }
+                function onPagePreviewRequested(pid) { toggleRoot.pagePreviewRequested(pid) }
+                function onPageOpenRequested(pid) { toggleRoot.pageOpenRequested(pid) }
+                function onExternalLinkRequested(lnk) { toggleRoot.externalLinkRequested(lnk) }
+                function onAskAiRequested(sel) { toggleRoot.askAiRequested(sel) }
             }
         }
     }

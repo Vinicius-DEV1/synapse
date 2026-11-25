@@ -6,49 +6,78 @@ import "../ui"
 Rectangle {
     id: linkCardRoot
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + 20
-    radius: 10
-    color: hoverHandler.hovered ? "#08ffffff" : "#1a1924"
-    border.color: hoverHandler.hovered ? (accentColor !== "#8b5cf6" ? accentColor : "#33ffffff") : "#1affffff"
-    border.width: 1
+    implicitHeight: mainCol.implicitHeight
+    radius: 8
 
     property var blockData: ({})
     property var attrs: blockData.attrs || ({})
     property string pageId: ""
-    property string url: attrs["data-url"] || attrs["url"] || attrs["src"] || ""
-    property string title: attrs["data-title"] || attrs["title"] || ""
-    property string description: attrs["data-description"] || attrs["description"] || ""
-    property string accentColor: attrs["data-color"] || attrs["color"] || "#8b5cf6"
+    property string url: attrs["url"] || attrs["data-url"] || attrs["src"] || ""
+    property string title: attrs["title"] || attrs["data-title"] || ""
+    property string channel: attrs["channel"] || attrs["data-channel"] || ""
+    property int durationSec: parseInt(attrs["duration"] || attrs["data-duration"] || "0", 10) || 0
+    property bool isPlaylist: (attrs["isPlaylist"] || attrs["isplaylist"] || attrs["data-is-playlist"] || "false") === "true"
+    property int playlistCount: parseInt(attrs["playlistCount"] || attrs["playlistcount"] || "0", 10) || 0
+    property string uploadDate: attrs["data-upload-date"] || attrs["uploadDate"] || attrs["uploaddate"] || ""
+    property string accentColor: attrs["data-color"] || attrs["color"] || "default"
     property bool isWatched: (attrs["watched"] || attrs["data-watched"]) === "true"
     property bool isWatching: (attrs["watching"] || attrs["data-watching"]) === "true"
     property string notesText: attrs["notes"] || attrs["data-notes"] || ""
-    property bool notesExpanded: (attrs["show-notes"] || attrs["shownotes"]) === "true"
+    property bool notesExpanded: (attrs["showNotes"] || attrs["shownotes"] || attrs["show-notes"]) === "true"
+    property bool showColorPicker: false
     property var duplicatePages: []
     property bool duplicatesOpen: false
 
     readonly property bool isYouTube: /(?:youtube\.com|youtu\.be)/i.test(url)
+    readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
+    readonly property string domain: {
+        var m = String(url || "").match(/^https?:\/\/([^/?#:]+)/i)
+        return m ? m[1].replace(/^www\./i, "") : ""
+    }
+
+    color: hasCustomColor
+        ? (accentColor + "18")
+        : (hoverHandler.hovered ? "#201f2d" : "#1a1924")
+    border.color: hasCustomColor
+        ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
+        : (hoverHandler.hovered ? "#33ffffff" : "#1affffff")
+    border.width: 1
+    Behavior on color { ColorAnimation { duration: 150 } }
+    Behavior on border.color { ColorAnimation { duration: 150 } }
 
     signal attrsUpdated(var newAttrs)
     signal youtubeWatchRequested(string videoUrl, string videoTitle)
-    signal youtubeSummaryRequested(string videoUrl, string videoTitle)
     signal openDuplicatePageRequested(string pageId)
     signal removeRequested()
 
     HoverHandler { id: hoverHandler }
 
+    function formatDuration(sec) {
+        if (!sec || sec <= 0) return ""
+        var h = Math.floor(sec / 3600)
+        var m = Math.floor((sec % 3600) / 60)
+        var s = sec % 60
+        var sStr = s < 10 ? ("0" + s) : String(s)
+        return h > 0 ? (h + ":" + (m < 10 ? ("0" + m) : String(m)) + ":" + sStr) : (m + ":" + sStr)
+    }
+
     function refreshMetadata() {
         if (!url || typeof dataController === "undefined" || !dataController) return
         if (typeof dataController.getLinkMetadata === "function") {
             var meta = dataController.getLinkMetadata(url) || ({})
-            if (meta.title && title.length === 0) title = meta.title
-            if (meta.description && description.length === 0) description = meta.description
+            if (meta.title && title.length === 0) title = String(meta.title)
+            if (meta.channel && channel.length === 0) channel = String(meta.channel)
+            if (meta.duration && durationSec <= 0) durationSec = Number(meta.duration) || 0
+            if (meta.isPlaylist !== undefined) isPlaylist = Boolean(meta.isPlaylist)
+            if (meta.playlistCount && playlistCount <= 0) playlistCount = Number(meta.playlistCount) || 0
+            if (meta.uploadDate && uploadDate.length === 0) uploadDate = String(meta.uploadDate)
         }
         if (typeof dataController.getLinkEntity === "function") {
             var ent = dataController.getLinkEntity(url) || ({})
             if (ent.watched !== undefined) isWatched = Boolean(ent.watched)
             if (ent.watching !== undefined) isWatching = Boolean(ent.watching)
             if (ent.notes !== undefined && notesText.length === 0) notesText = String(ent.notes)
-            if (ent.color) accentColor = String(ent.color)
+            if (ent.color && ent.color !== "default" && !hasCustomColor) accentColor = String(ent.color)
         }
         if (typeof dataController.findDuplicateNoteLinks === "function") {
             duplicatePages = dataController.findDuplicateNoteLinks(url, pageId) || []
@@ -67,213 +96,225 @@ Rectangle {
         attrsUpdated(next)
     }
 
+    function saveColor(nextColor) {
+        accentColor = nextColor
+        if (typeof dataController !== "undefined" && dataController && typeof dataController.setLinkEntityColor === "function") {
+            dataController.setLinkEntityColor(url, nextColor)
+        }
+        var next = Object.assign({}, attrs)
+        if (nextColor && nextColor !== "default") next["data-color"] = nextColor
+        else delete next["data-color"]
+        attrsUpdated(next)
+    }
+
     Component.onCompleted: refreshMetadata()
     onBlockDataChanged: refreshMetadata()
 
-    Rectangle {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: 4
-        radius: 2
-        color: linkCardRoot.accentColor
-    }
-
     ColumnLayout {
         id: mainCol
-        anchors.fill: parent
-        anchors.leftMargin: 14
-        anchors.rightMargin: 12
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
-        spacing: 8
+        width: parent.width
+        spacing: 0
 
-        RowLayout {
+        Item {
             Layout.fillWidth: true
-            spacing: 10
+            implicitHeight: headerRow.implicitHeight + 24
 
-            Rectangle {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                radius: 8
-                color: linkCardRoot.isYouTube ? "#26ef4444" : (linkCardRoot.accentColor + "22")
-                AppIcon {
-                    anchors.centerIn: parent
-                    name: linkCardRoot.isYouTube ? "play" : "external-link"
-                    color: linkCardRoot.isYouTube ? "#f87171" : linkCardRoot.accentColor
-                    width: 16
-                    height: 16
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text {
-                    text: linkCardRoot.title || linkCardRoot.url || qsTr("Link externo")
-                    color: "#fffffe"
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-                Text {
-                    text: linkCardRoot.url
-                    color: "#71717a"
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-            }
-
-            // Duplicate indicator badge
-            Button {
-                visible: linkCardRoot.duplicatePages.length > 0
-                Layout.preferredHeight: 22
-                padding: 6
-                onClicked: linkCardRoot.duplicatesOpen = !linkCardRoot.duplicatesOpen
-                background: Rectangle { radius: 11; color: "#26f59e0b"; border.color: "#55f59e0b" }
-                contentItem: Text {
-                    text: "⚠ " + linkCardRoot.duplicatePages.length + "x"
-                    color: "#fbbf24"
-                    font.pixelSize: 10
-                    font.bold: true
-                }
-            }
-
-            // Watch status pills & action bar (shown on hover or when active)
-            RowLayout {
-                opacity: hoverHandler.hovered || linkCardRoot.isWatching || linkCardRoot.isWatched || linkCardRoot.notesExpanded ? 1 : 0
-                visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 130 } }
-                spacing: 4
-
-                Button {
-                    Layout.preferredHeight: 24
-                    padding: 6
-                    onClicked: linkCardRoot.saveStatus(linkCardRoot.isWatched, !linkCardRoot.isWatching)
-                    background: Rectangle {
-                        radius: 6
-                        color: linkCardRoot.isWatching ? "#26f59e0b" : "#1affffff"
-                        border.color: linkCardRoot.isWatching ? "#4df59e0b" : "transparent"
-                    }
-                    contentItem: Text {
-                        text: qsTr("Assistindo")
-                        color: linkCardRoot.isWatching ? "#fcd34d" : "#a7a9be"
-                        font.pixelSize: 10
-                        font.weight: Font.Medium
-                    }
-                }
-
-                Button {
-                    Layout.preferredHeight: 24
-                    padding: 6
-                    onClicked: linkCardRoot.saveStatus(!linkCardRoot.isWatched, false)
-                    background: Rectangle {
-                        radius: 6
-                        color: linkCardRoot.isWatched ? "#2610b981" : "#1affffff"
-                        border.color: linkCardRoot.isWatched ? "#4d10b981" : "transparent"
-                    }
-                    contentItem: Text {
-                        text: linkCardRoot.isWatched ? qsTr("Assistido ✓") : qsTr("Concluir")
-                        color: linkCardRoot.isWatched ? "#6ee7b7" : "#a7a9be"
-                        font.pixelSize: 10
-                        font.weight: Font.Medium
-                    }
-                }
-
-                Button {
-                    visible: linkCardRoot.isYouTube
-                    Layout.preferredHeight: 24
-                    padding: 6
-                    onClicked: linkCardRoot.youtubeWatchRequested(linkCardRoot.url, linkCardRoot.title)
-                    background: Rectangle { radius: 6; color: "#dc2626" }
-                    contentItem: Text { text: qsTr("Assistir aqui"); color: "#ffffff"; font.pixelSize: 10; font.bold: true }
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Anotações do link")
-                    onClicked: linkCardRoot.notesExpanded = !linkCardRoot.notesExpanded
-                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "notes"; color: "#a7a9be"; width: 13; height: 13 }
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Abrir no navegador")
-                    onClicked: if (linkCardRoot.url) Qt.openUrlExternally(linkCardRoot.url)
-                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "external-link"; color: "#a7a9be"; width: 13; height: 13 }
-                }
-
-                ToolButton {
-                    visible: hoverHandler.hovered
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    onClicked: linkCardRoot.removeRequested()
-                    background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
-                }
-            }
-        }
-
-        // Duplicate occurrences drawer
-        ColumnLayout {
-            visible: linkCardRoot.duplicatesOpen && linkCardRoot.duplicatePages.length > 0
-            Layout.fillWidth: true
-            spacing: 4
-            Text { text: qsTr("Este link também aparece em:"); color: "#fbbf24"; font.pixelSize: 10; font.bold: true }
-            Repeater {
-                model: linkCardRoot.duplicatePages
-                delegate: Button {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 26
-                    onClicked: linkCardRoot.openDuplicatePageRequested(modelData.pageId)
-                    background: Rectangle { radius: 6; color: parent.hovered ? "#22f59e0b" : "#12121a" }
-                    contentItem: Text {
-                        text: (modelData.pageIcon || "📄") + " " + (modelData.pageTitle || qsTr("Página"))
-                        color: "#fde68a"
-                        font.pixelSize: 11
-                    }
-                }
-            }
-        }
-
-        // Notes drawer
-        Rectangle {
-            visible: linkCardRoot.notesExpanded
-            Layout.fillWidth: true
-            implicitHeight: Math.max(52, linkNotesArea.contentHeight + 14)
-            radius: 8
-            color: "#0e0d15"
-            border.color: "#1e1e2e"
-            TextArea {
-                id: linkNotesArea
+            MouseArea {
                 anchors.fill: parent
-                anchors.margins: 6
-                text: linkCardRoot.notesText
-                placeholderText: qsTr("Anotações pessoais sobre este link...")
-                placeholderTextColor: "#52525b"
-                color: "#e2e8f0"
-                font.pixelSize: 12
-                wrapMode: TextEdit.Wrap
-                background: null
-                onEditingFinished: {
-                    linkCardRoot.notesText = text
-                    if (typeof dataController !== "undefined" && dataController && typeof dataController.setLinkEntityNotes === "function") {
-                        dataController.setLinkEntityNotes(linkCardRoot.url, text)
+                cursorShape: Qt.PointingHandCursor
+                onClicked: if (linkCardRoot.url) Qt.openUrlExternally(linkCardRoot.url)
+            }
+
+            RowLayout {
+                id: headerRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 12
+                spacing: 12
+
+                Item {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    Layout.alignment: Qt.AlignTop
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 6
+                        color: "#0f0e17"
+                        border.color: "#0dffffff"
+
+                        AppIcon {
+                            anchors.centerIn: parent
+                            name: linkCardRoot.isYouTube ? (linkCardRoot.isPlaylist ? "list-video" : "play") : "globe"
+                            color: linkCardRoot.isYouTube ? "#8b5cf6" : "#a78bfa"
+                            width: 16
+                            height: 16
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: function(mouse) {
+                                mouse.accepted = true
+                                if (linkCardRoot.isYouTube) {
+                                    linkCardRoot.youtubeWatchRequested(linkCardRoot.url, linkCardRoot.title || linkCardRoot.domain)
+                                } else if (linkCardRoot.url) {
+                                    Qt.openUrlExternally(linkCardRoot.url)
+                                }
+                            }
+                        }
                     }
-                    var next = Object.assign({}, linkCardRoot.attrs)
-                    next["notes"] = text
-                    next["show-notes"] = "true"
-                    linkCardRoot.attrsUpdated(next)
+
+                    Rectangle {
+                        visible: linkCardRoot.isWatched || linkCardRoot.isWatching
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: -4
+                        anchors.rightMargin: -4
+                        width: 14
+                        height: 14
+                        radius: 7
+                        color: linkCardRoot.isWatched ? "#10b981" : "#f59e0b"
+                        border.color: "#0f0e17"
+                        border.width: 1.5
+                        AppIcon {
+                            anchors.centerIn: parent
+                            name: linkCardRoot.isWatched ? "check" : "hourglass"
+                            color: "#000000"
+                            strokeWidth: 2.6
+                            width: 8
+                            height: 8
+                        }
+                    }
                 }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: linkCardRoot.title || linkCardRoot.domain || linkCardRoot.url || qsTr("Link externo")
+                        color: "#f2ffffff"
+                        font.pixelSize: 13
+                        font.weight: Font.Medium
+                        wrapMode: Text.Wrap
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Text { visible: linkCardRoot.domain.length > 0; text: linkCardRoot.domain; color: "#c4b5fd"; font.pixelSize: 11; font.weight: Font.Medium }
+                        Text { visible: linkCardRoot.channel.length > 0; text: "•  " + linkCardRoot.channel; color: "#d4d4d8"; font.pixelSize: 11 }
+                        Text {
+                            visible: !linkCardRoot.isPlaylist && linkCardRoot.durationSec > 0
+                            text: "•  " + linkCardRoot.formatDuration(linkCardRoot.durationSec)
+                            color: "#a1a1aa"
+                            font.pixelSize: 11
+                        }
+                        Text {
+                            visible: linkCardRoot.uploadDate.length > 0
+                            text: "•  " + linkCardRoot.uploadDate.substring(0, 10)
+                            color: "#a1a1aa"
+                            font.pixelSize: 11
+                        }
+
+                        Rectangle {
+                            visible: linkCardRoot.isWatching && !linkCardRoot.isWatched
+                            height: 18
+                            width: watchingRow.implicitWidth + 12
+                            radius: 5
+                            color: "#1af59e0b"
+                            border.color: "#40f59e0b"
+                            RowLayout {
+                                id: watchingRow
+                                anchors.centerIn: parent
+                                spacing: 4
+                                AppIcon { name: "hourglass"; color: "#fbbf24"; width: 10; height: 10 }
+                                Text { text: qsTr("Assistindo"); color: "#fcd34d"; font.pixelSize: 10; font.weight: Font.Medium }
+                            }
+                        }
+
+                        Rectangle {
+                            visible: linkCardRoot.duplicatePages.length > 0
+                            height: 18
+                            width: dupRow.implicitWidth + 12
+                            radius: 5
+                            color: dupMouse.containsMouse ? "#33f59e0b" : "#1af59e0b"
+                            border.color: "#40f59e0b"
+                            RowLayout {
+                                id: dupRow
+                                anchors.centerIn: parent
+                                spacing: 4
+                                AppIcon { name: "layers"; color: "#fbbf24"; width: 10; height: 10 }
+                                Text {
+                                    text: linkCardRoot.duplicatePages.length === 1
+                                        ? qsTr("Em 1 outra página")
+                                        : qsTr("Em %1 outras páginas").arg(linkCardRoot.duplicatePages.length)
+                                    color: "#fcd34d"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                }
+                            }
+                            MouseArea {
+                                id: dupMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: linkCardRoot.duplicatesOpen = !linkCardRoot.duplicatesOpen
+                            }
+                        }
+                    }
+                }
+
+                LinkPreviewCardToolbar {
+                    opacity: hoverHandler.hovered || linkCardRoot.notesExpanded || linkCardRoot.showColorPicker ? 1 : 0.75
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                    isYouTube: linkCardRoot.isYouTube
+                    isWatching: linkCardRoot.isWatching
+                    isWatched: linkCardRoot.isWatched
+                    notesExpanded: linkCardRoot.notesExpanded
+                    hasNotes: linkCardRoot.notesText.length > 0
+                    showColorPicker: linkCardRoot.showColorPicker
+                    onWatchYoutubeRequested: linkCardRoot.youtubeWatchRequested(linkCardRoot.url, linkCardRoot.title || linkCardRoot.domain)
+                    onToggleWatchingRequested: linkCardRoot.saveStatus(false, !linkCardRoot.isWatching)
+                    onToggleWatchedRequested: linkCardRoot.saveStatus(!linkCardRoot.isWatched, false)
+                    onToggleNotesRequested: {
+                        linkCardRoot.notesExpanded = !linkCardRoot.notesExpanded
+                        var next = Object.assign({}, linkCardRoot.attrs)
+                        next["showNotes"] = linkCardRoot.notesExpanded ? "true" : "false"
+                        linkCardRoot.attrsUpdated(next)
+                    }
+                    onToggleColorPickerRequested: linkCardRoot.showColorPicker = !linkCardRoot.showColorPicker
+                    onOpenExternalRequested: if (linkCardRoot.url) Qt.openUrlExternally(linkCardRoot.url)
+                    onRemoveRequested: linkCardRoot.removeRequested()
+                }
+            }
+        }
+
+        LinkPreviewCardDrawers {
+            showColorPicker: linkCardRoot.showColorPicker
+            accentColor: linkCardRoot.accentColor
+            duplicatesOpen: linkCardRoot.duplicatesOpen
+            duplicatePages: linkCardRoot.duplicatePages
+            notesExpanded: linkCardRoot.notesExpanded
+            notesText: linkCardRoot.notesText
+            onColorSelected: function(colorVal) {
+                linkCardRoot.saveColor(colorVal)
+                linkCardRoot.showColorPicker = false
+            }
+            onDuplicatePageClicked: function(pid) { linkCardRoot.openDuplicatePageRequested(pid) }
+            onNotesSaved: function(text) {
+                linkCardRoot.notesText = text
+                if (typeof dataController !== "undefined" && dataController && typeof dataController.setLinkEntityNotes === "function") {
+                    dataController.setLinkEntityNotes(linkCardRoot.url, text)
+                }
+                var next = Object.assign({}, linkCardRoot.attrs)
+                next["notes"] = text
+                next["showNotes"] = "true"
+                linkCardRoot.attrsUpdated(next)
             }
         }
     }

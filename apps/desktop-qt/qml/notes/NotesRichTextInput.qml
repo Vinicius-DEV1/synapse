@@ -21,14 +21,16 @@ Item {
     property string detectedPasteUrl: ""
     readonly property alias pageReferenceMenu: pageReferenceFlow.menu
     readonly property alias editor: richEditor
+
     signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
     signal widgetSlashCommandRequested(string commandId)
     signal askAiRequested(string selectedText)
+    signal convertUrlToCardRequested(string url)
 
     Timer {
         id: urlDetectTimer
-        interval: 6000
+        interval: 8000
         onTriggered: inputRoot.detectedPasteUrl = ""
     }
 
@@ -44,6 +46,18 @@ Item {
             urlDetectTimer.restart()
         }
     }
+
+    function removeDetectedUrlLine(url) {
+        if (!editorRoot || !editorRoot.textOperations || !richEditor.textDocument) return
+        var plain = editorRoot.textOperations.richPlainText(richEditor.textDocument)
+        var pos = plain.indexOf(url)
+        if (pos >= 0) {
+            editorRoot.textOperations.replace(richEditor.textDocument, pos, pos + url.length, "")
+            editorRoot.commitEditorText()
+        }
+        detectedPasteUrl = ""
+    }
+
     readonly property string editorAccessibleDescription: {
         var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
             ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
@@ -72,6 +86,7 @@ Item {
             previousPlainText = editorRoot.textOperations.richPlainText(richEditor.textDocument)
         }
     }
+
     function closeSlashMenu() {
         slashMenuOpen = false
         slashStart = -1
@@ -80,6 +95,7 @@ Item {
         slashCommandMenu.errorMessage = ""
         pendingSlashStart = -1
     }
+
     function updateSlashMenu(currentPlainText) {
         if (pendingSlashStart >= 0) {
             var typedSlashStart = pendingSlashStart
@@ -110,6 +126,7 @@ Item {
             slashCommandMenu.selectedIndex = 0
         }
     }
+
     function executeSlashCommand(commandId) {
         if (!slashMenuOpen) return false
         var commandStart = slashStart
@@ -127,13 +144,13 @@ Item {
             }
             closeSlashMenu()
             pageReferenceFlow.openForPosition(
-                        commandStart, initialQuery, createMode, richEditor.cursorRectangle.x,
-                        richEditor.cursorRectangle.y + richEditor.cursorRectangle.height + 6)
+                commandStart, initialQuery, createMode, richEditor.cursorRectangle.x,
+                richEditor.cursorRectangle.y + richEditor.cursorRectangle.height + 6)
             return true
         }
         var widgetCommands = [
             "toggle", "blockquoteToggle", "question", "foco", "alarme", "evento",
-            "habito", "documento", "agrupar", "scrap", "group", "video", "livro", "ia"
+            "habito", "documento", "agrupar", "scrap", "group", "video", "livro", "ia", "mermaid"
         ]
         if (widgetCommands.indexOf(commandId) >= 0) {
             if (editorRoot && editorRoot.textOperations && typeof editorRoot.textOperations.replace === "function") {
@@ -154,7 +171,9 @@ Item {
         }
         return executed
     }
+
     function closePageReferenceMenu() { pageReferenceFlow.close() }
+
     TextArea {
         id: richEditor
         objectName: "notesRichTextEditor"
@@ -272,25 +291,23 @@ Item {
                 inputRoot.editorRoot.setSpoilerVisibility(position, "hide")
             }
         }
-        onLinkActivated: function(link) {
-            referenceActions.activateLink(link)
-        }
+        onLinkActivated: function(link) { referenceActions.activateLink(link) }
         onTextChanged: {
             if (!inputRoot.editorRoot || !inputRoot.editorRoot.textOperations ||
                 typeof inputRoot.editorRoot.textOperations.richPlainText !== "function" ||
                 !richEditor.textDocument) return
             var currentPlainText = inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
-            if (inputRoot.editorRoot.isLoading) {
+            if (inputRoot.editorRoot.isLoading || !inputRoot.editorRoot.canEditSource) {
                 inputRoot.previousPlainText = currentPlainText
                 inputRoot.closeSlashMenu()
                 return
             }
-            var previousPlainText = inputRoot.previousPlainText
+            var prev = inputRoot.previousPlainText
             inputRoot.previousPlainText = currentPlainText
-            if (currentPlainText !== previousPlainText) {
+            if (currentPlainText !== prev) {
                 inputRoot.editorRoot.textOperations.applyRichPendingMarks(
-                            richEditor.textDocument, previousPlainText, currentPlainText, richEditor.cursorPosition)
-                inputRoot.detectPastedStandaloneUrl(previousPlainText, currentPlainText)
+                    richEditor.textDocument, prev, currentPlainText, richEditor.cursorPosition)
+                inputRoot.detectPastedStandaloneUrl(prev, currentPlainText)
             }
             inputRoot.updateSlashMenu(currentPlainText)
             inputRoot.editorRoot.hasPendingChanges = true
@@ -336,343 +353,20 @@ Item {
             inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
     }
 
-    // Floating bubble toolbar on text selection (TipTap BubbleMenu equivalent)
-    Rectangle {
-        id: selectionBubble
-        objectName: "notesSelectionBubbleToolbar"
-        visible: richEditor.activeFocus &&
-                 richEditor.selectionStart !== richEditor.selectionEnd &&
-                 !inputRoot.slashMenuOpen &&
-                 !inputRoot.pageReferenceMenuOpen &&
-                 inputRoot.editorRoot.active &&
-                 !inputRoot.editorRoot.hasInvalidContent
-        x: Math.max(8, Math.min(inputRoot.width - width - 8, richEditor.cursorRectangle.x - width / 2))
-        y: Math.max(0, richEditor.cursorRectangle.y - height - 10)
-        width: bubbleRow.implicitWidth + 16
-        height: 36
-        radius: 11
-        color: "#e60f0e17"
-        border.color: "#14ffffff"
-        border.width: 1
-        z: 99
-
-        RowLayout {
-            id: bubbleRow
-            anchors.centerIn: parent
-            spacing: 2
-
-            ToolButton {
-                id: bubbleBold
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                checkable: true
-                checked: inputRoot.richCommands ? inputRoot.richCommands.boldAtCursor : false
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Bold (Ctrl+B)")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleBold.checked ? "#268b5cf6" : (bubbleBold.hovered ? "#1affffff" : "transparent")
-                    border.color: bubbleBold.checked ? "#408b5cf6" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "B"
-                    color: bubbleBold.checked ? "#c4b5fd" : (bubbleBold.hovered ? "#fffffe" : "#a7a9be")
-                    font.pixelSize: 12
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("bold")
-                }
-            }
-
-            ToolButton {
-                id: bubbleItalic
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                checkable: true
-                checked: inputRoot.richCommands ? inputRoot.richCommands.italicAtCursor : false
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Italic (Ctrl+I)")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleItalic.checked ? "#268b5cf6" : (bubbleItalic.hovered ? "#1affffff" : "transparent")
-                    border.color: bubbleItalic.checked ? "#408b5cf6" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "I"
-                    color: bubbleItalic.checked ? "#c4b5fd" : (bubbleItalic.hovered ? "#fffffe" : "#a7a9be")
-                    font.pixelSize: 12
-                    font.italic: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("italic")
-                }
-            }
-
-            ToolButton {
-                id: bubbleUnderline
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                checkable: true
-                checked: inputRoot.richCommands ? inputRoot.richCommands.underlineAtCursor : false
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Underline (Ctrl+U)")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleUnderline.checked ? "#268b5cf6" : (bubbleUnderline.hovered ? "#1affffff" : "transparent")
-                    border.color: bubbleUnderline.checked ? "#408b5cf6" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "U"
-                    color: bubbleUnderline.checked ? "#c4b5fd" : (bubbleUnderline.hovered ? "#fffffe" : "#a7a9be")
-                    font.pixelSize: 12
-                    font.underline: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("underline")
-                }
-            }
-
-            ToolButton {
-                id: bubbleStrike
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                checkable: true
-                checked: inputRoot.richCommands ? inputRoot.richCommands.strikeAtCursor : false
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Strikethrough")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleStrike.checked ? "#268b5cf6" : (bubbleStrike.hovered ? "#1affffff" : "transparent")
-                    border.color: bubbleStrike.checked ? "#408b5cf6" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "S"
-                    color: bubbleStrike.checked ? "#c4b5fd" : (bubbleStrike.hovered ? "#fffffe" : "#a7a9be")
-                    font.pixelSize: 12
-                    font.strikeout: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("strike")
-                }
-            }
-
-            ToolButton {
-                id: bubbleCode
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                checkable: true
-                checked: inputRoot.richCommands ? inputRoot.richCommands.codeAtCursor : false
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Inline code")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleCode.checked ? "#268b5cf6" : (bubbleCode.hovered ? "#1affffff" : "transparent")
-                    border.color: bubbleCode.checked ? "#408b5cf6" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "</>"
-                    color: bubbleCode.checked ? "#c4b5fd" : (bubbleCode.hovered ? "#fffffe" : "#a7a9be")
-                    font.pixelSize: 10
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("code")
-                }
-            }
-
-            ToolButton {
-                id: bubbleSpoiler
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                checkable: true
-                checked: inputRoot.richCommands ? inputRoot.richCommands.spoilerAtCursor : false
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Spoiler (Alt+R to reveal)")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleSpoiler.checked ? "#268b5cf6" : (bubbleSpoiler.hovered ? "#1affffff" : "transparent")
-                    border.color: bubbleSpoiler.checked ? "#408b5cf6" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "👁"
-                    color: bubbleSpoiler.checked ? "#c4b5fd" : (bubbleSpoiler.hovered ? "#fffffe" : "#a7a9be")
-                    font.pixelSize: 11
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.toggleMark("spoiler")
-                }
-            }
-
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 14
-                color: "#18ffffff"
-            }
-
-            ToolButton {
-                id: bubbleLink
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Insert link")
-                background: Rectangle {
-                    radius: 4
-                    color: bubbleLink.hovered ? "#1affffff" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "↗"
-                    color: bubbleLink.hovered ? "#ffffff" : "#c4b5fd"
-                    font.pixelSize: 12
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    if (inputRoot.richCommands) inputRoot.richCommands.openLinkDialog()
-                }
-            }
-
-            NotesRichColorPalette {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                richMode: true
-                onColorSelected: function(background, color) {
-                    if (inputRoot.editorRoot && inputRoot.editorRoot.tableActions) {
-                        inputRoot.editorRoot.tableActions.setColor(background, color)
-                    }
-                }
-            }
-
-            ToolButton {
-                id: bubblePageRef
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 24
-                padding: 1
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Linkar página ([[)")
-                background: Rectangle {
-                    radius: 4
-                    color: bubblePageRef.hovered ? "#1affffff" : "transparent"
-                }
-                contentItem: Text {
-                    anchors.centerIn: parent
-                    text: "[["
-                    color: bubblePageRef.hovered ? "#ffffff" : "#94a1b2"
-                    font.pixelSize: 10
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    pageReferenceFlow.openForPosition(
-                        richEditor.selectionEnd, "", false,
-                        richEditor.cursorRectangle.x, richEditor.cursorRectangle.y + 20)
-                }
-            }
-
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 14
-                color: "#18ffffff"
-            }
-
-            ToolButton {
-                id: bubbleAskAi
-                focusPolicy: Qt.NoFocus
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 24
-                padding: 2
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Editar ou perguntar à IA")
-                background: Rectangle {
-                    radius: 6
-                    color: bubbleAskAi.hovered ? "#1affffff" : "transparent"
-                }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: "sparkles"
-                    color: "#a78bfa"
-                    width: 14
-                    height: 14
-                }
-                onClicked: inputRoot.askAiRequested(richEditor.selectedText)
-            }
-        }
-    }
-
-    Rectangle {
-        visible: inputRoot.detectedPasteUrl.length > 0 && !inputRoot.slashMenuOpen && inputRoot.editorRoot.active
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 12
-        width: pasteUrlRow.implicitWidth + 16
-        height: 30
-        radius: 8
-        color: "#1e1b2e"
-        border.color: "#448b5cf6"
-        z: 35
-
-        RowLayout {
-            id: pasteUrlRow
-            anchors.centerIn: parent
-            spacing: 8
-            Text {
-                text: "🔗 URL colada"
-                color: "#c4b5fd"
-                font.pixelSize: 11
-                font.bold: true
-            }
-            Button {
-                text: "Abrir link"
-                Layout.preferredHeight: 22
-                background: Rectangle { radius: 5; color: parent.hovered ? "#2a8b5cf6" : "#1a8b5cf6" }
-                contentItem: Text { text: parent.text; color: "#fffffe"; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                onClicked: {
-                    inputRoot.externalLinkRequested(inputRoot.detectedPasteUrl)
-                    inputRoot.detectedPasteUrl = ""
-                }
-            }
-            ToolButton {
-                text: "✕"
-                Layout.preferredWidth: 20
-                Layout.preferredHeight: 20
-                onClicked: inputRoot.detectedPasteUrl = ""
-                contentItem: Text { text: parent.text; color: "#94a1b2"; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: "transparent" }
-            }
+    NotesSelectionBubbleToolbar {
+        richEditor: richEditor
+        editorRoot: inputRoot.editorRoot
+        richCommands: inputRoot.richCommands
+        pageReferenceFlow: pageReferenceFlow
+        slashMenuOpen: inputRoot.slashMenuOpen
+        pageReferenceMenuOpen: inputRoot.pageReferenceMenuOpen
+        detectedPasteUrl: inputRoot.detectedPasteUrl
+        onAskAiRequested: function(txt) { inputRoot.askAiRequested(txt) }
+        onExternalLinkRequested: function(lnk) { inputRoot.externalLinkRequested(lnk) }
+        onDismissPasteUrlRequested: inputRoot.detectedPasteUrl = ""
+        onConvertUrlToCardRequested: function(url) {
+            inputRoot.removeDetectedUrlLine(url)
+            inputRoot.convertUrlToCardRequested(url)
         }
     }
 

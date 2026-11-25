@@ -1,101 +1,120 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../ui"
 
-Rectangle {
+Item {
     id: linkGroupRoot
     Layout.fillWidth: true
-    implicitHeight: mainCol.implicitHeight + 20
-    radius: 12
-    color: "#141320"
-    border.color: "#22ffffff"
-    border.width: 1
+    implicitHeight: mainCol.implicitHeight + 8
 
     property var blockData: ({})
     property var attrs: blockData.attrs || ({})
-    property string title: attrs["data-title"] || attrs["title"] || qsTr("Grupo de Links")
-    property bool collapsed: (attrs["data-collapsed"] || "false") === "true"
-    property var links: {
+    property var childLinkBlocks: {
+        var inner = blockData.innerHtml || ""
+        if (inner.length > 0 && typeof dataController !== "undefined" && dataController &&
+                typeof dataController.parseNoteBlocks === "function") {
+            var parsed = dataController.parseNoteBlocks(inner) || []
+            var cards = parsed.filter(function(b) { return b.blockType === "linkPreview" })
+            if (cards.length > 0) return cards
+        }
         var raw = attrs["data-links"] || "[]"
         try {
-            var parsed = JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
-            return Array.isArray(parsed) ? parsed : []
-        } catch (e) {
-            return []
-        }
+            var list = JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
+            if (Array.isArray(list) && list.length > 0) {
+                return list.map(function(item, i) {
+                    return {
+                        id: "lg_" + i,
+                        blockType: "linkPreview",
+                        attrs: { url: item.url || "", title: item.title || "" },
+                        innerHtml: "",
+                        html: ""
+                    }
+                })
+            }
+        } catch (e) {}
+        return []
     }
     property bool addingLink: false
 
     signal attrsUpdated(var newAttrs)
     signal removeRequested()
 
-    HoverHandler { id: hoverHandler }
+    HoverHandler { id: groupHover }
 
-    function saveLinks(nextLinks) {
+    function persistCards(cards) {
         var next = Object.assign({}, attrs)
-        next["data-type"] = "link-group"
-        next["data-title"] = title
-        next["data-collapsed"] = collapsed ? "true" : "false"
-        next["data-links"] = JSON.stringify(nextLinks)
+        next["data-type"] = "linkGroup"
+        next["data-links"] = JSON.stringify(cards.map(function(c) {
+            return {
+                url: (c.attrs && (c.attrs.url || c.attrs["data-url"])) || "",
+                title: (c.attrs && (c.attrs.title || c.attrs["data-title"])) || ""
+            }
+        }))
         attrsUpdated(next)
     }
 
     ColumnLayout {
         id: mainCol
         anchors.fill: parent
-        anchors.margins: 12
         spacing: 8
 
+        // Subtle hover header bar for adding a sibling link card or removing the group
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            visible: groupHover.hovered || linkGroupRoot.addingLink || linkGroupRoot.childLinkBlocks.length === 0
+            spacing: 6
 
-            ToolButton {
-                Layout.preferredWidth: 24
+            Rectangle {
                 Layout.preferredHeight: 24
-                onClicked: {
-                    linkGroupRoot.collapsed = !linkGroupRoot.collapsed
-                    linkGroupRoot.saveLinks(linkGroupRoot.links)
-                }
-                background: Rectangle { radius: 5; color: parent.hovered ? "#1affffff" : "transparent" }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: linkGroupRoot.collapsed ? "chevron-right" : "chevron-down"
-                    color: "#a7a9be"
-                    width: 13
-                    height: 13
-                }
-            }
+                Layout.preferredWidth: hdrRow.implicitWidth + 14
+                radius: 6
+                color: "#1a1924"
+                border.color: "#1affffff"
+                border.width: 1
 
-            TextField {
-                Layout.fillWidth: true
-                text: linkGroupRoot.title
-                color: "#fffffe"
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-                background: null
-                onEditingFinished: {
-                    linkGroupRoot.title = text
-                    linkGroupRoot.saveLinks(linkGroupRoot.links)
+                RowLayout {
+                    id: hdrRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    AppIcon { name: "layers"; color: "#a78bfa"; width: 11; height: 11 }
+                    Text {
+                        text: qsTr("Grupo de Links (%1)").arg(linkGroupRoot.childLinkBlocks.length)
+                        color: "#a7a9be"
+                        font.pixelSize: 11
+                        font.weight: Font.Medium
+                    }
                 }
             }
 
             Button {
                 Layout.preferredHeight: 24
-                padding: 8
+                leftPadding: 8
+                rightPadding: 8
+                focusPolicy: Qt.NoFocus
+                enabled: linkGroupRoot.childLinkBlocks.length < 4
                 onClicked: linkGroupRoot.addingLink = !linkGroupRoot.addingLink
-                background: Rectangle { radius: 6; color: "#228b5cf6" }
-                contentItem: Text { text: qsTr("+ Link"); color: "#c4b5fd"; font.pixelSize: 11; font.weight: Font.Medium }
+                background: Rectangle {
+                    radius: 6
+                    color: parent.hovered ? "#338b5cf6" : "#1a8b5cf6"
+                    border.color: "#338b5cf6"
+                    border.width: 1
+                }
+                contentItem: Text { text: qsTr("+ Link lado a lado"); color: "#c4b5fd"; font.pixelSize: 11; font.weight: Font.Medium }
             }
 
+            Item { Layout.fillWidth: true }
+
             ToolButton {
-                visible: hoverHandler.hovered
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Remover grupo de links")
                 onClicked: linkGroupRoot.removeRequested()
-                background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
+                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
+                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: parent.hovered ? "#fb7185" : "#a7a9be"; width: 12; height: 12 }
             }
         }
 
@@ -107,75 +126,70 @@ Rectangle {
             TextField {
                 id: newUrlInput
                 Layout.fillWidth: true
+                Layout.preferredHeight: 32
                 placeholderText: "https://..."
+                placeholderTextColor: "#71717a"
                 color: "#fffffe"
                 font.pixelSize: 12
-                background: Rectangle { radius: 6; color: "#0f0e17"; border.color: "#33ffffff" }
+                leftPadding: 10
+                background: Rectangle { radius: 8; color: "#15141b"; border.color: "#1affffff" }
             }
 
             Button {
-                Layout.preferredHeight: 28
+                Layout.preferredHeight: 32
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: {
                     var u = newUrlInput.text.trim()
                     if (u.length === 0) return
-                    var next = linkGroupRoot.links.slice()
-                    next.push({ url: u, title: u })
-                    linkGroupRoot.links = next
-                    linkGroupRoot.saveLinks(next)
+                    var next = linkGroupRoot.childLinkBlocks.slice()
+                    next.push({
+                        id: "lg_" + Date.now(),
+                        blockType: "linkPreview",
+                        attrs: { url: u, title: "" },
+                        innerHtml: "",
+                        html: ""
+                    })
+                    linkGroupRoot.childLinkBlocks = next
+                    linkGroupRoot.persistCards(next)
                     newUrlInput.text = ""
                     linkGroupRoot.addingLink = false
                 }
-                background: Rectangle { radius: 6; color: "#7c3aed" }
+                background: Rectangle { radius: 8; color: parent.hovered ? "#8b5cf6" : "#7c3aed" }
                 contentItem: Text { text: qsTr("Adicionar"); color: "#ffffff"; font.pixelSize: 11; font.bold: true }
             }
         }
 
-        ColumnLayout {
-            visible: !linkGroupRoot.collapsed
+        // Side-by-side LinkPreviewCard columns matching LinkGroupBlock.tsx
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 10
 
             Repeater {
-                model: linkGroupRoot.links
-                delegate: Rectangle {
+                model: linkGroupRoot.childLinkBlocks
+                delegate: LinkPreviewCard {
                     required property var modelData
                     required property int index
                     Layout.fillWidth: true
-                    height: 34
-                    radius: 7
-                    color: "#0f0e17"
-                    border.color: "#15ffffff"
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 8
-                        spacing: 8
-                        AppIcon { name: "external-link"; color: "#a78bfa"; width: 12; height: 12 }
-                        Text {
-                            text: modelData.title || modelData.url || ""
-                            color: "#e2e8f0"
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                        ToolButton {
-                            Layout.preferredWidth: 22
-                            Layout.preferredHeight: 22
-                            onClicked: {
-                                var next = linkGroupRoot.links.slice()
-                                next.splice(index, 1)
-                                linkGroupRoot.links = next
-                                linkGroupRoot.saveLinks(next)
-                            }
-                            background: Rectangle { radius: 4; color: parent.hovered ? "#22ef4444" : "transparent" }
-                            contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#71717a"; width: 10; height: 10 }
-                        }
+                    Layout.alignment: Qt.AlignTop
+                    blockData: modelData
+                    onAttrsUpdated: function(na) {
+                        var next = linkGroupRoot.childLinkBlocks.slice()
+                        var copy = Object.assign({}, next[index])
+                        copy.attrs = na
+                        next[index] = copy
+                        linkGroupRoot.childLinkBlocks = next
+                        linkGroupRoot.persistCards(next)
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        z: -1
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: if (modelData.url) Qt.openUrlExternally(modelData.url)
+                    onRemoveRequested: {
+                        var next = linkGroupRoot.childLinkBlocks.slice()
+                        next.splice(index, 1)
+                        if (next.length === 0) {
+                            linkGroupRoot.removeRequested()
+                        } else {
+                            linkGroupRoot.childLinkBlocks = next
+                            linkGroupRoot.persistCards(next)
+                        }
                     }
                 }
             }

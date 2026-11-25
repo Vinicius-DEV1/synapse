@@ -5,23 +5,31 @@ import "../ui"
 
 Rectangle {
     id: alarmRoot
-    implicitWidth: Math.min(parent ? parent.width : 420, pillRow.implicitWidth + 24)
-    implicitHeight: 36
-    radius: 9
+    implicitWidth: Math.min(parent ? parent.width : 440, pillRow.implicitWidth + 18)
+    implicitHeight: 30
+    radius: 6
 
     property var blockData: ({})
     property var attrs: blockData.attrs || ({})
-    property string alarmId: attrs["data-alarm-id"] || attrs["alarm-id"] || ""
-    property string timeStr: attrs["data-time"] || attrs["time"] || "08:00"
-    property string label: attrs["data-label"] || attrs["label"] || qsTr("Alarme")
+    property string alarmId: attrs["data-alarm-id"] || attrs["alarm-id"] || attrs["alarmId"] || ""
+    property string timeStr: attrs["data-time"] || attrs["time"] || attrs["timeStr"] || "08:00"
+    property string label: attrs["data-label"] || attrs["label"] || ""
     property string status: attrs["data-status"] || attrs["status"] || "pending"
 
-    readonly property bool isPending: status === "pending" || status === "active"
     readonly property bool isTriggered: status === "triggered"
+    readonly property bool isCancelled: status === "cancelled"
+    readonly property bool isPending: !isTriggered && !isCancelled
 
-    color: isTriggered ? "#2a2015" : (isPending ? "#1e1438" : "#16161e")
-    border.color: isTriggered ? "#f59e0b" : (isPending ? "#7c3aed" : "#374151")
+    color: isTriggered
+        ? "#1a10b981"
+        : (isCancelled
+            ? "#1aef4444"
+            : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6"))
+    border.color: isTriggered
+        ? "#3310b981"
+        : (isCancelled ? "#33ef4444" : "#338b5cf6")
     border.width: 1
+    Behavior on color { ColorAnimation { duration: 150 } }
 
     signal attrsUpdated(var newAttrs)
     signal removeRequested()
@@ -59,54 +67,67 @@ Rectangle {
 
     RowLayout {
         id: pillRow
-        anchors.centerIn: parent
-        spacing: 8
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: 9
+        spacing: 6
 
         AppIcon {
-            name: "clock"
-            color: alarmRoot.isTriggered ? "#34d399" : (alarmRoot.isPending ? "#c4b5fd" : "#f87171")
-            Layout.preferredWidth: 14
-            Layout.preferredHeight: 14
+            name: alarmRoot.isTriggered
+                ? "check-circle"
+                : (alarmRoot.isCancelled ? "close" : "bell")
+            color: alarmRoot.isTriggered
+                ? "#34d399"
+                : (alarmRoot.isCancelled ? "#f87171" : "#c4b5fd")
+            Layout.preferredWidth: 13
+            Layout.preferredHeight: 13
+        }
+
+        Text {
+            text: qsTr("Alarme") + (alarmRoot.label.length > 0 ? (": " + alarmRoot.label) : "")
+            color: alarmRoot.isTriggered
+                ? "#34d399"
+                : (alarmRoot.isCancelled ? "#f87171" : "#c4b5fd")
+            font.pixelSize: 13
+            font.weight: Font.Medium
+            elide: Text.ElideRight
+            Layout.maximumWidth: 200
+        }
+
+        Text {
+            text: "-"
+            color: alarmRoot.isTriggered
+                ? "#8034d399"
+                : (alarmRoot.isCancelled ? "#80f87171" : "#80c4b5fd")
+            font.pixelSize: 13
         }
 
         Text {
             text: alarmRoot.timeStr
-            color: "#fffffe"
-            font.pixelSize: 12
-            font.weight: Font.Bold
+            color: alarmRoot.isTriggered
+                ? "#34d399"
+                : (alarmRoot.isCancelled ? "#f87171" : "#c4b5fd")
+            font.pixelSize: 13
+            font.weight: Font.Medium
             font.family: "monospace"
-        }
-
-        Text {
-            text: "• " + (alarmRoot.label || qsTr("Alarme"))
-            color: alarmRoot.isPending ? "#c4b5fd" : "#9ca3af"
-            font.pixelSize: 12
-        }
-
-        Rectangle {
-            visible: alarmRoot.isTriggered || !alarmRoot.isPending
-            Layout.preferredHeight: 18
-            Layout.preferredWidth: statusLbl.implicitWidth + 10
-            radius: 4
-            color: alarmRoot.isTriggered ? "#f59e0b" : "#27272a"
-            Text {
-                id: statusLbl
-                anchors.centerIn: parent
-                text: alarmRoot.isTriggered ? "DISPARADO" : qsTr("DESATIVADO")
-                color: alarmRoot.isTriggered ? "#000000" : "#a1a1aa"
-                font.pixelSize: 9
-                font.weight: Font.Bold
-            }
         }
 
         ToolButton {
             visible: hoverHandler.hovered
-            Layout.preferredWidth: 22
-            Layout.preferredHeight: 22
+            Layout.preferredWidth: 20
+            Layout.preferredHeight: 20
             focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Remover alarme da nota")
             onClicked: alarmRoot.removeRequested()
             background: Rectangle { radius: 4; color: parent.hovered ? "#22ef4444" : "transparent" }
-            contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#fda4af"; width: 10; height: 10 }
+            contentItem: AppIcon {
+                anchors.centerIn: parent
+                name: "close"
+                color: parent.hovered ? "#f87171" : "#a7a9be"
+                width: 11
+                height: 11
+            }
         }
     }
 

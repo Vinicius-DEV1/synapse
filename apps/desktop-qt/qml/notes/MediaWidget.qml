@@ -5,77 +5,90 @@ import "../ui"
 
 Rectangle {
     id: mediaWidgetRoot
-    Layout.fillWidth: true
-    implicitHeight: 58
-    radius: 11
-    color: "#161524"
-    border.color: hoverHandler.hovered ? "#448b5cf6" : "#18ffffff"
-    border.width: 1
+    implicitWidth: Math.min(parent ? parent.width : 520, contentRow.implicitWidth + 20)
+    implicitHeight: 38
+    radius: 8
 
     property var blockData: ({})
     property var attrs: blockData.attrs || ({})
-    property string mediaType: attrs["data-media-type"] || attrs["media-type"] || "video"
-    property string mediaId: attrs["data-media-id"] || attrs["media-id"] || ""
+    property string mediaType: (attrs["data-media-type"] || attrs["media-type"] || attrs["mediaType"] || "video").toLowerCase()
+    property string mediaId: attrs["data-media-id"] || attrs["media-id"] || attrs["mediaId"] || ""
     property string title: attrs["data-title"] || attrs["title"] || qsTr("Mídia vinculada")
+    property string accentColor: attrs["data-color"] || attrs["color"] || "default"
+    property bool showColorPicker: false
+
+    readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
+
+    color: hasCustomColor
+        ? (accentColor + "18")
+        : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")
+    border.color: hasCustomColor
+        ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
+        : "#338b5cf6"
+    border.width: 1
+    Behavior on color { ColorAnimation { duration: 150 } }
+    Behavior on border.color { ColorAnimation { duration: 150 } }
 
     signal openMediaRequested(string mediaType, string mediaId, string title)
     signal removeRequested()
 
     HoverHandler { id: hoverHandler }
 
-    RowLayout {
+    MouseArea {
         anchors.fill: parent
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
-        spacing: 10
+        cursorShape: Qt.PointingHandCursor
+        onClicked: mediaWidgetRoot.openMediaRequested(mediaWidgetRoot.mediaType, mediaWidgetRoot.mediaId, mediaWidgetRoot.title)
+    }
 
+    RowLayout {
+        id: contentRow
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.leftMargin: 10
+        spacing: 8
+
+        // Icon badge matching MediaWidgetNodeView.tsx
         Rectangle {
-            Layout.preferredWidth: 34
-            Layout.preferredHeight: 34
-            radius: 8
-            color: mediaWidgetRoot.mediaType === "book" ? "#223b82f6" : "#228b5cf6"
+            Layout.preferredWidth: 28
+            Layout.preferredHeight: 28
+            radius: 7
+            color: "#0f0e17"
+            border.color: "#0dffffff"
+            border.width: 1
             AppIcon {
                 anchors.centerIn: parent
-                name: mediaWidgetRoot.mediaType === "book" ? "library" : "video"
-                color: mediaWidgetRoot.mediaType === "book" ? "#60a5fa" : "#c4b5fd"
-                width: 17
-                height: 17
+                name: mediaWidgetRoot.mediaType === "book" ? "book-open" : "film"
+                color: mediaWidgetRoot.mediaType === "book" ? "#60a5fa" : "#c084fc"
+                width: 15
+                height: 15
             }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 2
-            Text {
-                text: mediaWidgetRoot.title
-                color: "#fffffe"
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-            Text {
-                text: mediaWidgetRoot.mediaType === "book" ? qsTr("Livro da Biblioteca") : qsTr("Vídeo da Galeria")
-                color: "#94a1b2"
-                font.pixelSize: 11
-            }
-        }
-
-        Button {
-            Layout.preferredHeight: 28
-            padding: 10
-            onClicked: mediaWidgetRoot.openMediaRequested(mediaWidgetRoot.mediaType, mediaWidgetRoot.mediaId, mediaWidgetRoot.title)
-            background: Rectangle { radius: 6; color: parent.hovered ? "#7c3aed" : "#228b5cf6" }
-            contentItem: Text { text: qsTr("Abrir"); color: "#ffffff"; font.pixelSize: 11; font.bold: true }
+        Text {
+            text: mediaWidgetRoot.title
+            color: hoverHandler.hovered ? "#ffffff" : "#fffffe"
+            font.pixelSize: 13
+            font.weight: Font.Medium
+            elide: Text.ElideRight
+            Layout.maximumWidth: 280
         }
 
         ToolButton {
             visible: hoverHandler.hovered
-            Layout.preferredWidth: 26
-            Layout.preferredHeight: 26
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Remover mídia da nota")
             onClicked: mediaWidgetRoot.removeRequested()
-            background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
-            contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
+            background: Rectangle { radius: 5; color: parent.hovered ? "#33000000" : "transparent" }
+            contentItem: AppIcon {
+                anchors.centerIn: parent
+                name: "close"
+                color: parent.hovered ? "#f87171" : "#a7a9be"
+                width: 13
+                height: 13
+            }
         }
     }
 }

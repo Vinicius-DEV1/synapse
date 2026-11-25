@@ -46,6 +46,7 @@ Item {
     signal externalLinkRequested(string link)
     signal widgetSlashCommandRequested(string commandId)
     signal askAiRequested(string selectedText)
+    signal convertUrlToCardRequested(string url)
     signal pageHierarchyChanged()
 
     function createLinkedPage(title) {
@@ -65,7 +66,8 @@ Item {
 
     function loadSource() {
         if (active && hasPendingChanges) return false
-        canEditSource = textOperations.supportsRichSource(sourceHtml)
+        var effectiveSource = (sourceHtml === "<p></p>") ? "<p><br/></p>" : sourceHtml
+        canEditSource = textOperations.supportsRichSource(effectiveSource)
         if (!canEditSource) {
             hasInvalidContent = false
             validationMessage = qsTr("This note contains formatting that is not available in visual editing. Switch to source editing to preserve it.")
@@ -73,8 +75,9 @@ Item {
         }
         isLoading = true
         richCommands.clearPendingMarks()
-        var editorSource = textOperations.richSourceForEditorWithPages(sourceHtml, pageList)
-        if (sourceHtml.length > 0 && editorSource.length === 0) {
+        var editorSource = textOperations.richSourceForEditorWithPages(effectiveSource, pageList)
+        if (effectiveSource.length > 0 && editorSource.length === 0) {
+            isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains task markup that cannot be preserved safely in visual editing.")
             return false
@@ -92,21 +95,21 @@ Item {
             validationMessage = qsTr("This note contains page references that the native editor could not load safely. Switch to source editing to preserve them.")
             return false
         }
-        var prepared = textOperations.prepareRichHeadings(editor.textDocument, sourceHtml)
+        var prepared = textOperations.prepareRichHeadings(editor.textDocument, effectiveSource)
         if (!prepared) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains formatting that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
-        if (!textOperations.prepareRichCodeBlocks(editor.textDocument, sourceHtml)) {
+        if (!textOperations.prepareRichCodeBlocks(editor.textDocument, effectiveSource)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains a code block that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
         codeBlockRevision += 1
-        if (!textOperations.prepareRichCallouts(editor.textDocument, sourceHtml)) {
+        if (!textOperations.prepareRichCallouts(editor.textDocument, effectiveSource)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains a callout that the native editor could not load safely. Switch to source editing to preserve it.")
@@ -220,6 +223,7 @@ Item {
         onExternalLinkRequested: function(link) { richRoot.externalLinkRequested(link) }
         onWidgetSlashCommandRequested: function(cmd) { richRoot.widgetSlashCommandRequested(cmd) }
         onAskAiRequested: function(txt) { richRoot.askAiRequested(txt) }
+        onConvertUrlToCardRequested: function(url) { richRoot.convertUrlToCardRequested(url) }
     }
 
     NotesTableExcelGrips {

@@ -39,12 +39,12 @@ QtObject {
 
     function finishEdit() {
         contentModified()
-        textEditor.forceActiveFocus()
+        if (textEditor) textEditor.forceActiveFocus()
         return true
     }
 
     function insertTable() {
-        if (!active || invalid) return false
+        if (!active || invalid || !textOperations || !textEditor || !textEditor.textDocument) return false
         var position = textOperations.insertRichTable(
                     textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)
         if (position < 0) return false
@@ -53,6 +53,7 @@ QtObject {
     }
 
     function editTable(action) {
+        if (!textOperations || !textEditor || !textEditor.textDocument) return false
         if (action === "mergeOrSplit") {
             if (!canMergeOrSplit || !textOperations.mergeOrSplitRichTable(
                         textEditor.textDocument, textEditor.cursorPosition,
@@ -66,14 +67,15 @@ QtObject {
     }
 
     function setCellBackground(color, scope) {
-        if (!active || invalid || !isInsideTable || !textOperations.setRichTableCellBackground(
-                textEditor.textDocument, textEditor.cursorPosition, color, scope || "cell",
-                textEditor.selectionStart, textEditor.selectionEnd)) return false
+        if (!active || invalid || !isInsideTable || !textOperations || !textEditor || !textEditor.textDocument ||
+                !textOperations.setRichTableCellBackground(
+                    textEditor.textDocument, textEditor.cursorPosition, color, scope || "cell",
+                    textEditor.selectionStart, textEditor.selectionEnd)) return false
         return finishEdit()
     }
 
     function selectCells(scope) {
-        if (!active || invalid || !isInsideTable) return false
+        if (!active || invalid || !isInsideTable || !textOperations || !textEditor || !textEditor.textDocument) return false
         var activePosition = textEditor.selectionStart !== textEditor.selectionEnd
                 ? textEditor.selectionStart : textEditor.cursorPosition
         var range = textOperations.richTableSelectionRange(
@@ -85,20 +87,22 @@ QtObject {
     }
 
     function clearSelectedCellFormatting() {
-        if (!active || invalid || !canColorSelectedCells ||
+        if (!active || invalid || !canColorSelectedCells || !textOperations || !textEditor || !textEditor.textDocument ||
                 !textOperations.clearRichTableFormattingOnSelection(
                     textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)) return false
         return finishEdit()
     }
 
     function canEditTable(action) {
-        return active && !invalid && textOperations.canApplyRichTableAction(
-                    textEditor.textDocument, textEditor.cursorPosition, action,
-                    textEditor.selectionStart, textEditor.selectionEnd)
+        return Boolean(active && !invalid && textOperations && textEditor && textEditor.textDocument &&
+                       typeof textOperations.canApplyRichTableAction === "function" &&
+                       textOperations.canApplyRichTableAction(
+                           textEditor.textDocument, textEditor.cursorPosition, action,
+                           textEditor.selectionStart, textEditor.selectionEnd))
     }
 
     function insertDivider() {
-        if (!active || invalid) return false
+        if (!active || invalid || !textOperations || !textEditor || !textEditor.textDocument) return false
         var position = textOperations.insertRichDivider(
                     textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd)
         if (position < 0) return false
@@ -107,7 +111,7 @@ QtObject {
     }
 
     function editDivider(action) {
-        if (!isOnDivider) return false
+        if (!isOnDivider || !textOperations || !textEditor || !textEditor.textDocument) return false
         var position = -1
         if (action === "moveUp")
             position = textOperations.moveRichDivider(textEditor.textDocument, textEditor.cursorPosition, true)
@@ -121,9 +125,10 @@ QtObject {
     }
 
     function setColor(background, color) {
-        if (!active || invalid || textEditor.selectionStart === textEditor.selectionEnd ||
+        if (!active || invalid || !textOperations || !textEditor || !textEditor.textDocument ||
+                textEditor.selectionStart === textEditor.selectionEnd ||
                 !textOperations.setRichColor(textEditor.textDocument, textEditor.selectionStart,
-                                                   textEditor.selectionEnd, color, background)) return false
+                                             textEditor.selectionEnd, color, background)) return false
         return finishEdit()
     }
 }

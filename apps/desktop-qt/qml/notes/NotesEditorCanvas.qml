@@ -33,12 +33,15 @@ ScrollView {
     property bool isBlockMode: false
     property string copiedLinkUrl: ""
     onActivePageIdChanged: copiedLinkUrl = ""
+
     readonly property bool isEmojiPickerOpen: pageHeader.isEmojiPickerOpen
     readonly property bool isDialogOpen: pageCover.isDialogOpen || movePageDialog.visible ||
                                          sourceEditorSurface.isDialogOpen || previewSurface.isDialogOpen
-    readonly property bool contentEditorFocused: isRichMode && !isBlockMode ? richTextEditor.editor.activeFocus : sourceEditorSurface.editor.activeFocus
-    readonly property bool canUseRichMode: richTextEditor.canEditSource
-    readonly property bool richContentInvalid: richTextEditor.hasInvalidContent
+    readonly property bool contentEditorFocused: (isRichMode && !isBlockMode && richTextEditor.editor.activeFocus) ||
+                                                 (isBlockMode && blockListEditor.hasActiveRichFocus) ||
+                                                 sourceEditorSurface.editor.activeFocus
+    readonly property bool canUseRichMode: richTextEditor.canEditSource || isBlockMode
+    readonly property bool richContentInvalid: !isBlockMode && richTextEditor.hasInvalidContent
 
     signal saveRequested()
     signal deleteRequested()
@@ -63,6 +66,7 @@ ScrollView {
     signal externalLinkRequested(string link)
     signal shareRequested()
     signal widgetSlashCommandRequested(string commandId, int blockIndex)
+    signal convertUrlToCardRequested(string url)
     signal askAiRequested(string selection, string blockHtml)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
@@ -85,64 +89,41 @@ ScrollView {
     }
 
     function reloadRichEditor() {
-        if (isRichMode) {
-            return richTextEditor.reloadSource()
+        if (isBlockMode) {
+            blockListEditor.reloadBlocks()
+            return true
         }
-        return true
+        return !isRichMode || richTextEditor.reloadSource()
     }
 
-    function setTitleText(txt) {
-        pageHeader.setTitleText(txt)
-    }
-
-    function setDescriptionText(txt) {
-        pageHeader.setDescriptionText(txt)
-    }
-
+    function setTitleText(txt) { pageHeader.setTitleText(txt) }
+    function setDescriptionText(txt) { pageHeader.setDescriptionText(txt) }
     function openMovePageDialog(pageId) { movePageDialog.openForPage(pageId) }
 
     function replaceSourceRange(start, end, replacement) {
         return textOperations && textOperations.replace(
-                    sourceEditorSurface.editor.textDocument, start, end, replacement)
+            sourceEditorSurface.editor.textDocument, start, end, replacement)
     }
 
     function openExternalLink(link) {
         var action = NotesLinkPreviewActions.activate(
-                    link, sourceEditorSurface.editor.text || activeContent || "",
-                    controller, previewSurface)
+            link, sourceEditorSurface.editor.text || activeContent || "",
+            controller, previewSurface)
         if (action.handled) {
-            if (!action.success) {
-                pageActionFailed(qsTr("Could not complete this link action."))
-                return
-            }
+            if (!action.success) { pageActionFailed(qsTr("Could not complete this link action.")); return }
             if (action.type === "copy") copiedLinkUrl = action.copiedUrl
-            else if (action.type === "open-confirm") {
-                previewSurface.openLinkConfirm(action.url, action.title)
-            }
-            else if (action.type === "menu") {
-                previewSurface.openLinkOptionsMenu(action.url, action.start, action.title, action.color, action.notes, action.showNotes)
-            }
-            else if (action.type === "info") {
-                previewSurface.openLinkInfo(action.url, action.start, action.title)
-            }
+            else if (action.type === "open-confirm") previewSurface.openLinkConfirm(action.url, action.title)
+            else if (action.type === "menu") previewSurface.openLinkOptionsMenu(action.url, action.start, action.title, action.color, action.notes, action.showNotes)
+            else if (action.type === "info") previewSurface.openLinkInfo(action.url, action.start, action.title)
             else if (action.type === "toggle-notes") {
                 if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement))
                     pageActionFailed(qsTr("Could not update link note visibility."))
-            }
-            else if (action.type === "edit-notes") {
-                previewSurface.openLinkNotes(action.url, action.start, action.notes)
-            }
-            else if (action.type === "color") {
-                previewSurface.openLinkColor(action.url, action.start, action.color)
-            }
+            } else if (action.type === "edit-notes") previewSurface.openLinkNotes(action.url, action.start, action.notes)
+            else if (action.type === "color") previewSurface.openLinkColor(action.url, action.start, action.color)
             else if (action.type === "convert") {
-                if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement)) {
+                if (!previewSurface.replaceTextRange(action.start, action.end, action.replacement))
                     pageActionFailed(qsTr("Could not convert this preview to a link."))
-                }
-            }
-            else if (action.type === "delete") {
-                previewSurface.openLinkDeleteConfirm(action.url, action.start)
-            }
+            } else if (action.type === "delete") previewSurface.openLinkDeleteConfirm(action.url, action.start)
             else contentModified(action.content)
             return
         }
@@ -167,10 +148,7 @@ ScrollView {
                 return
             }
         }
-        if (/^https?:\/\//i.test(link || "")) {
-            previewSurface.openLinkConfirm(link, "")
-            return
-        }
+        if (/^https?:\/\//i.test(link || "")) { previewSurface.openLinkConfirm(link, ""); return }
         if (/^mailto:/i.test(link || "")) Qt.openUrlExternally(link)
     }
 
@@ -180,44 +158,41 @@ ScrollView {
         var oldText = sourceEditorSurface.editor.text
         if (prefix === "<strong>" || prefix === "<em>" || prefix === "<u>" || prefix === "<s>" || prefix === "<code>") {
             var result = NotesInlineFormatting.toggle(oldText, start, end, prefix, suffix)
-            if (!replaceSourceRange(result.editStart, result.editEnd, result.replacement)) {
-                console.error("[Notes] Could not apply inline formatting to the selected source range")
-                return
-            }
+            if (!replaceSourceRange(result.editStart, result.editEnd, result.replacement)) return
             sourceEditorSurface.editor.select(result.start, result.end)
             sourceEditorSurface.editor.forceActiveFocus()
             return
         }
         var selected = oldText.substring(start, end)
         var replacement = prefix + selected + suffix
-        if (!replaceSourceRange(start, end, replacement)) {
-            console.error("[Notes] Could not apply formatting to the selected source range")
-            return
-        }
+        if (!replaceSourceRange(start, end, replacement)) return
         sourceEditorSurface.editor.cursorPosition = start + (selected.length === 0 ? prefix.length : String(replacement).length)
     }
 
     function formatSelection(prefix, suffix) {
         if (isPreviewMode) return
-        if (isRichMode) {
-            if (prefix === "<strong>") richTextEditor.toggleMark("bold")
-            else if (prefix === "<em>") richTextEditor.toggleMark("italic")
-            else if (prefix === "<u>") richTextEditor.toggleMark("underline")
-            else if (prefix === "<s>") richTextEditor.toggleMark("strike")
-            else if (prefix === "<code>") richTextEditor.toggleMark("code")
-            else if (prefix === "<spoiler>") richTextEditor.toggleMark("spoiler")
+        if (isRichMode || isBlockMode) {
+            if (prefix === "<strong>") toggleRichMark("bold")
+            else if (prefix === "<em>") toggleRichMark("italic")
+            else if (prefix === "<u>") toggleRichMark("underline")
+            else if (prefix === "<s>") toggleRichMark("strike")
+            else if (prefix === "<code>") toggleRichMark("code")
+            else if (prefix === "<spoiler>") toggleRichMark("spoiler")
             return
         }
         if (sourceEditorSurface.editor.activeFocus) insertFormatting(prefix, suffix)
     }
 
     function toggleRichMark(mark) {
-        if (!isPreviewMode && isRichMode) return richTextEditor.toggleMark(mark)
+        if (isPreviewMode) return false
+        if (isBlockMode) return blockListEditor.toggleActiveMark(mark)
+        if (isRichMode) return richTextEditor.toggleMark(mark)
         return false
     }
 
     function flushRichEditor() {
-        return !isRichMode || isBlockMode || richTextEditor.commitEditorText()
+        if (isBlockMode) return blockListEditor.flushActiveRichSlices()
+        return !isRichMode || richTextEditor.commitEditorText()
     }
 
     function insertWidgetAtBlock(blockIdx, widgetHtml) {
@@ -225,8 +200,7 @@ ScrollView {
             blockListEditor.insertWidgetHtmlAfter(blockIdx, widgetHtml)
         } else {
             flushRichEditor()
-            var nextHtml = (activeContent || "") + widgetHtml
-            richContentModified(nextHtml)
+            richContentModified((activeContent || "") + widgetHtml)
         }
     }
 
@@ -266,7 +240,7 @@ ScrollView {
                 isDirty: canvasRoot.isDirty
                 saveFailed: canvasRoot.saveFailed
                 isPreviewMode: canvasRoot.isPreviewMode
-                isRichMode: canvasRoot.isRichMode
+                isRichMode: canvasRoot.isRichMode || canvasRoot.isBlockMode
                 canUseRichMode: canvasRoot.canUseRichMode
                 wordCount: canvasRoot.plainTextContent.trim().length > 0
                            ? canvasRoot.plainTextContent.trim().split(/\s+/).length : 0
@@ -288,68 +262,11 @@ ScrollView {
                 onSubPageIconChanged: function(pid, emoji) { canvasRoot.subPageIconChanged(pid, emoji) }
             }
 
-            Rectangle {
-                id: statusBanner
-                visible: canvasRoot.pageActionStatus.length > 0
-                Layout.fillWidth: true
-                Layout.preferredHeight: statusText.implicitHeight + 20
-                Layout.topMargin: 8
-                Layout.bottomMargin: 12
-                radius: 8
-                color: canvasRoot.saveFailed ? "#26151a" : "#1f1d2b"
-                border.color: canvasRoot.saveFailed ? "#66f43f5e" : "#338b5cf6"
-                border.width: 1
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 10
-
-                    Text {
-                        text: canvasRoot.saveFailed ? "⚠" : "ℹ"
-                        color: canvasRoot.saveFailed ? "#fb7185" : "#a78bfa"
-                        font.pixelSize: 14
-                    }
-
-                    Text {
-                        id: statusText
-                        Layout.fillWidth: true
-                        text: canvasRoot.pageActionStatus
-                        color: canvasRoot.saveFailed ? "#fecdd3" : "#e0e7ff"
-                        font.pixelSize: 13
-                        wrapMode: Text.Wrap
-                    }
-
-                    Button {
-                        id: historyBtn
-                        visible: canvasRoot.saveFailed
-                        text: qsTr("History")
-                        flat: true
-                        contentItem: Text {
-                            text: qsTr("History")
-                            color: "#fb7185"
-                            font.pixelSize: 12
-                            font.bold: true
-                        }
-                        background: Rectangle {
-                            color: historyBtn.hovered ? "#33f43f5e" : "#1af43f5e"
-                            radius: 4
-                        }
-                        onClicked: canvasRoot.historyRequested()
-                    }
-
-                    ToolButton {
-                        text: "✕"
-                        flat: true
-                        contentItem: Text {
-                            text: "✕"
-                            color: "#a7a9be"
-                            font.pixelSize: 12
-                        }
-                        onClicked: canvasRoot.pageActionStatus = ""
-                    }
-                }
+            NotesEditorStatusBanner {
+                actionStatus: canvasRoot.pageActionStatus
+                saveFailed: canvasRoot.saveFailed
+                onHistoryRequested: canvasRoot.historyRequested()
+                onDismissed: canvasRoot.pageActionStatus = ""
             }
 
             NotesRichTextEditor {
@@ -367,6 +284,7 @@ ScrollView {
                 onPagePreviewRequested: function(pageId) { canvasRoot.pageReferencePreviewRequested(pageId) }
                 onExternalLinkRequested: function(link) { canvasRoot.openExternalLink(link) }
                 onWidgetSlashCommandRequested: function(cmd) { canvasRoot.widgetSlashCommandRequested(cmd, 0) }
+                onConvertUrlToCardRequested: function(url) { canvasRoot.convertUrlToCardRequested(url) }
                 onAskAiRequested: function(sel) { canvasRoot.askAiRequested(sel, canvasRoot.activeContent) }
                 onPageHierarchyChanged: canvasRoot.pageHierarchyChanged()
                 onValidationChanged: function(invalid, message) {
@@ -395,6 +313,9 @@ ScrollView {
                 onOpenInQuestionsRequested: function(bid) { canvasRoot.openInQuestionsRequested(bid) }
                 onYoutubeWatchRequested: function(u, t) {
                     canvasRoot.externalLinkRequested("synapse-youtube://watch?url=" + encodeURIComponent(u) + "&title=" + encodeURIComponent(t))
+                }
+                onMermaidFullscreenRequested: function(code) {
+                    canvasRoot.externalLinkRequested("synapse-mermaid://view?code=" + encodeURIComponent(code))
                 }
                 onCreateSubPageWithContent: function(t, h) { canvasRoot.createSubPageWithContentRequested(t, h) }
                 onHabitStatsRequested: function(hid) { canvasRoot.habitStatsRequested(hid) }
@@ -434,5 +355,4 @@ ScrollView {
         pages: canvasRoot.allPages
         hierarchyActions: canvasRoot.hierarchyActions
     }
-
 }

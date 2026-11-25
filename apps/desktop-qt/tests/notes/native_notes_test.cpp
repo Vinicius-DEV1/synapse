@@ -1130,6 +1130,90 @@ private slots:
         }
         QVERIFY(foundEncPreserved);
     }
+
+    void crossClientTipTapNormalizationAndCrdtToggleHydration() {
+        // 1. TipTap empty paragraphs (<p></p>) normalize via parseNoteBlocks to <p><br/></p> and pass supportsRichSource
+        NotesTextOperations ops;
+        QVERIFY(NotesRichDocument::supportsSource("<p>First</p><p><br/></p><p>Third</p>"));
+
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(tempDir.filePath("cross_tiptap.sqlite")));
+
+        const QVariantList emptyParaBlocks = controller.parseNoteBlocks("<p>First</p><p></p><p>Third</p>");
+        QCOMPARE(emptyParaBlocks.size(), 1);
+        const QString normalizedEmptyPara = emptyParaBlocks.first().toMap().value("html").toString();
+        QVERIFY2(ops.supportsRichSource(normalizedEmptyPara), qPrintable(normalizedEmptyPara));
+
+        const QString pageId = controller.createSubPage("", "TipTap Full Parity", "📄");
+        QVERIFY(!pageId.isEmpty());
+
+        const QString legacyBrokenToggleHtml = QStringLiteral(
+            "<p>Intro</p><p></p>"
+            "<hr class=\"editor-divider\" style=\"margin: 0\">"
+            "<div data-title=\"\" data-color=\"default\" data-is-open=\"undefined\" class=\"blockquote-toggle\">"
+            "<p>Inner <strong>rich</strong> callout</p></div>"
+            "<div data-title=\"\" class=\"toggle-block\"><p>Collapsed item</p></div>"
+            "<div data-title=\"\" data-color=\"default\" class=\"blockquote-toggle\"><p>Third body</p></div>"
+            "<table style=\"min-width: 75px\"><colgroup><col style=\"min-width: 25px\"></colgroup>"
+            "<tbody><tr><th colspan=\"1\" rowspan=\"1\" colwidth=\"180\" data-column-type=\"select\"><p>Status</p></th></tr>"
+            "<tr><td></td></tr></tbody></table>");
+        const QString realYjsCrdtBase64 = QStringLiteral(
+            "ARHepsOoCQAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgHAN6mw6gJAAYEAN6mw6gJAQVJbnRyb4fepsOoCQADEGJsb2NrcXVvdGVUb2dnbGWH3qbDqAkHAwt0b2dnbGVCbG9ja4fepsOoCQgDEGJsb2NrcXVvdGVUb2dnbGUoAN6mw6gJBwV0aXRsZQF3G1ByaW1laXJvIOKAlCBBdGVuw6fDo28g8J+agCgA3qbDqAkHBWNvbG9yAXcHI2VmNDQ0NCgA3qbDqAkHBmlzT3BlbgF4KADepsOoCQgFdGl0bGUBdw9MaXN0YSBSZWNvbGhpZGEoAN6mw6gJCAZpc09wZW4BeSEA3qbDqAkJBXRpdGxlAajepsOoCQ8BdxZUZXJjZWlybyBDYWxsb3V0IEZpbmFsKADepsOoCQkFY29sb3IBdwcjM2I4MmY2KADepsOoCQkGaXNPcGVuAXjB3qbDqAkA3qbDqAkHAQABAd6mw6gJAg8BEwI=");
+
+        QVERIFY(controller.savePage(pageId, "TipTap Full Parity", legacyBrokenToggleHtml, "📄"));
+        QVERIFY(controller.executeSql(
+            QString("UPDATE pages SET crdt_state = '%1' WHERE id = '%2'").arg(realYjsCrdtBase64, pageId)));
+
+        const QVariantMap loaded = controller.getPage(pageId);
+        const QString hydratedHtml = loaded.value("content").toString();
+        QVERIFY2(hydratedHtml.contains("Primeiro"), qPrintable(hydratedHtml));
+        QVERIFY2(hydratedHtml.contains("#ef4444"), qPrintable(hydratedHtml));
+        QVERIFY2(hydratedHtml.contains("Lista Recolhida"), qPrintable(hydratedHtml));
+        QVERIFY2(hydratedHtml.contains("Terceiro Callout Final"), qPrintable(hydratedHtml));
+
+        const QVariantList blocks = controller.parseNoteBlocks(hydratedHtml);
+        QVERIFY(blocks.size() >= 5);
+        for (const QVariant &blkVar : blocks) {
+            const QVariantMap blk = blkVar.toMap();
+            if (blk.value("blockType").toString() == QLatin1String("richText")) {
+                const QString sliceHtml = blk.value("html").toString();
+                QVERIFY2(ops.supportsRichSource(sliceHtml), qPrintable(sliceHtml));
+            }
+        }
+
+        // 3. Verify NotesBlockListEditor + NotesToggleBlock renders hydrated titles in QML
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("notesTextOperations", &ops);
+        QQmlComponent blComp(&engine);
+        blComp.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesBlockListEditor.qml")));
+        QScopedPointer<QObject> blockList(blComp.create());
+        QVERIFY2(blockList, qPrintable(blComp.errorString()));
+        blockList->setProperty("width", 800);
+        blockList->setProperty("height", 600);
+        blockList->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        blockList->setProperty("sourceHtml", hydratedHtml);
+        blockList->setProperty("active", true);
+        QTRY_COMPARE(blockList->property("blocks").toList().size(), 5);
+        std::function<void(QQuickItem *, QList<QQuickItem *> &)> collectToggles =
+            [&](QQuickItem *item, QList<QQuickItem *> &out) {
+                if (!item) return;
+                if (item->objectName() == QLatin1String("notesToggleBlockRoot")) out.append(item);
+                for (QQuickItem *ch : item->childItems()) collectToggles(ch, out);
+            };
+        QList<QQuickItem *> toggles;
+        QTRY_VERIFY(([&]() {
+            toggles.clear();
+            collectToggles(qobject_cast<QQuickItem *>(blockList.data()), toggles);
+            return toggles.size() == 3;
+        })());
+        QCOMPARE(toggles.at(0)->property("titleText").toString(), QString::fromUtf8("Primeiro \u2014 Aten\u00e7\u00e3o \U0001F680"));
+        QCOMPARE(toggles.at(1)->property("titleText").toString(), QString("Lista Recolhida"));
+        QCOMPARE(toggles.at(2)->property("titleText").toString(), QString("Terceiro Callout Final"));
+    }
 };
 
 int runNativeNotesTest(int argc, char **argv) {

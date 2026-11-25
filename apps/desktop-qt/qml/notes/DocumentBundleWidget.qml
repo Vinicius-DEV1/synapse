@@ -7,25 +7,56 @@ import "../ui"
 Rectangle {
     id: bundleWidgetRoot
     Layout.fillWidth: true
-    implicitHeight: contentCol.implicitHeight + 24
-    radius: 12
-    color: "#16161e"
-    border.color: hoverHandler.hovered ? "#448b5cf6" : "#2e2e38"
-    border.width: 1
+    implicitHeight: contentCol.implicitHeight + 12
+    radius: 8
 
     property var blockData: ({})
     property var attrs: blockData.attrs || ({})
-    property string title: attrs["data-title"] || attrs["title"] || qsTr("Pacote de Documentos")
+    property string title: attrs["data-title"] || attrs["title"] || qsTr("Documentos")
+    property string accentColor: attrs["data-color"] || attrs["color"] || "default"
     property var items: {
         var raw = attrs["data-items"] || attrs["items"] || "[]"
         try {
-            var parsed = JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
+            var parsed = typeof raw === "string"
+                ? JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
+                : raw
             return Array.isArray(parsed) ? parsed : []
         } catch (e) {
             return []
         }
     }
+    property var uniqueExtensions: {
+        var seen = ({})
+        var out = []
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i] || ({})
+            var nm = String(it.name || it.title || "")
+            var dot = nm.lastIndexOf(".")
+            var ext = dot > 0 ? nm.substring(dot).toUpperCase() : String(it.fileType || "DOC").toUpperCase()
+            if (ext && !seen[ext]) {
+                seen[ext] = true
+                out.push(ext)
+                if (out.length >= 3) break
+            }
+        }
+        return out
+    }
+    property bool renaming: false
+    property bool showColorPicker: false
+    property bool expanded: false
     property bool isModalOpen: false
+
+    readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
+
+    color: hasCustomColor
+        ? (accentColor + "18")
+        : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")
+    border.color: hasCustomColor
+        ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
+        : "#338b5cf6"
+    border.width: 1
+    Behavior on color { ColorAnimation { duration: 150 } }
+    Behavior on border.color { ColorAnimation { duration: 150 } }
 
     signal attrsUpdated(var newAttrs)
     signal pageOpenRequested(string pageId)
@@ -33,10 +64,12 @@ Rectangle {
 
     HoverHandler { id: hoverHandler }
 
-    function saveItems(nextItems) {
+    function saveBundle(nextTitle, nextColor, nextItems) {
         var next = Object.assign({}, attrs)
         next["data-type"] = "document-bundle"
-        next["data-title"] = title
+        next["data-title"] = nextTitle
+        if (nextColor && nextColor !== "default") next["data-color"] = nextColor
+        else delete next["data-color"]
         next["data-items"] = JSON.stringify(nextItems)
         attrsUpdated(next)
     }
@@ -44,61 +77,258 @@ Rectangle {
     ColumnLayout {
         id: contentCol
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 10
+        anchors.leftMargin: 12
+        anchors.rightMargin: 10
+        anchors.topMargin: 6
+        anchors.bottomMargin: 6
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
 
-            AppIcon { name: "notes"; color: "#8b5cf6"; Layout.preferredWidth: 16; Layout.preferredHeight: 16 }
-            Text {
-                text: bundleWidgetRoot.title
-                color: "#fffffe"
-                font.pixelSize: 13
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-            }
+            // Icon with floating badge count matching DocumentBundleNodeView.tsx
+            Item {
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                Layout.rightMargin: 2
 
-            Button {
-                Layout.preferredHeight: 26
-                Layout.preferredWidth: 88
-                focusPolicy: Qt.NoFocus
-                onClicked: bundleWidgetRoot.isModalOpen = true
-                background: Rectangle { radius: 6; color: parent.hovered ? "#2e2e38" : "#1f1f2e"; border.color: "#3a3a4c" }
-                contentItem: RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 4
-                    AppIcon { name: "plus"; color: "#a78bfa"; width: 12; height: 12 }
-                    Text { text: qsTr("Adicionar"); color: "#c4b5fd"; font.pixelSize: 11 }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 8
+                    color: "#0f0e17"
+                    border.color: "#0dffffff"
+                    border.width: 1
+
+                    AppIcon {
+                        anchors.centerIn: parent
+                        name: "layers"
+                        color: "#a78bfa"
+                        width: 16
+                        height: 16
+                    }
+                }
+
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.topMargin: -4
+                    anchors.rightMargin: -5
+                    height: 15
+                    width: Math.max(15, countTxt.implicitWidth + 6)
+                    radius: 7.5
+                    color: "#8b5cf6"
+                    Text {
+                        id: countTxt
+                        anchors.centerIn: parent
+                        text: String(bundleWidgetRoot.items.length)
+                        color: "#ffffff"
+                        font.pixelSize: 9
+                        font.family: "monospace"
+                        font.bold: true
+                    }
                 }
             }
 
-            ToolButton {
-                visible: hoverHandler.hovered
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                focusPolicy: Qt.NoFocus
-                onClicked: bundleWidgetRoot.removeRequested()
-                background: Rectangle { radius: 6; color: parent.hovered ? "#22ef4444" : "transparent" }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: "#fda4af"; width: 12; height: 12 }
+            // Inline rename field
+            RowLayout {
+                visible: bundleWidgetRoot.renaming
+                Layout.fillWidth: true
+                spacing: 4
+
+                TextField {
+                    id: bundleRenameInput
+                    Layout.preferredWidth: 200
+                    Layout.preferredHeight: 26
+                    text: bundleWidgetRoot.title
+                    color: "#fffffe"
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    leftPadding: 6
+                    rightPadding: 6
+                    background: Rectangle {
+                        radius: 4
+                        color: "#66000000"
+                        border.color: "#cc8b5cf6"
+                        border.width: 1
+                    }
+                    onAccepted: {
+                        var trimmed = text.trim() || qsTr("Documentos")
+                        bundleWidgetRoot.title = trimmed
+                        bundleWidgetRoot.renaming = false
+                        bundleWidgetRoot.saveBundle(trimmed, bundleWidgetRoot.accentColor, bundleWidgetRoot.items)
+                    }
+                    Keys.onEscapePressed: bundleWidgetRoot.renaming = false
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    focusPolicy: Qt.NoFocus
+                    onClicked: bundleRenameInput.accepted()
+                    background: Rectangle { radius: 4; color: parent.hovered ? "#3310b981" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 13; height: 13 }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    focusPolicy: Qt.NoFocus
+                    onClicked: bundleWidgetRoot.renaming = false
+                    background: Rectangle { radius: 4; color: parent.hovered ? "#1affffff" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 12; height: 12 }
+                }
+            }
+
+            // Title & extension badges
+            RowLayout {
+                visible: !bundleWidgetRoot.renaming
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: bundleWidgetRoot.title
+                    color: hoverHandler.hovered ? "#ffffff" : "#f4f4f5"
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    elide: Text.ElideRight
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
+                        onDoubleClicked: {
+                            bundleWidgetRoot.renaming = true
+                            bundleRenameInput.forceActiveFocus()
+                        }
+                    }
+                }
+
+                RowLayout {
+                    spacing: 4
+                    Repeater {
+                        model: bundleWidgetRoot.uniqueExtensions
+                        delegate: Rectangle {
+                            required property string modelData
+                            Layout.preferredHeight: 18
+                            Layout.preferredWidth: extTxt.implicitWidth + 8
+                            radius: 4
+                            color: "#0dffffff"
+                            border.color: "#0dffffff"
+                            border.width: 1
+                            Text {
+                                id: extTxt
+                                anchors.centerIn: parent
+                                text: modelData
+                                color: "#a1a1aa"
+                                font.pixelSize: 9
+                                font.family: "monospace"
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Color picker popover
+            Rectangle {
+                visible: bundleWidgetRoot.showColorPicker
+                Layout.preferredHeight: 24
+                Layout.preferredWidth: bundleSwatchRow.implicitWidth + 12
+                radius: 6
+                color: "#1a1924"
+                border.color: "#22ffffff"
+                border.width: 1
+
+                RowLayout {
+                    id: bundleSwatchRow
+                    anchors.centerIn: parent
+                    spacing: 5
+                    Repeater {
+                        model: ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"]
+                        delegate: Rectangle {
+                            required property string modelData
+                            width: 13
+                            height: 13
+                            radius: 6.5
+                            color: modelData
+                            border.color: bundleWidgetRoot.accentColor === modelData ? "#ffffff" : "#33ffffff"
+                            border.width: 1
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    bundleWidgetRoot.accentColor = modelData
+                                    bundleWidgetRoot.showColorPicker = false
+                                    bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, modelData, bundleWidgetRoot.items)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Hover-revealed quick actions matching DocumentBundleNodeView.tsx
+            RowLayout {
+                opacity: hoverHandler.hovered || bundleWidgetRoot.showColorPicker || bundleWidgetRoot.expanded ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+                spacing: 2
+
+                ToolButton {
+                    visible: !bundleWidgetRoot.renaming
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Renomear agrupamento")
+                    onClicked: {
+                        bundleWidgetRoot.renaming = true
+                        bundleRenameInput.forceActiveFocus()
+                    }
+                    background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "edit"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Personalizar cor do widget")
+                    onClicked: bundleWidgetRoot.showColorPicker = !bundleWidgetRoot.showColorPicker
+                    background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "palette"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Adicionar item ao pacote")
+                    onClicked: bundleWidgetRoot.isModalOpen = true
+                    background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "plus"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
+                }
+
+                ToolButton {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    focusPolicy: Qt.NoFocus
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Remover agrupamento")
+                    onClicked: bundleWidgetRoot.removeRequested()
+                    background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: parent.hovered ? "#f87171" : "#a7a9be"; width: 12; height: 12 }
+                }
             }
         }
 
-        Text {
-            visible: bundleWidgetRoot.items.length === 0
-            text: qsTr("Nenhuma página vinculada. Clique em Adicionar para agrupar páginas.")
-            color: "#6b7280"
-            font.pixelSize: 11
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-        }
-
+        // Expandable bundled items drawer
         Flow {
             Layout.fillWidth: true
             spacing: 6
-            visible: bundleWidgetRoot.items.length > 0
+            visible: bundleWidgetRoot.expanded && bundleWidgetRoot.items.length > 0
 
             Repeater {
                 model: bundleWidgetRoot.items
@@ -109,16 +339,17 @@ Rectangle {
                     height: 28
                     width: itemRow.implicitWidth + 16
                     radius: 6
-                    color: itemMouse.containsMouse ? "#281b38" : "#0f0e17"
-                    border.color: itemMouse.containsMouse ? "#7c3aed" : "#2e2e38"
+                    color: itemMouse.containsMouse ? "#268b5cf6" : "#0f0e17"
+                    border.color: itemMouse.containsMouse ? "#4d8b5cf6" : "#1affffff"
+                    border.width: 1
 
                     RowLayout {
                         id: itemRow
                         anchors.centerIn: parent
                         spacing: 6
-                        Text { text: itemDelegate.modelData.icon || "📄"; font.pixelSize: 12 }
+                        AppIcon { name: "file-text"; color: "#a78bfa"; width: 12; height: 12 }
                         Text {
-                            text: itemDelegate.modelData.title || qsTr("Página")
+                            text: itemDelegate.modelData.name || itemDelegate.modelData.title || qsTr("Documento")
                             color: "#e2e8f0"
                             font.pixelSize: 11
                             font.weight: Font.Medium
@@ -134,7 +365,7 @@ Rectangle {
                                 onClicked: {
                                     var next = bundleWidgetRoot.items.slice()
                                     next.splice(itemDelegate.index, 1)
-                                    bundleWidgetRoot.saveItems(next)
+                                    bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
                                 }
                             }
                         }
@@ -146,7 +377,14 @@ Rectangle {
                         z: -1
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: if (itemDelegate.modelData.id) bundleWidgetRoot.pageOpenRequested(itemDelegate.modelData.id)
+                        onClicked: {
+                            var targetId = itemDelegate.modelData.fileId || itemDelegate.modelData.id || ""
+                            if (targetId && typeof dataController !== "undefined" && dataController &&
+                                    typeof dataController.previewLocalFile === "function") {
+                                dataController.previewLocalFile(targetId)
+                            }
+                            if (itemDelegate.modelData.id) bundleWidgetRoot.pageOpenRequested(itemDelegate.modelData.id)
+                        }
                     }
                 }
             }
@@ -157,10 +395,10 @@ Rectangle {
         isOpen: bundleWidgetRoot.isModalOpen
         onPageSelected: function(page) {
             var next = bundleWidgetRoot.items.slice()
-            var exists = next.some(function(it) { return it.id === page.id })
+            var exists = next.some(function(it) { return (it.id || it.fileId) === page.id })
             if (!exists) {
-                next.push({ id: page.id, title: page.title || "Sem título", icon: page.icon || "📄" })
-                bundleWidgetRoot.saveItems(next)
+                next.push({ id: page.id, fileId: page.id, name: page.title || "Sem título", title: page.title || "Sem título", icon: page.icon || "📄", fileType: "note" })
+                bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
             }
             bundleWidgetRoot.isModalOpen = false
         }

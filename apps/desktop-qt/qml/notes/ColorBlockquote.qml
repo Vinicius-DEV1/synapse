@@ -1,26 +1,39 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Rectangle {
     id: blockquoteRoot
     Layout.fillWidth: true
     implicitHeight: quoteCol.implicitHeight + 20
-    radius: 8
-    color: "#181825"
-    border.color: "#0affffff"
-    border.width: 1
+    radius: 6
+    color: hasCustomColor ? (accentColor + "15") : "#0dffffff"
+    border.width: 0
 
-    property color accentColor: "#6366f1"
-    property string title: "Nota Importante"
-    property string content: "O Two-Tier Keychain protege as chaves das páginas e arquivos através da Master Key derivada com PBKDF2 (600.000 iterações)."
+    property var blockData: ({})
+    property var attrs: blockData.attrs || ({})
+    property string accentColor: attrs["data-color"] || attrs["color"] || "#8b5cf6"
+    property string title: attrs["data-title"] || attrs["title"] || ""
+    property string content: String(blockData.innerHtml || "")
+        .replace(/<[^>]+>/g, "")
+        .trim()
 
+    readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
+
+    signal askAiRequested(string quoteText)
+    signal removeRequested()
+
+    HoverHandler { id: hoverHandler }
+
+    // 3px left accent border matching ColorBlockquoteComponent.tsx
     Rectangle {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: 4
-        radius: 2
-        color: blockquoteRoot.accentColor
+        width: 3
+        radius: 1.5
+        color: blockquoteRoot.hasCustomColor ? blockquoteRoot.accentColor : "#33ffffff"
     }
 
     ColumnLayout {
@@ -33,20 +46,20 @@ Rectangle {
         spacing: 4
 
         Text {
+            visible: blockquoteRoot.title.length > 0
             text: blockquoteRoot.title
-            color: blockquoteRoot.accentColor
+            color: blockquoteRoot.hasCustomColor ? blockquoteRoot.accentColor : "#fffffe"
             font.pixelSize: 13
-            font.bold: true
+            font.weight: Font.DemiBold
         }
 
         Text {
             Layout.fillWidth: true
             text: blockquoteRoot.content
-            color: "#d4d4d8"
-            font.pixelSize: 13
+            color: "#e2e8f0"
+            font.pixelSize: 14
             wrapMode: Text.Wrap
-            lineHeight: 1.35
+            lineHeight: 1.4
         }
     }
 }
-

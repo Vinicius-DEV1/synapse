@@ -65,7 +65,20 @@ QVariantMap SynapseDataController::getPage(const QString &pageId) {
                 object["content"] = QString();
                 object["decryption_error"] = true;
             } else {
-                object["content"] = decrypted;
+                const QString crdtState = object.value("crdt_state").toString();
+                if (!crdtState.isEmpty()) {
+                    const QByteArray decBytes = decrypted.toUtf8();
+                    const QByteArray crdtBytes = crdtState.toUtf8();
+                    char *hydratedRaw = synapse_notes_hydrate_from_crdt(decBytes.constData(), crdtBytes.constData());
+                    if (hydratedRaw) {
+                        object["content"] = QString::fromUtf8(hydratedRaw);
+                        synapse_free_string(hydratedRaw);
+                    } else {
+                        object["content"] = decrypted;
+                    }
+                } else {
+                    object["content"] = decrypted;
+                }
             }
         }
     }

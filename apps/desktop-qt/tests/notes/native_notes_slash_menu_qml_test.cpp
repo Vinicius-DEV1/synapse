@@ -262,7 +262,11 @@ private slots:
         QScopedPointer<QObject> menu(component.create());
         QVERIFY2(menu, qPrintable(component.errorString()));
         const QVariantList commands = menu->property("commands").toList();
-        QCOMPARE(commands.size(), 31);
+        QCOMPARE(commands.size(), 32);
+        menu->setProperty("query", "mermaid");
+        QVariantList mermaidFiltered = menu->property("filteredCommands").toList();
+        QVERIFY(!mermaidFiltered.isEmpty());
+        QCOMPARE(mermaidFiltered.first().toMap().value("id").toString(), QString("mermaid"));
         menu->setProperty("query", "video");
         QVariantList filtered = menu->property("filteredCommands").toList();
         QVERIFY(!filtered.isEmpty());
