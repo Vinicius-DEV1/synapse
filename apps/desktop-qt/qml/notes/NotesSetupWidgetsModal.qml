@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import "NotesHtmlEscaping.js" as HtmlEscaping
 import "../ui"
 
 Item {
@@ -16,15 +15,6 @@ Item {
     property string activeMode: "" // "question" | "foco" | "alarme" | "evento" | "habito"
     property var listItems: []
     property string searchFilter: ""
-    property string selectedFocusDuration: "30"
-    property string actionErrorMessage: ""
-    readonly property var focusDurationOptions: [
-        { duration: 15, setup: setupRoot },
-        { duration: 25, setup: setupRoot },
-        { duration: 30, setup: setupRoot },
-        { duration: 45, setup: setupRoot },
-        { duration: 60, setup: setupRoot }
-    ]
 
     signal insertWidgetRequested(string html)
     signal closed()
@@ -33,16 +23,13 @@ Item {
         activeMode = mode
         listItems = []
         searchFilter = ""
-        actionErrorMessage = ""
         var pf = (typeof prefill === "string") ? ({ query: prefill, title: prefill, desc: prefill }) : (prefill || ({}))
         if (mode === "foco") {
-            mainTitleField.text = pf.desc || ""
-            selectedFocusDuration = String(pf.time || 30)
-            tagField.text = pf.tag || ""
+            focusSetupForm.openForPrefill(pf)
         } else if (mode === "evento") {
             calendarEventForm.openForTitle(pf.title || qsTr("Novo Evento"))
         } else if (mode === "alarme") {
-            widgetPicker.setAlarmPrefill(pf.timeStr || "12:00")
+            alarmSetupForm.openForTime(pf.timeStr || "12:00")
         } else if (mode === "habito") {
             searchFilter = pf.query || ""
         }
@@ -66,12 +53,15 @@ Item {
     }
 
     Rectangle {
-        width: 450
-        height: Math.min(parent.height - 48, cardCol.implicitHeight + 40)
+        objectName: "notesSetupModalCard"
+        width: setupRoot.activeMode === "alarme" ? Math.min(parent.width - 32, 672) : 450
+        height: setupRoot.activeMode === "alarme"
+            ? Math.min(parent.height - 32, cardCol.implicitHeight + 48)
+            : Math.min(parent.height - 48, cardCol.implicitHeight + 40)
         anchors.centerIn: parent
         radius: 16
-        color: "#161522"
-        border.color: "#338b5cf6"
+        color: setupRoot.activeMode === "alarme" ? "#0f0e17" : "#161522"
+        border.color: setupRoot.activeMode === "alarme" ? "#0dffffff" : "#338b5cf6"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -79,36 +69,48 @@ Item {
         ColumnLayout {
             id: cardCol
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
+            anchors.margins: setupRoot.activeMode === "alarme" ? 24 : 20
+            spacing: setupRoot.activeMode === "alarme" ? 18 : 12
 
             RowLayout {
                 Layout.fillWidth: true
-                ColumnLayout {
+                RowLayout {
                     Layout.fillWidth: true
-                    spacing: 2
-                    Text {
-                        text: setupRoot.activeMode === "question" ? qsTr("Criar / Inserir Questão")
-                            : setupRoot.activeMode === "foco" ? qsTr("Configurar Timer de Foco")
-                            : setupRoot.activeMode === "alarme" ? qsTr("Criar / Inserir Alarme")
-                            : setupRoot.activeMode === "evento" ? qsTr("Criar Evento na Agenda")
-                            : qsTr("Vincular ou Criar Hábito")
-                        color: "#fffffe"
-                        font.pixelSize: 15
-                        font.bold: true
-                        Layout.fillWidth: true
+                    spacing: 12
+                    AppIcon {
+                        visible: setupRoot.activeMode === "alarme"
+                        name: "clock"
+                        color: "#a78bfa"
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
                     }
-                    Text {
-                        visible: setupRoot.activeMode === "evento"
-                        text: qsTr("Vínculo inline com avisos automáticos")
-                        color: "#a7a9be"
-                        font.pixelSize: 10
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        Text {
+                            objectName: "notesSetupModalTitle"
+                            text: setupRoot.activeMode === "question" ? qsTr("Criar / Inserir Questão")
+                                : setupRoot.activeMode === "foco" ? qsTr("Configurar Timer de Foco")
+                                : setupRoot.activeMode === "alarme" ? qsTr("Novo Alarme")
+                                : setupRoot.activeMode === "evento" ? qsTr("Criar Evento na Agenda")
+                                : qsTr("Vincular ou Criar Hábito")
+                            color: "#fffffe"
+                            font.pixelSize: setupRoot.activeMode === "alarme" ? 24 : 15
+                            font.bold: true
+                            Layout.fillWidth: true
+                        }
+                        Text {
+                            visible: setupRoot.activeMode === "evento"
+                            text: qsTr("Vínculo inline com avisos automáticos")
+                            color: "#a7a9be"
+                            font.pixelSize: 10
+                        }
                     }
                 }
                 ToolButton {
                     id: setupCloseButton
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
+                    Layout.preferredWidth: setupRoot.activeMode === "alarme" ? 48 : 26
+                    Layout.preferredHeight: setupRoot.activeMode === "alarme" ? 48 : 26
                     onClicked: setupRoot.close()
                     background: Rectangle { radius: 6; color: setupCloseButton.hovered ? "#1affffff" : "transparent" }
                     contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 12; height: 12 }
@@ -117,6 +119,7 @@ Item {
 
             NotesSetupWidgetPickerPanel {
                 id: widgetPicker
+                visible: setupRoot.activeMode !== "alarme" && setupRoot.activeMode !== "foco"
                 mode: setupRoot.activeMode
                 controller: setupRoot.controller
                 listItems: setupRoot.listItems
@@ -127,158 +130,22 @@ Item {
                 onCloseRequested: setupRoot.close()
             }
 
-            ColumnLayout {
-                visible: setupRoot.activeMode === "foco"
+            NotesAlarmSetupForm {
+                id: alarmSetupForm
+                visible: setupRoot.activeMode === "alarme"
+                controller: setupRoot.controller
+                alarmItems: setupRoot.listItems
                 Layout.fillWidth: true
-                spacing: 8
+                onInsertWidgetRequested: function(html) { setupRoot.insertWidgetRequested(html) }
+                onCloseRequested: setupRoot.close()
+            }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 4
-                    RowLayout {
-                        objectName: "notesFocusTagLabelRow"
-                        spacing: 6
-                        AppIcon { name: "tag"; color: "#a78bfa"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
-                        Text { objectName: "notesFocusTagLabel"; text: qsTr("Tag da Sessão"); color: "#a7a9be"; font.pixelSize: 12; font.weight: Font.Medium }
-                    }
-                    TextField {
-                        id: tagField
-                        objectName: "notesFocusTagField"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        placeholderText: qsTr("Ex: Estudo, Trabalho, Leitura")
-                        text: ""
-                        onTextEdited: setupRoot.actionErrorMessage = ""
-                        color: "#fffffe"
-                        background: Rectangle { radius: 10; color: "#0f0e17"; border.color: "#2e2e38" }
-                    }
-                }
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 4
-                    RowLayout {
-                        objectName: "notesFocusDescriptionLabelRow"
-                        spacing: 6
-                        AppIcon { name: "align-left"; color: "#a78bfa"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
-                        Text { objectName: "notesFocusDescriptionLabel"; text: qsTr("Descrição"); color: "#a7a9be"; font.pixelSize: 12; font.weight: Font.Medium }
-                    }
-                    TextField {
-                        id: mainTitleField
-                        objectName: "notesFocusDescriptionField"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        placeholderText: qsTr("Ex: Estudando Cálculo Capítulo 4")
-                        onTextEdited: setupRoot.actionErrorMessage = ""
-                        color: "#fffffe"
-                        background: Rectangle { radius: 10; color: "#0f0e17"; border.color: "#2e2e38" }
-                    }
-                }
-                RowLayout {
-                    objectName: "notesFocusDurationLabelRow"
-                    spacing: 6
-                    AppIcon { name: "clock"; color: "#a78bfa"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
-                    Text { objectName: "notesFocusDurationLabel"; text: qsTr("Tempo Alvo (minutos)"); color: "#a7a9be"; font.pixelSize: 12; font.weight: Font.Medium }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    Repeater {
-                        model: setupRoot.focusDurationOptions
-                        delegate: Button {
-                            id: durationPreset
-                            required property var modelData
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 28
-                            onClicked: durationPreset.modelData.setup.selectedFocusDuration = String(durationPreset.modelData.duration)
-                            background: Rectangle {
-                                radius: 6
-                                color: durationPreset.modelData.setup.selectedFocusDuration === String(durationPreset.modelData.duration) ? "#338b5cf6" : "#0f0e17"
-                                border.color: durationPreset.modelData.setup.selectedFocusDuration === String(durationPreset.modelData.duration) ? "#8b5cf6" : "#2e2e38"
-                            }
-                            contentItem: Text {
-                                text: durationPreset.modelData.duration + "m"
-                                color: "#e2e8f0"
-                                font.pixelSize: 11
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-                    }
-                }
-                TextField {
-                    objectName: "notesFocusDurationField"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    placeholderText: qsTr("Minutos")
-                    text: setupRoot.selectedFocusDuration
-                    validator: IntValidator { bottom: 1; top: 240 }
-                    onTextEdited: {
-                        setupRoot.selectedFocusDuration = text
-                        setupRoot.actionErrorMessage = ""
-                    }
-                    color: "#fffffe"
-                    background: Rectangle { radius: 10; color: "#0f0e17"; border.color: "#2e2e38" }
-                }
-                Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    enabled: mainTitleField.text.trim().length > 0 && tagField.text.trim().length > 0 &&
-                        Number(setupRoot.selectedFocusDuration) >= 1 && Number(setupRoot.selectedFocusDuration) <= 240 &&
-                        Number(setupRoot.selectedFocusDuration) % 1 === 0
-                    onClicked: {
-                        var controller = setupRoot.controller
-                        if (!controller || typeof controller.startFocusTimer !== "function") {
-                            setupRoot.actionErrorMessage = qsTr("O timer de foco não está disponível.")
-                            return
-                        }
-                        var mins = Math.max(1, parseInt(setupRoot.selectedFocusDuration, 10))
-                        controller.startFocusTimer(mins, tagField.text.trim(), mainTitleField.text.trim())
-                        setupRoot.close()
-                    }
-                    background: Rectangle { radius: 8; color: "#7c3aed" }
-                    contentItem: Text {
-                        text: qsTr("Iniciar Foco")
-                        color: "#ffffff"
-                        font.pixelSize: 12
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-                Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    enabled: mainTitleField.text.trim().length > 0 && tagField.text.trim().length > 0 &&
-                        Number(setupRoot.selectedFocusDuration) >= 1 && Number(setupRoot.selectedFocusDuration) <= 240 &&
-                        Number(setupRoot.selectedFocusDuration) % 1 === 0
-                    onClicked: {
-                        var rawTitle = mainTitleField.text.trim()
-                        var title = HtmlEscaping.escapeHtmlAttribute(rawTitle)
-                        var mins = Math.max(1, parseInt(setupRoot.selectedFocusDuration, 10))
-                        var tag = HtmlEscaping.escapeHtmlAttribute(tagField.text.trim())
-                        setupRoot.insertWidgetRequested(
-                            "<span data-type=\"focus-widget\" data-duration=\"" + mins +
-                            "\" data-tag=\"" + tag + "\" data-description=\"" + title +
-                            "\" data-status=\"paused\"></span>")
-                        setupRoot.close()
-                    }
-                    background: Rectangle { radius: 8; color: "#1d1c2e"; border.color: "#2e2e38" }
-                    contentItem: Text {
-                        text: qsTr("Inserir timer na nota")
-                        color: "#e2e8f0"
-                        font.pixelSize: 11
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-                Text {
-                    visible: setupRoot.actionErrorMessage.length > 0
-                    text: setupRoot.actionErrorMessage
-                    color: "#fda4af"
-                    font.pixelSize: 11
-                    wrapMode: Text.Wrap
-                    Layout.fillWidth: true
-                }
+            NotesFocusSetupForm {
+                id: focusSetupForm
+                visible: setupRoot.activeMode === "foco"
+                controller: setupRoot.controller
+                onCloseRequested: setupRoot.close()
+                onInsertWidgetRequested: function(html) { setupRoot.insertWidgetRequested(html) }
             }
 
             NotesCalendarEventForm {

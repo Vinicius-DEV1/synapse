@@ -123,3 +123,9 @@ Both clients expose explicit Cancel and Create actions. React renders a dedicate
 The Notes `/foco` command opens a setup form for a focus session. Its visible order is the session tag, description and target duration, with preset choices for 15, 25, 30, 45 and 60 minutes plus a numeric duration field. Slash-command arguments can prefill the tag, description and duration. The current React Notes host does not pass the Focus screen's existing tag list into this modal, so tag autocomplete is not part of this Notes entry point.
 
 Desktop Qt presents the same labeled field order and prefill behavior in the native Notes setup host. It also retains an additional **Inserir timer na nota** action alongside **Iniciar Foco**; the React Notes host only starts the focus timer. The QML harness verifies visible labels, order, example placeholders and prefill. Live timer behavior, focus return and exact viewport geometry remain runtime acceptance items.
+
+## 12. Inline Alarm Setup
+
+The Notes `/alarme` command opens alarm setup with the time initialized from a valid slash argument or `12:00`. The user can set a time and an optional label up to 30 characters, then save the alarm. The saved alarm uses the active platform service. Notes also retains a separate secondary action for linking an existing alarm as an inline widget; that is a native addition beyond React's create-alarm modal.
+
+Desktop Qt presents the time and label in separate cards, uses a large centered time field, and provides a full-width save action. It keeps existing-alarm linking collapsed until requested. The modal is capped at the same 672 px content width as React's alarm form, while the React client uses a full-canvas overlay and Qt stays inside its native Notes modal shell. Focused QML tests cover slash prefill, time validation, alarm creation and existing-alarm link serialization. Full-canvas geometry, live Core error recovery and reminder delivery remain runtime acceptance items.

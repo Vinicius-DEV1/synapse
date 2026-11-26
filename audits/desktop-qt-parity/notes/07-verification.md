@@ -515,6 +515,16 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes Alarm setup hierarchy and routes (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for `NotesAlarmSetupForm.qml` through `NotesSetupWidgetsModal.qml` | Passed: 4 behavior cases (6 QtTest results including setup/cleanup), 0 failures. Verifies React-like title, 672 px content cap, large time control, label section, slash-prefilled time, save request payload, invalid-time guard, and existing-alarm link serialization. | Qt 6.10.2, offscreen. Does not verify native full-canvas parity, live Core alarm creation, reminder delivery or focus/DPI behavior. |
+| Focused `qmllint` for alarm, focus, shared setup and picker components | Passed: exit 0, no warnings. | Static QML checks only. |
+| Focus and calendar event persistent QML harnesses | Passed: focus 1 behavior case; event 2 behavior cases (setup/cleanup totals excluded here). | Guard against regressions from extracting the focus form; does not verify live timer/event services. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: native application linked successfully. | Build validation only. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes focus setup modal field hierarchy (2026-11-26)
 
 | Check | Result | Scope and limits |
