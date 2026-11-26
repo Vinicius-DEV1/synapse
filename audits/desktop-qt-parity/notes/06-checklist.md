@@ -154,6 +154,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Capture React and Qt question-create modals at the same viewport and compare spacing, backdrop, focus/close behavior and result/search semantics. See QT-NOTES-070.
 - [x] Remove global battery/question scans from each Notes question widget; resolve metadata by battery ID and load question content by ID only when expanding the preview. Focused Core and QML checks pass. See QT-NOTES-071.
 - [ ] Verify large-note runtime responsiveness, question preview expand/collapse/reopen, missing/deleted IDs and metadata refresh after external edits. See QT-NOTES-071.
+- [x] Keep Notes focus-session loading scoped to the selected battery or legacy question ID; do not read or filter the global question list. Focused QML harness covers both paths. See QT-NOTES-072.
+- [ ] Verify missing/deleted targets, focus modal visual states, answer submission and save/reopen from the Notes entry point. See QT-NOTES-072.
 - [x] Match Notes habit quick-create defaults, prevent case-insensitive duplicates, resolve the actual Core-created habit ID, and preserve IDs for existing selections. See QT-NOTES-067.
 - [ ] Add and verify the React HabitSelectModal keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), loading/empty/create feedback and exact focus return for the Notes habit picker. See QT-NOTES-067.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.

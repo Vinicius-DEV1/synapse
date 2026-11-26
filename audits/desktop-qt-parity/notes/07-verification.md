@@ -515,6 +515,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes question focus session loading (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_question_session_loading.qml` | Passed: 3 behavior cases (5 QtTest totals including setup/cleanup), 0 failures. | Verifies battery ID, legacy question ID, and missing-target paths; none calls `getAllQuizQuestions()`. Does not open the interactive session modal or measure UI responsiveness. |
+| Focused `qmllint` for `NotesQuestionSession.js` and `NotesEditorModalsHost.qml` | Passed: exit 0. The host reports existing dynamic Loader `QObject` member warnings for `reloadData`/`visible`. | The new helper and call site add no diagnostics; the existing Loader warnings remain. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked. | Build validation only; the focus overlay was not opened in a running Notes session. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes question-create modal hierarchy (2026-11-26)
 
 | Check | Result | Scope and limits |

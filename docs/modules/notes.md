@@ -144,4 +144,6 @@ The Qt modal uses an atomic `NotesQuestionCreateForm.qml` with a React-like help
 
 Question block metadata loads through a battery-ID lookup instead of scanning the entire battery list. The collapsed block does not fetch full question content; expanding its preview requests only that battery's questions, or the referenced single question for a legacy single-question block. This keeps per-block initialization bounded as question and battery data grow.
 
+Starting focus from a Notes question widget also loads only its linked battery's questions; legacy single-question widgets load only that question by ID. Neither Notes path reads and filters the global question list.
+
 Focused Core tests verify the page/layout/link data and ensure an invalid page leaves no battery or link behind. Focused QML checks verify the modal hierarchy, responsive result viewport, current-page context, Core ID insertion, existing ID selection and error copy. Live creation followed by saving/reopening the note, focus return and same-viewport comparison remain acceptance work. The React Notes host currently ignores the reuse flag emitted when a suggested existing question widget is selected; that client-side behavior is tracked in the parity audit rather than mirrored by Qt.

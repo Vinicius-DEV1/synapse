@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import "NotesQuestionSession.js" as QuestionSession
 
 Item {
     id: modalsHost
@@ -115,13 +116,7 @@ Item {
     }
 
     function openQuestionSession(batteryId, questionId, title) {
-        var qs = []
-        if (controller && typeof controller.getAllQuizQuestions === "function") {
-            var all = controller.getAllQuizQuestions() || []
-            qs = all.filter(function(q) {
-                return (batteryId && q.battery_id === batteryId) || (questionId && q.id === questionId)
-            })
-        }
+        var qs = QuestionSession.loadQuestions(controller, batteryId, questionId)
         pendingQuizSession = {
             batteryId: batteryId,
             title: title || qsTr("Prática Rápida"),
