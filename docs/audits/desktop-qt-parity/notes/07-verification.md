@@ -440,3 +440,11 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | --- | --- | --- |
 | Temporary `qmltestrunner` harness mounting the actual `FileAttachmentWidget.qml`, its controller boundary, and an enclosing `Flickable` | Passed: 4 passed, 0 failed. Opened the widget palette, verified its nearest viewport and scroll position, dismissed with Escape while restoring editor focus, then dismissed by outside click and confirmed `showColorPicker` reset. | Qt 6.10.2, offscreen; test file remained temporary. The palette has `objectName: notesWidgetColorPalette` for native UI automation. The bundle widget, real NotePage nested editor chain, high-DPI rendering and visual comparison remain unverified. |
 | Focused `qmllint` for `NotesWidgetColorPalette.qml` and native `synapse-desktop` build after adding the palette automation name | Passed; lint emitted no diagnostics and build exit code 0 | Confirms QML syntax and target compilation; no persistent test file was added. |
+
+
+### Document bundle palette integration and color selection (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Temporary `qmltestrunner` harness mounting the actual `DocumentBundleWidget.qml` in a `Flickable` | Passed: 4 passed, 0 failed. Verified viewport tracking, scroll repositioning, Escape/outside dismissal, and focus restoration to an editor field. | Qt 6.10.2, offscreen; temporary test only. The harness uses a valid empty bundle and does not instantiate the manager or page-level nested editor chain. |
+| Bundle palette swatch selection and `attrsUpdated` payload | Passed: selecting `#22C55E` closes the palette, updates `data-color` to the selected six-digit hex and preserves `data-type="document-bundle"` | Verifies widget attribute behavior only; PageView save, reload and React round-trip remain open. |
