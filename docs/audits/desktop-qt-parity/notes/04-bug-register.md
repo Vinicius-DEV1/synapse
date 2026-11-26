@@ -294,6 +294,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Rename, trash, restore, and rename-again update every matching reference in open top-level and nested editors. Backspace/Delete confirmation and copied plain text use the live title/status. A follow-up save does not count the presentation-only refresh as an edit, and cursor, selection, undo history, and stored canonical markup remain unchanged.
 - **Fix status:** Source fix applied in `NotesRichPageReferenceObject`, `NotesTextOperations`, `NotesRichTextEditor.qml`, `PageView.qml`, and the page restore notification. Page-tree snapshots now resolve live chip labels and deleted state; only references whose visible presentation changed are marked layout-dirty, and range actions use the same live title/status. Desktop build passes and the edited QML parses with existing warnings. Runtime rename/trash/restore, dirty-state, undo, clipboard, and nested-editor acceptance remain open.
 
+## QT-NOTES-033: Deleted page-reference chips omit React's status suffix
+
+- **Severity:** Low; broken-reference chips do not communicate deletion with the same visible label as React.
+- **Evidence:** React `PageReference.tsx` renders the resolved title followed by ` (Excluída)` when its target page is missing or deleted. Qt's native object renderer used the deleted icon and colors but drew only the title.
+- **Reproduction:** Create a page reference, move the target to Trash, and compare the chip label in React and Qt.
+- **Root cause:** The native chip presentation treated deleted state only as icon/color styling and omitted React's explicit text suffix.
+- **Required fix:** Append ` (Excluída)` to the native display label only while the target is deleted; include the suffix in measured intrinsic width but keep the resolved base title for dialogs, clipboard text, links, and canonical HTML.
+- **Acceptance:** Active chips show the current page title without a suffix. Deleted/missing chips show the same title plus ` (Excluída)` as React; renaming or restoring the target updates the label and width without changing canonical markup or marking note content edited.
+- **Fix status:** Source presentation fix applied and desktop target compiles. Matched-viewport visual review, width/wrapping behavior, and runtime rename/trash/restore acceptance remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

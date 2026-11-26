@@ -25,6 +25,10 @@ QFont referenceFont(const QTextDocument *document, const QTextFormat &format) {
     return font;
 }
 
+QString referenceLabel(const QString &title, bool deleted) {
+    return deleted ? title + QStringLiteral(" (Excluída)") : title;
+}
+
 }
 
 bool NotesRichPageReferenceObject::setPageSnapshot(const QVariantList &pages) {
@@ -61,7 +65,7 @@ bool NotesRichPageReferenceObject::resolvedDeleted(const QTextFormat &format) co
 
 QSizeF NotesRichPageReferenceObject::intrinsicSize(QTextDocument *document, int,
                                                     const QTextFormat &format) {
-    const QString title = resolvedTitle(format);
+    const QString title = referenceLabel(resolvedTitle(format), resolvedDeleted(format));
     const QFont font = referenceFont(document, format);
     const QFontMetricsF metrics(font);
     return QSizeF(44.0 + metrics.horizontalAdvance(title), qMax(22.0, metrics.height() + 4.0));
@@ -72,7 +76,7 @@ void NotesRichPageReferenceObject::drawObject(QPainter *painter, const QRectF &r
                                               const QTextFormat &format) {
     if (!painter) return;
     const bool deleted = resolvedDeleted(format);
-    const QString title = resolvedTitle(format);
+    const QString title = referenceLabel(resolvedTitle(format), deleted);
     const QColor background = deleted ? QColor(239, 68, 68, 20) : QColor(255, 255, 255, 10);
     const QColor border = deleted ? QColor(239, 68, 68, 102) : QColor(255, 255, 255, 31);
     const QColor foreground = deleted ? QColor(248, 113, 113) : QColor(255, 255, 255, 191);
