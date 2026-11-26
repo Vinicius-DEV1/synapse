@@ -79,6 +79,38 @@ fn records_open_answer_and_reads_latest_feedback_by_question() {
 }
 
 #[test]
+fn restores_latest_open_answer_attempt_after_database_reopen() {
+    let (file, db, battery_id, question_id) = create_open_question();
+    let saved = QuizRepository::record_open_answer_attempt(
+        &db,
+        &battery_id,
+        &question_id,
+        "My saved response",
+        feedback("Parcial", "Include the second part of the explanation."),
+    )
+    .unwrap();
+
+    drop(db);
+    let reopened_db = Database::open(file.path()).unwrap();
+    let restored = QuizRepository::get_latest_quiz_attempts(
+        &reopened_db,
+        Some(&battery_id),
+        Some(&question_id),
+    )
+    .unwrap();
+
+    assert_eq!(restored.len(), 1);
+    assert_eq!(restored[0].id, saved.id);
+    assert_eq!(restored[0].type_, "open");
+    assert_eq!(restored[0].user_typed_answer.as_deref(), Some("My saved response"));
+    assert_eq!(restored[0].ai_feedback.as_ref().unwrap().verdict, "Parcial");
+    assert_eq!(
+        restored[0].ai_feedback.as_ref().unwrap().feedback,
+        "Include the second part of the explanation."
+    );
+}
+
+#[test]
 fn rejects_invalid_verdict_empty_answer_and_multiple_choice_target() {
     let (_file, db, battery_id, open_question_id) = create_open_question();
     assert!(QuizRepository::record_open_answer_attempt(
