@@ -426,12 +426,12 @@ Findings are based on source inspection of the active worktree. Severity is base
 ## QT-NOTES-046: File widget deletion does not offer React's choices
 
 - **Severity:** High parity gap; the native Notes attachment cannot delete the underlying file from its own action flow.
-- **Evidence:** React `FileWidgetDeleteConfirmModal` offers Cancel, Unlink and Delete All; Delete All removes the local Core record and attempts Drive deletion for a Drive-backed file. Qt `FileAttachmentDeleteDialog` only removes the widget node from the page.
-- **Reproduction:** Open a live attachment's delete control and compare the available choices and record state after confirmation.
-- **Root cause:** The Qt file widget has a note-node removal dialog but no underlying file lifecycle choices or remote Drive deletion contract.
-- **Required fix:** Match Cancel and Unlink distinctly; add a recoverable local Trash choice only after the page save succeeds, rechecking for remaining references and preserving the file on save conflict. Add remote Drive deletion only through a typed adapter that reports partial and failed outcomes. Clearly label the local-only action.
+- **Evidence:** React `FileWidgetDeleteConfirmModal` offers Cancel, Unlink and Delete All; Delete All removes the local Core record and attempts Drive deletion for a Drive-backed file. Qt initially only removed the widget node; it now offers local Trash but leaves the Drive copy intact.
+- **Reproduction:** Open a Drive-backed attachment's delete control and compare local and remote file state after choosing Delete All.
+- **Root cause:** The Qt file widget had a note-node removal dialog but no standalone file lifecycle choice or remote Drive deletion contract.
+- **Required fix:** Keep Cancel and Unlink distinct; offer local Trash only after the page save succeeds, rechecking for remaining references and preserving the file on save conflict. Add remote Drive deletion only through a typed adapter that reports partial and failed outcomes. Clearly label the local-only action.
 - **Acceptance:** Cancel changes nothing; Unlink removes only the widget; local Trash saves the note first and handles undo, duplicate references, save conflict and delete failure; Drive-backed behavior reports local/remote partial outcomes and is never reported complete before confirmation from the service.
-- **Fix status:** Open parity gap. Qt still offers only note-widget removal. The deferred local Trash queue exists for DocumentBundle removal but is not yet wired into the standalone file widget; remote Drive deletion has no native typed command. See the detailed [file-widget crosswalk](10-file-widget-crosswalk.md).
+- **Fix status:** Source flow now offers Cancel, Unlink, and a clearly labeled local Trash action. The shared after-save queue checks the saved note for remaining references and calls Core soft-delete only after `savePage` succeeds; the local copy can be restored from Trash. Requests from toggle, column and collection editors now bubble to the owning PageView. The dialog identifies a Drive copy that will remain in Drive. Runtime failure injection, undo, nested-editor behavior, duplicate-reference behavior, and save-conflict acceptance remain open. Remote Drive deletion has no native typed command and remains a parity gap. See the detailed [file-widget crosswalk](10-file-widget-crosswalk.md).
 
 ## QT-NOTES-047: Renaming a file leaves other widget attributes stale
 
@@ -462,6 +462,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Required fix:** Route all file preview requests through `PageView`, start the Core preview there, navigate to Files, close the bundle manager first, and forward the signal through every supported nested Notes container.
 - **Acceptance:** Verify inline bundle preview, manager preview, top-level file widget, and file widgets nested at multiple levels in active and floating pages. Confirm success, Core failure, supported file types, modal closure, return path and no duplicate preview request.
 - **Fix status:** The file widget no longer starts preview directly. Bundle inline/manager previews and toggle, column and collection descendants now forward IDs to the owning PageView; PageView starts Core preview and navigates to Files. Focused QML lint exits 0 with existing diagnostics; runtime/file-type acceptance remains open. The Files surface still differs visually from React's in-modal bundle viewer; see [09-document-bundle-crosswalk.md](09-document-bundle-crosswalk.md).
+
+## QT-NOTES-050: Attachment deletion confirmation is constrained to the widget bounds
+
+- **Severity:** Medium; the old confirmation backdrop and card were parented to the 42 px attachment widget, so the prompt did not cover or center in the application window and had no Escape/outside dismissal contract.
+- **Evidence:** `FileAttachmentDeleteDialog.qml` used an `Item` with `anchors.fill: parent`, instantiated directly inside `FileAttachmentWidget.qml`.
+- **Reproduction:** Open the attachment deletion prompt from a page with content above and below the widget. Compare the backdrop and card bounds to the application window, then try Escape and an outside click.
+- **Root cause:** The custom overlay was scoped to the file-widget row rather than the window's Qt Quick Controls overlay.
+- **Required fix:** Use a centered modal under `Overlay.overlay`, preserve the dark card styling and action layout, and close safely on Escape or outside click without running an action.
+- **Acceptance:** Verify the dim overlay covers the full app window, the dialog stays centered at compact and large sizes, each of Cancel/Unlink/local Trash invokes only its action, Escape/outside dismisses without mutation, and focus returns to the editor.
+- **Fix status:** The dialog is now a `Dialog` parented to `Overlay.overlay`, with modal dimming and Escape/outside close policies. Runtime geometry, keyboard, and focus acceptance remains open.
 
 ## Second-pass review
 
