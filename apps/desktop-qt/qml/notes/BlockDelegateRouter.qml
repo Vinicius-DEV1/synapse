@@ -20,6 +20,8 @@ Loader {
     signal deleteRequested(int idx)
     signal moveBlockRequested(int idx, int delta)
     signal unwrapColumnGroupRequested(int idx, var columnsList)
+    signal unlinkDocumentBundleRequested(int idx, var bundleWidget)
+    signal unwrapDocumentBundleRequested(int idx, var bundledItems, string groupColor, var bundleWidget)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
     signal focusRichSliceChanged(var sliceItem)
@@ -179,7 +181,24 @@ Loader {
     Component { id: alarmComp; AlarmWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: eventComp; CalendarEventWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex); onMoveUpRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, -1); onMoveDownRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, 1); onOpenCalendarRequested: routerLoader.openCalendarRequested() } }
     Component { id: fileComp; FileAttachmentWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
-    Component { id: bundleComp; DocumentBundleWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; pageId: routerLoader.pageId; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
+    Component {
+        id: bundleComp
+        DocumentBundleWidget {
+            id: routedBundleWidget
+            width: routerLoader.width
+            blockData: routerLoader.blockData
+            controller: routerLoader.controller
+            pageId: routerLoader.pageId
+            onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }
+            onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
+            onUnlinkRequested: routerLoader.unlinkDocumentBundleRequested(
+                                   routerLoader.blockIndex, routedBundleWidget)
+            onUngroupRequested: function(items, color) {
+                routerLoader.unwrapDocumentBundleRequested(
+                    routerLoader.blockIndex, items, color, routedBundleWidget)
+            }
+        }
+    }
     Component { id: mediaComp; MediaWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: scrapComp; ScrapWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
 

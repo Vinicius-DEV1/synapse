@@ -4,6 +4,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../ui"
 import "BlockDragDrop.js" as Helpers
+import "DocumentBundleOperations.js" as DocumentBundleOperations
 
 // Block-by-block WYSIWYG canvas backed by core synapse-core HTML <-> Block AST parser/serializer.
 ColumnLayout {
@@ -97,9 +98,34 @@ ColumnLayout {
         htmlChanged(serialized)
     }
 
+    function commitDocumentBundleBlocks(nextBlocks) {
+        if (!Array.isArray(nextBlocks) || !controller ||
+                typeof controller.serializeNoteBlocks !== "function") return false
+        var serialized
+        try {
+            serialized = controller.serializeNoteBlocks(nextBlocks)
+        } catch (error) {
+            console.warn("[Notes:BlockListEditor] Could not serialize document-bundle change.", error)
+            return false
+        }
+        if (typeof serialized !== "string") return false
+        blocks = nextBlocks
+        lastEmittedHtml = serialized
+        htmlChanged(serialized)
+        return true
+    }
+
     function requestBlockDeletion(index, widget) {
         if (index < 0 || index >= blocks.length) return
         var block = blocks[index]
+        if (block && block.blockType === "documentBundle") {
+            if (!widget || typeof widget["requestDeleteConfirmation"] !== "function") {
+                console.warn("[Notes:BlockListEditor] Document bundle is not ready; keeping the block.")
+                return
+            }
+            widget["requestDeleteConfirmation"]()
+            return
+        }
         if (block && block.blockType === "calendarEventWidget") {
             if (!widget || typeof widget["requestDeleteConfirmation"] !== "function") {
                 console.warn("[Notes:BlockListEditor] Event widget is not ready; keeping the block.")
@@ -114,6 +140,39 @@ ColumnLayout {
             return
         }
         commitBlocks(Helpers.deleteBlockInArray(blocks, index))
+    }
+
+    function unlinkDocumentBundle(index) {
+        if (index < 0 || index >= blocks.length ||
+                !blocks[index] || blocks[index].blockType !== "documentBundle" ||
+                !controller || typeof controller.serializeNoteBlocks !== "function" ||
+                !flushActiveRichSlices()) return false
+        if (index >= blocks.length || !blocks[index] || blocks[index].blockType !== "documentBundle") return false
+        return commitDocumentBundleBlocks(Helpers.deleteBlockInArray(blocks, index))
+    }
+
+    function reportBundleActionFailure(index, widget, message) {
+        console.warn("[Notes:BlockListEditor] " + message)
+        if (widget && typeof widget.setDeleteActionError === "function")
+            widget.setDeleteActionError(message)
+    }
+
+    function unwrapDocumentBundle(index, bundledItems, groupColor) {
+        if (index < 0 || index >= blocks.length || !blocks[index] ||
+                blocks[index].blockType !== "documentBundle" ||
+                !controller || typeof controller.serializeNoteBlocks !== "function" ||
+                !flushActiveRichSlices()) return false
+
+        var result = DocumentBundleOperations.createFileWidgetBlocks(
+            bundledItems, groupColor, controller, qsTr("Documento"))
+        if (!result.valid) {
+            return false
+        }
+        if (index >= blocks.length || !blocks[index] || blocks[index].blockType !== "documentBundle") return false
+
+        var next = blocks.slice()
+        Array.prototype.splice.apply(next, [index, 1].concat(result.blocks))
+        return commitDocumentBundleBlocks(next)
     }
 
     function updateBlockAt(idx, updater) {
@@ -387,6 +446,18 @@ ColumnLayout {
                     blockListRoot.commitBlocks(Helpers.moveBlockInArray(blockListRoot.blocks, idx, delta))
                 }
                 onUnwrapColumnGroupRequested: function(idx, cols) { blockListRoot.unwrapColumnGroup(idx, cols) }
+                onUnlinkDocumentBundleRequested: function(idx, bundleWidget) {
+                    if (!blockListRoot.unlinkDocumentBundle(idx)) {
+                        blockListRoot.reportBundleActionFailure(
+                            idx, bundleWidget, qsTr("Could not update this note. The bundle was kept unchanged."))
+                    }
+                }
+                onUnwrapDocumentBundleRequested: function(idx, items, color, bundleWidget) {
+                    if (!blockListRoot.unwrapDocumentBundle(idx, items, color)) {
+                        blockListRoot.reportBundleActionFailure(
+                            idx, bundleWidget, qsTr("Could not ungroup these files. The bundle was kept unchanged."))
+                    }
+                }
                 onInsertAfterRequested: function(idx, html) { blockListRoot.insertWidgetHtmlAfter(idx, html) }
                 onFocusRichSliceChanged: function(slice) {
                     blockListRoot.focusedRichSlice = slice

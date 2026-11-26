@@ -122,6 +122,10 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare creation/edit/save lifecycle for question, focus, alarm, calendar event, habit, collection, toggle, callout toggle, media, video, book, scrap, Mermaid, link preview and link group.
 - [ ] Verify legacy link-group metadata parses ordinary JSON before attempting URI-decoding; percent-escaped URLs remain byte-for-byte intact, encoded legacy JSON still loads, and malformed entries are reported without allowing an edit to overwrite them.
 - [ ] Verify document-bundle metadata parses ordinary JSON before legacy URI-decoding; filenames with `%` survive unchanged, malformed bundles cannot be overwritten by rename/recolor/add/remove, and valid bundles round-trip through React.
+- [ ] Verify document-bundle remove actions from the widget, generic block menu, and focused Delete/Backspace open the same dialog; cancel, unlink and ungroup have distinct results, rename/modal input keeps its keyboard behavior, and ungroup uses Core-parsed file-widget nodes with stable order and metadata.
+- [ ] Match React document-bundle item management: reorder, preview, ungroup one item, remove one item with the same choices, absorb loose page files, and open/close the full manager with keyboard and focus behavior.
+- [ ] Verify React's delete-all choice against Qt file lifecycle: Qt must name local Trash accurately and report partial/failure state; do not claim Google Drive deletion until a native Drive delete contract and outcome exist.
+- [ ] Compare React bundle move-up/down controls with Qt's block handle at first/last positions, hover/focus, keyboard use and nested-editor depth; record the control-location difference even where native movement works.
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
 - [ ] Verify native page-reference object accessibility name/role, keyboard focus, visible selection, hit target, chip geometry/colors, and updated title/deleted state against React at the same viewport.

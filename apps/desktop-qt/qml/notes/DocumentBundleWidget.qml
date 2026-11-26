@@ -69,6 +69,8 @@ Rectangle {
     property bool showColorPicker: false
     property bool expanded: false
     property bool isModalOpen: false
+    property bool deleteDialogOpen: false
+    property string deleteActionError: ""
     property bool autoOpenConsumed: false
 
     Component.onCompleted: {
@@ -86,13 +88,24 @@ Rectangle {
     border.color: hasCustomColor
         ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
         : "#338b5cf6"
-    border.width: 1
+    border.width: activeFocus ? 2 : 1
     Behavior on color { ColorAnimation { duration: 150 } }
     Behavior on border.color { ColorAnimation { duration: 150 } }
 
     signal attrsUpdated(var newAttrs)
     signal pageOpenRequested(string pageId)
-    signal removeRequested()
+    signal unlinkRequested()
+    signal ungroupRequested(var bundledItems, string groupColor)
+
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: function(event) {
+        if (event.modifiers !== Qt.NoModifier || bundleWidgetRoot.renaming ||
+                bundleWidgetRoot.isModalOpen || bundleWidgetRoot.deleteDialogOpen) return
+        if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
+            event.accepted = true
+            bundleWidgetRoot.requestDeleteConfirmation()
+        }
+    }
 
     HoverHandler { id: hoverHandler }
 
@@ -107,6 +120,15 @@ Rectangle {
         next["data-items"] = JSON.stringify(nextItems)
         attrsUpdated(next)
         return true
+    }
+
+    function requestDeleteConfirmation() {
+        deleteActionError = ""
+        deleteDialogOpen = true
+    }
+
+    function setDeleteActionError(message) {
+        deleteActionError = String(message || "")
     }
 
     ColumnLayout {
@@ -236,7 +258,10 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
+                        onClicked: {
+                            bundleWidgetRoot.forceActiveFocus()
+                            bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
+                        }
                         onDoubleClicked: {
                             if (bundleWidgetRoot.itemsInvalid) return
                             bundleWidgetRoot.renaming = true
@@ -372,7 +397,7 @@ Rectangle {
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Remover agrupamento")
-                    onClicked: bundleWidgetRoot.removeRequested()
+                    onClicked: bundleWidgetRoot.requestDeleteConfirmation()
                     background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
                     contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: parent.hovered ? "#f87171" : "#a7a9be"; width: 12; height: 12 }
                 }
@@ -484,6 +509,21 @@ Rectangle {
                 delete cleaned["data-auto-open"]
                 bundleWidgetRoot.attrsUpdated(cleaned)
             }
+        }
+    }
+
+    DocumentBundleDeleteDialog {
+        isOpen: bundleWidgetRoot.deleteDialogOpen
+        bundleTitle: bundleWidgetRoot.title
+        errorMessage: bundleWidgetRoot.deleteActionError
+        itemCount: bundleWidgetRoot.items.length
+        itemsInvalid: bundleWidgetRoot.itemsInvalid
+        onUnlinkRequested: bundleWidgetRoot.unlinkRequested()
+        onUngroupRequested: bundleWidgetRoot.ungroupRequested(
+                                bundleWidgetRoot.items, bundleWidgetRoot.accentColor)
+        onDismissed: {
+            bundleWidgetRoot.deleteDialogOpen = false
+            bundleWidgetRoot.deleteActionError = ""
         }
     }
 }
