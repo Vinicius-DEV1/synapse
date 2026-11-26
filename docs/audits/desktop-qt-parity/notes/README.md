@@ -56,6 +56,7 @@
 24. **Attachment deletion confirmation now uses a window modal.** The prompt is centered in the Qt Quick overlay and supports Escape/outside dismissal without taking an action. Runtime bounds, focus, and keyboard acceptance remain open; see [QT-NOTES-050](04-bug-register.md#qt-notes-050-attachment-deletion-confirmation-is-constrained-to-the-widget-bounds).
 25. **File rename now synchronizes sibling widget attributes from Core.** This prevents another widget with the same file ID from displaying one name while saving an older one. Runtime save and cross-client round-trip remain open; see [QT-NOTES-047](04-bug-register.md#qt-notes-047-renaming-a-file-leaves-other-widget-attributes-stale).
 26. **File and document-bundle widgets now share React's color choices.** Qt uses all nine React hex values and labels plus default, with a selected state and anchored five-column popup. Runtime resize/scroll positioning, keyboard/focus and cross-client round-trip remain open; see [QT-NOTES-048](04-bug-register.md#qt-notes-048-caderno-widget-color-palette-differs-from-react).
+27. **File rename starts from the current name with React's selection rule.** Qt resets stale canceled drafts and selects the basename before the final extension, or all text for dotfiles and extensionless names. Runtime focus, selection and cancel/reopen acceptance remain open; see [QT-NOTES-051](04-bug-register.md#qt-notes-051-file-rename-reopens-with-a-stale-draft-and-mismatched-selection).
 
 ## Completion rule
 

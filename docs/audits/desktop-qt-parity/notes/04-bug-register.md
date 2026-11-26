@@ -473,6 +473,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify the dim overlay covers the full app window, the dialog stays centered at compact and large sizes, each of Cancel/Unlink/local Trash invokes only its action, Escape/outside dismisses without mutation, and focus returns to the editor.
 - **Fix status:** The dialog is now a `Dialog` parented to `Overlay.overlay`, with modal dimming and Escape/outside close policies. Runtime geometry, keyboard, and focus acceptance remains open.
 
+## QT-NOTES-051: File rename reopens with a stale draft and mismatched selection
+
+- **Severity:** Medium; canceling a rename can leave its draft in the Qt `TextField`, so a later rename starts from stale text instead of the current file name. React resets the draft on every open and selects the basename before the final extension.
+- **Evidence:** The QML `TextField.text` binding is replaced by user edits. Toggling `renaming` off and on did not restore the binding or reset the field, and Qt did not set the initial selection range.
+- **Reproduction:** Start renaming, type a different name, cancel with Escape or the close button, and reopen rename. Compare the input text and selection with React for `report.pdf`, `.env`, `README`, and `archive.tar.gz`.
+- **Root cause:** Rename state was represented by the visibility toggle alone; the QML field had no explicit start-session initialization.
+- **Required fix:** On each rename start, copy the current resolved widget name into the input, focus it after the field becomes visible, and select the text before the final extension when its dot index is greater than zero; select all for dotfiles and extensionless names.
+- **Acceptance:** After cancel and after Core refresh, each rename starts from the latest resolved name. Verify basename selection for one- and multi-dot extensions, full selection for dotfiles/extensionless names, Enter, Escape, retry after failure, and both rename entry points.
+- **Fix status:** `FileAttachmentWidget.qml::startRename()` now resets the field from the current widget name on each opening, focuses it on the next Qt event turn, and mirrors React's selection rule. Focused `qmllint` passes; runtime text-edit, focus and selection acceptance remains open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

@@ -287,3 +287,11 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
   apps/desktop-qt/qml/page-view/PageViewModalsHost.qml \
   apps/desktop-qt/qml/modals/FloatingPageModal.qml
 ```
+
+### File-widget rename-editor iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/FileAttachmentWidget.qml` | Passed, exit code 0 | Confirms the updated rename-start helper parses. This does not instantiate the `TextField` or execute focus and selection behavior. |
+| `git diff --check` | Passed after the implementation and audit updates | No whitespace errors in the rename-editor change or its parity records. |
+| Runtime cancel/reopen, Core refresh, extension selection, focus and cross-client acceptance | Not run | Verify current-name reset and React-equivalent selection for ordinary, dotfile, extensionless and multi-dot names before closing QT-NOTES-051. |
