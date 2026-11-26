@@ -403,3 +403,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | `apps/desktop-qt/build/synapse-desktop` with `QT_QPA_PLATFORM=offscreen` and a temporary `SYNAPSE_DATABASE_PATH` | Process remained active through the 8-second observation window; startup output reported opening the local database and loading the native interface; no QML/runtime error was printed | The temporary directory was removed after the process exited at the observation timeout. This confirms application startup only. It did not open a Caderno page, instantiate or interact with Notes widgets, or capture rendered output. |
+
+
+### Notes audit link and source-path check (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Internal Markdown links and backtick-quoted repository source paths across the 12 Notes audit documents | Passed; 0 missing targets | The source-path scan covered quoted `.qml`, `.cpp`, `.h`, `.rs`, `.tsx`, `.ts`, and `.js` repository paths. This verifies link/path existence only, not that each cited source still proves its associated claim. |
