@@ -304,3 +304,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app target after the QML resource changes. This does not instantiate widgets or validate keyboard interaction. |
 | `git diff --check` | Passed after source and audit updates | No whitespace errors in the widget action changes or their parity records. |
 | Runtime Tab/Shift+Tab traversal, focus reveal, Enter/Space activation and dialog return focus | Not run | These scenarios remain open before closing QT-NOTES-052. |
+
+### Document-bundle metadata extraction iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `wc -l apps/desktop-qt/qml/notes/DocumentBundleWidget.qml apps/desktop-qt/qml/notes/DocumentBundleOperations.js` | Passed; 271 and 223 lines respectively | Both files remain below the project 300-line target. This is a structural check only. |
+| Focused `qmllint` for `DocumentBundleWidget.qml` and `DocumentBundleOperations.js` | Passed, exit code 0 | Confirms the extracted helper import and QML/JS syntax. It does not execute malformed metadata or signal-order behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native target after adding the helper import. This does not execute metadata parsing or render the widget. |
+| Runtime metadata, visual, event-order and Qt/React round-trip acceptance | Not run | Compare canonical, empty, malformed and legacy values before treating the refactor as behaviorally accepted. |

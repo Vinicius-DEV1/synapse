@@ -7,7 +7,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Capture current React and Qt commits, worktree status, build options, Qt version, Core bridge version, and platform.
 - [ ] Re-read root and app `AGENTS.md`, the parity skill, design-system skill and bug-audit workflow before implementation.
 - [ ] Confirm all modified/untracked Qt Notes files have a clear owner and are included in the new folder structure without breaking QML imports or `qmldir` registrations.
-- [ ] Split the existing oversized `DocumentBundleWidget.qml` into focused Notes components while preserving its current QML hierarchy, visuals and event ordering; keep each resulting source file below the project anti-monolith target.
+- [x] Extract bundle metadata validation and extension-badge projection to `DocumentBundleOperations.js`; `DocumentBundleWidget.qml` is now below 300 lines, and the existing body/actions/dialogs remain separate QML components. Source review and focused `qmllint` pass.
+- [ ] Mount the refactored bundle widget and compare valid, empty and malformed metadata, title/color updates, manager/picker opening, signal order, saved attributes and Qt/React round-trip to confirm the extraction preserved visuals and event behavior.
 - [ ] Compare React `Editor.tsx`, `useEditorExtensions.ts`, `useEditorSync.ts`, `useEditorSave.ts`, `useSlashCommand.ts`, `useEditorDropPaste.ts`, and `PageView.tsx` against current Qt files.
 - [ ] Inventory every custom React extension/schema and every Qt AST `blockType`; identify unknown, legacy, and unhandled types.
 - [ ] Generate a React-to-Qt function/handler mapping for editor init, change, commit, flush, save, undo, redo, selection, keyboard, paste, drop, page change, and destroy.

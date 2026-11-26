@@ -34,7 +34,8 @@ Qt and React do not currently share a live Yjs editor implementation. Qt must no
 - Inspect layout churn, syntax highlighting, Mermaid rendering, media surfaces, image decode/resize, timers and signal connections. Heavy work should not block the GUI thread; asynchronous operations need cancellation and teardown.
 - Keep interaction feedback native and quick. Avoid full-document reloads when changing a single block, filter, icon or metadata field.
 - Linked calendar event widgets should resolve their Core record by ID rather than request and scan the capped full Agenda list. Use a focused native mutation signal so visible widgets refresh after local changes without periodic polling.
-- Existing Notes implementation debt: `NotesSetupWidgetsModal.qml` and `src/controllers/notes/notes_controller.cpp` exceed the 300-line target in the current worktree. Split the modal into cohesive native views and move controller adapters by domain before expanding these files further; verify QML imports and CMake registration with each extraction.
+- Bundle-widget metadata parsing and extension-badge projection now live in the Notes-local `DocumentBundleOperations.js`; `DocumentBundleWidget.qml` is below the 300-line target while its body, actions, and dialogs remain separately composed QML views. Runtime visual and event-order acceptance for this extraction remains open.
+- Remaining Notes implementation debt: `NotesSetupWidgetsModal.qml` and `src/controllers/notes/notes_controller.cpp` exceed the 300-line target in the current worktree. Split the modal into cohesive native views and move controller adapters by domain before expanding these files further; verify QML imports and CMake registration with each extraction.
 
 ## Performance budgets to record
 

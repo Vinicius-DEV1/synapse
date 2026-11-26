@@ -37,7 +37,7 @@ Source presence is not runtime acceptance. The action dialog and bundle-to-file-
 
 React `BundledFileItem` uses `fileId`, `name`, `fileType`, and optional `fileSize`, `isLink`, and `addedAt`. React serializes `data-items` as ordinary JSON. Qt accepts canonical `fileId` and legacy `id` when ungrouping, maps file properties into Core-parsed file-widget nodes, and preserves group color on each emitted node.
 
-`NotesJsonAttribute.js` parses ordinary JSON first and only tries a complete URI-decoding fallback when ordinary JSON fails. Invalid JSON, non-array values or items without a usable ID block edits that would replace stored values. Validate `%` in names/URLs and legacy encoded payloads in both clients before closing QT-NOTES-037/038.
+`DocumentBundleOperations.js::parseBundleItems()` owns the Notes-local validation and delegates JSON handling to `NotesJsonAttribute.js`, which parses ordinary JSON first and only tries a complete URI-decoding fallback when ordinary JSON fails. Invalid JSON, non-array values or items without a usable ID block edits that would replace stored values. `uniqueFileExtensions()` also derives the compact widget badges outside the QML view. Validate `%` in names/URLs and legacy encoded payloads in both clients before closing QT-NOTES-037/038.
 
 ## Deletion and platform limits
 
