@@ -94,6 +94,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 - [ ] Keep filter UI projection separate from canonical HTML and suppress programmatic changes from the dirty/save path.
 - [ ] Preserve all filtered-out rows on autosave, save-now, page switch, lock, modal open, reload and crash recovery.
+- [ ] Force a filter evaluation failure after a valid filter; verify it restores the canonical table, removes the read-only overlay, clears filter state, and leaves source HTML and dirty state unchanged.
 - [ ] Identify the table under the cursor; apply schema, validation, filter, movement and formatting to that table only.
 - [ ] Support multiple tables in a single rich slice and multiple slices without cross-table effects.
 - [ ] Compare each text/number/date/select/checkbox filter operator, empty handling, locale parsing and date/number format.

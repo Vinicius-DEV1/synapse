@@ -81,10 +81,7 @@ Item {
         var tableIndex = tableGeom.valid ? Number(tableGeom.tableIndex || 0) : 0
         var projection = ctrl.filterTableRowsForView(canonical, tableIndex, JSON.stringify(filterArr)) || ({})
         if (!projection.html) {
-            activeFilters = ({})
-            unfilteredSourceHtml = ""
-            editorRoot.hasVisualTableFilter = false
-            visibleFilteredRowCount = -1
+            clearVisualFilters()
             return
         }
         visibleFilteredRowCount = Number(projection.visibleRowCount || 0)
