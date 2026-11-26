@@ -126,6 +126,16 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify image insertion at paragraph, list, table, column, toggle and block boundaries.
 - [ ] Verify DocumentBundle create/open/reorder/absorb/remove/ungroup/delete and missing-file handling.
 
+## G.1. Notes modal parity
+
+- [ ] Complete [11-modal-crosswalk.md](11-modal-crosswalk.md): match every React Notes editor modal/popover to its native host and verify each Notes entry point.
+- [ ] Add the missing media action dialog with React-equivalent linked-item identity and current-tab/new-tab choices; preserve the media ID and title through every Notes signal and verify tab restoration.
+- [ ] Add the missing file action dialog with quick preview, full reader in the current tab, and full reader in a new tab; handle missing/unsupported IDs and route each file type correctly.
+- [ ] Compare image viewer/crop and image-delete dialog geometry, controls, keyboard behavior, focus, errors, undo, and save/reopen behavior at matching viewport/DPI.
+- [ ] Compare consolidated setup/picker surfaces with React focus, alarm, event, habit, question, file upload/select, and media select dialogs, including fields, defaults, search, validation, cancellation, busy/error/empty states, and insertion target.
+- [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.
+- [ ] Capture same-viewport screenshots for each modal's default, populated, validation/error, and confirmation states; record any intentional native adaptation and remaining mismatch.
+
 ## H. Native widgets and nested blocks
 
 - [ ] Compare creation/edit/save lifecycle for question, focus, alarm, calendar event, habit, collection, toggle, callout toggle, media, video, book, scrap, Mermaid, link preview and link group.

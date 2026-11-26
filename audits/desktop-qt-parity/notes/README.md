@@ -18,6 +18,7 @@
 | [08-slash-command-crosswalk.md](08-slash-command-crosswalk.md) | Per-command React catalog, Qt execution paths, argument handling, and remaining acceptance |
 | [09-document-bundle-crosswalk.md](09-document-bundle-crosswalk.md) | React/Qt bundle actions, persistence mapping, missing controls, and deletion limits |
 | [10-file-widget-crosswalk.md](10-file-widget-crosswalk.md) | React/Qt attachment lookup, preview, rename, recovery, deletion, and acceptance gaps |
+| [11-modal-crosswalk.md](11-modal-crosswalk.md) | React-hosted Notes modals and popovers, native Qt counterparts, confirmed action gaps, and visual/interaction acceptance |
 
 ## Evidence rules
 
