@@ -25,10 +25,14 @@ Rectangle {
     property bool isMissingDialogOpen: false
     property bool isSyncingAttributesFromCore: false
     property bool isNotFound: false
+    property bool isSelected: false
     property string renameErrorMessage: ""
     readonly property bool hasActionFocus: actionBar.hasActionFocus
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default" && !isNotFound
+    readonly property color selectionRingColor: isNotFound
+        ? "#ef444480"
+        : (hasCustomColor ? accentColor + "80" : "#a78bfa")
 
     color: isNotFound
         ? (hoverHandler.hovered ? "#33ef4444" : "#1aef4444")
@@ -38,10 +42,10 @@ Rectangle {
                 ? (hoverHandler.hovered ? "#333b82f6" : "#1a3b82f6")
                 : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")))
     border.color: isNotFound
-        ? (hoverHandler.hovered ? "#b3ef4444" : "#66ef4444")
+        ? (isSelected ? "#ef4444" : (hoverHandler.hovered ? "#b3ef4444" : "#66ef4444"))
         : (hasCustomColor
-            ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
-            : (isLink ? "#333b82f6" : "#338b5cf6"))
+            ? (isSelected ? accentColor : (hoverHandler.hovered ? accentColor : (accentColor + "60")))
+            : (isSelected ? "#a78bfa" : (isLink ? "#333b82f6" : "#338b5cf6")))
     border.width: 1
     Behavior on color { ColorAnimation { duration: 150 } }
     Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -52,6 +56,18 @@ Rectangle {
     signal deleteLocalRequested(string fileId)
 
     HoverHandler { id: hoverHandler }
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -2
+        radius: fileWidgetRoot.radius + 2
+        color: "transparent"
+        border.color: fileWidgetRoot.selectionRingColor
+        border.width: 2
+        visible: fileWidgetRoot.isSelected
+        enabled: false
+        z: 2
+    }
 
     function syncFromCore() {
         if (!fileId) {

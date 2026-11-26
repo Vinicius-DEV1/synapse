@@ -28,6 +28,7 @@ ColumnLayout {
     property var focusedRichSlice: null
     property string lastSlashQuery: ""
     property string focusedRichSliceBlockId: ""
+    property string selectedFileWidgetBlockId: ""
     property string openDocumentBundleManagerBlockId: ""
     property int draggingBlockIndex: -1
     property int dropTargetIndex: -1
@@ -91,6 +92,7 @@ ColumnLayout {
         isSyncingFromSource = true
         focusedRichSlice = null
         focusedRichSliceBlockId = ""
+        selectedFileWidgetBlockId = ""
         lastLoadedPageId = pageId
         blocks = controller.parseNoteBlocks(sourceHtml || "") || []
         looseFileWidgetsRevision += 1
@@ -101,6 +103,7 @@ ColumnLayout {
     function commitBlocks(nextBlocks) {
         if (!nextBlocks) return
         blocks = nextBlocks
+        retainFileWidgetSelection()
         looseFileWidgetsRevision += 1
         if (!controller || typeof controller.serializeNoteBlocks !== "function") return
         var serialized = controller.serializeNoteBlocks(nextBlocks)
@@ -120,6 +123,7 @@ ColumnLayout {
         }
         if (typeof serialized !== "string") return false
         blocks = nextBlocks
+        retainFileWidgetSelection()
         looseFileWidgetsRevision += 1
         lastEmittedHtml = serialized
         htmlChanged(serialized)
@@ -169,6 +173,25 @@ ColumnLayout {
     function widgetForRow(row) {
         var router = row ? row["router"] : null
         return router && router.item ? router.item : null
+    }
+
+    function retainFileWidgetSelection() {
+        if (!selectedFileWidgetBlockId) return
+        for (var i = 0; i < blocks.length; ++i) {
+            var block = blocks[i]
+            if (block && block.blockType === "fileWidget" &&
+                    String(block.id || "") === selectedFileWidgetBlockId) return
+        }
+        selectedFileWidgetBlockId = ""
+    }
+
+    function selectFileWidget(index) {
+        if (index < 0 || index >= blocks.length || !blocks[index] ||
+                blocks[index].blockType !== "fileWidget") {
+            selectedFileWidgetBlockId = ""
+            return
+        }
+        selectedFileWidgetBlockId = String(blocks[index].id || "")
     }
 
     function removeFileAttachmentBlock(index) {
@@ -294,6 +317,7 @@ ColumnLayout {
         var updated = updater(Object.assign({}, blocks[idx]))
         var affectsLooseFileItems = blocks[idx].blockType === "fileWidget" || updated.blockType === "fileWidget"
         blocks[idx] = updated
+        retainFileWidgetSelection()
         if (affectsLooseFileItems) looseFileWidgetsRevision += 1
         var row = blockRepeater.itemAt(idx)
         if (row) row.liveBlockData = updated
@@ -506,6 +530,18 @@ ColumnLayout {
 
             HoverHandler { id: rowHover }
 
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                gesturePolicy: TapHandler.DragThreshold
+                onPressedChanged: {
+                    if (!pressed) return
+                    if (blockRow.liveBlockData && blockRow.liveBlockData.blockType === "fileWidget")
+                        blockListRoot.selectFileWidget(blockRow.index)
+                    else
+                        blockListRoot.selectedFileWidgetBlockId = ""
+                }
+            }
+
             Rectangle {
                 visible: blockListRoot.draggingBlockIndex >= 0 && blockListRoot.dropTargetIndex === blockRow.index &&
                          (blockListRoot.dropSide === "top" || blockListRoot.dropSide === "bottom")
@@ -557,6 +593,9 @@ ColumnLayout {
             BlockDelegateRouter {
                 id: sliceRouter
                 width: parent.width; blockData: blockRow.liveBlockData; blockIndex: blockRow.index
+                fileWidgetSelected: blockRow.liveBlockData.blockType === "fileWidget" &&
+                    blockListRoot.selectedFileWidgetBlockId.length > 0 &&
+                    String(blockRow.liveBlockData.id || "") === blockListRoot.selectedFileWidgetBlockId
                 nextBlockIsFileWidget: blockRow.index + 1 < blockListRoot.blocks.length &&
                     blockListRoot.blocks[blockRow.index + 1].blockType === "fileWidget"
                 pageId: blockListRoot.pageId; pageTitle: blockListRoot.pageTitle; pageList: blockListRoot.pageList
@@ -633,6 +672,7 @@ ColumnLayout {
                 onFocusRichSliceChanged: function(slice) {
                     blockListRoot.focusedRichSlice = slice
                     blockListRoot.focusedRichSliceBlockId = String(blockRow.liveBlockData.id || blockRow.modelData.id || "")
+                    blockListRoot.selectedFileWidgetBlockId = ""
                 }
                 onLastSlashQueryChanged: function(q) { blockListRoot.lastSlashQuery = q }
                 onNavigatePrevRequested: function(idx) { blockListRoot.focusRichBlockAt(idx - 1, true) }

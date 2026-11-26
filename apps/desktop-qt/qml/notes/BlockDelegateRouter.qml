@@ -17,6 +17,7 @@ Loader {
     property var textOperations: typeof notesTextOperations !== "undefined" ? notesTextOperations : null
     property bool active: false
     property bool nextBlockIsFileWidget: false
+    property bool fileWidgetSelected: false
     property int nestingDepth: 0
 
     signal blockChanged(int idx, var updatedBlock)
@@ -193,7 +194,7 @@ Loader {
     Component { id: focusComp; FocusWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: alarmComp; AlarmWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: eventComp; CalendarEventWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex); onMoveUpRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, -1); onMoveDownRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, 1); onOpenCalendarRequested: routerLoader.openCalendarRequested() } }
-    Component { id: fileComp; FileAttachmentWidget { id: routedFileWidget; width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPreviewFileRequested: function(fileId, fileName) { routerLoader.filePreviewRequested(fileId, fileName) }; onRemoveRequested: routerLoader.fileAttachmentRemovalConfirmed(routerLoader.blockIndex, routedFileWidget); onDeleteLocalRequested: function(fileId) { routerLoader.fileAttachmentDeleteLocalConfirmed(routerLoader.blockIndex, routedFileWidget, fileId) } } }
+    Component { id: fileComp; FileAttachmentWidget { id: routedFileWidget; width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; isSelected: routerLoader.fileWidgetSelected; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPreviewFileRequested: function(fileId, fileName) { routerLoader.filePreviewRequested(fileId, fileName) }; onRemoveRequested: routerLoader.fileAttachmentRemovalConfirmed(routerLoader.blockIndex, routedFileWidget); onDeleteLocalRequested: function(fileId) { routerLoader.fileAttachmentDeleteLocalConfirmed(routerLoader.blockIndex, routedFileWidget, fileId) } } }
     Component {
         id: bundleComp
         DocumentBundleWidget {
