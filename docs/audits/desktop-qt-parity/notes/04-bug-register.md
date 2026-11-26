@@ -324,6 +324,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** After a valid filter followed by a failed projection, all original rows return, the read-only overlay is gone, filter controls reset, and source HTML and dirty state remain unchanged. A subsequent valid filter can be applied normally.
 - **Fix status:** Source fix applied in `NotesTableExcelGrips.qml`. QML lint passes with existing binding/import warnings; same-session failure/recovery acceptance remains open.
 
+## QT-NOTES-036: Native page-reference objects lack contextual accessible text
+
+- **Severity:** Medium; a screen reader may encounter a painted inline object without the target page title or deleted state.
+- **Evidence:** React renders the chip's title and deleted suffix as DOM text. Qt renders the reference through `QTextObjectInterface::drawObject()`; the containing TextEdit's accessible description previously described spoiler and menu state only.
+- **Reproduction:** Navigate through a note containing active and deleted page references with a screen reader and compare announced text with React.
+- **Root cause:** A native painted text object does not expose its display label through the TextEdit's ordinary plain-text content.
+- **Required fix:** Add the selected/adjacent reference title and current deleted state to the native editor's accessible description without changing canonical content or visible layout. Keep the accessible object role, action, focus order, and announcement timing under runtime review.
+- **Acceptance:** Moving a caret or selecting an inline page reference exposes its live title and missing/deleted state to accessibility tooling; switching the page or restoring the target updates the description without dirtying content. Active and deleted pointer/keyboard actions remain clear and usable.
+- **Fix status:** Source description fix applied in `NotesRichTextInput.qml`. QML lint and runtime screen-reader behavior, role, focus order, selection and activation remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

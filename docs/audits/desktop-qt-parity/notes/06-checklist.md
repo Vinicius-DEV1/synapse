@@ -122,6 +122,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
 - [ ] Verify native page-reference object accessibility name/role, keyboard focus, visible selection, hit target, chip geometry/colors, and updated title/deleted state against React at the same viewport.
+- [ ] Verify the rich editor's accessible description announces the selected/adjacent page-reference title and deleted state as the caret moves, without changing dirty state; validate screen-reader role/action behavior separately.
 - [ ] Preserve column widths, child metadata and target group attributes when dropping blocks into columns.
 - [ ] Verify maximum nesting depth and behavior at structural boundaries.
 - [ ] Verify every modal's loading, disabled, error, retry, empty, cancel and in-flight close behavior.

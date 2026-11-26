@@ -64,12 +64,34 @@ Item {
         detectedPasteUrl = ""
     }
 
+    function pageReferenceAtAccessibleSelection() {
+        if (!editorRoot || !editorRoot.textOperations ||
+                typeof editorRoot.textOperations.richPageReferenceAt !== "function" ||
+                !editor.textDocument) return null
+        var start = Number(editor.selectionStart)
+        var end = Number(editor.selectionEnd)
+        var reference = editorRoot.textOperations.richPageReferenceAt(
+                    editor.textDocument, start, end, false)
+        if (reference && Number(reference.end) > Number(reference.start)) return reference
+        if (start !== end) return null
+        reference = editorRoot.textOperations.richPageReferenceAt(
+                    editor.textDocument, start, end, true)
+        return reference && Number(reference.end) > Number(reference.start) ? reference : null
+    }
+
     readonly property string editorAccessibleDescription: {
         var spoilerDescription = inputRoot.spoilerRevealControl.spoilerPosition < 0
             ? qsTr("Move the caret into spoiler text and press Alt+R to reveal it.")
             : inputRoot.spoilerRevealControl.revealed
                 ? qsTr("The caret is inside a revealed spoiler. Press Alt+R to hide it.")
                 : qsTr("The caret is inside a hidden spoiler. Press Alt+R to reveal it.")
+        var pageReference = pageReferenceAtAccessibleSelection()
+        if (pageReference) {
+            var title = String(pageReference.title || pageReference.pageId || qsTr("Página"))
+            spoilerDescription += pageReference.deleted
+                ? " " + qsTr("A referência selecionada aponta para uma página excluída ou ausente: %1.").arg(title)
+                : " " + qsTr("A referência selecionada aponta para: %1.").arg(title)
+        }
         if (pageReferenceMenuOpen) {
             var options = pageReferenceFlow.menu.options
             if (options.length === 0)
