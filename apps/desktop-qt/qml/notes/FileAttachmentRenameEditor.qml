@@ -45,6 +45,7 @@ RowLayout {
         font.weight: Font.Medium
         leftPadding: 6
         rightPadding: 6
+        Accessible.name: qsTr("Novo nome do arquivo")
         Accessible.description: renameRoot.errorMessage
         ToolTip.visible: renameRoot.errorMessage.length > 0
         ToolTip.text: renameRoot.errorMessage
