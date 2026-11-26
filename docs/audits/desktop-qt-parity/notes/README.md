@@ -60,6 +60,7 @@
 28. **File and bundle widget actions are now keyboard reachable.** Qt action buttons use tab focus, hidden toolbars reveal on focus and focused actions have a visible indicator. Runtime traversal, activation, accessibility announcement and dialog focus-return acceptance remain open; see [QT-NOTES-052](04-bug-register.md#qt-notes-052-hover-actions-are-not-reachable-from-the-keyboard).
 29. **Document-bundle metadata helpers no longer inflate the widget view.** `parseBundleItems()` and `uniqueFileExtensions()` now live in `DocumentBundleOperations.js`; `DocumentBundleWidget.qml` is under the 300-line target. Runtime visual and event-order comparison remains open.
 30. **File attachment presentation is split into focused native views.** `FileAttachmentWidget.qml` retains Core-backed state and operations while identity, rename editing, and action controls live in separate QML components; all remain below 300 lines. The rename field now has a screen-reader name. Focused lint and the native build pass; runtime geometry, keyboard, accessibility, and React round-trip acceptance remains open.
+31. **Long Notes attachment names now wrap in Qt.** The native title uses word wrapping and content-driven row height with a React-sized icon badge and gap; runtime wide/narrow geometry, control overlap, and filename round-trip remain open. See [QT-NOTES-053](04-bug-register.md#qt-notes-053-long-attachment-names-are-truncated-instead-of-wrapping) and the [file-widget crosswalk](10-file-widget-crosswalk.md).
 
 ## Completion rule
 

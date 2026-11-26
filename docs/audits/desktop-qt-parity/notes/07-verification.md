@@ -324,3 +324,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `git diff --check` | Passed | No whitespace errors in the view extraction or parity records. |
 | Rename field accessible-name source check | Passed: `FileAttachmentRenameEditor.qml` sets `Accessible.name` and retains the error as `Accessible.description`; focused `qmllint` passes | No screen reader or accessibility-tree runtime inspection was run. |
 | Runtime visual, keyboard/accessibility, rename, palette, delete, serialized-attribute and React round-trip acceptance | Not run | Verify same-viewport geometry, focus and event behavior before treating this extraction as behaviorally accepted. No React source was changed. |
+
+### File-attachment long-name wrapping iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Focused `/usr/lib/qt6/bin/qmllint` on the attachment parent and identity, rename, and action views | Passed, exit code 0 | Confirms the wrapping and implicit-height QML expressions parse. It does not calculate final geometry at a runtime viewport. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app target; the CMake target does not instantiate the local QML widget. |
+| Source comparison for React wrap, icon size, and combined spacing | Passed | React uses `break-words`, a 16 px icon inside `p-2` (32 px badge), and a 12 px combined icon/title gap. Qt now uses `Text.WordWrap`, 32 px badge geometry, and 12 px spacing. This does not prove same-viewport rendering. |
+| Wide/narrow runtime geometry, overlap, save/reopen and Qt/React filename round-trip | Not run | Check unbroken Unicode names, multiple wraps, control overlap, and following-block spacing before closing QT-NOTES-053. |

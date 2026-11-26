@@ -493,6 +493,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Tab and Shift+Tab through each widget; verify hidden actions become visible before activation, focus indicators and accessible names are announced, Enter/Space activate the intended action once, the palette stays keyboard-operable, disabled invalid-metadata actions remain unavailable, and focus returns appropriately after dialogs.
 - **Fix status:** File and bundle actions now use `Qt.TabFocus`; file rename confirmation/cancel buttons have accessible names; bundle action eligibility no longer depends on hover; both toolbars reveal on keyboard focus and style the focused control. Focused `qmllint` passes; runtime traversal, activation and focus restoration remain open.
 
+## QT-NOTES-053: Long attachment names are truncated instead of wrapping
+
+- **Severity:** Medium; Qt hides the end of long file names with an ellipsis inside a fixed-height row, while React wraps the filename onto additional lines. Users cannot distinguish attachments whose names share the same prefix.
+- **Evidence:** React `FileWidgetNodeView.tsx` renders the title with `break-words` and an auto-height flex row. Qt `FileAttachmentIdentity.qml` used `Text.ElideRight`, and `FileAttachmentWidget.qml` fixed the row at 42 px. The React icon badge is 32 px (`p-2` plus a 16 px icon), and the parent gap plus badge margin produces a 12 px icon/title gap.
+- **Reproduction:** Add a file attachment with a long name, including a long unbroken filename, and view it at a narrow editor width. Compare the whole visible name, row height, icon/title spacing and following block position against React.
+- **Root cause:** The Qt widget used a single-line ellipsized title and fixed preferred height instead of the React row's wrapping text and content-driven height.
+- **Required fix:** Wrap the title at word boundaries, let the widget grow while keeping a 44 px minimum row, and match the 32 px icon badge and 12 px icon/title gap without changing the Core attribute contract.
+- **Acceptance:** Verify ordinary names retain the same minimum geometry; long spaced and unbroken names remain fully readable at wide and narrow editor widths; wrapped text does not overlap the rename/color/delete controls or following blocks; Qt save/reopen and React round-trip preserve the exact filename.
+- **Fix status:** Qt uses `Text.WordWrap`, sizes the parent from the row's implicit height with a 44 px minimum, and matches the source icon and gap measurements. Focused `qmllint` and the native app build pass; same-viewport visual, narrow-width and cross-client acceptance remains open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).
