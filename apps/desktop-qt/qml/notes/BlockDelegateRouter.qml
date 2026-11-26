@@ -27,9 +27,10 @@ Loader {
     signal unwrapDocumentBundleItemRequested(int idx, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal absorbDocumentBundleLooseFileRequested(int bundleIndex, var sourceBlockPath, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal documentBundleManagerStateRequested(string blockId, bool isOpen)
-    signal documentBundleFileTrashAfterSaveRequested(string fileId)
+    signal localFileTrashAfterSaveRequested(string fileId)
     signal filePreviewRequested(string fileId, string fileName)
     signal fileAttachmentRemovalConfirmed(int idx, var fileWidget)
+    signal fileAttachmentDeleteLocalConfirmed(int idx, var fileWidget, string fileId)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
     signal focusRichSliceChanged(var sliceItem)
@@ -188,7 +189,7 @@ Loader {
     Component { id: focusComp; FocusWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: alarmComp; AlarmWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: eventComp; CalendarEventWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex); onMoveUpRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, -1); onMoveDownRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, 1); onOpenCalendarRequested: routerLoader.openCalendarRequested() } }
-    Component { id: fileComp; FileAttachmentWidget { id: routedFileWidget; width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPreviewFileRequested: function(fileId, fileName) { routerLoader.filePreviewRequested(fileId, fileName) }; onRemoveRequested: routerLoader.fileAttachmentRemovalConfirmed(routerLoader.blockIndex, routedFileWidget) } }
+    Component { id: fileComp; FileAttachmentWidget { id: routedFileWidget; width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPreviewFileRequested: function(fileId, fileName) { routerLoader.filePreviewRequested(fileId, fileName) }; onRemoveRequested: routerLoader.fileAttachmentRemovalConfirmed(routerLoader.blockIndex, routedFileWidget); onDeleteLocalRequested: function(fileId) { routerLoader.fileAttachmentDeleteLocalConfirmed(routerLoader.blockIndex, routedFileWidget, fileId) } } }
     Component {
         id: bundleComp
         DocumentBundleWidget {
@@ -216,7 +217,7 @@ Loader {
                     routerLoader.blockIndex, routedBundleWidget, fileIdToTrashAfterSave)
             }
             onLocalFileTrashAfterSaveRequested: function(fileId) {
-                routerLoader.documentBundleFileTrashAfterSaveRequested(fileId)
+                routerLoader.localFileTrashAfterSaveRequested(fileId)
             }
             onUngroupItemRequested: function(fileId, items, color) {
                 routerLoader.unwrapDocumentBundleItemRequested(
@@ -254,6 +255,9 @@ Loader {
             onFilePreviewRequested: function(fileId, fileName) {
                 routerLoader.filePreviewRequested(fileId, fileName)
             }
+            onLocalFileTrashAfterSaveRequested: function(fileId) {
+                routerLoader.localFileTrashAfterSaveRequested(fileId)
+            }
             onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }
     }
@@ -278,6 +282,9 @@ Loader {
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
             onFilePreviewRequested: function(fileId, fileName) {
                 routerLoader.filePreviewRequested(fileId, fileName)
+            }
+            onLocalFileTrashAfterSaveRequested: function(fileId) {
+                routerLoader.localFileTrashAfterSaveRequested(fileId)
             }
             onUnwrapRequested: function(cols) { routerLoader.unwrapColumnGroupRequested(routerLoader.blockIndex, cols) }
             onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
@@ -305,6 +312,9 @@ Loader {
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
             onFilePreviewRequested: function(fileId, fileName) {
                 routerLoader.filePreviewRequested(fileId, fileName)
+            }
+            onLocalFileTrashAfterSaveRequested: function(fileId) {
+                routerLoader.localFileTrashAfterSaveRequested(fileId)
             }
             onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }

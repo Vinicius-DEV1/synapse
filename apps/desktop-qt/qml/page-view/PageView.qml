@@ -26,7 +26,7 @@ Rectangle {
     property bool isPageUnlocked: true
     property string saveStatus: "saved"
     property bool isDirty: false
-    property var pendingBundleFileTrashRequests: []
+    property var pendingFileTrashAfterSaveRequests: []
     property bool pageConflictDialogOpen: false
     property string pageConflictPageId: ""
     property string pageConflictExternalContent: ""
@@ -155,7 +155,7 @@ Rectangle {
         isPageUnlocked = !activeIsEncrypted || Boolean(controller.isVaultUnlocked)
         wordCount = Actions.countWords(activeContent)
         isDirty = false
-        saveStatus = finishPendingBundleFileTrashRequests(selectedPageId, activeContent)
+        saveStatus = finishPendingFileTrashAfterSaveRequests(selectedPageId, activeContent)
             ? "saved" : "error"
         refreshPageTree()
         return true
@@ -210,7 +210,7 @@ Rectangle {
         activeIsEncrypted = Actions.isEncryptedStub(p)
         isPageUnlocked = !activeIsEncrypted || Boolean(controller.isVaultUnlocked)
         isDirty = false; saveStatus = "saved"
-        if (!finishPendingBundleFileTrashRequests(selectedPageId, activeContent))
+        if (!finishPendingFileTrashAfterSaveRequests(selectedPageId, activeContent))
             saveStatus = "error"
         if (pageByIdMap[selectedPageId]) {
             breadcrumbPages = Actions.buildBreadcrumbs(selectedPageId, pageByIdMap)
@@ -220,20 +220,20 @@ Rectangle {
         }
     }
 
-    function queueBundleFileTrashAfterSave(fileId) {
+    function queueFileTrashAfterSave(fileId) {
         var targetFileId = String(fileId || "").trim()
         if (!targetFileId || !selectedPageId) return false
         if (!isDirty) {
             saveStatus = "error"
-            console.warn("[Notes:PageView] Keeping file active because its bundle update was not marked dirty.", targetFileId)
+            console.warn("[Notes:PageView] Keeping file active because its note update was not marked dirty.", targetFileId)
             return false
         }
-        var next = pendingBundleFileTrashRequests.slice()
+        var next = pendingFileTrashAfterSaveRequests.slice()
         var alreadyQueued = next.some(function(entry) {
             return entry.pageId === selectedPageId && entry.fileId === targetFileId
         })
         if (!alreadyQueued) next.push({ pageId: selectedPageId, fileId: targetFileId })
-        pendingBundleFileTrashRequests = next
+        pendingFileTrashAfterSaveRequests = next
         return true
     }
 
@@ -278,11 +278,11 @@ Rectangle {
         }
     }
 
-    function finishPendingBundleFileTrashRequests(savedPageId, savedContent) {
+    function finishPendingFileTrashAfterSaveRequests(savedPageId, savedContent) {
         var remaining = []
         var failed = false
-        for (var i = 0; i < pendingBundleFileTrashRequests.length; ++i) {
-            var request = pendingBundleFileTrashRequests[i]
+        for (var i = 0; i < pendingFileTrashAfterSaveRequests.length; ++i) {
+            var request = pendingFileTrashAfterSaveRequests[i]
             if (!request || request.pageId !== savedPageId) {
                 if (request) remaining.push(request)
                 continue
@@ -300,7 +300,7 @@ Rectangle {
                 failed = true
             }
         }
-        pendingBundleFileTrashRequests = remaining
+        pendingFileTrashAfterSaveRequests = remaining
         return !failed
     }
 
@@ -319,7 +319,7 @@ Rectangle {
             if (refreshed && refreshed.id) activePageObj = refreshed
             if (treeMetaChanged) refreshPageTree()
             pageSavedExternal(selectedPageId, activeTitle)
-            if (!finishPendingBundleFileTrashRequests(selectedPageId, activeContent)) {
+            if (!finishPendingFileTrashAfterSaveRequests(selectedPageId, activeContent)) {
                 saveStatus = "error"
                 console.warn("[Notes:PageView] The note was saved, but one or more files remain outside the local Trash.")
                 return false
@@ -478,8 +478,9 @@ Rectangle {
                         pageViewRoot.wordCount = Actions.countWords(html)
                         pageViewRoot.scheduleAutoSave()
                     }
-                    onLocalBundleFileTrashAfterSaveRequested: function(fileId) {
-                        pageViewRoot.queueBundleFileTrashAfterSave(fileId)
+                    onLocalFileTrashAfterSaveRequested: function(fileId) {
+                        if (pageViewRoot.queueFileTrashAfterSave(fileId))
+                            pageViewRoot.saveActiveNote()
                     }
                     onFilePreviewRequested: function(fileId, fileName) {
                         if (fileId && pageViewRoot.controller &&

@@ -48,7 +48,7 @@ ColumnLayout {
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
-    signal localBundleFileTrashAfterSaveRequested(string fileId)
+    signal localFileTrashAfterSaveRequested(string fileId)
     signal filePreviewRequested(string fileId, string fileName)
 
     function toggleActiveMark(mark) {
@@ -228,8 +228,8 @@ ColumnLayout {
                 editorRoot.contentModified(serializedHtml)
                 editorRoot.suppressContentSync = false
             }
-            onLocalBundleFileTrashAfterSaveRequested: function(fileId) {
-                editorRoot.localBundleFileTrashAfterSaveRequested(fileId)
+            onLocalFileTrashAfterSaveRequested: function(fileId) {
+                editorRoot.localFileTrashAfterSaveRequested(fileId)
             }
             onFilePreviewRequested: function(fileId, fileName) {
                 editorRoot.filePreviewRequested(fileId, fileName)

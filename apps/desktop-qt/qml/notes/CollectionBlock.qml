@@ -41,6 +41,7 @@ Rectangle {
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
+    signal localFileTrashAfterSaveRequested(string fileId)
     signal filePreviewRequested(string fileId, string fileName)
     signal removeRequested()
 
@@ -284,6 +285,9 @@ Rectangle {
                 function onOpenMediaRequested(mt, mid, t) { collectionRoot.openMediaRequested(mt, mid, t) }
                 function onFilePreviewRequested(fileId, fileName) {
                     collectionRoot.filePreviewRequested(fileId, fileName)
+                }
+                function onLocalFileTrashAfterSaveRequested(fileId) {
+                    collectionRoot.localFileTrashAfterSaveRequested(fileId)
                 }
             }
         }

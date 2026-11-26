@@ -17,6 +17,7 @@ Rectangle {
     property string fileType: (attrs["data-file-type"] || attrs["file-type"] || attrs["fileType"] || "other").toLowerCase()
     property bool isLink: (attrs["data-is-link"] || attrs["isLink"] || "false") === "true"
     property int fileSize: parseInt(attrs["data-file-size"] || attrs["file-size"] || "0", 10) || 0
+    property bool hasDriveCopy: false
     property string accentColor: attrs["data-color"] || attrs["color"] || "default"
     property bool renaming: false
     property bool showColorPicker: false
@@ -47,6 +48,7 @@ Rectangle {
     signal attrsUpdated(var newAttrs)
     signal previewFileRequested(string fileId, string fileName)
     signal removeRequested()
+    signal deleteLocalRequested(string fileId)
 
     HoverHandler { id: hoverHandler }
 
@@ -61,9 +63,11 @@ Rectangle {
         var found = c.getFileWidgetMetadata(fileId)
         if (!found || !found.id) {
             isNotFound = true
+            hasDriveCopy = false
             return
         }
         isNotFound = false
+        hasDriveCopy = Boolean(found.has_drive_copy)
         var resolvedName = String(found.name || "")
         if (resolvedName.length > 0) {
             if (fileName !== resolvedName) fileName = resolvedName
@@ -403,10 +407,17 @@ Rectangle {
         id: deleteDialog
         isOpen: fileWidgetRoot.isDeleteDialogOpen
         fileName: fileWidgetRoot.fileName
-        onConfirmed: {
+        fileExists: !fileWidgetRoot.isNotFound
+        hasDriveCopy: fileWidgetRoot.hasDriveCopy
+        onUnlinkConfirmed: {
+            fileWidgetRoot.isDeleteDialogOpen = false
             fileWidgetRoot.removeRequested()
         }
-        onClosed: {
+        onDeleteLocalConfirmed: {
+            fileWidgetRoot.isDeleteDialogOpen = false
+            fileWidgetRoot.deleteLocalRequested(fileWidgetRoot.fileId)
+        }
+        onDismissed: {
             fileWidgetRoot.isDeleteDialogOpen = false
             deleteDialog.errorMessage = ""
         }

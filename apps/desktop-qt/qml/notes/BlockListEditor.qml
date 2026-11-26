@@ -52,7 +52,7 @@ ColumnLayout {
     signal createSubPageWithContent(string title, string html)
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
-    signal localBundleFileTrashAfterSaveRequested(string fileId)
+    signal localFileTrashAfterSaveRequested(string fileId)
     signal filePreviewRequested(string fileId, string fileName)
 
     function toggleActiveMark(mark) {
@@ -564,11 +564,11 @@ ColumnLayout {
                         blockListRoot.reportBundleActionFailure(
                             idx, bundleWidget, qsTr("Could not update this note. The bundle was kept unchanged."))
                     } else if (fileIdToTrashAfterSave) {
-                        blockListRoot.localBundleFileTrashAfterSaveRequested(fileIdToTrashAfterSave)
+                        blockListRoot.localFileTrashAfterSaveRequested(fileIdToTrashAfterSave)
                     }
                 }
-                onDocumentBundleFileTrashAfterSaveRequested: function(fileId) {
-                    blockListRoot.localBundleFileTrashAfterSaveRequested(fileId)
+                onLocalFileTrashAfterSaveRequested: function(fileId) {
+                    blockListRoot.localFileTrashAfterSaveRequested(fileId)
                 }
                 onFilePreviewRequested: function(fileId, fileName) {
                     blockListRoot.filePreviewRequested(fileId, fileName)
@@ -578,6 +578,15 @@ ColumnLayout {
                             fileWidget && typeof fileWidget.showRemovalError === "function") {
                         fileWidget.showRemovalError(qsTr("Não foi possível remover o anexo da nota. O arquivo foi mantido."))
                     }
+                }
+                onFileAttachmentDeleteLocalConfirmed: function(idx, fileWidget, fileId) {
+                    if (!fileId || !blockListRoot.removeFileAttachmentBlock(idx)) {
+                        if (fileWidget && typeof fileWidget.showRemovalError === "function") {
+                            fileWidget.showRemovalError(qsTr("Não foi possível salvar a remoção do anexo. O arquivo foi mantido."))
+                        }
+                        return
+                    }
+                    blockListRoot.localFileTrashAfterSaveRequested(fileId)
                 }
                 onUnwrapDocumentBundleRequested: function(idx, items, color, bundleWidget) {
                     if (!blockListRoot.unwrapDocumentBundle(idx, items, color)) {

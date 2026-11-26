@@ -1,144 +1,149 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import ".."
 
-Item {
+Dialog {
     id: deleteDialogRoot
-    anchors.fill: parent
-    visible: isOpen
-    z: 100
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(parent ? parent.width - 32 : 420, 420)
+    modal: true
+    focus: true
+    padding: 20
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    standardButtons: Dialog.NoButton
 
     property bool isOpen: false
     property string fileName: ""
+    property bool fileExists: true
+    property bool hasDriveCopy: false
     property string errorMessage: ""
-    signal confirmed()
-    signal closed()
 
-    Rectangle {
-        anchors.fill: parent
-        color: "#b0000000"
-        MouseArea {
-            anchors.fill: parent
-            onClicked: deleteDialogRoot.closed()
-        }
+    signal unlinkConfirmed()
+    signal deleteLocalConfirmed()
+    signal dismissed()
+
+    onIsOpenChanged: {
+        if (isOpen) open()
+        else close()
     }
+    onClosed: dismissed()
 
-    Rectangle {
-        width: 380
-        height: cardCol.implicitHeight + 48
-        anchors.centerIn: parent
-        radius: 18
-        color: "#16161e"
+    Overlay.modal: Rectangle { color: "#b0000000" }
+
+    background: Rectangle {
+        color: "#16151f"
+        radius: 16
         border.color: "#2e2e38"
         border.width: 1
+    }
 
-        MouseArea { anchors.fill: parent }
+    contentItem: ColumnLayout {
+        spacing: 12
 
-        ColumnLayout {
-            id: cardCol
-            anchors.fill: parent
-            anchors.margins: 24
-            spacing: 16
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("Excluir arquivo")
+            color: "#fffffe"
+            font.pixelSize: 16
+            font.weight: Font.DemiBold
+        }
 
-            RowLayout {
-                spacing: 12
-                Rectangle {
-                    Layout.preferredWidth: 40
-                    Layout.preferredHeight: 40
-                    radius: 10
-                    color: "#2a151b"
-                    border.color: "#ef4444"
-                    border.width: 1
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("Desvincule o arquivo desta nota ou mova o registro local para a Lixeira.")
+            color: "#a7a9be"
+            font.pixelSize: 12
+            wrapMode: Text.Wrap
+        }
 
-                    AppIcon {
-                        anchors.centerIn: parent
-                        name: "trash"
-                        color: "#ef4444"
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
-                    }
+        Text {
+            Layout.fillWidth: true
+            visible: deleteDialogRoot.fileName.length > 0
+            text: !deleteDialogRoot.fileExists
+                ? qsTr("Este arquivo não está disponível. Você pode remover somente o widget desta nota.")
+                : deleteDialogRoot.hasDriveCopy
+                    ? qsTr("O registro local de ‘%1’ irá para a Lixeira após salvar a nota. Se outro bloco desta nota ainda o usar, ele será mantido. A cópia no Google Drive permanecerá.")
+                        .arg(deleteDialogRoot.fileName)
+                    : qsTr("O registro local de ‘%1’ irá para a Lixeira após salvar a nota. Se outro bloco desta nota ainda o usar, ele será mantido.")
+                        .arg(deleteDialogRoot.fileName)
+            color: "#c4c5d4"
+            font.pixelSize: 11
+            wrapMode: Text.Wrap
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: deleteDialogRoot.errorMessage.length > 0
+            text: deleteDialogRoot.errorMessage
+            color: "#fda4af"
+            font.pixelSize: 11
+            wrapMode: Text.Wrap
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Button {
+                id: cancelButton
+                Layout.fillWidth: true
+                text: qsTr("Cancelar")
+                Accessible.name: qsTr("Cancelar e fechar sem alterar o arquivo")
+                onClicked: deleteDialogRoot.close()
+                background: Rectangle {
+                    radius: 8
+                    color: cancelButton.hovered ? "#252435" : "#1d1c28"
+                    border.color: "#22ffffff"
                 }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-                    Text {
-                        text: "Remover Anexo"
-                        color: "#fffffe"
-                        font.pixelSize: 15
-                        font.weight: Font.Bold
-                    }
-                    Text {
-                        text: "Remover \"" + deleteDialogRoot.fileName + "\" da nota?"
-                        color: "#a7a9be"
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                    Text {
-                        visible: deleteDialogRoot.errorMessage.length > 0
-                        text: deleteDialogRoot.errorMessage
-                        color: "#fda4af"
-                        font.pixelSize: 10
-                        wrapMode: Text.Wrap
-                        Layout.fillWidth: true
-                    }
+                contentItem: Text {
+                    text: cancelButton.text
+                    color: "#c4c5d4"
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                 }
             }
 
-            RowLayout {
+            Button {
+                id: unlinkButton
                 Layout.fillWidth: true
-                spacing: 10
-
-                Item { Layout.fillWidth: true }
-
-                Rectangle {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 34
+                text: qsTr("Desvincular")
+                Accessible.name: qsTr("Desvincular o arquivo somente desta nota")
+                onClicked: deleteDialogRoot.unlinkConfirmed()
+                background: Rectangle {
                     radius: 8
-                    color: cancelMouse.containsMouse ? "#2e2e38" : "transparent"
-                    border.color: "#2e2e38"
-                    border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cancelar"
-                        color: "#a7a9be"
-                        font.pixelSize: 12
-                    }
-
-                    MouseArea {
-                        id: cancelMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: deleteDialogRoot.closed()
-                    }
+                    color: unlinkButton.hovered ? "#343242" : "#272633"
+                    border.color: "#33ffffff"
                 }
+                contentItem: Text {
+                    text: unlinkButton.text
+                    color: "#fffffe"
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
 
-                Rectangle {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 34
+            Button {
+                id: trashButton
+                Layout.fillWidth: true
+                visible: deleteDialogRoot.fileExists
+                text: qsTr("Mover para Lixeira")
+                Accessible.name: qsTr("Mover o arquivo local para a Lixeira")
+                onClicked: deleteDialogRoot.deleteLocalConfirmed()
+                background: Rectangle {
                     radius: 8
-                    color: delMouse.containsMouse ? "#dc2626" : "#ef4444"
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Remover"
-                        color: "#ffffff"
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: delMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            deleteDialogRoot.confirmed()
-                        }
-                    }
+                    color: trashButton.hovered ? "#dc2626" : "#ef4444"
+                }
+                contentItem: Text {
+                    text: trashButton.text
+                    color: "#ffffff"
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
                 }
             }
         }

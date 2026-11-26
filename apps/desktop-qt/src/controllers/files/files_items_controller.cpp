@@ -22,7 +22,8 @@ QVariantMap SynapseDataController::getFileWidgetMetadata(const QString &fileId) 
         {"id", file.value("id").toString()},
         {"name", file.value("name").toString()},
         {"file_type", file.value("file_type").toString()},
-        {"file_size", file.value("file_size").toVariant()}
+        {"file_size", file.value("file_size").toVariant()},
+        {"has_drive_copy", file.value("has_drive_copy").toInt() > 0}
     };
 }
 
