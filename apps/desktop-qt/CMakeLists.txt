@@ -98,6 +98,7 @@ add_executable(synapse-desktop
     src/controllers/files/files_browser_controller.cpp
     src/controllers/files/files_items_controller.cpp
     src/controllers/files/files_transfer_controller.cpp
+    src/controllers/files/files_content_controller.cpp
     src/controllers/files/files_preview_controller.cpp
     src/controllers/platform/system_controller.cpp
     src/controllers/layout/task_manager_controller.cpp
@@ -285,6 +286,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/files/files_browser_controller.cpp
         src/controllers/files/files_items_controller.cpp
         src/controllers/files/files_transfer_controller.cpp
+        src/controllers/files/files_content_controller.cpp
         src/controllers/files/files_preview_controller.cpp
         src/controllers/platform/system_controller.cpp
         src/controllers/layout/task_manager_controller.cpp

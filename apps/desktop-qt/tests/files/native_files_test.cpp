@@ -12,7 +12,7 @@ private slots:
     void encryptedFileImportPreviewAndExportSurvivePasswordRemoval() {
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());
-        const QString sourcePath = sandbox.filePath("study-notes.txt");
+        const QString sourcePath = sandbox.filePath("study-notes.md");
         const QString exportPath = sandbox.filePath("exported-notes.txt");
         const QByteArray content("Native file preview remains protected while the vault is locked.\n");
         QFile sourceFile(sourcePath);
@@ -68,11 +68,37 @@ private slots:
         QCOMPARE(exportedFile.readAll(), content);
         exportedFile.close();
 
+        const QByteArray editedContent("# Updated notes\n\nSaved through the protected native file operation.\n");
+        controller.saveNotesTextFile(fileId, QString::fromUtf8(editedContent), QStringLiteral("notes-text-save-test"));
+        QTRY_COMPARE_WITH_TIMEOUT(operationSpy.count(), 1, 15000);
+        const QVariantMap saveResult = operationSpy.takeFirst().at(0).toMap();
+        QVERIFY2(saveResult.value("success").toBool(), qPrintable(saveResult.value("error").toString()));
+        QCOMPARE(saveResult.value("requestId").toString(), QStringLiteral("notes-text-save-test"));
+        QCOMPARE(controller.getFiles(folderId).first().toMap().value("file_size").toLongLong(),
+                 static_cast<qint64>(editedContent.size()));
+
+        controller.previewLocalFile(fileId, QStringLiteral("notes-text-save-preview"));
+        QTRY_COMPARE_WITH_TIMEOUT(previewSpy.count(), 1, 15000);
+        const QVariantMap editedPreview = previewSpy.takeFirst().at(0).toMap();
+        QVERIFY2(editedPreview.value("success").toBool(), qPrintable(editedPreview.value("error").toString()));
+        const QString editedPreviewPath = editedPreview.value("path").toString();
+        QCOMPARE(controller.readFilePreviewText(editedPreviewPath).value("text").toString(),
+                 QString::fromUtf8(editedContent));
+        controller.closeFilePreview(editedPreviewPath);
+
+        controller.exportLocalFile(fileId, exportPath);
+        QTRY_COMPARE_WITH_TIMEOUT(operationSpy.count(), 1, 15000);
+        QVERIFY2(operationSpy.takeFirst().at(0).toMap().value("success").toBool(),
+                 "The edited Markdown export failed.");
+        QVERIFY(exportedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(exportedFile.readAll(), editedContent);
+        exportedFile.close();
+
         QVERIFY(controller.removeMasterPassword("NativeFilesPassword42!"));
         const QString localPath = controller.getFiles(folderId).first().toMap().value("local_path").toString();
         QFile migratedFile(sandbox.filePath(localPath));
         QVERIFY(migratedFile.open(QIODevice::ReadOnly));
-        QCOMPARE(migratedFile.readAll(), content);
+        QCOMPARE(migratedFile.readAll(), editedContent);
     }
 
     void folderManagementAndFileOperations() {

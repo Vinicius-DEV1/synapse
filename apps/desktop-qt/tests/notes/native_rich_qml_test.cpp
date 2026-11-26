@@ -12,6 +12,7 @@
 #include <QtQml/QQmlEngine>
 #include <QtQml/qqml.h>
 #include <QtCore/QUrl>
+#include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
 
 int runNativeNotesCalloutQmlTest(int argc, char **argv);
@@ -484,6 +485,57 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal", Q_ARG(QVariant, false)));
     }
 
+    void notesMarkdownEditorProtectsDiscardAndEmitsChangedText() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesFileMarkdownEditor.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(900, 640);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+
+        QObject *textArea = root->findChild<QObject *>("notesFileMarkdownTextArea");
+        QObject *cancelButton = root->findChild<QObject *>("notesFileMarkdownCancelButton");
+        QObject *saveButton = root->findChild<QObject *>("notesFileMarkdownSaveButton");
+        QObject *keepEditingButton = root->findChild<QObject *>("notesFileMarkdownKeepEditingButton");
+        QObject *discardButton = root->findChild<QObject *>("notesFileMarkdownDiscardButton");
+        QObject *discardDialog = root->findChild<QObject *>("notesFileMarkdownDiscardDialog");
+        QVERIFY(textArea && cancelButton && saveButton && keepEditingButton && discardButton && discardDialog);
+        QSignalSpy saveSpy(root.data(), SIGNAL(saveRequested(QString)));
+        QSignalSpy cancelSpy(root.data(), SIGNAL(cancelRequested()));
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile",
+            Q_ARG(QVariant, QString("study.md")), Q_ARG(QVariant, QString("# Original"))));
+        textArea->setProperty("text", QString("# Updated"));
+        QVERIFY(root->property("dirty").toBool());
+        QVERIFY(QMetaObject::invokeMethod(cancelButton, "clicked"));
+        QVERIFY(discardDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(keepEditingButton, "clicked"));
+        QVERIFY(!discardDialog->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(cancelButton, "clicked"));
+        QVERIFY(QMetaObject::invokeMethod(discardButton, "clicked"));
+        QCOMPARE(cancelSpy.count(), 1);
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile",
+            Q_ARG(QVariant, QString("study.md")), Q_ARG(QVariant, QString("# Original"))));
+        textArea->setProperty("text", QString("# Saved"));
+        textArea->setProperty("cursorPosition", 2);
+        QTest::keyClick(&window, Qt::Key_Tab);
+        QCOMPARE(textArea->property("text").toString(), QString("#   Saved"));
+        QTest::keyClick(&window, Qt::Key_S, Qt::ControlModifier);
+        QCOMPARE(saveSpy.count(), 1);
+        QCOMPARE(saveSpy.takeFirst().at(0).toString(), QString("#   Saved"));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeAfterSave"));
+        QVERIFY(!root->property("visible").toBool());
+        QVERIFY(!root->property("dirty").toBool());
+    }
+
     void collapsedCursorFormattingAppliesOnlyToFollowingText() {
         QQmlEngine engine;
         NotesTextOperations operations;
@@ -745,6 +797,11 @@ int main(int argc, char **argv) {
         char progressTest[] = "notesFilePreviewRestoresReadingProgressAndBookmarks";
         char *progressArguments[] = {argv[0], progressTest};
         return QTest::qExec(&test, 2, progressArguments);
+    }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=markdown-editor")) {
+        char editorTest[] = "notesMarkdownEditorProtectsDiscardAndEmitsChangedText";
+        char *editorArguments[] = {argv[0], editorTest};
+        return QTest::qExec(&test, 2, editorArguments);
     }
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |

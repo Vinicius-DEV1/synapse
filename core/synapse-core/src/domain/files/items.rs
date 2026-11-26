@@ -10,8 +10,8 @@ pub use deleted::{
 };
 pub use mutations::{
     create_file, delete_file, delete_file_with_annotations, delete_files, duplicate_file,
-    move_file, move_file_raw, rename_file, update_file_local_path, update_file_record,
-    upsert_file_record,
+    move_file, move_file_raw, rename_file, replace_file_content_reference, update_file_local_path,
+    update_file_record, upsert_file_record,
 };
 pub use queries::{
     get_drive_file_count, get_file, get_files_for_section, list_files_optional_folder, search_files,

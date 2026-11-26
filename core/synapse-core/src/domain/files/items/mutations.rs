@@ -132,6 +132,25 @@ pub fn update_file_local_path(
     Ok(rows > 0)
 }
 
+pub fn replace_file_content_reference(
+    conn: &rusqlite::Connection,
+    file_id: &str,
+    local_path: &str,
+    file_size: i64,
+) -> Result<bool> {
+    let clean_id = file_id.trim();
+    let clean_path = local_path.trim();
+    if clean_id.is_empty() || clean_path.is_empty() || file_size < 0 {
+        return Ok(false);
+    }
+    let rows = conn.execute(
+        "UPDATE files SET local_path = ?1, file_size = ?2, updated_at = CURRENT_TIMESTAMP \
+         WHERE id = ?3 AND deleted_at IS NULL",
+        params![clean_path, file_size, clean_id],
+    )?;
+    Ok(rows > 0)
+}
+
 pub fn create_file(
     conn: &rusqlite::Connection,
     id: &str,

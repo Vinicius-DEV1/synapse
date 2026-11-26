@@ -214,6 +214,7 @@ Item {
     Connections {
         target: dataController
         function onFileOperationFinished(result) {
+            if (String(result.requestId || "").indexOf("notes-text-save-") === 0) return
             if (result.operation === "import" && actions.importQueue.length > 0) {
                 actions.feedbackText = result.success ? "Encrypted and imported: " + result.name : result.error || "File operation failed."
                 actions.importQueue = actions.importQueue.slice(1)

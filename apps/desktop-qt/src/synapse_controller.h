@@ -522,6 +522,8 @@ public:
     Q_INVOKABLE void importLocalFile(const QString &sourcePath, const QString &folderId = "",
                                      const QString &requestId = "");
     Q_INVOKABLE void exportLocalFile(const QString &fileId, const QString &destinationPath);
+    Q_INVOKABLE void saveNotesTextFile(const QString &fileId, const QString &content,
+                                       const QString &requestId);
     Q_INVOKABLE void previewLocalFile(const QString &fileId,
                                       const QString &requestId = QString());
     Q_INVOKABLE QVariantMap readFilePreviewText(const QString &temporaryPath);

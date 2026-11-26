@@ -20,6 +20,7 @@ Rectangle {
     property string previewError: ""
     property bool loading: false
     property bool markdownRendered: true
+    property bool notesMarkdownEditingEnabled: false
     property int previewPdfPage: 1
     property string previewPdfImageUrl: ""
     property string previewPdfImagePath: ""
@@ -28,6 +29,7 @@ Rectangle {
 
     signal closeRequested()
     signal exportRequested(string fileId)
+    signal markdownEditRequested()
     signal textScrollChanged()
 
     function textScrollTop() {
@@ -93,6 +95,14 @@ Rectangle {
                 onClicked: previewOverlay.markdownRendered = !previewOverlay.markdownRendered
                 background: Rectangle { color: theme.activePillBg; border.color: theme.borderBrand; radius: 8 }
                 contentItem: Text { text: parent.text; color: theme.brand300; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            Button {
+                visible: !previewOverlay.loading && previewOverlay.notesMarkdownEditingEnabled &&
+                         previewOverlay.isMarkdownFile && (previewOverlay.previewType === "text" || previewOverlay.previewType === "code")
+                text: qsTr("Editar")
+                onClicked: previewOverlay.markdownEditRequested()
+                background: Rectangle { color: theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 8 }
+                contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             }
             RowLayout {
                 visible: !previewOverlay.loading && previewOverlay.previewType === "pdf" && previewOverlay.previewPath.length > 0

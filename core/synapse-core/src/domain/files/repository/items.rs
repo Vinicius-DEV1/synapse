@@ -186,6 +186,25 @@ impl FilesRepository {
         items::update_file_local_path(conn, file_id, local_path)
     }
 
+    pub fn replace_file_content_reference(
+        db: &Database,
+        file_id: &str,
+        local_path: &str,
+        file_size: i64,
+    ) -> Result<bool> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        items::replace_file_content_reference(&conn, file_id, local_path, file_size)
+    }
+
+    pub fn replace_file_content_reference_conn(
+        conn: &rusqlite::Connection,
+        file_id: &str,
+        local_path: &str,
+        file_size: i64,
+    ) -> Result<bool> {
+        items::replace_file_content_reference(conn, file_id, local_path, file_size)
+    }
+
     pub fn create_file(
         db: &Database,
         id: &str,

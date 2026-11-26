@@ -399,6 +399,34 @@ pub unsafe extern "C" fn synapse_files_update_local_path(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_files_replace_content_reference(
+    db: *mut Database,
+    file_id: *const c_char,
+    local_path: *const c_char,
+    file_size: i64,
+) -> c_int {
+    if db.is_null() || file_id.is_null() || local_path.is_null() {
+        return -1;
+    }
+    let fid = match to_opt_str(file_id) {
+        Some(value) => value,
+        None => return -1,
+    };
+    let path = match to_opt_str(local_path) {
+        Some(value) => value,
+        None => return -1,
+    };
+    match FilesRepository::replace_file_content_reference(&*db, fid, path, file_size) {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(error) => {
+            eprintln!("[Synapse Bridge] replace_file_content_reference failed: {error}");
+            -1
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_files_create_file(
     db: *mut Database,
     id: *const c_char,

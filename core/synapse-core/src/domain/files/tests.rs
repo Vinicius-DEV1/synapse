@@ -69,3 +69,55 @@ fn test_files_domain() {
     let subs_after = FilesRepository::get_folders(&db, Some(&root.id)).expect("get sub folders");
     assert!(subs_after.is_empty());
 }
+
+#[test]
+fn replacing_file_content_reference_updates_active_record_atomically() {
+    let temp_db = NamedTempFile::new().unwrap();
+    let db = Database::open(temp_db.path()).unwrap();
+    {
+        let conn = db.lock().unwrap();
+        conn.execute(
+            "INSERT INTO files (id, name, file_type, file_size, local_path, created_at, updated_at) \
+             VALUES ('text-1', 'notes.md', 'text', 10, 'files/old.enc', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            [],
+        ).unwrap();
+    }
+
+    assert!(FilesRepository::replace_file_content_reference(
+        &db,
+        " text-1 ",
+        " files/new.enc ",
+        42
+    )
+    .unwrap());
+    let record = FilesRepository::get_file(&db, "text-1").unwrap().unwrap();
+    assert_eq!(record.local_path.as_deref(), Some("files/new.enc"));
+    assert_eq!(record.file_size, 42);
+    assert!(!FilesRepository::replace_file_content_reference(&db, "text-1", "", 42).unwrap());
+    assert!(!FilesRepository::replace_file_content_reference(
+        &db,
+        "text-1",
+        "files/invalid.enc",
+        -1
+    )
+    .unwrap());
+
+    FilesRepository::delete_file(&db, "text-1").unwrap();
+    assert!(!FilesRepository::replace_file_content_reference(
+        &db,
+        "text-1",
+        "files/trashed.enc",
+        7
+    )
+    .unwrap());
+    let conn = db.lock().unwrap();
+    let (path, size): (String, i64) = conn
+        .query_row(
+            "SELECT local_path, file_size FROM files WHERE id = 'text-1'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(path, "files/new.enc");
+    assert_eq!(size, 42);
+}

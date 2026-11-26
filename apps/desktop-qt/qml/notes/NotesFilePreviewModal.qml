@@ -16,11 +16,20 @@ Rectangle {
     property string pendingExportFileId: ""
     property bool exportPending: false
     property bool pdfRendering: false
+    property bool savePending: false
+    property string saveRequestId: ""
+    property string pendingMarkdown: ""
+    property string saveNotice: ""
 
     function openForFile(fileId) {
         var stableFileId = String(fileId || "").trim()
         if (!controller || stableFileId.length === 0 || visible) return
         readingProgress.resetForFile(stableFileId)
+        markdownEditor.visible = false
+        savePending = false
+        saveRequestId = ""
+        pendingMarkdown = ""
+        saveNotice = ""
         requestId = "notes-viewer-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
         viewer.previewFileId = stableFileId
         viewer.previewName = ""
@@ -40,7 +49,7 @@ Rectangle {
     }
 
     function closeModal(alreadyInvalidated) {
-        if (!visible) return
+        if (!visible || (savePending && !alreadyInvalidated)) return
         readingProgress.saveNow()
         if ((viewer.loading || pdfRendering) && requestId.length > 0 && controller &&
                 typeof controller.cancelFilePreview === "function") {
@@ -68,8 +77,27 @@ Rectangle {
         viewer.previewPdfImagePath = ""
         viewer.previewPdfRequestId = ""
         viewer.loading = false
+        markdownEditor.visible = false
         requestId = ""
+        saveRequestId = ""
+        pendingMarkdown = ""
         visible = false
+    }
+
+    function startMarkdownEditing() {
+        if (!visible || viewer.loading || savePending || !viewer.isMarkdownFile ||
+                (viewer.previewType !== "text" && viewer.previewType !== "code")) return
+        markdownEditor.openForFile(viewer.previewName, viewer.previewText)
+    }
+
+    function saveMarkdown(content) {
+        if (savePending || !controller || typeof controller.saveNotesTextFile !== "function") return
+        saveRequestId = "notes-text-save-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
+        pendingMarkdown = String(content || "")
+        savePending = true
+        markdownEditor.saving = true
+        markdownEditor.errorMessage = ""
+        controller.saveNotesTextFile(viewer.previewFileId, pendingMarkdown, saveRequestId)
     }
 
     function exportFile(fileId) {
@@ -127,6 +155,23 @@ Rectangle {
         function onFilePreviewsInvalidated() { modalRoot.closeModal(true) }
 
         function onFileOperationFinished(result) {
+            if (result.operation === "save-text" && String(result.requestId || "") === modalRoot.saveRequestId) {
+                modalRoot.savePending = false
+                markdownEditor.saving = false
+                if (result.success) {
+                    viewer.previewText = modalRoot.pendingMarkdown
+                    markdownEditor.closeAfterSave()
+                    modalRoot.saveNotice = result.has_drive_copy
+                        ? qsTr("Salvo localmente. A cópia do Drive não foi atualizada.")
+                        : qsTr("Documento salvo.")
+                    saveNoticeTimer.restart()
+                    modalRoot.pendingMarkdown = ""
+                    modalRoot.saveRequestId = ""
+                } else {
+                    markdownEditor.errorMessage = String(result.error || qsTr("Could not save the document."))
+                }
+                return
+            }
             if (!modalRoot.exportPending || result.operation !== "export") return
             modalRoot.exportPending = false
             viewer.previewError = result.success
@@ -137,7 +182,7 @@ Rectangle {
 
     Shortcut {
         sequence: "Escape"
-        enabled: modalRoot.visible && !exportDialog.visible
+        enabled: modalRoot.visible && !exportDialog.visible && !markdownEditor.visible
         onActivated: modalRoot.closeModal()
     }
 
@@ -148,6 +193,39 @@ Rectangle {
         visible: modalRoot.visible
         onCloseRequested: modalRoot.closeModal()
         onExportRequested: function(fileId) { modalRoot.exportFile(fileId) }
+        notesMarkdownEditingEnabled: true
+        onMarkdownEditRequested: modalRoot.startMarkdownEditing()
+    }
+
+    Timer {
+        id: saveNoticeTimer
+        interval: 4500
+        repeat: false
+        onTriggered: modalRoot.saveNotice = ""
+    }
+
+    Rectangle {
+        objectName: "notesMarkdownSaveNotice"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 74
+        anchors.rightMargin: 24
+        z: 3
+        visible: modalRoot.visible && modalRoot.saveNotice.length > 0
+        width: Math.min(380, modalRoot.width - 48)
+        height: noticeText.implicitHeight + 22
+        radius: 10
+        color: "#ed1a1924"
+        border.color: "#3363d99b"
+        Label {
+            id: noticeText
+            anchors.fill: parent
+            anchors.margins: 11
+            text: modalRoot.saveNotice
+            color: "#a7f3d0"
+            font.pixelSize: 11
+            wrapMode: Text.Wrap
+        }
     }
 
     NotesFileReadingProgress {
@@ -158,6 +236,16 @@ Rectangle {
         controller: modalRoot.controller
         readerSurface: viewer
         fileId: viewer.previewFileId
+    }
+
+    NotesFileMarkdownEditor {
+        id: markdownEditor
+        onSaveRequested: function(content) { modalRoot.saveMarkdown(content) }
+        onCancelRequested: {
+            visible = false
+            saving = false
+            errorMessage = ""
+        }
     }
 
     FileDialog {
