@@ -18,7 +18,7 @@ ColumnLayout {
     signal closeRequested()
 
     Layout.fillWidth: true
-    spacing: 14
+    spacing: alarmForm.width < 640 ? 16 : 24
 
     function openForTime(time) {
         alarmTimeField.text = String(time || "12:00")
@@ -46,19 +46,19 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 164
+        Layout.preferredHeight: alarmForm.width < 640 ? 164 : 192
         radius: 16
         color: "#161522"
         border.color: "#0dffffff"
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 10
+            anchors.margins: alarmForm.width < 640 ? 16 : 24
+            spacing: 12
             Text {
                 objectName: "notesAlarmTimeLabel"
                 text: qsTr("HORÁRIO")
                 color: "#a7a9be"
-                font.pixelSize: 12
+                font.pixelSize: 14
                 font.weight: Font.Bold
                 font.letterSpacing: 1.2
             }
@@ -71,7 +71,7 @@ ColumnLayout {
                 placeholderText: "12:00"
                 validator: RegularExpressionValidator { regularExpression: /^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/ }
                 color: "#fffffe"
-                font.pixelSize: 52
+                font.pixelSize: alarmForm.width < 640 ? 36 : 60
                 font.weight: Font.Bold
                 font.family: "monospace"
                 horizontalAlignment: Text.AlignHCenter
@@ -84,19 +84,19 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 126
+        Layout.preferredHeight: alarmForm.width < 640 ? 144 : 160
         radius: 16
         color: "#161522"
         border.color: "#0dffffff"
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 10
+            anchors.margins: alarmForm.width < 640 ? 16 : 24
+            spacing: 12
             Text {
                 objectName: "notesAlarmOptionalLabel"
                 text: qsTr("RÓTULO (OPCIONAL)")
                 color: "#a7a9be"
-                font.pixelSize: 12
+                font.pixelSize: 14
                 font.weight: Font.Bold
                 font.letterSpacing: 1.2
             }

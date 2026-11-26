@@ -39,6 +39,8 @@ TestCase {
     }
 
     function init() {
+        testCase.width = 800
+        testCase.height = 720
         closeCount = 0
         createCount = 0
         insertedHtml = ""
@@ -54,23 +56,57 @@ TestCase {
         var timeField = findChild(modal, "notesAlarmTimeField")
         var labelField = findChild(modal, "notesAlarmLabelField")
         var saveButton = findChild(modal, "notesAlarmSaveButton")
-        var title = findChild(modal, "notesSetupModalTitle")
-        var card = findChild(modal, "notesSetupModalCard")
+        var title = findChild(modal, "notesAlarmCanvasTitle")
+        var canvas = findChild(modal, "notesAlarmSetupCanvas")
+        var content = findChild(modal, "notesAlarmSetupContent")
         verify(timeLabel !== null)
         verify(labelHeading !== null)
         verify(timeField !== null)
         verify(labelField !== null)
         verify(saveButton !== null)
         verify(title !== null)
-        verify(card !== null)
+        verify(canvas !== null)
+        verify(content !== null)
         compare(title.text, "Novo Alarme")
+        compare(title.font.pixelSize, 30)
         compare(timeLabel.text, "HORÁRIO")
         compare(labelHeading.text, "RÓTULO (OPCIONAL)")
         compare(timeField.text, "07:30")
         compare(labelField.placeholderText, "Ex: Acordar, Almoço")
         compare(saveButton.text, "SALVAR ALARME")
-        compare(card.width, 672)
+        compare(canvas.width, modal.width)
+        compare(canvas.height, modal.height)
+        compare(content.width, 672)
+        compare(canvas.color, "#e60f0e17")
         verify(timeField.font.pixelSize >= 48)
+    }
+
+    function test_alarmCanvasScrollsAndAdaptsAtSmallViewport() {
+        testCase.width = 360
+        testCase.height = 320
+        wait(20)
+        var canvas = findChild(modal, "notesAlarmSetupCanvas")
+        var scroll = findChild(modal, "notesAlarmSetupScroll")
+        var content = findChild(modal, "notesAlarmSetupContent")
+        var timeField = findChild(modal, "notesAlarmTimeField")
+        verify(canvas !== null)
+        verify(scroll !== null)
+        verify(content !== null)
+        verify(scroll.contentHeight > scroll.height)
+        compare(content.width, 328)
+        compare(timeField.font.pixelSize, 36)
+    }
+
+    function test_alarmEscapeClosesTheCanvas() {
+        keyClick(Qt.Key_Escape)
+        tryCompare(testCase, "closeCount", 1)
+    }
+
+    function test_alarmHeaderCloseButtonDismissesTheCanvas() {
+        var closeButton = findChild(modal, "notesAlarmCanvasCloseButton")
+        verify(closeButton !== null)
+        closeButton.click()
+        compare(closeCount, 1)
     }
 
     function test_alarmSaveUsesCurrentFieldsAndClosesOnce() {

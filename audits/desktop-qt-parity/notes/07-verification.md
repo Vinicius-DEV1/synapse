@@ -715,3 +715,14 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the Notes assistant dialog, composer and quick-prompt components | Passed with no diagnostics | New composer and prompt UI are clean. |
 | `git diff --check` | Passed | No patch whitespace errors. |
 | Real Notes battery/page loading, Gemini generation using references, physical keyboard event and matched-viewport comparison | Not run | Keep QT-NOTES-080 acceptance open for live database/provider and visual evidence. |
+
+### Notes alarm full-canvas setup (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_alarm_setup_modal.qml -import apps/desktop-qt/qml` | Passed: 9 QtTest results | Covers full-window canvas dimensions/tint, 672 px desktop content width, narrow-window scrolling and adaptive time typography, slash prefill, valid/invalid submission, existing-alarm reference serialization, Escape and header close. Uses a mocked controller. |
+| Focused `qmllint` on `NotesSetupWidgetsModal.qml` and `NotesAlarmSetupForm.qml` | Passed with no diagnostics | The changed QML parses cleanly. This does not establish rendered blur/tint, click-outside behavior, focus restoration or screen-reader behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native target linked with the new Notes alarm canvas. Does not contact Core reminders or open the live editor. |
+| Focused QML regression harnesses for Notes focus setup, calendar event form, habit picker, and question picker | Passed: 3 + 4 + 7 + 6 QtTest results | The shared setup host continues to mount the unaffected Notes modes and their existing picker flows. Mocked controller data does not verify live persistence or visual parity. |
+| `git diff --check` | Passed | No patch whitespace errors. |
+| Live Core alarm creation/failure, OS reminder delivery, backdrop click, focus return, blur and matched-viewport comparison | Not run | Keep QT-NOTES-066 acceptance open for real persistence/reminder and visual/interactions evidence. |

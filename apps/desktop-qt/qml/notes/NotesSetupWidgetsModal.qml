@@ -19,6 +19,13 @@ Item {
     signal insertWidgetRequested(string html)
     signal closed()
 
+    Shortcut {
+        objectName: "notesAlarmEscapeShortcut"
+        sequence: "Escape"
+        enabled: setupRoot.activeMode === "alarme"
+        onActivated: setupRoot.close()
+    }
+
     function openMode(mode, prefill) {
         activeMode = mode
         listItems = []
@@ -53,6 +60,7 @@ Item {
     function close() { activeMode = ""; closed() }
 
     Rectangle {
+        visible: setupRoot.activeMode !== "alarme"
         anchors.fill: parent
         color: "#b0000000"
         MouseArea { anchors.fill: parent; onClicked: setupRoot.close() }
@@ -60,6 +68,7 @@ Item {
 
     Rectangle {
         objectName: "notesSetupModalCard"
+        visible: setupRoot.activeMode !== "alarme"
         width: setupRoot.activeMode === "alarme" ? Math.min(parent.width - 32, 672) : 450
         height: setupRoot.activeMode === "alarme"
             ? Math.min(parent.height - 32, cardCol.implicitHeight + 48)
@@ -157,16 +166,6 @@ Item {
                 onCloseRequested: setupRoot.close()
             }
 
-            NotesAlarmSetupForm {
-                id: alarmSetupForm
-                visible: setupRoot.activeMode === "alarme"
-                controller: setupRoot.controller
-                alarmItems: setupRoot.listItems
-                Layout.fillWidth: true
-                onInsertWidgetRequested: function(html) { setupRoot.insertWidgetRequested(html) }
-                onCloseRequested: setupRoot.close()
-            }
-
             NotesFocusSetupForm {
                 id: focusSetupForm
                 visible: setupRoot.activeMode === "foco"
@@ -186,6 +185,98 @@ Item {
                 onCloseRequested: setupRoot.close()
             }
 
+        }
+    }
+
+    Rectangle {
+        id: alarmCanvas
+        objectName: "notesAlarmSetupCanvas"
+        anchors.fill: parent
+        visible: setupRoot.activeMode === "alarme"
+        color: "#e60f0e17"
+        z: 1
+
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onTapped: function(eventPoint) {
+                var localPoint = alarmContent.mapFromItem(alarmCanvas,
+                    eventPoint.position.x, eventPoint.position.y)
+                if (localPoint.x < 0 || localPoint.x > alarmContent.width)
+                    setupRoot.close()
+            }
+        }
+
+        Flickable {
+            id: alarmScroll
+            objectName: "notesAlarmSetupScroll"
+            anchors.fill: parent
+            clip: true
+            contentWidth: width
+            contentHeight: alarmContent.implicitHeight + 88
+            boundsBehavior: Flickable.StopAtBounds
+
+            ColumnLayout {
+                id: alarmContent
+                objectName: "notesAlarmSetupContent"
+                x: Math.max(16, (alarmScroll.width - width) / 2)
+                y: 24
+                width: Math.max(0, Math.min(alarmScroll.width - 32, 672))
+                spacing: 24
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 16
+
+                    AppIcon {
+                        name: "clock"
+                        color: "#a78bfa"
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                    }
+
+                    Text {
+                        objectName: "notesAlarmCanvasTitle"
+                        Layout.fillWidth: true
+                        text: qsTr("Novo Alarme")
+                        color: "#fffffe"
+                        font.pixelSize: alarmScroll.width < 640 ? 24 : 30
+                        font.weight: Font.ExtraBold
+                        elide: Text.ElideRight
+                    }
+
+                    ToolButton {
+                        id: alarmCanvasCloseButton
+                        objectName: "notesAlarmCanvasCloseButton"
+                        Layout.preferredWidth: 48
+                        Layout.preferredHeight: 48
+                        Accessible.name: qsTr("Cancelar")
+                        onClicked: setupRoot.close()
+                        background: Rectangle {
+                            radius: 12
+                            color: alarmCanvasCloseButton.hovered ? "#1affffff" : "#161524"
+                            border.color: "#0fffffff"
+                        }
+                        contentItem: AppIcon {
+                            name: "close"
+                            color: "#a7a9be"
+                            width: 24
+                            height: 24
+                        }
+                    }
+                }
+
+                NotesAlarmSetupForm {
+                    id: alarmSetupForm
+                    objectName: "notesAlarmSetupForm"
+                    controller: setupRoot.controller
+                    alarmItems: setupRoot.listItems
+                    Layout.fillWidth: true
+                    onInsertWidgetRequested: function(html) { setupRoot.insertWidgetRequested(html) }
+                    onCloseRequested: setupRoot.close()
+                }
+
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 40 }
+            }
         }
     }
 }
