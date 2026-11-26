@@ -393,6 +393,26 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Force Core save failure and stale-timestamp conflict during page selection; verify selection does not change, title/content remain visible, the save indicator remains actionable, and queued local-Trash work remains page-scoped. Verify “Manter minhas alterações” retries against the latest timestamp, “Carregar versão salva” replaces the editor with the current saved data, and navigation proceeds after a successful save, including when only the subsequent file soft-delete needs retry.
 - **Fix status:** `selectPage` now preserves a dirty page when save fails. The conflict signal opens a native choice dialog; keeping local edits refreshes the expected timestamp before retry, while loading the saved version replaces the editor with current Core data and reconciles pending file-Trash requests. Successful note saves still allow navigation when only a queued soft-delete fails. Focused QML lint and whitespace checks pass; runtime failure injection, overwrite and reload acceptance remain unchecked.
 
+## QT-NOTES-043: File widgets do not resolve or refresh records by ID
+
+- **Severity:** Medium; file widgets can show stale metadata and do not reliably indicate missing, trashed or restored files.
+- **Evidence:** `FileAttachmentWidget.qml::syncFromCore` queried `getFiles("")`, which lists only root-folder files, and returned without setting `isNotFound` when the ID was absent. The widget did not listen for `filesChanged`. `restoreTrashItem` emitted `filesChanged` for no file item type.
+- **Reproduction:** Attach a file stored in a nested folder, move a referenced file to Trash or restore it while its note is open, then inspect the widget and preview action. It is not refreshed for those state changes and cannot resolve nested-folder metadata from the root-only listing.
+- **Root cause:** The widget used a folder-list API to resolve an entity by ID and the Trash restore adapter omitted the file-change notification.
+- **Required fix:** Expose a narrow Core-backed file-widget metadata lookup by ID; use the widget's injected controller for metadata and preview; mark missing records visibly; refresh on `filesChanged`; emit that signal after restoring a file.
+- **Acceptance:** Verify active files in root and nested folders resolve; renames and type/size changes refresh; moving to Trash marks a linked widget missing; restoring clears that state and enables preview; malformed widgets without IDs display a recoverable missing state; locked vault behavior does not expose protected paths.
+- **Fix status:** Added the Core-backed `getFileWidgetMetadata` controller adapter and changed the native file widget to resolve by ID through its injected controller, show missing records and refresh on `filesChanged`. Restoring a local file now emits `filesChanged`. Focused QML lint and whitespace checks pass; C++ build and runtime folder/Trash/restore acceptance remain open.
+
+## QT-NOTES-044: Failed file rename still changes the note widget
+
+- **Severity:** Medium; a Core rename failure can leave the displayed/stored widget name different from the actual file record.
+- **Evidence:** `FileAttachmentWidget.qml` previously changed its `fileName` and emitted updated widget attributes before calling `renameFile`, and ignored the controller's boolean result.
+- **Reproduction:** Force the Core rename call to fail, confirm a new name in the widget, then reopen the note and inspect both the file record and widget metadata.
+- **Root cause:** The UI treated a requested rename as successful before the Core persistence operation returned.
+- **Required fix:** Call Core first; update local file metadata and serialized widget attributes only after a successful return. On failure keep the entered text available for retry and show an error without mutating the note.
+- **Acceptance:** Force a rejected rename and verify file record, widget attributes and editor content remain unchanged while the error is visible; retry successfully and verify Core record plus React-compatible widget name update once; check Enter, button, Escape and empty-name behavior.
+- **Fix status:** The widget now calls its injected controller first, keeps the rename editor open and displays a retryable error when Core rejects the request, and changes the file name/widget attributes only after success. Focused QML lint and whitespace checks pass; runtime failure injection and cross-client acceptance remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

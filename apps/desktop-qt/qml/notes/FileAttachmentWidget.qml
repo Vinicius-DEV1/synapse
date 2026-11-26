@@ -22,6 +22,7 @@ Rectangle {
     property bool showColorPicker: false
     property bool isDeleteDialogOpen: false
     property bool isNotFound: false
+    property string renameErrorMessage: ""
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default" && !isNotFound
 
@@ -48,22 +49,22 @@ Rectangle {
     HoverHandler { id: hoverHandler }
 
     function syncFromCore() {
-        if (!fileId || typeof dataController === "undefined" || !dataController || typeof dataController.getFiles !== "function") return
-        var all = dataController.getFiles("") || []
-        if (all.length === 0) return
-        var found = null
-        for (var i = 0; i < all.length; i++) {
-            if (all[i].id === fileId) {
-                found = all[i]
-                break
-            }
+        if (!fileId) {
+            isNotFound = true
+            return
         }
-        if (found) {
-            isNotFound = false
-            if (found.name) fileName = found.name
-            if (found.file_type) fileType = String(found.file_type).toLowerCase()
-            if (found.file_size) fileSize = Number(found.file_size) || 0
+
+        var c = fileWidgetRoot.controller
+        if (!c || typeof c.getFileWidgetMetadata !== "function") return
+        var found = c.getFileWidgetMetadata(fileId)
+        if (!found || !found.id) {
+            isNotFound = true
+            return
         }
+        isNotFound = false
+        if (found.name) fileName = found.name
+        if (found.file_type) fileType = String(found.file_type).toLowerCase()
+        if (found.file_size !== undefined) fileSize = Number(found.file_size) || 0
     }
 
     function commitAttr(key, value) {
@@ -93,14 +94,20 @@ Rectangle {
     Component.onCompleted: syncFromCore()
     onBlockDataChanged: syncFromCore()
 
+    Connections {
+        target: fileWidgetRoot.controller
+        ignoreUnknownSignals: true
+        function onFilesChanged() { fileWidgetRoot.syncFromCore() }
+    }
+
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             if (fileWidgetRoot.renaming) return
-            if (fileWidgetRoot.fileId && typeof dataController !== "undefined" && dataController &&
-                    typeof dataController.previewLocalFile === "function") {
-                dataController.previewLocalFile(fileWidgetRoot.fileId)
+            var c = fileWidgetRoot.controller
+            if (fileWidgetRoot.fileId && c && typeof c.previewLocalFile === "function") {
+                c.previewLocalFile(fileWidgetRoot.fileId)
             }
             fileWidgetRoot.previewFileRequested(fileWidgetRoot.fileId, fileWidgetRoot.fileName)
         }
@@ -145,6 +152,11 @@ Rectangle {
                 font.weight: Font.Medium
                 leftPadding: 6
                 rightPadding: 6
+                Accessible.description: fileWidgetRoot.renameErrorMessage
+                ToolTip.visible: fileWidgetRoot.renameErrorMessage.length > 0
+                ToolTip.text: fileWidgetRoot.renameErrorMessage
+                ToolTip.timeout: -1
+                onTextEdited: fileWidgetRoot.renameErrorMessage = ""
                 background: Rectangle {
                     radius: 4
                     color: "#66000000"
@@ -153,20 +165,30 @@ Rectangle {
                 }
                 onAccepted: {
                     var trimmed = text.trim()
-                    fileWidgetRoot.renaming = false
-                    if (trimmed.length > 0 && trimmed !== fileWidgetRoot.fileName) {
-                        fileWidgetRoot.fileName = trimmed
-                        if (fileWidgetRoot.fileId && typeof dataController !== "undefined" && dataController &&
-                                typeof dataController.renameFile === "function") {
-                            dataController.renameFile(fileWidgetRoot.fileId, trimmed)
-                        }
-                        var next = Object.assign({}, fileWidgetRoot.attrs)
-                        next["data-name"] = trimmed
-                        next["data-file-name"] = trimmed
-                        fileWidgetRoot.attrsUpdated(next)
+                    if (trimmed.length === 0 || trimmed === fileWidgetRoot.fileName) {
+                        fileWidgetRoot.renameErrorMessage = ""
+                        fileWidgetRoot.renaming = false
+                        return
                     }
+                    var c = fileWidgetRoot.controller
+                    if (!fileWidgetRoot.fileId || !c || typeof c.renameFile !== "function" ||
+                            !c.renameFile(fileWidgetRoot.fileId, trimmed)) {
+                        fileWidgetRoot.renameErrorMessage = qsTr("Não foi possível renomear o arquivo. Tente novamente.")
+                        nameInput.forceActiveFocus()
+                        return
+                    }
+                    fileWidgetRoot.renameErrorMessage = ""
+                    fileWidgetRoot.fileName = trimmed
+                    var next = Object.assign({}, fileWidgetRoot.attrs)
+                    next["data-name"] = trimmed
+                    next["data-file-name"] = trimmed
+                    fileWidgetRoot.attrsUpdated(next)
+                    fileWidgetRoot.renaming = false
                 }
-                Keys.onEscapePressed: fileWidgetRoot.renaming = false
+                Keys.onEscapePressed: {
+                    fileWidgetRoot.renameErrorMessage = ""
+                    fileWidgetRoot.renaming = false
+                }
             }
 
             ToolButton {
@@ -182,7 +204,10 @@ Rectangle {
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
                 focusPolicy: Qt.NoFocus
-                onClicked: fileWidgetRoot.renaming = false
+                onClicked: {
+                    fileWidgetRoot.renameErrorMessage = ""
+                    fileWidgetRoot.renaming = false
+                }
                 background: Rectangle { radius: 4; color: parent.hovered ? "#1affffff" : "transparent" }
                 contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 12; height: 12 }
             }
@@ -202,14 +227,15 @@ Rectangle {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    if (fileWidgetRoot.fileId && typeof dataController !== "undefined" && dataController &&
-                            typeof dataController.previewLocalFile === "function") {
-                        dataController.previewLocalFile(fileWidgetRoot.fileId)
+                    var c = fileWidgetRoot.controller
+                    if (fileWidgetRoot.fileId && c && typeof c.previewLocalFile === "function") {
+                        c.previewLocalFile(fileWidgetRoot.fileId)
                     }
                     fileWidgetRoot.previewFileRequested(fileWidgetRoot.fileId, fileWidgetRoot.fileName)
                 }
                 onDoubleClicked: {
                     if (!fileWidgetRoot.isNotFound) {
+                        fileWidgetRoot.renameErrorMessage = ""
                         fileWidgetRoot.renaming = true
                         nameInput.forceActiveFocus()
                     }

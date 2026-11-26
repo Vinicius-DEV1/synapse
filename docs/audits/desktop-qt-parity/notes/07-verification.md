@@ -245,3 +245,27 @@ Exact focused QML lint command for the local-Trash save-order iteration:
 | Native conflict choice dialog and retry path | Source review: conflict signal presents explicit keep-local or reload-saved actions | Keep-local refreshes the expected timestamp before saving; reload replaces page content and reconciles the pending bundle file queue. Runtime and encrypted-page interaction remain unverified. |
 | Focused Notes/PageView `qmllint` | Passed, exit code 0, with existing diagnostics in neighboring Notes QML files | No runtime save failure or conflict was injected. |
 | Core save failure, stale timestamp conflict, each resolution choice, manual retry and subsequent navigation | Not run | Verify that the header retry action still targets the preserved page and that pending file operations remain scoped through the retry. |
+
+### File-widget metadata and restore iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Core-backed file-widget lookup | Source review: Qt asks Core for the active file record by ID and returns only ID/name/type/size metadata | Supports files in nested folders and avoids returning local paths or Drive identifiers to the widget. C++ compilation remains unverified. |
+| Restore notification and widget refresh | Source review: successful file restore emits `filesChanged`; the Notes widget listens for the signal and reruns the ID lookup | Does not prove runtime signal delivery or preview behavior. |
+| Focused `qmllint` and `git diff --check` | Passed, exit code 0 | Existing dynamic-object/context diagnostics remain in `FileAttachmentWidget.qml`; no diagnostic points to the new ID lookup, signal refresh or rename result path. C++ compilation remains unchecked. |
+| Nested-folder metadata, missing/Trash state, rename, restore and preview | Not run | Verify the open note updates without requiring page reload; confirm locked vault metadata remains appropriately redacted. |
+| Forced rename failure, retry and note/Core consistency | Source review: the note attributes now update only after a successful Core return | No runtime failure injection or React round-trip was run. |
+
+Exact focused QML lint command for the file-widget lifecycle iteration:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/FileAttachmentWidget.qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleOperations.js \
+  apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
+  apps/desktop-qt/qml/notes/Editor.qml \
+  apps/desktop-qt/qml/page-view/PageConflictDialog.qml \
+  apps/desktop-qt/qml/page-view/PageView.qml
+```

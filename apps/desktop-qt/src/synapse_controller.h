@@ -490,6 +490,7 @@ public:
     // 17. Native local file manager
     Q_INVOKABLE QVariantList getFiles(const QString &folderId = "");
     Q_INVOKABLE QVariantList getFilesForSection(const QString &section, const QString &folderId = "");
+    Q_INVOKABLE QVariantMap getFileWidgetMetadata(const QString &fileId);
     Q_INVOKABLE int getDriveFileCount();
     Q_INVOKABLE QVariantList getFileFolders(const QString &parentId = "");
     Q_INVOKABLE QVariantList getAllFileFolders();

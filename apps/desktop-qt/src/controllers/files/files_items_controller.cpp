@@ -6,6 +6,26 @@
 
 // Native file metadata, duplication, deletion, and page links delegated to synapse_files_* domain APIs.
 
+QVariantMap SynapseDataController::getFileWidgetMetadata(const QString &fileId) {
+    if (!m_db || fileId.trimmed().isEmpty()) return {};
+
+    const QByteArray idBytes = fileId.trimmed().toUtf8();
+    char *jsonStr = synapse_files_get_file(m_db, idBytes.constData());
+    if (!jsonStr) return {};
+
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray(jsonStr));
+    synapse_free_string(jsonStr);
+    if (!doc.isObject()) return {};
+
+    const QJsonObject file = doc.object();
+    return {
+        {"id", file.value("id").toString()},
+        {"name", file.value("name").toString()},
+        {"file_type", file.value("file_type").toString()},
+        {"file_size", file.value("file_size").toVariant()}
+    };
+}
+
 bool SynapseDataController::renameFile(const QString &fileId, const QString &name) {
     if (!m_db || fileId.trimmed().isEmpty() || name.trimmed().isEmpty()) return false;
     const int ret = synapse_files_rename_file(

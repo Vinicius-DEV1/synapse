@@ -130,6 +130,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify React's delete-all choice against Qt file lifecycle: Qt must name local Trash accurately and report partial/failure state; do not claim Google Drive deletion until a native Drive delete contract and outcome exist.
 - [ ] Compare React bundle move-up/down controls with Qt's block handle at first/last positions, hover/focus, keyboard use and nested-editor depth; record the control-location difference even where native movement works.
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
+- [ ] Verify Notes file widgets resolve file metadata by ID regardless of folder, visibly handle missing/trashed records, and refresh after rename, delete and restore signals. Confirm restored files become previewable without reopening the page.
+- [ ] Force a Core file-rename failure from the Notes widget; confirm it does not change widget attributes or saved note content, keeps the entered name for retry and exposes an error. Verify successful retry updates Core and React-compatible widget metadata exactly once.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
 - [ ] Verify native page-reference object accessibility name/role, keyboard focus, visible selection, hit target, chip geometry/colors, and updated title/deleted state against React at the same viewport.
 - [ ] Verify the rich editor's accessible description announces the selected/adjacent page-reference title and deleted state as the caret moves, without changing dirty state; validate screen-reader role/action behavior separately.
