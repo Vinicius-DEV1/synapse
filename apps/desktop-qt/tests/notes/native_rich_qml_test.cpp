@@ -3,6 +3,8 @@
 
 #include <QtGui/QGuiApplication>
 #include <QtCore/QCoreApplication>
+#include <QtCore/QHash>
+#include <QtCore/QJsonDocument>
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
 #include <QtQml/QQmlComponent>
@@ -109,6 +111,8 @@ public:
     QString exportedPath;
     QString renderedPath;
     QString renderedRequestId;
+    QString previewTextContent = QStringLiteral("# Preview text");
+    QHash<QString, QString> configValues;
     int renderedPage = 0;
 
     Q_INVOKABLE void previewLocalFile(const QString &fileId, const QString &requestId) {
@@ -117,7 +121,7 @@ public:
     }
     Q_INVOKABLE QVariantMap readFilePreviewText(const QString &path) const {
         return path.isEmpty() ? QVariantMap{{"success", false}, {"error", "Missing preview path."}}
-                              : QVariantMap{{"success", true}, {"text", "# Preview text"}};
+                              : QVariantMap{{"success", true}, {"text", previewTextContent}};
     }
     Q_INVOKABLE void renderLibraryPdfPage(const QString &path, int page, int, const QString &requestId) {
         renderedPath = path;
@@ -130,6 +134,13 @@ public:
     Q_INVOKABLE void exportLocalFile(const QString &fileId, const QString &path) {
         exportedFileId = fileId;
         exportedPath = path;
+    }
+    Q_INVOKABLE QString getConfig(const QString &key, const QString &defaultValue = QString()) const {
+        return configValues.value(key, defaultValue);
+    }
+    Q_INVOKABLE bool setConfig(const QString &key, const QString &value) {
+        configValues.insert(key, value);
+        return true;
     }
 
     void publish(const QVariantMap &result) { emit filePreviewReady(result); }
@@ -401,6 +412,78 @@ private slots:
         QCOMPARE(controller.cancelledId, pendingRequestId);
     }
 
+    void notesFilePreviewRestoresReadingProgressAndBookmarks() {
+        QQmlEngine engine;
+        QQmlComponent themeComponent(&engine);
+        themeComponent.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/ui/Theme.qml")));
+        QScopedPointer<QObject> theme(themeComponent.create());
+        QVERIFY2(theme, qPrintable(themeComponent.errorString()));
+        NotesFilePreviewTestController controller;
+        for (int line = 0; line < 400; ++line) controller.previewTextContent += QStringLiteral("\nReading progress test line %1 with enough content to scroll.").arg(line);
+        controller.configValues.insert(QStringLiteral("notes_file_reading_progress_v1_file-text"),
+            QStringLiteral("{\"scrollTop\":420,\"percentage\":42,\"scrollHeight\":1000,\"bookmarks\":[{\"id\":\"bm_saved\",\"label\":\"Chapter 2\",\"scrollTop\":420,\"createdAt\":\"2026-01-02T00:00:00Z\"}]}"));
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("theme", theme.data());
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesFilePreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(900, 640);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QObject *progress = root->findChild<QObject *>("notesFileReadingProgress");
+        QObject *viewer = root->findChild<QObject *>("notesFilePreviewSurface");
+        QObject *resumeCard = root->findChild<QObject *>("notesFileReadingResumeCard");
+        QObject *bookmarksButton = root->findChild<QObject *>("notesFileReadingBookmarksButton");
+        QVERIFY(progress);
+        QVERIFY(viewer);
+        QVERIFY(resumeCard);
+        QVERIFY(bookmarksButton);
+        window.show();
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("file-text"))));
+        const QString requestId = root->property("requestId").toString();
+        controller.publish({{"success", true}, {"path", "/tmp/protected-note.txt"},
+                            {"url", "file:///tmp/protected-note.txt"}, {"file_type", "text"},
+                            {"name", "Note.txt"}, {"request_id", requestId}});
+        QTRY_VERIFY(progress->property("showResumePrompt").toBool());
+        QVERIFY(resumeCard->property("visible").toBool());
+        QCOMPARE(bookmarksButton->property("text").toString(), QString("Marcadores (1)"));
+
+        QVERIFY(QMetaObject::invokeMethod(progress, "resumeReading"));
+        QVERIFY(!progress->property("showResumePrompt").toBool());
+
+        QVERIFY(QMetaObject::invokeMethod(viewer, "jumpToTextScroll", Q_ARG(QVariant, 150)));
+        QTRY_VERIFY(progress->property("currentPercentage").toInt() > 0);
+        QTRY_VERIFY(QJsonDocument::fromJson(controller.getConfig(
+            QStringLiteral("notes_file_reading_progress_v1_file-text")).toUtf8()).object()
+            .value(QStringLiteral("percentage")).toInt() != 42);
+
+        QVERIFY(QMetaObject::invokeMethod(progress, "addBookmark"));
+        QCOMPARE(progress->property("bookmarks").toList().size(), 2);
+        const QString stored = controller.getConfig(QStringLiteral("notes_file_reading_progress_v1_file-text"));
+        QVERIFY(stored.contains(QStringLiteral("Chapter 2")));
+
+        progress->setProperty("editingBookmarkLabel", QStringLiteral("Renamed chapter"));
+        QVERIFY(QMetaObject::invokeMethod(progress, "saveBookmarkLabel", Q_ARG(QVariant, QString("bm_saved"))));
+        QVariantList updatedBookmarks = progress->property("bookmarks").toList();
+        QCOMPARE(updatedBookmarks.first().toMap().value(QStringLiteral("label")).toString(),
+                 QStringLiteral("Renamed chapter"));
+        QVERIFY(QMetaObject::invokeMethod(progress, "jumpToBookmark", Q_ARG(QVariant, updatedBookmarks.first())));
+        QVariant scrollTop;
+        QVERIFY(QMetaObject::invokeMethod(viewer, "textScrollTop", Q_RETURN_ARG(QVariant, scrollTop)));
+        QTRY_VERIFY(qAbs(scrollTop.toReal() - 420.0) < 2.0);
+        QVERIFY(QMetaObject::invokeMethod(progress, "removeBookmark", Q_ARG(QVariant, QString("bm_saved"))));
+        QCOMPARE(progress->property("bookmarks").toList().size(), 1);
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal", Q_ARG(QVariant, false)));
+    }
+
     void collapsedCursorFormattingAppliesOnlyToFollowingText() {
         QQmlEngine engine;
         NotesTextOperations operations;
@@ -657,6 +740,11 @@ int main(int argc, char **argv) {
         return QTest::qExec(&test, 2, correlationArguments) |
             QTest::qExec(&test, 2, invalidationArguments) |
             QTest::qExec(&test, 2, pdfArguments);
+    }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=reading-progress")) {
+        char progressTest[] = "notesFilePreviewRestoresReadingProgressAndBookmarks";
+        char *progressArguments[] = {argv[0], progressTest};
+        return QTest::qExec(&test, 2, progressArguments);
     }
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |

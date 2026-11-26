@@ -28,6 +28,24 @@ Rectangle {
 
     signal closeRequested()
     signal exportRequested(string fileId)
+    signal textScrollChanged()
+
+    function textScrollTop() {
+        return textScrollView.contentItem.contentY
+    }
+
+    function textScrollMaximum() {
+        return Math.max(0, textScrollView.contentItem.contentHeight - textScrollView.height)
+    }
+
+    function textScrollViewportHeight() {
+        return textScrollView.height
+    }
+
+    function jumpToTextScroll(scrollTop) {
+        var maximum = textScrollMaximum()
+        textScrollView.contentItem.contentY = Math.max(0, Math.min(maximum, Number(scrollTop) || 0))
+    }
 
     function stopVideo() {
         previewVideoPlayer.command(["stop"])
@@ -139,7 +157,7 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: 12
                 visible: !previewOverlay.loading && previewOverlay.previewType === "image"
-                source: previewOverlay.previewUrl
+                source: visible ? previewOverlay.previewUrl : ""
                 asynchronous: true
                 cache: false
                 autoTransform: true
@@ -171,10 +189,13 @@ Rectangle {
             }
 
             ScrollView {
+                id: textScrollView
                 anchors.fill: parent
                 anchors.margins: 14
                 visible: !previewOverlay.loading && (previewOverlay.previewType === "text" || previewOverlay.previewType === "code") && previewOverlay.previewError.length === 0
                 clip: true
+                onContentHeightChanged: previewOverlay.textScrollChanged()
+                onHeightChanged: previewOverlay.textScrollChanged()
                 TextArea {
                     width: parent.width
                     text: previewOverlay.previewText
@@ -186,6 +207,10 @@ Rectangle {
                     font.family: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? theme.fontFamily : theme.fontMono
                     font.pixelSize: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? 13 : 11
                     background: Rectangle { color: "transparent" }
+                }
+                Connections {
+                    target: textScrollView.contentItem
+                    function onContentYChanged() { previewOverlay.textScrollChanged() }
                 }
             }
 

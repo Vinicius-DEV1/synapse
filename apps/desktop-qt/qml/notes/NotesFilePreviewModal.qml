@@ -20,6 +20,7 @@ Rectangle {
     function openForFile(fileId) {
         var stableFileId = String(fileId || "").trim()
         if (!controller || stableFileId.length === 0 || visible) return
+        readingProgress.resetForFile(stableFileId)
         requestId = "notes-viewer-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
         viewer.previewFileId = stableFileId
         viewer.previewName = ""
@@ -40,6 +41,7 @@ Rectangle {
 
     function closeModal(alreadyInvalidated) {
         if (!visible) return
+        readingProgress.saveNow()
         if ((viewer.loading || pdfRendering) && requestId.length > 0 && controller &&
                 typeof controller.cancelFilePreview === "function") {
             controller.cancelFilePreview(requestId)
@@ -94,7 +96,10 @@ Rectangle {
             viewer.previewType = String(result.file_type || "other")
             if (viewer.previewType === "text" || viewer.previewType === "code") {
                 var textResult = modalRoot.controller.readFilePreviewText(viewer.previewPath)
-                if (textResult.success) viewer.previewText = String(textResult.text || "")
+                if (textResult.success) {
+                    viewer.previewText = String(textResult.text || "")
+                    readingProgress.loadForFile(viewer.previewFileId)
+                }
                 else viewer.previewError = String(textResult.error || qsTr("Could not read the text preview."))
             } else if (viewer.previewType === "pdf" && viewer.previewPath.length > 0) {
                 modalRoot.pdfRendering = true
@@ -143,6 +148,16 @@ Rectangle {
         visible: modalRoot.visible
         onCloseRequested: modalRoot.closeModal()
         onExportRequested: function(fileId) { modalRoot.exportFile(fileId) }
+    }
+
+    NotesFileReadingProgress {
+        id: readingProgress
+        z: 2
+        visible: modalRoot.visible && !viewer.loading &&
+                 (viewer.previewType === "text" || viewer.previewType === "code") && viewer.previewError.length === 0
+        controller: modalRoot.controller
+        readerSurface: viewer
+        fileId: viewer.previewFileId
     }
 
     FileDialog {
