@@ -130,6 +130,33 @@ private slots:
                      QStringLiteral("Parcial"));
             QVERIFY(loadedQuestion.value(QStringLiteral("answered")).toBool());
             QVERIFY(loadedQuestion.value(QStringLiteral("showExplanation")).toBool());
+
+            QQmlComponent focusModalComponent(
+                &engine,
+                QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
+                                    + QStringLiteral("/qml/questions/QuizSequentialFocusModal.qml")));
+            QVERIFY2(focusModalComponent.isReady(), qPrintable(focusModalComponent.errorString()));
+            QObject *focusModal = focusModalComponent.create();
+            QVERIFY2(focusModal != nullptr, qPrintable(focusModalComponent.errorString()));
+            focusModal->setProperty("enableNotesOpenAnswerEvaluation", true);
+            focusModal->setProperty(
+                "notesController",
+                QVariant::fromValue(static_cast<QObject *>(&reopenedController)));
+            QVERIFY(QMetaObject::invokeMethod(
+                focusModal,
+                "startQuiz",
+                Q_ARG(QVariant, QVariant(batteryId)),
+                Q_ARG(QVariant, QVariant(QStringLiteral("Open answer note"))),
+                Q_ARG(QVariant, QVariant(loadedQuestions))));
+            QCOMPARE(focusModal->property("openAnswer").toString(),
+                     QStringLiteral("My typed response"));
+            QCOMPARE(focusModal->property("answeredCount").toInt(), 1);
+            QCOMPARE(focusModal->property("currentOpenAnswerFeedback").toMap()
+                         .value(QStringLiteral("verdict")).toString(),
+                     QStringLiteral("Parcial"));
+            QVERIFY(focusModal->property("showExplanation").toBool());
+
+            delete focusModal;
             delete session;
         }
     }
