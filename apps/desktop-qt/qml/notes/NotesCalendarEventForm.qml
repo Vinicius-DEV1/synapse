@@ -241,19 +241,57 @@ ColumnLayout {
         wrapMode: Text.WordWrap
     }
 
-    Button {
+    RowLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: 36
-        enabled: titleField.text.trim().length > 0 && eventForm.dateTimeValid && !eventForm.isSubmitting
-        onClicked: eventForm.createEvent()
-        background: Rectangle { radius: 8; color: "#7c3aed" }
-        contentItem: Text {
+        Layout.topMargin: 3
+        spacing: 8
+
+        Item { Layout.fillWidth: true }
+
+        Button {
+            id: cancelEventButton
+            objectName: "notesCalendarEventCancelButton"
+            Layout.preferredHeight: 34
+            text: qsTr("Cancelar")
+            enabled: !eventForm.isSubmitting
+            onClicked: eventForm.closeRequested()
+            background: Rectangle { radius: 8; color: cancelEventButton.hovered ? "#0dffffff" : "transparent" }
+            contentItem: Text {
+                text: cancelEventButton.text
+                color: "#a7a9be"
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                leftPadding: 12
+                rightPadding: 12
+            }
+        }
+
+        Button {
+            id: createEventButton
+            objectName: "notesCalendarEventCreateButton"
+            Layout.preferredHeight: 34
             text: eventForm.isSubmitting ? qsTr("Criando...") : qsTr("Criar Evento Inline")
-            color: "#ffffff"
-            font.pixelSize: 12
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            enabled: titleField.text.trim().length > 0 && eventForm.dateTimeValid && !eventForm.isSubmitting
+            onClicked: eventForm.createEvent()
+            background: Rectangle { radius: 8; color: createEventButton.enabled ? "#8b5cf6" : "#7c8b5cf6" }
+            contentItem: RowLayout {
+                spacing: 6
+                AppIcon {
+                    name: "sparkles"
+                    color: "#ffffff"
+                    Layout.preferredWidth: 13
+                    Layout.preferredHeight: 13
+                }
+                Text {
+                    text: createEventButton.text
+                    color: "#ffffff"
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    Layout.alignment: Qt.AlignVCenter
+                }
+            }
         }
     }
 }

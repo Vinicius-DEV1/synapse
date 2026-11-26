@@ -515,6 +515,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes inline Calendar event modal actions (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for `NotesCalendarEventForm.qml` with a mock Notes controller | Passed: 2 behavior cases (4 QtTest results including setup/cleanup), 0 failures. Cancel closes without a controller call or HTML insertion; create passes linked-page/reminder data to the controller, inserts its returned event identity and closes once. | Qt 6.10.2, offscreen. Verifies the actual cancel/create button slots and serialization. Does not exercise native Core persistence, reminder delivery, keyboard/focus traversal or matched-viewport visuals. |
+| Focused `qmllint` for `NotesCalendarEventForm.qml` and its date/time dependency | Passed: exit 0, no warnings. | Static QML checks only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes upload and existing-file mode separation (2026-11-26)
 
 | Check | Result | Scope and limits |
