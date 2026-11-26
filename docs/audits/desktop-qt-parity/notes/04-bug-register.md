@@ -262,7 +262,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The widget used a list API for an identity lookup and had no focused change notification after Qt event mutations.
 - **Required fix:** Add a typed event-by-ID Core/bridge/controller query and a dedicated Qt calendar mutation signal. Widgets should load only their linked record and refresh when relevant Qt calendar mutations succeed.
 - **Acceptance:** An event outside the first 300 records resolves correctly; a note with multiple widgets performs one indexed identity lookup per widget rather than repeated 300-row scans; create/update/status/delete refreshes all visible linked widgets; failed mutations do not emit false refreshes.
-- **Fix status:** Source fix applied through the existing Core ID query, `bridge-qt`, `SynapseDataController`, and `CalendarEventWidgetState.qml`. Release bridge/desktop builds and focused QML lint pass; runtime scale and synchronization acceptance remain open.
+- **Fix status:** Re-review found that `syncFromCore()` still required `getCalendarEvents()` and scanned the capped list whenever the ID query returned no record, despite the earlier source-fix claim. The widget now requires and calls only `getCalendarEvent(eventId)`; a missing record no longer triggers a list read. The Core ID query and mutation notification already exist. Focused QML lint and the native app build pass; runtime scale and synchronization acceptance remain open.
 
 ## QT-NOTES-030: Editing a native page-reference label can lose text
 

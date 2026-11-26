@@ -380,3 +380,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | `NotesWidgetColorPalette.qml` timer and positioning connections | Source fix removes the 40 ms poll, resolves the nearest ancestor `Flickable`, observes `contentX`/`contentY`, and disconnects on close | Focused `qmllint` passes without diagnostics and the native app target builds. Runtime anchoring during scroll and idle resource use were not captured; nested editor behavior remains open under QT-NOTES-057. |
+
+
+### Linked calendar event identity lookup re-review (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `CalendarEventWidgetState.qml::syncFromCore()` caller and API scan | Passed: source now calls only `getCalendarEvent(eventId)` and has no `getCalendarEvents()` fallback | Prevents per-widget full-list scans and respects Core's indexed identity query independent of its 300-row list page. This is source evidence; create/update/delete refresh and >300-record resolution still require runtime acceptance. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/CalendarEventWidgetState.qml` | Exit code 0 with an existing `QtObject` default-property warning at the `Connections` block | The warning is not introduced by this edit; do not treat a zero exit code as warning-free. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Native target compiles. This does not exercise linked record lookup or signal refresh at runtime. |
