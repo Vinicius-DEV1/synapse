@@ -46,6 +46,44 @@ pub unsafe extern "C" fn synapse_quiz_create_battery(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_create_battery_for_page(
+    db: *mut Database,
+    title: *const c_char,
+    description: *const c_char,
+    page_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || title.is_null() || page_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let Some(title_str) = to_opt_str(title) else {
+        return std::ptr::null_mut();
+    };
+    let Some(page_id_str) = to_opt_str(page_id) else {
+        return std::ptr::null_mut();
+    };
+    let description_str = to_opt_str(description);
+
+    match QuizRepository::create_quiz_battery_for_page(
+        &*db,
+        title_str,
+        description_str,
+        page_id_str,
+    ) {
+        Ok(id) => match CString::new(id) {
+            Ok(value) => value.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(error) => {
+            eprintln!(
+                "[Synapse Bridge] create_quiz_battery_for_page failed: {}",
+                error
+            );
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_quiz_update_battery(
     db: *mut Database,
     battery_id: *const c_char,

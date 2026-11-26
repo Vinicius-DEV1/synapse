@@ -7,6 +7,28 @@ class NativeQuestionsTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void noteBatteryCreationReturnsPersistedCoreIdentityAndRejectsMissingPage() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(sandbox.filePath("notes-question-battery.sqlite")));
+        const QString pageId = controller.createSubPage(QString(), "Question notes page");
+        QVERIFY(!pageId.isEmpty());
+
+        const QString batteryId = controller.createNoteQuizBattery(
+            "Notes question battery", QString(), pageId);
+        QVERIFY(!batteryId.isEmpty());
+        const QVariantList batteries = controller.getQuizBatteries();
+        QCOMPARE(batteries.size(), 1);
+        QCOMPARE(batteries.first().toMap().value("id").toString(), batteryId);
+        QCOMPARE(batteries.first().toMap().value("title").toString(),
+                 QString("Notes question battery"));
+        QVERIFY(controller.createNoteQuizBattery(
+            "Orphan battery", QString(), "missing-notes-page").isEmpty());
+        QCOMPARE(controller.getQuizBatteries().size(), 1);
+    }
+
     void questionAttemptsPersistAndErrorNotebookUsesLatestAnswer() {
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());

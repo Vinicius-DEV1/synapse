@@ -1,4 +1,5 @@
 #include <QtGui/QGuiApplication>
+#include <cstring>
 
 int runNativeNotesTest(int argc, char **argv);
 int runNativeNotesLinkVaultTest(int argc, char **argv);
@@ -37,6 +38,10 @@ int runNativePracticeTest(int argc, char **argv);
 
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
+    if (argc > 1 && std::strcmp(argv[1], "--suite=questions") == 0) {
+        return runNativeQuestionsTest(argc - 1, argv + 1);
+    }
+
     int result = 0;
     result |= runNativeNotesTest(argc, argv);
     result |= runNativeNotesLinkVaultTest(argc, argv);

@@ -8,6 +8,7 @@ ColumnLayout {
 
     property var controller: null
     property string mode: ""
+    property string pageId: ""
     property var listItems: []
     property string searchFilter: ""
     property string errorMessage: ""
@@ -140,9 +141,13 @@ ColumnLayout {
             } else {
                 errorMessage = qsTr("Não foi possível criar o hábito.")
             }
-        } else if (mode === "question" && typeof c.createQuizBattery === "function") {
+        } else if (mode === "question") {
             errorMessage = ""
-            var batteryId = c.createQuizBattery(title, "")
+            if (typeof c.createNoteQuizBattery !== "function") {
+                errorMessage = qsTr("Não foi possível criar ou vincular a bateria à página atual.")
+                return
+            }
+            var batteryId = c.createNoteQuizBattery(title, "", pageId)
             if (batteryId) {
                 var safeBatteryId = HtmlEscaping.escapeHtmlAttribute(batteryId)
                 var safeBatteryTitle = HtmlEscaping.escapeHtmlAttribute(title)
@@ -151,6 +156,8 @@ ColumnLayout {
                     safeBatteryId + "\" data-cached-title=\"" + safeBatteryTitle +
                     "\" data-title=\"" + safeBatteryTitle + "\"></div>")
                 closeRequested()
+            } else {
+                errorMessage = qsTr("Não foi possível criar ou vincular a bateria à página atual.")
             }
         }
     }

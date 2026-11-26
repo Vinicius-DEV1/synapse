@@ -71,3 +71,65 @@ fn test_quiz_lifecycle_and_error_notebook() {
     assert_eq!(stats.reviewable_incorrect_questions, 0);
     assert_eq!(stats.accuracy_rate, 100);
 }
+
+#[test]
+fn test_create_quiz_battery_for_page_persists_sequential_battery_and_link_atomically() {
+    let temp_db = NamedTempFile::new().unwrap();
+    let db = Database::open(temp_db.path()).unwrap();
+    {
+        let conn = db.lock().unwrap();
+        conn.execute(
+            "INSERT INTO pages (id, title) VALUES ('page-notes-1', 'Notes page')",
+            [],
+        )
+        .unwrap();
+    }
+
+    let battery_id = QuizRepository::create_quiz_battery_for_page(
+        &db,
+        "Question battery",
+        Some("Created from Notes"),
+        "page-notes-1",
+    )
+    .unwrap();
+    let conn = db.lock().unwrap();
+    let (page_id, title, description, layout): (String, String, String, String) = conn
+        .query_row(
+            "SELECT page_id, title, description, layout FROM quiz_batteries WHERE id = ?",
+            [&battery_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .unwrap();
+    assert_eq!(page_id, "page-notes-1");
+    assert_eq!(title, "Question battery");
+    assert_eq!(description, "Created from Notes");
+    assert_eq!(layout, "sequential");
+
+    let link_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM quiz_page_links WHERE battery_id = ? AND page_id = ?",
+            [&battery_id, &page_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(link_count, 1);
+}
+
+#[test]
+fn test_create_quiz_battery_for_page_rejects_missing_page_without_partial_battery() {
+    let temp_db = NamedTempFile::new().unwrap();
+    let db = Database::open(temp_db.path()).unwrap();
+
+    let result =
+        QuizRepository::create_quiz_battery_for_page(&db, "Orphan battery", None, "missing-page");
+    assert!(result.is_err());
+    let conn = db.lock().unwrap();
+    let battery_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM quiz_batteries", [], |row| row.get(0))
+        .unwrap();
+    let link_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM quiz_page_links", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(battery_count, 0);
+    assert_eq!(link_count, 0);
+}

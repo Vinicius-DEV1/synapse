@@ -100,6 +100,25 @@ bool SynapseDataController::createQuizBattery(const QString &title, const QStrin
     return true;
 }
 
+QString SynapseDataController::createNoteQuizBattery(const QString &title,
+                                                     const QString &description,
+                                                     const QString &pageId) {
+    if (!m_db || title.trimmed().isEmpty() || pageId.trimmed().isEmpty()) return QString();
+    QByteArray titleUtf8 = title.trimmed().toUtf8();
+    QByteArray descriptionUtf8 = description.trimmed().toUtf8();
+    QByteArray pageIdUtf8 = pageId.trimmed().toUtf8();
+    char* idRaw = synapse_quiz_create_battery_for_page(
+        m_db,
+        titleUtf8.constData(),
+        descriptionUtf8.isEmpty() ? nullptr : descriptionUtf8.constData(),
+        pageIdUtf8.constData());
+    if (!idRaw) return QString();
+    const QString batteryId = QString::fromUtf8(idRaw);
+    synapse_free_string(idRaw);
+    refreshStats();
+    return batteryId;
+}
+
 bool SynapseDataController::updateQuizBattery(const QString &batteryId, const QString &title, const QString &description) {
     if (!m_db || batteryId.trimmed().isEmpty() || title.trimmed().isEmpty()) return false;
     QByteArray idUtf8 = batteryId.trimmed().toUtf8();

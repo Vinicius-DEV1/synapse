@@ -54,6 +54,16 @@ impl QuizRepository {
         batteries::create_quiz_battery(conn, title, description)
     }
 
+    pub fn create_quiz_battery_for_page(
+        db: &Database,
+        title: &str,
+        description: Option<&str>,
+        page_id: &str,
+    ) -> Result<String> {
+        let mut conn = db.lock().map_err(SynapseError::Database)?;
+        batteries::create_quiz_battery_for_page(&mut conn, title, description, page_id)
+    }
+
     pub fn update_quiz_battery(
         db: &Database,
         battery_id: &str,

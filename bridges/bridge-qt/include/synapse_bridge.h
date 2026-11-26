@@ -107,6 +107,7 @@ char* synapse_habits_resolve_date_from_title(const char* page_title, const char*
 char* synapse_quiz_get_batteries(Database* db);
 char* synapse_quiz_get_battery_tree(Database* db);
 char* synapse_quiz_create_battery(Database* db, const char* title, const char* description);
+char* synapse_quiz_create_battery_for_page(Database* db, const char* title, const char* description, const char* page_id);
 char* synapse_quiz_create_child_battery(Database* db, const char* parent_id, const char* title, const char* description);
 char* synapse_quiz_get_available_parent_options(Database* db, const char* moving_battery_id);
 int synapse_quiz_move_battery(Database* db, const char* battery_id, const char* new_parent_id);

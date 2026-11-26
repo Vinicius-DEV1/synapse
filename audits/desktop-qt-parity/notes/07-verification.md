@@ -533,6 +533,18 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes question-battery create and page link (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo test -p synapse-core test_create_quiz_battery_for_page -- --nocapture` | Passed: 2 focused tests, 0 failures. Verifies sequential layout, page ID, actual battery identity in `quiz_page_links`, and no partial rows for an invalid page. | Exercises Core persistence with an initialized temporary SQLite database. Does not invoke the C ABI or desktop note save/reopen. |
+| `cargo build --release -p synapse-bridge-qt` and exported-symbol check for `synapse_quiz_create_battery_for_page` | Passed; Rust bridge exports the new Notes-specific creator. | Build/export validation; C++ caller compilation is recorded below. |
+| `qmltestrunner` for `tst_notes_question_picker.qml` | Passed: 3 behavior cases (5 QtTest totals including setup/cleanup), 0 failures. Covers page context, actual returned ID serialization, existing ID selection and error feedback with a mock controller. | Qt 6.10.2, offscreen. Does not exercise the actual Core controller through QML or saved-note reopen. |
+| Focused native controller/bridge test via `synapse-desktop-tests --suite=questions noteBatteryCreationReturnsPersistedCoreIdentityAndRejectsMissingPage` | Passed: 1 behavior case (3 QtTest totals including setup/cleanup), 0 failures. Creates a real Notes page, creates and resolves a battery through the controller/Core bridge, and verifies an invalid page does not add another battery. | The aggregate native test executable now supports `--suite=questions` so only the in-scope test executes. Core tests separately verify the actual stored layout and link row. |
+| Focused `qmllint` for `NotesSetupWidgetPickerPanel.qml` and `NotesSetupWidgetsModal.qml` | Passed: exit 0, no warnings. | Static QML checks only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: Desktop Qt target linked with the updated bridge. | Build validation only; no live UI interaction or persistence round-trip. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes Alarm setup hierarchy and routes (2026-11-26)
 
 | Check | Result | Scope and limits |

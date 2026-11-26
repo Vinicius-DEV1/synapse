@@ -51,6 +51,54 @@ pub fn create_quiz_battery(
     Ok(id)
 }
 
+/// Creates a Notes question battery and its page link as one database operation.
+pub fn create_quiz_battery_for_page(
+    conn: &mut rusqlite::Connection,
+    title: &str,
+    description: Option<&str>,
+    page_id: &str,
+) -> Result<String> {
+    let trimmed_title = title.trim();
+    let trimmed_page_id = page_id.trim();
+    if trimmed_title.is_empty() {
+        return Err(SynapseError::Validation(
+            "Battery title cannot be empty".into(),
+        ));
+    }
+    if trimmed_page_id.is_empty() {
+        return Err(SynapseError::Validation("Page ID cannot be empty".into()));
+    }
+
+    let transaction = conn.transaction()?;
+    let page_exists: bool = transaction.query_row(
+        "SELECT EXISTS(SELECT 1 FROM pages WHERE id = ? AND deleted_at IS NULL)",
+        [trimmed_page_id],
+        |row| row.get(0),
+    )?;
+    if !page_exists {
+        return Err(SynapseError::NotFound("Notes page was not found".into()));
+    }
+
+    let battery_id = uuid::Uuid::new_v4().to_string();
+    let link_id = uuid::Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    let desc = description.unwrap_or("").trim();
+
+    transaction.execute(
+        "INSERT INTO quiz_batteries (id, page_id, title, description, layout, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'sequential', 0, ?, ?)",
+        params![battery_id, trimmed_page_id, trimmed_title, desc, now, now],
+    )?;
+    transaction.execute(
+        "INSERT INTO quiz_page_links (id, battery_id, page_id, created_at)
+         VALUES (?, ?, ?, ?)",
+        params![link_id, battery_id, trimmed_page_id, now],
+    )?;
+    transaction.commit()?;
+
+    Ok(battery_id)
+}
+
 pub fn update_quiz_battery(
     conn: &rusqlite::Connection,
     battery_id: &str,

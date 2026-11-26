@@ -127,6 +127,7 @@ Item {
                 visible: setupRoot.activeMode !== "alarme" && setupRoot.activeMode !== "foco"
                 mode: setupRoot.activeMode
                 controller: setupRoot.controller
+                pageId: setupRoot.pageId
                 listItems: setupRoot.listItems
                 searchFilter: setupRoot.searchFilter
                 Layout.fillWidth: true
