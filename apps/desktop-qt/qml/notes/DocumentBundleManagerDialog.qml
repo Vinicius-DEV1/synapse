@@ -47,9 +47,15 @@ Dialog {
 
     function moveItem(index, delta) {
         var targetIndex = index + delta
-        if (index < 0 || index >= bundleItems.length || targetIndex < 0 || targetIndex >= bundleItems.length) return
+        moveItemTo(index, targetIndex)
+    }
+
+    function moveItemTo(sourceIndex, targetIndex) {
+        if (sourceIndex < 0 || sourceIndex >= bundleItems.length ||
+                targetIndex < 0 || targetIndex >= bundleItems.length ||
+                sourceIndex === targetIndex) return
         var nextItems = bundleItems.slice()
-        var moved = nextItems.splice(index, 1)[0]
+        var moved = nextItems.splice(sourceIndex, 1)[0]
         nextItems.splice(targetIndex, 0, moved)
         itemsReordered(nextItems)
     }
@@ -140,6 +146,9 @@ Dialog {
                 isFirst: index === 0
                 isLast: index === managerRoot.bundleItems.length - 1
                 onMoveRequested: function(itemIndex, delta) { managerRoot.moveItem(itemIndex, delta) }
+                onReorderRequested: function(sourceIndex, targetIndex) {
+                    managerRoot.moveItemTo(sourceIndex, targetIndex)
+                }
                 onPreviewRequested: function(fileId) {
                     var c = managerRoot.controller || null
                     if (fileId && c && typeof c.previewLocalFile === "function") c.previewLocalFile(fileId)

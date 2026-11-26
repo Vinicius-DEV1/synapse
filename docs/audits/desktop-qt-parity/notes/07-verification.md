@@ -184,3 +184,11 @@ For every checklist group, record:
 - Pass/fail result and relevant logs/screenshots.
 - Known limitation and linked bug ID.
 - Reviewer and date.
+
+### Native bundle drag-reorder iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml apps/desktop-qt/qml/notes/DocumentBundleManagerItem.qml` | Passed, exit code 0, no diagnostics | The native drag handle, matching drop targets, source-index MIME payload, arrow fallback and reorder signal parse. This does not exercise pointer movement, the drop target, delegate recreation, note autosave or persisted ordering. |
+| `git diff --check` | Passed | No whitespace errors in the drag-reorder implementation or parity documents. |
+| Runtime drag/drop, first/last boundaries, keyboard alternatives, order after save/reload and React round-trip | Not run | Keep manager acceptance unchecked until these interactions and same-viewport feedback are reviewed. |

@@ -10,8 +10,10 @@ Rectangle {
     required property int index
     property bool isFirst: false
     property bool isLast: false
+    property bool isDropTarget: false
 
     signal moveRequested(int itemIndex, int delta)
+    signal reorderRequested(int sourceIndex, int targetIndex)
     signal previewRequested(string fileId)
     signal ungroupRequested(string fileId)
     signal removeRequested(string fileId)
@@ -30,17 +32,66 @@ Rectangle {
 
     height: 58
     radius: 10
-    color: hoverHandler.hovered ? "#272632" : "#1c1b25"
-    border.color: hoverHandler.hovered ? "#33ffffff" : "#16ffffff"
+    color: isDropTarget ? "#302d1e55" : (hoverHandler.hovered ? "#272632" : "#1c1b25")
+    border.color: isDropTarget ? "#668b5cf6" : (hoverHandler.hovered ? "#33ffffff" : "#16ffffff")
     border.width: 1
+    opacity: dragHandleMouse.drag.active ? 0.55 : 1
+
+    Drag.active: dragHandleMouse.drag.active
+    Drag.dragType: Drag.Automatic
+    Drag.source: itemRoot
+    Drag.keys: ["synapse-document-bundle-item"]
+    Drag.mimeData: ({ "application/x-synapse-document-bundle-index": String(itemRoot.index) })
+    Drag.supportedActions: Qt.MoveAction
+    Drag.hotSpot.x: width / 2
+    Drag.hotSpot.y: height / 2
 
     HoverHandler { id: hoverHandler }
+
+    DropArea {
+        id: reorderDropArea
+        anchors.fill: parent
+        keys: ["synapse-document-bundle-item"]
+        onEntered: function(drag) {
+            itemRoot.isDropTarget = drag.source && drag.source !== itemRoot
+        }
+        onExited: itemRoot.isDropTarget = false
+        onDropped: function(drop) {
+            itemRoot.isDropTarget = false
+            var sourceIndex = Number(drop.getDataAsString("application/x-synapse-document-bundle-index"))
+            if (!isFinite(sourceIndex) || sourceIndex < 0 || sourceIndex === itemRoot.index) return
+            itemRoot.reorderRequested(sourceIndex, itemRoot.index)
+            drop.acceptProposedAction()
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 10
         anchors.rightMargin: 8
         spacing: 8
+
+        Item {
+            Layout.preferredWidth: 16
+            Layout.preferredHeight: 28
+            Accessible.name: qsTr("Arraste para reordenar")
+
+            Text {
+                anchors.centerIn: parent
+                text: "⋮⋮"
+                color: dragHandleMouse.drag.active ? "#e4e4e7" : (hoverHandler.hovered ? "#d4d4d8" : "#71717a")
+                font.pixelSize: 12
+            }
+
+            MouseArea {
+                id: dragHandleMouse
+                anchors.fill: parent
+                drag.target: itemRoot
+                drag.axis: Drag.YAxis
+                drag.threshold: 6
+                cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            }
+        }
 
         Rectangle {
             Layout.preferredWidth: 32
