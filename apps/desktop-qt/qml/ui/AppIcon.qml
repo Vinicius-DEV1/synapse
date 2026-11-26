@@ -266,6 +266,9 @@ Canvas {
             circle(10.5, 10.5, 6.5)
             line([15.5, 15.5, 21, 21])
             break
+        case "filter":
+            line([3, 4, 21, 4, 14, 12, 14, 20, 10, 22, 10, 12, 3, 4])
+            break
         case "plus":
             line([12, 5, 12, 19])
             line([5, 12, 19, 12])

@@ -11,6 +11,8 @@ TestCase {
 
     property int pickedColumn: -1
     property string selectedType: ""
+    property int filterUpdateCount: 0
+    property var emittedFilter: null
     property var popover: null
     property var tableGrips: null
 
@@ -77,6 +79,10 @@ TestCase {
                 testCase.pickedColumn = columnIndex
                 testCase.selectedType = columnType
             }
+            onFilterUpdated: function(columnIndex, filterObj) {
+                testCase.filterUpdateCount += 1
+                testCase.emittedFilter = filterObj
+            }
         }
     }
 
@@ -96,6 +102,8 @@ TestCase {
     function init() {
         pickedColumn = -1
         selectedType = ""
+        filterUpdateCount = 0
+        emittedFilter = null
         popover = createTemporaryObject(popoverComponent, testCase)
         verify(popover !== null)
         popover.columnIndex = 2
@@ -125,11 +133,100 @@ TestCase {
         compare(popover.width, 240)
         var typeButton = findVisualChild(popover.contentItem, "notesTableColumnType_number")
         verify(typeButton !== null)
+        compare(typeButton.focusPolicy, Qt.StrongFocus)
         mouseClick(typeButton, typeButton.width / 2, typeButton.height / 2)
         compare(pickedColumn, 2)
         compare(selectedType, "number")
         compare(popover.currentType, "number")
         compare(popover.visible, true)
+    }
+
+    function test_filterExpansionRepositionsPopoverAboveAnchor() {
+        popover.placementViewportWidth = 560
+        popover.placementAnchorLeft = 120
+        popover.placementAnchorTop = 60
+        var initialPopoverHeight = popover.implicitContentHeight + popover.topPadding + popover.bottomPadding
+        popover.placementViewportHeight = 60 + initialPopoverHeight + 8
+        popover.reposition()
+        compare(popover.x, 120)
+        compare(popover.y, 60)
+        var filterToggle = findVisualChild(popover.contentItem, "notesTableFilterToggle")
+        verify(filterToggle !== null)
+        mouseClick(filterToggle, filterToggle.width / 2, filterToggle.height / 2)
+        tryVerify(function() { return popover.y < 60 })
+        verify(popover.y >= 8)
+    }
+
+    function test_filterStartsCollapsedAndAppliesOnlyOnRequest() {
+        var filterEditor = findVisualChild(popover.contentItem, "notesTableFilterEditor")
+        var filterToggle = findVisualChild(popover.contentItem, "notesTableFilterToggle")
+        verify(filterEditor !== null)
+        verify(filterToggle !== null)
+        compare(filterEditor.visible, false)
+        mouseClick(filterToggle, filterToggle.width / 2, filterToggle.height / 2)
+        tryCompare(filterEditor, "visible", true)
+
+        var valueInput = findVisualChild(filterEditor, "notesTableFilterValue")
+        verify(valueInput !== null)
+        valueInput.text = "biology"
+        valueInput.textEdited()
+        compare(filterUpdateCount, 0)
+
+        var applyButton = findVisualChild(filterEditor, "notesTableFilterApply")
+        verify(applyButton !== null)
+        mouseClick(applyButton, applyButton.width / 2, applyButton.height / 2)
+        compare(filterUpdateCount, 1)
+        compare(emittedFilter.columnIndex, 2)
+        compare(emittedFilter.operator, "contains")
+        compare(emittedFilter.value, "biology")
+        compare(emittedFilter.value2, "")
+        popover.activeFilterObj = emittedFilter
+        var clearButton = findVisualChild(filterEditor, "notesTableFilterClear")
+        verify(clearButton !== null && clearButton.visible)
+        mouseClick(clearButton, clearButton.width / 2, clearButton.height / 2)
+        compare(valueInput.text, "")
+    }
+
+    function test_clearResetsAppliedFilterAndKeepsEditorExpanded() {
+        popover.activeFilterObj = { columnIndex: 2, operator: "contains", value: "draft", value2: "" }
+        var filterEditor = findVisualChild(popover.contentItem, "notesTableFilterEditor")
+        tryCompare(filterEditor, "visible", true)
+        var clearButton = findVisualChild(filterEditor, "notesTableFilterClear")
+        var valueInput = findVisualChild(filterEditor, "notesTableFilterValue")
+        verify(clearButton !== null && clearButton.visible)
+        verify(valueInput !== null)
+        mouseClick(clearButton, clearButton.width / 2, clearButton.height / 2)
+        compare(filterUpdateCount, 1)
+        compare(emittedFilter, null)
+        compare(filterEditor.visible, true)
+        compare(valueInput.text, "")
+    }
+
+    function test_selectCheckboxAndDateFiltersUseTypedControls() {
+        var filterEditor = findVisualChild(popover.contentItem, "notesTableFilterEditor")
+        var filterSection = findVisualChild(popover.contentItem, "notesTableColumnFilterSection")
+        verify(filterSection !== null)
+        var filterToggle = findVisualChild(popover.contentItem, "notesTableFilterToggle")
+        mouseClick(filterToggle, filterToggle.width / 2, filterToggle.height / 2)
+        tryCompare(filterEditor, "visible", true)
+        popover.selectOptions = ["Study", "Review"]
+
+        popover.currentType = "select"
+        var selectValue = findVisualChild(filterEditor, "notesTableFilterSelectValue")
+        verify(selectValue !== null && selectValue.visible)
+        compare(selectValue.options.length, 3)
+        compare(filterSection.operatorList.length, 4)
+
+        popover.currentType = "checkbox"
+        var checkboxValue = findVisualChild(filterEditor, "notesTableFilterCheckboxValue")
+        verify(checkboxValue !== null && checkboxValue.visible)
+        compare(filterSection.operatorList.length, 2)
+
+        popover.currentType = "date"
+        filterSection.draftOperator = "between"
+        var secondValue = findVisualChild(filterEditor, "notesTableFilterValueTo")
+        verify(secondValue !== null && secondValue.visible)
+        compare(filterSection.needsSecondValue, true)
     }
 
     function test_closeButtonDismissesPopover() {

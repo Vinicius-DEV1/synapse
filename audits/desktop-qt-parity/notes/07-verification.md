@@ -49,6 +49,15 @@ The current source audit, event-widget changes, Core cursor/entity fix, and nati
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesTableColumnTypePopover.qml` | Passed, exit code 0, with nested-component context-binding warnings | QML parses. The remaining warnings concern the existing outer-popup/delegate scope pattern; lint does not check screen-edge placement, keyboard focus or visual matching. |
 | Real table with multiple active filters, schema persistence/reload, React round-trip, edge placement and matched-viewport capture | Not run | Keep QT-NOTES-059 and its related [table checklist items](06-checklist.md#f-tables) open until these scenarios have application evidence. |
 
+### Table filter draft/apply iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_table_column_type_popover.qml -import apps/desktop-qt/qml` | Passed: 10 passed, 0 failed. Covers 240 px type grid, keyboard focus policy, filter section collapsed by default, draft not emitted until Apply, Clear and text reset, select/checkbox/date range controls, per-column filter removal, canonical schema update with unrelated filter re-projection, and repositioning after expanding the filter section. | Qt 6.10.2, offscreen. The persistent harness mounts actual Notes QML with mock Core/editor boundaries. It does not verify real row filtering, actual Core schema writes, note save/reload, native date picker equivalence, full keyboard traversal or same-viewport rendering. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Confirms native target links with the filter controls and shared operator-choice helper. Runtime table data behavior is not established. |
+| Focused `qmllint` on `TableColumnFilterSection.qml`, `TableFilterComboBox.qml`, `TableFilterOptions.js`, and `NotesTableColumnTypePopover.qml` | Passed, exit code 0, with nested-component context-binding warnings in the ComboBox and type-selector delegates | All files parse. Warnings do not test or prove popup position, keyboard flow or visual parity. |
+| Real table Apply/Clear, row visibility, multi-filter save/reload, date-picker comparison, keyboard-only path and matched-viewport capture | Not run | Keep QT-NOTES-059/060 and the related [table checklist items](06-checklist.md#f-tables) open until these cases have running-app evidence. |
+
 Exact focused QML lint command for this iteration:
 
 ```bash

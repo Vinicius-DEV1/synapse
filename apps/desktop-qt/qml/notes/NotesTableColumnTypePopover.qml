@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 import "../ui"
 import "components/table"
 
-// Upgraded column type + format + options + 13-operator filter popover mirroring TableColumnTypePopover.tsx.
+// Native column type, format and filter controls corresponding to TableColumnTypePopover.tsx.
 Popup {
     id: colTypePopup
     width: 240
@@ -17,6 +17,10 @@ Popup {
     property string numberFormat: "decimal"
     property string dateFormat: "YYYY-MM-DD"
     property var activeFilterObj: null
+    property real placementViewportWidth: 0
+    property real placementViewportHeight: 0
+    property real placementAnchorLeft: 0
+    property real placementAnchorTop: 0
 
     signal typeSelected(int columnIndex, string columnType, var optionsList, string numberFmt, string dateFmt)
     signal typePicked(int columnIndex)
@@ -24,9 +28,18 @@ Popup {
     signal insertColumnRequested(bool right)
     signal deleteColumnRequested()
 
+    function reposition() {
+        var popoverHeight = implicitContentHeight + topPadding + bottomPadding
+        x = Math.max(8, Math.min(placementViewportWidth - width - 8, placementAnchorLeft))
+        y = placementAnchorTop + popoverHeight <= placementViewportHeight - 8
+            ? placementAnchorTop
+            : Math.max(8, placementAnchorTop - popoverHeight - 8)
+    }
+
     background: Rectangle { color: "#f21a1924"; radius: 12; border.color: "#18ffffff" }
 
     contentItem: ColumnLayout {
+        onImplicitHeightChanged: if (colTypePopup.visible) Qt.callLater(function() { colTypePopup.reposition() })
         spacing: 6
 
         RowLayout {
@@ -74,7 +87,7 @@ Popup {
                     objectName: "notesTableColumnType_" + modelData.id
                     Layout.fillWidth: true
                     Layout.preferredHeight: 46
-                    focusPolicy: Qt.NoFocus
+                    focusPolicy: Qt.StrongFocus
                     Accessible.name: modelData.label
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.id === "text" ? qsTr("Texto livre")
@@ -88,8 +101,8 @@ Popup {
                     }
                     background: Rectangle {
                         radius: 8
-                        color: colTypePopup.currentType === modelData.id ? "#338b5cf6" : (typeButton.hovered ? "#0dffffff" : "transparent")
-                        border.color: colTypePopup.currentType === modelData.id ? "#668b5cf6" : "transparent"
+                        color: colTypePopup.currentType === modelData.id ? "#338b5cf6" : (typeButton.hovered || typeButton.visualFocus ? "#0dffffff" : "transparent")
+                        border.color: colTypePopup.currentType === modelData.id ? "#668b5cf6" : (typeButton.visualFocus ? "#668b5cf6" : "transparent")
                         border.width: 1
                     }
                     contentItem: ColumnLayout {
@@ -145,10 +158,13 @@ Popup {
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#0cffffff" }
 
         TableColumnFilterSection {
+            objectName: "notesTableColumnFilterSection"
+            columnIndex: colTypePopup.columnIndex
             columnType: colTypePopup.currentType
             filterObj: colTypePopup.activeFilterObj
             selectOptions: colTypePopup.selectOptions
             onFilterUpdated: function(obj) { colTypePopup.filterUpdated(colTypePopup.columnIndex, obj) }
+            onExpandToggleRequested: Qt.callLater(function() { colTypePopup.reposition() })
         }
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#0cffffff" }

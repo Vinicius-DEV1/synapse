@@ -223,13 +223,11 @@ Item {
                                 colTypePopover.numberFormat = (colGripItem.cfg && colGripItem.cfg.number_format) ? colGripItem.cfg.number_format : "decimal"
                                 colTypePopover.dateFormat = (colGripItem.cfg && colGripItem.cfg.date_format) ? colGripItem.cfg.date_format : "YYYY-MM-DD"
                                 colTypePopover.activeFilterObj = gripsRoot.activeFilters[colGripItem.index] || null
-                                var popoverHeight = colTypePopover.implicitContentHeight + colTypePopover.topPadding + colTypePopover.bottomPadding
-                                var anchorX = gripsRoot.tableGeom.x + colGripItem.x
-                                var anchorY = gripsRoot.tableGeom.y + 4
-                                colTypePopover.x = Math.max(8, Math.min(gripsRoot.width - colTypePopover.width - 8, anchorX))
-                                colTypePopover.y = anchorY + popoverHeight <= gripsRoot.height - 8
-                                    ? anchorY
-                                    : Math.max(8, gripsRoot.tableGeom.y - popoverHeight - 4)
+                                colTypePopover.placementViewportWidth = gripsRoot.width
+                                colTypePopover.placementViewportHeight = gripsRoot.height
+                                colTypePopover.placementAnchorLeft = gripsRoot.tableGeom.x + colGripItem.x
+                                colTypePopover.placementAnchorTop = gripsRoot.tableGeom.y + 4
+                                colTypePopover.reposition()
                                 colTypePopover.open()
                             }
                             gripsRoot.dragColIndex = -1; gripsRoot.dropColIndex = -1; dragged = false

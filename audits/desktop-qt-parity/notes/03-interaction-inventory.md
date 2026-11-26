@@ -22,6 +22,8 @@ Review: row and column insertion, deletion, move, resize, schema type, select op
 
 Current typed filters in Core include text matching, equality, numeric comparison/ranges, date comparison/ranges, checkbox matching, empty and not-empty. Compare each operator and localized UI label with `apps/web-react/src/components/notes/hooks/useTableFilter.ts` and `components/table/TableColumnTypePopover.tsx`.
 
+React keeps “Filtrar Coluna” collapsed until expanded or an active filter exists; value edits are drafts until Apply, and Clear resets the draft and active filter. Qt now mirrors this lifecycle with typed select/checkbox controls and a date text field. The latter still differs from React's native date input; compare calendar selection, accepted formatting and keyboard behavior in the running app.
+
 ## Slash command execution
 
 | React command | Expected result to compare |

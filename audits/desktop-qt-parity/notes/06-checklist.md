@@ -109,6 +109,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Support multiple tables in a single rich slice and multiple slices without cross-table effects.
 - [ ] Compare each text/number/date/select/checkbox filter operator, empty handling, locale parsing and date/number format.
 - [x] Make the Qt typed-column selector use React's 240 px three-column layout and close control; selecting a type clears only its own filter, preserves other filters through the schema write, and recalculates/restores the read-only projection. Persistent offscreen QML coverage passes; see QT-NOTES-059.
+- [x] Match the collapsed “Filtrar Coluna” section, local draft state, explicit Apply/Clear actions, typed select/checkbox inputs, and repositioning when the section expands. Persistent offscreen QML coverage passes; see QT-NOTES-060.
+- [ ] Compare Qt's date text inputs with React's native date inputs, including localized calendar selection, keyboard use, validation, and between ranges.
 - [ ] In the running app, apply filters to two columns, change one column's type, and verify only that column's filter clears while the other filter and visible rows remain correct through save, reload and React round-trip.
 - [ ] Compare the column-type popover at left/right/top/bottom editor edges and at matched viewport/DPI; verify clamping, flipping, selected and hover states, Escape/outside close, keyboard focus and accessible labels.
 - [ ] Compare clear-one/clear-all filter behavior and result counts with React.
