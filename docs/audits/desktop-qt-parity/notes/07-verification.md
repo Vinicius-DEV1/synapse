@@ -379,7 +379,7 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 
 | Check | Result | Scope and limits |
 | --- | --- | --- |
-| `NotesWidgetColorPalette.qml` timer and positioning connections | Source fix removes the 40 ms poll, resolves the nearest ancestor `Flickable`, observes `contentX`/`contentY`, and disconnects on close | Focused `qmllint` passes without diagnostics and the native app target builds. Runtime anchoring during scroll and idle resource use were not captured; nested editor behavior remains open under QT-NOTES-057. |
+| `NotesWidgetColorPalette.qml` timer and positioning connections | Source fix removes the 40 ms poll, resolves the nearest ancestor `Flickable`, observes `contentX`/`contentY`, performs a one-shot update after popup opening, and disconnects on close | Focused `qmllint` passes without diagnostics and the native app target builds. An isolated harness verifies top-edge flip, vertical-scroll repositioning and observer cleanup. Horizontal scroll, resize, real nested editor behavior and idle resource profiling remain open under QT-NOTES-057. |
 
 
 ### Linked calendar event identity lookup re-review (2026-11-26)
@@ -410,3 +410,11 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | Internal Markdown links and backtick-quoted repository source paths across the 12 Notes audit documents | Passed; 0 missing targets | The source-path scan covered quoted `.qml`, `.cpp`, `.h`, `.rs`, `.tsx`, `.ts`, and `.js` repository paths. This verifies link/path existence only, not that each cited source still proves its associated claim. |
+
+
+### Palette positioning QML interaction harness (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Temporary `qmltestrunner` `TestCase` with `ApplicationWindow`, `Flickable`, anchor at y=500, and `NotesWidgetColorPalette` | Passed: 3 passed, 0 failed. With a 600×600 window the popup opens above at y=390, then after `contentY=100` flips below at y=436; closing clears the `scrollViewport` reference. | Ran with Qt 6.10.2 and `QT_QPA_PLATFORM=offscreen`; the test file lived in a temporary directory and was not added to the repository. Covers one vertical scroll viewport and edge-flip path, not a real Notes page, horizontal scrolling, resize, high DPI, focus/dismissal, or visual parity. |
+| Focused `qmllint` and `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` after initial-position fix | Passed; no focused lint diagnostics, build exit code 0 | Confirms QML syntax and native target compilation only. |
