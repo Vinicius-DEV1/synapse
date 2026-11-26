@@ -21,15 +21,15 @@ find apps/desktop-qt/qml/notes \
 
 | Lines | File |
 | ---: | --- |
-| 677 | `apps/desktop-qt/qml/notes/BlockListEditor.qml` |
+| 715 | `apps/desktop-qt/qml/notes/BlockListEditor.qml` |
 | 522 | `apps/desktop-qt/qml/notes/NotesRichTextInput.qml` |
 | 437 | `apps/desktop-qt/qml/notes/NotesToggleBlock.qml` |
 | 393 | `apps/desktop-qt/qml/notes/NotesRichTextEditor.qml` |
 | 353 | `apps/desktop-qt/qml/notes/BlockDelegateRouter.qml` |
 | 350 | `apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml` |
 | 344 | `apps/desktop-qt/qml/notes/QuestionBlock.qml` |
-| 340 | `apps/desktop-qt/qml/notes/NotesColumnLayout.qml` |
 | 340 | `apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml` |
+| 340 | `apps/desktop-qt/qml/notes/NotesColumnLayout.qml` |
 | 325 | `apps/desktop-qt/qml/notes/LinkPreviewCard.qml` |
 | 322 | `apps/desktop-qt/qml/notes/NotesTableExcelGrips.qml` |
 | 317 | `apps/desktop-qt/qml/notes/YouTubeWatchModal.qml` |
@@ -68,6 +68,10 @@ find apps/desktop-qt/qml/notes \
 | 332 | `bridges/bridge-qt/src/domain/notes/table_ast_ffi.rs` |
 
 Total: **30 files** above the source-length target in this scoped scan.
+
+## Recent decomposition check
+
+`FileAttachmentWidget.qml` now delegates identity, rename, toolbar actions, and selected-widget keyboard handling to focused sibling components. Current line counts are 298 lines for the Core-backed widget, 106 for `FileAttachmentRenameEditor.qml`, 72 for `FileAttachmentIdentity.qml`, 72 for `FileAttachmentActionBar.qml`, and 21 for `FileAttachmentKeyboardActions.qml`; all are below the target. The extracted keyboard scope parses and the native app target builds, but preview-return focus and key routing still need runtime acceptance.
 
 ## Decomposition requirements
 
