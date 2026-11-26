@@ -483,6 +483,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** After cancel and after Core refresh, each rename starts from the latest resolved name. Verify basename selection for one- and multi-dot extensions, full selection for dotfiles/extensionless names, Enter, Escape, retry after failure, and both rename entry points.
 - **Fix status:** `FileAttachmentWidget.qml::startRename()` now resets the field from the current widget name on each opening, focuses it on the next Qt event turn, and mirrors React's selection rule. Focused `qmllint` passes; runtime text-edit, focus and selection acceptance remains open.
 
+## QT-NOTES-052: Hover actions are not reachable from the keyboard
+
+- **Severity:** Medium; several Notes widget actions declared `Qt.NoFocus`, and the document-bundle action row was disabled until mouse hover, so keyboard users could not reach the same rename, color, manager, add, expand and removal controls exposed as ordinary React buttons.
+- **Evidence:** `FileAttachmentWidget.qml` marked rename, color, delete and inline rename buttons as `Qt.NoFocus`. `DocumentBundleWidgetActions.qml` marked all actions as `Qt.NoFocus` and bound the entire row's `enabled` state to hover, palette-open or expanded state. The corresponding React controls are native focusable `<button>` elements.
+- **Reproduction:** Move keyboard focus through a note containing a file widget and document bundle. Attempt to focus and activate rename, color, deletion, manager, expansion and add actions without moving the pointer.
+- **Root cause:** The native hover treatment disabled or excluded the controls from the Qt tab-focus chain, and custom button backgrounds did not expose a focus indicator.
+- **Required fix:** Make the widget actions keyboard-focusable, keep their action eligibility independent from hover, reveal hidden toolbars when a child has focus, and show a visible focus state while preserving hover behavior and invalid-metadata restrictions.
+- **Acceptance:** Tab and Shift+Tab through each widget; verify hidden actions become visible before activation, focus indicators and accessible names are announced, Enter/Space activate the intended action once, the palette stays keyboard-operable, disabled invalid-metadata actions remain unavailable, and focus returns appropriately after dialogs.
+- **Fix status:** File and bundle actions now use `Qt.TabFocus`; file rename confirmation/cancel buttons have accessible names; bundle action eligibility no longer depends on hover; both toolbars reveal on keyboard focus and style the focused control. Focused `qmllint` passes; runtime traversal, activation and focus restoration remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

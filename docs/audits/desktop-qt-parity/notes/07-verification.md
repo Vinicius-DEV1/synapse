@@ -295,3 +295,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/FileAttachmentWidget.qml` | Passed, exit code 0 | Confirms the updated rename-start helper parses. This does not instantiate the `TextField` or execute focus and selection behavior. |
 | `git diff --check` | Passed after the implementation and audit updates | No whitespace errors in the rename-editor change or its parity records. |
 | Runtime cancel/reopen, Core refresh, extension selection, focus and cross-client acceptance | Not run | Verify current-name reset and React-equivalent selection for ordinary, dotfile, extensionless and multi-dot names before closing QT-NOTES-051. |
+
+### Notes widget keyboard-action iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/FileAttachmentWidget.qml apps/desktop-qt/qml/notes/DocumentBundleWidgetActions.qml` | Passed, exit code 0 | Confirms both updated action components parse. This does not exercise tab focus, accessibility announcements or button activation. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app target after the QML resource changes. This does not instantiate widgets or validate keyboard interaction. |
+| `git diff --check` | Passed after source and audit updates | No whitespace errors in the widget action changes or their parity records. |
+| Runtime Tab/Shift+Tab traversal, focus reveal, Enter/Space activation and dialog return focus | Not run | These scenarios remain open before closing QT-NOTES-052. |
