@@ -501,7 +501,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The Qt widget used a single-line ellipsized title and fixed preferred height instead of the React row's wrapping text and content-driven height.
 - **Required fix:** Wrap the title at word boundaries, let the widget grow while keeping a 44 px minimum row, and match the 32 px icon badge and 12 px icon/title gap without changing the Core attribute contract.
 - **Acceptance:** Verify ordinary names retain the same minimum geometry; long spaced and unbroken names remain fully readable at wide and narrow editor widths; wrapped text does not overlap the rename/color/delete controls or following blocks; Qt save/reopen and React round-trip preserve the exact filename.
-- **Fix status:** Qt uses `Text.WordWrap`, sizes the parent from the row's implicit height with a 44 px minimum, and matches the source icon and gap measurements. Focused `qmllint` and the native app build pass; same-viewport visual, narrow-width and cross-client acceptance remains open.
+- **Fix status:** Qt uses `Text.WrapAtWordBoundaryOrAnywhere`, sizes the parent from the row's implicit height with a 44 px minimum, and matches the source icon and gap measurements. The explicit wrap mode also handles unbroken filenames. Focused `qmllint` and the native app build pass; same-viewport visual, narrow-width and cross-client acceptance remains open.
 
 ## Second-pass review
 
