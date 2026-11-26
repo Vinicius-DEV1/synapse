@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesColorUtils.js" as NotesColorUtils
 import ".."
 
 Popup {
@@ -76,7 +77,7 @@ Popup {
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     radius: 8
-                    color: popoverRoot.resolvedColor + "25"
+                    color: NotesColorUtils.withHexAlpha(popoverRoot.resolvedColor, "25")
 
                     AppIcon {
                         anchors.centerIn: parent

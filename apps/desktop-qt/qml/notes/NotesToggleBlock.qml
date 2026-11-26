@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesColorUtils.js" as NotesColorUtils
 import "../ui"
 
 Rectangle {
@@ -10,7 +11,7 @@ Rectangle {
     implicitHeight: mainCol.implicitHeight + (isCalloutMode ? 20 : 8)
     radius: isCalloutMode ? 6 : 0
     color: isCalloutMode
-        ? (hasCustomColor ? (accentColor + "18") : "#0dffffff")
+        ? (hasCustomColor ? NotesColorUtils.withHexAlpha(accentColor, "18") : "#0dffffff")
         : "transparent"
     border.width: 0
 

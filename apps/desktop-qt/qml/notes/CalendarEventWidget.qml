@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesColorUtils.js" as NotesColorUtils
 import "../ui"
 
 Rectangle {
@@ -37,7 +38,7 @@ Rectangle {
             : (isLive
                 ? (hoverHandler.hovered ? "#33f59e0b" : "#1af59e0b")
                 : (hasCustomColor
-                    ? (eventColor + "18")
+                    ? NotesColorUtils.withHexAlpha(eventColor, "18")
                     : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6"))))
     border.color: isMissingEvent
         ? (hoverHandler.hovered || isPopoverOpen ? "#ef4444" : "#66ef4444")
@@ -46,7 +47,7 @@ Rectangle {
             : (isLive
                 ? (hoverHandler.hovered || isPopoverOpen ? "#f59e0b" : "#66f59e0b")
                 : (hasCustomColor
-                    ? (hoverHandler.hovered || isPopoverOpen ? eventColor : (eventColor + "60"))
+                    ? (hoverHandler.hovered || isPopoverOpen ? eventColor : NotesColorUtils.withHexAlpha(eventColor, "60"))
                     : (hoverHandler.hovered || isPopoverOpen ? "#808b5cf6" : "#4d8b5cf6"))))
     border.width: 1
     opacity: isCompleted ? 0.82 : (isLive ? livePulseOpacity : 1.0)

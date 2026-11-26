@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import "DocumentBundleOperations.js" as DocumentBundleOperations
+import "NotesColorUtils.js" as NotesColorUtils
 
 Rectangle {
     id: bundleWidgetRoot
@@ -56,10 +57,10 @@ Rectangle {
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
 
     color: hasCustomColor
-        ? (accentColor + "18")
+        ? NotesColorUtils.withHexAlpha(accentColor, "18")
         : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")
     border.color: hasCustomColor
-        ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
+        ? (hoverHandler.hovered ? accentColor : NotesColorUtils.withHexAlpha(accentColor, "60"))
         : "#338b5cf6"
     border.width: activeFocus ? 2 : 1
     Behavior on color { ColorAnimation { duration: 150 } }

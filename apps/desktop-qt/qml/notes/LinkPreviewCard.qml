@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesColorUtils.js" as NotesColorUtils
 import "../ui"
 
 Rectangle {
@@ -37,10 +38,10 @@ Rectangle {
     }
 
     color: hasCustomColor
-        ? (accentColor + "18")
+        ? NotesColorUtils.withHexAlpha(accentColor, "18")
         : (hoverHandler.hovered ? "#201f2d" : "#1a1924")
     border.color: hasCustomColor
-        ? (hoverHandler.hovered ? accentColor : (accentColor + "60"))
+        ? (hoverHandler.hovered ? accentColor : NotesColorUtils.withHexAlpha(accentColor, "60"))
         : (hoverHandler.hovered ? "#33ffffff" : "#1affffff")
     border.width: 1
     Behavior on color { ColorAnimation { duration: 150 } }

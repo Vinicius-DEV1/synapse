@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesColorUtils.js" as NotesColorUtils
 import "../ui"
 
 Rectangle {
@@ -32,19 +33,19 @@ Rectangle {
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default" && !isNotFound
     readonly property color selectionRingColor: isNotFound
         ? "#ef444480"
-        : (hasCustomColor ? accentColor + "80" : "#a78bfa")
+        : (hasCustomColor ? NotesColorUtils.withHexAlpha(accentColor, "80") : "#a78bfa")
 
     color: isNotFound
         ? (hoverHandler.hovered ? "#33ef4444" : "#1aef4444")
         : (hasCustomColor
-            ? (accentColor + "18")
+            ? NotesColorUtils.withHexAlpha(accentColor, "18")
             : (isLink
                 ? (hoverHandler.hovered ? "#333b82f6" : "#1a3b82f6")
                 : (hoverHandler.hovered ? "#338b5cf6" : "#1a8b5cf6")))
     border.color: isNotFound
         ? (isSelected ? "#ef4444" : (hoverHandler.hovered ? "#b3ef4444" : "#66ef4444"))
         : (hasCustomColor
-            ? (isSelected ? accentColor : (hoverHandler.hovered ? accentColor : (accentColor + "60")))
+            ? (isSelected ? accentColor : (hoverHandler.hovered ? accentColor : NotesColorUtils.withHexAlpha(accentColor, "60")))
             : (isSelected ? "#a78bfa" : (isLink ? "#333b82f6" : "#338b5cf6")))
     border.width: 1
     Behavior on color { ColorAnimation { duration: 150 } }

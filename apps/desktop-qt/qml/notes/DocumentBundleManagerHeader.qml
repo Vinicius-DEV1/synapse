@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesColorUtils.js" as NotesColorUtils
 import "../ui"
 
 Rectangle {
@@ -36,8 +37,10 @@ Rectangle {
             Layout.preferredWidth: 38
             Layout.preferredHeight: 38
             radius: 11
-            color: headerRoot.groupColor !== "default" ? headerRoot.groupColor + "20" : "#211b35"
-            border.color: headerRoot.groupColor !== "default" ? headerRoot.groupColor + "55" : "#338b5cf6"
+            color: headerRoot.groupColor !== "default"
+                ? NotesColorUtils.withHexAlpha(headerRoot.groupColor, "20") : "#211b35"
+            border.color: headerRoot.groupColor !== "default"
+                ? NotesColorUtils.withHexAlpha(headerRoot.groupColor, "55") : "#338b5cf6"
             AppIcon { anchors.centerIn: parent; name: "layers"; color: "#a78bfa"; width: 19; height: 19 }
         }
 
