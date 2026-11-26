@@ -1,0 +1,3 @@
+interface:
+  display_name: "Cross-Platform Module Parity"
+  short_description: "Align feature names and contracts across clients"

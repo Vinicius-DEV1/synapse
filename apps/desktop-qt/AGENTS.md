@@ -2,7 +2,7 @@
 
 This app owns the fully native Qt 6 / QML desktop client. Follow the repository [engineering rules](../../AGENTS.md), [application boundaries](../AGENTS.md), and [cross-app module structure](../../docs/architecture/module-structure.md).
 
-- Keep QML presentation in `qml/<module>/` and feature controllers in `src/controllers/<module>/` using the same canonical module ID, strictly mirroring `apps/web-react/src/components/<module>/`.
+- Keep QML presentation in `qml/<module>/` and feature controllers in `src/controllers/<module>/` using the same canonical module ID as React and Compose. Pair equivalent Qt QML types, controller actions and test cases with their cross-client counterparts by stable semantic name and contract. Keep React-style module vocabulary and subdirectory groupings when the responsibility exists, while preserving Qt's QML/C++ layer split; do not create artificial mirror folders or wrappers.
 - Common layout elements (sidebar, top tab bar, command palette, global shortcuts, and `GlobalModalsHost.qml`) belong in `qml/layout/` (mirroring `apps/web-react/src/components/layout/`).
 - Common UI primitives (`Theme.qml`, `AppIcon.qml`, `AppConfirmDialog.qml`) belong in `qml/ui/` (mirroring `apps/web-react/src/components/ui/`).
 - The root `qml/` folder is reserved exclusively for top-level entrypoints (`main.qml`, `AuthenticatedApplication.qml`, and `qmldir`).

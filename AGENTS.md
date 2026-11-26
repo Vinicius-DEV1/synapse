@@ -45,16 +45,30 @@ Code must adhere to a strict 4-tier layer separation anchored by the shared core
 3. **Domain & Business Layer (Unified Core SSOT - `core/synapse-core/`)**: Pure domain entities, algorithms (e.g., FSRS spacing, habit streaks, financial summary deltas, quiz scoring, text diffing), completely decoupled from frontend UI frameworks. Web-exclusive helpers remain in `apps/web-react/src/services/` and `src/utils/` only when unshared.
 4. **Infrastructure & Platform Layer (`core/synapse-core/src/db/`, `bridges/`, `apps/web-react/src/api/`)**: SQLite WAL persistence, database migrations, typed platform bridges (`bridge-qt`, `bridge-uniffi`, `bridge-wasm`), and multiplatform web storage abstractions.
 
-### 2.2. Directory Structure Parity Across React and Desktop Qt
+### 2.2. Cross-Client Module, Naming, and Atomic File Parity
 
-To guarantee seamless continuous maintenance and clear mental mapping across platforms without hacks or regressions, `apps/desktop-qt/` mirrors `apps/web-react/` structure across presentation, orchestration, and tests:
-- **Presentation Layer Parity**: `apps/desktop-qt/qml/` matches `apps/web-react/src/components/` with identical 24 canonical feature subdirectories:
+To make feature work easy to locate and compare across React/Tauri, native Qt, and native Android, every client MUST use the same canonical module IDs, feature vocabulary, user-action names, and typed operation contracts. Keep files atomic and organize equivalent responsibilities in matching module-local subdirectories where each framework has that responsibility.
+
+- **Canonical Module IDs**: Use the module IDs in [`docs/architecture/module-structure.md`](./docs/architecture/module-structure.md) in React component/service roots, Qt QML/controller/test roots, and Android feature/test packages. Do not introduce aliases for new source directories; preserve legacy route, database, IPC, and serialized identifiers unless a separately reviewed migration requires changing them.
+- **Logical Structure Parity**: Pair corresponding feature files by responsibility and stable semantic name (for example `TableColumnFilterSection`, `PageHistoryModal`, `FileAttachmentWidget`, and `SlashMenu`). Use each framework's conventional file extension and presentation suffix (`.tsx`, `.qml`, `Screen.kt`) while retaining the shared feature name. Keep module-owned subdirectories such as `components/table/`, `modals/`, `hooks/`, or `ui/` aligned when the equivalent responsibility exists.
+- **Framework-Correct Physical Layout**: Do not force React, QML/C++, and Compose into identical physical trees, create empty mirror folders, or add wrapper files solely to imitate another language. React keeps its established `components/`, `hooks/`, `services/`, and `api/` roots; Qt keeps `qml/<module>/` and `src/controllers/<module>/`; Android keeps `features/<module>/ui/` and adds `viewmodel/` or data packages only when needed. The Expo WebView shell hosts React and must not duplicate product modules.
+- **Shared Action and Contract Names**: Equivalent public actions and typed payload fields MUST use the same semantic names and behavior across clients. Prefer the same callable name where the contract is exposed in each language. If a language or framework convention requires a different symbol, keep it a direct, documented mapping in the module parity map; do not allow concepts or payload meaning to drift.
+- **Shared Domain Implementation**: Cross-client business rules and persistence remain in `core/synapse-core/`, exposed through typed Tauri, Qt, WASM, and UniFFI adapters. Do not duplicate a Core-owned function under matching names in app code; client adapters translate presentation events to the shared operation.
+- **Atomic Files**: A file should have one cohesive reason to change and a clear counterpart when a client implements that same responsibility. Keep files focused and near the existing <300-line target; split along domain/UI/orchestration boundaries, not into trivial one-function fragments. Match test names and module grouping so the same behavior can be found in every client.
+- **Parity Map**: When adding or reorganizing a shared feature, update the cross-client mapping in [`docs/architecture/module-structure.md`](./docs/architecture/module-structure.md), including counterpart files, action/contract names, and intentional platform differences. Do not claim parity based only on matching names.
+- **Workflow Skill**: Use [the cross-platform module parity skill](./.agents/skills/cross-platform-module-parity/SKILL.md) for shared structure/naming/contract work; use the [Desktop Qt parity skill](./.agents/skills/desktop-qt-parity/SKILL.md) for React-to-Qt implementation and visual acceptance.
+
+The canonical feature roots are:
+- **React/Tauri**: `apps/web-react/src/components/<module>/`, plus feature-owned orchestration and service files in the established `hooks/`, `services/`, `store/`, and `api/` roots; Tauri remains a thin Rust adapter in `src-tauri/`.
+- **Desktop Qt**: `apps/desktop-qt/qml/<module>/`, `src/controllers/<module>/`, and `tests/<module>/`.
+- **Native Android**: `apps/mobile-android/app/src/main/java/com/synapse/features/<module>/ui/`, optional cohesive `viewmodel/` and data packages, and module-grouped JVM/instrumentation tests.
+- **Android WebView**: `apps/mobile-webview/` owns shell integration only and reuses the React product implementation.
+
+Qt's presentation subdirectories should align with React's canonical feature vocabulary when an equivalent exists:
   - `ai-sidebar/`, `anki/`, `auth/`, `calendar/`, `culture/`, `diagrams/`, `files/`, `finance/`, `focus/`, `habits/`, `home/`, `library/`, `notes/`, `notifications/`, `practice/`, `questions/`, `settings/`, `sharing/`, `trash/`, `vault/`, `video/`, `workspace/`.
   - `layout/`: Shell layout, sidebar navigation, top tab bar, command palette, global shortcuts, and `GlobalModalsHost.qml` (mirroring `apps/web-react/src/components/layout/`).
   - `ui/`: Design system tokens (`Theme.qml`), vector icons (`AppIcon.qml`), and common confirmation dialogs (`AppConfirmDialog.qml`) (mirroring `apps/web-react/src/components/ui/`).
   - Root `qml/`: Contains only root application entry points (`main.qml`, `AuthenticatedApplication.qml`, and `qmldir`).
-- **Orchestration Layer Parity**: `apps/desktop-qt/src/controllers/<module>/` mirrors the canonical domains for C++ presentation controllers.
-- **Test Suite Parity**: `apps/desktop-qt/tests/<module>/` mirrors the canonical domains for unit and integration test harnesses.
 
 ---
 

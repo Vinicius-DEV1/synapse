@@ -9,7 +9,7 @@ This page identifies the consolidated sources of truth across the repository. Ac
 | Topic | Current document | What it governs |
 | --- | --- | --- |
 | Repository and app ownership | [Repository layout](./architecture/repository-layout.md) | Product directories, build owners, and shared-code boundaries |
-| Cross-app module inventory | [Module structure](./architecture/module-structure.md) | Canonical module IDs, source locations, and current route presence per client |
+| Cross-app module structure | [Module structure](./architecture/module-structure.md) | Canonical module IDs, framework-native roots, counterpart names/contracts, atomic file guidance, and route presence per client |
 | System architecture | [Architecture overview](./architecture/overview.md) | Runtime responsibilities, unified Rust core boundaries, and SQLite WAL concurrency |
 | Platform architectures | [Platform guides](./platforms/README.md) | React Web/Tauri, native Qt, native Android, WebView shell, and shared Core boundaries |
 | Performance & bundle budgets | [Performance and benchmarks guide](./guides/performance-and-benchmarks.md) | Tauri async IPC, SQLite WAL pool, metadata-first notes loading, React selector isolation, and bundle budget gates |

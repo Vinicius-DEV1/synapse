@@ -11,9 +11,9 @@ Use this skill whenever auditing, implementing, refactoring, or verifying featur
 
 ## 1. Golden Rules of React-to-Qt Parity
 
-1. **`apps/web-react/` is the Immutable Reference Target**:
-   - **NEVER** modify, downgrade, or simplify `apps/web-react/` to match `apps/desktop-qt/`.
-   - Always adapt `apps/desktop-qt/` (QML views, thin C++ controllers, and `bridges/bridge-qt/` bindings to `core/synapse-core/`) to match the visual design, layout, workflows, keyboard shortcuts, and interactive capabilities of `apps/web-react/`.
+1. **`apps/web-react/` is the Immutable Behavior and Visual Reference**:
+   - **NEVER** change, downgrade, or simplify React features, layout, styling, animations, or user flows to make Qt parity easier.
+   - Make functional and visual parity changes in `apps/desktop-qt/` (QML views, thin C++ controllers, and `bridges/bridge-qt/` bindings to `core/synapse-core/`). A coordination-only React rename or file move is allowed when the user explicitly authorizes naming/organization alignment; it must preserve all web behavior and rendering and update every import/test in the same atomic stage.
 2. **100% Native, Lightweight, GPU-Accelerated Execution**:
    - Do not embed a heavy Chromium WebEngineView for the application shell or notes editor. Keep `desktop-qt` 100% native Qt 6 Quick / QML + C++17 + Rust `synapse-core` + `libmpv` (`MpvPlayerItem`).
 3. **Zero Cross-Client Domain Duplication (Rust Core SSOT)**:
@@ -21,8 +21,11 @@ Use this skill whenever auditing, implementing, refactoring, or verifying featur
    - C++ controllers in `apps/desktop-qt/src/controllers/` and QML/JS files in `apps/desktop-qt/qml/` MUST NOT construct raw SQL queries or duplicate domain algorithms.
 4. **Anti-Monolith File Limit (< 300 Lines)**:
    - Every QML component, C++ controller file, and Rust module file must remain focused, atomic, and strictly under **250–300 lines**.
-5. **Mirror React Web Folder, File & Function Naming**:
-   - Keep directory structure, component/file names, and public action/method names in `apps/desktop-qt/` as close as possible to `apps/web-react/` (e.g., `FloatingToolbar`, `TableToolbar`, `TableExcelGrips`, `BlockHandle`, `SlashMenu`, `PageCover`, `PageHeader`, `SubPageGrid`, `PageUnlockForm`) to simplify cross-platform maintenance.
+5. **Keep Cross-Client Feature Names and Atomic Counterparts Aligned**:
+   - Use the same canonical module IDs, feature vocabulary, public action names and typed payload meaning across React/Tauri, Qt and Compose. Pair corresponding files by stable semantic name (for example `TableColumnFilterSection`, `PageHistoryModal`, `FileAttachmentWidget`, and `SlashMenu`) and keep module-local subfolders aligned where the same responsibility exists.
+   - Preserve framework-native physical roots: React components/hooks/services/API, Qt `qml/<module>/` plus `src/controllers/<module>/`, and Compose `features/<module>/ui/` with optional ViewModels. Do not create empty mirror directories or wrapper files just to copy another framework's tree. The Android WebView shell reuses React and must not duplicate product modules.
+   - Public action names and typed payload fields should match exactly when they expose the same operation. If a framework or language needs a different symbol, document the direct mapping in the cross-client feature map in `docs/architecture/module-structure.md`.
+   - Read [`cross-platform-module-parity`](../cross-platform-module-parity/SKILL.md) for shared naming/structure rules; this skill defines the Qt-specific implementation and acceptance workflow.
 6. **No Extraneous "Invented" Chrome in Qt**:
    - Do not add permanent KPI headers, top formatting toolbars, extra sidebar search boxes, numerical module count badges, or unrequested help buttons in Qt where React Web intentionally uses a cleaner, minimalist layout (such as hover-revealed headers, floating `BubbleMenu` toolbars, or sidebar-driven sub-tabs).
 
@@ -53,8 +56,8 @@ React is the behavioral and visual reference. Desktop Qt is the target. Inspect 
    - Test supplementary Unicode offsets, entities, unknown/legacy attributes, malformed input, multiple tables, nested blocks, failed save, page switch, vault lock, and external modification.
    - Cancel or disconnect timers, media, asynchronous imports and signal handlers when the native editor or widget is replaced.
 6. **Keep structure maintainable**:
-   - Keep the Qt `page-view/`, `notes/components/table/`, and `editor-extensions/` groupings aligned with React concepts when that improves navigation. Preserve public QML type names and update `qmldir`/imports with moves.
-   - Avoid oversized QML, C++, Rust, and bridge files; split each by cohesive responsibility and document why platform-specific adapters exist.
+   - Keep the Qt `page-view/`, `notes/components/table/`, and `editor-extensions/` groupings aligned with React counterparts. Give direct counterparts stable semantic names and match test behavior names where practical. Preserve public QML type names and update `qmldir`/imports with moves.
+   - Keep each file atomic and under the repository's <300-line target where practical. Split along presentation, orchestration, and shared-domain boundaries; do not fragment code into trivial wrappers for superficial file-name parity. Document any platform-only adapter or intentional counterpart difference.
 7. **Use evidence-based status**:
    - Track each feature as `Partial`, `Missing`, or `Unverified` until its behavior, persistence/error states, accessibility, performance and same-viewport appearance have been checked.
    - Follow the focused verification and second-pass review plan in the active Notes audit under repository-root `audits/`. Do not copy historical passing test counts or mark full parity from source inspection alone.

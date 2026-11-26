@@ -103,6 +103,15 @@ Keep each module discoverable under the same canonical ID across app targets. Fo
 
 Keep shared app-level composition and platform adapters out of feature folders. Use the canonical names in `docs/architecture/module-structure.md`; preserve public route keys and persisted IDs when renaming source directories.
 
+### Cross-Client Counterpart Naming
+
+- Before extracting or moving a shared feature, check the counterpart map in `docs/architecture/module-structure.md` and preserve the canonical module ID, semantic component/action names, typed payload field names, and test scenario names.
+- Keep corresponding files atomic and easy to compare. Align module-local groupings (`components/table/`, `modals/`, or `ui/`) when a real counterpart exists, but retain framework-native layer roots and naming suffixes (`.tsx`, `.qml`, `Screen.kt`, `ViewModel`).
+- Do not create empty mirror folders, duplicate implementations of Core-owned logic, or one-function wrappers just to make the trees look identical. Use a documented direct mapping when idiomatic language naming requires a different public symbol.
+- When an extraction changes the counterpart map, update it in the same stage and keep React UI/layout unchanged unless the user explicitly requests a web change.
+
+For broader cross-client naming and contract work, use [`cross-platform-module-parity`](../cross-platform-module-parity/SKILL.md).
+
 ### Step-by-Step Execution Order
 
 1. **Extract Types First** — Move inline interfaces, discriminated unions, and

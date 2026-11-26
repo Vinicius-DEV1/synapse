@@ -19,6 +19,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare React `Editor.tsx`, `useEditorExtensions.ts`, `useEditorSync.ts`, `useEditorSave.ts`, `useSlashCommand.ts`, `useEditorDropPaste.ts`, and `PageView.tsx` against current Qt files.
 - [ ] Inventory every custom React extension/schema and every Qt AST `blockType`; identify unknown, legacy, and unhandled types.
 - [ ] Generate a React-to-Qt function/handler mapping for editor init, change, commit, flush, save, undo, redo, selection, keyboard, paste, drop, page change, and destroy.
+- [ ] Maintain a Notes counterpart map across React/Tauri, Qt, and native Android for equivalent files, public action names, payload fields, and test scenarios; align names/paths only where the responsibilities are truly one-to-one, preserve the React UI and framework-native layer roots, and record intentional differences.
 - [ ] Confirm all shared calculations and persistence paths use Core and typed bridge methods; remove any duplicate raw SQL or domain rules in Qt controllers.
 - [ ] Confirm there are no accidental React layout/behavior changes; permit only behavior-preserving naming/organization changes if required.
 

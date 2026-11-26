@@ -79,6 +79,29 @@ Android Compose groups feature screens under `features/<module>/ui/`. Finance, F
 
 The Expo WebView project is a host shell, not a second copy of the React product. Keep its navigation bridge, safe-area integration, and native capabilities in the shell; implement product features in the React app or in the fully native Android app.
 
+## Counterpart Structure, Naming, and Atomic Files
+
+The clients share one **logical feature map**, not one forced physical source tree. This makes matching behavior easy to locate without adding empty folders or wrappers that fight React, Qt, Kotlin, or Rust conventions.
+
+| Responsibility | React/Tauri counterpart | Desktop Qt counterpart | Android Compose counterpart |
+| --- | --- | --- | --- |
+| Feature presentation | `components/<module>/<Feature>.tsx` or a cohesive feature-local subfolder | `qml/<module>/<Feature>.qml` or a cohesive feature-local subfolder | `features/<module>/ui/<Feature>Screen.kt` (or a smaller composable with the same semantic name) |
+| UI orchestration | `use<Feature>.ts` / feature hook or reducer | `<Feature>Controller` under `src/controllers/<module>/` when presentation state or lifecycle requires it | `<Feature>ViewModel` under `features/<module>/viewmodel/` when state orchestration requires it |
+| Shared operation | typed React service/API call and thin Tauri command | matching `Q_INVOKABLE`/signal adapter through `bridge-qt` | matching store/repository call through `bridge-uniffi` |
+| Behavior tests | `*.test.ts(x)` beside the module behavior | `tests/<module>/` with matching test scenario names | `app/src/test/` or `app/src/androidTest/` under the module |
+
+### Naming and contract rules
+
+1. Use the canonical module ID in all source roots. For a one-to-one counterpart, use the same semantic feature name and keep the same module-local grouping (`components/table/`, `modals/`, `ui/`, or another real responsibility).
+2. Keep cross-client public action names and typed payload fields the same wherever the contracts permit it. For example, `applyFilter` must have the same commit semantics, and a `columnIndex` payload must identify the same column in every adapter. Prefer a shared name over platform-specific synonyms.
+3. Preserve native type and file conventions: React may use `TableColumnFilterSection.tsx`, Qt `TableColumnFilterSection.qml`, and Compose `TableColumnFilterSection.kt` or `TableColumnFilterSectionScreen.kt`. Do not rename idiomatic private symbols just for visual similarity. If a public counterpart needs another name because of language/API constraints, maintain a direct mapping in the feature's parity record.
+4. Put platform-neutral entities, algorithms, validation, and persistence in Core once. Matching client adapter names call the same typed operation; they do not contain copied domain logic.
+5. Keep each file atomic: one primary responsibility, concise public API, and matching tests for the same behavior. Follow the repository's <300-line target where practical. Split large files by actual responsibilities; do not make tiny one-function files just to imitate another client.
+6. Do not create empty mirror directories, compatibility wrappers, or duplicate React modules in the Expo WebView shell. A client without a feature counterpart should be marked as such, not padded with a placeholder tree.
+7. When adding or moving a shared feature, update this guide's roots or mapping as needed, the app-level `AGENTS.md`, and the relevant module parity artifact. Preserve routes, persisted IDs, HTML attributes, and IPC contracts during source-only renames.
+
+The overall project skill [`cross-platform-module-parity`](../../.agents/skills/cross-platform-module-parity/SKILL.md) defines the workflow; [`desktop-qt-parity`](../../.agents/skills/desktop-qt-parity/SKILL.md) adds Qt-specific visual and native acceptance requirements.
+
 ## Migration rules
 
 1. Preserve public behavior, routes, database identifiers, IPC contracts, keyboard shortcuts, and visual output while reorganizing paths.

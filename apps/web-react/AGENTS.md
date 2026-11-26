@@ -9,7 +9,7 @@ This app owns the original React 19 web client, Vite configuration, static asset
 - The separate Expo/WebView client is `../mobile-webview/` and has its own package manifest and lockfile.
 - Native Qt and native Compose clients are sibling apps and use their own build systems.
 
-Keep the React architecture's layer roots (`components/`, `hooks/`, `store/`, `services/`, and `api/`) intact. Group module UI under the canonical module ID; module service directories should use the same ID when the service is feature-owned. The `notes`, `library`, `video`, and `questions` UI roots are named consistently with the native clients. See [the cross-app module structure guide](../../docs/architecture/module-structure.md) before changing a module path.
+Keep the React architecture's layer roots (`components/`, `hooks/`, `store/`, `services/`, and `api/`) intact. Group module UI under the canonical module ID; module service directories should use the same ID when the service is feature-owned. Give feature components and actions stable semantic names that match their Qt and Compose counterparts where the responsibilities correspond; keep callable contracts and payload meanings aligned. Do not move React code into artificial per-module roots just to imitate Qt or Android. The `notes`, `library`, `video`, and `questions` UI roots are named consistently with native clients. See [the cross-app module structure guide](../../docs/architecture/module-structure.md) before changing a module path or shared action contract.
 
 See [the repository layout guide](../../docs/architecture/repository-layout.md) for cross-app ownership and build commands.
 

@@ -1,6 +1,6 @@
 # Android WebView Shell Guidance
 
-This app is the Expo host for the React web client. Keep Android lifecycle, safe-area, hardware-back, external-link, and native capability integration here. Product modules belong in `../web-react/` or the fully native Compose app at `../mobile-android/`.
+This app is the Expo host for the React web client. Keep Android lifecycle, safe-area, hardware-back, external-link, and native capability integration here. Product modules belong in `../web-react/` or the fully native Compose app at `../mobile-android/`; the WebView renders the React structure and must not create mirrored copies. Follow the shared feature/action vocabulary in [the cross-app module structure guide](../../docs/architecture/module-structure.md).
 
 ## Package and app configuration
 
