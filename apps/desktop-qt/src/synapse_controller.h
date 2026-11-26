@@ -265,6 +265,7 @@ public:
     Q_INVOKABLE QVariantList getQuizBatteries();
     Q_INVOKABLE QVariantMap getQuizBattery(const QString &batteryId);
     Q_INVOKABLE QVariantList getBatteryQuestions(const QString &batteryId);
+    Q_INVOKABLE QVariantMap applyQuizAssistantActions(const QString &batteryId, const QVariantList &actions);
     Q_INVOKABLE QVariantMap getQuizQuestion(const QString &questionId);
     Q_INVOKABLE QVariantList getAllQuizQuestions();
     Q_INVOKABLE QVariantList getAllQuizTags();

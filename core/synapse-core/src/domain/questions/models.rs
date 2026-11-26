@@ -1,5 +1,56 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(
+    tag = "actionType",
+    rename_all = "lowercase",
+    rename_all_fields = "camelCase"
+)]
+pub enum QuizAssistantQuestionAction {
+    Create {
+        #[serde(rename = "type", default = "default_question_type")]
+        type_: String,
+        question: String,
+        #[serde(default)]
+        options: Vec<String>,
+        #[serde(default)]
+        correct_index: i32,
+        #[serde(default)]
+        expected_answer: String,
+        #[serde(default)]
+        explanation: String,
+        #[serde(default)]
+        tags: Vec<String>,
+    },
+    Edit {
+        target_question_id: String,
+        changes: QuizAssistantQuestionChanges,
+    },
+    Delete {
+        target_question_id: String,
+    },
+    Reorder {
+        order: Vec<String>,
+    },
+}
+
+fn default_question_type() -> String {
+    "multiple_choice".into()
+}
+
+#[derive(Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct QuizAssistantQuestionChanges {
+    #[serde(rename = "type")]
+    pub type_: Option<String>,
+    pub question: Option<String>,
+    pub options: Option<Vec<String>>,
+    pub correct_index: Option<i32>,
+    pub expected_answer: Option<String>,
+    pub explanation: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct QuizBattery {
     #[serde(default)]

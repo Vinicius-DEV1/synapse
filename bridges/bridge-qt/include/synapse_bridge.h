@@ -116,6 +116,7 @@ char* synapse_quiz_parse_import_text(const char* raw_text);
 int synapse_quiz_update_battery(Database* db, const char* battery_id, const char* title, const char* description);
 int synapse_quiz_delete_battery(Database* db, const char* battery_id);
 char* synapse_quiz_get_battery_questions(Database* db, const char* battery_id);
+char* synapse_quiz_apply_assistant_actions(Database* db, const char* battery_id, const char* actions_json);
 char* synapse_quiz_get_question(Database* db, const char* question_id);
 char* synapse_quiz_get_all_questions(Database* db);
 char* synapse_quiz_get_all_tags(Database* db);

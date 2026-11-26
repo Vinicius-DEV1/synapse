@@ -680,3 +680,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native application target linked with the updated bridge/controller. Does not exercise a live Notes page or provider call. |
 | `git diff --check` | Passed | Patch whitespace only. |
 | Real Notes page, configured Gemini evaluation, saved-note reopen/cross-client history, credential transport review, matched-viewport and accessibility comparison | Not run | Keep QT-NOTES-075 acceptance open. The QML harness intentionally mocks the provider and storage boundary. The existing Qt AI client sends the configured Gemini key in the request URL; review that existing behavior separately before claiming credential-transport parity. |
+
+### Typed assistant action persistence (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo test -p synapse-core assistant_actions_tests -- --nocapture` | Passed: 3 tests | Exercises create/edit/delete/reorder, open-answer type changes, partial order preservation, rejection of cross-battery IDs and invalid multiple-choice choices, and all-or-nothing rollback using a temporary Core database. |
+| `cargo build --release -p synapse-bridge-qt` | Passed | Builds the JSON boundary that deserializes typed assistant actions and returns either the refreshed battery questions or a structured failure. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Rebuilt the native app/controller against the new typed action bridge. The action dialog does not call this API yet. |
+| `git diff --check` | Passed | No whitespace errors in this stage. |
+| Mocked Qt controller invocation, accepted/rejected card interactions, batch failure UI and live question list refresh | Not run | These are still required before the Qt proposal UI can claim action parity; see QT-NOTES-079. |

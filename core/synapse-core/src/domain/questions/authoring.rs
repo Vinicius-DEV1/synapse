@@ -4,7 +4,7 @@ use rusqlite::params;
 use serde_json::Value;
 use std::collections::HashSet;
 
-fn parse_options(options_json: &str, correct_index: i32) -> Result<String> {
+pub(super) fn parse_options(options_json: &str, correct_index: i32) -> Result<String> {
     let value: Value = serde_json::from_str(options_json)
         .map_err(|error| SynapseError::Validation(format!("Invalid options JSON: {error}")))?;
     let options = value
@@ -29,7 +29,7 @@ fn parse_options(options_json: &str, correct_index: i32) -> Result<String> {
     Ok(options[correct_index as usize].clone())
 }
 
-fn normalize_tags(tags_json: Option<&str>) -> Result<String> {
+pub(super) fn normalize_tags(tags_json: Option<&str>) -> Result<String> {
     let Some(raw) = tags_json.filter(|value| !value.trim().is_empty()) else {
         return Ok("[]".into());
     };

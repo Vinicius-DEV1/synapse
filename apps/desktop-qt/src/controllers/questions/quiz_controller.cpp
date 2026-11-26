@@ -49,6 +49,21 @@ QVariantList SynapseDataController::getBatteryQuestions(const QString &batteryId
     return parseJsonArray(raw).toVariantList();
 }
 
+QVariantMap SynapseDataController::applyQuizAssistantActions(
+    const QString &batteryId,
+    const QVariantList &actions) {
+    if (!m_db || batteryId.trimmed().isEmpty() || actions.isEmpty()) {
+        return {{QStringLiteral("success"), false},
+                {QStringLiteral("error"), QStringLiteral("A bateria e ao menos uma ação são necessárias.")}};
+    }
+    const QByteArray batteryUtf8 = batteryId.trimmed().toUtf8();
+    const QByteArray actionsJson = QJsonDocument::fromVariant(actions).toJson(QJsonDocument::Compact);
+    const QVariantMap result = parseJsonObject(synapse_quiz_apply_assistant_actions(
+        m_db, batteryUtf8.constData(), actionsJson.constData())).toVariantMap();
+    if (result.value(QStringLiteral("success")).toBool()) refreshStats();
+    return result;
+}
+
 QVariantMap SynapseDataController::getQuizQuestion(const QString &questionId) {
     if (!m_db || questionId.trimmed().isEmpty()) return QVariantMap();
     QByteArray idUtf8 = questionId.trimmed().toUtf8();

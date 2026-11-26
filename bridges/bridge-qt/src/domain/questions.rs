@@ -2,7 +2,7 @@ use super::helpers::{json_to_c_char, to_opt_str};
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use synapse_core::db::Database;
-use synapse_core::domain::questions::QuizRepository;
+use synapse_core::domain::questions::{QuizAssistantQuestionAction, QuizRepository};
 
 #[no_mangle]
 pub unsafe extern "C" fn synapse_quiz_get_batteries(db: *mut Database) -> *mut c_char {
@@ -179,6 +179,36 @@ pub unsafe extern "C" fn synapse_quiz_get_battery_questions(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_apply_assistant_actions(
+    db: *mut Database,
+    battery_id: *const c_char,
+    actions_json: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || battery_id.is_null() || actions_json.is_null() {
+        return std::ptr::null_mut();
+    }
+    let (Some(battery_id), Some(actions_json)) = (to_opt_str(battery_id), to_opt_str(actions_json))
+    else {
+        return std::ptr::null_mut();
+    };
+    let actions: Vec<QuizAssistantQuestionAction> = match serde_json::from_str(actions_json) {
+        Ok(actions) => actions,
+        Err(error) => {
+            let response = serde_json::json!({ "success": false, "error": format!("Invalid assistant actions: {error}") });
+            return json_to_c_char(&response);
+        }
+    };
+    match QuizRepository::apply_quiz_assistant_actions(&*db, battery_id, &actions) {
+        Ok(questions) => {
+            json_to_c_char(&serde_json::json!({ "success": true, "questions": questions }))
+        }
+        Err(error) => {
+            json_to_c_char(&serde_json::json!({ "success": false, "error": error.to_string() }))
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_quiz_get_question(
     db: *mut Database,
     question_id: *const c_char,
@@ -241,7 +271,10 @@ pub unsafe extern "C" fn synapse_quiz_get_error_notebook(db: *mut Database) -> *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn synapse_quiz_get_random_simulation(db: *mut Database, limit: c_int) -> *mut c_char {
+pub unsafe extern "C" fn synapse_quiz_get_random_simulation(
+    db: *mut Database,
+    limit: c_int,
+) -> *mut c_char {
     if db.is_null() {
         return std::ptr::null_mut();
     }
@@ -268,7 +301,13 @@ pub unsafe extern "C" fn synapse_quiz_get_filtered_questions(
     let tags_str = to_opt_str(tags_json);
     let status_str = to_opt_str(status);
 
-    match QuizRepository::get_filtered_quiz_questions(&*db, tags_str, status_str, limit, shuffle != 0) {
+    match QuizRepository::get_filtered_quiz_questions(
+        &*db,
+        tags_str,
+        status_str,
+        limit,
+        shuffle != 0,
+    ) {
         Ok(questions) => json_to_c_char(&questions),
         Err(e) => {
             eprintln!("[Synapse Bridge] get_filtered_quiz_questions failed: {}", e);
@@ -305,7 +344,15 @@ pub unsafe extern "C" fn synapse_quiz_create_question(
     let expl_str = to_opt_str(explanation);
     let tags_str = to_opt_str(tags_json);
 
-    match QuizRepository::create_quiz_question(&*db, bat_id, q_str, opt_str, correct_index, expl_str, tags_str) {
+    match QuizRepository::create_quiz_question(
+        &*db,
+        bat_id,
+        q_str,
+        opt_str,
+        correct_index,
+        expl_str,
+        tags_str,
+    ) {
         Ok(_) => 0,
         Err(e) => {
             eprintln!("[Synapse Bridge] create_quiz_question failed: {}", e);
@@ -342,7 +389,15 @@ pub unsafe extern "C" fn synapse_quiz_update_question(
     let expl_str = to_opt_str(explanation);
     let tags_str = to_opt_str(tags_json);
 
-    match QuizRepository::update_quiz_question(&*db, q_id, q_str, opt_str, correct_index, expl_str, tags_str) {
+    match QuizRepository::update_quiz_question(
+        &*db,
+        q_id,
+        q_str,
+        opt_str,
+        correct_index,
+        expl_str,
+        tags_str,
+    ) {
         Ok(true) => 1,
         Ok(false) => 0,
         Err(e) => {
@@ -552,7 +607,10 @@ pub unsafe extern "C" fn synapse_quiz_get_available_parent_options(
     match QuizRepository::get_available_parent_options(&*db, mid) {
         Ok(opts) => json_to_c_char(&opts),
         Err(e) => {
-            eprintln!("[Synapse Bridge] get_available_parent_options failed: {}", e);
+            eprintln!(
+                "[Synapse Bridge] get_available_parent_options failed: {}",
+                e
+            );
             std::ptr::null_mut()
         }
     }

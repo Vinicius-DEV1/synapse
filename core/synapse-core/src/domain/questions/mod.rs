@@ -1,3 +1,4 @@
+mod assistant_actions;
 pub mod attempts;
 pub mod authoring;
 pub mod batteries;
@@ -9,6 +10,8 @@ pub mod questions;
 mod repository_attempts;
 
 #[cfg(test)]
+mod assistant_actions_tests;
+#[cfg(test)]
 mod open_attempts_tests;
 #[cfg(test)]
 mod tests;
@@ -17,8 +20,8 @@ pub use attempts::*;
 pub use authoring::*;
 pub use batteries::*;
 pub use hierarchy::{
-    build_battery_tree, create_child_quiz_battery, get_available_parent_options,
-    move_quiz_battery, AvailableParentOption, BatteryTreeSummary,
+    build_battery_tree, create_child_quiz_battery, get_available_parent_options, move_quiz_battery,
+    AvailableParentOption, BatteryTreeSummary,
 };
 pub use import_parser::{parse_import_questions, ParsedImportQuestion};
 pub use models::*;
@@ -116,6 +119,15 @@ impl QuizRepository {
     pub fn get_quiz_question(db: &Database, question_id: &str) -> Result<Option<QuizQuestion>> {
         let conn = db.lock().map_err(SynapseError::Database)?;
         questions::get_quiz_question(&conn, question_id)
+    }
+
+    pub fn apply_quiz_assistant_actions(
+        db: &Database,
+        battery_id: &str,
+        actions: &[QuizAssistantQuestionAction],
+    ) -> Result<Vec<QuizQuestion>> {
+        let mut conn = db.lock().map_err(SynapseError::Database)?;
+        assistant_actions::apply_quiz_assistant_actions(&mut conn, battery_id, actions)
     }
 
     pub fn get_all_quiz_questions(db: &Database) -> Result<Vec<QuizQuestion>> {
