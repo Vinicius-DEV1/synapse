@@ -83,9 +83,10 @@ Popup {
     onAnchorItemChanged: refreshScrollViewport()
     onOpened: {
         refreshScrollViewport()
-        updatePosition()
+        positionTimer.restart()
     }
     onClosed: {
+        positionTimer.stop()
         scrollViewport = null
         dismissed()
     }
@@ -111,6 +112,13 @@ Popup {
         ignoreUnknownSignals: true
         function onContentYChanged() { if (paletteRoot.opened) paletteRoot.updatePosition() }
         function onContentXChanged() { if (paletteRoot.opened) paletteRoot.updatePosition() }
+    }
+
+    Timer {
+        id: positionTimer
+        interval: 1
+        repeat: false
+        onTriggered: if (paletteRoot.opened) paletteRoot.updatePosition()
     }
 
     background: Rectangle {
