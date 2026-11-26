@@ -94,6 +94,28 @@ private slots:
         QCOMPARE(exportedFile.readAll(), editedContent);
         exportedFile.close();
 
+        const QVariantMap savedRecord = controller.getFiles(folderId).first().toMap();
+        const QByteArray oversizedContent(4 * 1024 * 1024 + 1, 'x');
+        controller.saveNotesTextFile(fileId, QString::fromLatin1(oversizedContent),
+                                     QStringLiteral("notes-text-save-too-large"));
+        QCOMPARE(operationSpy.count(), 1);
+        const QVariantMap rejectedSave = operationSpy.takeFirst().at(0).toMap();
+        QVERIFY(!rejectedSave.value("success").toBool());
+        QVERIFY(rejectedSave.value("error").toString().contains(QStringLiteral("4 MB")));
+        const QVariantMap unchangedRecord = controller.getFiles(folderId).first().toMap();
+        QCOMPARE(unchangedRecord.value("local_path").toString(), savedRecord.value("local_path").toString());
+        QCOMPARE(unchangedRecord.value("file_size").toLongLong(), savedRecord.value("file_size").toLongLong());
+
+        controller.previewLocalFile(fileId, QStringLiteral("notes-text-save-rejected-preview"));
+        QTRY_COMPARE_WITH_TIMEOUT(previewSpy.count(), 1, 15000);
+        const QVariantMap preservedPreview = previewSpy.takeFirst().at(0).toMap();
+        QVERIFY2(preservedPreview.value("success").toBool(),
+                 qPrintable(preservedPreview.value("error").toString()));
+        const QString preservedPreviewPath = preservedPreview.value("path").toString();
+        QCOMPARE(controller.readFilePreviewText(preservedPreviewPath).value("text").toString(),
+                 QString::fromUtf8(editedContent));
+        controller.closeFilePreview(preservedPreviewPath);
+
         QVERIFY(controller.removeMasterPassword("NativeFilesPassword42!"));
         const QString localPath = controller.getFiles(folderId).first().toMap().value("local_path").toString();
         QFile migratedFile(sandbox.filePath(localPath));
