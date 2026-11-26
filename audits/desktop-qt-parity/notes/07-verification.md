@@ -668,6 +668,9 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | `cargo test -p synapse-core open_attempts_tests -- --nocapture` | Passed: 3 tests | Adds a file-backed Core round-trip: save an open answer and feedback, drop the database handle, reopen the same SQLite file, and recover the latest typed attempt by battery and question. Also covers verdict/target validation and latest-attempt lookup. This verifies Core persistence across a database reopen; it does not launch the Qt Notes UI, reopen a saved note, contact Gemini, or establish cross-client visibility. |
+| `cargo test -p synapse-bridge-qt open_answer_bridge_roundtrips_typed_attempt_after_database_reopen -- --nocapture` | Passed: 1 test | Calls the typed C bridge save and latest-attempt APIs, confirms the serialized answer/verdict/feedback fields, closes and reopens the SQLite file, then confirms the latest typed JSON payload. The open question fixture is prepared through Core; the Qt controller and Notes UI are not launched. Existing deprecation warnings come from an unrelated bridge SQL API test. |
+| `rustfmt --edition 2021 --check bridges/bridge-qt/src/domain/questions_open_attempt_tests.rs` | Passed | Formatting check for the new focused bridge test only. |
+| `cargo fmt --all --check` | Not clean | Reports pre-existing formatting diffs across unrelated workspace files. No repository-wide formatting was applied; the new bridge test was formatted and checked individually. |
 | `git diff --check` | Passed | Patch whitespace only. |
 
 ### Notes open-answer evaluation and attempt persistence (2026-11-26)
