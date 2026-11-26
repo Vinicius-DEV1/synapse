@@ -80,6 +80,12 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: eventWidgetRoot.controller
+        ignoreUnknownSignals: true
+        function onCalendarEventsChanged() { eventState.syncFromCore() }
+    }
+
     Timer {
         interval: Math.max(1, Math.min(eventState.maxLiveTimerIntervalMs,
             eventState.nextLiveTransitionTimestamp - eventState.currentTimestamp))

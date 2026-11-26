@@ -230,9 +230,4 @@ QtObject {
         syncFromCore()
     }
 
-    Connections {
-        target: eventState.controller
-        ignoreUnknownSignals: true
-        function onCalendarEventsChanged() { eventState.syncFromCore() }
-    }
 }
