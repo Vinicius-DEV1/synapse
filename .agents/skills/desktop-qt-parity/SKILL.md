@@ -39,6 +39,8 @@ This skill's implementation target is Desktop Qt and its reference is React Web/
 
 React is the behavioral and visual reference. Desktop Qt is the target. Inspect the current worktree before following historical notes: Qt Notes is being reorganized around a native block AST editor, and older source/preview-mode descriptions may no longer match current files. The active Notes comparison is [`audits/desktop-qt-parity/notes/README.md`](../../../audits/desktop-qt-parity/notes/README.md); consolidated architecture belongs in `docs/platforms/` and `docs/modules/`.
 
+When the requested scope is Notes, keep the audit and implementation limited to the Notes editor, its widgets/modals, Notes controllers, and the shared Core/bridge operations they call. Do not broaden the audit to unrelated product modules. Keep React Web/Tauri behavior and layout unchanged unless the user explicitly authorizes a coordination-only organization change.
+
 1. **Trace the full React behavior first**:
    - Compare `apps/web-react/src/components/Editor.tsx`, `notes/hooks/`, `notes/components/`, `editor-extensions/`, and `page-view/` with the Qt presentation, controller, bridge, and Core call chain.
    - Include creation, edit, cancellation, keyboard behavior, errors, save/restore, undo, nested blocks, and cross-client HTML round-trip. A matching component name is not evidence of parity.

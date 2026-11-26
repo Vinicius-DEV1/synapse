@@ -4,6 +4,8 @@ Welcome to the **Synapse Engineering Skills** repository. These playbooks docume
 
 These playbooks cover three product clients—React Web/Tauri (`apps/web-react/`), native Qt Desktop (`apps/desktop-qt/`), and native Kotlin/Compose Android (`apps/mobile-android/`)—plus the Expo/WebView Android shell (`apps/mobile-webview/`), which hosts React. Shared Rust domain behavior lives in `core/synapse-core/` and is exposed through typed platform bridges. Similar feature behavior does not imply identical implementation or complete capability coverage; verify each client and document gaps.
 
+Keep cross-client structure aligned by canonical module ID, feature vocabulary, semantic counterpart names, action names, payload meaning, and test scenarios. Keep physical trees idiomatic to React/Tauri, Qt/QML/C++, and Kotlin/Compose; do not add empty mirror folders or wrapper files. The active canonical mapping is [`docs/architecture/module-structure.md`](../../docs/architecture/module-structure.md), and the shared workflow is [`cross-platform-module-parity`](./cross-platform-module-parity/SKILL.md).
+
 ---
 
 ## 🧭 Skills Directory & Competency Matrix
