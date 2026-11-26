@@ -68,7 +68,8 @@ function uniqueFileExtensions(items) {
 function isNestedBlockContainer(blockType) {
     return blockType === "toggleBlock" || blockType === "blockquoteToggle" ||
         blockType === "collectionBlock" || blockType === "blockquote" ||
-        blockType === "linkGroup"
+        blockType === "linkGroup" || blockType === "columnGroup" ||
+        blockType === "columnBlock"
 }
 
 function createBundleItemFromFileWidget(block, fallbackName) {

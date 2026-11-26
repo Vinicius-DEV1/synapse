@@ -52,3 +52,36 @@ fn balances_column_widths_up_to_five_and_extracts_loose_files() {
     let page = "<p>Hi</p><div data-type=\"file-widget\" data-file-id=\"f1\"></div><div class=\"file-widget\" data-file-id=\"f2\"></div>";
     assert_eq!(extract_loose_file_widget_ids(page), vec!["f1", "f2"]);
 }
+
+#[test]
+fn parses_and_roundtrips_column_wrappers_with_nested_file_widgets() {
+    let html = "<div data-type=\"columnGroup\" data-columns=\"2\"><div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\"><p>Before</p><div data-type=\"file-widget\" data-file-id=\"nested-file\" data-name=\"Notes.pdf\"></div><p>After</p></div><div data-type=\"columnBlock\" data-width=\"50\" data-group-child=\"\" class=\"column-block\"><p>Other column</p></div></div>";
+    let mut blocks = parse_note_blocks(html);
+    assert_eq!(blocks.len(), 1);
+    assert_eq!(blocks[0].block_type, "columnGroup");
+
+    let mut columns = parse_note_blocks(&blocks[0].inner_html);
+    assert_eq!(columns.len(), 2);
+    assert_eq!(columns[0].block_type, "columnBlock");
+    let mut first_column = parse_note_blocks(&columns[0].inner_html);
+    assert_eq!(first_column.len(), 3);
+    assert_eq!(first_column[1].block_type, "fileWidget");
+    assert_eq!(
+        first_column[1]
+            .attrs
+            .get("data-file-id")
+            .map(String::as_str),
+        Some("nested-file")
+    );
+
+    first_column.remove(1);
+    columns[0].inner_html = serialize_note_blocks(&first_column);
+    blocks[0].inner_html = serialize_note_blocks(&columns);
+    let serialized = serialize_note_blocks(&blocks);
+    assert!(serialized.contains("data-type=\"columnGroup\""));
+    assert!(serialized.contains("data-type=\"columnBlock\""));
+    assert!(!serialized.contains("data-file-id=\"nested-file\""));
+    assert!(serialized.contains("<p>Before</p>"));
+    assert!(serialized.contains("<p>After</p>"));
+    assert!(serialized.contains("<p>Other column</p>"));
+}

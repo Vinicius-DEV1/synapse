@@ -177,6 +177,7 @@ pub(super) fn detect_block_type(
             "toggle-block" | "toggleBlock" => Some("toggleBlock"),
             "blockquote-toggle" | "blockquoteToggle" => Some("blockquoteToggle"),
             "columnGroup" | "column-group" => Some("columnGroup"),
+            "columnBlock" | "column-block" => Some("columnBlock"),
             "encrypted-image" | "encryptedImage" => Some("encryptedImage"),
             "mermaid" | "mermaidBlock" => Some("mermaidBlock"),
             "groupBlock" | "group-block" | "collectionBlock" | "collection-block" => {
