@@ -12,31 +12,79 @@ Item {
     property var blockData: ({})
     property var controller: null
     property var attrs: blockData.attrs || ({})
-    property var childLinkBlocks: {
+    function parseLegacyLinkData(raw) {
+        if (typeof raw !== "string") {
+            console.warn("[Notes:LinkGroupBlock] Legacy link metadata must be text; editing is disabled to preserve the stored value.")
+            return { valid: false, cards: [] }
+        }
+
+        var parsed
+        var parsedSuccessfully = false
+        var parseError = null
+
+        try {
+            parsed = JSON.parse(raw)
+            parsedSuccessfully = true
+        } catch (error) {
+            parseError = error
+        }
+
+        // Qt's older format URI-encoded the complete JSON value. Parse ordinary
+        // JSON first so percent-escaped characters inside URLs stay untouched.
+        if (!parsedSuccessfully && raw.indexOf("%") >= 0) {
+            try {
+                parsed = JSON.parse(decodeURIComponent(raw))
+                parsedSuccessfully = true
+            } catch (error) {
+                parseError = error
+            }
+        }
+
+        if (!parsedSuccessfully) {
+            console.warn("[Notes:LinkGroupBlock] Could not parse legacy link metadata; editing is disabled to preserve the stored value.", parseError)
+            return { valid: false, cards: [] }
+        }
+
+        if (!Array.isArray(parsed)) {
+            console.warn("[Notes:LinkGroupBlock] Legacy link metadata must be a JSON array; editing is disabled to preserve the stored value.")
+            return { valid: false, cards: [] }
+        }
+
+        var cards = []
+        for (var i = 0; i < parsed.length; i++) {
+            var item = parsed[i]
+            if (!item || typeof item !== "object" || Array.isArray(item)
+                    || (item.url !== undefined && typeof item.url !== "string")
+                    || (item.title !== undefined && typeof item.title !== "string")) {
+                console.warn("[Notes:LinkGroupBlock] Legacy link metadata contains an invalid card; editing is disabled to preserve the stored value.")
+                return { valid: false, cards: [] }
+            }
+            cards.push({
+                id: "lg_" + i,
+                blockType: "linkPreview",
+                attrs: { url: item.url || "", title: item.title || "" },
+                innerHtml: "",
+                html: ""
+            })
+        }
+        return { valid: true, cards: cards }
+    }
+
+    property var linkGroupContents: {
         var inner = blockData.innerHtml || ""
         var c = linkGroupRoot.controller
         if (inner.length > 0 && c && typeof c.parseNoteBlocks === "function") {
             var parsed = c.parseNoteBlocks(inner) || []
             var cards = parsed.filter(function(b) { return b.blockType === "linkPreview" })
-            if (cards.length > 0) return cards
+            if (cards.length > 0) return { cards: cards, usesLegacyData: false, valid: true }
         }
-        var raw = attrs["data-links"] || "[]"
-        try {
-            var list = JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
-            if (Array.isArray(list) && list.length > 0) {
-                return list.map(function(item, i) {
-                    return {
-                        id: "lg_" + i,
-                        blockType: "linkPreview",
-                        attrs: { url: item.url || "", title: item.title || "" },
-                        innerHtml: "",
-                        html: ""
-                    }
-                })
-            }
-        } catch (e) {}
-        return []
+        var raw = attrs["data-links"]
+        if (raw === undefined || raw === null || raw === "") raw = "[]"
+        var legacyData = linkGroupRoot.parseLegacyLinkData(raw)
+        return { cards: legacyData.cards, usesLegacyData: true, valid: legacyData.valid }
     }
+    property var childLinkBlocks: linkGroupContents.cards
+    property bool legacyDataInvalid: linkGroupContents.usesLegacyData && !linkGroupContents.valid
     property bool addingLink: false
 
     signal attrsUpdated(var newAttrs)
@@ -45,6 +93,7 @@ Item {
     HoverHandler { id: groupHover }
 
     function persistCards(cards) {
+        if (legacyDataInvalid) return
         var next = Object.assign({}, attrs)
         next["data-type"] = "linkGroup"
         next["data-links"] = JSON.stringify(cards.map(function(c) {
@@ -94,7 +143,7 @@ Item {
                 leftPadding: 8
                 rightPadding: 8
                 focusPolicy: Qt.NoFocus
-                enabled: linkGroupRoot.childLinkBlocks.length < 4
+                enabled: !linkGroupRoot.legacyDataInvalid && linkGroupRoot.childLinkBlocks.length < 4
                 onClicked: linkGroupRoot.addingLink = !linkGroupRoot.addingLink
                 background: Rectangle {
                     radius: 6
@@ -106,6 +155,16 @@ Item {
             }
 
             Item { Layout.fillWidth: true }
+
+            Text {
+                Layout.preferredWidth: 200
+                Layout.maximumWidth: 220
+                visible: linkGroupRoot.legacyDataInvalid
+                text: qsTr("Links salvos inválidos; edição bloqueada para preservar os dados.")
+                color: "#fbbf24"
+                font.pixelSize: 10
+                wrapMode: Text.Wrap
+            }
 
             ToolButton {
                 Layout.preferredWidth: 24
@@ -120,7 +179,7 @@ Item {
         }
 
         RowLayout {
-            visible: linkGroupRoot.addingLink
+            visible: linkGroupRoot.addingLink && !linkGroupRoot.legacyDataInvalid
             Layout.fillWidth: true
             spacing: 8
 
@@ -141,6 +200,7 @@ Item {
                 leftPadding: 12
                 rightPadding: 12
                 onClicked: {
+                    if (linkGroupRoot.legacyDataInvalid) return
                     var u = newUrlInput.text.trim()
                     if (u.length === 0) return
                     var next = linkGroupRoot.childLinkBlocks.slice()
@@ -163,6 +223,7 @@ Item {
 
         // Side-by-side LinkPreviewCard columns matching LinkGroupBlock.tsx
         RowLayout {
+            visible: !linkGroupRoot.legacyDataInvalid
             Layout.fillWidth: true
             spacing: 10
 

@@ -119,6 +119,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 ## H. Native widgets and nested blocks
 
 - [ ] Compare creation/edit/save lifecycle for question, focus, alarm, calendar event, habit, collection, toggle, callout toggle, media, video, book, scrap, Mermaid, link preview and link group.
+- [ ] Verify legacy link-group metadata parses ordinary JSON before attempting URI-decoding; percent-escaped URLs remain byte-for-byte intact, encoded legacy JSON still loads, and malformed entries are reported without allowing an edit to overwrite them.
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
 - [ ] Verify native page-reference object accessibility name/role, keyboard focus, visible selection, hit target, chip geometry/colors, and updated title/deleted state against React at the same viewport.

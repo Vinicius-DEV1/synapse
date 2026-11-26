@@ -334,6 +334,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Moving a caret or selecting an inline page reference exposes its live title and missing/deleted state to accessibility tooling; switching the page or restoring the target updates the description without dirtying content. Active and deleted pointer/keyboard actions remain clear and usable.
 - **Fix status:** Source description fix applied in `NotesRichTextInput.qml`. QML lint and runtime screen-reader behavior, role, focus order, selection and activation remain open.
 
+## QT-NOTES-037: Legacy link-group URLs can disappear or be overwritten
+
+- **Severity:** Medium; percent-escaped URLs can be decoded as if the whole JSON value were encoded, and malformed legacy metadata was silently treated as an empty group.
+- **Evidence:** `LinkGroupBlock.qml` previously called `decodeURIComponent(raw)` whenever the JSON contained any `%`, then used an empty catch and returned no cards after a parse failure. Adding a link to that empty fallback could replace the original `data-links` value.
+- **Reproduction:** Load a legacy group containing a URL with `%2F`, `%20`, or a literal percent; then load malformed `data-links` JSON and try to add a card.
+- **Root cause:** The fallback decode ran before validating the ordinary JSON representation, and parse errors did not expose a recoverable state.
+- **Required fix:** Parse ordinary JSON first, use URI decoding only as a legacy fallback, validate the array and its card fields, report invalid metadata, and block edits that would overwrite it.
+- **Acceptance:** Percent escapes in valid URLs survive unchanged; complete URI-encoded legacy JSON remains readable; malformed/invalid data produces a clear warning, cannot be overwritten through add/edit, and remains available for repair or explicit group removal.
+- **Fix status:** Source fix applied in `LinkGroupBlock.qml`. Focused QML lint and whitespace checks pass with pre-existing diagnostics; runtime percent-URL, legacy-decoding and preservation scenarios remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).
