@@ -443,6 +443,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Rename from either matching widget and verify Core plus every widget attribute agree; save/reopen in both clients, inspect the canonical HTML, and repeat with a rejected rename and a failed page save.
 - **Fix status:** `syncFromCore` now updates the widget's `data-name` and `data-file-name` when Core metadata differs, skips attribute synchronization while that widget is being edited, and guards the block-data refresh during its own update. Focused QML lint passes with existing dynamic-scope and Loader diagnostics; persistence failure and cross-client checks remain open.
 
+## QT-NOTES-048: Caderno widget color palette differs from React
+
+- **Severity:** Medium; the native widget has fewer color choices and a different interaction pattern, so saved notes cannot reproduce the React palette state or placement.
+- **Evidence:** React `ColorPalettePicker.tsx` renders nine named `BG_COLORS` choices plus default in an anchored five-column Floating UI popover and closes on outside click or Escape. The React file and document-bundle widgets both use it. Qt `FileAttachmentWidget.qml` and `DocumentBundleWidgetPalette.qml` render six unlabeled inline swatches without outside/Escape dismissal.
+- **Reproduction:** Open each file and document-bundle color control in React and Qt, compare choices and placement, select an omitted React color, then test outside click, Escape and reopen.
+- **Root cause:** The two Qt widgets use separate six-color inline implementations instead of matching React's shared palette tokens and popover interactions.
+- **Required fix:** Use the exact React color hex values and labels in both Qt widgets, a native anchored popover with selected state and five-column arrangement, and equivalent dismissal/focus behavior. Keep Qt-native controls and do not change the React implementation.
+- **Acceptance:** Verify all nine persisted hex colors plus default render the same in both widget types before and after Qt/React save/reload; compare palette location, selected indication, outside/Escape dismissal, keyboard access and high-DPI appearance.
+- **Fix status:** Open parity gap. Both Qt widgets still have six unlabeled inline swatches; see the [file-widget crosswalk](10-file-widget-crosswalk.md) and [document-bundle crosswalk](09-document-bundle-crosswalk.md).
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

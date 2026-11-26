@@ -54,6 +54,7 @@
 22. **Attachment preview and missing-file recovery now have main and floating page paths.** Live file clicks route the asynchronous preview result to the visible Files surface; missing records offer Keep or Remove Widget, including through generic block deletion. Typed viewer parity remains open; see [QT-NOTES-045](04-bug-register.md#qt-notes-045-file-widget-preview-and-missing-recovery-differ-from-react) and the [file-widget crosswalk](10-file-widget-crosswalk.md).
 23. **Attachment deletion remains a parity gap.** Qt currently offers removal from the note but no React-like Delete All choice for the local record and optional Drive copy. See [QT-NOTES-046](04-bug-register.md#qt-notes-046-file-widget-deletion-does-not-offer-reacts-choices).
 24. **File rename now synchronizes sibling widget attributes from Core.** This prevents another widget with the same file ID from displaying one name while saving an older one. Runtime save and cross-client round-trip remain open; see [QT-NOTES-047](04-bug-register.md#qt-notes-047-renaming-a-file-leaves-other-widget-attributes-stale).
+25. **Caderno widget color pickers still differ from React.** Both Qt file and document-bundle widgets have six inline swatches; React uses nine named colors in an anchored popover with outside/Escape dismissal. See [QT-NOTES-048](04-bug-register.md#qt-notes-048-caderno-widget-color-palette-differs-from-react).
 
 ## Completion rule
 
