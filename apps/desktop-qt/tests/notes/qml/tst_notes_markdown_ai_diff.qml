@@ -8,17 +8,19 @@ TestCase {
     function test_marksInsertedRemovedAndUnchangedLines() {
         var result = MarkdownDiff.compute("# Title\nOld line\nKeep\nEnd",
                                           "# Title\nNew line\nKeep\nLast")
-        compare(result.length, 6)
+        compare(result.length, 4)
         compare(result[0].kind, "same")
         compare(result[0].text, "# Title")
-        compare(result[1].kind, "removed")
-        compare(result[1].text, "Old line")
-        compare(result[2].kind, "added")
-        compare(result[2].text, "New line")
-        compare(result[3].kind, "same")
-        compare(result[3].text, "Keep")
-        compare(result[4].kind, "removed")
-        compare(result[5].kind, "added")
+        compare(result[1].kind, "modified")
+        compare(result[1].originalText, "Old line")
+        compare(result[1].text, "New line")
+        verify(result[1].html.indexOf("Old") >= 0)
+        verify(result[1].html.indexOf("New") >= 0)
+        compare(result[2].kind, "same")
+        compare(result[2].text, "Keep")
+        compare(result[3].kind, "modified")
+        compare(result[3].originalText, "End")
+        compare(result[3].text, "Last")
     }
 
     function test_identicalAndEmptyDocumentsRemainStable() {
@@ -29,6 +31,14 @@ TestCase {
         compare(result[1].kind, "same")
     }
 
+    function test_inlineMarkupEscapesDocumentHtml() {
+        var result = MarkdownDiff.compute("Old <script>alert(1)</script>", "New <script>alert(2)</script>")
+        compare(result.length, 1)
+        compare(result[0].kind, "modified")
+        verify(result[0].html.indexOf("<script>") < 0)
+        verify(result[0].html.indexOf("&lt;script&gt;") >= 0)
+    }
+
     function test_largeDocumentsUseBoundedCompactFallback() {
         var oldLines = []
         var newLines = []
@@ -37,10 +47,10 @@ TestCase {
             newLines.push("new " + i)
         }
         var result = MarkdownDiff.compute(oldLines.join("\n"), newLines.join("\n"))
-        compare(result.length, 1420)
-        compare(result[0].kind, "removed")
-        compare(result[709].kind, "removed")
-        compare(result[710].kind, "added")
-        compare(result[result.length - 1].kind, "added")
+        compare(result.length, 710)
+        compare(result[0].kind, "modified")
+        compare(result[0].originalText, "old 0")
+        compare(result[result.length - 1].kind, "modified")
+        compare(result[result.length - 1].text, "new 709")
     }
 }

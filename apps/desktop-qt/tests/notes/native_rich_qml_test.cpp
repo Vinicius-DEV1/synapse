@@ -721,12 +721,13 @@ private slots:
         QObject *proposalPreview = findQuickObject(rootItem, "notesMarkdownAiProposalPreview");
         QVERIFY(proposalPreview);
         const QVariantList diffLines = proposalPreview->property("diffLines").toList();
-        QVERIFY(diffLines.size() >= 4);
+        QVERIFY(diffLines.size() >= 3);
         QVERIFY(std::any_of(diffLines.cbegin(), diffLines.cend(), [](const QVariant &line) {
-            return line.toMap().value(QStringLiteral("kind")).toString() == QStringLiteral("removed");
-        }));
-        QVERIFY(std::any_of(diffLines.cbegin(), diffLines.cend(), [](const QVariant &line) {
-            return line.toMap().value(QStringLiteral("kind")).toString() == QStringLiteral("added");
+            const QVariantMap row = line.toMap();
+            return row.value(QStringLiteral("kind")).toString() == QStringLiteral("modified") &&
+                row.value(QStringLiteral("originalText")).toString() == QStringLiteral("Original paragraph.") &&
+                row.value(QStringLiteral("text")).toString() == QStringLiteral("Revised paragraph.") &&
+                row.value(QStringLiteral("html")).toString().contains(QStringLiteral("background-color"));
         }));
         QObject *toggleRawButton = findQuickObject(rootItem, "notesMarkdownAiToggleRawProposalButton");
         QVERIFY(toggleRawButton);

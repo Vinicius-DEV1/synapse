@@ -77,12 +77,13 @@ Rectangle {
                     Text {
                         id: diffLineText
                         Layout.fillWidth: true
-                        text: modelData.text.length > 0 ? modelData.text : " "
+                        text: modelData.kind === "modified" ? modelData.html
+                            : (modelData.text.length > 0 ? modelData.text : " ")
                         color: modelData.kind === "added" ? "#a7f3d0"
                             : modelData.kind === "removed" ? "#fecdd3" : "#e4e4e7"
                         font.family: "monospace"; font.pixelSize: 11
                         wrapMode: Text.WrapAnywhere
-                        textFormat: Text.PlainText
+                        textFormat: modelData.kind === "modified" ? Text.RichText : Text.PlainText
                     }
                 }
             }
