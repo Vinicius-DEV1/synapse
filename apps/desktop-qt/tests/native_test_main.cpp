@@ -41,6 +41,9 @@ int main(int argc, char **argv) {
     if (argc > 1 && std::strcmp(argv[1], "--suite=questions") == 0) {
         return runNativeQuestionsTest(argc - 1, argv + 1);
     }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=files") == 0) {
+        return runNativeFilesTest(argc - 1, argv + 1);
+    }
 
     int result = 0;
     result |= runNativeNotesTest(argc, argv);

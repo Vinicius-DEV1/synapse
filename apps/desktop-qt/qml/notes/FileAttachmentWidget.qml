@@ -52,7 +52,7 @@ Rectangle {
     Behavior on border.color { ColorAnimation { duration: 150 } }
 
     signal attrsUpdated(var newAttrs)
-    signal previewFileRequested(string fileId, string fileName, bool showOpenActions)
+    signal previewFileRequested(string fileId, string fileName, bool showOpenActions, bool playAudio)
     signal removeRequested()
     signal deleteLocalRequested(string fileId)
 
@@ -173,7 +173,8 @@ Rectangle {
             isMissingDialogOpen = true
             return
         }
-        previewFileRequested(fileId, fileName, true)
+        var isAudioFile = fileType === "audio" || /\.(mp3|wav|ogg|m4a|aac)$/i.test(fileName)
+        previewFileRequested(fileId, fileName, true, isAudioFile)
     }
 
     Component.onCompleted: syncFromCore()

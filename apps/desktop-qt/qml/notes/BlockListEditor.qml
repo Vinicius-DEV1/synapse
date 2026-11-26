@@ -52,7 +52,7 @@ ColumnLayout {
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
     signal localFileTrashAfterSaveRequested(string fileId)
-    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions)
+    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions, bool playAudio)
 
     function toggleActiveMark(mark) {
         return (focusedRichSlice && typeof focusedRichSlice.toggleMark === "function") ? focusedRichSlice.toggleMark(mark) : false
@@ -619,8 +619,8 @@ ColumnLayout {
                 onLocalFileTrashAfterSaveRequested: function(fileId) {
                     blockListRoot.localFileTrashAfterSaveRequested(fileId)
                 }
-                onFilePreviewRequested: function(fileId, fileName, showOpenActions) {
-                    blockListRoot.filePreviewRequested(fileId, fileName, showOpenActions)
+                onFilePreviewRequested: function(fileId, fileName, showOpenActions, playAudio) {
+                    blockListRoot.filePreviewRequested(fileId, fileName, showOpenActions, playAudio)
                 }
                 onFileAttachmentRemovalConfirmed: function(idx, fileWidget) {
                     if (!blockListRoot.removeFileAttachmentBlock(idx) &&

@@ -14,9 +14,10 @@
 
 // Native protected file previews and type classification.
 
-void SynapseDataController::previewLocalFile(const QString &fileId) {
-    const auto fail = [this](const QString &message) {
-        emit filePreviewReady({{"success", false}, {"error", message}});
+void SynapseDataController::previewLocalFile(const QString &fileId, const QString &requestId) {
+    const auto fail = [this, &requestId](const QString &message) {
+        emit filePreviewReady({{"success", false}, {"error", message},
+                               {"request_id", requestId}});
     };
     if (m_fileOperationRunning) return fail("Wait for the current file operation to finish.");
     if (m_isVaultConfigured && (!m_isVaultUnlocked || m_unlockedKeys.value("files").isEmpty())) {
@@ -79,6 +80,7 @@ void SynapseDataController::previewLocalFile(const QString &fileId) {
         return fail("Could not start the encrypted file preview.");
     }
 
+    m_activeFilePreviewRequestId = requestId;
     m_fileOperationRunning = true;
     emit fileOperationStateChanged();
     auto *watcher = new QFutureWatcher<QVariantMap>(this);
@@ -87,7 +89,8 @@ void SynapseDataController::previewLocalFile(const QString &fileId) {
     m_pendingPreviewFile = previewFile;
     m_cancelPreviewRequested = false;
     connect(watcher, &QFutureWatcher<QVariantMap>::finished, this,
-            [this, watcher, previewFile, previewPath, name, fileType, mimeType, fileSize, vaultWasConfigured, operation]() {
+            [this, watcher, previewFile, previewPath, name, fileType, mimeType, fileSize,
+             vaultWasConfigured, operation, requestId]() {
         const QVariantMap operationResult = watcher->result();
         watcher->deleteLater();
         const bool wasCancelled = m_cancelPreviewRequested;
@@ -116,10 +119,13 @@ void SynapseDataController::previewLocalFile(const QString &fileId) {
         if (m_pendingPreviewFile == previewFile) m_pendingPreviewFile = nullptr;
         m_fileOperationRunning = false;
         emit fileOperationStateChanged();
+        if (m_activeFilePreviewRequestId == requestId)
+            m_activeFilePreviewRequestId.clear();
         if (m_activeFileOperation == operation) m_activeFileOperation = nullptr;
         if (m_fileOperationWatcher == watcher) m_fileOperationWatcher = nullptr;
         synapse_file_operation_close(operation);
         result.insert("success", success);
+        result.insert("request_id", requestId);
         emit filePreviewReady(result);
     });
     watcher->setFuture(QtConcurrent::run([fullSourcePath, previewPath, key, encryptedAtRest, operation]() mutable {
@@ -167,7 +173,8 @@ void SynapseDataController::closeFilePreview(const QString &temporaryPath) {
     delete file;
 }
 
-void SynapseDataController::cancelFilePreview() {
+void SynapseDataController::cancelFilePreview(const QString &requestId) {
+    if (!requestId.isEmpty() && m_activeFilePreviewRequestId != requestId) return;
     if (!m_pendingPreviewFile || !m_activeFileOperation) return;
     m_cancelPreviewRequested = true;
     synapse_file_operation_cancel(m_activeFileOperation);

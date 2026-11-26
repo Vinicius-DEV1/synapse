@@ -38,16 +38,26 @@ private slots:
         const QString fileId = file.value("id").toString();
 
         QSignalSpy previewSpy(&controller, &SynapseDataController::filePreviewReady);
-        controller.previewLocalFile(fileId);
+        controller.previewLocalFile(fileId, QStringLiteral("notes-audio-request"));
+        controller.cancelFilePreview(QStringLiteral("unrelated-audio-request"));
         QTRY_COMPARE_WITH_TIMEOUT(previewSpy.count(), 1, 15000);
         const QVariantMap preview = previewSpy.takeFirst().at(0).toMap();
         QVERIFY2(preview.value("success").toBool(), qPrintable(preview.value("error").toString()));
+        QCOMPARE(preview.value("request_id").toString(), QStringLiteral("notes-audio-request"));
         const QString previewPath = preview.value("path").toString();
         const QVariantMap previewText = controller.readFilePreviewText(previewPath);
         QVERIFY2(previewText.value("success").toBool(), qPrintable(previewText.value("error").toString()));
         QCOMPARE(previewText.value("text").toString(), QString::fromUtf8(content));
         controller.closeFilePreview(previewPath);
         QVERIFY(!QFile::exists(previewPath));
+
+        controller.previewLocalFile(QStringLiteral("missing-file"),
+                                    QStringLiteral("notes-audio-missing-request"));
+        QCOMPARE(previewSpy.count(), 1);
+        const QVariantMap missingPreview = previewSpy.takeFirst().at(0).toMap();
+        QVERIFY(!missingPreview.value("success").toBool());
+        QCOMPARE(missingPreview.value("request_id").toString(),
+                 QStringLiteral("notes-audio-missing-request"));
 
         controller.exportLocalFile(fileId, exportPath);
         QTRY_COMPARE_WITH_TIMEOUT(operationSpy.count(), 1, 15000);

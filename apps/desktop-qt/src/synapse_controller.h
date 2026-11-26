@@ -521,10 +521,11 @@ public:
     Q_INVOKABLE void importLocalFile(const QString &sourcePath, const QString &folderId = "",
                                      const QString &requestId = "");
     Q_INVOKABLE void exportLocalFile(const QString &fileId, const QString &destinationPath);
-    Q_INVOKABLE void previewLocalFile(const QString &fileId);
+    Q_INVOKABLE void previewLocalFile(const QString &fileId,
+                                      const QString &requestId = QString());
     Q_INVOKABLE QVariantMap readFilePreviewText(const QString &temporaryPath);
     Q_INVOKABLE void closeFilePreview(const QString &temporaryPath);
-    Q_INVOKABLE void cancelFilePreview();
+    Q_INVOKABLE void cancelFilePreview(const QString &requestId = QString());
 
 signals:
     void dbPathChanged();
@@ -577,6 +578,7 @@ private:
     int m_focusSessionCount;
     int m_unreadNotificationCount;
     bool m_fileOperationRunning;
+    QString m_activeFilePreviewRequestId;
     QFutureWatcher<QVariantMap> *m_fileOperationWatcher;
     bool m_librarySearchRunning = false;
     QFutureWatcher<QVariantMap> *m_librarySearchWatcher = nullptr;

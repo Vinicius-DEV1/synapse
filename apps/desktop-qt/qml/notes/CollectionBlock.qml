@@ -42,7 +42,7 @@ Rectangle {
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
     signal localFileTrashAfterSaveRequested(string fileId)
-    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions)
+    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions, bool playAudio)
     signal removeRequested()
 
     HoverHandler { id: hoverHandler }
@@ -283,8 +283,8 @@ Rectangle {
                 function onMermaidFullscreenRequested(c) { collectionRoot.mermaidFullscreenRequested(c) }
                 function onHabitStatsRequested(hid) { collectionRoot.habitStatsRequested(hid) }
                 function onOpenMediaRequested(mt, mid, t) { collectionRoot.openMediaRequested(mt, mid, t) }
-                function onFilePreviewRequested(fileId, fileName, showOpenActions) {
-                    collectionRoot.filePreviewRequested(fileId, fileName, showOpenActions)
+                function onFilePreviewRequested(fileId, fileName, showOpenActions, playAudio) {
+                    collectionRoot.filePreviewRequested(fileId, fileName, showOpenActions, playAudio)
                 }
                 function onLocalFileTrashAfterSaveRequested(fileId) {
                     collectionRoot.localFileTrashAfterSaveRequested(fileId)

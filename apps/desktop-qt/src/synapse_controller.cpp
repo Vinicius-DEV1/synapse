@@ -36,6 +36,7 @@ SynapseDataController::SynapseDataController(QObject *parent, bool initializeDef
       m_focusSessionCount(0),
       m_unreadNotificationCount(0),
       m_fileOperationRunning(false),
+      m_activeFilePreviewRequestId(),
       m_fileOperationWatcher(nullptr),
       m_activeFileOperation(nullptr),
       m_pendingPreviewFile(nullptr),

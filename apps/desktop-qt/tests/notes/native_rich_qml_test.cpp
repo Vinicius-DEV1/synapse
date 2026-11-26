@@ -3,9 +3,12 @@
 
 #include <QtGui/QGuiApplication>
 #include <QtCore/QCoreApplication>
+#include <QtQuick/QQuickItem>
+#include <QtQuick/QQuickWindow>
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
+#include <QtQml/qqml.h>
 #include <QtCore/QUrl>
 #include <QtTest/QtTest>
 
@@ -25,9 +28,182 @@ int runNativeNotesRichImageDropQmlTest(int argc, char **argv);
 int runNativeNotesLinkPreviewQmlTest();
 int runNativeNotesLinkColorQmlTest(int argc, char **argv);
 
+class NotesAudioTestPlayer : public QQuickItem {
+    Q_OBJECT
+    Q_PROPERTY(QString source READ source WRITE setSource NOTIFY sourceChanged)
+    Q_PROPERTY(double position READ position WRITE setPosition NOTIFY positionChanged)
+    Q_PROPERTY(double duration READ duration NOTIFY durationChanged)
+    Q_PROPERTY(bool paused READ paused WRITE setPaused NOTIFY pausedChanged)
+    Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
+    Q_PROPERTY(double volume READ volume WRITE setVolume NOTIFY volumeChanged)
+public:
+    QString source() const { return m_source; }
+    double position() const { return m_position; }
+    double duration() const { return 125.0; }
+    bool paused() const { return m_paused; }
+    bool muted() const { return m_muted; }
+    double volume() const { return m_volume; }
+    void setSource(const QString &value) { m_source = value; emit sourceChanged(); }
+    void setPosition(double value) { m_position = value; emit positionChanged(); }
+    void setPaused(bool value) { m_paused = value; emit pausedChanged(); }
+    void setMuted(bool value) { m_muted = value; emit mutedChanged(); }
+    void setVolume(double value) { m_volume = value; emit volumeChanged(); }
+    Q_INVOKABLE void play() { setPaused(false); }
+    Q_INVOKABLE void pause() { setPaused(true); }
+    Q_INVOKABLE void togglePlay() { setPaused(!m_paused); }
+    Q_INVOKABLE void seekRelative(double seconds) { setPosition(m_position + seconds); }
+
+signals:
+    void sourceChanged();
+    void positionChanged();
+    void durationChanged();
+    void pausedChanged();
+    void mutedChanged();
+    void volumeChanged();
+    void endOfFile();
+    void playbackError(const QString &message);
+
+private:
+    QString m_source;
+    double m_position = 0;
+    bool m_paused = true;
+    bool m_muted = false;
+    double m_volume = 100;
+};
+
+class NotesAudioPreviewTestController final : public QObject {
+    Q_OBJECT
+public:
+    QString requestedFileId;
+    QString requestedId;
+    QString cancelledId;
+    QString closedPath;
+
+    Q_INVOKABLE QVariantMap getFileWidgetMetadata(const QString &fileId) const {
+        return {{"id", fileId}, {"name", "Study audio.mp3"}, {"file_size", 2097152}};
+    }
+    Q_INVOKABLE void previewLocalFile(const QString &fileId, const QString &requestId) {
+        requestedFileId = fileId;
+        requestedId = requestId;
+    }
+    Q_INVOKABLE void cancelFilePreview(const QString &requestId) { cancelledId = requestId; }
+    Q_INVOKABLE void closeFilePreview(const QString &path) { closedPath = path; }
+
+    void publish(const QVariantMap &result) { emit filePreviewReady(result); }
+
+signals:
+    void filePreviewReady(const QVariantMap &result);
+    void filePreviewsInvalidated();
+};
+
 class NativeRichQmlTest final : public QObject {
     Q_OBJECT
 private slots:
+    void notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesAudioPreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        NotesAudioPreviewTestController controller;
+        QQuickWindow window;
+        window.resize(720, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        window.show();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile",
+                                          Q_ARG(QVariant, QString("audio-1")),
+                                          Q_ARG(QVariant, QString("Study audio.mp3"))));
+        QTRY_VERIFY(root->property("visible").toBool());
+        QVERIFY(root->property("loading").toBool());
+        QCOMPARE(controller.requestedFileId, QString("audio-1"));
+        const QString requestId = root->property("requestId").toString();
+        QVERIFY(!requestId.isEmpty());
+        QCOMPARE(controller.requestedId, requestId);
+
+        controller.publish({{"success", true}, {"path", "/tmp/protected-audio.mp3"},
+                            {"request_id", "stale-request"}});
+        QVERIFY(root->property("loading").toBool());
+        controller.publish({{"success", true}, {"path", "/tmp/protected-audio.mp3"},
+                            {"request_id", requestId}});
+        QTRY_VERIFY(!root->property("loading").toBool());
+        QCOMPARE(root->property("previewPath").toString(), QString("/tmp/protected-audio.mp3"));
+        QObject *player = root->findChild<QObject *>("notesAudioPlayer");
+        QVERIFY(player);
+        QCOMPARE(player->property("source").toString(), QString("/tmp/protected-audio.mp3"));
+        QVERIFY(root->property("isPlaying").toBool());
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal"));
+        QVERIFY(!root->property("visible").toBool());
+        QCOMPARE(controller.closedPath, QString("/tmp/protected-audio.mp3"));
+        QVERIFY(player->property("source").toString().isEmpty());
+    }
+
+    void notesAudioPreviewCancelsOnlyItsPendingRequest() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesAudioPreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        NotesAudioPreviewTestController controller;
+        QQuickWindow window;
+        window.resize(720, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        window.show();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile",
+                                          Q_ARG(QVariant, QString("audio-2")),
+                                          Q_ARG(QVariant, QString("Second audio.mp3"))));
+        QVERIFY(root->property("visible").toBool());
+        QVERIFY(root->property("loading").toBool());
+        const QString requestId = root->property("requestId").toString();
+        QVERIFY(!requestId.isEmpty());
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal"));
+        QCOMPARE(controller.cancelledId, requestId);
+        QVERIFY(controller.closedPath.isEmpty());
+    }
+
+    void notesAudioPreviewShowsControllerErrorsAndClosesOnEscape() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesAudioPreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        NotesAudioPreviewTestController controller;
+        QQuickWindow window;
+        window.resize(720, 520);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        window.show();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile",
+                                          Q_ARG(QVariant, QString("audio-3")),
+                                          Q_ARG(QVariant, QString("Locked audio.mp3"))));
+        const QString requestId = root->property("requestId").toString();
+        controller.publish({{"success", false}, {"error", "Unlock the files vault."},
+                            {"request_id", requestId}});
+        QTRY_VERIFY(!root->property("loading").toBool());
+        QCOMPARE(root->property("errorMessage").toString(), QString("Unlock the files vault."));
+
+        QObject *closeButton = root->findChild<QObject *>("notesAudioPreviewCloseButton");
+        QVERIFY(closeButton);
+        QTRY_VERIFY(closeButton->property("activeFocus").toBool());
+        QTest::keyClick(&window, Qt::Key_Escape);
+        QTRY_VERIFY(!root->property("visible").toBool());
+        QVERIFY(controller.cancelledId.isEmpty());
+    }
+
     void collapsedCursorFormattingAppliesOnlyToFollowingText() {
         QQmlEngine engine;
         NotesTextOperations operations;
@@ -260,7 +436,19 @@ private slots:
 
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
+    qmlRegisterType<NotesAudioTestPlayer>("Synapse.Media", 1, 0, "MpvPlayerItem");
     NativeRichQmlTest test;
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=audio-preview")) {
+        char correlationTest[] = "notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath";
+        char cancellationTest[] = "notesAudioPreviewCancelsOnlyItsPendingRequest";
+        char errorTest[] = "notesAudioPreviewShowsControllerErrorsAndClosesOnEscape";
+        char *correlationArguments[] = {argv[0], correlationTest};
+        char *cancellationArguments[] = {argv[0], cancellationTest};
+        char *errorArguments[] = {argv[0], errorTest};
+        return QTest::qExec(&test, 2, correlationArguments) |
+            QTest::qExec(&test, 2, cancellationArguments) |
+            QTest::qExec(&test, 2, errorArguments);
+    }
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |
         runNativeNotesSlashMenuQmlTest(argc, argv) |

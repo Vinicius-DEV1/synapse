@@ -726,3 +726,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused QML regression harnesses for Notes focus setup, calendar event form, habit picker, and question picker | Passed: 3 + 4 + 7 + 6 QtTest results | The shared setup host continues to mount the unaffected Notes modes and their existing picker flows. Mocked controller data does not verify live persistence or visual parity. |
 | `git diff --check` | Passed | No patch whitespace errors. |
 | Live Core alarm creation/failure, OS reminder delivery, backdrop click, focus return, blur and matched-viewport comparison | Not run | Keep QT-NOTES-066 acceptance open for real persistence/reminder and visual/interactions evidence. |
+
+### Notes audio attachment player (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Rebuilt the Qt app against the request-correlated preview API. |
+| `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | The Qt QML harness registers a mock MPV item and loads the Notes-owned audio overlay. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=audio-preview` | Passed: 9 QtTest results | Three isolated cases verify stale request results are ignored, matching results start playback, close releases the prepared path, close during preparation cancels the matching request, controller errors are shown, and Escape closes the modal. Mock controller/player; no actual audio output. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Rebuilt the native controller tests with the optional preview request ID. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=files` | Passed: 4 QtTest results | The encrypted-file test exercises the real controller preview, checks returned ID, verifies a mismatched cancel does not cancel it, and confirms missing-file errors retain their request ID. Also runs the existing file/folder management case. |
+| QML syntax-only lint for the new modal and `git diff --check` | Passed | `qmllint -s` parses the modal; `Synapse.Media` is registered in the running app rather than a lint qmldir, so ordinary lint reports the expected unresolved runtime type. The QML integration harness resolves it using a mock. |
+| Actual MPV playback, codec matrix, vault lock during playback, live file widget in active/floating/nested notes, focus/accessibility and matched-viewport comparison | Not run | Keep these QT-NOTES-045 acceptance items open; mock-player success is not live playback or visual evidence. |
