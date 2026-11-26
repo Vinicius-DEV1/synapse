@@ -738,3 +738,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=files` | Passed: 4 QtTest results | The encrypted-file test exercises the real controller preview, checks returned ID, verifies a mismatched cancel does not cancel it, and confirms missing-file errors retain their request ID. Also runs the existing file/folder management case. |
 | QML syntax-only lint for the new modal and `git diff --check` | Passed | `qmllint -s` parses the modal; `Synapse.Media` is registered in the running app rather than a lint qmldir, so ordinary lint reports the expected unresolved runtime type. The QML integration harness resolves it using a mock. |
 | Actual MPV playback, codec matrix, vault lock during playback, live file widget in active/floating/nested notes, focus/accessibility and matched-viewport comparison | Not run | Keep these QT-NOTES-045 acceptance items open; mock-player success is not live playback or visual evidence. |
+
+
+### Notes folder attachment navigation (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_file_attachment_route.qml -import apps/desktop-qt/qml` | Passed: 5 QtTest results | Verifies that a folder attachment sets the folder-navigation intent, audio filenames retain the player intent, and ordinary documents do not request folder navigation. It mocks the metadata controller and does not instantiate the full Notes-to-Files shell. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native app links after propagating the new folder-intent argument through Notes block and bundle wrappers. |
+| Focused `qmllint --ignore-settings -s` over changed QML and `git diff --check` | Passed | Syntax and whitespace checks do not verify folder existence, tree selection, persistence or live module transition. |
+| Root/nested folder open from active, floating and nested Notes; save/reopen and matched viewport | Not run | Keep QT-NOTES-045 partial until live folder selection/navigation and same-size visual comparison are checked. |

@@ -6,6 +6,10 @@ Rectangle {
     id: filesRoot
     color: theme.bgDarkBg
 
+    function openFolderById(folderId) {
+        fileCollection.openFolder(String(folderId || ""))
+    }
+
     FilesCollection {
         id: fileCollection
     }

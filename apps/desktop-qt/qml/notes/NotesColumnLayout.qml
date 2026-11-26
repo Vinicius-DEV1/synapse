@@ -39,7 +39,7 @@ Item {
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
     signal localFileTrashAfterSaveRequested(string fileId)
-    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions, bool playAudio)
+    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions, bool playAudio, bool openFolder)
     signal unwrapRequested(var columnsList)
     signal removeRequested()
 
@@ -325,8 +325,8 @@ Item {
                             function onMermaidFullscreenRequested(c) { colLayoutRoot.mermaidFullscreenRequested(c) }
                             function onHabitStatsRequested(hid) { colLayoutRoot.habitStatsRequested(hid) }
                             function onOpenMediaRequested(mt, mid, t) { colLayoutRoot.openMediaRequested(mt, mid, t) }
-                            function onFilePreviewRequested(fileId, fileName, showOpenActions, playAudio) {
-                                colLayoutRoot.filePreviewRequested(fileId, fileName, showOpenActions, playAudio)
+                            function onFilePreviewRequested(fileId, fileName, showOpenActions, playAudio, openFolder) {
+                                colLayoutRoot.filePreviewRequested(fileId, fileName, showOpenActions, playAudio, openFolder)
                             }
                             function onLocalFileTrashAfterSaveRequested(fileId) {
                                 colLayoutRoot.localFileTrashAfterSaveRequested(fileId)

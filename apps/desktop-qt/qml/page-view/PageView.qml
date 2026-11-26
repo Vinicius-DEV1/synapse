@@ -483,7 +483,11 @@ Rectangle {
                         if (pageViewRoot.queueFileTrashAfterSave(fileId))
                             pageViewRoot.saveActiveNote()
                     }
-                    onFilePreviewRequested: function(fileId, fileName, showOpenActions, playAudio) {
+                    onFilePreviewRequested: function(fileId, fileName, showOpenActions, playAudio, openFolder) {
+                        if (openFolder) {
+                            pageViewRoot.linkedTargetOpenRequested("files", fileId, fileName, false, false)
+                            return
+                        }
                         if (playAudio) {
                             viewModals.innerModalsHost.openAudioPreview(fileId, fileName)
                             return

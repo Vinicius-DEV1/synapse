@@ -188,6 +188,8 @@ Item {
                 libraryView.openBookById(id)
             } else if (targetModule === "video" && videoView) {
                 videoView.openVideoById(id)
+            } else if (targetModule === "files" && filesView) {
+                filesView.openFolderById(id)
             }
         })
     }

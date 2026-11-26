@@ -26,7 +26,7 @@ ColumnLayout {
     signal addRequested()
     signal deleteRequested()
     signal removeItemRequested(string fileId, string itemName)
-    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions, bool playAudio)
+    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions, bool playAudio, bool openFolder)
 
     anchors.fill: parent
     anchors.leftMargin: 12
@@ -83,7 +83,7 @@ ColumnLayout {
             expanded: bodyRoot.expanded
             itemsInvalid: bodyRoot.itemsInvalid
             onPreviewRequested: function(fileId, fileName) {
-                bodyRoot.filePreviewRequested(fileId, fileName, false, false)
+                bodyRoot.filePreviewRequested(fileId, fileName, false, false, false)
             }
             onRemoveRequested: function(fileId, itemName) {
                 bodyRoot.removeItemRequested(fileId, itemName)
