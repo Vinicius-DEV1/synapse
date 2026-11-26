@@ -515,6 +515,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes question-block delete confirmation (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_question_block_delete.qml` | Passed: 2 behavior cases (4 QtTest totals including setup/cleanup), 0 failures. | Exercises the real `QuestionBlock` dialog wiring: Cancel emits no `removeRequested`, confirmation emits exactly one. Does not validate live database retention or rendered viewport appearance. |
+| Focused `qmllint` for `QuestionBlock.qml` and `NotesQuestionBlockDeleteDialog.qml` | Passed: exit 0; pre-existing layout, unqualified access, and dynamic delegate/hover warnings remain in `QuestionBlock.qml`. | The new dialog adds no lint diagnostics. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked. | Build validation only; no live save/reopen or visual comparison. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes question focus session loading (2026-11-26)
 
 | Check | Result | Scope and limits |

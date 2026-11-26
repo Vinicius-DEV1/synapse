@@ -146,4 +146,6 @@ Question block metadata loads through a battery-ID lookup instead of scanning th
 
 Starting focus from a Notes question widget also loads only its linked battery's questions; legacy single-question widgets load only that question by ID. Neither Notes path reads and filters the global question list.
 
+Removing a question card from a note now requires explicit confirmation. The confirmation removes only the note card; the linked battery and its questions remain available in the Questions module.
+
 Focused Core tests verify the page/layout/link data and ensure an invalid page leaves no battery or link behind. Focused QML checks verify the modal hierarchy, responsive result viewport, current-page context, Core ID insertion, existing ID selection and error copy. Live creation followed by saving/reopening the note, focus return and same-viewport comparison remain acceptance work. The React Notes host currently ignores the reuse flag emitted when a suggested existing question widget is selected; that client-side behavior is tracked in the parity audit rather than mirrored by Qt.

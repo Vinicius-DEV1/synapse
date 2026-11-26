@@ -695,6 +695,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify battery focus makes one battery-ID query, legacy single-question focus makes one question-ID query, neither path reads global questions, and the session title/ID/question payload remain correct. Confirm missing IDs preserve existing empty-session behavior and no query is made without a valid target.
 - **Fix status:** The host now loads only the linked battery or legacy question by ID. A focused QML harness covers both paths and explicitly counts global-list calls; build, QML test and lint evidence are recorded in [07-verification.md](07-verification.md). Live focus modal visuals, answer submission and persistence remain under the broader question-modal acceptance checklist.
 
+## QT-NOTES-073: Removing a Notes question block skips React's confirmation
+
+- **Severity:** Medium; a destructive click immediately removed the question card from the note, while React asks for confirmation and clarifies that the battery and questions remain saved in the Questions module.
+- **Evidence:** React `QuestionBlockNodeView.tsx` opens `QuestionBlockDeleteModal.tsx`, with Cancel and “Remover da Nota” actions plus persistent-battery copy. Qt `QuestionBlock.qml` previously emitted `removeRequested()` directly from its trash button.
+- **Reproduction:** Hover a Notes question card and click its trash action. Before the fix Qt removed it immediately; React presented a centered confirmation dialog first.
+- **Root cause:** The Qt widget bypassed the question-specific delete dialog used by React and emitted the generic block-removal signal immediately.
+- **Required fix:** Add a native window-overlay confirmation that matches React's title, explanatory copy, button labels and neutral/destructive hierarchy. Cancel must leave the card and battery untouched; confirmation must emit only the existing note-block removal request and must never delete the linked battery or its questions.
+- **Acceptance:** Verify the dialog is centered and viewport-clamped, matches width/spacing/backdrop/type/buttons, Cancel/Escape/outside rules and focus return; confirm button emits one removal request, Cancel emits none, and the battery remains available after note save/reopen.
+- **Fix status:** Added `NotesQuestionBlockDeleteDialog.qml` and routed the card trash action through it; only its `confirmed` signal reaches the existing `removeRequested()` route. A focused QML harness verifies Cancel emits zero removal requests and confirmation emits one; native build and focused lint pass. Same-viewport appearance, keyboard/focus behavior and Core persistence remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; help instructions against visible QML, and dynamic widget color alpha conversion for valid hex, named, and legacy palette values. Then complete [07-verification.md](07-verification.md).

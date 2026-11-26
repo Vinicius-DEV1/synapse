@@ -41,6 +41,11 @@ Rectangle {
     signal openInQuestionsRequested(string batteryId)
     signal removeRequested()
 
+    NotesQuestionBlockDeleteDialog {
+        id: deleteConfirmDialog
+        onConfirmed: qBlockRoot.removeRequested()
+    }
+
     HoverHandler { id: hoverHandler }
 
     function refreshFromCore() {
@@ -301,7 +306,7 @@ Rectangle {
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Remover bloco da nota")
-                    onClicked: qBlockRoot.removeRequested()
+                    onClicked: deleteConfirmDialog.open()
                     background: Rectangle { radius: 8; color: parent.hovered ? "#1af43f5e" : "transparent" }
                     contentItem: AppIcon {
                         anchors.centerIn: parent
