@@ -156,6 +156,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify large-note runtime responsiveness, question preview expand/collapse/reopen, missing/deleted IDs and metadata refresh after external edits. See QT-NOTES-071.
 - [x] Keep Notes focus-session loading scoped to the selected battery or legacy question ID; do not read or filter the global question list. Focused QML harness covers both paths. See QT-NOTES-072.
 - [ ] Verify missing/deleted targets, focus modal visual states, answer submission and save/reopen from the Notes entry point. See QT-NOTES-072.
+- [x] Normalize Core question transport records at the Notes focus boundary: map `question`/`question.prompt`, parse JSON-string options, and adapt snake_case/camelCase answer fields. Focused battery, legacy-target and malformed-options cases pass. See QT-NOTES-077.
+- [ ] Run a real Core-backed Notes focus session and verify the statement, options, correct-choice feedback, open-answer fields, malformed legacy records, and save/reopen behavior. See QT-NOTES-077.
 - [x] Ask for confirmation before removing a question card from a note, and preserve the linked battery/questions in the Questions module. The QML harness verifies Cancel and exactly one confirmed removal signal. See QT-NOTES-073.
 - [ ] Compare question-block delete confirmation size, text emphasis, backdrop, focus return, Escape behavior and live save/reopen against React. See QT-NOTES-073.
 - [x] Show the React finish confirmation before Notes focus results; track confirmed questions separately and allow Review, finish, Escape and backdrop cancel. Focused QML flow/dialog cases pass. See QT-NOTES-074.

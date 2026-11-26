@@ -641,3 +641,11 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native application target linked. This does not exercise the active Notes editor or persisted duplicate lookup. |
 | `git diff --check` | Passed | Patch formatting and whitespace only. |
 | Live duplicate discovery/navigation, focus restoration, same-viewport capture, accessibility and screen-edge/DPI comparison | Not run | Keep QT-NOTES-076 and its remaining modal acceptance checklist open until full-editor evidence is collected. |
+
+### Notes question payload normalization (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_question_session_loading.qml -import apps/desktop-qt/qml` | Passed: 4 behavior cases (6 QtTest results including setup/cleanup). Verifies battery and legacy ID-targeted reads, Core `question` to `prompt` mapping, JSON-string option parsing, correct-index/expected-answer/explanation mapping, no global scan, and malformed-options fail-closed behavior. | Qt 6.10.2, offscreen. Uses a mock controller; does not prove the real bridge payload, rendered answer selection or save/reopen behavior. |
+| `git diff --check` | Passed | Patch whitespace only. |
+| Full Core-backed Notes focus session, question render, answer interaction and saved attempt round-trip | Not run | Keep QT-NOTES-077 and the open-answer acceptance items active until application evidence is collected. |

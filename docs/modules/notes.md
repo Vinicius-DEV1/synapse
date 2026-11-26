@@ -146,6 +146,8 @@ Question block metadata loads through a battery-ID lookup instead of scanning th
 
 Starting focus from a Notes question widget also loads only its linked battery's questions; legacy single-question widgets load only that question by ID. Neither Notes path reads and filters the global question list.
 
+The Notes focus entry adapter converts Core's question transport shape to the QML view model: it maps `question` to the displayed prompt, parses the JSON-string options into an array, and maps `correct_index` and `expected_answer` to the fields consumed by the card. This adapter is Notes-local so the shared Questions screen is not changed. A focused QML harness covers battery and legacy single-question payloads; a live saved-note session remains part of acceptance.
+
 Removing a question card from a note now requires explicit confirmation. The confirmation removes only the note card; the linked battery and its questions remain available in the Questions module.
 
 Sequential focus in a Notes question widget asks before showing results and displays the number of answered and pending questions. Review returns to the last question; confirmation opens the result view. The Notes host enables this confirmation specifically for the Notes entry point.

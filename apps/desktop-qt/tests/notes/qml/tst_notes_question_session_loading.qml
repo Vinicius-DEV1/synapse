@@ -20,13 +20,28 @@ TestCase {
         function getBatteryQuestions(batteryId) {
             batteryQuestionCalls += 1
             lastBatteryId = batteryId
-            return [{ id: "q-1", battery_id: batteryId, question: "Battery question" }]
+            return [{
+                id: "q-1",
+                battery_id: batteryId,
+                type: "multiple_choice",
+                question: "Battery question",
+                options: '["Choice A", "Choice B"]',
+                correct_index: 1,
+                expected_answer: "A model answer",
+                explanation: "A short explanation"
+            }]
         }
 
         function getQuizQuestion(questionId) {
             singleQuestionCalls += 1
             lastQuestionId = questionId
-            return { id: questionId, question: "Single question" }
+            return {
+                id: questionId,
+                type: "open",
+                question: "Single question",
+                options: "[]",
+                expected_answer: "The open answer key"
+            }
         }
 
         function getAllQuizQuestions() {
@@ -52,6 +67,12 @@ TestCase {
         compare(mockController.globalQuestionCalls, 0)
         compare(questions.length, 1)
         compare(questions[0].id, "q-1")
+        compare(questions[0].prompt, "Battery question")
+        compare(questions[0].options.length, 2)
+        compare(questions[0].options[0], "Choice A")
+        compare(questions[0].correctIndex, 1)
+        compare(questions[0].expectedAnswer, "A model answer")
+        compare(questions[0].explanation, "A short explanation")
     }
 
     function test_legacySingleQuestionSessionLoadsByQuestionId() {
@@ -63,6 +84,9 @@ TestCase {
         compare(mockController.globalQuestionCalls, 0)
         compare(questions.length, 1)
         compare(questions[0].id, "question-7")
+        compare(questions[0].prompt, "Single question")
+        compare(questions[0].type, "open")
+        compare(questions[0].expectedAnswer, "The open answer key")
     }
 
     function test_missingTargetDoesNotReadAnyQuestionList() {
@@ -72,5 +96,16 @@ TestCase {
         compare(mockController.singleQuestionCalls, 0)
         compare(mockController.globalQuestionCalls, 0)
         compare(questions.length, 0)
+    }
+
+    function test_malformedOptionsFailClosed() {
+        const question = QuestionSession.normalizeQuestion({
+            id: "broken-options",
+            question: "Question statement",
+            options: "{invalid json"
+        })
+
+        compare(question.prompt, "Question statement")
+        compare(question.options.length, 0)
     }
 }
