@@ -1,7 +1,69 @@
 .pragma library
 .import "NotesHtmlEscaping.js" as HtmlEscaping
+.import "NotesJsonAttribute.js" as NotesJsonAttribute
 
 var MAX_NESTED_EDITOR_DEPTH = 24
+
+function parseBundleItems(attrs) {
+    var sourceAttrs = attrs || ({})
+    var raw = sourceAttrs["data-items"]
+    if (raw === undefined || raw === null || raw === "") raw = sourceAttrs.items
+    if (raw === undefined || raw === null || raw === "") raw = "[]"
+
+    var result = typeof raw === "string"
+        ? NotesJsonAttribute.parseJsonAttribute(raw, true)
+        : { valid: Array.isArray(raw), value: raw, error: "Expected a JSON array." }
+    if (!result.valid) {
+        return {
+            valid: false,
+            items: [],
+            error: "Could not parse bundled file metadata; editing is disabled to preserve the stored value.",
+            details: String(result.error || "")
+        }
+    }
+
+    if (!Array.isArray(result.value)) {
+        return {
+            valid: false,
+            items: [],
+            error: "Bundled file metadata must be an array; editing is disabled to preserve the stored value."
+        }
+    }
+
+    for (var i = 0; i < result.value.length; i++) {
+        var item = result.value[i]
+        var itemId = item && (item.fileId || item.id)
+        if (!item || typeof item !== "object" || Array.isArray(item) ||
+                typeof itemId !== "string" || itemId.length === 0) {
+            return {
+                valid: false,
+                items: [],
+                error: "Bundled file metadata contains an invalid item; editing is disabled to preserve the stored value."
+            }
+        }
+    }
+    return { valid: true, items: result.value }
+}
+
+function uniqueFileExtensions(items) {
+    var seen = ({})
+    var out = []
+    var sourceItems = Array.isArray(items) ? items : []
+    for (var i = 0; i < sourceItems.length; i++) {
+        var item = sourceItems[i] || ({})
+        var name = String(item.name || item.title || "")
+        var dot = name.lastIndexOf(".")
+        var extension = dot > 0
+            ? name.substring(dot).toUpperCase()
+            : String(item.fileType || "DOC").toUpperCase()
+        if (extension && !seen[extension]) {
+            seen[extension] = true
+            out.push(extension)
+            if (out.length >= 3) break
+        }
+    }
+    return out
+}
 
 function isNestedBlockContainer(blockType) {
     return blockType === "toggleBlock" || blockType === "blockquoteToggle" ||

@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
-import "NotesJsonAttribute.js" as NotesJsonAttribute
+import "DocumentBundleOperations.js" as DocumentBundleOperations
 
 Rectangle {
     id: bundleWidgetRoot
@@ -17,53 +17,18 @@ Rectangle {
     property string title: attrs["data-title"] || attrs["title"] || qsTr("Documentos")
     property string accentColor: attrs["data-color"] || attrs["color"] || "default"
     function parseBundleItems() {
-        var raw = attrs["data-items"]
-        if (raw === undefined || raw === null || raw === "") raw = attrs["items"]
-        if (raw === undefined || raw === null || raw === "") raw = "[]"
-
-        var result = typeof raw === "string"
-            ? NotesJsonAttribute.parseJsonAttribute(raw, true)
-            : { valid: Array.isArray(raw), value: raw, error: "Expected a JSON array." }
+        var result = DocumentBundleOperations.parseBundleItems(attrs)
         if (!result.valid) {
-            console.warn("[Notes:DocumentBundle] Could not parse bundled file metadata; editing is disabled to preserve the stored value.", result.error)
-            return { valid: false, items: [] }
+            var message = "[Notes:DocumentBundle] " + result.error
+            if (result.details) console.warn(message, result.details)
+            else console.warn(message)
         }
-
-        if (!Array.isArray(result.value)) {
-            console.warn("[Notes:DocumentBundle] Bundled file metadata must be an array; editing is disabled to preserve the stored value.")
-            return { valid: false, items: [] }
-        }
-
-        for (var i = 0; i < result.value.length; i++) {
-            var item = result.value[i]
-            var itemId = item && (item.fileId || item.id)
-            if (!item || typeof item !== "object" || Array.isArray(item)
-                    || typeof itemId !== "string" || itemId.length === 0) {
-                console.warn("[Notes:DocumentBundle] Bundled file metadata contains an invalid item; editing is disabled to preserve the stored value.")
-                return { valid: false, items: [] }
-            }
-        }
-        return { valid: true, items: result.value }
+        return result
     }
     property var itemsState: parseBundleItems()
     property var items: itemsState.items
     property bool itemsInvalid: !itemsState.valid
-    property var uniqueExtensions: {
-        var seen = ({})
-        var out = []
-        for (var i = 0; i < items.length; i++) {
-            var it = items[i] || ({})
-            var nm = String(it.name || it.title || "")
-            var dot = nm.lastIndexOf(".")
-            var ext = dot > 0 ? nm.substring(dot).toUpperCase() : String(it.fileType || "DOC").toUpperCase()
-            if (ext && !seen[ext]) {
-                seen[ext] = true
-                out.push(ext)
-                if (out.length >= 3) break
-            }
-        }
-        return out
-    }
+    property var uniqueExtensions: DocumentBundleOperations.uniqueFileExtensions(items)
     property bool renaming: false
     property bool showColorPicker: false
     property bool expanded: false
