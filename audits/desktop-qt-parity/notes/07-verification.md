@@ -515,6 +515,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes habit select/create modal (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for the Notes habit picker through `NotesSetupWidgetsModal.qml` | Passed: 3 behavior cases (5 QtTest results including setup/cleanup), 0 failures. Verifies case-insensitive duplicate prevention, emerald/flame/seven-day create arguments, creation result lookup by fresh Core ID, existing-habit ID serialization and correct widget output. | Qt 6.10.2, offscreen with a mock controller. Does not verify live Core persistence, note save/reopen, keyboard navigation, loading/empty/retry messaging, focus or matched-viewport UI. |
+| Focused `qmllint` for `NotesSetupWidgetPickerPanel.qml` and `NotesSetupWidgetsModal.qml` | Passed: exit 0, no warnings. | Static QML checks only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes Alarm setup hierarchy and routes (2026-11-26)
 
 | Check | Result | Scope and limits |

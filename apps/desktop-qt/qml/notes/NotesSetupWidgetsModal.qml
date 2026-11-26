@@ -119,6 +119,7 @@ Item {
 
             NotesSetupWidgetPickerPanel {
                 id: widgetPicker
+                objectName: "notesSetupWidgetPickerPanel"
                 visible: setupRoot.activeMode !== "alarme" && setupRoot.activeMode !== "foco"
                 mode: setupRoot.activeMode
                 controller: setupRoot.controller

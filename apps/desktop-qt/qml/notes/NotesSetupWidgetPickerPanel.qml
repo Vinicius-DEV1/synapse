@@ -10,6 +10,15 @@ ColumnLayout {
     property string mode: ""
     property var listItems: []
     property string searchFilter: ""
+    property string errorMessage: ""
+    readonly property bool hasHabitTitleCollision: {
+        if (mode !== "habito") return false
+        var query = searchFilter.trim().toLowerCase()
+        return query.length > 0 && listItems.some(function(item) {
+            return String(item.title || "").trim().toLowerCase() === query
+        })
+    }
+    readonly property bool showCreateAction: searchFilter.trim().length > 0 && !hasHabitTitleCollision
     readonly property var filteredListItems: {
         var query = searchFilter.trim().toLowerCase()
         var items = !query.length ? listItems : listItems.filter(function(item) {
@@ -35,16 +44,32 @@ ColumnLayout {
         if (!c || !title) return
 
         if (mode === "habito" && typeof c.createHabit === "function") {
-            var habitId = c.createHabit(title, 7)
-            if (habitId) {
-                var safeHabitId = HtmlEscaping.escapeHtmlAttribute(habitId)
+            if (hasHabitTitleCollision) return
+            errorMessage = ""
+            var knownIds = new Set(listItems.map(function(item) { return String(item.id || "") }))
+            var created = c.createHabit(title, "#10b981", "🔥", 7)
+            if (created && typeof c.getHabits === "function") {
+                var updatedHabits = c.getHabits() || []
+                var newHabit = updatedHabits.find(function(item) {
+                    return String(item.title || "").trim().toLowerCase() === title.toLowerCase() &&
+                        !knownIds.has(String(item.id || ""))
+                })
+                if (!newHabit || !newHabit.id) {
+                    errorMessage = qsTr("O hábito foi criado, mas não foi possível localizar o registro para vinculá-lo.")
+                    listItems = updatedHabits
+                    return
+                }
+                listItems = updatedHabits
                 var safeTitle = HtmlEscaping.escapeHtmlAttribute(title)
                 insertWidgetRequested(
                     "<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" +
-                    safeHabitId + "\" data-title=\"" + safeTitle + "\" data-streak=\"0\"></span>")
+                    HtmlEscaping.escapeHtmlAttribute(newHabit.id) + "\" data-title=\"" + safeTitle + "\" data-streak=\"0\"></span>")
                 closeRequested()
+            } else {
+                errorMessage = qsTr("Não foi possível criar o hábito.")
             }
         } else if (mode === "question" && typeof c.createQuizBattery === "function") {
+            errorMessage = ""
             var batteryId = c.createQuizBattery(title, "")
             if (batteryId) {
                 var safeBatteryId = HtmlEscaping.escapeHtmlAttribute(batteryId)
@@ -70,11 +95,15 @@ ColumnLayout {
                 ? qsTr("Buscar ou digitar novo hábito...") : qsTr("Buscar ou criar nova bateria...")
             color: "#fffffe"
             font.pixelSize: 12
-            onTextEdited: pickerPanel.filterEdited(text)
+            onTextEdited: {
+                pickerPanel.errorMessage = ""
+                pickerPanel.filterEdited(text)
+            }
             background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
         }
         Button {
-            visible: pickerPanel.searchFilter.trim().length > 0
+            objectName: "notesSetupCreateRecordButton"
+            visible: pickerPanel.showCreateAction
             Layout.preferredHeight: 32
             leftPadding: 10
             rightPadding: 10
@@ -82,6 +111,16 @@ ColumnLayout {
             background: Rectangle { radius: 8; color: "#7c3aed" }
             contentItem: Text { text: qsTr("+ Criar"); color: "#fff"; font.pixelSize: 11 }
         }
+    }
+
+    Text {
+        objectName: "notesSetupQuickCreateError"
+        visible: pickerPanel.errorMessage.length > 0
+        text: pickerPanel.errorMessage
+        color: "#fda4af"
+        font.pixelSize: 11
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
     }
 
     ScrollView {
@@ -108,6 +147,7 @@ ColumnLayout {
                 model: pickerPanel.filteredListItems
                 delegate: Button {
                     id: eventItemButton
+                    objectName: "notesSetupPickerItem"
                     required property var modelData
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
