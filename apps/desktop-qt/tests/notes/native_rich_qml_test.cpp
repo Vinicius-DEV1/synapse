@@ -48,6 +48,7 @@ public:
     void setPaused(bool value) { m_paused = value; emit pausedChanged(); }
     void setMuted(bool value) { m_muted = value; emit mutedChanged(); }
     void setVolume(double value) { m_volume = value; emit volumeChanged(); }
+    Q_INVOKABLE void command(const QVariantList &) {}
     Q_INVOKABLE void play() { setPaused(false); }
     Q_INVOKABLE void pause() { setPaused(true); }
     Q_INVOKABLE void togglePlay() { setPaused(!m_paused); }
@@ -94,6 +95,53 @@ public:
 signals:
     void filePreviewReady(const QVariantMap &result);
     void filePreviewsInvalidated();
+};
+
+class NotesFilePreviewTestController final : public QObject {
+    Q_OBJECT
+public:
+    QString requestedFileId;
+    QString requestedId;
+    QString cancelledId;
+    QString closedPath;
+    QString closedPdfPath;
+    QString exportedFileId;
+    QString exportedPath;
+    QString renderedPath;
+    QString renderedRequestId;
+    int renderedPage = 0;
+
+    Q_INVOKABLE void previewLocalFile(const QString &fileId, const QString &requestId) {
+        requestedFileId = fileId;
+        requestedId = requestId;
+    }
+    Q_INVOKABLE QVariantMap readFilePreviewText(const QString &path) const {
+        return path.isEmpty() ? QVariantMap{{"success", false}, {"error", "Missing preview path."}}
+                              : QVariantMap{{"success", true}, {"text", "# Preview text"}};
+    }
+    Q_INVOKABLE void renderLibraryPdfPage(const QString &path, int page, int, const QString &requestId) {
+        renderedPath = path;
+        renderedPage = page;
+        renderedRequestId = requestId;
+    }
+    Q_INVOKABLE void cancelFilePreview(const QString &requestId) { cancelledId = requestId; }
+    Q_INVOKABLE void closeFilePreview(const QString &path) { closedPath = path; }
+    Q_INVOKABLE void closeLibraryBook(const QString &path) { closedPdfPath = path; }
+    Q_INVOKABLE void exportLocalFile(const QString &fileId, const QString &path) {
+        exportedFileId = fileId;
+        exportedPath = path;
+    }
+
+    void publish(const QVariantMap &result) { emit filePreviewReady(result); }
+    void publishPdfPage(const QVariantMap &result) { emit notesFilePreviewPdfPageReady(result); }
+    void invalidate() { emit filePreviewsInvalidated(); }
+
+signals:
+    void filePreviewReady(const QVariantMap &result);
+    void notesFilePreviewPdfPageReady(const QVariantMap &result);
+    void filePreviewsInvalidated();
+    void libraryPdfPageReady(const QVariantMap &result);
+    void fileOperationFinished(const QVariantMap &result);
 };
 
 class NativeRichQmlTest final : public QObject {
@@ -202,6 +250,155 @@ private slots:
         QTest::keyClick(&window, Qt::Key_Escape);
         QTRY_VERIFY(!root->property("visible").toBool());
         QVERIFY(controller.cancelledId.isEmpty());
+    }
+
+    void notesFilePreviewCorrelatesResultsAndReleasesTemporaryFiles() {
+        QQmlEngine engine;
+        QQmlComponent themeComponent(&engine);
+        themeComponent.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/ui/Theme.qml")));
+        QScopedPointer<QObject> theme(themeComponent.create());
+        QVERIFY2(theme, qPrintable(themeComponent.errorString()));
+        NotesFilePreviewTestController controller;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("theme", theme.data());
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesFilePreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(900, 640);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QObject *viewer = root->findChild<QObject *>("notesFilePreviewSurface");
+        QVERIFY(viewer);
+        window.show();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("file-text"))));
+        QTRY_VERIFY(root->property("visible").toBool());
+        QCOMPARE(controller.requestedFileId, QString("file-text"));
+        const QString requestId = root->property("requestId").toString();
+        QVERIFY(requestId.startsWith(QStringLiteral("notes-viewer-")));
+        controller.publish({{"success", true}, {"path", "/tmp/stale.txt"},
+                            {"url", "file:///tmp/stale.txt"}, {"file_type", "text"},
+                            {"name", "Stale.txt"}, {"request_id", "unrelated-request"}});
+        QVERIFY(viewer->property("loading").toBool());
+
+        controller.publish({{"success", true}, {"path", "/tmp/protected-note.txt"},
+                            {"url", "file:///tmp/protected-note.txt"}, {"file_type", "text"},
+                            {"name", "Note.txt"}, {"request_id", requestId}});
+        QTRY_VERIFY(!viewer->property("loading").toBool());
+        QCOMPARE(viewer->property("previewText").toString(), QString("# Preview text"));
+        QCOMPARE(viewer->property("previewName").toString(), QString("Note.txt"));
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal", Q_ARG(QVariant, false)));
+        QVERIFY(!root->property("visible").toBool());
+        QCOMPARE(controller.closedPath, QString("/tmp/protected-note.txt"));
+        QVERIFY(viewer->property("previewPath").toString().isEmpty());
+    }
+
+    void notesFilePreviewCancelsPendingRequestAndClosesOnVaultInvalidation() {
+        QQmlEngine engine;
+        QQmlComponent themeComponent(&engine);
+        themeComponent.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/ui/Theme.qml")));
+        QScopedPointer<QObject> theme(themeComponent.create());
+        QVERIFY2(theme, qPrintable(themeComponent.errorString()));
+        NotesFilePreviewTestController controller;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("theme", theme.data());
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesFilePreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(900, 640);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QObject *viewer = root->findChild<QObject *>("notesFilePreviewSurface");
+        QVERIFY(viewer);
+        window.show();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("file-pending"))));
+        const QString requestId = root->property("requestId").toString();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal", Q_ARG(QVariant, false)));
+        QCOMPARE(controller.cancelledId, requestId);
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("file-ready"))));
+        const QString nextRequestId = root->property("requestId").toString();
+        controller.publish({{"success", true}, {"path", "/tmp/protected-note.png"},
+                            {"url", "file:///tmp/protected-note.png"}, {"file_type", "image"},
+                            {"name", "Diagram.png"}, {"request_id", nextRequestId}});
+        QCOMPARE(viewer->property("previewPath").toString(), QString("/tmp/protected-note.png"));
+        controller.invalidate();
+        QVERIFY(!root->property("visible").toBool());
+        QVERIFY(controller.closedPath.isEmpty());
+    }
+
+    void notesFilePreviewKeepsPdfPageResultsScopedToItsRequest() {
+        QQmlEngine engine;
+        QQmlComponent themeComponent(&engine);
+        themeComponent.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/ui/Theme.qml")));
+        QScopedPointer<QObject> theme(themeComponent.create());
+        QVERIFY2(theme, qPrintable(themeComponent.errorString()));
+        NotesFilePreviewTestController controller;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("theme", theme.data());
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesFilePreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(900, 640);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QObject *viewer = root->findChild<QObject *>("notesFilePreviewSurface");
+        QVERIFY(viewer);
+        window.show();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("file-pdf"))));
+        const QString requestId = root->property("requestId").toString();
+        controller.publish({{"success", true}, {"path", "/tmp/protected-note.pdf"},
+                            {"url", "file:///tmp/protected-note.pdf"}, {"file_type", "pdf"},
+                            {"name", "Study.pdf"}, {"request_id", requestId}});
+        QCOMPARE(controller.renderedPath, QString("/tmp/protected-note.pdf"));
+        QCOMPARE(controller.renderedPage, 1);
+        QCOMPARE(controller.renderedRequestId, requestId);
+
+        controller.publishPdfPage({{"success", true}, {"pageNumber", 1},
+                                    {"path", "/tmp/stale-pdf-page.png"},
+                                    {"url", "file:///tmp/stale-pdf-page.png"},
+                                    {"request_id", "another-notes-viewer"}});
+        QVERIFY(viewer->property("previewPdfImageUrl").toString().isEmpty());
+
+        controller.publishPdfPage({{"success", true}, {"pageNumber", 1},
+                                    {"path", "/tmp/protected-pdf-page.png"},
+                                    {"url", "file:///tmp/protected-pdf-page.png"},
+                                    {"request_id", requestId}});
+        QCOMPARE(viewer->property("previewPdfImageUrl").toString(),
+                 QString("file:///tmp/protected-pdf-page.png"));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal", Q_ARG(QVariant, false)));
+        QCOMPARE(controller.closedPdfPath, QString("/tmp/protected-pdf-page.png"));
+        QCOMPARE(controller.closedPath, QString("/tmp/protected-note.pdf"));
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("file-pdf-pending"))));
+        const QString pendingRequestId = root->property("requestId").toString();
+        controller.publish({{"success", true}, {"path", "/tmp/pending-note.pdf"},
+                            {"url", "file:///tmp/pending-note.pdf"}, {"file_type", "pdf"},
+                            {"name", "Pending.pdf"}, {"request_id", pendingRequestId}});
+        QVERIFY(root->property("pdfRendering").toBool());
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closeModal", Q_ARG(QVariant, false)));
+        QCOMPARE(controller.cancelledId, pendingRequestId);
     }
 
     void collapsedCursorFormattingAppliesOnlyToFollowingText() {
@@ -437,6 +634,7 @@ private slots:
 int main(int argc, char **argv) {
     QGuiApplication application(argc, argv);
     qmlRegisterType<NotesAudioTestPlayer>("Synapse.Media", 1, 0, "MpvPlayerItem");
+    qmlRegisterType<NotesAudioTestPlayer>("Synapse.Media", 1, 0, "MpvVideoPlayer");
     NativeRichQmlTest test;
     if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=audio-preview")) {
         char correlationTest[] = "notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath";
@@ -448,6 +646,17 @@ int main(int argc, char **argv) {
         return QTest::qExec(&test, 2, correlationArguments) |
             QTest::qExec(&test, 2, cancellationArguments) |
             QTest::qExec(&test, 2, errorArguments);
+    }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=file-preview")) {
+        char correlationTest[] = "notesFilePreviewCorrelatesResultsAndReleasesTemporaryFiles";
+        char invalidationTest[] = "notesFilePreviewCancelsPendingRequestAndClosesOnVaultInvalidation";
+        char pdfTest[] = "notesFilePreviewKeepsPdfPageResultsScopedToItsRequest";
+        char *correlationArguments[] = {argv[0], correlationTest};
+        char *invalidationArguments[] = {argv[0], invalidationTest};
+        char *pdfArguments[] = {argv[0], pdfTest};
+        return QTest::qExec(&test, 2, correlationArguments) |
+            QTest::qExec(&test, 2, invalidationArguments) |
+            QTest::qExec(&test, 2, pdfArguments);
     }
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |

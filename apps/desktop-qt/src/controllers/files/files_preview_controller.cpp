@@ -174,6 +174,13 @@ void SynapseDataController::closeFilePreview(const QString &temporaryPath) {
 }
 
 void SynapseDataController::cancelFilePreview(const QString &requestId) {
+    const bool matchesNotesPdfRequest = m_pendingPreviewFile &&
+        !m_activeNotesFilePreviewPdfRequestId.isEmpty() &&
+        (requestId.isEmpty() || m_activeNotesFilePreviewPdfRequestId == requestId);
+    if (matchesNotesPdfRequest) {
+        m_cancelPreviewRequested = true;
+        return;
+    }
     if (!requestId.isEmpty() && m_activeFilePreviewRequestId != requestId) return;
     if (!m_pendingPreviewFile || !m_activeFileOperation) return;
     m_cancelPreviewRequested = true;

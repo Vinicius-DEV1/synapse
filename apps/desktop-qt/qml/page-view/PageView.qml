@@ -496,11 +496,7 @@ Rectangle {
                             viewModals.innerModalsHost.openLinkedItemActions("file", fileId, fileName)
                             return
                         }
-                        if (fileId && pageViewRoot.controller &&
-                                typeof pageViewRoot.controller.previewLocalFile === "function") {
-                            pageViewRoot.controller.previewLocalFile(fileId)
-                        }
-                        pageViewRoot.navigateModuleRequested("files")
+                        viewModals.innerModalsHost.openFilePreview(fileId)
                     }
                     onPagePreviewRequested: function(pid) { viewModals.openFloatingPage(pid) }
                     onPageOpenRequested: function(pid) { pageViewRoot.selectPage(pid) }

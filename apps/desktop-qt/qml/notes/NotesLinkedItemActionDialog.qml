@@ -120,7 +120,7 @@ Dialog {
                     Layout.fillWidth: true
                     visible: actionDialog.itemKind === "file"
                     text: qsTr("Visualizador Rápido")
-                    Accessible.description: qsTr("Abre uma prévia temporária em nova guia")
+                    Accessible.description: qsTr("Abre uma prévia flutuante sobre a anotação")
                     onClicked: {
                         actionDialog.previewRequested(actionDialog.itemId, actionDialog.itemTitle)
                         actionDialog.close()
@@ -142,7 +142,7 @@ Dialog {
                         ColumnLayout {
                             spacing: 2
                             Label { text: quickPreviewButton.text; color: "#fffffe"; font.pixelSize: 12; font.weight: Font.Medium }
-                            Label { text: qsTr("Abre uma prévia temporária em nova guia"); color: "#a7a9be"; font.pixelSize: 10 }
+                            Label { text: qsTr("Abre uma prévia flutuante sobre a anotação"); color: "#a7a9be"; font.pixelSize: 10 }
                         }
                     }
                 }

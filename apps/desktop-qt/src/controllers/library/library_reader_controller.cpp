@@ -211,9 +211,19 @@ void SynapseDataController::closeLibraryBook(const QString &temporaryPath) {
     closeFilePreview(temporaryPath);
 }
 
-void SynapseDataController::renderLibraryPdfPage(const QString &temporaryPath, int pageNumber, int targetWidth) {
-    const auto fail = [this, pageNumber](const QString &message) {
-        emit libraryPdfPageReady({{"success", false}, {"pageNumber", pageNumber}, {"error", message}});
+void SynapseDataController::renderLibraryPdfPage(const QString &temporaryPath, int pageNumber, int targetWidth,
+                                                  const QString &requestId) {
+    const auto publishResult = [this, &requestId](QVariantMap result) {
+        if (!requestId.isEmpty()) {
+            result.insert("request_id", requestId);
+            emit notesFilePreviewPdfPageReady(result);
+        } else {
+            emit libraryPdfPageReady(result);
+        }
+    };
+    const auto fail = [publishResult, pageNumber, temporaryPath](const QString &message) {
+        publishResult({{"success", false}, {"pageNumber", pageNumber},
+                       {"source_path", temporaryPath}, {"error", message}});
     };
     if (m_fileOperationRunning) return fail("Wait for the current document operation to finish.");
     if (!m_filePreviewFiles.contains(temporaryPath) || !QFileInfo(temporaryPath).isFile()) {
@@ -233,14 +243,18 @@ void SynapseDataController::renderLibraryPdfPage(const QString &temporaryPath, i
 
     m_cancelPreviewRequested = false;
     m_pendingPreviewFile = pageImage;
+    if (!requestId.isEmpty()) m_activeNotesFilePreviewPdfRequestId = requestId;
     m_fileOperationRunning = true;
     emit fileOperationStateChanged();
     auto *watcher = new QFutureWatcher<QVariantMap>(this);
     m_fileOperationWatcher = watcher;
-    connect(watcher, &QFutureWatcher<QVariantMap>::finished, this, [this, watcher, pageImage, imagePath, pageNumber]() {
+    connect(watcher, &QFutureWatcher<QVariantMap>::finished, this, [this, watcher, pageImage, imagePath, pageNumber,
+                                                                     temporaryPath, requestId]() {
         QVariantMap result = watcher->result();
         watcher->deleteLater();
-        bool success = result.value("success").toBool() && !m_cancelPreviewRequested;
+        const bool wasCancelled = m_cancelPreviewRequested;
+        const bool success = result.value("success").toBool() && !wasCancelled;
+        m_cancelPreviewRequested = false;
         if (success) {
             m_filePreviewFiles.insert(imagePath, pageImage);
             result.insert("path", imagePath);
@@ -248,15 +262,22 @@ void SynapseDataController::renderLibraryPdfPage(const QString &temporaryPath, i
         } else {
             QFile::remove(imagePath);
             delete pageImage;
-            if (m_cancelPreviewRequested) result.insert("error", "PDF rendering was cancelled because the vault was locked.");
+            if (wasCancelled) result.insert("error", "PDF rendering was cancelled because the preview closed or the vault was locked.");
         }
         if (m_pendingPreviewFile == pageImage) m_pendingPreviewFile = nullptr;
+        if (m_activeNotesFilePreviewPdfRequestId == requestId) m_activeNotesFilePreviewPdfRequestId.clear();
         m_fileOperationRunning = false;
         emit fileOperationStateChanged();
         if (m_fileOperationWatcher == watcher) m_fileOperationWatcher = nullptr;
         result.insert("success", success);
         result.insert("pageNumber", pageNumber);
-        emit libraryPdfPageReady(result);
+        result.insert("source_path", temporaryPath);
+        if (!requestId.isEmpty()) {
+            result.insert("request_id", requestId);
+            emit notesFilePreviewPdfPageReady(result);
+        } else {
+            emit libraryPdfPageReady(result);
+        }
     });
     watcher->setFuture(QtConcurrent::run([temporaryPath, pageNumber, targetWidth, imagePath]() {
         return renderNativePdfPage(temporaryPath, pageNumber, targetWidth, imagePath);

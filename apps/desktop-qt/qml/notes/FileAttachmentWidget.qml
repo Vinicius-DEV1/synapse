@@ -174,7 +174,8 @@ Rectangle {
             return
         }
         var isAudioFile = fileType === "audio" || /\.(mp3|wav|ogg|m4a|aac)$/i.test(fileName)
-        previewFileRequested(fileId, fileName, true, isAudioFile, fileType === "folder")
+        var opensDocumentActions = fileType === "pdf" || fileType === "epub"
+        previewFileRequested(fileId, fileName, opensDocumentActions, isAudioFile, fileType === "folder")
     }
 
     Component.onCompleted: syncFromCore()

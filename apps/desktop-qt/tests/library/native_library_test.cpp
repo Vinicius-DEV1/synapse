@@ -387,6 +387,29 @@ private slots:
         QVERIFY(QFile::exists(renderedPage.value("path").toString()));
         QVERIFY(renderedPage.value("text").toString().contains("Native PDF sample text"));
         controller.closeLibraryBook(renderedPage.value("path").toString());
+
+        QSignalSpy notesPdfPageSpy(&controller, &SynapseDataController::notesFilePreviewPdfPageReady);
+        QSignalSpy unrelatedLibraryPdfSpy(&controller, &SynapseDataController::libraryPdfPageReady);
+        const QString notesRequestId = QStringLiteral("notes-viewer-pdf-test");
+        controller.renderLibraryPdfPage(pdfTemporaryPath, 1, 960, notesRequestId);
+        QTRY_COMPARE_WITH_TIMEOUT(notesPdfPageSpy.count(), 1, 15000);
+        const QVariantMap notesRenderedPage = notesPdfPageSpy.takeFirst().at(0).toMap();
+        QVERIFY2(notesRenderedPage.value("success").toBool(),
+                 qPrintable(notesRenderedPage.value("error").toString()));
+        QCOMPARE(notesRenderedPage.value("request_id").toString(), notesRequestId);
+        QCOMPARE(notesRenderedPage.value("source_path").toString(), pdfTemporaryPath);
+        QVERIFY(unrelatedLibraryPdfSpy.isEmpty());
+        controller.closeLibraryBook(notesRenderedPage.value("path").toString());
+
+        const QString cancelledNotesRequestId = QStringLiteral("notes-viewer-pdf-cancel-test");
+        controller.renderLibraryPdfPage(pdfTemporaryPath, 1, 960, cancelledNotesRequestId);
+        controller.cancelFilePreview(cancelledNotesRequestId);
+        QTRY_COMPARE_WITH_TIMEOUT(notesPdfPageSpy.count(), 1, 15000);
+        const QVariantMap cancelledNotesPage = notesPdfPageSpy.takeFirst().at(0).toMap();
+        QVERIFY(!cancelledNotesPage.value("success").toBool());
+        QCOMPARE(cancelledNotesPage.value("request_id").toString(), cancelledNotesRequestId);
+        QVERIFY(cancelledNotesPage.value("path").toString().isEmpty());
+        QVERIFY(unrelatedLibraryPdfSpy.isEmpty());
         controller.closeLibraryBook(pdfTemporaryPath);
 
         QVERIFY(controller.updateBookProgress(bookId, 12, 20));

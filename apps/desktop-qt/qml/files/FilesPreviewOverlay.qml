@@ -23,6 +23,7 @@ Rectangle {
     property int previewPdfPage: 1
     property string previewPdfImageUrl: ""
     property string previewPdfImagePath: ""
+    property string previewPdfRequestId: ""
     readonly property bool isMarkdownFile: /\.(md|markdown)$/i.test(previewName)
 
     signal closeRequested()
@@ -37,6 +38,7 @@ Rectangle {
         target: dataController
         function onLibraryPdfPageReady(result) {
             if (!previewOverlay.visible || previewOverlay.previewType !== "pdf") return
+            if (String(result.source_path || "") !== previewOverlay.previewPath) return
             if (!result.success) {
                 if (Number(result.pageNumber || 1) === 1 && previewOverlay.previewPdfImageUrl.length === 0) {
                     previewOverlay.previewError = result.error || "Não foi possível renderizar o PDF."
@@ -80,7 +82,7 @@ Rectangle {
                 Button {
                     text: "◀"
                     enabled: previewOverlay.previewPdfPage > 1 && !dataController.fileOperationRunning
-                    onClicked: dataController.renderLibraryPdfPage(previewOverlay.previewPath, Math.max(1, previewOverlay.previewPdfPage - 1), 960)
+                    onClicked: dataController.renderLibraryPdfPage(previewOverlay.previewPath, Math.max(1, previewOverlay.previewPdfPage - 1), 960, previewOverlay.previewPdfRequestId)
                     background: Rectangle { color: theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
                     contentItem: Text { text: parent.text; color: parent.enabled ? theme.textSubtext : theme.textMuted; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }
@@ -93,7 +95,7 @@ Rectangle {
                 Button {
                     text: "▶"
                     enabled: !dataController.fileOperationRunning
-                    onClicked: dataController.renderLibraryPdfPage(previewOverlay.previewPath, previewOverlay.previewPdfPage + 1, 960)
+                    onClicked: dataController.renderLibraryPdfPage(previewOverlay.previewPath, previewOverlay.previewPdfPage + 1, 960, previewOverlay.previewPdfRequestId)
                     background: Rectangle { color: theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 7 }
                     contentItem: Text { text: parent.text; color: parent.enabled ? theme.textSubtext : theme.textMuted; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                 }

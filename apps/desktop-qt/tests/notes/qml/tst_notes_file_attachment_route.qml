@@ -67,7 +67,7 @@ TestCase {
         attachment.openFilePreview()
         compare(requestedFileId, "attachment-1")
         compare(requestedFileName, "Study folder")
-        verify(requestedOpenActions)
+        verify(!requestedOpenActions)
         verify(!requestedAudio)
         verify(requestedFolder)
     }
@@ -76,13 +76,13 @@ TestCase {
         currentType = "document"
         attachment.blockData = ({ attrs: {
             "data-file-id": "attachment-document",
-            "data-name": "Guide.pdf",
+            "data-name": "Guide.txt",
             "data-file-type": "document"
         } })
         resetResult()
         attachment.openFilePreview()
         compare(requestedFileId, "attachment-document")
-        verify(requestedOpenActions)
+        verify(!requestedOpenActions)
         verify(!requestedAudio)
         verify(!requestedFolder)
     }
@@ -97,7 +97,23 @@ TestCase {
         resetResult()
         attachment.openFilePreview()
         compare(requestedFileId, "attachment-audio")
+        verify(!requestedOpenActions)
         verify(requestedAudio)
+        verify(!requestedFolder)
+    }
+
+    function test_pdfAttachmentRequestsDocumentActions() {
+        currentType = "pdf"
+        attachment.blockData = ({ attrs: {
+            "data-file-id": "attachment-pdf",
+            "data-name": "Guide.pdf",
+            "data-file-type": "pdf"
+        } })
+        resetResult()
+        attachment.openFilePreview()
+        compare(requestedFileId, "attachment-pdf")
+        verify(requestedOpenActions)
+        verify(!requestedAudio)
         verify(!requestedFolder)
     }
 }

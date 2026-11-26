@@ -123,6 +123,10 @@ Item {
         notesAudioPreview.openForFile(fileId, fileName)
     }
 
+    function openFilePreview(fileId) {
+        notesFilePreview.openForFile(fileId)
+    }
+
     function openLinkedItemTarget(kind, itemId, title, newTab, quickPreview) {
         var moduleKey = kind === "video" ? "video"
                       : kind === "file" ? "library" : "library"
@@ -324,7 +328,7 @@ Item {
     NotesLinkedItemActionDialog {
         id: linkedItemActionDialog
         onPreviewRequested: function(itemId, itemTitle) {
-            modalsHost.openLinkedItemTarget("file", itemId, itemTitle, true, true)
+            modalsHost.openFilePreview(itemId)
         }
         onOpenCurrentTabRequested: function(kind, itemId, itemTitle) {
             modalsHost.openLinkedItemTarget(kind, itemId, itemTitle, false, false)
@@ -336,6 +340,11 @@ Item {
 
     NotesAudioPreviewModal {
         id: notesAudioPreview
+        controller: modalsHost.controller
+    }
+
+    NotesFilePreviewModal {
+        id: notesFilePreview
         controller: modalsHost.controller
     }
 

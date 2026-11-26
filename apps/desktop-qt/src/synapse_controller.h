@@ -360,7 +360,8 @@ public:
     Q_INVOKABLE void searchLibraryBookText(const QString &temporaryPath, const QString &format,
                                             const QString &query, int requestId);
     Q_INVOKABLE bool cancelLibraryBookSearch(int requestId);
-    Q_INVOKABLE void renderLibraryPdfPage(const QString &temporaryPath, int pageNumber, int targetWidth);
+    Q_INVOKABLE void renderLibraryPdfPage(const QString &temporaryPath, int pageNumber, int targetWidth,
+                                          const QString &requestId = QString());
     Q_INVOKABLE QVariantList getLibraryBookmarks(const QString &bookId);
     Q_INVOKABLE bool createLibraryBookmark(const QString &bookId, int pageNumber, const QString &label);
     Q_INVOKABLE bool updateLibraryBookmark(const QString &bookmarkId, const QString &label);
@@ -544,6 +545,7 @@ signals:
     void filePreviewReady(const QVariantMap &result);
     void libraryBookReady(const QVariantMap &result);
     void libraryPdfPageReady(const QVariantMap &result);
+    void notesFilePreviewPdfPageReady(const QVariantMap &result);
     void libraryBookSearchReady(const QVariantMap &result);
     void pageReferenceSearchReady(const QVariantMap &result);
     void pageConflictDetected(const QString &pageId, const QString &externalContent);
@@ -579,6 +581,7 @@ private:
     int m_unreadNotificationCount;
     bool m_fileOperationRunning;
     QString m_activeFilePreviewRequestId;
+    QString m_activeNotesFilePreviewPdfRequestId;
     QFutureWatcher<QVariantMap> *m_fileOperationWatcher;
     bool m_librarySearchRunning = false;
     QFutureWatcher<QVariantMap> *m_librarySearchWatcher = nullptr;

@@ -225,7 +225,8 @@ Item {
                 : (result.error || "File operation failed.")
         }
         function onFilePreviewReady(result) {
-            if (String(result.request_id || "").indexOf("notes-audio-") === 0) return
+            var requestId = String(result.request_id || "")
+            if (requestId.indexOf("notes-audio-") === 0 || requestId.indexOf("notes-viewer-") === 0) return
             if (result.cancelled) return
             previewOverlay.loading = false
             if (!result.success) {

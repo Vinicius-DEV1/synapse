@@ -748,3 +748,16 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native app links after propagating the new folder-intent argument through Notes block and bundle wrappers. |
 | Focused `qmllint --ignore-settings -s` over changed QML and `git diff --check` | Passed | Syntax and whitespace checks do not verify folder existence, tree selection, persistence or live module transition. |
 | Root/nested folder open from active, floating and nested Notes; save/reopen and matched viewport | Not run | Keep QT-NOTES-045 partial until live folder selection/navigation and same-size visual comparison are checked. |
+
+
+### Notes-owned direct file viewer (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_file_attachment_route.qml -import apps/desktop-qt/qml` | Passed: 6 QtTest results | Verifies folders request direct folder navigation, PDF requests the document action modal, audio suffixes request playback, and ordinary document types do not request PDF/EPUB actions. |
+| `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | Builds the native QML viewer harness with mock video/audio media types. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=file-preview` | Passed: 9 QtTest results across three isolated runs | Covers request-ID matching, stale-response rejection, text preview preparation, temporary path release, pending request cancellation, vault invalidation, and request-scoped PDF page results with both the source PDF and rendered page cleaned up. Preview controller, Theme and media objects are test doubles. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=library nativeLibraryImportProgressAndPasswordRemoval` | Passed | Uses a generated native PDF fixture to verify the Notes PDF signal carries its request ID and source path, stays separate from the Library PDF signal, and discards a cancelled render without returning a temporary page path. This exercises the real controller and renderer, not an interactive Notes window. |
+| Focused `qmllint --ignore-settings -s` on changed QML and `git diff --check` | Passed | Syntax/whitespace only; does not prove real image/video/PDF rendering or the viewer's matched-viewport appearance. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop synapse-desktop-tests synapse-notes-rich-qml-tests -j2` | Passed | Rebuilt the native app and focused controller/QML test targets with the optional request-correlated PDF render signal. |
+| Actual image/video decoding, PDF page render, export dialog, unsupported formats, live nested Notes routes and same-size React comparison | Not run | Keep QT-NOTES-045 partial until real file/viewer acceptance covers the type matrix and visual comparison. |
