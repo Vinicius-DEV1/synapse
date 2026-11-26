@@ -1,7 +1,8 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Dialogs
 import "NotesMediaWidgetPickerOperations.js" as PickerOperations
 import "NotesSlashCommandArguments.js" as SlashArgs
 import "../ui"
@@ -18,11 +19,7 @@ Item {
     property string searchFilter: ""
     property bool isCapturingScrap: false
     property string scrapError: ""
-    property string localUploadError: ""
     property string pendingScrapRequestId: ""
-    property string pendingLocalUploadRequestId: ""
-    property int localUploadRequestSequence: 0
-    property bool waitingLocalUpload: false
 
     signal insertWidgetRequested(string html)
     signal closed()
@@ -33,9 +30,7 @@ Item {
         searchFilter = ""
         isCapturingScrap = false
         scrapError = ""
-        localUploadError = ""
-        pendingLocalUploadRequestId = ""
-        waitingLocalUpload = false
+        localFileUpload.reset()
         if (mode === "scrap" && prefillUrl && String(prefillUrl).trim().length > 0) {
             scrapUrlInput.text = String(prefillUrl).trim()
             if (autoCaptureScrap === true) {
@@ -77,25 +72,10 @@ Item {
         return PickerOperations.filteredItems(listItems, searchFilter)
     }
     function close() {
+        if (localFileUpload.busy) return
         activeMode = ""
         isCapturingScrap = false
-        waitingLocalUpload = false
-        pendingLocalUploadRequestId = ""
         closed()
-    }
-
-    function finishLocalUpload(result) {
-        var completion = PickerOperations.localUploadCompletion(
-            pendingLocalUploadRequestId, result, qsTr("Não foi possível importar o arquivo."))
-        if (!completion) return
-        waitingLocalUpload = false
-        pendingLocalUploadRequestId = ""
-        if (!completion.success) {
-            localUploadError = completion.error
-            return
-        }
-        insertWidgetRequested(completion.html)
-        close()
     }
 
     Connections {
@@ -111,26 +91,6 @@ Item {
             mediaPickerRoot.insertWidgetRequested(PickerOperations.capturedScrapWidgetHtml(
                 scrapTitleInput.text.trim(), scrapUrlInput.text.trim(), result))
             mediaPickerRoot.close()
-        }
-        function onFileOperationFinished(result) { mediaPickerRoot.finishLocalUpload(result) }
-    }
-
-    FileDialog {
-        id: localFileDialog
-        title: qsTr("Selecionar arquivo local (será criptografado com ENC1)")
-        onAccepted: {
-            var c = mediaPickerRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
-            if (!c || typeof c.importLocalFile !== "function") {
-                mediaPickerRoot.localUploadError = qsTr("A importação de arquivos não está disponível.")
-                return
-            }
-            mediaPickerRoot.localUploadRequestSequence += 1
-            mediaPickerRoot.pendingLocalUploadRequestId = "notes_widget_upload_" + Date.now() + "_" +
-                mediaPickerRoot.localUploadRequestSequence
-            mediaPickerRoot.localUploadError = ""
-            mediaPickerRoot.waitingLocalUpload = true
-            c.importLocalFile(PickerOperations.filePathFromUrl(selectedFile), "",
-                              mediaPickerRoot.pendingLocalUploadRequestId)
         }
     }
 
@@ -170,42 +130,25 @@ Item {
                     Layout.fillWidth: true
                 }
                 ToolButton {
+                    id: closeButton
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
+                    enabled: !localFileUpload.busy
                     onClicked: mediaPickerRoot.close()
-                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    background: Rectangle { radius: 6; color: closeButton.hovered ? "#1affffff" : "transparent" }
                     contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 12; height: 12 }
                 }
             }
 
-            Button {
+            NotesMediaWidgetPickerLocalUpload {
+                id: localFileUpload
+                objectName: "notesLocalFileUpload"
                 visible: mediaPickerRoot.activeMode === "documento"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                enabled: !mediaPickerRoot.waitingLocalUpload
-                onClicked: localFileDialog.open()
-                background: Rectangle { radius: 8; color: parent.hovered ? "#338b5cf6" : "#228b5cf6"; border.color: "#668b5cf6" }
-                contentItem: RowLayout {
-                    spacing: 6
-                    Item { Layout.fillWidth: true }
-                    AppIcon { name: "upload"; color: "#c4b5fd"; width: 14; height: 14 }
-                    Text {
-                        text: mediaPickerRoot.waitingLocalUpload ? qsTr("Criptografando (ENC1)...") : qsTr("Enviar Arquivo Local (ENC1)")
-                        color: "#c4b5fd"
-                        font.pixelSize: 12
-                        font.bold: true
-                    }
-                    Item { Layout.fillWidth: true }
+                controller: mediaPickerRoot.controller
+                onWidgetHtmlReady: function(html) {
+                    mediaPickerRoot.insertWidgetRequested(html)
+                    mediaPickerRoot.close()
                 }
-            }
-
-            Text {
-                visible: mediaPickerRoot.activeMode === "documento" && mediaPickerRoot.localUploadError.length > 0
-                text: mediaPickerRoot.localUploadError
-                color: "#fda4af"
-                font.pixelSize: 11
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
             }
 
             TextField {

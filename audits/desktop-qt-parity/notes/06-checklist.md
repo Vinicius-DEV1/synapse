@@ -143,6 +143,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare consolidated setup/picker surfaces with React focus, alarm, event, habit, question, file upload/select, and media select dialogs, including fields, defaults, search, validation, cancellation, busy/error/empty states, and insertion target.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.
 - [x] Correlate local Notes upload completion by the Core operation request ID, build the widget from the returned file metadata, ignore stale results, show import failures and decode the selected local file URL; focused harness passes 4/4 cases. See QT-NOTES-061.
+- [x] Add multi-file local selection, add/remove, default-on bundle grouping, sequential Core imports, result-derived file/bundle HTML and retry without reimporting prior successes. The focused harness passes 8/8 behavior cases, including bundle-item parsing. See QT-NOTES-062.
+- [ ] Verify real `OpenFiles` selection, ENC1 import, second-file failure/retry, busy dismissal guard, saved note round-trip and same-viewport upload controls. Assess the missing Qt Drive upload/status and percentage progress against React; record an approved limitation if kept out of Qt. See QT-NOTES-062.
 - [ ] Verify local encrypted import and the inserted attachment in a live Notes page, including encoded local paths, cancellation during import, retry, save/reopen, and error/focus behavior. See QT-NOTES-061.
 - [ ] Capture same-viewport screenshots for each modal's default, populated, validation/error, and confirmation states; record any intentional native adaptation and remaining mismatch.
 

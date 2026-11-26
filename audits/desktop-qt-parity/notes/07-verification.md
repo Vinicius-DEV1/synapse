@@ -507,10 +507,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Bundle palette swatch selection and `attrsUpdated` payload | Passed: selecting `#22C55E` closes the palette, updates `data-color` to the selected six-digit hex and preserves `data-type="document-bundle"` | Verifies widget attribute behavior only; PageView save, reload and React round-trip remain open. |
 
 
-### Notes local file import result correlation (2026-11-26)
+### Notes multi-file local upload and grouping (2026-11-26)
 
 | Check | Result | Scope and limits |
 | --- | --- | --- |
-| Persistent `qmltestrunner` harness for `NotesMediaWidgetPickerModal.qml` and a mocked `fileOperationFinished` signal | Passed: 4 test cases (6 QtTest totals including setup/cleanup), 0 failures. Matching imports insert the escaped returned ID/name/type/size; stale, unscoped and non-import results are ignored; failed imports keep the picker open with the Core error; file URLs decode spaces and literal percent signs. | Qt 6.10.2, offscreen. The test exercises signal correlation and presentation state, not a real file dialog, encrypted import, note insertion into the editor, cancellation of an in-flight import or persistence. |
-| Focused `qmllint` for `NotesMediaWidgetPickerModal.qml` and its extracted operations module, plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing layout, nested-scope and controller-fallback warnings remain. The new `selectedFile.toLocalFile()` warning was removed by using the tested URL-path helper. | Confirms target compilation and QML syntax only. Live encrypted import and Notes save/reopen remain open. |
+| Persistent `qmltestrunner` harness for `NotesMediaWidgetPickerLocalUpload.qml`, its operations module, and a mocked `fileOperationFinished` signal | Passed: 8 test cases (10 QtTest totals including setup/cleanup), 0 failures. Covers queue metadata, stale/unrelated results, failure and retry, multi-file sequential import, bundle HTML parsed by the existing bundle operation, separate widget output, add/remove/deduplication, and Linux/Windows URL path decoding. | Qt 6.10.2, offscreen. Does not drive the native `OpenFiles` dialog, real encryption, parent modal dismissal/focus, editor insertion/save/reopen, or matched-viewport visuals. |
+| Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |

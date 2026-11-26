@@ -16,15 +16,16 @@ function localUploadCompletion(requestId, result, fallbackError) {
     if (!result.success || !result.id) {
         return { success: false, error: String(result.error || fallbackError) }
     }
-    var label = HtmlEscaping.escapeHtmlAttribute(result.name || "Arquivo")
-    var fileId = HtmlEscaping.escapeHtmlAttribute(result.id)
-    var fileType = HtmlEscaping.escapeHtmlAttribute(result.file_type || "document")
-    var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(result.file_size)
     return {
         success: true,
-        html: "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
-            "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
-            fileType + "\" data-file-size=\"" + fileSize + "\"></div>"
+        file: {
+            id: String(result.id),
+            fileId: String(result.id),
+            name: String(result.name || "Arquivo"),
+            fileType: String(result.file_type || "document"),
+            fileSize: Number(result.file_size) || 0,
+            isLink: false
+        }
     }
 }
 
@@ -43,8 +44,46 @@ function widgetHtmlForPickedItem(item, mode) {
         "\" data-media-id=\"" + itemId + "\" data-title=\"" + label + "\"></span>"
 }
 
+function widgetHtmlForUploadedFiles(files, groupAsBundle) {
+    if (!Array.isArray(files) || files.length === 0) return ""
+    if (groupAsBundle && files.length > 1) {
+        var items = files.map(function(file) {
+            return {
+                fileId: String(file.fileId || file.id || ""),
+                name: String(file.name || "Arquivo"),
+                fileType: String(file.fileType || "other"),
+                fileSize: Math.max(0, Math.floor(Number(file.fileSize) || 0)),
+                isLink: false,
+                addedAt: Date.now()
+            }
+        })
+        if (items.some(function(item) { return item.fileId.length === 0 })) return ""
+        var json = HtmlEscaping.escapeHtmlAttribute(JSON.stringify(items))
+        return "<div class=\"document-bundle-widget\" data-type=\"document-bundle\"" +
+            " data-title=\"Documentos\" data-items=\"" + json + "\"></div>"
+    }
+    return files.map(function(file) {
+        var label = HtmlEscaping.escapeHtmlAttribute(file.name || "Arquivo")
+        var fileId = HtmlEscaping.escapeHtmlAttribute(file.fileId || file.id || "")
+        var fileType = HtmlEscaping.escapeHtmlAttribute(file.fileType || "other")
+        var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(file.fileSize)
+        return "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
+            "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
+            fileType + "\" data-file-size=\"" + fileSize + "\" data-is-link=\"false\"></div>"
+    }).join("")
+}
+
 function filePathFromUrl(fileUrl) {
-    return decodeURIComponent(String(fileUrl || "").replace(/^file:\/\//, ""))
+    var path = decodeURIComponent(String(fileUrl || "").replace(/^file:\/\//, ""))
+    return /^\/[A-Za-z]:\//.test(path) ? path.substring(1) : path
+}
+
+function fileNameFromUrl(fileUrl) {
+    var path = filePathFromUrl(fileUrl).replace(/\\/g, "/")
+    var segments = path.split("/")
+    return segments.length > 0 && segments[segments.length - 1]
+        ? segments[segments.length - 1]
+        : path
 }
 
 function capturedScrapWidgetHtml(title, url, result) {
