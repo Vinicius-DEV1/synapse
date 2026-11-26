@@ -1,6 +1,9 @@
 #include "synapse_controller.h"
 
 #include <QtCore/QTemporaryDir>
+#include <QtCore/QUrl>
+#include <QtQml/QQmlComponent>
+#include <QtQml/QQmlEngine>
 #include <QtTest/QtTest>
 
 class NativeNotesOpenAnswerControllerTest final : public QObject {
@@ -80,6 +83,54 @@ private slots:
             QCOMPARE(restored.value(QStringLiteral("ai_feedback")).toMap()
                          .value(QStringLiteral("feedback")).toString(),
                      QStringLiteral("Add one supporting detail."));
+
+            QQmlEngine engine;
+            QQmlComponent sessionLoader(&engine);
+            const QByteArray source = R"(
+                import QtQml 2.15
+                import "../../qml/notes/NotesQuestionSession.js" as NotesQuestionSession
+
+                QtObject {
+                    property var controller
+
+                    function loadQuestions(batteryId) {
+                        return NotesQuestionSession.loadQuestions(controller, batteryId, "")
+                    }
+                }
+            )";
+            const QUrl harnessUrl = QUrl::fromLocalFile(
+                QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
+                    + QStringLiteral("/tests/notes/NotesOpenAnswerControllerHarness.qml"));
+            sessionLoader.setData(source, harnessUrl);
+            QVERIFY2(sessionLoader.isReady(), qPrintable(sessionLoader.errorString()));
+            QObject *session = sessionLoader.create();
+            QVERIFY2(session != nullptr, qPrintable(sessionLoader.errorString()));
+            session->setProperty(
+                "controller",
+                QVariant::fromValue(static_cast<QObject *>(&reopenedController)));
+
+            QVariant loadedQuestionsValue;
+            QVERIFY(QMetaObject::invokeMethod(
+                session,
+                "loadQuestions",
+                Q_RETURN_ARG(QVariant, loadedQuestionsValue),
+                Q_ARG(QVariant, QVariant(batteryId))));
+            const QVariantList loadedQuestions = loadedQuestionsValue.toList();
+            QCOMPARE(loadedQuestions.size(), 1);
+            const QVariantMap loadedQuestion = loadedQuestions.first().toMap();
+            QCOMPARE(loadedQuestion.value(QStringLiteral("id")).toString(), questionId);
+            QCOMPARE(loadedQuestion.value(QStringLiteral("prompt")).toString(),
+                     QStringLiteral("Explain the concept"));
+            QCOMPARE(loadedQuestion.value(QStringLiteral("expectedAnswer")).toString(),
+                     QStringLiteral("A complete reference answer"));
+            QCOMPARE(loadedQuestion.value(QStringLiteral("userTypedAnswer")).toString(),
+                     QStringLiteral("My typed response"));
+            QCOMPARE(loadedQuestion.value(QStringLiteral("aiFeedback")).toMap()
+                         .value(QStringLiteral("verdict")).toString(),
+                     QStringLiteral("Parcial"));
+            QVERIFY(loadedQuestion.value(QStringLiteral("answered")).toBool());
+            QVERIFY(loadedQuestion.value(QStringLiteral("showExplanation")).toBool());
+            delete session;
         }
     }
 };

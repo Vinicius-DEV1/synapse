@@ -335,6 +335,9 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     target_compile_definitions(synapse-desktop-tests PRIVATE
         SYNAPSE_DESKTOP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     )
+    target_compile_definitions(synapse-desktop-tests PRIVATE
+        SYNAPSE_DESKTOP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
 
     target_link_libraries(synapse-desktop-tests PRIVATE
         Qt6::Core
