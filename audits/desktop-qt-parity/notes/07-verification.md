@@ -796,3 +796,11 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=markdown-editor` | Passed: 3 QtTest results | Verifies unsaved discard confirmation, keep-editing, Tab's two-space insertion, Ctrl+S save emission and close. Controller and encryption are covered by the separate native files test. |
 | `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/notes/NotesFileMarkdownEditor.qml apps/desktop-qt/qml/notes/NotesFileReadingProgress.qml apps/desktop-qt/qml/notes/NotesFileBookmarksControl.qml apps/desktop-qt/qml/notes/NotesFilePreviewModal.qml apps/desktop-qt/qml/files/FilesPreviewOverlay.qml apps/desktop-qt/qml/files/FilesActions.qml` | Passed with no diagnostics | Parses edited view and shared preview files; does not validate live viewport behavior. |
 | Ctrl+S through the live shell, >4 MiB rejection, failure injection, Drive content sync, cross-client reopen and same-viewport design comparison | Not run | Keep QT-NOTES-045 partial; Qt currently saves the local encrypted file only, and the React editor/Drive upload flow remains the comparison target. |
+
+### Notes reading-progress database persistence (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Builds the native controller test with the restart persistence case. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=files` | Passed: 5 QtTest results | A controller writes file-ID-scoped reader JSON to a temporary SQLite database; after its destruction, a new controller opens the same database and reads the exact value. The focused QML state test still uses a mock controller, so full view-to-Core restore in a restarted app remains open. |
+| Live Notes viewer restart with saved progress/bookmarks, bookmark focus/keyboard, cross-client sync and matched-viewport comparison | Not run | The persistence primitive is verified; retain end-to-end and visual acceptance under QT-NOTES-045. |

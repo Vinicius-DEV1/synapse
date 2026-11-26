@@ -9,6 +9,27 @@ class NativeFilesTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void notesReadingProgressConfigSurvivesDatabaseReopen() {
+        QTemporaryDir sandbox;
+        QVERIFY(sandbox.isValid());
+        const QString databasePath = sandbox.filePath("notes-reading-progress.sqlite");
+        const QString key = QStringLiteral("notes_file_reading_progress_v1_page-file-42");
+        const QString value = QStringLiteral(
+            "{\"scrollTop\":420,\"percentage\":42,\"scrollHeight\":1000,\"bookmarks\":["
+            "{\"id\":\"bm-1\",\"label\":\"Chapter 2\",\"scrollTop\":420}]}"
+        );
+        {
+            SynapseDataController writer(nullptr, false);
+            QVERIFY(writer.openDatabase(databasePath));
+            QVERIFY(writer.setConfig(key, value));
+            QCOMPARE(writer.getConfig(key), value);
+        }
+
+        SynapseDataController reader(nullptr, false);
+        QVERIFY(reader.openDatabase(databasePath));
+        QCOMPARE(reader.getConfig(key), value);
+    }
+
     void encryptedFileImportPreviewAndExportSurvivePasswordRemoval() {
         QTemporaryDir sandbox;
         QVERIFY(sandbox.isValid());
