@@ -312,7 +312,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The asynchronous import result returned only the file ID and name, so the Notes drop flow hardcoded the generic type instead of carrying the category used by the persisted file record.
 - **Required fix:** Return the already-computed file-type category and file size as additive fields on a successful local import result; escape them and write them into the canonical Qt widget attributes without reclassifying file names in QML.
 - **Acceptance:** Dropped PDF and EPUB widgets serialize with their Core file-type category and reopen with the same React viewer behavior as files added through the picker. Text, image, video, audio, archive, and unknown types retain expected icons/actions; size metadata remains a non-negative integer. Failed imports still create no widget.
-- **Fix status:** Source fix applied in the shared file import result and Notes drop serializer. Desktop build and QML parsing are pending; cross-client viewer and metadata round-trip remain open.
+- **Fix status:** Source fix applied in the shared file import result and Notes drop serializer. `synapse-desktop` builds and `Editor.qml` parses with existing unused-import/unqualified-context warnings; cross-client viewer and metadata round-trip remain open.
 
 ## QT-NOTES-035: Failed table-filter projection leaves the editor filtered
 
@@ -322,7 +322,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The failure branch reset filter bookkeeping directly rather than restoring through `clearVisualFilters()`.
 - **Required fix:** Route every failed/empty projection result through the same restoration path as clearing filters, restoring canonical source and re-enabling editing without marking the note modified.
 - **Acceptance:** After a valid filter followed by a failed projection, all original rows return, the read-only overlay is gone, filter controls reset, and source HTML and dirty state remain unchanged. A subsequent valid filter can be applied normally.
-- **Fix status:** Source fix applied in `NotesTableExcelGrips.qml`. QML lint and same-session failure/recovery acceptance remain pending.
+- **Fix status:** Source fix applied in `NotesTableExcelGrips.qml`. QML lint passes with existing binding/import warnings; same-session failure/recovery acceptance remains open.
 
 ## Second-pass review
 
