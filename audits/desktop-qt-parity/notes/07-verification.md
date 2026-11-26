@@ -663,6 +663,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `git diff --check` | Passed | Patch whitespace only. |
 | Full Core-backed Notes focus session, question render, answer interaction and saved attempt round-trip | Not run | Keep QT-NOTES-077 and the open-answer acceptance items active until application evidence is collected. |
 
+### Notes open-answer card visual parity pass (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_open_answer_flow.qml -import apps/desktop-qt/qml` | Passed: 13 behavior cases (15 QtTest results including setup/cleanup) | Verifies one shared reference/explanation panel, Markdown text-format bindings, `Alt+G` registration, shared explanation-toggle state, and the existing open-answer session cases. The offscreen `TestCase` window is not exposed, so this does not prove active-window key dispatch or same-viewport rendering. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop synapse-notes-rich-qml-tests -j2` | Passed | Rebuilds the native app and Notes rich QML test target. |
+| `/usr/lib/qt6/bin/qmllint --ignore-settings -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesOpenAnswerReferenceAnswer.qml apps/desktop-qt/qml/questions/QuizSequentialCard.qml apps/desktop-qt/qml/questions/QuizSequentialFocusModal.qml` | Completed with existing diagnostics | The changed reference-answer component and the new card bindings produce no diagnostics. The shared modal still reports pre-existing unqualified accesses and a `parent.text` warning outside the new Notes-specific bindings. |
+| `git diff --check` | Passed | Patch whitespace only. |
+
 ### Notes open-answer database reopen round-trip (2026-11-26)
 
 | Check | Result | Scope and limits |
