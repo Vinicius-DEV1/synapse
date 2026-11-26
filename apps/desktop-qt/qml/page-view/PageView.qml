@@ -2,6 +2,8 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import "../ui"
 import "../notes"
+import "../notes/NotesJsonAttribute.js" as NotesJsonAttribute
+import "../notes/DocumentBundleOperations.js" as DocumentBundleOperations
 import "PageViewActions.js" as Actions
 
 // Primary page orchestration container mirroring apps/web-react/src/components/page-view/PageView.tsx.
@@ -24,6 +26,10 @@ Rectangle {
     property bool isPageUnlocked: true
     property string saveStatus: "saved"
     property bool isDirty: false
+    property var pendingBundleFileTrashRequests: []
+    property bool pageConflictDialogOpen: false
+    property string pageConflictPageId: ""
+    property string pageConflictExternalContent: ""
     property var pageList: []
     property var pinnedPages: []
     property var pageTree: []
@@ -89,11 +95,70 @@ Rectangle {
         }
         if (selectedPageId) {
             flushPendingEdits()
-            if (isDirty) saveActiveNote()
+            if (isDirty && !saveActiveNote()) return false
         }
         selectedPageId = String(pageId || "")
         loadActivePage()
         if (bodyScroll) bodyScroll.contentY = scrollPositionMap[selectedPageId] || 0
+        return true
+    }
+
+    function keepLocalVersionAfterConflict() {
+        if (!controller || typeof controller.getPage !== "function" ||
+                pageConflictPageId !== selectedPageId) {
+            pageConflictDialog.errorMessage = qsTr("Não foi possível carregar a versão salva para conferir o conflito.")
+            return false
+        }
+        var latest = controller.getPage(pageConflictPageId)
+        if (!latest || !latest.id || !latest.updated_at) {
+            pageConflictDialog.errorMessage = qsTr("A versão salva não está disponível. Suas alterações locais foram mantidas.")
+            return false
+        }
+        activePageObj = latest
+        activeUpdatedAt = String(latest.updated_at)
+        pageConflictDialog.errorMessage = ""
+        pageConflictPageId = ""
+        pageConflictExternalContent = ""
+        pageConflictDialogOpen = false
+        isDirty = true
+        saveStatus = "dirty"
+        autoSaveTimer.restart()
+        return true
+    }
+
+    function loadSavedVersionAfterConflict() {
+        if (!controller || typeof controller.getPage !== "function" ||
+                pageConflictPageId !== selectedPageId) {
+            pageConflictDialog.errorMessage = qsTr("Não foi possível carregar a versão salva. Suas alterações locais foram mantidas.")
+            return false
+        }
+        var latest = controller.getPage(pageConflictPageId)
+        if (!latest || !latest.id) {
+            pageConflictDialog.errorMessage = qsTr("A versão salva não está disponível. Suas alterações locais foram mantidas.")
+            return false
+        }
+        var conflictContent = pageConflictExternalContent
+        pageConflictDialog.errorMessage = ""
+        pageConflictPageId = ""
+        pageConflictExternalContent = ""
+        pageConflictDialogOpen = false
+        activePageObj = latest
+        activeTitle = String(latest.title || "")
+        activeDescription = String(latest.description || "")
+        activeIcon = String(latest.icon || "📄")
+        activeCoverImage = Actions.parseCoverConfig(latest.cover_image || "").url
+        var savedContent = latest.content !== undefined && latest.content !== null
+            ? latest.content : conflictContent
+        activeContent = String(savedContent || "<p></p>")
+        activeUpdatedAt = String(latest.updated_at || "")
+        activeIsEncrypted = Actions.isEncryptedStub(latest)
+        isPageUnlocked = !activeIsEncrypted || Boolean(controller.isVaultUnlocked)
+        wordCount = Actions.countWords(activeContent)
+        isDirty = false
+        saveStatus = finishPendingBundleFileTrashRequests(selectedPageId, activeContent)
+            ? "saved" : "error"
+        refreshPageTree()
+        return true
     }
 
     function loadPages() { refreshPageTree() }
@@ -145,12 +210,98 @@ Rectangle {
         activeIsEncrypted = Actions.isEncryptedStub(p)
         isPageUnlocked = !activeIsEncrypted || Boolean(controller.isVaultUnlocked)
         isDirty = false; saveStatus = "saved"
+        if (!finishPendingBundleFileTrashRequests(selectedPageId, activeContent))
+            saveStatus = "error"
         if (pageByIdMap[selectedPageId]) {
             breadcrumbPages = Actions.buildBreadcrumbs(selectedPageId, pageByIdMap)
             subPagesList = childrenByParentMap[selectedPageId] || []
         } else {
             refreshPageTree()
         }
+    }
+
+    function queueBundleFileTrashAfterSave(fileId) {
+        var targetFileId = String(fileId || "").trim()
+        if (!targetFileId || !selectedPageId) return false
+        if (!isDirty) {
+            saveStatus = "error"
+            console.warn("[Notes:PageView] Keeping file active because its bundle update was not marked dirty.", targetFileId)
+            return false
+        }
+        var next = pendingBundleFileTrashRequests.slice()
+        var alreadyQueued = next.some(function(entry) {
+            return entry.pageId === selectedPageId && entry.fileId === targetFileId
+        })
+        if (!alreadyQueued) next.push({ pageId: selectedPageId, fileId: targetFileId })
+        pendingBundleFileTrashRequests = next
+        return true
+    }
+
+    function noteReferencesFile(html, fileId) {
+        try {
+            var c = controller
+            if (!c || typeof c.parseNoteBlocks !== "function") return null
+            var rawHtml = String(html || "")
+            var blocks = c.parseNoteBlocks(rawHtml) || []
+            if (!Array.isArray(blocks) || (blocks.length === 0 && rawHtml.trim().length > 0)) return null
+
+            var looseFiles = DocumentBundleOperations.collectLooseFileWidgets(
+                blocks, c, qsTr("Documento"), [])
+            for (var looseIndex = 0; looseIndex < looseFiles.length; ++looseIndex) {
+                if (String(looseFiles[looseIndex].fileId || "") === fileId) return true
+            }
+
+            for (var blockIndex = 0; blockIndex < blocks.length; ++blockIndex) {
+                var block = blocks[blockIndex]
+                if (!block) continue
+                if (block.blockType === "documentBundle") {
+                    var attrs = block.attrs || ({})
+                    var rawItems = attrs["data-items"] || attrs.items || "[]"
+                    var parsedItems = Array.isArray(rawItems)
+                        ? { valid: true, value: rawItems }
+                        : NotesJsonAttribute.parseJsonAttribute(String(rawItems), true)
+                    if (!parsedItems.valid || !Array.isArray(parsedItems.value)) return null
+                    for (var itemIndex = 0; itemIndex < parsedItems.value.length; ++itemIndex) {
+                        var item = parsedItems.value[itemIndex]
+                        if (item && String(item.fileId || item.id || "") === fileId) return true
+                    }
+                } else if (block.blockType !== "richText" && block.innerHtml &&
+                        String(block.innerHtml).indexOf(fileId) >= 0) {
+                    return null
+                }
+            }
+            return false
+        } catch (error) {
+            console.warn("[Notes:PageView] Could not verify whether the saved note still references a file.",
+                fileId, String(error))
+            return null
+        }
+    }
+
+    function finishPendingBundleFileTrashRequests(savedPageId, savedContent) {
+        var remaining = []
+        var failed = false
+        for (var i = 0; i < pendingBundleFileTrashRequests.length; ++i) {
+            var request = pendingBundleFileTrashRequests[i]
+            if (!request || request.pageId !== savedPageId) {
+                if (request) remaining.push(request)
+                continue
+            }
+            var referenceState = noteReferencesFile(savedContent, request.fileId)
+            if (referenceState === true) continue
+            if (referenceState !== false) {
+                remaining.push(request)
+                failed = true
+                continue
+            }
+            if (!controller || typeof controller.deleteFile !== "function" ||
+                    !controller.deleteFile(request.fileId)) {
+                remaining.push(request)
+                failed = true
+            }
+        }
+        pendingBundleFileTrashRequests = remaining
+        return !failed
     }
 
     function saveActiveNote() {
@@ -168,6 +319,11 @@ Rectangle {
             if (refreshed && refreshed.id) activePageObj = refreshed
             if (treeMetaChanged) refreshPageTree()
             pageSavedExternal(selectedPageId, activeTitle)
+            if (!finishPendingBundleFileTrashRequests(selectedPageId, activeContent)) {
+                saveStatus = "error"
+                console.warn("[Notes:PageView] The note was saved, but one or more files remain outside the local Trash.")
+                return false
+            }
             return true
         }
         saveStatus = "error"; return false
@@ -185,6 +341,14 @@ Rectangle {
         target: pageViewRoot.controller
         ignoreUnknownSignals: true
         function onNotesHierarchyChanged() { pageViewRoot.refreshPageTree() }
+        function onPageConflictDetected(pageId, externalContent) {
+            if (String(pageId) !== pageViewRoot.selectedPageId || !pageViewRoot.isDirty) return
+            pageViewRoot.pageConflictPageId = String(pageId)
+            pageViewRoot.pageConflictExternalContent = String(externalContent || "")
+            pageConflictDialog.errorMessage = ""
+            pageViewRoot.saveStatus = "error"
+            pageViewRoot.pageConflictDialogOpen = true
+        }
     }
 
     Timer { id: autoSaveTimer; interval: 900; onTriggered: pageViewRoot.saveActiveNote() }
@@ -314,6 +478,9 @@ Rectangle {
                         pageViewRoot.wordCount = Actions.countWords(html)
                         pageViewRoot.scheduleAutoSave()
                     }
+                    onLocalBundleFileTrashAfterSaveRequested: function(fileId) {
+                        pageViewRoot.queueBundleFileTrashAfterSave(fileId)
+                    }
                     onPagePreviewRequested: function(pid) { viewModals.openFloatingPage(pid) }
                     onPageOpenRequested: function(pid) { pageViewRoot.selectPage(pid) }
                     onExternalLinkRequested: function(lnk) { Qt.openUrlExternally(lnk) }
@@ -397,5 +564,12 @@ Rectangle {
             }
             pageViewRoot.refreshPageTree()
         }
+    }
+
+    PageConflictDialog {
+        id: pageConflictDialog
+        isOpen: pageViewRoot.pageConflictDialogOpen
+        onKeepLocalRequested: pageViewRoot.keepLocalVersionAfterConflict()
+        onReloadSavedRequested: pageViewRoot.loadSavedVersionAfterConflict()
     }
 }

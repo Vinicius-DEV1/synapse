@@ -215,3 +215,33 @@ Exact focused QML lint command for the nested loose-file iteration:
   apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
   apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml
 ```
+
+### Local Trash save-order iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Focused Notes/PageView `qmllint` command below | Passed, exit code 0, with existing dynamic-object, context-access and unused-import diagnostics in `BlockDelegateRouter.qml`, `BlockListEditor.qml` and `Editor.qml` | No diagnostic points to the new save-order queue or document-bundle signal path. This does not execute a save conflict, Core soft-delete, retry, undo or page switch. |
+| `git diff --check` | Passed | No whitespace errors in the deferred local-Trash flow or audit updates. |
+| Save failure/conflict, successful save then soft-delete, restored/relinked references, delete failure/retry and page switching | Not run | The queue is in memory. An interruption can leave an unlinked file active; it cannot soft-delete a file before a successful page save. |
+
+Exact focused QML lint command for the local-Trash save-order iteration:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleOperations.js \
+  apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
+  apps/desktop-qt/qml/notes/Editor.qml \
+  apps/desktop-qt/qml/page-view/PageConflictDialog.qml \
+  apps/desktop-qt/qml/page-view/PageView.qml
+```
+
+### Failed-save page-navigation iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `selectPage` caller and save result flow | Source review: changed so a dirty page remains selected if `saveActiveNote()` fails | Preserves visible editor content and page-scoped queued file-Trash requests. A post-save `deleteFile` failure does not block navigation because the note itself is already saved. |
+| Native conflict choice dialog and retry path | Source review: conflict signal presents explicit keep-local or reload-saved actions | Keep-local refreshes the expected timestamp before saving; reload replaces page content and reconciles the pending bundle file queue. Runtime and encrypted-page interaction remain unverified. |
+| Focused Notes/PageView `qmllint` | Passed, exit code 0, with existing diagnostics in neighboring Notes QML files | No runtime save failure or conflict was injected. |
+| Core save failure, stale timestamp conflict, each resolution choice, manual retry and subsequent navigation | Not run | Verify that the header retry action still targets the preserved page and that pending file operations remain scoped through the retry. |

@@ -102,7 +102,8 @@ Rectangle {
 
     signal attrsUpdated(var newAttrs)
     signal pageOpenRequested(string pageId)
-    signal unlinkRequested()
+    signal unlinkRequested(string fileIdToTrashAfterSave)
+    signal localFileTrashAfterSaveRequested(string fileId)
     signal ungroupRequested(var bundledItems, string groupColor)
     signal ungroupItemRequested(string fileId, var bundledItems, string groupColor)
     signal absorbLooseFileRequested(var sourceBlockPath, string fileId)
@@ -167,23 +168,19 @@ Rectangle {
             widgetDialogs.setManagerActionError(qsTr("Este arquivo não está mais neste agrupamento."))
             return
         }
-        if (moveToTrash) {
-            var fileController = controller
-            if (!fileController || typeof fileController.deleteFile !== "function" ||
-                    !fileController.deleteFile(targetId)) {
-                widgetDialogs.setManagerActionError(qsTr("Não foi possível mover o arquivo para a Lixeira local. O agrupamento foi mantido."))
-                return
-            }
-        }
         var nextItems = items.filter(function(item) {
             return String(item.fileId || item.id || "") !== targetId
         })
         if (nextItems.length === 0) {
-            unlinkRequested()
+            unlinkRequested(moveToTrash ? targetId : "")
             return
         }
-        if (!saveBundle(title, accentColor, nextItems))
+        if (!saveBundle(title, accentColor, nextItems)) {
             widgetDialogs.setManagerActionError(qsTr("Não foi possível atualizar o agrupamento. O arquivo não foi removido dele."))
+            return
+        }
+        if (moveToTrash)
+            localFileTrashAfterSaveRequested(targetId)
     }
 
     DocumentBundleWidgetBody {
@@ -291,7 +288,7 @@ Rectangle {
                 bundleWidgetRoot.attrsUpdated(cleanedAttrs)
             }
         }
-        onUnlinkRequested: bundleWidgetRoot.unlinkRequested()
+        onUnlinkRequested: bundleWidgetRoot.unlinkRequested("")
         onUngroupRequested: function(items, color) { bundleWidgetRoot.ungroupRequested(items, color) }
         onDeleteDialogDismissed: {
             bundleWidgetRoot.deleteDialogOpen = false

@@ -52,6 +52,7 @@ ColumnLayout {
     signal createSubPageWithContent(string title, string html)
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
+    signal localBundleFileTrashAfterSaveRequested(string fileId)
 
     function toggleActiveMark(mark) {
         return (focusedRichSlice && typeof focusedRichSlice.toggleMark === "function") ? focusedRichSlice.toggleMark(mark) : false
@@ -538,11 +539,16 @@ ColumnLayout {
                     blockListRoot.commitBlocks(Helpers.moveBlockInArray(blockListRoot.blocks, idx, delta))
                 }
                 onUnwrapColumnGroupRequested: function(idx, cols) { blockListRoot.unwrapColumnGroup(idx, cols) }
-                onUnlinkDocumentBundleRequested: function(idx, bundleWidget) {
+                onUnlinkDocumentBundleRequested: function(idx, bundleWidget, fileIdToTrashAfterSave) {
                     if (!blockListRoot.unlinkDocumentBundle(idx)) {
                         blockListRoot.reportBundleActionFailure(
                             idx, bundleWidget, qsTr("Could not update this note. The bundle was kept unchanged."))
+                    } else if (fileIdToTrashAfterSave) {
+                        blockListRoot.localBundleFileTrashAfterSaveRequested(fileIdToTrashAfterSave)
                     }
+                }
+                onDocumentBundleFileTrashAfterSaveRequested: function(fileId) {
+                    blockListRoot.localBundleFileTrashAfterSaveRequested(fileId)
                 }
                 onUnwrapDocumentBundleRequested: function(idx, items, color, bundleWidget) {
                     if (!blockListRoot.unwrapDocumentBundle(idx, items, color)) {

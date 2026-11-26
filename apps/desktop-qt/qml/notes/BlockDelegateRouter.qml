@@ -22,11 +22,12 @@ Loader {
     signal deleteRequested(int idx)
     signal moveBlockRequested(int idx, int delta)
     signal unwrapColumnGroupRequested(int idx, var columnsList)
-    signal unlinkDocumentBundleRequested(int idx, var bundleWidget)
+    signal unlinkDocumentBundleRequested(int idx, var bundleWidget, string fileIdToTrashAfterSave)
     signal unwrapDocumentBundleRequested(int idx, var bundledItems, string groupColor, var bundleWidget)
     signal unwrapDocumentBundleItemRequested(int idx, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal absorbDocumentBundleLooseFileRequested(int bundleIndex, var sourceBlockPath, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal documentBundleManagerStateRequested(string blockId, bool isOpen)
+    signal documentBundleFileTrashAfterSaveRequested(string fileId)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
     signal focusRichSliceChanged(var sliceItem)
@@ -205,8 +206,13 @@ Loader {
                     routerLoader.blockIndex, sourceBlockPath, fileId, routedBundleWidget.items,
                     routedBundleWidget.accentColor, routedBundleWidget)
             }
-            onUnlinkRequested: routerLoader.unlinkDocumentBundleRequested(
-                                   routerLoader.blockIndex, routedBundleWidget)
+            onUnlinkRequested: function(fileIdToTrashAfterSave) {
+                routerLoader.unlinkDocumentBundleRequested(
+                    routerLoader.blockIndex, routedBundleWidget, fileIdToTrashAfterSave)
+            }
+            onLocalFileTrashAfterSaveRequested: function(fileId) {
+                routerLoader.documentBundleFileTrashAfterSaveRequested(fileId)
+            }
             onUngroupItemRequested: function(fileId, items, color) {
                 routerLoader.unwrapDocumentBundleItemRequested(
                     routerLoader.blockIndex, fileId, items, color, routedBundleWidget)
