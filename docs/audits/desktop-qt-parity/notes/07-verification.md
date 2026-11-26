@@ -351,3 +351,14 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Scoped `wc -l` scan over Desktop Qt Notes QML/controllers, `synapse-core` Notes domain, and Qt Notes bridge | Found 30 files above the strict 300-line target | The per-file counts and command are in [11-structural-debt.md](11-structural-debt.md). The snapshot is source-structure evidence, not proof that each listed file is a monolith; each split still needs responsibility and caller review. |
 | `NotesSetupWidgetsModal.qml` line count | 265 | It is below the target and has been removed from the over-limit inventory. |
 | Core/bridge and UI decomposition, public contract review, and post-split checks | Not run | The inventory is a backlog. Preserve NoteBlock data, Qt properties/signals, Core APIs, FFI contracts and runtime behavior during each separate extraction. |
+
+### File-widget selected-state iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| React source comparison | Passed | `FileWidgetNodeView.tsx` selects the node on `mousedown`. Default widgets use the brand ring; custom-color and missing widgets use corresponding border and shadow colors. This is source evidence only. |
+| Qt state and caller-chain review | Passed | `BlockListEditor.qml` selects the stable NoteBlock ID from a row `TapHandler` press, clears it on another block/rich-text focus/page reload or block removal, and preserves it through same-ID block updates. `BlockDelegateRouter.qml` forwards the state; `FileAttachmentWidget.qml` renders default/custom/missing color-family border and ring treatments. The ID is not added to block attributes or Core serialization. This does not prove pointer ordering or persistence across view changes at runtime. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/BlockListEditor.qml apps/desktop-qt/qml/notes/BlockDelegateRouter.qml apps/desktop-qt/qml/notes/FileAttachmentWidget.qml` | Passed, exit code 0, with existing diagnostics | QML parses. Existing diagnostics concern unqualified context access, unused imports and dynamic `QQuickItem`/`QObject` properties in these files; none identifies the new selection property or TapHandler route. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app. This does not instantiate the file widget, exercise selection, or measure the ring. |
+| `git diff --check` | Passed after source and audit updates | No whitespace errors in the selection change or its records. |
+| Same-viewport visuals, pointer signal ordering, preview open/return, focus clearing, nested editors and serialization | Not run | Exact shadow/glow parity and behavior on the running app remain open. Delete/Backspace while the widget itself is selected still lacks a native route; only the adjacent rich-text boundary paths are implemented under QT-NOTES-054. No tests were run. |
