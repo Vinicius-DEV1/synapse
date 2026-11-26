@@ -515,6 +515,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes question-create modal hierarchy (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for `NotesQuestionCreateForm.qml` through `NotesSetupWidgetsModal.qml` | Passed: 4 behavior cases (6 QtTest totals including setup/cleanup), 0 failures. Verifies the create path and Core ID, existing battery ID, failure feedback, help/title header, 450 px card, 48 px field, disabled empty-title action, results heading, empty state and viewport sizing for empty, one and many results. | Qt 6.10.2, offscreen. Parent window is not visible, so effective on-screen visibility, focus and exact rendered geometry require live-window comparison. |
+| Focused `qmllint` for the question form, setup host and habit picker | Passed: exit 0, no warnings. | Static QML checks only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: Desktop Qt target linked. | Build validation only; no interactive visual capture. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes habit select/create modal (2026-11-26)
 
 | Check | Result | Scope and limits |

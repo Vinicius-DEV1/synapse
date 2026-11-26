@@ -8,7 +8,6 @@ ColumnLayout {
 
     property var controller: null
     property string mode: ""
-    property string pageId: ""
     property var listItems: []
     property string searchFilter: ""
     property string errorMessage: ""
@@ -92,13 +91,7 @@ ColumnLayout {
     }
 
     function insertPickedItem(item) {
-        if (mode === "question") {
-            var safeTitle = HtmlEscaping.escapeHtmlAttribute(item.title || "Bateria")
-            var safeId = HtmlEscaping.escapeHtmlAttribute(item.id)
-            insertWidgetRequested(
-                "<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" +
-                safeId + "\" data-cached-title=\"" + safeTitle + "\" data-title=\"" + safeTitle + "\"></div>")
-        } else if (mode === "habito") {
+        if (mode === "habito") {
             var habitTitle = HtmlEscaping.escapeHtmlAttribute(item.title || item.name || "Hábito")
             var streak = Number(item.current_streak || 0)
             var habitId = HtmlEscaping.escapeHtmlAttribute(item.id)
@@ -141,29 +134,11 @@ ColumnLayout {
             } else {
                 errorMessage = qsTr("Não foi possível criar o hábito.")
             }
-        } else if (mode === "question") {
-            errorMessage = ""
-            if (typeof c.createNoteQuizBattery !== "function") {
-                errorMessage = qsTr("Não foi possível criar ou vincular a bateria à página atual.")
-                return
-            }
-            var batteryId = c.createNoteQuizBattery(title, "", pageId)
-            if (batteryId) {
-                var safeBatteryId = HtmlEscaping.escapeHtmlAttribute(batteryId)
-                var safeBatteryTitle = HtmlEscaping.escapeHtmlAttribute(title)
-                insertWidgetRequested(
-                    "<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" +
-                    safeBatteryId + "\" data-cached-title=\"" + safeBatteryTitle +
-                    "\" data-title=\"" + safeBatteryTitle + "\"></div>")
-                closeRequested()
-            } else {
-                errorMessage = qsTr("Não foi possível criar ou vincular a bateria à página atual.")
-            }
         }
     }
 
     RowLayout {
-        visible: pickerPanel.mode === "habito" || pickerPanel.mode === "question"
+        visible: pickerPanel.mode === "habito"
         Layout.fillWidth: true
         spacing: 6
         TextField {
@@ -172,8 +147,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             text: pickerPanel.searchFilter
-            placeholderText: pickerPanel.mode === "habito"
-                ? qsTr("Buscar ou digitar novo hábito...") : qsTr("Buscar ou criar nova bateria...")
+            placeholderText: qsTr("Buscar ou digitar novo hábito...")
             color: "#fffffe"
             font.pixelSize: 12
             onTextEdited: {
@@ -188,7 +162,7 @@ ColumnLayout {
         Button {
             id: createRecordButton
             objectName: "notesSetupCreateRecordButton"
-            visible: pickerPanel.showCreateAction
+            visible: pickerPanel.mode === "habito" && pickerPanel.showCreateAction
             Layout.preferredHeight: 32
             leftPadding: 10
             rightPadding: 10
@@ -242,7 +216,7 @@ ColumnLayout {
     }
 
     ScrollView {
-        visible: pickerPanel.mode === "question" || pickerPanel.mode === "habito"
+        visible: pickerPanel.mode === "habito"
         Layout.fillWidth: true
         Layout.preferredHeight: 220
         clip: true

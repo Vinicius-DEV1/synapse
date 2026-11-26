@@ -36,6 +36,7 @@ Item {
         var c = setupRoot.controller
         if (!c) {
             if (mode === "habito") Qt.callLater(widgetPicker.focusSearchField)
+            if (mode === "question") Qt.callLater(questionCreateForm.focusTitleField)
             return
         }
         if (mode === "question" && typeof c.getQuizBatteries === "function") {
@@ -46,6 +47,7 @@ Item {
             listItems = c.getAlarms() || []
         }
         if (mode === "habito") Qt.callLater(widgetPicker.focusSearchField)
+        if (mode === "question") Qt.callLater(questionCreateForm.focusTitleField)
     }
 
     function close() { activeMode = ""; closed() }
@@ -65,7 +67,8 @@ Item {
         anchors.centerIn: parent
         radius: 16
         color: setupRoot.activeMode === "alarme" ? "#0f0e17" : "#161522"
-        border.color: setupRoot.activeMode === "alarme" ? "#0dffffff" : "#338b5cf6"
+        border.color: setupRoot.activeMode === "alarme" || setupRoot.activeMode === "question"
+            ? "#0dffffff" : "#338b5cf6"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -73,8 +76,10 @@ Item {
         ColumnLayout {
             id: cardCol
             anchors.fill: parent
-            anchors.margins: setupRoot.activeMode === "alarme" ? 24 : 20
-            spacing: setupRoot.activeMode === "alarme" ? 18 : 12
+            anchors.margins: setupRoot.activeMode === "alarme" ? 24
+                : setupRoot.activeMode === "question" ? 16 : 20
+            spacing: setupRoot.activeMode === "alarme" ? 18
+                : setupRoot.activeMode === "question" ? 16 : 12
 
             RowLayout {
                 Layout.fillWidth: true
@@ -82,24 +87,26 @@ Item {
                     Layout.fillWidth: true
                     spacing: 12
                     AppIcon {
-                        visible: setupRoot.activeMode === "alarme"
-                        name: "clock"
+                        objectName: "notesSetupModalContextIcon"
+                        visible: setupRoot.activeMode === "alarme" || setupRoot.activeMode === "question"
+                        name: setupRoot.activeMode === "question" ? "help" : "clock"
                         color: "#a78bfa"
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
+                        Layout.preferredWidth: setupRoot.activeMode === "question" ? 18 : 32
+                        Layout.preferredHeight: setupRoot.activeMode === "question" ? 18 : 32
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
                         Text {
                             objectName: "notesSetupModalTitle"
-                            text: setupRoot.activeMode === "question" ? qsTr("Criar / Inserir Questão")
+                            text: setupRoot.activeMode === "question" ? qsTr("Criar Widget de Questões")
                                 : setupRoot.activeMode === "foco" ? qsTr("Configurar Timer de Foco")
                                 : setupRoot.activeMode === "alarme" ? qsTr("Novo Alarme")
                                 : setupRoot.activeMode === "evento" ? qsTr("Criar Evento na Agenda")
                                 : qsTr("Vincular ou Criar Hábito")
                             color: "#fffffe"
-                            font.pixelSize: setupRoot.activeMode === "alarme" ? 24 : 15
+                            font.pixelSize: setupRoot.activeMode === "alarme" ? 24
+                                : setupRoot.activeMode === "question" ? 14 : 15
                             font.bold: true
                             Layout.fillWidth: true
                         }
@@ -125,7 +132,21 @@ Item {
                 id: widgetPicker
                 objectName: "notesSetupWidgetPickerPanel"
                 visible: setupRoot.activeMode !== "alarme" && setupRoot.activeMode !== "foco"
+                    && setupRoot.activeMode !== "question"
                 mode: setupRoot.activeMode
+                controller: setupRoot.controller
+                listItems: setupRoot.listItems
+                searchFilter: setupRoot.searchFilter
+                Layout.fillWidth: true
+                onFilterEdited: function(value) { setupRoot.searchFilter = value }
+                onInsertWidgetRequested: function(html) { setupRoot.insertWidgetRequested(html) }
+                onCloseRequested: setupRoot.close()
+            }
+
+            NotesQuestionCreateForm {
+                id: questionCreateForm
+                objectName: "notesQuestionCreateForm"
+                visible: setupRoot.activeMode === "question"
                 controller: setupRoot.controller
                 pageId: setupRoot.pageId
                 listItems: setupRoot.listItems
