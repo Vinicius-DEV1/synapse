@@ -515,6 +515,14 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes focus setup modal field hierarchy (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for the `foco` mode in `NotesSetupWidgetsModal.qml` | Passed: 1 behavior case (3 QtTest results including setup/cleanup), 0 failures. Verifies Tag → Description → Target Time visual order, visible labels, example placeholders, and parsed `/foco` prefill values. | Qt 6.10.2, offscreen. Does not verify pointer/keyboard behavior, focus return, live timer start, or matched-viewport screenshots. |
+| Focused `qmllint` for `NotesSetupWidgetsModal.qml` | Passed: exit 0, no warnings. | Static QML checks only. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes inline Calendar event modal actions (2026-11-26)
 
 | Check | Result | Scope and limits |

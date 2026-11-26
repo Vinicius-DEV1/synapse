@@ -132,22 +132,52 @@ Item {
                 Layout.fillWidth: true
                 spacing: 8
 
-                TextField {
-                    id: mainTitleField
+                ColumnLayout {
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Descrição (ex: Revisão)")
-                    onTextEdited: setupRoot.actionErrorMessage = ""
-                    color: "#fffffe"
-                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
+                    spacing: 4
+                    RowLayout {
+                        objectName: "notesFocusTagLabelRow"
+                        spacing: 6
+                        AppIcon { name: "tag"; color: "#a78bfa"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
+                        Text { objectName: "notesFocusTagLabel"; text: qsTr("Tag da Sessão"); color: "#a7a9be"; font.pixelSize: 12; font.weight: Font.Medium }
+                    }
+                    TextField {
+                        id: tagField
+                        objectName: "notesFocusTagField"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        placeholderText: qsTr("Ex: Estudo, Trabalho, Leitura")
+                        text: ""
+                        onTextEdited: setupRoot.actionErrorMessage = ""
+                        color: "#fffffe"
+                        background: Rectangle { radius: 10; color: "#0f0e17"; border.color: "#2e2e38" }
+                    }
                 }
-                TextField {
-                    id: tagField
+                ColumnLayout {
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Tag (ex: Estudo, Código)")
-                    text: ""
-                    onTextEdited: setupRoot.actionErrorMessage = ""
-                    color: "#fffffe"
-                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
+                    spacing: 4
+                    RowLayout {
+                        objectName: "notesFocusDescriptionLabelRow"
+                        spacing: 6
+                        AppIcon { name: "align-left"; color: "#a78bfa"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
+                        Text { objectName: "notesFocusDescriptionLabel"; text: qsTr("Descrição"); color: "#a7a9be"; font.pixelSize: 12; font.weight: Font.Medium }
+                    }
+                    TextField {
+                        id: mainTitleField
+                        objectName: "notesFocusDescriptionField"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        placeholderText: qsTr("Ex: Estudando Cálculo Capítulo 4")
+                        onTextEdited: setupRoot.actionErrorMessage = ""
+                        color: "#fffffe"
+                        background: Rectangle { radius: 10; color: "#0f0e17"; border.color: "#2e2e38" }
+                    }
+                }
+                RowLayout {
+                    objectName: "notesFocusDurationLabelRow"
+                    spacing: 6
+                    AppIcon { name: "clock"; color: "#a78bfa"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
+                    Text { objectName: "notesFocusDurationLabel"; text: qsTr("Tempo Alvo (minutos)"); color: "#a7a9be"; font.pixelSize: 12; font.weight: Font.Medium }
                 }
                 RowLayout {
                     Layout.fillWidth: true
@@ -176,8 +206,10 @@ Item {
                     }
                 }
                 TextField {
+                    objectName: "notesFocusDurationField"
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Duração em minutos (ex: 25)")
+                    Layout.preferredHeight: 40
+                    placeholderText: qsTr("Minutos")
                     text: setupRoot.selectedFocusDuration
                     validator: IntValidator { bottom: 1; top: 240 }
                     onTextEdited: {
@@ -185,7 +217,7 @@ Item {
                         setupRoot.actionErrorMessage = ""
                     }
                     color: "#fffffe"
-                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
+                    background: Rectangle { radius: 10; color: "#0f0e17"; border.color: "#2e2e38" }
                 }
                 Button {
                     Layout.fillWidth: true
