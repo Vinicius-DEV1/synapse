@@ -432,3 +432,11 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | Temporary `qmltestrunner` harness with active `ApplicationWindow`, focused `TextField`, and shared `NotesWidgetColorPalette` | Passed: 4 passed, 0 failed. Escape closes the popup and restores focus to the editor; clicking outside closes it; each close emits one dismissal. | Qt 6.10.2, offscreen, temporary harness not committed. The runner emitted a `keyToAscii` warning while synthesizing Escape, but the Qt close/focus assertions passed. Does not prove focus behavior in actual file/bundle delegates or nested editors. |
+
+
+### File attachment palette integration harness (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Temporary `qmltestrunner` harness mounting the actual `FileAttachmentWidget.qml`, its controller boundary, and an enclosing `Flickable` | Passed: 4 passed, 0 failed. Opened the widget palette, verified its nearest viewport and scroll position, dismissed with Escape while restoring editor focus, then dismissed by outside click and confirmed `showColorPicker` reset. | Qt 6.10.2, offscreen; test file remained temporary. The palette has `objectName: notesWidgetColorPalette` for native UI automation. The bundle widget, real NotePage nested editor chain, high-DPI rendering and visual comparison remain unverified. |
+| Focused `qmllint` for `NotesWidgetColorPalette.qml` and native `synapse-desktop` build after adding the palette automation name | Passed; lint emitted no diagnostics and build exit code 0 | Confirms QML syntax and target compilation; no persistent test file was added. |

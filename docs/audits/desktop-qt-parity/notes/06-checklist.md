@@ -175,8 +175,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 - [x] Remove the widget color palette’s unconditional 40 ms position polling; resolve the nearest ancestor Flickable, defer initial positioning until the popup opens, and clear the observer on close (QT-NOTES-057).
 - [x] Verify initial edge flip, vertical/horizontal scroll, nested Flickable selection, window resize clamping and observer cleanup on close in isolated offscreen QML harnesses (QT-NOTES-057).
-- [x] Verify Escape and outside-click dismissal plus focus restoration in an active offscreen window using the shared palette component (QT-NOTES-048/057).
-- [ ] Verify these behaviors through actual file/bundle widgets and real nested Notes editors; check high-DPI geometry and idle resource use (QT-NOTES-048/057).
+- [x] Verify Escape/outside-click dismissal, scroll anchoring and editor-focus restoration through the actual `FileAttachmentWidget` inside a `Flickable` (QT-NOTES-048/057).
+- [ ] Repeat the integration check through `DocumentBundleWidget`; verify actual nested Notes editors, high-DPI geometry and idle resource use (QT-NOTES-048/057).
 
 - [ ] Measure 100/500/1,000-block notes for startup, first edit, input latency, scroll, parse, serialize, save and memory.
 - [ ] Measure large tables, filtering, image-heavy pages, nested widgets and Mermaid diagrams.
