@@ -21,6 +21,7 @@ Rectangle {
     property bool loading: false
     property bool markdownRendered: true
     property bool notesMarkdownEditingEnabled: false
+    property bool notesMarkdownAiEnabled: false
     property int previewPdfPage: 1
     property string previewPdfImageUrl: ""
     property string previewPdfImagePath: ""
@@ -30,6 +31,7 @@ Rectangle {
     signal closeRequested()
     signal exportRequested(string fileId)
     signal markdownEditRequested()
+    signal markdownAiRequested()
     signal textScrollChanged()
 
     function textScrollTop() {
@@ -103,6 +105,20 @@ Rectangle {
                 onClicked: previewOverlay.markdownEditRequested()
                 background: Rectangle { color: theme.bgDarkSurface; border.color: theme.borderSubtle; radius: 8 }
                 contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            ToolButton {
+                id: notesMarkdownAiButton
+                objectName: "notesMarkdownAiOpenButton"
+                visible: !previewOverlay.loading && previewOverlay.notesMarkdownAiEnabled &&
+                         previewOverlay.isMarkdownFile && (previewOverlay.previewType === "text" || previewOverlay.previewType === "code")
+                Accessible.name: qsTr("Assistente de IA para este documento")
+                implicitWidth: 34
+                implicitHeight: 34
+                onClicked: previewOverlay.markdownAiRequested()
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Assistente de IA para este documento")
+                background: Rectangle { color: parent.hovered ? "#0dffffff" : "transparent"; radius: 8 }
+                contentItem: AppIcon { name: "sparkles"; color: notesMarkdownAiButton.hovered ? theme.textDark : theme.textSubtext; width: 16; height: 16 }
             }
             RowLayout {
                 visible: !previewOverlay.loading && previewOverlay.previewType === "pdf" && previewOverlay.previewPath.length > 0

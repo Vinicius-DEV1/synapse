@@ -45,7 +45,7 @@ QtObject {
     function promptText(systemPrompt, userPrompt, history, callback) {
         if (!hasApiKey()) {
             callback(false, "", "Chave de API do Gemini não configurada. Configure sua chave em Configurações > Inteligência Artificial.")
-            return
+            return null
         }
 
         var key = getApiKey()
@@ -127,6 +127,7 @@ QtObject {
         }
 
         xhr.send(JSON.stringify(payload))
+        return xhr
     }
 
     // Requests structured JSON output from Google Gemini

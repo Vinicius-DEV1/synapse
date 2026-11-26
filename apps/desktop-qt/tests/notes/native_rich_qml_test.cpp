@@ -122,6 +122,9 @@ public:
     QString renderedPath;
     QString renderedRequestId;
     QString previewTextContent = QStringLiteral("# Preview text");
+    QString savedNotesFileId;
+    QString savedNotesText;
+    QString savedNotesRequestId;
     QHash<QString, QString> configValues;
     int renderedPage = 0;
 
@@ -145,6 +148,11 @@ public:
         exportedFileId = fileId;
         exportedPath = path;
     }
+    Q_INVOKABLE void saveNotesTextFile(const QString &fileId, const QString &text, const QString &requestId) {
+        savedNotesFileId = fileId;
+        savedNotesText = text;
+        savedNotesRequestId = requestId;
+    }
     Q_INVOKABLE QString getConfig(const QString &key, const QString &defaultValue = QString()) const {
         return configValues.value(key, defaultValue);
     }
@@ -155,6 +163,7 @@ public:
 
     void publish(const QVariantMap &result) { emit filePreviewReady(result); }
     void publishPdfPage(const QVariantMap &result) { emit notesFilePreviewPdfPageReady(result); }
+    void publishFileOperation(const QVariantMap &result) { emit fileOperationFinished(result); }
     void invalidate() { emit filePreviewsInvalidated(); }
 
 signals:
@@ -319,6 +328,74 @@ private slots:
         QVERIFY(!root->property("visible").toBool());
         QCOMPARE(controller.closedPath, QString("/tmp/protected-note.txt"));
         QVERIFY(viewer->property("previewPath").toString().isEmpty());
+    }
+
+    void notesMarkdownAiProposalUsesEncryptedFileSaveFlow() {
+        QQmlEngine engine;
+        QQmlComponent themeComponent(&engine);
+        themeComponent.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/ui/Theme.qml")));
+        QScopedPointer<QObject> theme(themeComponent.create());
+        QVERIFY2(theme, qPrintable(themeComponent.errorString()));
+        NotesFilePreviewTestController controller;
+        controller.previewTextContent = QStringLiteral("# Original chapter");
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("theme", theme.data());
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/notes/NotesFilePreviewModal.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(1000, 700);
+        auto *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        window.show();
+
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "openForFile", Q_ARG(QVariant, QString("chapter-id"))));
+        const QString previewRequestId = root->property("requestId").toString();
+        controller.publish({{"success", true}, {"path", "/tmp/chapter.md"},
+                            {"url", "file:///tmp/chapter.md"}, {"file_type", "code"},
+                            {"name", "chapter.md"}, {"request_id", previewRequestId}});
+        QTRY_COMPARE(root->findChild<QObject *>("notesFilePreviewSurface")
+                         ->property("previewText").toString(), QString("# Original chapter"));
+
+        QObject *openAiButton = root->findChild<QObject *>("notesMarkdownAiOpenButton");
+        QVERIFY(openAiButton);
+        QVERIFY(openAiButton->property("visible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(openAiButton, "clicked"));
+        QObject *aiModal = root->findChild<QObject *>("notesMarkdownAiModal");
+        QVERIFY(aiModal);
+        QTRY_VERIFY(aiModal->property("visible").toBool());
+        aiModal->setProperty("proposal", QStringLiteral("# Revised chapter"));
+        QObject *applyButton = aiModal->findChild<QObject *>("notesMarkdownAiApplyProposalButton");
+        QVERIFY(applyButton);
+        QVERIFY(QMetaObject::invokeMethod(applyButton, "clicked"));
+        QCOMPARE(controller.savedNotesFileId, QStringLiteral("chapter-id"));
+        QCOMPARE(controller.savedNotesText, QStringLiteral("# Revised chapter"));
+        QVERIFY(!controller.savedNotesRequestId.isEmpty());
+        QVERIFY(root->property("savePending").toBool());
+        QVERIFY(aiModal->property("saving").toBool());
+
+        const QString failedRequestId = controller.savedNotesRequestId;
+        controller.publishFileOperation({{"operation", "save-text"}, {"requestId", failedRequestId},
+                                         {"success", false}, {"error", "Storage unavailable."}});
+        QTRY_VERIFY(!root->property("savePending").toBool());
+        QCOMPARE(aiModal->property("errorText").toString(), QStringLiteral("Storage unavailable."));
+        QCOMPARE(aiModal->property("proposal").toString(), QStringLiteral("# Revised chapter"));
+
+        QVERIFY(QMetaObject::invokeMethod(applyButton, "clicked"));
+        const QString successfulRequestId = controller.savedNotesRequestId;
+        QVERIFY(successfulRequestId != failedRequestId);
+        controller.publishFileOperation({{"operation", "save-text"}, {"requestId", successfulRequestId},
+                                         {"success", true}, {"has_drive_copy", false}});
+        QObject *viewer = root->findChild<QObject *>("notesFilePreviewSurface");
+        QTRY_COMPARE(viewer->property("previewText").toString(), QString("# Revised chapter"));
+        QVERIFY(!aiModal->property("visible").toBool());
+        QVERIFY(aiModal->property("documentText").toString().isEmpty());
     }
 
     void notesFilePreviewCancelsPendingRequestAndClosesOnVaultInvalidation() {
@@ -564,6 +641,80 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(root.data(), "closeAfterSave"));
         QVERIFY(!root->property("visible").toBool());
         QVERIFY(!root->property("dirty").toBool());
+    }
+
+    void notesMarkdownAiUsesDocumentContextAndReviewsProposals() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/qml/NotesMarkdownAiHarness.qml")));
+        QScopedPointer<QObject> harness(component.create());
+        QVERIFY2(harness, qPrintable(component.errorString()));
+
+        QQuickWindow window;
+        window.resize(920, 680);
+        auto *rootItem = qobject_cast<QQuickItem *>(harness.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+
+        QObject *modal = harness->findChild<QObject *>("notesMarkdownAiModal");
+        QVERIFY(modal);
+        const QString original = QStringLiteral("# Chapter\n\nOriginal paragraph.");
+        QVERIFY(QMetaObject::invokeMethod(modal, "openForDocument",
+            Q_ARG(QVariant, QStringLiteral("chapter.md")),
+            Q_ARG(QVariant, original),
+            Q_ARG(QVariant, QStringLiteral("file-42"))));
+        QVERIFY(QMetaObject::invokeMethod(modal, "sendMessage",
+            Q_ARG(QVariant, QStringLiteral("Improve the paragraph.")),
+            Q_ARG(QVariant, false)));
+        QVERIFY(harness->property("capturedSystemPrompt").toString().contains(original));
+        QCOMPARE(harness->property("capturedUserPrompt").toString(), QStringLiteral("Improve the paragraph."));
+
+        QVERIFY(QMetaObject::invokeMethod(harness.data(), "resolveRequest",
+            Q_ARG(QVariant, true),
+            Q_ARG(QVariant, QStringLiteral("I made the requested edit.\n```markdown\n# Chapter\n\nRevised paragraph.\n```")),
+            Q_ARG(QVariant, QString())));
+        QTRY_COMPARE(modal->property("proposal").toString(),
+                     QStringLiteral("# Chapter\n\nRevised paragraph."));
+        QVERIFY(modal->property("messages").toList().size() >= 3);
+        QSignalSpy applySpy(modal, SIGNAL(applyProposalRequested(QString)));
+        QVERIFY(QMetaObject::invokeMethod(modal, "applyProposal"));
+        QCOMPARE(applySpy.count(), 1);
+        QCOMPARE(applySpy.takeFirst().at(0).toString(), QStringLiteral("# Chapter\n\nRevised paragraph."));
+        QVERIFY(QMetaObject::invokeMethod(modal, "closeModal", Q_ARG(QVariant, false)));
+        QVERIFY(modal->property("documentText").toString().isEmpty());
+    }
+
+    void notesMarkdownAiCancelsPendingAndIgnoresStaleResponses() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/qml/NotesMarkdownAiHarness.qml")));
+        QScopedPointer<QObject> harness(component.create());
+        QVERIFY2(harness, qPrintable(component.errorString()));
+
+        QObject *modal = harness->findChild<QObject *>("notesMarkdownAiModal");
+        QVERIFY(modal);
+        const QString longContent = QString(50000, QLatin1Char('a')) + QStringLiteral("END-OF-DOCUMENT");
+        QVERIFY(QMetaObject::invokeMethod(modal, "openForDocument",
+            Q_ARG(QVariant, QStringLiteral("long.md")),
+            Q_ARG(QVariant, longContent),
+            Q_ARG(QVariant, QStringLiteral("file-long"))));
+        QVERIFY(modal->property("contextWasTrimmed").toBool());
+        QVERIFY(QMetaObject::invokeMethod(modal, "sendMessage",
+            Q_ARG(QVariant, QStringLiteral("Summarize the document.")),
+            Q_ARG(QVariant, false)));
+        const QString capturedPrompt = harness->property("capturedSystemPrompt").toString();
+        QVERIFY(capturedPrompt.contains(QStringLiteral("[...trecho intermediário omitido")));
+        QVERIFY(capturedPrompt.contains(QStringLiteral("END-OF-DOCUMENT")));
+        QVERIFY(QMetaObject::invokeMethod(modal, "cancelRequest"));
+        QCOMPARE(harness->property("abortCount").toInt(), 1);
+        QVERIFY(QMetaObject::invokeMethod(harness.data(), "resolveRequest",
+            Q_ARG(QVariant, true), Q_ARG(QVariant, QStringLiteral("Stale answer")), Q_ARG(QVariant, QString())));
+        QCOMPARE(modal->property("proposal").toString(), QString());
+        QCOMPARE(modal->property("messages").toList().size(), 2);
+        QVERIFY(!modal->property("isGenerating").toBool());
     }
 
     void collapsedCursorFormattingAppliesOnlyToFollowingText() {
@@ -832,6 +983,17 @@ int main(int argc, char **argv) {
         char editorTest[] = "notesMarkdownEditorProtectsDiscardAndEmitsChangedText";
         char *editorArguments[] = {argv[0], editorTest};
         return QTest::qExec(&test, 2, editorArguments);
+    }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=markdown-ai")) {
+        char contextTest[] = "notesMarkdownAiUsesDocumentContextAndReviewsProposals";
+        char cancellationTest[] = "notesMarkdownAiCancelsPendingAndIgnoresStaleResponses";
+        char saveFlowTest[] = "notesMarkdownAiProposalUsesEncryptedFileSaveFlow";
+        char *contextArguments[] = {argv[0], contextTest};
+        char *cancellationArguments[] = {argv[0], cancellationTest};
+        char *saveFlowArguments[] = {argv[0], saveFlowTest};
+        return QTest::qExec(&test, 2, contextArguments) |
+            QTest::qExec(&test, 2, cancellationArguments) |
+            QTest::qExec(&test, 2, saveFlowArguments);
     }
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |

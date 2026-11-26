@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Dialogs
 import "../files" as Files
+import "../ui"
 
 Rectangle {
     id: modalRoot
@@ -19,16 +20,24 @@ Rectangle {
     property bool savePending: false
     property string saveRequestId: ""
     property string pendingMarkdown: ""
+    property string pendingSaveSource: ""
     property string saveNotice: ""
+
+    AiClient {
+        id: notesAiClient
+        dataController: modalRoot.controller
+    }
 
     function openForFile(fileId) {
         var stableFileId = String(fileId || "").trim()
         if (!controller || stableFileId.length === 0 || visible) return
         readingProgress.resetForFile(stableFileId)
         markdownEditor.visible = false
+        notesMarkdownAi.closeModal(true)
         savePending = false
         saveRequestId = ""
         pendingMarkdown = ""
+        pendingSaveSource = ""
         saveNotice = ""
         requestId = "notes-viewer-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
         viewer.previewFileId = stableFileId
@@ -38,6 +47,7 @@ Rectangle {
         viewer.previewUrl = ""
         viewer.previewText = ""
         viewer.previewError = ""
+        viewer.markdownRendered = true
         viewer.previewPdfPage = 1
         viewer.previewPdfImageUrl = ""
         viewer.previewPdfImagePath = ""
@@ -78,9 +88,11 @@ Rectangle {
         viewer.previewPdfRequestId = ""
         viewer.loading = false
         markdownEditor.visible = false
+        notesMarkdownAi.closeModal(true)
         requestId = ""
         saveRequestId = ""
         pendingMarkdown = ""
+        pendingSaveSource = ""
         visible = false
     }
 
@@ -90,13 +102,18 @@ Rectangle {
         markdownEditor.openForFile(viewer.previewName, viewer.previewText)
     }
 
-    function saveMarkdown(content) {
+    function saveMarkdown(content, source) {
         if (savePending || !controller || typeof controller.saveNotesTextFile !== "function") return
         saveRequestId = "notes-text-save-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
         pendingMarkdown = String(content || "")
+        pendingSaveSource = String(source || "editor")
         savePending = true
-        markdownEditor.saving = true
-        markdownEditor.errorMessage = ""
+        if (pendingSaveSource === "ai") {
+            notesMarkdownAi.errorText = ""
+        } else {
+            markdownEditor.saving = true
+            markdownEditor.errorMessage = ""
+        }
         controller.saveNotesTextFile(viewer.previewFileId, pendingMarkdown, saveRequestId)
     }
 
@@ -157,18 +174,30 @@ Rectangle {
         function onFileOperationFinished(result) {
             if (result.operation === "save-text" && String(result.requestId || "") === modalRoot.saveRequestId) {
                 modalRoot.savePending = false
-                markdownEditor.saving = false
+                var saveSource = modalRoot.pendingSaveSource
                 if (result.success) {
                     viewer.previewText = modalRoot.pendingMarkdown
-                    markdownEditor.closeAfterSave()
+                    if (saveSource === "ai") {
+                        notesMarkdownAi.proposal = ""
+                        notesMarkdownAi.closeModal(true)
+                    } else {
+                        markdownEditor.saving = false
+                        markdownEditor.closeAfterSave()
+                    }
                     modalRoot.saveNotice = result.has_drive_copy
                         ? qsTr("Salvo localmente. A cópia do Drive não foi atualizada.")
                         : qsTr("Documento salvo.")
                     saveNoticeTimer.restart()
                     modalRoot.pendingMarkdown = ""
                     modalRoot.saveRequestId = ""
+                    modalRoot.pendingSaveSource = ""
                 } else {
-                    markdownEditor.errorMessage = String(result.error || qsTr("Could not save the document."))
+                    if (saveSource === "ai") {
+                        notesMarkdownAi.errorText = String(result.error || qsTr("Could not save the document."))
+                    } else {
+                        markdownEditor.saving = false
+                        markdownEditor.errorMessage = String(result.error || qsTr("Could not save the document."))
+                    }
                 }
                 return
             }
@@ -182,7 +211,7 @@ Rectangle {
 
     Shortcut {
         sequence: "Escape"
-        enabled: modalRoot.visible && !exportDialog.visible && !markdownEditor.visible
+        enabled: modalRoot.visible && !exportDialog.visible && !markdownEditor.visible && !notesMarkdownAi.visible
         onActivated: modalRoot.closeModal()
     }
 
@@ -195,6 +224,8 @@ Rectangle {
         onExportRequested: function(fileId) { modalRoot.exportFile(fileId) }
         notesMarkdownEditingEnabled: true
         onMarkdownEditRequested: modalRoot.startMarkdownEditing()
+        notesMarkdownAiEnabled: true
+        onMarkdownAiRequested: notesMarkdownAi.openForDocument(viewer.previewName, viewer.previewText, viewer.previewFileId)
     }
 
     Timer {
@@ -246,6 +277,15 @@ Rectangle {
             saving = false
             errorMessage = ""
         }
+    }
+
+    NotesMarkdownAiModal {
+        id: notesMarkdownAi
+        anchors.fill: parent
+        aiClient: notesAiClient
+        documentFileId: viewer.previewFileId
+        saving: modalRoot.savePending && modalRoot.pendingSaveSource === "ai"
+        onApplyProposalRequested: function(markdown) { modalRoot.saveMarkdown(markdown, "ai") }
     }
 
     FileDialog {
