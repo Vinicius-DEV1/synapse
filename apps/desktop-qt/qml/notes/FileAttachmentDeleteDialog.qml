@@ -1,5 +1,4 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import ".."
 
@@ -11,6 +10,7 @@ Item {
 
     property bool isOpen: false
     property string fileName: ""
+    property string errorMessage: ""
     signal confirmed()
     signal closed()
 
@@ -75,6 +75,14 @@ Item {
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
+                    Text {
+                        visible: deleteDialogRoot.errorMessage.length > 0
+                        text: deleteDialogRoot.errorMessage
+                        color: "#fda4af"
+                        font.pixelSize: 10
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
                 }
             }
 
@@ -129,7 +137,6 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             deleteDialogRoot.confirmed()
-                            deleteDialogRoot.closed()
                         }
                     }
                 }

@@ -413,6 +413,26 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Force a rejected rename and verify file record, widget attributes and editor content remain unchanged while the error is visible; retry successfully and verify Core record plus React-compatible widget name update once; check Enter, button, Escape and empty-name behavior.
 - **Fix status:** The widget now calls its injected controller first, keeps the rename editor open and displays a retryable error when Core rejects the request, and changes the file name/widget attributes only after success. Focused QML lint and whitespace checks pass; runtime failure injection and cross-client acceptance remain open.
 
+## QT-NOTES-045: File widget preview and missing recovery differ from React
+
+- **Severity:** Medium; clicking an attachment from Notes could send a successful preview result to an overlay hosted by the inactive Files module, while a missing attachment had no recovery action.
+- **Evidence:** `FileAttachmentWidget.qml` invoked `previewLocalFile`, whose result is consumed by `FilesActions.qml` inside `FilesView.qml`; the widget's `previewFileRequested` signal had no Notes caller route. React instead opens a type-specific viewer or a deleted-file notice with keep/remove actions.
+- **Reproduction:** From the active Notes page click a stored file; the preview result may be prepared while the Files surface is hidden. Click an attachment marked deleted; the old Qt path had no dialog to keep or remove its widget.
+- **Root cause:** The native widget started a file preview without changing the active module and did not implement React's deleted-file action.
+- **Required fix:** Route the active Notes page to the visible Files preview surface after starting the Core preview. Show a native Keep/Remove Widget notice for missing IDs and route generic block deletion through the same widget confirmation. Forward navigation from embedded page previews and match React's per-type destinations.
+- **Acceptance:** Verify main-page preview result timing and visibility; missing notice Keep/Remove; widget toolbar and generic Delete/Backspace confirmation; file preview errors; floating-page preview navigation; and folder/PDF/EPUB/audio/image/video/text/code behavior.
+- **Fix status:** Main and floating PageView instances now forward file-preview requests to module navigation, and the attachment opens the missing-file notice instead of requesting a preview. Generic block deletion now invokes the file widget confirmation; confirmed AST removal validates serialization and reports a recoverable error. Folder and typed viewer parity remain open. Focused `qmllint` and whitespace checks pass; runtime preview completion is unchecked.
+
+## QT-NOTES-046: File widget deletion does not offer React's choices
+
+- **Severity:** High parity gap; the native Notes attachment cannot delete the underlying file from its own action flow.
+- **Evidence:** React `FileWidgetDeleteConfirmModal` offers Cancel, Unlink and Delete All; Delete All removes the local Core record and attempts Drive deletion for a Drive-backed file. Qt `FileAttachmentDeleteDialog` only removes the widget node from the page.
+- **Reproduction:** Open a live attachment's delete control and compare the available choices and record state after confirmation.
+- **Root cause:** The Qt file widget has a note-node removal dialog but no underlying file lifecycle choices or remote Drive deletion contract.
+- **Required fix:** Match Cancel and Unlink distinctly; add a recoverable local Trash choice only after the page save succeeds, rechecking for remaining references and preserving the file on save conflict. Add remote Drive deletion only through a typed adapter that reports partial and failed outcomes. Clearly label the local-only action.
+- **Acceptance:** Cancel changes nothing; Unlink removes only the widget; local Trash saves the note first and handles undo, duplicate references, save conflict and delete failure; Drive-backed behavior reports local/remote partial outcomes and is never reported complete before confirmation from the service.
+- **Fix status:** Open parity gap. Qt still offers only note-widget removal. The deferred local Trash queue exists for DocumentBundle removal but is not yet wired into the standalone file widget; remote Drive deletion has no native typed command. See the detailed [file-widget crosswalk](10-file-widget-crosswalk.md).
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

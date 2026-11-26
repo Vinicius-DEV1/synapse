@@ -53,6 +53,7 @@ ColumnLayout {
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
     signal localBundleFileTrashAfterSaveRequested(string fileId)
+    signal filePreviewRequested(string fileId, string fileName)
 
     function toggleActiveMark(mark) {
         return (focusedRichSlice && typeof focusedRichSlice.toggleMark === "function") ? focusedRichSlice.toggleMark(mark) : false
@@ -154,7 +155,26 @@ ColumnLayout {
             }
             return
         }
+        if (block && block.blockType === "fileWidget") {
+            if (!widget || typeof widget["requestDeleteConfirmation"] !== "function") {
+                console.warn("[Notes:BlockListEditor] File attachment is not ready; keeping the block.")
+                return
+            }
+            widget["requestDeleteConfirmation"]()
+            return
+        }
         commitBlocks(Helpers.deleteBlockInArray(blocks, index))
+    }
+
+    function removeFileAttachmentBlock(index) {
+        if (index < 0 || index >= blocks.length || !controller ||
+                typeof controller.serializeNoteBlocks !== "function") return false
+        if (!flushActiveRichSlices()) return false
+        if (index >= blocks.length || !blocks[index] ||
+                blocks[index].blockType !== "fileWidget") return false
+        var nextBlocks = blocks.slice()
+        nextBlocks.splice(index, 1)
+        return commitDocumentBundleBlocks(nextBlocks)
     }
 
     function unlinkDocumentBundle(index) {
@@ -549,6 +569,15 @@ ColumnLayout {
                 }
                 onDocumentBundleFileTrashAfterSaveRequested: function(fileId) {
                     blockListRoot.localBundleFileTrashAfterSaveRequested(fileId)
+                }
+                onFilePreviewRequested: function(fileId, fileName) {
+                    blockListRoot.filePreviewRequested(fileId, fileName)
+                }
+                onFileAttachmentRemovalConfirmed: function(idx, fileWidget) {
+                    if (!blockListRoot.removeFileAttachmentBlock(idx) &&
+                            fileWidget && typeof fileWidget.showRemovalError === "function") {
+                        fileWidget.showRemovalError(qsTr("Não foi possível remover o anexo da nota. O arquivo foi mantido."))
+                    }
                 }
                 onUnwrapDocumentBundleRequested: function(idx, items, color, bundleWidget) {
                     if (!blockListRoot.unwrapDocumentBundle(idx, items, color)) {

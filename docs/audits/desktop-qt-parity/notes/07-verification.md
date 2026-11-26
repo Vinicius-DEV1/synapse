@@ -255,17 +255,25 @@ Exact focused QML lint command for the local-Trash save-order iteration:
 | Focused `qmllint` and `git diff --check` | Passed, exit code 0 | Existing dynamic-object/context diagnostics remain in `FileAttachmentWidget.qml`; no diagnostic points to the new ID lookup, signal refresh or rename result path. C++ compilation remains unchecked. |
 | Nested-folder metadata, missing/Trash state, rename, restore and preview | Not run | Verify the open note updates without requiring page reload; confirm locked vault metadata remains appropriately redacted. |
 | Forced rename failure, retry and note/Core consistency | Source review: the note attributes now update only after a successful Core return | No runtime failure injection or React round-trip was run. |
+| Main/floating Notes preview route and missing-file notice | Source review: both PageView instances forward live preview to Files and the file widget offers Keep/Remove for missing records; block-handle deletion opens the same confirmation | Async result timing, modal closure and viewer-type behavior have not been runtime checked. |
+| Confirmed attachment removal and serializer error handling | Source review: Notes AST serialization is validated before removing the node; a failed mutation keeps the dialog open with error text | No injected serialization failure or keyboard interaction was run. |
+| Attachment removal with pending rich-text edits | Source review: confirmed removal flushes pending rich-text slices before serializing the removal, then revalidates the target block | Runtime flush failure, adjacent rich-text edits and serialization failure remain unchecked. |
+| Attachment local Trash, remote Drive delete and typed viewer parity | Not run / not implemented | See QT-NOTES-046 and [10-file-widget-crosswalk.md](10-file-widget-crosswalk.md). |
 
 Exact focused QML lint command for the file-widget lifecycle iteration:
 
 ```bash
 /usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
   apps/desktop-qt/qml/notes/FileAttachmentWidget.qml \
+  apps/desktop-qt/qml/notes/FileAttachmentDeleteDialog.qml \
+  apps/desktop-qt/qml/notes/FileAttachmentMissingDialog.qml \
   apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
   apps/desktop-qt/qml/notes/BlockListEditor.qml \
   apps/desktop-qt/qml/notes/DocumentBundleOperations.js \
   apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
   apps/desktop-qt/qml/notes/Editor.qml \
   apps/desktop-qt/qml/page-view/PageConflictDialog.qml \
-  apps/desktop-qt/qml/page-view/PageView.qml
+  apps/desktop-qt/qml/page-view/PageView.qml \
+  apps/desktop-qt/qml/page-view/PageViewModalsHost.qml \
+  apps/desktop-qt/qml/modals/FloatingPageModal.qml
 ```

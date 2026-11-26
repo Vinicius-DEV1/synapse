@@ -49,6 +49,7 @@ ColumnLayout {
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
     signal localBundleFileTrashAfterSaveRequested(string fileId)
+    signal filePreviewRequested(string fileId, string fileName)
 
     function toggleActiveMark(mark) {
         return blockListEditor.toggleActiveMark(mark)
@@ -229,6 +230,9 @@ ColumnLayout {
             }
             onLocalBundleFileTrashAfterSaveRequested: function(fileId) {
                 editorRoot.localBundleFileTrashAfterSaveRequested(fileId)
+            }
+            onFilePreviewRequested: function(fileId, fileName) {
+                editorRoot.filePreviewRequested(fileId, fileName)
             }
             onPagePreviewRequested: function(pid) { editorRoot.pagePreviewRequested(pid) }
             onPageOpenRequested: function(pid) { editorRoot.pageOpenRequested(pid) }

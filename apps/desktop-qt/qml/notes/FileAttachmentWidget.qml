@@ -21,6 +21,7 @@ Rectangle {
     property bool renaming: false
     property bool showColorPicker: false
     property bool isDeleteDialogOpen: false
+    property bool isMissingDialogOpen: false
     property bool isNotFound: false
     property string renameErrorMessage: ""
 
@@ -73,6 +74,34 @@ Rectangle {
         attrsUpdated(next)
     }
 
+    function requestDeleteConfirmation() {
+        deleteDialog.errorMessage = ""
+        isDeleteDialogOpen = true
+    }
+
+    function showRemovalError(message) {
+        var errorText = String(message || qsTr("Não foi possível atualizar esta nota."))
+        if (isMissingDialogOpen) {
+            missingDialog.errorMessage = errorText
+        } else {
+            deleteDialog.errorMessage = errorText
+            isDeleteDialogOpen = true
+        }
+    }
+
+    function openFilePreview() {
+        if (renaming) return
+        if (isNotFound) {
+            missingDialog.errorMessage = ""
+            isMissingDialogOpen = true
+            return
+        }
+        var c = fileWidgetRoot.controller
+        if (fileId && c && typeof c.previewLocalFile === "function")
+            c.previewLocalFile(fileId)
+        previewFileRequested(fileId, fileName)
+    }
+
     function iconNameForType() {
         if (isNotFound) return "alert"
         if (fileType === "pdf" || fileType === "document" || fileType === "doc") return "file-text"
@@ -103,14 +132,7 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            if (fileWidgetRoot.renaming) return
-            var c = fileWidgetRoot.controller
-            if (fileWidgetRoot.fileId && c && typeof c.previewLocalFile === "function") {
-                c.previewLocalFile(fileWidgetRoot.fileId)
-            }
-            fileWidgetRoot.previewFileRequested(fileWidgetRoot.fileId, fileWidgetRoot.fileName)
-        }
+        onClicked: fileWidgetRoot.openFilePreview()
     }
 
     RowLayout {
@@ -192,15 +214,17 @@ Rectangle {
             }
 
             ToolButton {
+                id: renameConfirmButton
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
                 focusPolicy: Qt.NoFocus
                 onClicked: nameInput.accepted()
-                background: Rectangle { radius: 4; color: parent.hovered ? "#3310b981" : "transparent" }
+                background: Rectangle { radius: 4; color: renameConfirmButton.hovered ? "#3310b981" : "transparent" }
                 contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 13; height: 13 }
             }
 
             ToolButton {
+                id: renameCancelButton
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
                 focusPolicy: Qt.NoFocus
@@ -208,7 +232,7 @@ Rectangle {
                     fileWidgetRoot.renameErrorMessage = ""
                     fileWidgetRoot.renaming = false
                 }
-                background: Rectangle { radius: 4; color: parent.hovered ? "#1affffff" : "transparent" }
+                background: Rectangle { radius: 4; color: renameCancelButton.hovered ? "#1affffff" : "transparent" }
                 contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 12; height: 12 }
             }
         }
@@ -226,13 +250,7 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    var c = fileWidgetRoot.controller
-                    if (fileWidgetRoot.fileId && c && typeof c.previewLocalFile === "function") {
-                        c.previewLocalFile(fileWidgetRoot.fileId)
-                    }
-                    fileWidgetRoot.previewFileRequested(fileWidgetRoot.fileId, fileWidgetRoot.fileName)
-                }
+                onClicked: fileWidgetRoot.openFilePreview()
                 onDoubleClicked: {
                     if (!fileWidgetRoot.isNotFound) {
                         fileWidgetRoot.renameErrorMessage = ""
@@ -302,6 +320,7 @@ Rectangle {
             spacing: 2
 
             ToolButton {
+                id: renameActionButton
                 visible: !fileWidgetRoot.renaming && !fileWidgetRoot.isNotFound
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
@@ -309,20 +328,22 @@ Rectangle {
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Renomear arquivo")
                 onClicked: {
+                    fileWidgetRoot.renameErrorMessage = ""
                     fileWidgetRoot.renaming = true
                     nameInput.forceActiveFocus()
                 }
-                background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
+                background: Rectangle { radius: 5; color: renameActionButton.hovered ? "#4d000000" : "transparent" }
                 contentItem: AppIcon {
                     anchors.centerIn: parent
                     name: "edit"
-                    color: parent.hovered ? "#fffffe" : "#a7a9be"
+                    color: renameActionButton.hovered ? "#fffffe" : "#a7a9be"
                     width: 12
                     height: 12
                 }
             }
 
             ToolButton {
+                id: colorActionButton
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
                 focusPolicy: Qt.NoFocus
@@ -331,12 +352,12 @@ Rectangle {
                 onClicked: fileWidgetRoot.showColorPicker = !fileWidgetRoot.showColorPicker
                 background: Rectangle {
                     radius: 5
-                    color: fileWidgetRoot.showColorPicker || parent.hovered ? "#4d000000" : "transparent"
+                    color: fileWidgetRoot.showColorPicker || colorActionButton.hovered ? "#4d000000" : "transparent"
                 }
                 contentItem: AppIcon {
                     anchors.centerIn: parent
                     name: "palette"
-                    color: parent.hovered ? "#fffffe" : "#a7a9be"
+                    color: colorActionButton.hovered ? "#fffffe" : "#a7a9be"
                     width: 12
                     height: 12
                 }
@@ -344,17 +365,18 @@ Rectangle {
         }
 
         ToolButton {
+            id: deleteAttachmentButton
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24
             focusPolicy: Qt.NoFocus
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Remover anexo")
-            onClicked: fileWidgetRoot.isDeleteDialogOpen = true
-            background: Rectangle { radius: 6; color: parent.hovered ? "#33000000" : "transparent" }
+            onClicked: fileWidgetRoot.requestDeleteConfirmation()
+            background: Rectangle { radius: 6; color: deleteAttachmentButton.hovered ? "#33000000" : "transparent" }
             contentItem: AppIcon {
                 anchors.centerIn: parent
                 name: "close"
-                color: parent.hovered ? "#f87171" : "#a7a9be"
+                color: deleteAttachmentButton.hovered ? "#f87171" : "#a7a9be"
                 width: 14
                 height: 14
             }
@@ -362,12 +384,23 @@ Rectangle {
     }
 
     FileAttachmentDeleteDialog {
+        id: deleteDialog
         isOpen: fileWidgetRoot.isDeleteDialogOpen
         fileName: fileWidgetRoot.fileName
         onConfirmed: {
-            fileWidgetRoot.isDeleteDialogOpen = false
             fileWidgetRoot.removeRequested()
         }
-        onClosed: fileWidgetRoot.isDeleteDialogOpen = false
+        onClosed: {
+            fileWidgetRoot.isDeleteDialogOpen = false
+            deleteDialog.errorMessage = ""
+        }
+    }
+
+    FileAttachmentMissingDialog {
+        id: missingDialog
+        isOpen: fileWidgetRoot.isMissingDialogOpen
+        fileName: fileWidgetRoot.fileName
+        onRemoveWidgetRequested: fileWidgetRoot.removeRequested()
+        onDismissed: fileWidgetRoot.isMissingDialogOpen = false
     }
 }

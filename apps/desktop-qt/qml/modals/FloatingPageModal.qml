@@ -15,6 +15,7 @@ Popup {
 
     signal expandRequested(string pageId)
     signal pageSaved(string savedPageId, string newTitle)
+    signal navigateModuleRequested(string moduleKey)
 
     modal: true
     focus: true
@@ -133,6 +134,10 @@ Popup {
             controller: floatingRoot.controller
             onPageSavedExternal: function(pid, newTitle) {
                 floatingRoot.pageSaved(pid, newTitle)
+            }
+            onNavigateModuleRequested: function(moduleKey) {
+                floatingRoot.close()
+                floatingRoot.navigateModuleRequested(moduleKey)
             }
         }
     }

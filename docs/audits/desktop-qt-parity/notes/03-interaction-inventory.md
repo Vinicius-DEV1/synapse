@@ -54,6 +54,8 @@ Each widget needs a source-schema round-trip review and full lifecycle compariso
 
 For each type verify: canonical HTML node and attributes; missing/legacy attributes; creation; display; edit; action buttons; keyboard equivalent; loading/error/deleted/locked state; nested rich content; persistence; copy/paste; reorder; undo/redo; page reload; cross-client React round-trip; and cleanup of timers, signals and media handles.
 
+For the file attachment node, use the dedicated [React/Qt file-widget crosswalk](10-file-widget-crosswalk.md) to verify ID lookup, missing/restore flow, folder and typed viewer routes, rename, palette, reorder, deletion choices, failure feedback and embedded-page navigation.
+
 ## Modal and popover states
 
 For `NotesEditorModalsHost.qml`, `NotesSetupWidgetsModal.qml`, `NotesMediaWidgetPickerModal.qml`, link/page-reference dialogs, image actions/viewer, history, delete confirmation, and widget-specific dialogs, compare: initial focus; Escape; outside click; confirmation; disabled/busy state; validation messages; empty results; failure/retry; close while work is in flight; keyboard tab order; focus restoration; and modal stacking.

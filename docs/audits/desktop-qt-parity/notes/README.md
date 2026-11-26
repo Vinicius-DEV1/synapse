@@ -17,6 +17,7 @@
 | [07-verification.md](07-verification.md) | Focused verification plan and evidence rules |
 | [08-slash-command-crosswalk.md](08-slash-command-crosswalk.md) | Per-command React catalog, Qt execution paths, argument handling, and remaining acceptance |
 | [09-document-bundle-crosswalk.md](09-document-bundle-crosswalk.md) | React/Qt bundle actions, persistence mapping, missing controls, and deletion limits |
+| [10-file-widget-crosswalk.md](10-file-widget-crosswalk.md) | React/Qt attachment lookup, preview, rename, recovery, deletion, and acceptance gaps |
 
 ## Evidence rules
 
@@ -50,6 +51,8 @@
 19. **Failed note saves no longer discard edits during navigation.** Qt keeps the current page selected when a dirty note save fails and offers explicit local-versus-saved choices after a timestamp conflict. Runtime conflict retry, reload and navigation acceptance remain open; see [QT-NOTES-042](04-bug-register.md#qt-notes-042-switching-pages-discards-edits-when-the-page-save-fails).
 20. **Notes file widgets resolve and refresh records through Core.** The widget now looks up one file by ID, marks missing records, and refreshes after file changes; file restoration emits the update signal. Runtime nested-folder, Trash, restore and preview acceptance remains open; see [QT-NOTES-043](04-bug-register.md#qt-notes-043-file-widgets-do-not-resolve-or-refresh-records-by-id).
 21. **File rename failures no longer mutate the note widget.** Qt updates the Core record first and only then serializes the new widget name; a rejected rename keeps the input open with retry feedback. Runtime error and React round-trip acceptance remain open; see [QT-NOTES-044](04-bug-register.md#qt-notes-044-failed-file-rename-still-changes-the-note-widget).
+22. **Attachment preview and missing-file recovery now have main and floating page paths.** Live file clicks route the asynchronous preview result to the visible Files surface; missing records offer Keep or Remove Widget, including through generic block deletion. Typed viewer parity remains open; see [QT-NOTES-045](04-bug-register.md#qt-notes-045-file-widget-preview-and-missing-recovery-differ-from-react) and the [file-widget crosswalk](10-file-widget-crosswalk.md).
+23. **Attachment deletion remains a parity gap.** Qt currently offers removal from the note but no React-like Delete All choice for the local record and optional Drive copy. See [QT-NOTES-046](04-bug-register.md#qt-notes-046-file-widget-deletion-does-not-offer-reacts-choices).
 
 ## Completion rule
 

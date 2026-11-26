@@ -40,6 +40,7 @@ Item {
     signal importedPage(string newPageId)
     signal historyClosed()
     signal helpClosed()
+    signal navigateModuleRequested(string moduleKey)
 
     function openMoveFor(pageId) {
         moveModal.openForPage(pageId || selectedPageId)
@@ -107,6 +108,14 @@ Item {
                 item.openForPage(pendingPageId)
                 pendingPageId = ""
             }
+        }
+    }
+
+    Connections {
+        target: floatingModalLoader.item
+        ignoreUnknownSignals: true
+        function onNavigateModuleRequested(moduleKey) {
+            hostRoot.navigateModuleRequested(moduleKey)
         }
     }
 

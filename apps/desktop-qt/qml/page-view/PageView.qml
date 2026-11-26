@@ -481,6 +481,9 @@ Rectangle {
                     onLocalBundleFileTrashAfterSaveRequested: function(fileId) {
                         pageViewRoot.queueBundleFileTrashAfterSave(fileId)
                     }
+                    onFilePreviewRequested: function(fileId, fileName) {
+                        pageViewRoot.navigateModuleRequested("files")
+                    }
                     onPagePreviewRequested: function(pid) { viewModals.openFloatingPage(pid) }
                     onPageOpenRequested: function(pid) { pageViewRoot.selectPage(pid) }
                     onExternalLinkRequested: function(lnk) { Qt.openUrlExternally(lnk) }
@@ -529,6 +532,9 @@ Rectangle {
         isHelpOpen: pageViewRoot.isHelpOpen
         onHistoryClosed: pageViewRoot.isHistoryOpen = false
         onHelpClosed: pageViewRoot.isHelpOpen = false
+        onNavigateModuleRequested: function(moduleKey) {
+            pageViewRoot.navigateModuleRequested(moduleKey)
+        }
         onSelectPageRequested: function(pid) { pageViewRoot.selectPage(pid) }
         onImportedPage: function(newId) { pageViewRoot.refreshPageTree(); pageViewRoot.selectPage(newId) }
         onRestoreRevisionRequested: function(content) {
