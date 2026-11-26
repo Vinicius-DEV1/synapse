@@ -58,6 +58,11 @@ Rectangle {
         && !openAnswerInputFocused && !isCompleted && !discussionDialogOpen
         && !(currentQuestion && currentQuestion.type === "multiple_choice"
              && currentQuestion.options && currentQuestion.options.length > 6)
+    readonly property bool notesPlainArrowShortcutsEnabled: enableNotesOpenAnswerEvaluation
+        && !openAnswerInputFocused && !isCompleted && !showFinishConfirmation
+        && !discussionDialogOpen
+    readonly property bool notesModifiedArrowShortcutsEnabled: enableNotesOpenAnswerEvaluation
+        && !isCompleted && !showFinishConfirmation && !discussionDialogOpen
 
     Timer {
         id: quizTimer
@@ -86,6 +91,30 @@ Rectangle {
         sequence: "G"
         enabled: sequentialModalRoot.visible && sequentialModalRoot.notesPlainGShortcutEnabled
         onActivated: sequentialModalRoot.toggleExplanation()
+    }
+    Shortcut {
+        objectName: "notesPlainNextQuestionShortcut"
+        sequences: ["Right", ">"]
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.notesPlainArrowShortcutsEnabled
+        onActivated: sequentialModalRoot.navigateNotesNext()
+    }
+    Shortcut {
+        objectName: "notesPlainPreviousQuestionShortcut"
+        sequences: ["Left", "<"]
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.notesPlainArrowShortcutsEnabled
+        onActivated: sequentialModalRoot.navigateNotesPrevious()
+    }
+    Shortcut {
+        objectName: "notesModifiedNextQuestionShortcut"
+        sequence: "Alt+Right"
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.notesModifiedArrowShortcutsEnabled
+        onActivated: sequentialModalRoot.navigateNotesNext()
+    }
+    Shortcut {
+        objectName: "notesModifiedPreviousQuestionShortcut"
+        sequence: "Alt+Left"
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.notesModifiedArrowShortcutsEnabled
+        onActivated: sequentialModalRoot.navigateNotesPrevious()
     }
     Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: handleConfirmOrNext() }
 
@@ -306,6 +335,22 @@ Rectangle {
         } else {
             openAnswer = ""
         }
+    }
+
+    function navigateNotesNext() {
+        if (!enableNotesOpenAnswerEvaluation || isCompleted || showFinishConfirmation) return
+        if (currentIndex < totalCount - 1) {
+            goToQuestion(currentIndex + 1)
+        } else if (requireFinishConfirmation) {
+            showFinishConfirmation = true
+        } else {
+            isCompleted = true
+        }
+    }
+
+    function navigateNotesPrevious() {
+        if (!enableNotesOpenAnswerEvaluation || isCompleted || showFinishConfirmation) return
+        if (currentIndex > 0) goToQuestion(currentIndex - 1)
     }
 
     function restartQuiz() {

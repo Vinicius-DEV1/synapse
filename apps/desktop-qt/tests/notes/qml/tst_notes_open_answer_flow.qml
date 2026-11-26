@@ -298,6 +298,47 @@ TestCase {
         compare(quizModal.showExplanation, false)
     }
 
+    function test_arrowShortcutsNavigateAndPreserveDraftsInNotesFocus() {
+        questions = [openQuestion("open-1", "First"), openQuestion("open-2", "Second")]
+        quizModal.startQuiz("battery-notes", "Notes battery", questions)
+        quizModal.requireFinishConfirmation = true
+        OpenAnswerSession.setAnswer(quizModal, "First draft")
+
+        var plainNext = findChild(quizModal, "notesPlainNextQuestionShortcut")
+        var plainPrevious = findChild(quizModal, "notesPlainPreviousQuestionShortcut")
+        var modifiedNext = findChild(quizModal, "notesModifiedNextQuestionShortcut")
+        var modifiedPrevious = findChild(quizModal, "notesModifiedPreviousQuestionShortcut")
+        verify(plainNext !== null)
+        verify(plainPrevious !== null)
+        verify(modifiedNext !== null)
+        verify(modifiedPrevious !== null)
+        compare(plainNext.sequences.length, 2)
+        compare(plainPrevious.sequences.length, 2)
+        compare(String(plainNext.sequences[0]), "Right")
+        compare(String(plainNext.sequences[1]), ">")
+        compare(String(plainPrevious.sequences[0]), "Left")
+        compare(String(plainPrevious.sequences[1]), "<")
+        compare(modifiedNext.sequence, "Alt+Right")
+        compare(modifiedPrevious.sequence, "Alt+Left")
+
+        quizModal.openAnswerInputFocused = true
+        compare(quizModal.notesPlainArrowShortcutsEnabled, false)
+        compare(quizModal.notesModifiedArrowShortcutsEnabled, true)
+        quizModal.navigateNotesNext()
+        compare(quizModal.currentIndex, 1)
+        compare(quizModal.openAnswer, "")
+        quizModal.navigateNotesPrevious()
+        compare(quizModal.currentIndex, 0)
+        compare(quizModal.openAnswer, "First draft")
+
+        quizModal.openAnswerInputFocused = false
+        compare(quizModal.notesPlainArrowShortcutsEnabled, true)
+        quizModal.navigateNotesNext()
+        quizModal.navigateNotesNext()
+        compare(quizModal.showFinishConfirmation, true)
+        compare(quizModal.isCompleted, false)
+    }
+
     function test_evaluationsForDifferentQuestionsCanFinishOutOfOrder() {
         questions = [openQuestion("open-1", "First"), openQuestion("open-2", "Second")]
         quizModal.startQuiz("battery-notes", "Notes battery", questions)
