@@ -156,11 +156,13 @@ ColumnLayout {
         if (result.success) {
             var fileId = escapeHtmlAttribute(result.id)
             var fileName = escapeHtmlAttribute(result.name || qsTr("Arquivo"))
+            var fileType = escapeHtmlAttribute(result.file_type || "other")
+            var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(result.file_size)
             var widgets = pendingFileDropWidgets.slice()
             widgets.push(
                 "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
                 "\" data-name=\"" + fileName + "\" data-file-name=\"" + fileName +
-                "\" data-file-type=\"other\"></div>")
+                "\" data-file-type=\"" + fileType + "\" data-file-size=\"" + fileSize + "\"></div>")
             pendingFileDropWidgets = widgets
         } else {
             fileDropFeedback = String(result.error || qsTr("Um arquivo não pôde ser importado."))

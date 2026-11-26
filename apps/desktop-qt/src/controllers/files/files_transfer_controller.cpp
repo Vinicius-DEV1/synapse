@@ -49,6 +49,7 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
         return fail("Could not protect the local file reference.");
     }
     const QString name = sourceInfo.fileName();
+    const QString fileType = fileTypeCategory(name);
     const QString mimeType = QMimeDatabase().mimeTypeForFile(sourceInfo).name();
     const qint64 fileSize = sourceInfo.size();
     SynapseFileOperation *operation = synapse_file_operation_create();
@@ -63,7 +64,7 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
     m_fileOperationWatcher = watcher;
     m_activeFileOperation = operation;
     connect(watcher, &QFutureWatcher<QVariantMap>::finished, this,
-            [this, watcher, id, name, mimeType, fileSize, folderId, requestId, destination,
+            [this, watcher, id, name, fileType, mimeType, fileSize, folderId, requestId, destination,
              temporaryDestination, encryptedLocalPath, operation]() {
         const QVariantMap operationResult = watcher->result();
         watcher->deleteLater();
@@ -79,7 +80,7 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
         if (success) {
             const QByteArray idBytes = id.toUtf8();
             const QByteArray nameBytes = name.toUtf8();
-            const QByteArray typeBytes = fileTypeCategory(name).toUtf8();
+            const QByteArray typeBytes = fileType.toUtf8();
             const QByteArray pathBytes = encryptedLocalPath.toUtf8();
             const QByteArray folderBytes = folderId.toUtf8();
             const QByteArray mimeBytes = mimeType.toUtf8();
@@ -103,7 +104,8 @@ void SynapseDataController::importLocalFile(const QString &sourcePath, const QSt
         }
         m_fileOperationRunning = false;
         emit fileOperationStateChanged();
-        QVariantMap result{{"success", success}, {"id", id}, {"name", name}, {"error", error}};
+        QVariantMap result{{"success", success}, {"id", id}, {"name", name},
+                           {"file_type", fileType}, {"file_size", fileSize}, {"error", error}};
         result["operation"] = "import";
         result["requestId"] = requestId;
         if (m_activeFileOperation == operation) m_activeFileOperation = nullptr;

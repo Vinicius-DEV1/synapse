@@ -30,6 +30,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify pointer hit testing selects exactly one page-reference object; typing replaces the selected object; Backspace/Delete opens confirmation; Keep, confirmed removal, undo, and click behavior match React for active and deleted targets.
 - [ ] While a referenced note stays open, rename, trash, restore from Trash, and rename its target again; verify every top-level and nested chip updates title/state/action without changing stored markup, dirty state, cursor, selection, or undo history.
 - [ ] Compare active and deleted page-reference labels at the same viewport: active shows only the current title; missing/deleted shows the current title plus ` (Excluída)` and measures enough width without clipping or wrapping differently.
+- [ ] Drag PDF, EPUB, text, image, video, audio, archive, and unknown files into a note; verify each serialized widget retains the file type persisted by Core and the correct React/native open action after save and reopen.
 - [ ] Verify copy/paste and cut for a selected reference, including canonical HTML and custom Qt MIME; round-trip Qt→React and React→Qt with titles containing quotes, ampersands, emoji and combining characters.
 - [ ] Verify a merged `QTextFragment` containing adjacent identical object-replacement characters serializes one canonical `span[data-page-id][title]` per reference and preserves order/count after reload.
 - [ ] Preserve block colors/highlights in the same semantic representation as React.

@@ -20,7 +20,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The editor bypasses the file import/persistence pipeline and writes raw path-like attributes that are not part of the React-compatible file widget schema.
 - **Required fix:** Route local dropped files through the same encrypted import flow as the picker; after a successful import, insert the returned Core file ID and canonical metadata. Reject non-local URLs safely. Handle multiple files in a serialized queue because the controller permits one file operation at a time. Surface failure and cancellation without inserting a broken widget.
 - **Acceptance:** Local drops produce valid file records and canonical widgets; reopen/preview/export/delete/rename work; failed/locked imports add no widget; image drops continue through image import; multiple-file order is stable. If the target block changes during asynchronous import, do not attach at a stale cursor offset.
-- **Fix status:** Source fix applied: dropped local non-image files now use the encrypted import pipeline, request IDs, a serial queue, canonical file widget attributes, and a captured source offset. The target rich editor is flushed before capture; the canonical block HTML is checked again after import, so edits during import abort insertion with feedback instead of using a stale offset. The insertion helper reports failure when serialization or parsing is unavailable, parsing produces no widget, or pending editor changes cannot be flushed; the UI reports that the imported files were not attached. QML signal ordering, multi-file order, vault lock handling, and reopen/preview acceptance remain unverified.
+- **Fix status:** Source fix applied: dropped local non-image files now use the encrypted import pipeline, request IDs, a serial queue, canonical file widget attributes, and a captured source offset. The target rich editor is flushed before capture; the canonical block HTML is checked again after import, so edits during import abort insertion with feedback instead of using a stale offset. The insertion helper reports failure when serialization or parsing is unavailable, parsing produces no widget, or pending editor changes cannot be flushed; the UI reports that the imported files were not attached. Imported widgets carry the same file-type category persisted by Core plus file-size metadata. QML signal ordering, multi-file order, vault lock handling, and reopen/preview acceptance remain unverified.
 
 ## QT-NOTES-003: Rich HTML split uses a different character unit than Qt
 
@@ -303,6 +303,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Required fix:** Append ` (Excluída)` to the native display label only while the target is deleted; include the suffix in measured intrinsic width but keep the resolved base title for dialogs, clipboard text, links, and canonical HTML.
 - **Acceptance:** Active chips show the current page title without a suffix. Deleted/missing chips show the same title plus ` (Excluída)` as React; renaming or restoring the target updates the label and width without changing canonical markup or marking note content edited.
 - **Fix status:** Source presentation fix applied and desktop target compiles. Matched-viewport visual review, width/wrapping behavior, and runtime rename/trash/restore acceptance remain open.
+
+## QT-NOTES-034: Dropped file widgets lose the imported file type
+
+- **Severity:** Medium; a dropped PDF or EPUB can reopen in React as a generic file and lose its in-note viewer action.
+- **Evidence:** `Editor.qml::finishDroppedFileImport()` inserted every successfully imported attachment with `data-file-type="other"`. `FileWidgetNodeView.tsx` uses the node's `fileType` to decide whether to open its PDF/EPUB viewer; the native import already classifies the persisted type through `fileTypeCategory()`.
+- **Reproduction:** Drag a PDF or EPUB onto a Qt note, save it, then reopen the note in React and click the widget. Compare with using the native file picker, which writes the file-type category.
+- **Root cause:** The asynchronous import result returned only the file ID and name, so the Notes drop flow hardcoded the generic type instead of carrying the category used by the persisted file record.
+- **Required fix:** Return the already-computed file-type category and file size as additive fields on a successful local import result; escape them and write them into the canonical Qt widget attributes without reclassifying file names in QML.
+- **Acceptance:** Dropped PDF and EPUB widgets serialize with their Core file-type category and reopen with the same React viewer behavior as files added through the picker. Text, image, video, audio, archive, and unknown types retain expected icons/actions; size metadata remains a non-negative integer. Failed imports still create no widget.
+- **Fix status:** Source fix applied in the shared file import result and Notes drop serializer. Desktop build and QML parsing are pending; cross-client viewer and metadata round-trip remain open.
 
 ## Second-pass review
 
