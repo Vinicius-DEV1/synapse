@@ -6,7 +6,7 @@ import "../ui"
 Rectangle {
     id: fileWidgetRoot
     Layout.fillWidth: true
-    implicitHeight: 42
+    implicitHeight: Math.max(44, attachmentContent.implicitHeight + 12)
     radius: 8
 
     property var blockData: ({})
@@ -168,6 +168,7 @@ Rectangle {
     }
 
     RowLayout {
+        id: attachmentContent
         anchors.fill: parent
         anchors.leftMargin: 12
         anchors.rightMargin: 8

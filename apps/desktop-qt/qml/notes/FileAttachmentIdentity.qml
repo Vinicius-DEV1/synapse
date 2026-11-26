@@ -15,7 +15,8 @@ RowLayout {
     signal renameRequested()
 
     Layout.fillWidth: !isRenaming
-    spacing: 8
+    Layout.rightMargin: isRenaming ? 4 : 0
+    spacing: 12
 
     function iconName() {
         if (isMissing) return "alert"
@@ -36,8 +37,8 @@ RowLayout {
     }
 
     Rectangle {
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
+        Layout.preferredWidth: 32
+        Layout.preferredHeight: 32
         radius: 8
         color: "#0f0e17"
         border.color: "#0dffffff"
@@ -58,7 +59,7 @@ RowLayout {
         color: identityRoot.isMissing ? "#f87171" : (identityRoot.pointerHovered ? "#ffffff" : "#fffffe")
         font.pixelSize: 13
         font.weight: Font.Medium
-        elide: Text.ElideRight
+        wrapMode: Text.WordWrap
 
         MouseArea {
             anchors.fill: parent
