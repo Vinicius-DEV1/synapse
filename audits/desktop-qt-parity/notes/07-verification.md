@@ -679,7 +679,7 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesOpenAnswerEvaluator.qml apps/desktop-qt/qml/notes/NotesOpenAnswerFeedback.qml apps/desktop-qt/qml/notes/NotesOpenAnswerReferenceAnswer.qml` | Passed with no diagnostics | Focused lint for the new, atomic Notes open-answer evaluator and display components. |
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native application target linked with the updated bridge/controller. Does not exercise a live Notes page or provider call. |
 | `git diff --check` | Passed | Patch whitespace only. |
-| Real Notes page, configured Gemini evaluation, saved-note reopen/cross-client history, credential transport review, matched-viewport and accessibility comparison | Not run | Keep QT-NOTES-075 acceptance open. The QML harness intentionally mocks the provider and storage boundary. The existing Qt AI client sends the configured Gemini key in the request URL; review that existing behavior separately before claiming credential-transport parity. |
+| Real Notes page, configured Gemini evaluation, saved-note reopen/cross-client history, credential storage/configuration review, matched-viewport and accessibility comparison | Not run | Keep QT-NOTES-075 acceptance open. The QML harness intentionally mocks the provider and storage boundary. The shared `AiClient` source currently sends generation keys in `x-goog-api-key`; the Settings AI tab's separate model-list probe still uses a key query parameter and is outside the Notes evaluation path. No live transport test was run. |
 
 ### Typed assistant action persistence (2026-11-26)
 
