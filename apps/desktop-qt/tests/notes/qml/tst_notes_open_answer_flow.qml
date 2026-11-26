@@ -318,13 +318,19 @@ TestCase {
     function test_navigationClosesRestoredOpenAnswerExplanation() {
         questions = [openQuestion("open-1", "First"), openQuestion("open-2", "Second")]
         quizModal.startQuiz("battery-notes", "Notes battery", questions)
+        compare(quizModal.notesSpaceNavigationEnabled, false)
         OpenAnswerSession.setAnswer(quizModal, "First response")
         quizModal.handleConfirmOrNext()
         compare(quizModal.showExplanation, true)
+        compare(quizModal.notesSpaceNavigationEnabled, true)
 
+        quizModal.openAnswerInputFocused = true
+        compare(quizModal.notesSpaceNavigationEnabled, false)
+        quizModal.openAnswerInputFocused = false
         quizModal.handleConfirmOrNext()
         compare(quizModal.currentIndex, 1)
         compare(quizModal.showExplanation, false)
+        compare(quizModal.notesSpaceNavigationEnabled, false)
 
         OpenAnswerSession.setAnswer(quizModal, "Second response")
         quizModal.handleConfirmOrNext()

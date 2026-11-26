@@ -63,6 +63,9 @@ Rectangle {
         && !discussionDialogOpen
     readonly property bool notesModifiedArrowShortcutsEnabled: enableNotesOpenAnswerEvaluation
         && !isCompleted && !showFinishConfirmation && !discussionDialogOpen
+    readonly property bool notesSpaceNavigationEnabled: enableNotesOpenAnswerEvaluation
+        && isConfirmed && !openAnswerInputFocused && !isCompleted
+        && !showFinishConfirmation && !discussionDialogOpen
     readonly property bool notesOptionShortcutsEnabled: enableNotesOpenAnswerEvaluation
         && !openAnswerInputFocused && !isConfirmed && !isCompleted && !discussionDialogOpen
         && !showFinishConfirmation
@@ -103,7 +106,13 @@ Rectangle {
             onActivated: sequentialModalRoot.selectNotesOptionByShortcut(modelData.optionIndex)
         }
     }
-    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: sequentialModalRoot.toggleExplanation() }
+    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !enableNotesOpenAnswerEvaluation && !isCompleted && !sequentialModalRoot.discussionDialogOpen; onActivated: sequentialModalRoot.toggleExplanation() }
+    Shortcut {
+        objectName: "notesAnsweredSpaceNavigationShortcut"
+        sequence: "Space"
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.notesSpaceNavigationEnabled
+        onActivated: sequentialModalRoot.navigateNotesNext()
+    }
     Shortcut {
         objectName: "notesOpenAnswerExplanationShortcut"
         sequences: ["Alt+G", "Ctrl+G"]
