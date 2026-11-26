@@ -108,6 +108,7 @@ Rectangle {
     signal ungroupItemRequested(string fileId, var bundledItems, string groupColor)
     signal absorbLooseFileRequested(var sourceBlockPath, string fileId)
     signal managerOpenStateRequested(string blockId, bool isOpen)
+    signal filePreviewRequested(string fileId, string fileName)
 
     Keys.priority: Keys.BeforeItem
     Keys.onPressed: function(event) {
@@ -188,7 +189,6 @@ Rectangle {
         anchors.fill: parent
         items: bundleWidgetRoot.items
         uniqueExtensions: bundleWidgetRoot.uniqueExtensions
-        controller: bundleWidgetRoot.controller
         title: bundleWidgetRoot.title
         accentColor: bundleWidgetRoot.accentColor
         itemsInvalid: bundleWidgetRoot.itemsInvalid
@@ -199,6 +199,9 @@ Rectangle {
         onTitleClicked: {
             bundleWidgetRoot.forceActiveFocus()
             bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
+        }
+        onFilePreviewRequested: function(fileId, fileName) {
+            bundleWidgetRoot.filePreviewRequested(fileId, fileName)
         }
         onRenameRequested: {
             if (bundleWidgetRoot.itemsInvalid) return
@@ -249,6 +252,9 @@ Rectangle {
         }
         onManagerTitleUpdateRequested: function(nextTitle) {
             bundleWidgetRoot.saveBundle(nextTitle, bundleWidgetRoot.accentColor, bundleWidgetRoot.items)
+        }
+        onFilePreviewRequested: function(fileId, fileName) {
+            bundleWidgetRoot.filePreviewRequested(fileId, fileName)
         }
         onAddFilesRequested: {
             bundleWidgetRoot.setManagerOpen(false)

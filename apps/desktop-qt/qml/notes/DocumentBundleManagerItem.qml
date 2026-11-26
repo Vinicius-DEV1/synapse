@@ -14,7 +14,7 @@ Rectangle {
 
     signal moveRequested(int itemIndex, int delta)
     signal reorderRequested(int sourceIndex, int targetIndex)
-    signal previewRequested(string fileId)
+    signal previewRequested(string fileId, string fileName)
     signal ungroupRequested(string fileId)
     signal removeRequested(string fileId)
 
@@ -153,7 +153,7 @@ Rectangle {
         ToolButton {
             id: previewButton
             Accessible.name: qsTr("Pré-visualizar documento")
-            onClicked: itemRoot.previewRequested(itemRoot.resolvedId())
+            onClicked: itemRoot.previewRequested(itemRoot.resolvedId(), itemRoot.resolvedName())
             background: Rectangle { radius: 5; color: previewButton.hovered ? "#228b5cf6" : "transparent" }
             contentItem: AppIcon { anchors.centerIn: parent; name: "eye"; color: "#a7a9be"; width: 14; height: 14 }
         }

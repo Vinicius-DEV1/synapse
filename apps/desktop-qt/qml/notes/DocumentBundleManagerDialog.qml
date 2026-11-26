@@ -29,6 +29,7 @@ Dialog {
     signal closeRequested()
     signal itemsReordered(var nextItems)
     signal titleUpdateRequested(string nextTitle)
+    signal previewRequested(string fileId, string fileName)
     signal addFilesRequested()
     signal absorbLooseFileRequested(var sourceBlockPath, string fileId)
     signal itemUngroupRequested(string fileId)
@@ -149,9 +150,9 @@ Dialog {
                 onReorderRequested: function(sourceIndex, targetIndex) {
                     managerRoot.moveItemTo(sourceIndex, targetIndex)
                 }
-                onPreviewRequested: function(fileId) {
-                    var c = managerRoot.controller || null
-                    if (fileId && c && typeof c.previewLocalFile === "function") c.previewLocalFile(fileId)
+                onPreviewRequested: function(fileId, fileName) {
+                    managerRoot.close()
+                    managerRoot.previewRequested(fileId, fileName)
                 }
                 onUngroupRequested: function(fileId) {
                     managerRoot.requestUngroup(fileId)

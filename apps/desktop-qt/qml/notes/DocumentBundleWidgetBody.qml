@@ -6,7 +6,6 @@ ColumnLayout {
     id: bodyRoot
     property var items: []
     property var uniqueExtensions: []
-    property var controller: null
     property string title: qsTr("Documentos")
     property string accentColor: "default"
     property bool itemsInvalid: false
@@ -26,6 +25,7 @@ ColumnLayout {
     signal addRequested()
     signal deleteRequested()
     signal removeItemRequested(string fileId, string itemName)
+    signal filePreviewRequested(string fileId, string fileName)
 
     anchors.fill: parent
     anchors.leftMargin: 12
@@ -77,9 +77,11 @@ ColumnLayout {
 
         DocumentBundleItemsPreview {
             items: bodyRoot.items
-            controller: bodyRoot.controller
             expanded: bodyRoot.expanded
             itemsInvalid: bodyRoot.itemsInvalid
+            onPreviewRequested: function(fileId, fileName) {
+                bodyRoot.filePreviewRequested(fileId, fileName)
+            }
             onRemoveRequested: function(fileId, itemName) {
                 bodyRoot.removeItemRequested(fileId, itemName)
             }

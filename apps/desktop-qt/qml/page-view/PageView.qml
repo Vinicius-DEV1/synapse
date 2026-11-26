@@ -482,6 +482,10 @@ Rectangle {
                         pageViewRoot.queueBundleFileTrashAfterSave(fileId)
                     }
                     onFilePreviewRequested: function(fileId, fileName) {
+                        if (fileId && pageViewRoot.controller &&
+                                typeof pageViewRoot.controller.previewLocalFile === "function") {
+                            pageViewRoot.controller.previewLocalFile(fileId)
+                        }
                         pageViewRoot.navigateModuleRequested("files")
                     }
                     onPagePreviewRequested: function(pid) { viewModals.openFloatingPage(pid) }

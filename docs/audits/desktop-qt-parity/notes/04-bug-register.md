@@ -421,7 +421,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The native widget started a file preview without changing the active module and did not implement React's deleted-file action.
 - **Required fix:** Route the active Notes page to the visible Files preview surface after starting the Core preview. Show a native Keep/Remove Widget notice for missing IDs and route generic block deletion through the same widget confirmation. Forward navigation from embedded page previews and match React's per-type destinations.
 - **Acceptance:** Verify main-page preview result timing and visibility; missing notice Keep/Remove; widget toolbar and generic Delete/Backspace confirmation; file preview errors; floating-page preview navigation; and folder/PDF/EPUB/audio/image/video/text/code behavior.
-- **Fix status:** Main and floating PageView instances now forward file-preview requests to module navigation, and the attachment opens the missing-file notice instead of requesting a preview. Generic block deletion now invokes the file widget confirmation; confirmed AST removal validates serialization and reports a recoverable error. Folder and typed viewer parity remain open. Focused `qmllint` and whitespace checks pass; runtime preview completion is unchecked.
+- **Fix status:** File widgets now emit a preview request to the owning PageView, and the attachment opens the missing-file notice instead of requesting a preview for missing IDs. Generic block deletion now invokes the file widget confirmation; confirmed AST removal flushes pending rich slices, validates serialization and reports a recoverable error. Bundle and nested preview routes are tracked in QT-NOTES-049. Folder and typed viewer parity remain open. Focused `qmllint` passes; runtime preview completion is unchecked.
 
 ## QT-NOTES-046: File widget deletion does not offer React's choices
 
@@ -452,6 +452,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Required fix:** Use the exact React color hex values and labels in both Qt widgets, a native anchored popover with selected state and five-column arrangement, and equivalent dismissal/focus behavior. Keep Qt-native controls and do not change the React implementation.
 - **Acceptance:** Verify all nine persisted hex colors plus default render the same in both widget types before and after Qt/React save/reload; compare palette location, selected indication, outside/Escape dismissal, keyboard access and high-DPI appearance.
 - **Fix status:** Open parity gap. Both Qt widgets still have six unlabeled inline swatches; see the [file-widget crosswalk](10-file-widget-crosswalk.md) and [document-bundle crosswalk](09-document-bundle-crosswalk.md).
+
+## QT-NOTES-049: File previews from bundles and nested notes do not reach Files
+
+- **Severity:** High functional gap; Qt could prepare a file preview while its owning module was hidden, and file-widget previews inside toggles, columns or collections had no route to the page-level handler.
+- **Evidence:** `DocumentBundleItemsPreview.qml` and `DocumentBundleManagerDialog.qml` previously called `previewLocalFile` directly without requesting module navigation. `BlockDelegateRouter.qml` and the nested editors did not forward `filePreviewRequested` through toggle, column and collection containers.
+- **Reproduction:** Open a bundle manager or expanded bundle inside the active or floating Notes page, or put a file widget inside a toggle/column/collection. Click preview and observe that the visible Files preview surface does not open.
+- **Root cause:** Preview preparation lived in individual widgets while navigation forwarding was only connected for the top-level file widget.
+- **Required fix:** Route all file preview requests through `PageView`, start the Core preview there, navigate to Files, close the bundle manager first, and forward the signal through every supported nested Notes container.
+- **Acceptance:** Verify inline bundle preview, manager preview, top-level file widget, and file widgets nested at multiple levels in active and floating pages. Confirm success, Core failure, supported file types, modal closure, return path and no duplicate preview request.
+- **Fix status:** The file widget no longer starts preview directly. Bundle inline/manager previews and toggle, column and collection descendants now forward IDs to the owning PageView; PageView starts Core preview and navigates to Files. Focused QML lint exits 0 with existing diagnostics; runtime/file-type acceptance remains open. The Files surface still differs visually from React's in-modal bundle viewer; see [09-document-bundle-crosswalk.md](09-document-bundle-crosswalk.md).
 
 ## Second-pass review
 

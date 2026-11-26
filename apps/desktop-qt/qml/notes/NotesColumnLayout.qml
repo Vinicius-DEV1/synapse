@@ -38,6 +38,7 @@ Item {
     signal mermaidFullscreenRequested(string code)
     signal habitStatsRequested(string habitId)
     signal openMediaRequested(string mediaType, string mediaId, string title)
+    signal filePreviewRequested(string fileId, string fileName)
     signal unwrapRequested(var columnsList)
     signal removeRequested()
 
@@ -323,6 +324,9 @@ Item {
                             function onMermaidFullscreenRequested(c) { colLayoutRoot.mermaidFullscreenRequested(c) }
                             function onHabitStatsRequested(hid) { colLayoutRoot.habitStatsRequested(hid) }
                             function onOpenMediaRequested(mt, mid, t) { colLayoutRoot.openMediaRequested(mt, mid, t) }
+                            function onFilePreviewRequested(fileId, fileName) {
+                                colLayoutRoot.filePreviewRequested(fileId, fileName)
+                            }
                         }
                     }
                 }

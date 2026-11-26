@@ -17,6 +17,7 @@ Item {
     signal managerClosed()
     signal managerItemsReordered(var nextItems)
     signal managerTitleUpdateRequested(string nextTitle)
+    signal filePreviewRequested(string fileId, string fileName)
     signal addFilesRequested()
     signal itemUngroupRequested(string fileId, var bundledItems, string groupColor)
     signal itemRemovalRequested(string fileId, bool moveToTrash)
@@ -47,6 +48,9 @@ Item {
         onCloseRequested: dialogsRoot.managerClosed()
         onItemsReordered: function(nextItems) { dialogsRoot.managerItemsReordered(nextItems) }
         onTitleUpdateRequested: function(nextTitle) { dialogsRoot.managerTitleUpdateRequested(nextTitle) }
+        onPreviewRequested: function(fileId, fileName) {
+            dialogsRoot.filePreviewRequested(fileId, fileName)
+        }
         onAddFilesRequested: dialogsRoot.addFilesRequested()
         onAbsorbLooseFileRequested: function(sourceBlockPath, fileId) {
             dialogsRoot.absorbLooseFileRequested(sourceBlockPath, fileId)

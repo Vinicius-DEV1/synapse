@@ -7,10 +7,10 @@ import "../ui"
 Flow {
     id: previewRoot
     property var items: []
-    property var controller: null
     property bool expanded: false
     property bool itemsInvalid: false
     signal removeRequested(string fileId, string itemName)
+    signal previewRequested(string fileId, string fileName)
 
     Layout.fillWidth: true
     spacing: 6
@@ -72,9 +72,8 @@ Flow {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     var fileId = String(itemDelegate.modelData.fileId || itemDelegate.modelData.id || "")
-                    var fileController = previewRoot.controller
-                    if (fileId && fileController && typeof fileController.previewLocalFile === "function")
-                        fileController.previewLocalFile(fileId)
+                    if (fileId) previewRoot.previewRequested(
+                        fileId, String(itemDelegate.modelData.name || itemDelegate.modelData.title || qsTr("Documento")))
                 }
             }
         }

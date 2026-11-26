@@ -113,9 +113,6 @@ Rectangle {
             isMissingDialogOpen = true
             return
         }
-        var c = fileWidgetRoot.controller
-        if (fileId && c && typeof c.previewLocalFile === "function")
-            c.previewLocalFile(fileId)
         previewFileRequested(fileId, fileName)
     }
 

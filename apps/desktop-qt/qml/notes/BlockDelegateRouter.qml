@@ -200,6 +200,9 @@ Loader {
             managerInitiallyOpen: routerLoader.documentBundleManagerOpen
             onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
+            onFilePreviewRequested: function(fileId, fileName) {
+                routerLoader.filePreviewRequested(fileId, fileName)
+            }
             onManagerOpenStateRequested: function(blockId, isOpen) {
                 routerLoader.documentBundleManagerStateRequested(blockId, isOpen)
             }
@@ -248,6 +251,9 @@ Loader {
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
+            onFilePreviewRequested: function(fileId, fileName) {
+                routerLoader.filePreviewRequested(fileId, fileName)
+            }
             onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }
     }
@@ -270,6 +276,9 @@ Loader {
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
+            onFilePreviewRequested: function(fileId, fileName) {
+                routerLoader.filePreviewRequested(fileId, fileName)
+            }
             onUnwrapRequested: function(cols) { routerLoader.unwrapColumnGroupRequested(routerLoader.blockIndex, cols) }
             onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }
@@ -294,6 +303,9 @@ Loader {
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
+            onFilePreviewRequested: function(fileId, fileName) {
+                routerLoader.filePreviewRequested(fileId, fileName)
+            }
             onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }
     }
