@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import "../ui"
 import "BlockDragDrop.js" as Helpers
 import "DocumentBundleOperations.js" as DocumentBundleOperations
 
