@@ -672,6 +672,14 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `/usr/lib/qt6/bin/qmllint --ignore-settings -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesOpenAnswerReferenceAnswer.qml apps/desktop-qt/qml/questions/QuizSequentialCard.qml apps/desktop-qt/qml/questions/QuizSequentialFocusModal.qml` | Completed with existing diagnostics | The changed reference-answer component and the new card bindings produce no diagnostics. The shared modal still reports pre-existing unqualified accesses and a `parent.text` warning outside the new Notes-specific bindings. |
 | `git diff --check` | Passed | Patch whitespace only. |
 
+### Notes open-answer Qt controller round-trip (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Configures and links the native controller test binary. The target compiles the shared test executable's existing source set; no unrelated module behavior was audited or changed. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-open-answer` | Passed: 1 behavior test (3 QtTest results including setup/cleanup) | A real `SynapseDataController` opens a temporary SQLite file, creates a Notes page and page-linked battery, creates an open question through the typed question-action API, records typed answer/verdict/feedback through the controller, then is destroyed. A second controller reopens the same file and retrieves the latest attempt by battery/question, verifying its ID, scope, typed answer, verdict and feedback. It does not instantiate the QML Notes page, contact Gemini, or compare React rendering. |
+| `git diff --check` | Passed | Patch whitespace only. |
+
 ### Notes open-answer database reopen round-trip (2026-11-26)
 
 | Check | Result | Scope and limits |
