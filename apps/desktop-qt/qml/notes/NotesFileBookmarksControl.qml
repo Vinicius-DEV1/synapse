@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Item {
     id: controlRoot
@@ -23,31 +24,44 @@ Item {
     ToolButton {
         id: bookmarkButton
         objectName: "notesFileReadingBookmarksButton"
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 24
-        anchors.bottomMargin: 22
-        text: controlRoot.bookmarks.length > 0
-              ? qsTr("Marcadores (%1)").arg(controlRoot.bookmarks.length)
-              : qsTr("Marcadores")
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 34
+        anchors.rightMargin: 112
+        width: 34
+        height: 34
         Accessible.name: qsTr("Marcadores de leitura, %1 salvos").arg(controlRoot.bookmarks.length)
         onClicked: bookmarkPopup.open()
         ToolTip.visible: hovered
         ToolTip.text: qsTr("Marcadores de leitura")
         background: Rectangle {
             radius: 9
-            color: bookmarkButton.hovered ? "#1affffff" : "#e61a1924"
-            border.color: controlRoot.bookmarks.length > 0 ? "#668b5cf6" : "#33ffffff"
+            color: bookmarkButton.hovered || controlRoot.bookmarks.length > 0 ? "#1af59e0b" : "transparent"
+            border.color: bookmarkButton.hovered ? "#33ffffff" : "transparent"
         }
-        contentItem: Text {
-            text: bookmarkButton.text
-            color: controlRoot.bookmarks.length > 0 ? "#fbbf24" : "#e4e4e7"
-            font.pixelSize: 11
-            font.weight: Font.Medium
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            leftPadding: 6
-            rightPadding: 6
+        contentItem: AppIcon {
+            width: 18
+            height: 18
+            name: "bookmark"
+            color: controlRoot.bookmarks.length > 0 ? "#fbbf24" : "#a1a1aa"
+        }
+        Rectangle {
+            objectName: "notesFileReadingBookmarkCount"
+            visible: controlRoot.bookmarks.length > 0
+            anchors.top: parent.top
+            anchors.right: parent.right
+            width: 16
+            height: 16
+            radius: 8
+            color: "#f59e0b"
+            Text {
+                objectName: "notesFileReadingBookmarkCountText"
+                anchors.centerIn: parent
+                text: controlRoot.bookmarks.length > 99 ? "99+" : String(controlRoot.bookmarks.length)
+                color: "#18181b"
+                font.pixelSize: controlRoot.bookmarks.length > 99 ? 7 : 9
+                font.bold: true
+            }
         }
     }
 
@@ -55,11 +69,13 @@ Item {
         id: bookmarkPopup
         objectName: "notesFileReadingBookmarksPopup"
         parent: Overlay.overlay
-        x: Math.max(16, Math.min(controlRoot.width - width - 20, bookmarkButton.x))
-        y: Math.max(16, controlRoot.height - height - 72)
-        width: Math.min(340, controlRoot.width - 32)
-        height: Math.min(390, controlRoot.height - 32)
-        modal: true
+        x: Math.max(16, Math.min(controlRoot.width - width - 16,
+                                 bookmarkButton.x + bookmarkButton.width - width))
+        y: Math.max(16, Math.min(controlRoot.height - height - 16,
+                                 bookmarkButton.y + bookmarkButton.height + 8))
+        width: Math.min(288, controlRoot.width - 32)
+        height: Math.min(360, controlRoot.height - 32)
+        modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         padding: 14
@@ -126,13 +142,27 @@ Item {
                             onTextChanged: if (visible) controlRoot.editRequested(bookmarkRow.bookmarkData.id, text)
                             onAccepted: controlRoot.saveRequested(bookmarkRow.bookmarkData.id, text)
                         }
-                        Label {
+                        ColumnLayout {
                             visible: controlRoot.editingBookmarkId !== bookmarkRow.bookmarkData.id
                             Layout.fillWidth: true
-                            text: String(bookmarkRow.bookmarkData.label || qsTr("Marcador"))
-                            color: "#fffffe"
-                            font.pixelSize: 11
-                            elide: Text.ElideRight
+                            spacing: 2
+                            Label {
+                                Layout.fillWidth: true
+                                text: String(bookmarkRow.bookmarkData.label || qsTr("Marcador"))
+                                color: "#fffffe"
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                visible: String(bookmarkRow.bookmarkData.createdAt || "").length > 0
+                                text: {
+                                    var date = new Date(String(bookmarkRow.bookmarkData.createdAt || ""))
+                                    return isNaN(date.getTime()) ? ""
+                                        : Qt.formatDate(date, Qt.locale().dateFormat(Locale.ShortFormat))
+                                }
+                                color: "#71717a"
+                                font.pixelSize: 9
+                            }
                         }
                         Button {
                             objectName: "notesFileBookmarkEditButton"

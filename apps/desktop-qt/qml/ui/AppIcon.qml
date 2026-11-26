@@ -484,6 +484,9 @@ Canvas {
             ctx.closePath()
             ctx.stroke()
             break
+        case "bookmark":
+            line([6, 3, 18, 3, 18, 21, 12, 17, 6, 21, 6, 3])
+            break
         case "film":
             rect(3, 3, 18, 18, 2)
             line([7, 3, 7, 21])

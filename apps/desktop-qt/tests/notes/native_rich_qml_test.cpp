@@ -471,7 +471,9 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(textContent->property("width").toReal() < desktopTextWidth, 1000);
         QTRY_VERIFY(progress->property("showResumePrompt").toBool());
         QVERIFY(resumeCard->property("visible").toBool());
-        QCOMPARE(bookmarksButton->property("text").toString(), QString("Marcadores (1)"));
+        QObject *bookmarkCount = findQuickObject(window.contentItem(), QStringLiteral("notesFileReadingBookmarkCountText"));
+        QVERIFY(bookmarkCount);
+        QCOMPARE(bookmarkCount->property("text").toString(), QStringLiteral("1"));
 
         QVERIFY(QMetaObject::invokeMethod(progress, "resumeReading"));
         QVERIFY(!progress->property("showResumePrompt").toBool());
