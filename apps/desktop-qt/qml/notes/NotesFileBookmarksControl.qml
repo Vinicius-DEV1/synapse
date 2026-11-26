@@ -30,6 +30,7 @@ Item {
         text: controlRoot.bookmarks.length > 0
               ? qsTr("Marcadores (%1)").arg(controlRoot.bookmarks.length)
               : qsTr("Marcadores")
+        Accessible.name: qsTr("Marcadores de leitura, %1 salvos").arg(controlRoot.bookmarks.length)
         onClicked: bookmarkPopup.open()
         ToolTip.visible: hovered
         ToolTip.text: qsTr("Marcadores de leitura")
@@ -74,13 +75,20 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 TextField {
+                    objectName: "notesFileNewBookmarkField"
                     Layout.fillWidth: true
                     placeholderText: qsTr("Nome do marcador...")
+                    Accessible.name: qsTr("Nome do novo marcador")
                     text: controlRoot.bookmarkDraft
                     onTextChanged: controlRoot.bookmarkDraftChangedByUser(text)
                     onAccepted: controlRoot.addRequested()
                 }
-                Button { text: qsTr("Adicionar"); onClicked: controlRoot.addRequested() }
+                Button {
+                    objectName: "notesFileAddBookmarkButton"
+                    text: qsTr("Adicionar")
+                    Accessible.name: qsTr("Adicionar marcador nesta posição")
+                    onClicked: controlRoot.addRequested()
+                }
             }
             ListView {
                 Layout.fillWidth: true
@@ -109,8 +117,11 @@ Item {
                         anchors.margins: 6
                         spacing: 4
                         TextField {
+                            id: bookmarkEditField
+                            objectName: "notesFileBookmarkEditField"
                             visible: controlRoot.editingBookmarkId === bookmarkRow.bookmarkData.id
                             Layout.fillWidth: true
+                            Accessible.name: qsTr("Nome do marcador")
                             text: visible ? controlRoot.editingBookmarkLabel : ""
                             onTextChanged: if (visible) controlRoot.editRequested(bookmarkRow.bookmarkData.id, text)
                             onAccepted: controlRoot.saveRequested(bookmarkRow.bookmarkData.id, text)
@@ -124,15 +135,26 @@ Item {
                             elide: Text.ElideRight
                         }
                         Button {
+                            objectName: "notesFileBookmarkEditButton"
                             text: controlRoot.editingBookmarkId === bookmarkRow.bookmarkData.id ? qsTr("Salvar") : qsTr("Editar")
+                            Accessible.name: controlRoot.editingBookmarkId === bookmarkRow.bookmarkData.id
+                                ? qsTr("Salvar nome do marcador")
+                                : qsTr("Editar nome do marcador %1").arg(bookmarkRow.bookmarkData.label || "")
                             onClicked: {
                                 if (controlRoot.editingBookmarkId === bookmarkRow.bookmarkData.id)
                                     controlRoot.saveRequested(bookmarkRow.bookmarkData.id, controlRoot.editingBookmarkLabel)
-                                else
+                                else {
                                     controlRoot.editRequested(bookmarkRow.bookmarkData.id, bookmarkRow.bookmarkData.label)
+                                    bookmarkEditField.forceActiveFocus()
+                                    bookmarkEditField.selectAll()
+                                }
                             }
                         }
-                        Button { text: qsTr("Remover"); onClicked: controlRoot.removeRequested(bookmarkRow.bookmarkData.id) }
+                        Button {
+                            text: qsTr("Remover")
+                            Accessible.name: qsTr("Remover marcador %1").arg(bookmarkRow.bookmarkData.label || "")
+                            onClicked: controlRoot.removeRequested(bookmarkRow.bookmarkData.id)
+                        }
                     }
                 }
                 Label {

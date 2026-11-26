@@ -31,6 +31,15 @@ int runNativeNotesRichImageDropQmlTest(int argc, char **argv);
 int runNativeNotesLinkPreviewQmlTest();
 int runNativeNotesLinkColorQmlTest(int argc, char **argv);
 
+static QObject *findQuickObject(QQuickItem *parent, const QString &name) {
+    if (!parent) return nullptr;
+    if (parent->objectName() == name) return parent;
+    for (QQuickItem *child : parent->childItems()) {
+        if (QObject *match = findQuickObject(child, name)) return match;
+    }
+    return nullptr;
+}
+
 class NotesAudioTestPlayer : public QQuickItem {
     Q_OBJECT
     Q_PROPERTY(QString source READ source WRITE setSource NOTIFY sourceChanged)
@@ -478,11 +487,23 @@ private slots:
         const QString stored = controller.getConfig(QStringLiteral("notes_file_reading_progress_v1_file-text"));
         QVERIFY(stored.contains(QStringLiteral("Chapter 2")));
 
-        progress->setProperty("editingBookmarkLabel", QStringLiteral("Renamed chapter"));
-        QVERIFY(QMetaObject::invokeMethod(progress, "saveBookmarkLabel", Q_ARG(QVariant, QString("bm_saved"))));
+        QObject *bookmarkPopup = root->findChild<QObject *>("notesFileReadingBookmarksPopup");
+        QVERIFY(bookmarkPopup);
+        QVERIFY(QMetaObject::invokeMethod(bookmarksButton, "clicked"));
+        QTRY_VERIFY(bookmarkPopup->property("visible").toBool());
+        QObject *editButton = findQuickObject(window.contentItem(), QStringLiteral("notesFileBookmarkEditButton"));
+        QObject *editField = findQuickObject(window.contentItem(), QStringLiteral("notesFileBookmarkEditField"));
+        QVERIFY(editButton && editField);
+        QVERIFY(QMetaObject::invokeMethod(editButton, "clicked"));
+        QTRY_VERIFY(editField->property("visible").toBool());
+        QTRY_VERIFY(editField->property("activeFocus").toBool());
+        editField->setProperty("text", QStringLiteral("Renamed chapter"));
+        QTest::keyClick(&window, Qt::Key_Return);
         QVariantList updatedBookmarks = progress->property("bookmarks").toList();
         QCOMPARE(updatedBookmarks.first().toMap().value(QStringLiteral("label")).toString(),
                  QStringLiteral("Renamed chapter"));
+        QTest::keyClick(&window, Qt::Key_Escape);
+        QTRY_VERIFY(!bookmarkPopup->property("visible").toBool());
         QVERIFY(QMetaObject::invokeMethod(progress, "jumpToBookmark", Q_ARG(QVariant, updatedBookmarks.first())));
         QVariant scrollTop;
         QVERIFY(QMetaObject::invokeMethod(viewer, "textScrollTop", Q_RETURN_ARG(QVariant, scrollTop)));
