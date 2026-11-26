@@ -16,6 +16,7 @@ Popup {
     property Item anchorItem: null
     property bool isOpen: false
     property string currentColor: "default"
+    property var scrollViewport: null
 
     signal colorSelected(string color)
     signal dismissed()
@@ -52,6 +53,20 @@ Popup {
         paletteRoot.y = Math.max(margin, Math.min(preferredY, maxY))
     }
 
+    function refreshScrollViewport() {
+        var current = paletteRoot.anchorItem
+        var depth = 0
+        while (current && depth < 64) {
+            if (current instanceof Flickable) {
+                paletteRoot.scrollViewport = current
+                return
+            }
+            current = current.parent
+            depth += 1
+        }
+        paletteRoot.scrollViewport = null
+    }
+
     function selectColor(value) {
         paletteRoot.colorSelected(value)
         paletteRoot.close()
@@ -65,8 +80,15 @@ Popup {
         if (isOpen) open()
         else close()
     }
-    onOpened: updatePosition()
-    onClosed: dismissed()
+    onAnchorItemChanged: refreshScrollViewport()
+    onOpened: {
+        refreshScrollViewport()
+        updatePosition()
+    }
+    onClosed: {
+        scrollViewport = null
+        dismissed()
+    }
 
     Connections {
         target: paletteRoot.anchorItem
@@ -84,11 +106,11 @@ Popup {
         function onHeightChanged() { if (paletteRoot.opened) paletteRoot.updatePosition() }
     }
 
-    Timer {
-        interval: 40
-        repeat: true
-        running: paletteRoot.opened
-        onTriggered: paletteRoot.updatePosition()
+    Connections {
+        target: paletteRoot.scrollViewport
+        ignoreUnknownSignals: true
+        function onContentYChanged() { if (paletteRoot.opened) paletteRoot.updatePosition() }
+        function onContentXChanged() { if (paletteRoot.opened) paletteRoot.updatePosition() }
     }
 
     background: Rectangle {
