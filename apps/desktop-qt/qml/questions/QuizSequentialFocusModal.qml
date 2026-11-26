@@ -69,7 +69,14 @@ Rectangle {
     Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(1) }
     Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(2) }
     Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(3) }
-    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: showExplanation = !showExplanation }
+    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: sequentialModalRoot.toggleExplanation() }
+    Shortcut {
+        objectName: "notesOpenAnswerExplanationShortcut"
+        sequence: "Alt+G"
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.enableNotesOpenAnswerEvaluation
+            && !sequentialModalRoot.isCompleted && !sequentialModalRoot.discussionDialogOpen
+        onActivated: sequentialModalRoot.toggleExplanation()
+    }
     Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: handleConfirmOrNext() }
 
     Notes.NotesQuizFinishConfirmDialog {
@@ -132,7 +139,7 @@ Rectangle {
                         sequentialModalRoot.questions
                     )
                 }
-                onToggleExplanation: sequentialModalRoot.showExplanation = !sequentialModalRoot.showExplanation
+                onToggleExplanation: sequentialModalRoot.toggleExplanation()
             }
 
             QuizSummaryView {
@@ -192,6 +199,7 @@ Rectangle {
                 }
 
                 Button {
+                    visible: !sequentialModalRoot.enableNotesOpenAnswerEvaluation
                     text: sequentialModalRoot.showExplanation ? "Ocultar Comentário (Espaço)" : "💡 Ver Comentário (Espaço)"
                     background: Rectangle {
                         color: "#232135"
@@ -203,7 +211,7 @@ Rectangle {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                    onClicked: sequentialModalRoot.showExplanation = !sequentialModalRoot.showExplanation
+                    onClicked: sequentialModalRoot.toggleExplanation()
                 }
 
                 Item { Layout.fillWidth: true }
@@ -308,6 +316,10 @@ Rectangle {
 
     function replaceQuestionsFromAssistant(updatedQuestions) {
         AssistantSession.replaceQuestions(sequentialModalRoot, updatedQuestions)
+    }
+
+    function toggleExplanation() {
+        showExplanation = !showExplanation
     }
 
     function startQuiz(bId, bTitle, qsList) {

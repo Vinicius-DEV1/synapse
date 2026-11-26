@@ -45,12 +45,55 @@ Rectangle {
             width: cardRoot.width - 56
             spacing: 20
 
+            RowLayout {
+                visible: cardRoot.openAnswerEvaluationEnabled
+                    && Boolean(cardRoot.question
+                        && (cardRoot.question.explanation
+                            || cardRoot.question.expectedAnswer
+                            || cardRoot.question.expected_answer))
+                Layout.fillWidth: true
+                Layout.preferredHeight: 26
+                Item { Layout.fillWidth: true }
+                Button {
+                    objectName: "notesOpenAnswerExplanationButton"
+                    text: cardRoot.showExplanation ? qsTr("Ocultar Gabarito") : qsTr("Gabarito")
+                    onClicked: cardRoot.toggleExplanation()
+                    background: Rectangle {
+                        radius: 8
+                        color: cardRoot.showExplanation ? "#26f59e0b" : "#0affffff"
+                        border.color: cardRoot.showExplanation ? "#4df59e0b" : "#14ffffff"
+                    }
+                    contentItem: RowLayout {
+                        spacing: 6
+                        Text {
+                            text: "?"
+                            color: cardRoot.showExplanation ? "#fcd34d" : "#a1a1aa"
+                            font.pixelSize: 12
+                        }
+                        Text {
+                            text: cardRoot.showExplanation ? qsTr("Ocultar Gabarito") : qsTr("Gabarito")
+                            color: cardRoot.showExplanation ? "#fcd34d" : "#a1a1aa"
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                        }
+                        Text {
+                            text: "Alt+G"
+                            color: "#71717a"
+                            font.pixelSize: 9
+                            font.family: "monospace"
+                        }
+                    }
+                }
+            }
+
             // Question prompt
             Text {
+                objectName: "notesSequentialQuestionPrompt"
                 text: (cardRoot.question && cardRoot.question.prompt) ? cardRoot.question.prompt : ""
                 color: "#fffffe"
                 font.pixelSize: 18
-                font.bold: true
+                font.weight: cardRoot.openAnswerEvaluationEnabled ? Font.Medium : Font.Bold
+                textFormat: cardRoot.openAnswerEvaluationEnabled ? Text.MarkdownText : Text.PlainText
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
@@ -121,6 +164,7 @@ Rectangle {
                                 text: modelData
                                 color: "#fffffe"
                                 font.pixelSize: 14
+                                textFormat: cardRoot.openAnswerEvaluationEnabled ? Text.MarkdownText : Text.PlainText
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
@@ -247,32 +291,60 @@ Rectangle {
                 }
             }
 
-            Notes.NotesOpenAnswerReferenceAnswer {
-                Layout.fillWidth: true
-                visible: cardRoot.openAnswerEvaluationEnabled
-                    && cardRoot.isOpenAnswer
-                    && cardRoot.showExplanation
-                answerText: cardRoot.question
-                    ? String(cardRoot.question.expectedAnswer || cardRoot.question.expected_answer || "") : ""
-            }
-
             // Explanation Section
             Rectangle {
+                objectName: "notesOpenAnswerExplanationPanel"
                 Layout.fillWidth: true
                 radius: 10
-                color: "#1a8b5cf6"
-                border.color: "#8b5cf6"
+                color: cardRoot.openAnswerEvaluationEnabled ? "#0dffffff" : "#1a8b5cf6"
+                border.color: cardRoot.openAnswerEvaluationEnabled ? "#14ffffff" : "#8b5cf6"
                 border.width: 1
-                visible: cardRoot.showExplanation || (cardRoot.isConfirmed && Boolean(cardRoot.question && cardRoot.question.explanation))
+                visible: cardRoot.openAnswerEvaluationEnabled
+                    ? cardRoot.showExplanation
+                        && Boolean(cardRoot.question
+                            && (cardRoot.question.explanation
+                                || cardRoot.question.expectedAnswer
+                                || cardRoot.question.expected_answer))
+                    : cardRoot.showExplanation
+                        || (cardRoot.isConfirmed && Boolean(cardRoot.question && cardRoot.question.explanation))
                 Layout.preferredHeight: explCol.implicitHeight + 24
 
                 ColumnLayout {
                     id: explCol
                     anchors.fill: parent
                     anchors.margins: 14
-                    spacing: 6
+                    spacing: cardRoot.openAnswerEvaluationEnabled ? 12 : 6
+
+                    Notes.NotesOpenAnswerReferenceAnswer {
+                        Layout.fillWidth: true
+                        visible: cardRoot.openAnswerEvaluationEnabled && cardRoot.isOpenAnswer
+                        answerText: cardRoot.question
+                            ? String(cardRoot.question.expectedAnswer || cardRoot.question.expected_answer || "") : ""
+                    }
 
                     RowLayout {
+                        visible: cardRoot.openAnswerEvaluationEnabled
+                            && Boolean(cardRoot.question && cardRoot.question.explanation)
+                        Layout.fillWidth: true
+                        spacing: 7
+                        Rectangle {
+                            Layout.preferredWidth: 4
+                            Layout.preferredHeight: 14
+                            radius: 2
+                            color: "#71717a"
+                        }
+                        Text {
+                            text: qsTr("Explicação Detalhada:")
+                            color: "#a1a1aa"
+                            font.weight: Font.DemiBold
+                            font.pixelSize: 12
+                            font.capitalization: Font.AllUppercase
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    RowLayout {
+                        visible: !cardRoot.openAnswerEvaluationEnabled
                         spacing: 8
                         Text { text: "💡"; font.pixelSize: 14 }
                         Text {
@@ -284,8 +356,12 @@ Rectangle {
                     }
 
                     Text {
+                        objectName: "notesOpenAnswerDetailedExplanation"
                         text: (cardRoot.question && cardRoot.question.explanation) ? cardRoot.question.explanation : "Sem comentários adicionais."
-                        color: "#e2e8f0"
+                        visible: !cardRoot.openAnswerEvaluationEnabled
+                            || Boolean(cardRoot.question && cardRoot.question.explanation)
+                        color: cardRoot.openAnswerEvaluationEnabled ? "#d4d4d8" : "#e2e8f0"
+                        textFormat: cardRoot.openAnswerEvaluationEnabled ? Text.MarkdownText : Text.PlainText
                         font.pixelSize: 13
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true

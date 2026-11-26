@@ -98,9 +98,10 @@ TestCase {
             id: questionId,
             battery_id: "battery-notes",
             type: "open",
-            prompt: questionText,
+            prompt: questionText === "Explain this idea" ? "Explain **this** idea" : questionText,
             question: questionText,
             expectedAnswer: "A full reference answer",
+            explanation: "A detailed **concept** explanation.",
             correctIndex: -1,
             options: []
         }
@@ -165,6 +166,15 @@ TestCase {
         compare(quizModal.currentOpenAnswerFeedback.verdict, "Correto")
         var referenceAnswer = findVisualChild(quizModal, "notesOpenAnswerReferenceAnswer")
         verify(referenceAnswer !== null)
+        var explanationPanel = findVisualChild(quizModal, "notesOpenAnswerExplanationPanel")
+        verify(explanationPanel !== null)
+        compare(referenceAnswer.parent, explanationPanel.children[0])
+        var explanationText = findChild(quizModal, "notesOpenAnswerDetailedExplanation")
+        verify(explanationText !== null)
+        compare(explanationText.textFormat, Text.MarkdownText)
+        var questionPrompt = findChild(quizModal, "notesSequentialQuestionPrompt")
+        verify(questionPrompt !== null)
+        compare(questionPrompt.textFormat, Text.MarkdownText)
         var questionCard = findVisualChild(quizModal, "quizSequentialCard")
         verify(questionCard !== null)
         compare(questionCard.openAnswerEvaluationEnabled, true)
@@ -172,6 +182,27 @@ TestCase {
         compare(questionCard.showExplanation, true)
         compare(referenceAnswer.hasAnswer, true)
         compare(referenceAnswer.answerText, "A full reference answer")
+    }
+
+    function test_altGShortcutAndInlineGabaritoControlShareExplanationState() {
+        OpenAnswerSession.setAnswer(quizModal, "My response")
+        quizModal.handleConfirmOrNext()
+
+        compare(quizModal.showExplanation, true)
+        var shortcut = findChild(quizModal, "notesOpenAnswerExplanationShortcut")
+        verify(shortcut !== null)
+        compare(shortcut.sequence, "Alt+G")
+        var toggleButton = findChild(quizModal, "notesOpenAnswerExplanationButton")
+        verify(toggleButton !== null)
+        compare(toggleButton.text, "Ocultar Gabarito")
+        quizModal.toggleExplanation()
+        tryCompare(quizModal, "showExplanation", false)
+        compare(toggleButton.text, "Gabarito")
+
+        var referenceAnswer = findVisualChild(quizModal, "notesOpenAnswerReferenceAnswer")
+        var explanationPanel = findVisualChild(quizModal, "notesOpenAnswerExplanationPanel")
+        compare(explanationPanel.visible, false)
+        compare(referenceAnswer.visible, false)
     }
 
     function test_providerFailureKeepsAnswerAndAllowsRetry() {
