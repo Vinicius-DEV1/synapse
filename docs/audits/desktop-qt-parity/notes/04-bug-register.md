@@ -446,12 +446,12 @@ Findings are based on source inspection of the active worktree. Severity is base
 ## QT-NOTES-048: Caderno widget color palette differs from React
 
 - **Severity:** Medium; the native widget has fewer color choices and a different interaction pattern, so saved notes cannot reproduce the React palette state or placement.
-- **Evidence:** React `ColorPalettePicker.tsx` renders nine named `BG_COLORS` choices plus default in an anchored five-column Floating UI popover and closes on outside click or Escape. The React file and document-bundle widgets both use it. Qt `FileAttachmentWidget.qml` and `DocumentBundleWidgetPalette.qml` render six unlabeled inline swatches without outside/Escape dismissal.
+- **Evidence:** React `ColorPalettePicker.tsx` renders nine named `BG_COLORS` choices plus default in an anchored five-column Floating UI popover and closes on outside click or Escape. The React file and document-bundle widgets both use it. Qt originally rendered six unlabeled inline swatches in `FileAttachmentWidget.qml` and `DocumentBundleWidgetPalette.qml`.
 - **Reproduction:** Open each file and document-bundle color control in React and Qt, compare choices and placement, select an omitted React color, then test outside click, Escape and reopen.
 - **Root cause:** The two Qt widgets use separate six-color inline implementations instead of matching React's shared palette tokens and popover interactions.
 - **Required fix:** Use the exact React color hex values and labels in both Qt widgets, a native anchored popover with selected state and five-column arrangement, and equivalent dismissal/focus behavior. Keep Qt-native controls and do not change the React implementation.
 - **Acceptance:** Verify all nine persisted hex colors plus default render the same in both widget types before and after Qt/React save/reload; compare palette location, selected indication, outside/Escape dismissal, keyboard access and high-DPI appearance.
-- **Fix status:** Open parity gap. Both Qt widgets still have six unlabeled inline swatches; see the [file-widget crosswalk](10-file-widget-crosswalk.md) and [document-bundle crosswalk](09-document-bundle-crosswalk.md).
+- **Fix status:** `NotesWidgetColorPalette.qml` now supplies the exact nine React hex values and Portuguese labels, a default clear action, selected borders, five-column layout, anchored bottom-end placement with viewport clamping, and Escape/outside dismissal to both widgets. File and bundle colors save through their existing note-attribute paths; the old inline bundle palette was removed. Runtime anchor movement, focus and keyboard acceptance, high-DPI geometry, and Qt/React round-trip remain open. See the [file-widget crosswalk](10-file-widget-crosswalk.md) and [document-bundle crosswalk](09-document-bundle-crosswalk.md).
 
 ## QT-NOTES-049: File previews from bundles and nested notes do not reach Files
 

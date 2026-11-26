@@ -62,7 +62,7 @@ Exact focused QML lint command for the document-bundle manager iteration:
   apps/desktop-qt/qml/notes/DocumentBundleWidgetBody.qml \
   apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml \
   apps/desktop-qt/qml/notes/DocumentBundleWidgetHeader.qml \
-  apps/desktop-qt/qml/notes/DocumentBundleWidgetPalette.qml \
+  apps/desktop-qt/qml/notes/NotesWidgetColorPalette.qml \
   apps/desktop-qt/qml/notes/DocumentBundleOperations.js
 ```
 
@@ -94,7 +94,7 @@ Exact focused QML lint command for the loose-file absorption iteration:
   apps/desktop-qt/qml/notes/DocumentBundleWidgetBody.qml \
   apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml \
   apps/desktop-qt/qml/notes/DocumentBundleWidgetHeader.qml \
-  apps/desktop-qt/qml/notes/DocumentBundleWidgetPalette.qml \
+  apps/desktop-qt/qml/notes/NotesWidgetColorPalette.qml \
   apps/desktop-qt/qml/notes/DocumentBundleOperations.js
 ```
 
