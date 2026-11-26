@@ -19,6 +19,26 @@ pub unsafe extern "C" fn synapse_quiz_get_batteries(db: *mut Database) -> *mut c
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_get_battery(
+    db: *mut Database,
+    battery_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || battery_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let Some(id) = to_opt_str(battery_id) else {
+        return std::ptr::null_mut();
+    };
+    match QuizRepository::get_quiz_battery(&*db, id) {
+        Ok(battery) => json_to_c_char(&battery),
+        Err(error) => {
+            eprintln!("[Synapse Bridge] get_quiz_battery failed: {}", error);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_quiz_create_battery(
     db: *mut Database,
     title: *const c_char,
@@ -153,6 +173,26 @@ pub unsafe extern "C" fn synapse_quiz_get_battery_questions(
         Ok(questions) => json_to_c_char(&questions),
         Err(e) => {
             eprintln!("[Synapse Bridge] get_battery_questions failed: {}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_get_question(
+    db: *mut Database,
+    question_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() || question_id.is_null() {
+        return std::ptr::null_mut();
+    }
+    let Some(id) = to_opt_str(question_id) else {
+        return std::ptr::null_mut();
+    };
+    match QuizRepository::get_quiz_question(&*db, id) {
+        Ok(question) => json_to_c_char(&question),
+        Err(error) => {
+            eprintln!("[Synapse Bridge] get_quiz_question failed: {}", error);
             std::ptr::null_mut()
         }
     }

@@ -33,6 +33,7 @@ Rectangle {
         }
     }
     property bool expanded: false
+    property bool componentReady: false
     property var batteryInfo: null
     property var questionList: []
 
@@ -45,19 +46,14 @@ Rectangle {
     function refreshFromCore() {
         var c = qBlockRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (!c) return
-        if (batteryId.length > 0 && typeof c.getQuizBatteries === "function") {
-            var batteries = c.getQuizBatteries() || []
-            for (var i = 0; i < batteries.length; i++) {
-                if (batteries[i].id === batteryId) {
-                    batteryInfo = batteries[i]
-                    cachedTitle = batteries[i].title || cachedTitle
-                    if (batteries[i].description && description.length === 0) {
-                        description = batteries[i].description
-                    }
-                    break
-                }
-            }
+        batteryInfo = batteryId.length > 0 && typeof c.getQuizBattery === "function"
+            ? c.getQuizBattery(batteryId) : null
+        if (batteryInfo && batteryInfo.id) {
+            cachedTitle = batteryInfo.title || cachedTitle
+            if (batteryInfo.description && description.length === 0)
+                description = batteryInfo.description
         }
+        questionList = []
         var inlineRaw = attrs["data-questions"] || attrs["questions"] || ""
         if (inlineRaw.length > 0) {
             try {
@@ -67,21 +63,27 @@ Rectangle {
                 console.warn("[QuestionBlock] Failed to parse data-questions:", e)
             }
         }
-        if (questionList.length === 0 && typeof c.getAllQuizQuestions === "function") {
-            var allQ = c.getAllQuizQuestions() || []
-            var matched = []
-            for (var j = 0; j < allQ.length; j++) {
-                if ((batteryId.length > 0 && allQ[j].battery_id === batteryId) ||
-                    (questionId.length > 0 && allQ[j].id === questionId)) {
-                    matched.push(allQ[j])
-                }
-            }
-            questionList = matched
+        if (expanded) loadQuestionPreview()
+    }
+
+    function loadQuestionPreview() {
+        if (questionList.length > 0) return
+        var c = qBlockRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        if (!c) return
+        if (batteryId.length > 0 && typeof c.getBatteryQuestions === "function") {
+            questionList = c.getBatteryQuestions(batteryId) || []
+        } else if (questionId.length > 0 && typeof c.getQuizQuestion === "function") {
+            var question = c.getQuizQuestion(questionId)
+            questionList = question && question.id ? [question] : []
         }
     }
 
-    Component.onCompleted: refreshFromCore()
-    onBlockDataChanged: refreshFromCore()
+    Component.onCompleted: {
+        refreshFromCore()
+        componentReady = true
+    }
+    onBlockDataChanged: if (componentReady) refreshFromCore()
+    onExpandedChanged: if (expanded) loadQuestionPreview()
 
     readonly property int totalCount: batteryInfo && batteryInfo.question_count !== undefined
         ? Number(batteryInfo.question_count)

@@ -1,7 +1,35 @@
 use super::models::QuizBattery;
 use crate::error::{Result, SynapseError};
 use chrono::Utc;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
+
+pub fn get_quiz_battery(
+    conn: &rusqlite::Connection,
+    battery_id: &str,
+) -> Result<Option<QuizBattery>> {
+    let trimmed_id = battery_id.trim();
+    if trimmed_id.is_empty() {
+        return Ok(None);
+    }
+
+    conn.query_row(
+        "SELECT b.id, b.title, b.description,
+                (SELECT count(*) FROM quiz_questions q WHERE q.battery_id = b.id AND q.deleted_at IS NULL) as question_count
+         FROM quiz_batteries b
+         WHERE b.id = ? AND b.deleted_at IS NULL",
+        [trimmed_id],
+        |row| {
+            Ok(QuizBattery {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                question_count: row.get(3)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
+}
 
 pub fn get_quiz_batteries(conn: &rusqlite::Connection) -> Result<Vec<QuizBattery>> {
     let mut stmt = conn.prepare(

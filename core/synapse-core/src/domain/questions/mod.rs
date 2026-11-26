@@ -37,6 +37,11 @@ impl QuizRepository {
         batteries::get_quiz_batteries(conn)
     }
 
+    pub fn get_quiz_battery(db: &Database, battery_id: &str) -> Result<Option<QuizBattery>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        batteries::get_quiz_battery(&conn, battery_id)
+    }
+
     pub fn create_quiz_battery(
         db: &Database,
         title: &str,
@@ -103,6 +108,11 @@ impl QuizRepository {
         battery_id: &str,
     ) -> Result<Vec<QuizQuestion>> {
         questions::get_battery_questions(conn, battery_id)
+    }
+
+    pub fn get_quiz_question(db: &Database, question_id: &str) -> Result<Option<QuizQuestion>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        questions::get_quiz_question(&conn, question_id)
     }
 
     pub fn get_all_quiz_questions(db: &Database) -> Result<Vec<QuizQuestion>> {

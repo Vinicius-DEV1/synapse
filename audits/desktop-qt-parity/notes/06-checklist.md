@@ -152,6 +152,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Repair React's existing-question suggestion selection path: `QuestionCreateModal` passes a reuse flag, but `EditorModalHost` currently ignores it and creates another battery. Keep Qt's real-ID selection behavior while the React defect is fixed in a separately authorized parity pass. See QT-NOTES-069.
 - [x] Match the Notes question modal's hierarchy: help icon/title, full-width title field with embedded plus action, results heading, existing battery rows and empty state; keep habit setup unchanged. Focused QML checks pass. See QT-NOTES-070.
 - [ ] Capture React and Qt question-create modals at the same viewport and compare spacing, backdrop, focus/close behavior and result/search semantics. See QT-NOTES-070.
+- [x] Remove global battery/question scans from each Notes question widget; resolve metadata by battery ID and load question content by ID only when expanding the preview. Focused Core and QML checks pass. See QT-NOTES-071.
+- [ ] Verify large-note runtime responsiveness, question preview expand/collapse/reopen, missing/deleted IDs and metadata refresh after external edits. See QT-NOTES-071.
 - [x] Match Notes habit quick-create defaults, prevent case-insensitive duplicates, resolve the actual Core-created habit ID, and preserve IDs for existing selections. See QT-NOTES-067.
 - [ ] Add and verify the React HabitSelectModal keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), loading/empty/create feedback and exact focus return for the Notes habit picker. See QT-NOTES-067.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.

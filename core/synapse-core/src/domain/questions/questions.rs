@@ -1,6 +1,6 @@
 use super::models::QuizQuestion;
 use crate::error::Result;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use serde_json::Value;
 
 pub fn get_battery_questions(
@@ -32,6 +32,41 @@ pub fn get_battery_questions(
         .collect::<std::result::Result<Vec<_>, _>>()?;
 
     Ok(questions)
+}
+
+pub fn get_quiz_question(
+    conn: &rusqlite::Connection,
+    question_id: &str,
+) -> Result<Option<QuizQuestion>> {
+    let trimmed_id = question_id.trim();
+    if trimmed_id.is_empty() {
+        return Ok(None);
+    }
+
+    conn.query_row(
+        "SELECT q.id, q.battery_id, q.type, q.question, q.options, q.correct_index,
+                q.expected_answer, q.explanation, q.tags, q.sort_order
+         FROM quiz_questions q
+         JOIN quiz_batteries b ON b.id = q.battery_id
+         WHERE q.id = ? AND q.deleted_at IS NULL AND b.deleted_at IS NULL",
+        [trimmed_id],
+        |row| {
+            Ok(QuizQuestion {
+                id: row.get(0)?,
+                battery_id: row.get(1)?,
+                type_: row.get(2)?,
+                question: row.get(3)?,
+                options: row.get(4)?,
+                correct_index: row.get(5)?,
+                expected_answer: row.get(6)?,
+                explanation: row.get(7)?,
+                tags: row.get(8)?,
+                sort_order: row.get(9)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
 }
 
 pub fn get_all_quiz_questions(conn: &rusqlite::Connection) -> Result<Vec<QuizQuestion>> {

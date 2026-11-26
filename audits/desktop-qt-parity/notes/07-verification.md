@@ -524,6 +524,20 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: Desktop Qt target linked. | Build validation only; no interactive visual capture. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes question-block targeted loading (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo test -p synapse-core test_quiz_lifecycle_and_error_notebook -- --nocapture` | Passed: 1 focused test, 0 failures. Exercises the new by-ID battery summary and single-question queries, including missing IDs. | Core unit test only; the controller integration case is below. |
+| `qmltestrunner` for `tst_notes_question_block_loading.qml` | Passed: 2 behavior cases (4 QtTest totals including setup/cleanup), 0 failures. Confirms summary lookup uses the exact battery ID, collapsed blocks load no question list, expanded battery previews use `getBatteryQuestions(id)`, single-question previews use `getQuizQuestion(id)`, and neither global-list API is called. | Qt 6.10.2, offscreen with a mock controller. Does not measure a large live note or verify preview visuals. |
+| Focused `qmllint` for `QuestionBlock.qml` | Passed: exit 0 with existing layout, scope, and dynamic-property warnings. | The new query paths add no diagnostics; pre-existing static warnings remain in the component. |
+| `cargo build --release -p synapse-bridge-qt` | Passed. | Confirms the new typed Core lookups are exported by the Qt bridge. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed. | Desktop Qt native application target. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed. | Rebuilt the native test target after the shared controller header change. |
+| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=questions noteBatteryCreationReturnsPersistedCoreIdentityAndRejectsMissingPage questionAttemptsPersistAndErrorNotebookUsesLatestAnswer` | Passed: 2 focused controller tests (4 QtTest totals including setup/cleanup), 0 failures. | Confirms Notes battery creation uses the persisted Core identity and the Questions controller resolves the specific question by ID. |
+| Large note responsiveness and external edit/missing record runtime checks | Open | Requires live Notes runtime with many question widgets and batteries. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes habit select/create modal (2026-11-26)
 
 | Check | Result | Scope and limits |

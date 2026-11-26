@@ -24,6 +24,7 @@ private slots:
         QCOMPARE(batteries.first().toMap().value("id").toString(), batteryId);
         QCOMPARE(batteries.first().toMap().value("title").toString(),
                  QString("Notes question battery"));
+        QCOMPARE(controller.getQuizBattery(batteryId).value("id").toString(), batteryId);
         QVERIFY(controller.createNoteQuizBattery(
             "Orphan battery", QString(), "missing-notes-page").isEmpty());
         QCOMPARE(controller.getQuizBatteries().size(), 1);
@@ -48,6 +49,7 @@ private slots:
         QCOMPARE(questions.size(), 1);
         const QVariantMap question = questions.first().toMap();
         const QString questionId = question.value("id").toString();
+        QCOMPARE(controller.getQuizQuestion(questionId).value("id").toString(), questionId);
         QCOMPARE(question.value("question").toString(), QString("Select B"));
         QCOMPARE(question.value("correct_index").toInt(), 1);
         QCOMPARE(question.value("options").toString(), QString("[\"A\",\"B\"]"));

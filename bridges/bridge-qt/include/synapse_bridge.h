@@ -105,6 +105,7 @@ char* synapse_habits_resolve_date_from_title(const char* page_title, const char*
 
 // Domain APIs: Questions & Quiz
 char* synapse_quiz_get_batteries(Database* db);
+char* synapse_quiz_get_battery(Database* db, const char* battery_id);
 char* synapse_quiz_get_battery_tree(Database* db);
 char* synapse_quiz_create_battery(Database* db, const char* title, const char* description);
 char* synapse_quiz_create_battery_for_page(Database* db, const char* title, const char* description, const char* page_id);
@@ -115,6 +116,7 @@ char* synapse_quiz_parse_import_text(const char* raw_text);
 int synapse_quiz_update_battery(Database* db, const char* battery_id, const char* title, const char* description);
 int synapse_quiz_delete_battery(Database* db, const char* battery_id);
 char* synapse_quiz_get_battery_questions(Database* db, const char* battery_id);
+char* synapse_quiz_get_question(Database* db, const char* question_id);
 char* synapse_quiz_get_all_questions(Database* db);
 char* synapse_quiz_get_all_tags(Database* db);
 char* synapse_quiz_get_error_notebook(Database* db);

@@ -35,11 +35,25 @@ QVariantList SynapseDataController::getQuizBatteries() {
     return parseJsonArray(raw).toVariantList();
 }
 
+QVariantMap SynapseDataController::getQuizBattery(const QString &batteryId) {
+    if (!m_db || batteryId.trimmed().isEmpty()) return QVariantMap();
+    QByteArray idUtf8 = batteryId.trimmed().toUtf8();
+    char* raw = synapse_quiz_get_battery(m_db, idUtf8.constData());
+    return parseJsonObject(raw).toVariantMap();
+}
+
 QVariantList SynapseDataController::getBatteryQuestions(const QString &batteryId) {
     if (!m_db || batteryId.trimmed().isEmpty()) return QVariantList();
     QByteArray batUtf8 = batteryId.trimmed().toUtf8();
     char* raw = synapse_quiz_get_battery_questions(m_db, batUtf8.constData());
     return parseJsonArray(raw).toVariantList();
+}
+
+QVariantMap SynapseDataController::getQuizQuestion(const QString &questionId) {
+    if (!m_db || questionId.trimmed().isEmpty()) return QVariantMap();
+    QByteArray idUtf8 = questionId.trimmed().toUtf8();
+    char* raw = synapse_quiz_get_question(m_db, idUtf8.constData());
+    return parseJsonObject(raw).toVariantMap();
 }
 
 QVariantList SynapseDataController::getAllQuizQuestions() {

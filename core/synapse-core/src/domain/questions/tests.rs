@@ -16,6 +16,14 @@ fn test_quiz_lifecycle_and_error_notebook() {
         QuizRepository::create_quiz_battery(&db, "Rust Concurrency", Some("Tests sync primitives"))
             .unwrap();
     assert!(!bat_id.is_empty());
+    let battery = QuizRepository::get_quiz_battery(&db, &bat_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(battery.id, bat_id);
+    assert_eq!(battery.title, "Rust Concurrency");
+    assert!(QuizRepository::get_quiz_battery(&db, "missing-battery")
+        .unwrap()
+        .is_none());
 
     let batteries = QuizRepository::get_quiz_batteries(&db).unwrap();
     assert_eq!(batteries.len(), 1);
@@ -35,6 +43,15 @@ fn test_quiz_lifecycle_and_error_notebook() {
         Some(tags),
     )
     .unwrap();
+    let question = QuizRepository::get_quiz_question(&db, &q_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(question.id, q_id);
+    assert_eq!(question.battery_id, bat_id);
+    assert_eq!(question.question, "Which type is NOT thread-safe?");
+    assert!(QuizRepository::get_quiz_question(&db, "missing-question")
+        .unwrap()
+        .is_none());
 
     let questions = QuizRepository::get_battery_questions(&db, &bat_id).unwrap();
     assert_eq!(questions.len(), 1);

@@ -263,7 +263,9 @@ public:
 
     // 4. Baterias de Questões & Simulado Zen
     Q_INVOKABLE QVariantList getQuizBatteries();
+    Q_INVOKABLE QVariantMap getQuizBattery(const QString &batteryId);
     Q_INVOKABLE QVariantList getBatteryQuestions(const QString &batteryId);
+    Q_INVOKABLE QVariantMap getQuizQuestion(const QString &questionId);
     Q_INVOKABLE QVariantList getAllQuizQuestions();
     Q_INVOKABLE QVariantList getAllQuizTags();
     Q_INVOKABLE QVariantMap getQuizStats();
