@@ -1,6 +1,34 @@
 .pragma library
 .import "NotesHtmlEscaping.js" as HtmlEscaping
 
+function createBundleItemFromFileWidget(block, fallbackName) {
+    if (!block || block.blockType !== "fileWidget") return { valid: false, item: null }
+    var attrs = block.attrs || ({})
+    var fileId = String(attrs["data-file-id"] || attrs["file-id"] || attrs.fileId || "").trim()
+    if (!fileId) return { valid: false, item: null }
+
+    var name = String(attrs["data-name"] || attrs.name || attrs["data-file-name"] ||
+        attrs["file-name"] || fallbackName)
+    var fileType = String(attrs["data-file-type"] || attrs["file-type"] || attrs.fileType || "other").toLowerCase()
+    var isLink = String(attrs["data-is-link"] || attrs["is-link"] || attrs.isLink || "").toLowerCase() === "true"
+    var item = {
+        id: fileId,
+        fileId: fileId,
+        name: name,
+        fileType: fileType,
+        isLink: isLink,
+        addedAt: Date.now()
+    }
+    var rawSize = attrs["data-file-size"] !== undefined ? attrs["data-file-size"]
+        : (attrs["file-size"] !== undefined ? attrs["file-size"] : attrs.fileSize)
+    if (rawSize !== undefined && rawSize !== null && rawSize !== "") {
+        var fileSize = Number(rawSize)
+        if (!isFinite(fileSize) || fileSize < 0) return { valid: false, item: null }
+        item.fileSize = Math.floor(fileSize)
+    }
+    return { valid: true, item: item }
+}
+
 function createFileWidgetBlocks(items, groupColor, controller, fallbackName) {
     if (!Array.isArray(items) || items.length === 0 || !controller ||
             typeof controller.parseNoteBlocks !== "function") {

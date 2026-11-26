@@ -21,16 +21,22 @@ ColumnLayout {
     property bool active: false
     property int nestingDepth: 0
     property var blocks: []
+    property int looseFileWidgetsRevision: 0
     property bool isSyncingFromSource: false
     property string lastEmittedHtml: ""
     property string lastLoadedPageId: ""
     property var focusedRichSlice: null
     property string lastSlashQuery: ""
     property string focusedRichSliceBlockId: ""
+    property string openDocumentBundleManagerBlockId: ""
     property int draggingBlockIndex: -1
     property int dropTargetIndex: -1
     property string dropSide: "bottom"
     readonly property bool hasActiveRichFocus: focusedRichSlice !== null && focusedRichSlice.editor && focusedRichSlice.editor.activeFocus
+    readonly property var looseDocumentBundleFiles: {
+        var revision = blockListRoot.looseFileWidgetsRevision
+        return blockListRoot.collectLooseDocumentBundleFiles()
+    }
 
     signal htmlChanged(string serializedHtml)
     signal pagePreviewRequested(string pageId)
@@ -85,6 +91,7 @@ ColumnLayout {
         focusedRichSliceBlockId = ""
         lastLoadedPageId = pageId
         blocks = controller.parseNoteBlocks(sourceHtml || "") || []
+        looseFileWidgetsRevision += 1
         lastEmittedHtml = sourceHtml || ""
         isSyncingFromSource = false
     }
@@ -92,6 +99,7 @@ ColumnLayout {
     function commitBlocks(nextBlocks) {
         if (!nextBlocks) return
         blocks = nextBlocks
+        looseFileWidgetsRevision += 1
         if (!controller || typeof controller.serializeNoteBlocks !== "function") return
         var serialized = controller.serializeNoteBlocks(nextBlocks)
         lastEmittedHtml = serialized
@@ -110,9 +118,25 @@ ColumnLayout {
         }
         if (typeof serialized !== "string") return false
         blocks = nextBlocks
+        looseFileWidgetsRevision += 1
         lastEmittedHtml = serialized
         htmlChanged(serialized)
         return true
+    }
+
+    function collectLooseDocumentBundleFiles() {
+        var looseFiles = []
+        for (var i = 0; i < blocks.length; ++i) {
+            var block = blocks[i]
+            if (!block || block.blockType !== "fileWidget") continue
+            var result = DocumentBundleOperations.createBundleItemFromFileWidget(
+                block, qsTr("Documento"))
+            if (!result.valid) continue
+            var item = Object.assign({}, result.item)
+            item.sourceBlockIndex = i
+            looseFiles.push(item)
+        }
+        return looseFiles
     }
 
     function requestBlockDeletion(index, widget) {
@@ -216,11 +240,43 @@ ColumnLayout {
         return commitDocumentBundleBlocks(next)
     }
 
+    function absorbLooseDocumentBundleFile(bundleIndex, sourceBlockIndex, fileId, bundledItems) {
+        if (bundleIndex < 0 || bundleIndex >= blocks.length || sourceBlockIndex < 0 ||
+                sourceBlockIndex >= blocks.length || sourceBlockIndex === bundleIndex ||
+                !Array.isArray(bundledItems) || !controller ||
+                typeof controller.serializeNoteBlocks !== "function" ||
+                !flushActiveRichSlices()) return false
+
+        var bundleBlock = blocks[bundleIndex]
+        var looseBlock = blocks[sourceBlockIndex]
+        if (!bundleBlock || bundleBlock.blockType !== "documentBundle" ||
+                !looseBlock || looseBlock.blockType !== "fileWidget") return false
+
+        var looseItemResult = DocumentBundleOperations.createBundleItemFromFileWidget(
+            looseBlock, qsTr("Documento"))
+        if (!looseItemResult.valid || looseItemResult.item.fileId !== fileId) return false
+
+        var updatedBundle = Object.assign({}, bundleBlock)
+        var updatedAttrs = Object.assign({}, bundleBlock.attrs || ({}))
+        var nextItems = bundledItems.slice()
+        nextItems.push(looseItemResult.item)
+        updatedAttrs["data-items"] = JSON.stringify(nextItems)
+        updatedBundle.attrs = updatedAttrs
+
+        var nextBlocks = blocks.slice()
+        nextBlocks.splice(sourceBlockIndex, 1)
+        var adjustedBundleIndex = bundleIndex - (sourceBlockIndex < bundleIndex ? 1 : 0)
+        nextBlocks[adjustedBundleIndex] = updatedBundle
+        return commitDocumentBundleBlocks(nextBlocks)
+    }
+
     function updateBlockAt(idx, updater) {
         if (idx < 0 || idx >= blocks.length) return
         // Update block payload in place so Repeater delegates preserve focus and cursor position while typing.
         var updated = updater(Object.assign({}, blocks[idx]))
+        var affectsLooseFileItems = blocks[idx].blockType === "fileWidget" || updated.blockType === "fileWidget"
         blocks[idx] = updated
+        if (affectsLooseFileItems) looseFileWidgetsRevision += 1
         var row = blockRepeater.itemAt(idx)
         if (row) row.liveBlockData = updated
         if (!controller || typeof controller.serializeNoteBlocks !== "function") return
@@ -479,6 +535,9 @@ ColumnLayout {
                 id: sliceRouter
                 width: parent.width; blockData: blockRow.liveBlockData; blockIndex: blockRow.index
                 pageId: blockListRoot.pageId; pageTitle: blockListRoot.pageTitle; pageList: blockListRoot.pageList
+                looseFileItems: blockListRoot.looseDocumentBundleFiles
+                documentBundleManagerOpen: blockListRoot.openDocumentBundleManagerBlockId !== "" &&
+                    blockListRoot.openDocumentBundleManagerBlockId === String(blockRow.liveBlockData.id || "")
                 controller: blockListRoot.controller; textOperations: blockListRoot.textOperations
                 active: blockListRoot.active; nestingDepth: blockListRoot.nestingDepth
                 onBlockChanged: function(idx, updated) { blockListRoot.updateBlockAt(idx, function() { return updated }) }
@@ -503,6 +562,23 @@ ColumnLayout {
                     if (!blockListRoot.unwrapDocumentBundleItem(idx, fileId, items, color)) {
                         blockListRoot.reportBundleActionFailure(
                             idx, bundleWidget, qsTr("Could not ungroup this file. The bundle was kept unchanged."))
+                    }
+                }
+                onAbsorbDocumentBundleLooseFileRequested: function(
+                        bundleIndex, sourceBlockIndex, fileId, items, color, bundleWidget) {
+                    if (!blockListRoot.absorbLooseDocumentBundleFile(
+                                bundleIndex, sourceBlockIndex, fileId, items)) {
+                        blockListRoot.reportBundleActionFailure(
+                            bundleIndex, bundleWidget,
+                            qsTr("Could not move this page document into the bundle. No page block was changed."))
+                        return
+                    }
+                }
+                onDocumentBundleManagerStateRequested: function(blockId, isOpen) {
+                    if (isOpen) {
+                        blockListRoot.openDocumentBundleManagerBlockId = blockId
+                    } else if (blockListRoot.openDocumentBundleManagerBlockId === blockId) {
+                        blockListRoot.openDocumentBundleManagerBlockId = ""
                     }
                 }
                 onInsertAfterRequested: function(idx, html) { blockListRoot.insertWidgetHtmlAfter(idx, html) }

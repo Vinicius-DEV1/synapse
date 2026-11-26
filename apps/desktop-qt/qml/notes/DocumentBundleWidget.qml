@@ -11,7 +11,8 @@ Rectangle {
 
     property var blockData: ({})
     property var controller: null
-    property string pageId: ""
+    property var looseFileItems: []
+    property bool managerInitiallyOpen: false
     property var attrs: blockData.attrs || ({})
     property string title: attrs["data-title"] || attrs["title"] || qsTr("Documentos")
     property string accentColor: attrs["data-color"] || attrs["color"] || "default"
@@ -71,12 +72,20 @@ Rectangle {
     property bool deleteDialogOpen: false
     property string deleteActionError: ""
     property bool autoOpenConsumed: false
+    property bool isDestroying: false
 
     Component.onCompleted: {
+        if (managerInitiallyOpen) managerOpen = true
         if (!autoOpenConsumed && !itemsInvalid && (attrs["data-auto-open"] || "") === "true" && items.length === 0) {
             autoOpenConsumed = true
             isModalOpen = true
         }
+    }
+
+    Component.onDestruction: isDestroying = true
+
+    onManagerInitiallyOpenChanged: {
+        if (managerInitiallyOpen) managerOpen = true
     }
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
@@ -96,6 +105,8 @@ Rectangle {
     signal unlinkRequested()
     signal ungroupRequested(var bundledItems, string groupColor)
     signal ungroupItemRequested(string fileId, var bundledItems, string groupColor)
+    signal absorbLooseFileRequested(int sourceBlockIndex, string fileId)
+    signal managerOpenStateRequested(string blockId, bool isOpen)
 
     Keys.priority: Keys.BeforeItem
     Keys.onPressed: function(event) {
@@ -134,6 +145,12 @@ Rectangle {
 
     function setManagerActionError(message) {
         widgetDialogs.setManagerActionError(message)
+    }
+
+    function setManagerOpen(nextOpen) {
+        managerOpen = nextOpen
+        if (!isDestroying)
+            managerOpenStateRequested(String(blockData.id || ""), nextOpen)
     }
 
     function handleBundleItemRemoval(fileId, moveToTrash) {
@@ -202,13 +219,13 @@ Rectangle {
         }
         onManagerRequested: {
             bundleWidgetRoot.deleteActionError = ""
-            bundleWidgetRoot.managerOpen = true
+            bundleWidgetRoot.setManagerOpen(true)
         }
         onExpandedToggled: bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
         onAddRequested: bundleWidgetRoot.isModalOpen = true
         onDeleteRequested: bundleWidgetRoot.requestDeleteConfirmation()
         onRemoveItemRequested: function(fileId, itemName) {
-            bundleWidgetRoot.managerOpen = true
+            bundleWidgetRoot.setManagerOpen(true)
             Qt.callLater(function() { widgetDialogs.openItemRemoval(fileId, itemName) })
         }
     }
@@ -217,16 +234,19 @@ Rectangle {
         id: widgetDialogs
         anchors.fill: parent
         controller: bundleWidgetRoot.controller
-        pageId: bundleWidgetRoot.pageId
         bundleTitle: bundleWidgetRoot.title
         groupColor: bundleWidgetRoot.accentColor
         bundleItems: bundleWidgetRoot.items
+        looseFileItems: bundleWidgetRoot.looseFileItems
         itemsInvalid: bundleWidgetRoot.itemsInvalid
         managerOpen: bundleWidgetRoot.managerOpen
         pickerOpen: bundleWidgetRoot.isModalOpen
         deleteConfirmationOpen: bundleWidgetRoot.deleteDialogOpen
         deleteActionError: bundleWidgetRoot.deleteActionError
-        onManagerClosed: bundleWidgetRoot.managerOpen = false
+        onManagerClosed: {
+            if (!bundleWidgetRoot.isDestroying)
+                bundleWidgetRoot.setManagerOpen(false)
+        }
         onManagerItemsReordered: function(nextItems) {
             bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, nextItems)
         }
@@ -234,7 +254,7 @@ Rectangle {
             bundleWidgetRoot.saveBundle(nextTitle, bundleWidgetRoot.accentColor, bundleWidgetRoot.items)
         }
         onAddFilesRequested: {
-            bundleWidgetRoot.managerOpen = false
+            bundleWidgetRoot.setManagerOpen(false)
             Qt.callLater(function() { bundleWidgetRoot.isModalOpen = true })
         }
         onItemUngroupRequested: function(fileId, items, color) {
@@ -242,6 +262,9 @@ Rectangle {
         }
         onItemRemovalRequested: function(fileId, moveToTrash) {
             bundleWidgetRoot.handleBundleItemRemoval(fileId, moveToTrash)
+        }
+        onAbsorbLooseFileRequested: function(sourceBlockIndex, fileId) {
+            bundleWidgetRoot.absorbLooseFileRequested(sourceBlockIndex, fileId)
         }
         onUngroupAllRequested: function(items, color) {
             bundleWidgetRoot.ungroupRequested(items, color)
@@ -258,22 +281,6 @@ Rectangle {
                     fileType: fileItem.file_type || "doc", fileSize: Number(fileItem.file_size || 0) })
                 bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
             }
-            bundleWidgetRoot.isModalOpen = false
-        }
-        onAbsorbFilesRequested: function(filesList) {
-            if (bundleWidgetRoot.itemsInvalid) {
-                bundleWidgetRoot.isModalOpen = false
-                return
-            }
-            var next = bundleWidgetRoot.items.slice()
-            for (var i = 0; i < filesList.length; ++i) {
-                var fileItem = filesList[i]
-                if (!next.some(function(item) { return (item.fileId || item.id) === fileItem.id })) {
-                    next.push({ id: fileItem.id, fileId: fileItem.id, name: fileItem.name || "Documento",
-                        fileType: fileItem.file_type || "doc", fileSize: Number(fileItem.file_size || 0) })
-                }
-            }
-            bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
             bundleWidgetRoot.isModalOpen = false
         }
         onPickerClosed: {

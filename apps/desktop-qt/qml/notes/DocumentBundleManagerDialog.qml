@@ -21,6 +21,8 @@ Dialog {
     property string bundleTitle: qsTr("Documentos")
     property string groupColor: "default"
     property var bundleItems: []
+    property var looseFileItems: []
+    property bool looseFilesExpanded: false
     property string errorMessage: ""
     property string pendingRemovalFileId: ""
 
@@ -28,6 +30,7 @@ Dialog {
     signal itemsReordered(var nextItems)
     signal titleUpdateRequested(string nextTitle)
     signal addFilesRequested()
+    signal absorbLooseFileRequested(int sourceBlockIndex, string fileId)
     signal itemUngroupRequested(string fileId)
     signal itemRemovalRequested(string fileId, bool moveToTrash)
     signal ungroupAllRequested()
@@ -36,7 +39,10 @@ Dialog {
         if (isOpen) open()
         else close()
     }
-    onOpened: managerRoot.errorMessage = ""
+    onOpened: {
+        managerRoot.errorMessage = ""
+        managerRoot.looseFilesExpanded = false
+    }
     onClosed: closeRequested()
 
     function moveItem(index, delta) {
@@ -158,6 +164,77 @@ Dialog {
         }
 
         Button {
+            id: looseFilesToggle
+            Layout.fillWidth: true
+            Layout.leftMargin: 18
+            Layout.rightMargin: 18
+            Layout.bottomMargin: managerRoot.looseFilesExpanded ? 8 : 14
+            Layout.preferredHeight: 36
+            text: managerRoot.looseFilesExpanded
+                ? qsTr("Ocultar arquivos soltos desta página")
+                : qsTr("Anexar documento que está solto nesta página")
+            onClicked: managerRoot.looseFilesExpanded = !managerRoot.looseFilesExpanded
+            background: Rectangle {
+                radius: 9
+                color: looseFilesToggle.hovered ? "#141a1926" : "transparent"
+                border.color: looseFilesToggle.hovered ? "#558b5cf6" : "#338b5cf6"
+                border.width: 1
+            }
+            contentItem: RowLayout {
+                spacing: 8
+                AppIcon {
+                    name: "plus"
+                    color: "#a78bfa"
+                    Layout.preferredWidth: 13
+                    Layout.preferredHeight: 13
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: looseFilesToggle.text
+                    color: "#c4b5fd"
+                    font.pixelSize: 10
+                    elide: Text.ElideRight
+                }
+                Text {
+                    text: String(managerRoot.looseFileItems.length)
+                    color: "#858597"
+                    font.pixelSize: 9
+                    font.family: "monospace"
+                }
+            }
+        }
+
+        ListView {
+            id: looseFileList
+            Layout.fillWidth: true
+            Layout.leftMargin: 18
+            Layout.rightMargin: 18
+            Layout.preferredHeight: managerRoot.looseFilesExpanded
+                ? Math.min(144, Math.max(48, contentHeight)) : 0
+            visible: managerRoot.looseFilesExpanded
+            spacing: 5
+            clip: true
+            model: managerRoot.looseFileItems
+
+            delegate: DocumentBundleLooseFileItem {
+                required property var modelData
+                width: ListView.view.width
+                itemData: modelData
+                onAbsorbRequested: function(sourceBlockIndex, fileId) {
+                    managerRoot.absorbLooseFileRequested(sourceBlockIndex, fileId)
+                }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                visible: managerRoot.looseFileItems.length === 0
+                text: qsTr("Nenhum outro documento avulso encontrado nesta página.")
+                color: "#71717a"
+                font.pixelSize: 10
+            }
+        }
+
+        Button {
             id: addFilesButton
             Layout.fillWidth: true
             Layout.leftMargin: 18
@@ -179,7 +256,7 @@ Dialog {
                     Layout.preferredHeight: 14
                 }
                 Text {
-                    text: qsTr("Adicionar documentos ou arquivos soltos da página")
+                    text: qsTr("Adicionar documento salvo")
                     color: "#c4b5fd"
                     font.pixelSize: 11
                     Layout.fillWidth: true

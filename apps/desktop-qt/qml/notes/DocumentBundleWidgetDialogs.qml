@@ -4,10 +4,10 @@ import QtQuick 2.15
 Item {
     id: dialogsRoot
     property var controller: null
-    property string pageId: ""
     property string bundleTitle: qsTr("Documentos")
     property string groupColor: "default"
     property var bundleItems: []
+    property var looseFileItems: []
     property bool itemsInvalid: false
     property bool managerOpen: false
     property bool pickerOpen: false
@@ -20,9 +20,9 @@ Item {
     signal addFilesRequested()
     signal itemUngroupRequested(string fileId, var bundledItems, string groupColor)
     signal itemRemovalRequested(string fileId, bool moveToTrash)
+    signal absorbLooseFileRequested(int sourceBlockIndex, string fileId)
     signal ungroupAllRequested(var bundledItems, string groupColor)
     signal fileSelected(var fileItem)
-    signal absorbFilesRequested(var filesList)
     signal pickerClosed()
     signal unlinkRequested()
     signal ungroupRequested(var bundledItems, string groupColor)
@@ -43,10 +43,14 @@ Item {
         bundleTitle: dialogsRoot.bundleTitle
         groupColor: dialogsRoot.groupColor
         bundleItems: dialogsRoot.bundleItems
+        looseFileItems: dialogsRoot.looseFileItems
         onCloseRequested: dialogsRoot.managerClosed()
         onItemsReordered: function(nextItems) { dialogsRoot.managerItemsReordered(nextItems) }
         onTitleUpdateRequested: function(nextTitle) { dialogsRoot.managerTitleUpdateRequested(nextTitle) }
         onAddFilesRequested: dialogsRoot.addFilesRequested()
+        onAbsorbLooseFileRequested: function(sourceBlockIndex, fileId) {
+            dialogsRoot.absorbLooseFileRequested(sourceBlockIndex, fileId)
+        }
         onItemUngroupRequested: function(fileId) {
             dialogsRoot.itemUngroupRequested(fileId, dialogsRoot.bundleItems, dialogsRoot.groupColor)
         }
@@ -59,11 +63,9 @@ Item {
 
     DocumentBundleModal {
         controller: dialogsRoot.controller
-        pageId: dialogsRoot.pageId
         isOpen: dialogsRoot.pickerOpen && !dialogsRoot.itemsInvalid
         existingIds: dialogsRoot.bundleItems.map(function(item) { return item.fileId || item.id || "" })
         onFileSelected: function(fileItem) { dialogsRoot.fileSelected(fileItem) }
-        onAbsorbFilesRequested: function(filesList) { dialogsRoot.absorbFilesRequested(filesList) }
         onClosed: dialogsRoot.pickerClosed()
     }
 

@@ -4,7 +4,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import ".."
 
-// Document picker & page-loose-file absorber mirroring apps/web-react/src/components/modals/DocumentBundleModal.tsx.
+// Saved-file picker for the document-bundle manager.
 Item {
     id: bundleModalRoot
     parent: Overlay.overlay
@@ -13,27 +13,18 @@ Item {
     z: 100
 
     property var controller: null
-    property string pageId: ""
     property bool isOpen: false
     property var allFiles: []
     property var filteredFiles: []
     property var existingIds: []
-    property var loosePageFileIds: []
 
     signal fileSelected(var fileItem)
-    signal absorbFilesRequested(var fileItems)
     signal closed()
 
     function refreshList() {
         var c = bundleModalRoot.controller
         if (!c) { allFiles = []; filteredFiles = []; return }
         allFiles = (typeof c.getFiles === "function") ? (c.getFiles("") || []) : []
-        if (bundleModalRoot.pageId && typeof c.getPage === "function" && typeof c.extractLooseFileWidgetIds === "function") {
-            var p = c.getPage(bundleModalRoot.pageId)
-            loosePageFileIds = (p && p.content) ? (c.extractLooseFileWidgetIds(p.content) || []) : []
-        } else {
-            loosePageFileIds = []
-        }
         applySearch()
     }
 
@@ -89,26 +80,6 @@ Item {
                     Layout.preferredWidth: 28; Layout.preferredHeight: 28; focusPolicy: Qt.NoFocus
                     onClicked: bundleModalRoot.closed()
                     contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#9ca3af"; width: 14; height: 14 }
-                }
-            }
-
-            Button {
-                id: absorbFilesButton
-                visible: bundleModalRoot.loosePageFileIds.length > 0
-                Layout.fillWidth: true; Layout.preferredHeight: 34; focusPolicy: Qt.NoFocus
-                onClicked: {
-                    var matched = []
-                    for (var i = 0; i < bundleModalRoot.allFiles.length; ++i) {
-                        if (bundleModalRoot.loosePageFileIds.indexOf(bundleModalRoot.allFiles[i].id) >= 0) matched.push(bundleModalRoot.allFiles[i])
-                    }
-                    bundleModalRoot.absorbFilesRequested(matched)
-                    bundleModalRoot.closed()
-                }
-                background: Rectangle { radius: 8; color: absorbFilesButton.hovered ? "#338b5cf6" : "#1e1b2e"; border.color: "#4d8b5cf6" }
-                contentItem: Text {
-                    text: qsTr("Importar %1 documento(s) solto(s) desta página").arg(bundleModalRoot.loosePageFileIds.length)
-                    color: "#c4b5fd"; font.pixelSize: 12; font.weight: Font.DemiBold
-                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                 }
             }
 

@@ -66,6 +66,38 @@ Exact focused QML lint command for the document-bundle manager iteration:
   apps/desktop-qt/qml/notes/DocumentBundleOperations.js
 ```
 
+### Loose-file absorption iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Focused document-bundle `qmllint` command below | Passed, exit code 0, with 25 existing dynamic-object/context warnings in `BlockDelegateRouter.qml` and `BlockListEditor.qml` | No warning points to the loose-file row, manager, bundle widget or metadata helper. This parses QML/JS only. |
+| Source review of React `DocumentBundleModal.tsx::handleAbsorbLooseFile`, Qt `BlockListEditor.qml`, `DocumentBundleOperations.js`, and the Notes `NoteBlock` projection | Confirmed Qt now lists live top-level `fileWidget` blocks, copies their metadata into one bundle item, removes the exact source block and serializes both changes together | Source review only. React discovers nested descendants; the flat Qt projection currently exposes only top-level blocks. Verify source-index changes and nested-file behavior at runtime. |
+| `git diff --check` | Passed | No whitespace errors in the loose-file absorption and crosswalk updates. |
+| Runtime item absorption, note undo/autosave, stale-index response and React round-trip | Not run | These remain open acceptance scenarios. No tests or runtime UI were run in this iteration. |
+
+Exact focused QML lint command for the loose-file absorption iteration:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleModal.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleDeleteDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleItemRemovalDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleItemsPreview.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleLooseFileItem.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerHeader.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerItem.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetActions.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetBody.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetHeader.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetPalette.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleOperations.js
+```
+
 Exact QML lint command for this pass:
 
 ```bash

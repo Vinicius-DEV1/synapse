@@ -11,6 +11,8 @@ Loader {
     property string pageId: ""
     property string pageTitle: ""
     property var pageList: []
+    property var looseFileItems: []
+    property bool documentBundleManagerOpen: false
     property var controller: null
     property var textOperations: typeof notesTextOperations !== "undefined" ? notesTextOperations : null
     property bool active: false
@@ -23,6 +25,8 @@ Loader {
     signal unlinkDocumentBundleRequested(int idx, var bundleWidget)
     signal unwrapDocumentBundleRequested(int idx, var bundledItems, string groupColor, var bundleWidget)
     signal unwrapDocumentBundleItemRequested(int idx, string fileId, var bundledItems, string groupColor, var bundleWidget)
+    signal absorbDocumentBundleLooseFileRequested(int bundleIndex, int sourceBlockIndex, string fileId, var bundledItems, string groupColor, var bundleWidget)
+    signal documentBundleManagerStateRequested(string blockId, bool isOpen)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
     signal focusRichSliceChanged(var sliceItem)
@@ -189,9 +193,18 @@ Loader {
             width: routerLoader.width
             blockData: routerLoader.blockData
             controller: routerLoader.controller
-            pageId: routerLoader.pageId
+            looseFileItems: routerLoader.looseFileItems
+            managerInitiallyOpen: routerLoader.documentBundleManagerOpen
             onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
+            onManagerOpenStateRequested: function(blockId, isOpen) {
+                routerLoader.documentBundleManagerStateRequested(blockId, isOpen)
+            }
+            onAbsorbLooseFileRequested: function(sourceBlockIndex, fileId) {
+                routerLoader.absorbDocumentBundleLooseFileRequested(
+                    routerLoader.blockIndex, sourceBlockIndex, fileId, routedBundleWidget.items,
+                    routedBundleWidget.accentColor, routedBundleWidget)
+            }
             onUnlinkRequested: routerLoader.unlinkDocumentBundleRequested(
                                    routerLoader.blockIndex, routedBundleWidget)
             onUngroupItemRequested: function(fileId, items, color) {
