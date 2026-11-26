@@ -22,6 +22,7 @@ Rectangle {
     property bool showColorPicker: false
     property bool isDeleteDialogOpen: false
     property bool isMissingDialogOpen: false
+    property bool isSyncingAttributesFromCore: false
     property bool isNotFound: false
     property string renameErrorMessage: ""
 
@@ -63,7 +64,23 @@ Rectangle {
             return
         }
         isNotFound = false
-        if (found.name) fileName = found.name
+        var resolvedName = String(found.name || "")
+        if (resolvedName.length > 0) {
+            if (fileName !== resolvedName) fileName = resolvedName
+            var storedName = String(attrs["data-name"] || attrs["name"] ||
+                                    attrs["data-file-name"] || attrs["file-name"] || "")
+            if (!renaming && storedName !== resolvedName) {
+                var nextAttrs = Object.assign({}, attrs)
+                nextAttrs["data-name"] = resolvedName
+                nextAttrs["data-file-name"] = resolvedName
+                isSyncingAttributesFromCore = true
+                try {
+                    attrsUpdated(nextAttrs)
+                } finally {
+                    isSyncingAttributesFromCore = false
+                }
+            }
+        }
         if (found.file_type) fileType = String(found.file_type).toLowerCase()
         if (found.file_size !== undefined) fileSize = Number(found.file_size) || 0
     }
@@ -121,7 +138,9 @@ Rectangle {
     }
 
     Component.onCompleted: syncFromCore()
-    onBlockDataChanged: syncFromCore()
+    onBlockDataChanged: {
+        if (!isSyncingAttributesFromCore) syncFromCore()
+    }
 
     Connections {
         target: fileWidgetRoot.controller

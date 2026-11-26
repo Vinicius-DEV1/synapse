@@ -433,6 +433,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Cancel changes nothing; Unlink removes only the widget; local Trash saves the note first and handles undo, duplicate references, save conflict and delete failure; Drive-backed behavior reports local/remote partial outcomes and is never reported complete before confirmation from the service.
 - **Fix status:** Open parity gap. Qt still offers only note-widget removal. The deferred local Trash queue exists for DocumentBundle removal but is not yet wired into the standalone file widget; remote Drive deletion has no native typed command. See the detailed [file-widget crosswalk](10-file-widget-crosswalk.md).
 
+## QT-NOTES-047: Renaming a file leaves other widget attributes stale
+
+- **Severity:** Medium; Qt can display the new Core name in sibling widgets but keep their saved note attributes on the old name, causing inconsistent labels after reload or in React.
+- **Evidence:** React's `handleSaveRename` updates every `fileWidget` node with the same `fileId`. Qt `FileAttachmentWidget::syncFromCore` previously refreshed only transient `fileName` state after `filesChanged`; each sibling block's serialized `data-name` and `data-file-name` remained unchanged.
+- **Reproduction:** Add the same file to two widgets in one note, rename it from one widget, save and reopen the note, then inspect both rendered names and serialized widget attributes in Qt and React.
+- **Root cause:** The native file-change listener refreshed the display from Core without synchronizing the React-compatible attributes on each matching note block.
+- **Required fix:** When a live Core file record has a name that differs from the widget's stored name, update its canonical display-name attributes through the existing AST update path. Avoid overwriting an in-progress rename input and prevent recursive block-data refresh.
+- **Acceptance:** Rename from either matching widget and verify Core plus every widget attribute agree; save/reopen in both clients, inspect the canonical HTML, and repeat with a rejected rename and a failed page save.
+- **Fix status:** `syncFromCore` now updates the widget's `data-name` and `data-file-name` when Core metadata differs, skips attribute synchronization while that widget is being edited, and guards the block-data refresh during its own update. Focused QML lint passes with existing dynamic-scope and Loader diagnostics; persistence failure and cross-client checks remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

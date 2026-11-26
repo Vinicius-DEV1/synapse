@@ -259,6 +259,7 @@ Exact focused QML lint command for the local-Trash save-order iteration:
 | Confirmed attachment removal and serializer error handling | Source review: Notes AST serialization is validated before removing the node; a failed mutation keeps the dialog open with error text | No injected serialization failure or keyboard interaction was run. |
 | Attachment removal with pending rich-text edits | Source review: confirmed removal flushes pending rich-text slices before serializing the removal, then revalidates the target block | Runtime flush failure, adjacent rich-text edits and serialization failure remain unchecked. |
 | Attachment local Trash, remote Drive delete and typed viewer parity | Not run / not implemented | See QT-NOTES-046 and [10-file-widget-crosswalk.md](10-file-widget-crosswalk.md). |
+| Same-ID file rename attributes | Focused `qmllint` exit 0; source review confirms Core file-change refresh writes the resolved display name to each loaded widget's canonical attributes, with a recursion guard and no write while that widget is being renamed | Existing QML dynamic-scope and Loader diagnostics remain. Verify page save/reload, failure behavior and Qt/React attribute round-trip. |
 
 Exact focused QML lint command for the file-widget lifecycle iteration:
 
