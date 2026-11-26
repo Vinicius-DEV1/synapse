@@ -543,7 +543,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** Popup positioning uses periodic polling to detect visual movement instead of subscribing to the active Notes viewport's scroll/transform changes.
 - **Required fix:** Replace the unconditional timer with event-driven updates from the actual scroll viewport(s) that contain the supported palette anchors. Keep updates on open, anchor geometry and overlay resize; preserve correct attachment while scrolling, nested editors and file/bundle/event widgets.
 - **Acceptance:** With each palette anchor type, verify position at top/bottom viewport edges, during vertical scrolling and window resize, then inspect that no repeating timer runs while idle. Confirm closing/dismissing the palette disconnects any temporary viewport observers and keyboard escape/outside-click behavior remains unchanged.
-- **Fix status:** Open. Source review found the 40 ms polling timer; no behavior change was made because the exact scroll viewport ancestry needs to be traced before removing the fallback safely.
+- **Fix status:** Source fix applied: the palette resolves the nearest ancestor `Flickable`, updates on horizontal/vertical content movement, and clears its dynamic scroll observer when closed. The 40 ms repeating timer is removed. Focused `qmllint` and the native app build pass; runtime scroll anchoring for top-level and nested Notes editors remains unverified.
 
 ## Second-pass review
 

@@ -172,7 +172,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 ## J. Performance, accessibility and visual parity
 
-- [ ] Remove the widget color palette’s unconditional 40 ms position polling after tracing its containing Flickable(s); verify scroll anchoring and no idle timer while open (QT-NOTES-057).
+- [x] Remove the widget color palette’s unconditional 40 ms position polling; resolve the nearest ancestor Flickable and clear the observer on close (QT-NOTES-057).
+- [ ] Verify palette anchoring during vertical/horizontal scroll, resize, nested editors, keyboard dismissal and outside-click dismissal; confirm no timer remains active while the palette is open and idle (QT-NOTES-057).
 
 - [ ] Measure 100/500/1,000-block notes for startup, first edit, input latency, scroll, parse, serialize, save and memory.
 - [ ] Measure large tables, filtering, image-heavy pages, nested widgets and Mermaid diagrams.

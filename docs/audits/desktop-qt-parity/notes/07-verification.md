@@ -379,4 +379,4 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 
 | Check | Result | Scope and limits |
 | --- | --- | --- |
-| `NotesWidgetColorPalette.qml` timer and positioning connections | Found an unconditional 40 ms repeating timer while the popup is open, alongside open, anchor geometry and overlay resize handlers | Source review establishes recurring wakeups, but no idle CPU profile or scroll runtime capture was taken. Removing the timer safely requires identifying all containing Notes scroll viewports, including nested editors. Tracked in QT-NOTES-057. |
+| `NotesWidgetColorPalette.qml` timer and positioning connections | Source fix removes the 40 ms poll, resolves the nearest ancestor `Flickable`, observes `contentX`/`contentY`, and disconnects on close | Focused `qmllint` passes without diagnostics and the native app target builds. Runtime anchoring during scroll and idle resource use were not captured; nested editor behavior remains open under QT-NOTES-057. |
