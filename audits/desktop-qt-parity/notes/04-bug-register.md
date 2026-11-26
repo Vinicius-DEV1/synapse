@@ -787,6 +787,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify next/back navigation closes the disclosure for both source and destination, preserves typed answer and evaluation, and does not change the result count. Compare navigation state with React.
 - **Fix status:** `goToQuestion()` now clears `showExplanation` for the Notes focus flow and retains the existing generic behavior. The focused QML integration test evaluates the first of two questions, advances, evaluates the second, and returns to verify the first answer/verdict remains confirmed while its explanation is closed. Active-window and matched-viewport acceptance remain open; see [07-verification.md](07-verification.md).
 
+## QT-NOTES-084: Notes focus omits React's arrow-key question navigation
+
+- **Severity:** Medium; React's sequential player navigates questions with Left/Right arrows and permits Alt+Left/Right while the answer text field is focused. Qt previously exposed navigation only through visible buttons.
+- **Evidence:** React `QuizSequentialPlayer.tsx::handleContainerKeyDown()` routes Left/Right to previous/next, allows the modified arrow while typing, and also maps `<`/`>` when the player is not in an input. Qt `QuizSequentialFocusModal.qml` had no equivalent Notes keyboard navigation shortcuts.
+- **Reproduction:** Start a Notes focus session, type an answer, and try navigating with the keyboard. Before the fix, only the mouse buttons or the submit/advance Enter path could change questions.
+- **Root cause:** The native modal implemented selection, explanation, submission and dismissal shortcuts but omitted React's question-navigation bindings.
+- **Required fix:** Add Notes-only Left/Right and `<`/`>` navigation when the answer field is unfocused, plus Alt+Left/Right navigation when it is focused. Preserve drafts, close explanation on question change, and show the existing finish confirmation at the last question. Keep non-Notes focus shortcut behavior unchanged.
+- **Acceptance:** Verify key dispatch in an active window, text entry vs modified navigation, first/last-question boundaries, finish-dialog behavior, unanswered/pending counts, draft and evaluated-answer restoration, shortcut propagation and matched-viewport comparison.
+- **Fix status:** Qt now registers Notes-only Left/Right and `<`/`>` sequences for the unfocused editor and Alt+Left/Right sequences independent of text focus. The helpers reuse `goToQuestion()`, preserve drafts and open the finish confirmation at the final question. Focused QML coverage validates sequences, focus gating, previous/next behavior, draft restoration and last-question confirmation. Active-window key dispatch, visible count/focus behavior and matched-viewport comparison remain open; see [07-verification.md](07-verification.md).
+
 ## QT-NOTES-076: Duplicate Notes links expand inline instead of opening React's modal
 
 - **Severity:** Medium; the duplicate count badge exposed the matching pages, but Qt expanded them inside the link card. React presents a centered overlay with the target URL, page titles, ancestor paths, navigation actions, backdrop dismissal and Escape handling.
