@@ -21,9 +21,11 @@ Item {
         return String(aiClient.getModel() || "gemini").replace(/^models\//, "")
     }
 
-    function evaluate(batteryTitle, question, questionIndex, questions, history, userMessage, callback, progressCallback) {
+    function evaluate(batteryTitle, question, questionIndex, questions, history, userMessage,
+                      callback, progressCallback, referencedBatteries) {
         if (progressCallback) progressCallback("generating", modelName())
-        var prompt = AssistantPrompt.buildAssistantPrompt(history, questions, userMessage, batteryTitle, "")
+        var prompt = AssistantPrompt.buildAssistantPrompt(history, questions, userMessage,
+            batteryTitle, "", referencedBatteries)
         aiClient.promptText("", prompt, [], function(success, responseText, errorMessage) {
             if (!success) {
                 callback(false, null, errorMessage || qsTr("Falha ao conversar com a IA. Tente novamente."))

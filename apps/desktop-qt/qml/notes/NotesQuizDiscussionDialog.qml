@@ -35,7 +35,7 @@ Rectangle {
 
     Shortcut {
         sequence: "Escape"
-        enabled: dialogRoot.visible
+        enabled: dialogRoot.visible && !assistantComposer.showMentionMenu
         onActivated: dialogRoot.requestClose()
     }
 
@@ -104,6 +104,11 @@ Rectangle {
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
                             }
+                            Notes.NotesQuizDiscussionQuickShortcuts {
+                                Layout.fillWidth: true
+                                enabled: !dialogRoot.isSending
+                                onPromptRequested: function(prompt) { assistantComposer.submit(prompt) }
+                            }
                             Text {
                                 Layout.fillWidth: true
                                 text: qsTr("Pergunte sobre o gabarito, a avaliação ou formas de melhorar sua resposta.")
@@ -130,6 +135,13 @@ Rectangle {
                             onApplyAllRequested: dialogRoot.applyAll(index)
                             onRejectAllRequested: dialogRoot.rejectAll(index)
                         }
+                    }
+
+                    Notes.NotesQuizDiscussionQuickShortcuts {
+                        visible: dialogRoot.chatHistory.length === 2 && !dialogRoot.isSending
+                        Layout.fillWidth: true
+                        enabled: !dialogRoot.isSending
+                        onPromptRequested: function(prompt) { assistantComposer.submit(prompt) }
                     }
 
                     Rectangle {
@@ -160,55 +172,15 @@ Rectangle {
                 })
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(72, composerInput.implicitHeight + 30)
-                color: "#241934"
-                border.color: "#4c1d95"
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 14
-                    spacing: 10
-
-                    TextArea {
-                        id: composerInput
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Math.min(140, Math.max(42, contentHeight + 18))
-                        text: dialogRoot.chatInput
-                        placeholderText: qsTr("Digite sua pergunta... (Shift+Enter para nova linha)")
-                        color: "#f3e8ff"
-                        placeholderTextColor: "#7c7089"
-                        font.pixelSize: 12
-                        wrapMode: TextEdit.Wrap
-                        padding: 12
-                        background: Rectangle {
-                            color: "#0c0a12"
-                            radius: 12
-                            border.color: composerInput.activeFocus ? "#8b5cf6" : "#4c1d95"
-                        }
-                        onTextChanged: dialogRoot.chatInput = text
-                        Keys.onReturnPressed: function(event) {
-                            if (!(event.modifiers & Qt.ShiftModifier)) {
-                                event.accepted = true
-                                dialogRoot.sendMessage()
-                            }
-                        }
-                        Keys.onEnterPressed: function(event) {
-                            if (!(event.modifiers & Qt.ShiftModifier)) {
-                                event.accepted = true
-                                dialogRoot.sendMessage()
-                            }
-                        }
-                    }
-                    Button {
-                        text: dialogRoot.isSending ? "◌" : qsTr("Enviar")
-                        enabled: !dialogRoot.isSending && dialogRoot.chatInput.trim().length > 0
-                        Layout.preferredWidth: 96
-                        Layout.preferredHeight: 42
-                        onClicked: dialogRoot.sendMessage()
-                    }
-                }
+            Notes.NotesQuizDiscussionComposer {
+                id: assistantComposer
+                controller: dialogRoot.evaluator ? dialogRoot.evaluator.controller : null
+                activeBatteryId: dialogRoot.batteryId
+                inputText: dialogRoot.chatInput
+                isSending: dialogRoot.isSending
+                canSend: Boolean(dialogRoot.question)
+                onInputTextUpdated: function(text) { dialogRoot.chatInput = text }
+                onSendRequested: function(message, references) { dialogRoot.sendMessage(message, references) }
             }
         }
     }
@@ -231,7 +203,7 @@ Rectangle {
         }
     }
 
-    function sendMessage(overrideText) {
+    function sendMessage(overrideText, referencedBatteries) {
         var messageText = String(overrideText !== undefined ? overrideText : dialogRoot.chatInput).trim()
         if (!messageText || dialogRoot.isSending || !dialogRoot.question || !dialogRoot.evaluator) return
         var userMessage = { id: "user_" + Date.now(), role: "user", text: messageText }
@@ -264,7 +236,7 @@ Rectangle {
             if (token !== dialogRoot.requestToken) return
             dialogRoot.progressStep = String(step || "generating")
             if (model) dialogRoot.activeModel = String(model)
-        })
+        }, referencedBatteries || [])
     }
 
     function applyActions(messageIndex, requestedIds) { DiscussionActions.applyActions(dialogRoot, messageIndex, requestedIds) }
@@ -293,5 +265,6 @@ Rectangle {
         dialogRoot.chatInput = ""
         dialogRoot.errorText = ""
         dialogRoot.isApplying = false
+        assistantComposer.clearReferences()
     }
 }

@@ -702,3 +702,16 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` on the changed assistant components | Passed with warnings only in the shared sequential-focus modal; new proposal/assistant files are warning-free after cleanup | This does not claim the entire QML folder is warning-free. |
 | `git diff --check` | Passed | No patch whitespace errors. |
 | Live Gemini, QML-to-Core accepted action, saved-note reopen, keyboard/focus return, matched viewport | Not run | Keep QT-NOTES-078/079 open. Qt currently uses the same configured Gemini model for generation and validation, unlike React's separate validator-model preference. |
+
+### Notes assistant shortcuts and referenced batteries (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_quiz_discussion.qml -import apps/desktop-qt/qml` | Passed: 24 QtTest results | Covers all four React quick-prompt templates; active/standalone/already attached battery exclusions; matching by title/page; keyboard index wrap/dismiss/no-results; attach/remove; loading reference questions lazily; prompt context inclusion and read-only boundary; plus the proposal lifecycle cases above. The controller and provider are mocked. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_open_answer_flow.qml -import apps/desktop-qt/qml` | Passed: 14 QtTest results | Existing open-answer flow remains intact. |
+| `cargo test -p synapse-core domain::questions::tests -- --nocapture` | Passed: 3 tests | Covers linked battery page ID/title metadata and standalone batteries without page metadata, along with page-linked creation behavior. |
+| `cargo build --release -p synapse-bridge-qt` | Passed | Rebuilds the Qt JSON bridge against the added battery page metadata. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native app links against the updated Core bridge. |
+| Focused `qmllint` for the Notes assistant dialog, composer and quick-prompt components | Passed with no diagnostics | New composer and prompt UI are clean. |
+| `git diff --check` | Passed | No patch whitespace errors. |
+| Real Notes battery/page loading, Gemini generation using references, physical keyboard event and matched-viewport comparison | Not run | Keep QT-NOTES-080 acceptance open for live database/provider and visual evidence. |

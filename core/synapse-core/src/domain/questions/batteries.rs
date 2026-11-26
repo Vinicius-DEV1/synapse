@@ -14,8 +14,14 @@ pub fn get_quiz_battery(
 
     conn.query_row(
         "SELECT b.id, b.title, b.description,
+                COALESCE(b.page_id, (SELECT link.page_id FROM quiz_page_links link
+                    WHERE link.battery_id = b.id ORDER BY link.created_at LIMIT 1)), p.title,
                 (SELECT count(*) FROM quiz_questions q WHERE q.battery_id = b.id AND q.deleted_at IS NULL) as question_count
          FROM quiz_batteries b
+         LEFT JOIN pages p ON p.id = COALESCE(b.page_id, (
+            SELECT link.page_id FROM quiz_page_links link WHERE link.battery_id = b.id
+            ORDER BY link.created_at LIMIT 1
+         ))
          WHERE b.id = ? AND b.deleted_at IS NULL",
         [trimmed_id],
         |row| {
@@ -23,7 +29,9 @@ pub fn get_quiz_battery(
                 id: row.get(0)?,
                 title: row.get(1)?,
                 description: row.get(2)?,
-                question_count: row.get(3)?,
+                page_id: row.get(3)?,
+                page_title: row.get(4)?,
+                question_count: row.get(5)?,
             })
         },
     )
@@ -34,8 +42,14 @@ pub fn get_quiz_battery(
 pub fn get_quiz_batteries(conn: &rusqlite::Connection) -> Result<Vec<QuizBattery>> {
     let mut stmt = conn.prepare(
         "SELECT b.id, b.title, b.description,
+                COALESCE(b.page_id, (SELECT link.page_id FROM quiz_page_links link
+                    WHERE link.battery_id = b.id ORDER BY link.created_at LIMIT 1)), p.title,
                 (SELECT count(*) FROM quiz_questions q WHERE q.battery_id = b.id AND q.deleted_at IS NULL) as question_count
          FROM quiz_batteries b
+         LEFT JOIN pages p ON p.id = COALESCE(b.page_id, (
+            SELECT link.page_id FROM quiz_page_links link WHERE link.battery_id = b.id
+            ORDER BY link.created_at LIMIT 1
+         ))
          WHERE b.deleted_at IS NULL
          ORDER BY b.created_at DESC",
     )?;
@@ -46,7 +60,9 @@ pub fn get_quiz_batteries(conn: &rusqlite::Connection) -> Result<Vec<QuizBattery
                 id: row.get(0)?,
                 title: row.get(1)?,
                 description: row.get(2)?,
-                question_count: row.get(3)?,
+                page_id: row.get(3)?,
+                page_title: row.get(4)?,
+                question_count: row.get(5)?,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;

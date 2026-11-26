@@ -15,19 +15,30 @@ function questionText(question, index) {
     return text
 }
 
-function buildAssistantPrompt(history, questions, userMessage, title, description) {
+function buildAssistantPrompt(history, questions, userMessage, title, description, referencedBatteries) {
     var list = Array.isArray(questions) ? questions : []
     var prompt = "You are Synapse's pedagogical quiz assistant. Respond in the student's language, warmly and accurately.\n\n"
     prompt += "Quiz battery: " + String(title || "Exercise battery") + "\n"
     if (description) prompt += "Guidelines: " + String(description) + "\n"
     prompt += "\nCurrent questions (" + list.length + "):\n"
     prompt += list.length ? list.map(questionText).join("\n\n") : "(This battery is empty.)"
+    var references = Array.isArray(referencedBatteries) ? referencedBatteries : []
+    if (references.length > 0) {
+        prompt += "\n\nREFERENCED BATTERIES (read-only context; avoid repeating their questions):\n"
+        references.forEach(function(battery, batteryIndex) {
+            prompt += "\nReference " + (batteryIndex + 1) + ": " + String(battery.title || "")
+                + " (" + String((battery.questions || []).length) + " questions)\n"
+            if (battery.pageTitle) prompt += "From page: " + String(battery.pageTitle) + "\n"
+            if (battery.description) prompt += "Guidelines: " + String(battery.description) + "\n"
+            prompt += (battery.questions || []).map(questionText).join("\n") + "\n"
+        })
+    }
     prompt += "\n\nRecent conversation:\n"
     prompt += (history || []).slice(-10).map(function(entry) {
         return (entry.role === "user" ? "User: " : "Assistant: ") + String(entry.text || "")
     }).join("\n") || "(none)"
     prompt += "\n\nNew user message: " + String(userMessage || "") + "\n\n"
-    prompt += "You can propose concrete actions only when useful. Never state that an action was applied; it requires the learner's approval.\n"
+    prompt += "You can propose concrete actions only when useful. Never state that an action was applied; it requires the learner's approval. Referenced batteries are read-only and must never appear as action targets.\n"
     prompt += "Action types: create (new question), edit (targetQuestionIndex is 1-based; changes contains only changed fields), delete (1-based targetQuestionIndex and reason), reorder (order is a complete sequence of 1-based question indexes). Multiple actions may be combined. Avoid duplicate questions. Keep questions, options, answers, tags and explanations in the student's language. Multiple-choice questions require at least two non-empty options and a zero-based correctIndex. Open questions use expectedAnswer.\n\n"
     prompt += 'Return only JSON: {"message":"Helpful markdown response","suggestedActions":[{"actionType":"create","type":"multiple_choice","question":"...","options":["...","..."],"correctIndex":0,"explanation":"...","tags":[]},{"actionType":"create","type":"open","question":"...","expectedAnswer":"...","explanation":"...","tags":[]},{"actionType":"edit","targetQuestionIndex":1,"changes":{"question":"..."}},{"actionType":"delete","targetQuestionIndex":1,"reason":"..."},{"actionType":"reorder","order":[2,1],"reason":"..."}],"validationSummary":"optional"}'
     prompt += '\nThe suggestedActions field is optional and should be omitted when no concrete changes are proposed. Return raw JSON without markdown fences.'

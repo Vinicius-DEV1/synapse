@@ -6,6 +6,7 @@ import "../../../qml/notes/NotesQuizDiscussionActionParser.js" as ActionParser
 import "../../../qml/notes/NotesQuizAssistantPrompt.js" as AssistantPrompt
 import "../../../qml/notes/NotesQuizAssistantSession.js" as AssistantSession
 import "../../../qml/notes/NotesQuizAssistantResponseParser.js" as ResponseParser
+import "../../../qml/notes/NotesQuizBatteryMentions.js" as BatteryMentions
 
 TestCase {
     id: testCase
@@ -16,6 +17,8 @@ TestCase {
 
     property var dialog: null
     property var discussionEvaluator: null
+    property var composer: null
+    property var quickShortcuts: null
 
     QtObject {
         id: mockController
@@ -23,6 +26,14 @@ TestCase {
         property string lastBatteryId: ""
         property var lastCoreActions: []
         property bool nextCoreSuccess: true
+        function getQuizBatteries() {
+            return [
+                { id: "battery-1", title: "Active battery", page_id: "page-active", question_count: 1 },
+                { id: "ref-bio", title: "Biology review", description: "Cell biology", page_id: "page-bio", page_title: "Biology notes", question_count: 2 },
+                { id: "ref-math", title: "Math review", page_id: "page-math", page_title: "Math notes", question_count: 1 },
+                { id: "standalone", title: "Standalone", question_count: 1 }
+            ]
+        }
         function getConfig(key, fallback) { return fallback }
         function applyQuizAssistantActions(batteryId, actions) {
             actionCalls++
@@ -31,6 +42,10 @@ TestCase {
             return nextCoreSuccess ? ({ success: true }) : ({ success: false, error: "Core failure" })
         }
         function getBatteryQuestions(batteryId) {
+            if (batteryId === "ref-bio") return [
+                { id: "ref-q1", type: "open", question: "Describe a cell", expected_answer: "A basic unit" },
+                { id: "ref-q2", type: "multiple_choice", question: "Cell part?", options: '["Nucleus","Cloud"]', correct_index: 0 }
+            ]
             return [{ id: "refreshed", question: "Updated from Core", type: "open" }]
         }
         function getLatestQuizAttempts(batteryId, questionId) { return ({}) }
@@ -87,6 +102,22 @@ TestCase {
         Notes.NotesQuizDiscussionEvaluator { controller: mockController }
     }
 
+    Component {
+        id: composerComponent
+        Notes.NotesQuizDiscussionComposer {
+            controller: mockController
+            activeBatteryId: "battery-1"
+        }
+    }
+
+    Component {
+        id: quickShortcutsComponent
+        Notes.NotesQuizDiscussionQuickShortcuts { width: 800; height: 100 }
+    }
+
+    SignalSpy { id: sendSpy; target: testCase.composer; signalName: "sendRequested" }
+    SignalSpy { id: shortcutSpy; target: testCase.quickShortcuts; signalName: "promptRequested" }
+
     SignalSpy {
         id: closeSpy
         target: testCase.dialog
@@ -115,11 +146,17 @@ TestCase {
         mockEvaluator.pendingCallback = null
         dialog = createTemporaryObject(dialogComponent, testCase)
         discussionEvaluator = createTemporaryObject(evaluatorComponent, testCase)
+        composer = createTemporaryObject(composerComponent, testCase)
+        quickShortcuts = createTemporaryObject(quickShortcutsComponent, testCase)
         verify(dialog !== null)
         verify(discussionEvaluator !== null)
+        verify(composer !== null)
+        verify(quickShortcuts !== null)
         mockController.actionCalls = 0
         mockController.nextCoreSuccess = true
         closeSpy.clear()
+        sendSpy.clear()
+        shortcutSpy.clear()
     }
 
     function test_openSendsQuestionAnswerEvaluationAndReferenceContext() {
@@ -277,6 +314,82 @@ TestCase {
         verify(prompt.indexOf('"suggestedActions"') >= 0)
         verify(prompt.indexOf("targetQuestionIndex") >= 0)
         verify(prompt.indexOf("requires the learner's approval") >= 0)
+    }
+
+    function test_quickPromptComponentKeepsReactPromptsAndSendsSelectedTemplate() {
+        compare(quickShortcuts.prompts.length, 4)
+        quickShortcuts.requestPrompt(0)
+
+        compare(shortcutSpy.count, 1)
+        compare(shortcutSpy.signalArguments[0][0],
+            "Crie 3 questões de nível intermediário sobre este tema com explicações didáticas detalhadas.")
+    }
+
+    function test_batteryMentionsExcludeActiveAndAttachedAndLoadReferenceQuestionsLazily() {
+        compare(composer.batteries.length, 2)
+        composer.inputText = "@notes"
+        composer.updateMentionQuery()
+        compare(composer.filteredBatteries.length, 2)
+        verify(composer.filteredBatteries.some(function(battery) { return battery.pageTitle === "Biology notes" }))
+        composer.inputText = "Compare with @bio"
+        composer.updateMentionQuery()
+        compare(composer.showMentionMenu, true)
+        compare(composer.mentionQuery, "bio")
+        compare(composer.filteredBatteries.length, 1)
+        compare(composer.filteredBatteries[0].id, "ref-bio")
+
+        composer.selectBattery(0)
+
+        compare(composer.attachedBatteries.length, 1)
+        compare(composer.attachedBatteries[0].questions.length, 2)
+        compare(composer.attachedBatteries[0].questions[1].options[0], "Nucleus")
+        compare(composer.attachedBatteries[0].pageTitle, "Biology notes")
+        compare(composer.inputText, "Compare with ")
+        compare(composer.filteredBatteries.length, 1)
+    }
+
+    function test_batteryMentionCanBeRemovedAndSubmissionIncludesOnlyAttachedReferences() {
+        composer.attachedBatteries = [BatteryMentions.attachBattery(mockController, {
+            id: "ref-bio", title: "Biology review", description: "Cell biology", page_id: "page-bio"
+        })]
+        composer.inputText = "Review @"
+        composer.submit()
+
+        compare(sendSpy.count, 1)
+        compare(sendSpy.signalArguments[0][0], "Review @")
+        compare(sendSpy.signalArguments[0][1].length, 1)
+        compare(sendSpy.signalArguments[0][1][0].id, "ref-bio")
+        composer.removeReference("ref-bio")
+        compare(composer.attachedBatteries.length, 0)
+    }
+
+    function test_batteryMentionKeyboardSelectionWrapsAndDismisses() {
+        composer.inputText = "@"
+        composer.updateMentionQuery()
+        compare(composer.filteredBatteries.length, 2)
+        composer.moveMentionSelection(-1)
+        compare(composer.selectedMentionIndex, 1)
+        composer.moveMentionSelection(1)
+        compare(composer.selectedMentionIndex, 0)
+        composer.dismissMentionMenu()
+        compare(composer.showMentionMenu, false)
+
+        composer.inputText = "@absent"
+        composer.updateMentionQuery()
+        compare(composer.filteredBatteries.length, 0)
+        composer.moveMentionSelection(1)
+        compare(composer.selectedMentionIndex, 0)
+    }
+
+    function test_referencedBatteryContentIsReadOnlyPromptContext() {
+        var prompt = AssistantPrompt.buildAssistantPrompt([], [questionFixture()], "Create a new question",
+            "Biology", "", [{ title: "Other battery", description: "Reference only",
+                pageTitle: "Biology notes", questions: [{ question: "Describe a cell", type: "open" }] }])
+
+        verify(prompt.indexOf("REFERENCED BATTERIES") >= 0)
+        verify(prompt.indexOf("Describe a cell") >= 0)
+        verify(prompt.indexOf("Biology notes") >= 0)
+        verify(prompt.indexOf("must never appear as action targets") >= 0)
     }
 
     function test_questionRefreshPreservesCurrentQuestionAndAnswersAcrossReorder() {

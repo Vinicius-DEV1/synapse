@@ -21,6 +21,8 @@ fn test_quiz_lifecycle_and_error_notebook() {
         .unwrap();
     assert_eq!(battery.id, bat_id);
     assert_eq!(battery.title, "Rust Concurrency");
+    assert!(battery.page_id.is_none());
+    assert!(battery.page_title.is_none());
     assert!(QuizRepository::get_quiz_battery(&db, "missing-battery")
         .unwrap()
         .is_none());
@@ -130,6 +132,15 @@ fn test_create_quiz_battery_for_page_persists_sequential_battery_and_link_atomic
         )
         .unwrap();
     assert_eq!(link_count, 1);
+    drop(conn);
+
+    let battery = QuizRepository::get_quiz_battery(&db, &battery_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(battery.page_id.as_deref(), Some("page-notes-1"));
+    assert_eq!(battery.page_title.as_deref(), Some("Notes page"));
+    let listed = QuizRepository::get_quiz_batteries(&db).unwrap();
+    assert_eq!(listed[0].page_title.as_deref(), Some("Notes page"));
 }
 
 #[test]

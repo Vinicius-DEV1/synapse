@@ -55,6 +55,8 @@ pub struct QuizAssistantQuestionChanges {
 pub struct QuizBattery {
     #[serde(default)]
     pub id: String,
+    pub page_id: Option<String>,
+    pub page_title: Option<String>,
     #[serde(default)]
     pub title: String,
     pub description: Option<String>,
