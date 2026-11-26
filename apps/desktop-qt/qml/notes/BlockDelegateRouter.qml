@@ -16,6 +16,7 @@ Loader {
     property var controller: null
     property var textOperations: typeof notesTextOperations !== "undefined" ? notesTextOperations : null
     property bool active: false
+    property bool nextBlockIsFileWidget: false
     property int nestingDepth: 0
 
     signal blockChanged(int idx, var updatedBlock)
@@ -51,6 +52,7 @@ Loader {
     signal navigatePrevRequested(int idx)
     signal navigateNextRequested(int idx)
     signal mergePrevRequested(int idx)
+    signal deleteNextFileWidgetRequested(int idx)
 
     sourceComponent: {
         var t = routerLoader.blockData ? routerLoader.blockData.blockType : "richText"
@@ -101,6 +103,7 @@ Loader {
         NotesRichTextEditor {
             id: sliceRich
             width: routerLoader.width
+            nextBlockIsFileWidget: routerLoader.nextBlockIsFileWidget
             autoHeight: true
             implicitHeight: Math.max(40, richTextInputImplicitHeight)
             readonly property real richTextInputImplicitHeight: editor ? (editor.implicitHeight + 12) : 32
@@ -132,6 +135,7 @@ Loader {
             onNavigatePrevRequested: routerLoader.navigatePrevRequested(routerLoader.blockIndex)
             onNavigateNextRequested: routerLoader.navigateNextRequested(routerLoader.blockIndex)
             onMergePrevRequested: routerLoader.mergePrevRequested(routerLoader.blockIndex)
+            onDeleteNextFileWidgetRequested: routerLoader.deleteNextFileWidgetRequested(routerLoader.blockIndex + 1)
             onConvertUrlToCardRequested: function(url) {
                 var safeUrl = HtmlEscaping.escapeHtmlAttribute(url)
                 routerLoader.insertAfterRequested(routerLoader.blockIndex,

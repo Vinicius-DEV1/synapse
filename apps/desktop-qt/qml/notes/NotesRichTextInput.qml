@@ -1,9 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
 import "NotesSlashCommandArguments.js" as SlashArgs
 import "RichTextMarkdownRules.js" as MdRules
-import "../ui"
 
 Item {
     id: inputRoot
@@ -12,6 +10,7 @@ Item {
     property var spoilerRevealControl
     property var richCommands
     property var commitTimer
+    property bool nextBlockIsFileWidget: false
     property string previousPlainText: ""
     property bool slashMenuOpen: false
     property alias pageReferenceMenuOpen: pageReferenceFlow.open
@@ -33,6 +32,7 @@ Item {
     signal navigatePrevRequested()
     signal navigateNextRequested()
     signal mergePrevRequested()
+    signal deleteNextFileWidgetRequested()
 
     Timer {
         id: urlDetectTimer
@@ -282,6 +282,13 @@ Item {
                 return
             }
             if (referenceActions.handleKey(event)) return
+            if (event.key === Qt.Key_Delete && inputRoot.nextBlockIsFileWidget &&
+                    richEditor.cursorPosition >= richEditor.length &&
+                    richEditor.selectionStart === richEditor.selectionEnd) {
+                inputRoot.deleteNextFileWidgetRequested()
+                event.accepted = true
+                return
+            }
             if (commandModifier && event.key === Qt.Key_V &&
                     (event.modifiers & Qt.ShiftModifier) === 0 &&
                     !inputRoot.editorRoot.codeBlockActive && inputRoot.editorRoot.pasteImageFromClipboard()) {

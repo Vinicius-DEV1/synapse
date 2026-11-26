@@ -166,6 +166,11 @@ ColumnLayout {
         commitBlocks(Helpers.deleteBlockInArray(blocks, index))
     }
 
+    function widgetForRow(row) {
+        var router = row ? row["router"] : null
+        return router && router.item ? router.item : null
+    }
+
     function removeFileAttachmentBlock(index) {
         if (index < 0 || index >= blocks.length || !controller ||
                 typeof controller.serializeNoteBlocks !== "function") return false
@@ -439,6 +444,11 @@ ColumnLayout {
         if (idx <= 0 || idx >= blocks.length) return
         var prev = blocks[idx - 1]; var curr = blocks[idx]
         if (curr.blockType !== "richText") return
+        if (prev.blockType === "fileWidget") {
+            var previousRow = blockRepeater.itemAt(idx - 1)
+            requestBlockDeletion(idx - 1, widgetForRow(previousRow))
+            return
+        }
         if (prev.blockType === "richText") {
             var next = blocks.slice()
             var mergedHtml = (prev.html || "<p></p>") + (curr.html || "")
@@ -547,6 +557,8 @@ ColumnLayout {
             BlockDelegateRouter {
                 id: sliceRouter
                 width: parent.width; blockData: blockRow.liveBlockData; blockIndex: blockRow.index
+                nextBlockIsFileWidget: blockRow.index + 1 < blockListRoot.blocks.length &&
+                    blockListRoot.blocks[blockRow.index + 1].blockType === "fileWidget"
                 pageId: blockListRoot.pageId; pageTitle: blockListRoot.pageTitle; pageList: blockListRoot.pageList
                 looseFileItems: blockListRoot.looseDocumentBundleFiles
                 documentBundleManagerOpen: blockListRoot.openDocumentBundleManagerBlockId !== "" &&
@@ -626,6 +638,10 @@ ColumnLayout {
                 onNavigatePrevRequested: function(idx) { blockListRoot.focusRichBlockAt(idx - 1, true) }
                 onNavigateNextRequested: function(idx) { blockListRoot.focusRichBlockAt(idx + 1, false) }
                 onMergePrevRequested: function(idx) { blockListRoot.mergeRichWithPrev(idx) }
+                onDeleteNextFileWidgetRequested: function(idx) {
+                    var nextRow = blockRepeater.itemAt(idx)
+                    blockListRoot.requestBlockDeletion(idx, blockListRoot.widgetForRow(nextRow))
+                }
                 onPagePreviewRequested: function(pid) { blockListRoot.pagePreviewRequested(pid) }
                 onPageOpenRequested: function(pid) { blockListRoot.pageOpenRequested(pid) }
                 onExternalLinkRequested: function(lnk) { blockListRoot.externalLinkRequested(lnk) }

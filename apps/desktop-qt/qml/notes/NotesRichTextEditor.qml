@@ -10,6 +10,7 @@ Item {
     property var textOperations: notesTextOperations
     property bool active: false
     property bool autoHeight: false
+    property bool nextBlockIsFileWidget: false
     property bool isLoading: false
     property bool isComponentReady: false
     property bool hasPendingChanges: false
@@ -56,6 +57,7 @@ Item {
     signal navigatePrevRequested()
     signal navigateNextRequested()
     signal mergePrevRequested()
+    signal deleteNextFileWidgetRequested()
 
     function createLinkedPage(title) {
         var pageTitle = String(title || "").trim()
@@ -272,6 +274,7 @@ Item {
         width: parent.width
         height: richRoot.autoHeight ? implicitHeight : parent.height
         editorRoot: richRoot
+        nextBlockIsFileWidget: richRoot.nextBlockIsFileWidget
         taskListControls: taskListControls
         spoilerRevealControl: spoilerRevealControl
         richCommands: richCommands
@@ -284,6 +287,7 @@ Item {
         onNavigatePrevRequested: richRoot.navigatePrevRequested()
         onNavigateNextRequested: richRoot.navigateNextRequested()
         onMergePrevRequested: richRoot.mergePrevRequested()
+        onDeleteNextFileWidgetRequested: richRoot.deleteNextFileWidgetRequested()
     }
 
     NotesTableExcelGrips {
