@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesHtmlEscaping.js" as HtmlEscaping
 import "../ui"
 
 // Interactive colored Callout / Blockquote mirroring apps/web-react/src/components/editor-extensions/ColorBlockquoteComponent.tsx
@@ -57,7 +58,7 @@ Rectangle {
         var lines = String(txt || "").split("\n")
         var out = ""
         for (var i = 0; i < lines.length; ++i) {
-            var esc = lines[i].replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            var esc = HtmlEscaping.escapeHtmlText(lines[i])
             out += "<p>" + (esc.length > 0 ? esc : "<br/>") + "</p>"
         }
         return out || "<p></p>"

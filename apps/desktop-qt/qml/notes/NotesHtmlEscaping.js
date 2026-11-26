@@ -12,3 +12,9 @@ function escapeHtmlAttribute(value) {
         .replace(/\"/g, "&quot;")
         .replace(/'/g, "&#39;")
 }
+
+function escapeHtmlNonNegativeIntegerAttribute(value) {
+    var number = Number(value)
+    var normalized = isFinite(number) && number >= 0 ? Math.floor(number) : 0
+    return escapeHtmlAttribute(normalized)
+}

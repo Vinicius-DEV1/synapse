@@ -92,7 +92,7 @@ Item {
             }
             var t = HtmlEscaping.escapeHtmlAttribute(scrapTitleInput.text.trim() || result.title || "Captura Web")
             var u = HtmlEscaping.escapeHtmlAttribute(result.url || scrapUrlInput.text.trim())
-            var sz = Number(result.file_size || 0)
+            var sz = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(result.file_size)
             var exc = HtmlEscaping.escapeHtmlAttribute(result.excerpt || "")
             mediaPickerRoot.insertWidgetRequested(
                 "<div class=\"scrap-widget-block\" data-type=\"scrap-widget\" data-status=\"ready\" title=\"" + t +
@@ -111,10 +111,11 @@ Item {
                 var label = HtmlEscaping.escapeHtmlAttribute(newest.name || "Arquivo")
                 var fileId = HtmlEscaping.escapeHtmlAttribute(newest.id)
                 var fileType = HtmlEscaping.escapeHtmlAttribute(newest.file_type || "document")
+                var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(newest.file_size)
                 mediaPickerRoot.insertWidgetRequested(
                     "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
                     "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
-                    fileType + "\" data-file-size=\"" + (newest.file_size || 0) + "\"></div>"
+                    fileType + "\" data-file-size=\"" + fileSize + "\"></div>"
                 )
                 mediaPickerRoot.close()
             }
@@ -232,7 +233,8 @@ Item {
                                 var mediaId = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.id)
                                 if (mediaPickerRoot.activeMode === "documento") {
                                     var fileType = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.file_type || "document")
-                                    mediaPickerRoot.insertWidgetRequested("<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + mediaId + "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" + fileType + "\" data-file-size=\"" + (itemBtn.modelData.file_size || 0) + "\"></div>")
+                                    var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(itemBtn.modelData.file_size)
+                                    mediaPickerRoot.insertWidgetRequested("<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + mediaId + "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" + fileType + "\" data-file-size=\"" + fileSize + "\"></div>")
                                 } else {
                                     var mType = mediaPickerRoot.activeMode === "livro" ? "book" : "video"
                                     mediaPickerRoot.insertWidgetRequested("<span class=\"media-widget\" data-type=\"media-widget\" data-media-type=\"" + mType + "\" data-media-id=\"" + mediaId + "\" data-title=\"" + label + "\"></span>")

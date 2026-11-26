@@ -40,7 +40,11 @@ Item {
             var title = dotIdx > 0 ? fileName.substring(0, dotIdx) : fileName
 
             var isHtml = /\.html?$/i.test(fileName)
-            var htmlBody = isHtml ? text : ("<p>" + text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br/>") + "</p>")
+            var htmlBody = text
+            if (!isHtml) {
+                var escapedText = HtmlEscaping.escapeHtmlText(text)
+                htmlBody = "<p>" + escapedText.replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br/>") + "</p>"
+            }
 
             var ctrl = dialogsRoot.controller || dataController
             var newId = ctrl.createSubPage(dialogsRoot.importParentId, title, "📄")
