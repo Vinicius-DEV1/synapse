@@ -26,7 +26,7 @@ Rectangle {
     property bool isSyncingAttributesFromCore: false
     property bool isNotFound: false
     property string renameErrorMessage: ""
-    readonly property bool hasActionFocus: renameActionButton.activeFocus || colorActionButton.activeFocus
+    readonly property bool hasActionFocus: actionBar.hasActionFocus
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default" && !isNotFound
 
@@ -99,15 +99,30 @@ Rectangle {
     function startRename() {
         if (isNotFound || renaming) return
         renameErrorMessage = ""
-        nameInput.text = fileName
         renaming = true
-        Qt.callLater(function() {
-            if (!fileWidgetRoot.renaming) return
-            nameInput.forceActiveFocus()
-            var extensionIndex = nameInput.text.lastIndexOf(".")
-            if (extensionIndex > 0) nameInput.select(0, extensionIndex)
-            else nameInput.selectAll()
-        })
+        renameEditor.beginRename(fileName)
+    }
+
+    function commitRename(nextName) {
+        var trimmed = String(nextName || "").trim()
+        if (trimmed.length === 0 || trimmed === fileName) {
+            renameErrorMessage = ""
+            renaming = false
+            return
+        }
+        var c = controller
+        if (!fileId || !c || typeof c.renameFile !== "function" || !c.renameFile(fileId, trimmed)) {
+            renameErrorMessage = qsTr("Não foi possível renomear o arquivo. Tente novamente.")
+            renameEditor.focusInput()
+            return
+        }
+        renameErrorMessage = ""
+        fileName = trimmed
+        var next = Object.assign({}, attrs)
+        next["data-name"] = trimmed
+        next["data-file-name"] = trimmed
+        attrsUpdated(next)
+        renaming = false
     }
 
     function requestDeleteConfirmation() {
@@ -135,24 +150,6 @@ Rectangle {
         previewFileRequested(fileId, fileName)
     }
 
-    function iconNameForType() {
-        if (isNotFound) return "alert"
-        if (fileType === "pdf" || fileType === "document" || fileType === "doc") return "file-text"
-        if (fileType.indexOf("image") >= 0 || fileType === "png" || fileType === "jpg") return "image"
-        if (fileType.indexOf("video") >= 0 || fileType === "mp4") return "film"
-        if (fileType === "folder") return "folder"
-        return "files"
-    }
-
-    function iconColorForType() {
-        if (isNotFound) return "#f87171"
-        if (fileType === "pdf" || fileType === "document" || fileType === "doc") return "#60a5fa"
-        if (fileType.indexOf("image") >= 0 || fileType === "png" || fileType === "jpg") return "#4ade80"
-        if (fileType.indexOf("video") >= 0 || fileType === "mp4") return "#c084fc"
-        if (fileType === "folder") return "#facc15"
-        return "#a78bfa"
-    }
-
     Component.onCompleted: syncFromCore()
     onBlockDataChanged: {
         if (!isSyncingAttributesFromCore) syncFromCore()
@@ -176,188 +173,36 @@ Rectangle {
         anchors.rightMargin: 8
         spacing: 8
 
-        // Icon container: p-2 bg-dark-bg rounded-lg border border-white/5 mr-1
-        Rectangle {
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
-            radius: 8
-            color: "#0f0e17"
-            border.color: "#0dffffff"
-            border.width: 1
-            AppIcon {
-                anchors.centerIn: parent
-                name: fileWidgetRoot.iconNameForType()
-                color: fileWidgetRoot.iconColorForType()
-                width: 16
-                height: 16
-            }
+        FileAttachmentIdentity {
+            fileName: fileWidgetRoot.fileName
+            fileType: fileWidgetRoot.fileType
+            isMissing: fileWidgetRoot.isNotFound
+            isRenaming: fileWidgetRoot.renaming
+            pointerHovered: hoverHandler.hovered
+            onPreviewRequested: fileWidgetRoot.openFilePreview()
+            onRenameRequested: fileWidgetRoot.startRename()
         }
 
-        // Inline rename input
-        RowLayout {
-            visible: fileWidgetRoot.renaming
-            Layout.fillWidth: true
-            spacing: 4
-
-            TextField {
-                id: nameInput
-                Layout.preferredWidth: 220
-                Layout.preferredHeight: 26
-                text: fileWidgetRoot.fileName
-                color: "#fffffe"
-                font.pixelSize: 12
-                font.weight: Font.Medium
-                leftPadding: 6
-                rightPadding: 6
-                Accessible.description: fileWidgetRoot.renameErrorMessage
-                ToolTip.visible: fileWidgetRoot.renameErrorMessage.length > 0
-                ToolTip.text: fileWidgetRoot.renameErrorMessage
-                ToolTip.timeout: -1
-                onTextEdited: fileWidgetRoot.renameErrorMessage = ""
-                background: Rectangle {
-                    radius: 4
-                    color: "#66000000"
-                    border.color: "#cc8b5cf6"
-                    border.width: 1
-                }
-                onAccepted: {
-                    var trimmed = text.trim()
-                    if (trimmed.length === 0 || trimmed === fileWidgetRoot.fileName) {
-                        fileWidgetRoot.renameErrorMessage = ""
-                        fileWidgetRoot.renaming = false
-                        return
-                    }
-                    var c = fileWidgetRoot.controller
-                    if (!fileWidgetRoot.fileId || !c || typeof c.renameFile !== "function" ||
-                            !c.renameFile(fileWidgetRoot.fileId, trimmed)) {
-                        fileWidgetRoot.renameErrorMessage = qsTr("Não foi possível renomear o arquivo. Tente novamente.")
-                        nameInput.forceActiveFocus()
-                        return
-                    }
-                    fileWidgetRoot.renameErrorMessage = ""
-                    fileWidgetRoot.fileName = trimmed
-                    var next = Object.assign({}, fileWidgetRoot.attrs)
-                    next["data-name"] = trimmed
-                    next["data-file-name"] = trimmed
-                    fileWidgetRoot.attrsUpdated(next)
-                    fileWidgetRoot.renaming = false
-                }
-                Keys.onEscapePressed: {
-                    fileWidgetRoot.renameErrorMessage = ""
-                    fileWidgetRoot.renaming = false
-                }
+        FileAttachmentRenameEditor {
+            id: renameEditor
+            editing: fileWidgetRoot.renaming
+            errorMessage: fileWidgetRoot.renameErrorMessage
+            onRenameRequested: function(nextName) { fileWidgetRoot.commitRename(nextName) }
+            onCancelRequested: {
+                fileWidgetRoot.renameErrorMessage = ""
+                fileWidgetRoot.renaming = false
             }
-
-            ToolButton {
-                id: renameConfirmButton
-                Layout.preferredWidth: 22
-                Layout.preferredHeight: 22
-                focusPolicy: Qt.TabFocus
-                Accessible.name: qsTr("Salvar nome do arquivo")
-                onClicked: nameInput.accepted()
-                background: Rectangle {
-                    radius: 4
-                    color: renameConfirmButton.hovered || renameConfirmButton.activeFocus ? "#3310b981" : "transparent"
-                    border.color: renameConfirmButton.activeFocus ? "#9934d399" : "transparent"
-                    border.width: renameConfirmButton.activeFocus ? 1 : 0
-                }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 13; height: 13 }
-            }
-
-            ToolButton {
-                id: renameCancelButton
-                Layout.preferredWidth: 22
-                Layout.preferredHeight: 22
-                focusPolicy: Qt.TabFocus
-                Accessible.name: qsTr("Cancelar renomeação do arquivo")
-                onClicked: {
-                    fileWidgetRoot.renameErrorMessage = ""
-                    fileWidgetRoot.renaming = false
-                }
-                background: Rectangle {
-                    radius: 4
-                    color: renameCancelButton.hovered || renameCancelButton.activeFocus ? "#1affffff" : "transparent"
-                    border.color: renameCancelButton.activeFocus ? "#998b5cf6" : "transparent"
-                    border.width: renameCancelButton.activeFocus ? 1 : 0
-                }
-                contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 12; height: 12 }
-            }
+            onErrorCleared: fileWidgetRoot.renameErrorMessage = ""
         }
 
-        // File title
-        Text {
-            visible: !fileWidgetRoot.renaming
-            Layout.fillWidth: true
-            text: fileWidgetRoot.fileName + (fileWidgetRoot.isNotFound ? qsTr(" (Excluído)") : "")
-            color: fileWidgetRoot.isNotFound ? "#f87171" : (hoverHandler.hovered ? "#ffffff" : "#fffffe")
-            font.pixelSize: 13
-            font.weight: Font.Medium
-            elide: Text.ElideRight
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: fileWidgetRoot.openFilePreview()
-                onDoubleClicked: {
-                    if (!fileWidgetRoot.isNotFound) {
-                        fileWidgetRoot.startRename()
-                    }
-                }
-            }
-        }
-
-        // Hover-revealed action buttons matching FileWidgetNodeView.tsx
-        RowLayout {
-            opacity: hoverHandler.hovered || fileWidgetRoot.showColorPicker || fileWidgetRoot.hasActionFocus ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            spacing: 2
-
-            ToolButton {
-                id: renameActionButton
-                visible: !fileWidgetRoot.renaming && !fileWidgetRoot.isNotFound
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
-                focusPolicy: Qt.TabFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Renomear arquivo")
-                onClicked: fileWidgetRoot.startRename()
-                background: Rectangle {
-                    radius: 5
-                    color: renameActionButton.hovered || renameActionButton.activeFocus ? "#4d000000" : "transparent"
-                    border.color: renameActionButton.activeFocus ? "#998b5cf6" : "transparent"
-                    border.width: renameActionButton.activeFocus ? 1 : 0
-                }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: "edit"
-                    color: renameActionButton.hovered || renameActionButton.activeFocus ? "#fffffe" : "#a7a9be"
-                    width: 12
-                    height: 12
-                }
-            }
-
-            ToolButton {
-                id: colorActionButton
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
-                focusPolicy: Qt.TabFocus
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Personalizar cor do widget")
-                onClicked: fileWidgetRoot.showColorPicker = !fileWidgetRoot.showColorPicker
-                background: Rectangle {
-                    radius: 5
-                    color: fileWidgetRoot.showColorPicker || colorActionButton.hovered || colorActionButton.activeFocus ? "#4d000000" : "transparent"
-                    border.color: colorActionButton.activeFocus ? "#998b5cf6" : "transparent"
-                    border.width: colorActionButton.activeFocus ? 1 : 0
-                }
-                contentItem: AppIcon {
-                    anchors.centerIn: parent
-                    name: "palette"
-                    color: colorActionButton.hovered || colorActionButton.activeFocus ? "#fffffe" : "#a7a9be"
-                    width: 12
-                    height: 12
-                }
-            }
+        FileAttachmentActionBar {
+            id: actionBar
+            pointerHovered: hoverHandler.hovered
+            colorPickerOpen: fileWidgetRoot.showColorPicker
+            renaming: fileWidgetRoot.renaming
+            isMissing: fileWidgetRoot.isNotFound
+            onRenameRequested: fileWidgetRoot.startRename()
+            onColorPickerToggled: fileWidgetRoot.showColorPicker = !fileWidgetRoot.showColorPicker
         }
 
         ToolButton {
@@ -386,7 +231,7 @@ Rectangle {
     }
 
     NotesWidgetColorPalette {
-        anchorItem: colorActionButton
+        anchorItem: actionBar.colorAnchorItem
         isOpen: fileWidgetRoot.showColorPicker
         currentColor: fileWidgetRoot.accentColor
         onColorSelected: function(nextColor) {
