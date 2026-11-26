@@ -158,6 +158,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify missing/deleted targets, focus modal visual states, answer submission and save/reopen from the Notes entry point. See QT-NOTES-072.
 - [x] Ask for confirmation before removing a question card from a note, and preserve the linked battery/questions in the Questions module. The QML harness verifies Cancel and exactly one confirmed removal signal. See QT-NOTES-073.
 - [ ] Compare question-block delete confirmation size, text emphasis, backdrop, focus return, Escape behavior and live save/reopen against React. See QT-NOTES-073.
+- [x] Show the React finish confirmation before Notes focus results; track confirmed questions separately and allow Review, finish, Escape and backdrop cancel. Focused QML flow/dialog cases pass. See QT-NOTES-074.
+- [ ] Compare finish-dialog viewport geometry, icon, status colors/text, focus, shortcut propagation and result persistence against React. See QT-NOTES-074.
 - [x] Match Notes habit quick-create defaults, prevent case-insensitive duplicates, resolve the actual Core-created habit ID, and preserve IDs for existing selections. See QT-NOTES-067.
 - [ ] Add and verify the React HabitSelectModal keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), loading/empty/create feedback and exact focus return for the Notes habit picker. See QT-NOTES-067.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.

@@ -423,6 +423,20 @@ Canvas {
             circle(12, 12, 9)
             line([8.5, 12.5, 11, 15, 16, 9.5])
             break
+        case "alert-circle":
+            circle(12, 12, 9)
+            line([12, 8, 12, 12])
+            ctx.beginPath()
+            ctx.arc(12, 16, 0.75, 0, Math.PI * 2)
+            ctx.stroke()
+            break
+        case "trophy":
+            line([8, 21, 16, 21])
+            line([12, 17, 12, 21])
+            line([7, 4, 17, 4, 17, 11, 16, 14, 14, 16, 12, 17, 10, 16, 8, 14, 7, 11, 7, 4])
+            line([7, 5, 4, 5, 4, 8, 5, 10, 8, 11])
+            line([17, 5, 20, 5, 20, 8, 19, 10, 16, 11])
+            break
         case "flame":
             ctx.beginPath()
             ctx.moveTo(12, 3)

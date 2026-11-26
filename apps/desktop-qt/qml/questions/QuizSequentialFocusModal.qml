@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import "../notes" as Notes
 
 Rectangle {
     id: sequentialModalRoot
@@ -18,7 +19,10 @@ Rectangle {
     property bool isConfirmed: false
     property bool showExplanation: false
     property bool isCompleted: false
+    property bool requireFinishConfirmation: false
+    property bool showFinishConfirmation: false
     property var selectedAnswers: []
+    property var answeredQuestions: []
     property int score: 0
     property int elapsedSeconds: 0
 
@@ -26,6 +30,7 @@ Rectangle {
     signal recordAttemptRequested(string bId, string qId, int selIndex, bool correct)
 
     readonly property int totalCount: questions.length
+    readonly property int answeredCount: answeredQuestions.filter(function(answered) { return answered }).length
     readonly property var currentQuestion: (currentIndex >= 0 && currentIndex < totalCount) ? questions[currentIndex] : null
 
     Timer {
@@ -37,13 +42,24 @@ Rectangle {
     }
 
     // Keyboard Shortcuts
-    Shortcut { sequence: "Escape"; enabled: sequentialModalRoot.visible; onActivated: sequentialModalRoot.closed() }
+    Shortcut { sequence: "Escape"; enabled: sequentialModalRoot.visible && !sequentialModalRoot.showFinishConfirmation; onActivated: sequentialModalRoot.closed() }
     Shortcut { sequence: "1"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(0) }
     Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(1) }
     Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(2) }
     Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(3) }
     Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted; onActivated: showExplanation = !showExplanation }
-    Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted; onActivated: handleConfirmOrNext() }
+    Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation; onActivated: handleConfirmOrNext() }
+
+    Notes.NotesQuizFinishConfirmDialog {
+        visible: sequentialModalRoot.showFinishConfirmation
+        total: sequentialModalRoot.totalCount
+        answeredCount: sequentialModalRoot.answeredCount
+        onCancelled: sequentialModalRoot.showFinishConfirmation = false
+        onConfirmed: {
+            sequentialModalRoot.showFinishConfirmation = false
+            sequentialModalRoot.isCompleted = true
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -193,6 +209,9 @@ Rectangle {
             var ansList = [...selectedAnswers]
             ansList[currentIndex] = selectedOption
             selectedAnswers = ansList
+            var answeredList = [...answeredQuestions]
+            answeredList[currentIndex] = true
+            answeredQuestions = answeredList
 
             if (currentQuestion && (currentQuestion.id || currentQuestion.questionId)) {
                 var qId = currentQuestion.id ? currentQuestion.id : currentQuestion.questionId
@@ -202,6 +221,8 @@ Rectangle {
             // Advance or complete
             if (currentIndex < totalCount - 1) {
                 goToQuestion(currentIndex + 1)
+            } else if (requireFinishConfirmation) {
+                showFinishConfirmation = true
             } else {
                 isCompleted = true
             }
@@ -210,7 +231,7 @@ Rectangle {
 
     function goToQuestion(idx) {
         currentIndex = idx
-        isConfirmed = (idx < selectedAnswers.length && selectedAnswers[idx] !== undefined && selectedAnswers[idx] !== -1)
+        isConfirmed = idx < answeredQuestions.length && answeredQuestions[idx] === true
         selectedOption = (idx < selectedAnswers.length) ? selectedAnswers[idx] : -1
         showExplanation = isConfirmed
         openAnswer = ""
@@ -223,7 +244,9 @@ Rectangle {
         isConfirmed = false
         showExplanation = false
         isCompleted = false
+        showFinishConfirmation = false
         selectedAnswers = []
+        answeredQuestions = []
         score = 0
         elapsedSeconds = 0
     }

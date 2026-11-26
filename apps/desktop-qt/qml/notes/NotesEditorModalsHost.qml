@@ -133,10 +133,16 @@ Item {
         item.batteryId = pendingQuizSession.batteryId
         item.batteryTitle = pendingQuizSession.title
         item.questions = pendingQuizSession.questions
+        item.requireFinishConfirmation = true
         item.currentIndex = 0
         item.selectedOption = -1
+        item.openAnswer = ""
         item.isConfirmed = false
+        item.showExplanation = false
         item.isCompleted = false
+        item.showFinishConfirmation = false
+        item.selectedAnswers = []
+        item.answeredQuestions = []
         item.score = 0
         item.elapsedSeconds = 0
         item.visible = true

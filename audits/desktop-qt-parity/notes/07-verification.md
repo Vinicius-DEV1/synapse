@@ -515,6 +515,16 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes quiz finish confirmation (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_quiz_finish_flow.qml` | Passed: 2 behavior cases (4 QtTest totals including setup/cleanup), 0 failures. | Exercises the native focus modal through the final question: results remain closed until confirmation; Review keeps the current question active. Does not exercise hardware keyboard events or attempt persistence. |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_quiz_finish_confirmation.qml` | Passed: 3 behavior cases (5 QtTest totals including setup/cleanup), 0 failures. | Verifies answered/pending counts, singular status copy, confirmation, Review, and backdrop cancellation. |
+| Focused `qmllint` for `QuizSequentialFocusModal.qml`, `NotesQuizFinishConfirmDialog.qml`, `NotesEditorModalsHost.qml` and `AppIcon.qml` | Passed: exit 0. Existing layout, unqualified access, and Loader `QObject` member warnings remain in neighboring code. | New dialog and icon cases add no diagnostics; QML lint does not test rendered icon paths or focus behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked. | Build validation only; live modal screenshot, keyboard events, and attempt save/reopen remain open. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes question-block delete confirmation (2026-11-26)
 
 | Check | Result | Scope and limits |

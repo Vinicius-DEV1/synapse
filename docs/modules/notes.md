@@ -148,4 +148,6 @@ Starting focus from a Notes question widget also loads only its linked battery's
 
 Removing a question card from a note now requires explicit confirmation. The confirmation removes only the note card; the linked battery and its questions remain available in the Questions module.
 
+Sequential focus in a Notes question widget asks before showing results and displays the number of answered and pending questions. Review returns to the last question; confirmation opens the result view. The Notes host enables this confirmation specifically for the Notes entry point.
+
 Focused Core tests verify the page/layout/link data and ensure an invalid page leaves no battery or link behind. Focused QML checks verify the modal hierarchy, responsive result viewport, current-page context, Core ID insertion, existing ID selection and error copy. Live creation followed by saving/reopening the note, focus return and same-viewport comparison remain acceptance work. The React Notes host currently ignores the reuse flag emitted when a suggested existing question widget is selected; that client-side behavior is tracked in the parity audit rather than mirrored by Qt.
