@@ -1,6 +1,6 @@
 # Synapse System Architecture
 
-**Status:** Current architectural overview. Feature and security completion are tracked separately in the [native desktop parity matrix](../native-desktop-parity.md) and [native encryption audit](../security/native-encryption-audit.md).
+**Status:** Current architectural overview. Feature status and security coverage are documented separately in the [native desktop parity guide](../native-desktop-parity.md) and [encryption coverage guide](../security/encryption-coverage.md).
 
 Synapse is a multi-app knowledge and study platform. The React client is the functional and visual reference for native parity work. The repository also contains a Tauri shell, a native Qt desktop client, a native Kotlin/Compose Android client, and an Expo WebView shell. Their modules are not all at equal parity.
 
@@ -71,7 +71,7 @@ The unified architecture establishes `core/synapse-core/` as the **Single Source
 
 ### React and Tauri
 
-React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands as non-blocking `async fn` handlers (`tokio::task::spawn_blocking`) backed by a dedicated SQLite WAL writer connection and a 4-connection read-only pool (`apps/web-react/src-tauri/src/db.rs`). Many handlers delegate persistence and domain calculations to `core/synapse-core/`, but some domain commands still contain direct SQL or duplicate operations; see the current `WEB-CORE-*` remediation findings in the [React-to-Android parity checklist](../audits/mobile-android-parity/core-and-react.md). Web browser flows use domain services and platform adapters compiled or bundled for the browser and store local data in `IndexedDB`; full Core/WASM parity remains incomplete for Anki scheduling.
+React presentation, state orchestration, domain services, and platform adapters remain separated under `apps/web-react/src/`. The Tauri Rust backend (`apps/web-react/src-tauri/`) owns native commands as non-blocking `async fn` handlers (`tokio::task::spawn_blocking`) backed by a dedicated SQLite WAL writer connection and a 4-connection read-only pool (`apps/web-react/src-tauri/src/db.rs`). Many handlers delegate persistence and domain calculations to `core/synapse-core/`, but some domain commands still contain direct SQL or duplicate operations; see the current `WEB-CORE-*` remediation findings in the [Native Android architecture guide](../platforms/react-web-tauri.md). Web browser flows use domain services and platform adapters compiled or bundled for the browser and store local data in `IndexedDB`; full Core/WASM parity remains incomplete for Anki scheduling.
 
 ### Qt Desktop
 
@@ -79,7 +79,7 @@ QML owns native presentation. Feature controllers under `apps/desktop-qt/src/con
 
 ### Android
 
-The Compose application owns Android presentation and lifecycle behavior. The UniFFI bridge (`bridges/bridge-uniffi/`) exposes shared Rust capabilities. Native Android feature coverage must be checked against its own implementation and build/test evidence; the Qt parity matrix does not certify Android parity.
+The Compose application owns Android presentation and lifecycle behavior. The UniFFI bridge (`bridges/bridge-uniffi/`) exposes shared Rust capabilities. Native Android feature coverage must be checked against its own implementation and build/test evidence; the Qt parity guide does not certify Android parity.
 
 ### WebView Shell
 
@@ -97,11 +97,11 @@ The Expo app is a host shell, not a duplicate product implementation. Keep safe-
 
 The repository implements PBKDF2-HMAC-SHA256 derivation, AES-GCM key envelopes, selected field protection, and encrypted media flows. These mechanisms do **not** mean every SQLite entity, metadata field, external asset, or in-memory copy is encrypted or scrubbed.
 
-The Qt setup migrates supported note, revision, diagram, and vault content plus referenced media in managed folders. Sensitive business records in several modules remain plaintext at rest; files outside managed folders are not migrated; and some metadata remains visible. See the [native encryption audit](../security/native-encryption-audit.md) before publishing E2EE or zero-residual claims.
+The Qt setup migrates supported note, revision, diagram, and vault content plus referenced media in managed folders. Sensitive business records in several modules remain plaintext at rest; files outside managed folders are not migrated; and some metadata remains visible. See the [encryption coverage guide](../security/encryption-coverage.md) before publishing E2EE or zero-residual claims.
 
 ## 5. Feature Parity and Performance
 
-A screen existing in Qt or Compose does not prove functional parity. The [native desktop parity matrix](../native-desktop-parity.md) records the Qt gaps and acceptance gates. Compare the original React flow for controls, keyboard behavior, loading and error states, data migration, and visual geometry.
+A screen existing in Qt or Compose does not prove functional parity. The [native desktop parity guide](../native-desktop-parity.md) defines the Qt acceptance standard. Compare the original React flow for controls, keyboard behavior, loading and error states, data migration, and visual geometry.
 
 Performance is also platform-specific. Historical web bundle or browser benchmarks are not evidence of native Qt or Android speed. Re-run measured workloads on the target app before making performance claims.
 

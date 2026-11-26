@@ -2,7 +2,7 @@
 
 The **Synapse Vault** is a credential-management module with AES-GCM protection in supported flows and k-anonymity breach checking. This document describes the product design; it does not certify every client or every related data field.
 
-Native Qt setup protects selected vault item fields, groups, and password history. It does not encrypt every SQLite table or every metadata field. See the [native encryption audit](../security/native-encryption-audit.md) for current scope and remaining plaintext coverage.
+Native Qt setup protects selected vault item fields, groups, and password history. It does not encrypt every SQLite table or every metadata field. See the [encryption coverage guide](../security/encryption-coverage.md) for current scope and remaining plaintext coverage.
 
 ---
 
@@ -39,7 +39,7 @@ The clients have separate vault adapters. The native Qt setup currently encrypts
 
 1. **Credential fields**: `label`, `username`, `email`, `password`, `url`, `notes`, and `custom_fields`.
 2. **Group and history fields**: group `name`, `icon`, and `color`, plus historical password values.
-3. **Visible metadata**: flags, ordering, timestamps, relationships, and other operational columns are not all encrypted. The current field inventory is in the [native encryption audit](../security/native-encryption-audit.md).
+3. **Visible metadata**: flags, ordering, timestamps, relationships, and other operational columns are not all encrypted. The current field inventory is in the [encryption coverage guide](../security/encryption-coverage.md).
 4. **Wire format**: each protected text value is stored as an AES-GCM ciphertext payload:
    $$\text{Payload} = \text{IV}_{\text{12B}} : \text{Ciphertext} : \text{AuthTag}_{\text{16B}}$$
   Supported encryption flows generate a fresh 96-bit nonce. React/Tauri and Qt use separate persistence adapters; verify each implementation before assuming identical coverage.

@@ -62,10 +62,11 @@ See individual findings for locations, limitations, and acceptance criteria. The
 
 ## Related sources
 
-- [Cross-application module structure](../../architecture/module-structure.md)
-- [Native desktop parity tracker](../../native-desktop-parity.md) — useful history, but broad claims conflict with current source; see [verification](ux-and-verification.md).
-- [Native encryption audit](../../security/native-encryption-audit.md)
-- [Setup and build guide](../../guides/setup-and-build.md)
-- [Qt app guidance](../../../apps/desktop-qt/AGENTS.md)
-- [Root engineering rules](../../../AGENTS.md)
+- [Cross-application module structure](../../docs/architecture/module-structure.md)
+- [Native desktop parity guide](../../docs/native-desktop-parity.md) — consolidated acceptance standard and status.
+- [Prior detailed parity matrix](./native-desktop-parity-matrix-working.md) — retained as working history; broad claims conflict with current source, so see [verification](ux-and-verification.md).
+- [Encryption coverage](../../docs/security/encryption-coverage.md)
+- [Setup and build guide](../../docs/guides/setup-and-build.md)
+- [Qt app guidance](../../apps/desktop-qt/AGENTS.md)
+- [Root engineering rules](../../AGENTS.md)
 

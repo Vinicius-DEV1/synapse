@@ -5,7 +5,7 @@ All notable changes to **Synapse** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Historical release notes describe the mechanisms introduced at those releases; they are not a statement of current repository-wide security coverage. See the [native encryption audit](./docs/security/native-encryption-audit.md) for current status.
+Historical release notes describe the mechanisms introduced at those releases; they are not a statement of current repository-wide security coverage. See the [encryption coverage guide](./docs/security/encryption-coverage.md) for current status.
 
 ---
 
@@ -31,7 +31,7 @@ Historical release notes describe the mechanisms introduced at those releases; t
 
 ### Security
 - Qt first-time vault setup stages and migrates referenced media inside the managed files, library, and videos folders using a persistent recovery journal. Unlock resumes pending records before exposing the vault.
-- The native encryption audit remains open: sensitive business-table fields, some metadata, unmanaged assets, and complete cross-client recovery are not yet covered.
+- The encryption coverage guide remains open: sensitive business-table fields, some metadata, unmanaged assets, and complete cross-client recovery are not yet covered.
 
 ## [1.2.0] - 2026-10-29
 

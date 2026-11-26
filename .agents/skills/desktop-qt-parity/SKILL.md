@@ -30,7 +30,7 @@ Use this skill whenever auditing, implementing, refactoring, or verifying featur
 
 ## 2. Caderno (`notes`) React-to-Qt Parity Workflow
 
-React is the behavioral and visual reference. Desktop Qt is the target. Inspect the current worktree before following historical notes: Qt Notes is being reorganized around a native block AST editor, and older source/preview-mode descriptions may no longer match current files. The detailed living comparison is [`docs/audits/desktop-qt-parity/notes/README.md`](../../../docs/audits/desktop-qt-parity/notes/README.md).
+React is the behavioral and visual reference. Desktop Qt is the target. Inspect the current worktree before following historical notes: Qt Notes is being reorganized around a native block AST editor, and older source/preview-mode descriptions may no longer match current files. The active Notes comparison is [`audits/desktop-qt-parity/notes/README.md`](../../../audits/desktop-qt-parity/notes/README.md); consolidated architecture belongs in `docs/platforms/` and `docs/modules/`.
 
 1. **Trace the full React behavior first**:
    - Compare `apps/web-react/src/components/Editor.tsx`, `notes/hooks/`, `notes/components/`, `editor-extensions/`, and `page-view/` with the Qt presentation, controller, bridge, and Core call chain.
@@ -46,6 +46,7 @@ React is the behavioral and visual reference. Desktop Qt is the target. Inspect 
 4. **Compare the full interaction inventory**:
    - Compare all 31 React slash commands, their aliases and nested behavior. Qt-only additions such as Mermaid must remain additive.
    - Compare text marks, headings, lists, callouts, code, tables, images, page references, file/bundle widgets, media, question/focus/alarm/calendar/habit widgets, toggles, collections, columns, link previews/groups, history and all modal states.
+   - Inventory every React modal entry point, including nested dialogs and dialogs opened from widgets. Compare viewport-relative dimensions, anchoring, backdrop, sections, scroll behavior, controls, labels, validation, loading/empty/error states, action order, keyboard shortcuts, Escape/outside-click rules, focus entry/restoration and resize behavior. Record missing dialogs as explicit Qt findings; a similar primary screen does not imply modal parity.
    - Resolve differences in the native target. Never reduce React behavior or alter its layout to make parity easier.
 5. **Protect content and async lifecycles**:
    - Treat filtered/editor-rendered HTML as a projection until a deliberate edit is committed; never save a display-only subset as canonical page content.
@@ -56,7 +57,7 @@ React is the behavioral and visual reference. Desktop Qt is the target. Inspect 
    - Avoid oversized QML, C++, Rust, and bridge files; split each by cohesive responsibility and document why platform-specific adapters exist.
 7. **Use evidence-based status**:
    - Track each feature as `Partial`, `Missing`, or `Unverified` until its behavior, persistence/error states, accessibility, performance and same-viewport appearance have been checked.
-   - Follow the focused verification and second-pass review plan in the Notes audit. Do not copy historical passing test counts or mark full parity from source inspection alone.
+   - Follow the focused verification and second-pass review plan in the active Notes audit under repository-root `audits/`. Do not copy historical passing test counts or mark full parity from source inspection alone.
 
 ---
 
@@ -89,4 +90,4 @@ Before marking any parity task complete, execute:
 3. **QML Static Analysis**:
    - Run `qmllint` on all modified `.qml` files and verify zero runtime QML/JS console warnings (`ReferenceError`, binding loops, or unconnected signals).
 4. **Side-by-Side Visual & Interactive Verification**:
-   - Compare every modified view side-by-side against `apps/web-react/` for layout spacing, typography, hover interactions, modal transitions, and data persistence in SQLite.
+   - Compare every modified view side-by-side against `apps/web-react/` at matching viewport dimensions and scale for layout spacing, typography, hover interactions, all modal states, modal transitions, keyboard/focus flow, and data persistence in SQLite.

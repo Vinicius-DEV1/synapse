@@ -109,11 +109,11 @@ No build health, test pass, runtime reliability, or visual parity is claimed.
 
 ## Documentation conflicts
 
-- [native-desktop-parity.md](../../native-desktop-parity.md) marks broad rows Complete and claims generic SQL was removed, while current source still has mock flows and generic SQL entry points.
+- The [prior detailed parity matrix](./native-desktop-parity-matrix-working.md) marks broad rows Complete and claims generic SQL was removed, while current source still has mock flows and generic SQL entry points.
 - Its “13 core modules” statement enumerates 14 names.
 - Historical build/test outputs may be useful context but must be rerun before reuse.
-- [module-structure.md](../../architecture/module-structure.md) is the route inventory and says a route does not prove parity.
-- [native-encryption-audit.md](../../security/native-encryption-audit.md) remains encryption authority.
+- [module-structure.md](../../docs/architecture/module-structure.md) is the route inventory and says a route does not prove parity.
+- [encryption-coverage.md](../../docs/security/encryption-coverage.md) remains encryption authority.
 
 ## Limits
 

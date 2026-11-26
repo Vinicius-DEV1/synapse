@@ -50,7 +50,7 @@
 
 Modern personal knowledge management applications frequently force a compromise between **convenience** and **privacy**, or between **speed** and **rich features**. Synapse is built around these goals; implementation coverage varies by app and module:
 
-1. **Privacy and User-Controlled Vault**: Master Password and AES-256-GCM flows protect selected fields and managed media. Coverage is not repository-wide: some business data, metadata, and unmanaged assets remain plaintext at rest. The [native encryption audit](./docs/security/native-encryption-audit.md) lists verified coverage and open risks.
+1. **Privacy and User-Controlled Vault**: Master Password and AES-256-GCM flows protect selected fields and managed media. Coverage is not repository-wide: some business data, metadata, and unmanaged assets remain plaintext at rest. The [encryption coverage guide](./docs/security/encryption-coverage.md) lists verified coverage and open risks.
 2. **Local-First & Offline Resilience**: The application reads and writes immediately to zero-latency local databases (**SQLite** on Desktop, **IndexedDB** on Web). You can work continuously without internet connectivity, and changes reconcile deterministically when reconnected.
 3. **Responsive Interaction Design**: The web client uses caching and CSS compositing patterns where appropriate. Frame rates and input latency vary by device and app; no universal 60 FPS guarantee is claimed.
 4. **Multiple Runtime Options**: React Web/Tauri remains the reference client; Qt and Kotlin/Compose are separate native clients, and the Expo shell hosts the web app. Native performance parity is measured separately and is not inferred from architecture alone.
@@ -66,7 +66,7 @@ Synapse is architected with a unified codebase capable of running across desktop
 | :--- | :--- | :--- | :--- | :--- |
 | **React Web** | React 19, Vite, browser | IndexedDB and configured sync adapters | Browser APIs and service worker | Active client; see build guide |
 | **Tauri Desktop** | React frontend, Tauri v2, Rust | SQLite via Tauri backend | Native shell, filesystem, and Rust IPC | Active client; parity is tracked separately |
-| **Native Qt Desktop** | Qt Quick/QML, C++17, Rust C-ABI | SQLite via shared Rust bridge | Native Qt UI and libmpv media integration | In development; see [parity matrix](./docs/native-desktop-parity.md) |
+| **Native Qt Desktop** | Qt Quick/QML, C++17, Rust C-ABI | SQLite via shared Rust bridge | Native Qt UI and libmpv media integration | In development; see [parity guide](./docs/native-desktop-parity.md) |
 | **Native Android** | Kotlin, Jetpack Compose, UniFFI | Android app persistence and shared Rust capabilities | Native Android UI and Media3 integrations | In development; verify module status before relying on parity |
 | **Android WebView Shell** | Expo, React Native, WebView | Hosts the React app | Safe areas, hardware back, haptics, native links | Wrapper app; not the native Compose client |
 | **Docker / Self-Hosted** | Linux containers, Nginx | Serves the web build | Static hosting and configured cloud services | Deployment target; it does not imply full E2EE coverage |
@@ -162,7 +162,7 @@ Master Key (runtime memory; selected buffers are wiped on lock)
 | **Memory Hygiene** | **Rust zeroization and lock cleanup** | Selected bridge buffers and key maps are wiped on lock. Complete zeroization of Qt strings, QML state, query buffers, WAL pages, and temporary files has not been proven. |
 | **XSS Defense** | **DOMPurify & Content Security Policy** | Sanitization and CSP controls are client-specific; verify each route and embedded-content flow before claiming complete coverage. |
 
-For verified native coverage and remaining gaps, read the [native encryption audit](./docs/security/native-encryption-audit.md). For vulnerability reporting, refer to [**`SECURITY.md`**](./SECURITY.md).
+For verified native coverage and remaining gaps, read the [encryption coverage guide](./docs/security/encryption-coverage.md). For vulnerability reporting, refer to [**`SECURITY.md`**](./SECURITY.md).
 
 ---
 
@@ -205,7 +205,7 @@ Production bundle budgets and runtime latency optimizations (SQLite WAL 1-writer
 - Visual version history with granular revision diffing (`htmldiff-js`).
 
 ### 2. 🔐 Vault (Credentials & Passwords)
-- Password and credential vault using AES-256-GCM in its covered flows; consult the [encryption audit](./docs/security/native-encryption-audit.md) for scope and limitations.
+- Password and credential vault using AES-256-GCM in its covered flows; consult the [encryption coverage guide](./docs/security/encryption-coverage.md) for scope and limitations.
 - High-entropy password and passphrase generator with Shannon entropy evaluation.
 - Breached credential verification via Have I Been Pwned (HIBP) k-Anonymity API integration.
 
@@ -248,7 +248,7 @@ Production bundle budgets and runtime latency optimizations (SQLite WAL 1-writer
 - Interactive financial charts and spending trends powered by **Recharts**.
 
 ### 12. 🏢 Multi-User Workspaces (Planned and Under Audit)
-Workspace scoping, Firebase Authentication, RBAC, and migration are tracked as a proposal and security audit. Do not treat them as shipped capabilities or released collaborative E2EE. See the [multi-user workspace analysis](./docs/architecture/multiuser-workspace-analysis.md) and [action plan](./docs/architecture/multiuser-workspace-action-plan.md).
+Workspace scoping, Firebase Authentication, RBAC, and migration are tracked as a proposal. Do not treat them as shipped capabilities or released collaborative E2EE. See the [action plan](./docs/architecture/multiuser-workspace-action-plan.md) and [current sync status](./docs/security/firebase-sync-integrity.md).
 
 For full module details, domain models, and key assignments, explore [**`docs/modules/index.md`**](./docs/modules/index.md).
 
@@ -265,7 +265,7 @@ For full module details, domain models, and key assignments, explore [**`docs/mo
 
 ---
 
-Synapse ships four app targets: the React web app with its Tauri shell (`apps/web-react/`), a fully native Qt desktop app (`apps/desktop-qt/`), a native Kotlin/Compose Android app (`apps/mobile-android/`), and an Expo WebView shell (`apps/mobile-webview/`). See [the repository layout guide](./docs/architecture/repository-layout.md) for ownership and build commands. The current Qt parity gaps are listed in the [native desktop parity matrix](./docs/native-desktop-parity.md).
+Synapse ships four app targets: the React web app with its Tauri shell (`apps/web-react/`), a fully native Qt desktop app (`apps/desktop-qt/`), a native Kotlin/Compose Android app (`apps/mobile-android/`), and an Expo WebView shell (`apps/mobile-webview/`). See [the repository layout guide](./docs/architecture/repository-layout.md) for ownership and build commands. The current overall Qt parity status and acceptance criteria are summarized in the [native desktop parity guide](./docs/native-desktop-parity.md).
 
 ### Installation & Quick Start
 

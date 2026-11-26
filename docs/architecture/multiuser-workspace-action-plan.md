@@ -1,6 +1,6 @@
 # Proposal: Multi-User Identity and Collaborative Workspaces
 
-> **Document status:** Historical proposal only; this is not an implementation record or a security guarantee. React Web/Tauri Firebase account authentication is implemented, but this proposal does not certify workspace-scoped RBAC, collaborative E2EE, or lossless workspace migration. Revalidate every file path and dependency before using the design. See the [documentation status index](../documentation-status.md) and [historical analysis](./multiuser-workspace-analysis.md).
+> **Document status:** Historical proposal only; this is not an implementation record or a security guarantee. React Web/Tauri Firebase account authentication is implemented, but this proposal does not certify workspace-scoped RBAC, collaborative E2EE, or lossless workspace migration. Revalidate every file path and dependency before using the design. See the [documentation status index](../documentation-status.md) and [current sync status](../security/firebase-sync-integrity.md).
 
 ---
 

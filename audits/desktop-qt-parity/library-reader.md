@@ -11,7 +11,7 @@
 | Bookmark/highlight records | Qt loads, edits, deletes, and shows records in its annotation sidebar. | React has annotation APIs and reader UI. | Implemented; revalidate |
 | Highlight in source location | No overlay/anchor rendering was found in the Qt PDF image or EPUB text view. | React contains explicit PDF/EPUB highlight rendering. | Confirmed gap |
 
-Relevant evidence: [LibraryReaderView.qml](../../../apps/desktop-qt/qml/library/LibraryReaderView.qml), [library reader controller](../../../apps/desktop-qt/src/controllers/library/library_reader_controller.cpp), and the React [PDF reader](../../../apps/web-react/src/components/library/pdf/PdfReader.tsx) / [EPUB reader](../../../apps/web-react/src/components/library/epub/EpubReader.tsx).
+Relevant evidence: [LibraryReaderView.qml](../../apps/desktop-qt/qml/library/LibraryReaderView.qml), [library reader controller](../../apps/desktop-qt/src/controllers/library/library_reader_controller.cpp), and the React [PDF reader](../../apps/web-react/src/components/library/pdf/PdfReader.tsx) / [EPUB reader](../../apps/web-react/src/components/library/epub/EpubReader.tsx).
 
 ## DESK-PAR-034 implementation checklist
 

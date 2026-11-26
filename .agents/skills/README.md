@@ -11,8 +11,8 @@ These playbooks apply across the four app targets: React Web/Tauri (`apps/web-re
 | Skill | Category | Primary Focus & Deliverables | Core Standards |
 | :---- | :------- | :--------------------------- | :------------- |
 | [**`code-quality-refactoring`**](./code-quality-refactoring/SKILL.md) | Architecture | Modularization of monolithic components, SRP decomposition, custom hook extraction, algorithmic indexing ($O(1)$ lookups), and zero-regression refactoring. | SOLID Principles, RFC 5861 (SWR), Clean Architecture |
-| [**`cryptography-vault`**](./cryptography-vault/SKILL.md) | Security & Cryptography | Cryptographic design requirements for the Two-Tier Keychain, PBKDF2 key derivation, AES-256-GCM, and ENC1 media. Consult the separate implementation audit for actual coverage. | NIST SP 800-132, Web Crypto API, AES-GCM 256 |
-| [**`design-system`**](./design-system/SKILL.md) | Design & UI Engineering | Comprehensive visual design tokens, `brand-*` violet palette, whisper-thin borders, atomic component variants, Lucide icon standards, and GPU-accelerated micro-animations. | Design Tokens, Tailwind CSS, GPU Compositing |
+| [**`cryptography-vault`**](./cryptography-vault/SKILL.md) | Security & Cryptography | Cryptographic design requirements for the Two-Tier Keychain, PBKDF2 key derivation, AES-256-GCM, and ENC1 media. Consult the consolidated encryption coverage guide for implementation status. | NIST SP 800-132, Web Crypto API, AES-GCM 256 |
+| [**`design-system`**](./design-system/SKILL.md) | Design & UI Engineering | Comprehensive visual design tokens, `brand-*` violet palette, modal/dialog parity, atomic component variants, Lucide icon standards, and GPU-accelerated micro-animations. | Design Tokens, Tailwind CSS, GPU Compositing |
 | [**`immersive-minimalist-ux`**](./immersive-minimalist-ux/SKILL.md) | UX & Ergonomics | Zen canvas architecture (`zinc-950` full-viewport overlay), keyboard-first navigation engine (`useImmersiveKeyboard`), semantic feedback colors, and reading column ergonomics. | Ergonomic Typography, Distraction-Free UX |
 | [**`module-bug-audit`**](./module-bug-audit/SKILL.md) | Quality Assurance | Rigorous 4-phase audit protocol for race conditions, memory leaks, unmounted state updates, Rust `.unwrap()` panic paths, and SQL parameterization. | Static Analysis, Diagnostic Tracing |
 | [**`full-module-review`**](./full-module-review/SKILL.md) | Quality Orchestration | Comprehensive 6-dimension health scorecard (Correctness, Architecture, Type Safety, Performance, Security, Design) with prioritized remediation roadmaps. | Multi-Dimensional QA, Health Scoring |
@@ -45,11 +45,11 @@ Refactoring, bug fixes, and internal optimizations must maintain **100% function
 The cryptography skill defines target behavior; it is not proof that every client or entity implements it:
 - **Master Key**: Current local derivation uses PBKDF2-HMAC-SHA256 (600,000 iterations) with a compatibility-bound salt.
 - **Two-Tier Keychain**: Dedicated module keys are sealed in encrypted envelopes where the client implements that flow.
-- **Coverage and Residuals**: Protection is partial across local database fields and metadata. Some buffers are wiped, but zero residual plaintext has not been proven. Read the [native encryption audit](../../docs/security/native-encryption-audit.md) before making security claims.
+- **Coverage and Residuals**: Protection is partial across local database fields and metadata. Some buffers are wiped, but zero residual plaintext has not been proven. Read the [encryption coverage guide](../../docs/security/encryption-coverage.md) before making security claims.
 
 ## Current Implementation Status
 
-The [documentation status index](../../docs/documentation-status.md) identifies authoritative project documents. The [native desktop parity matrix](../../docs/native-desktop-parity.md) and [native encryption audit](../../docs/security/native-encryption-audit.md) remain the sources of truth for their respective scopes. Skill instructions describe required practice, not completion status.
+The [documentation status index](../../docs/documentation-status.md) identifies authoritative project documents. The [native desktop parity guide](../../docs/native-desktop-parity.md) and [encryption coverage guide](../../docs/security/encryption-coverage.md) remain the consolidated sources for their scopes. Active evidence and checklists live in repository-root `audits/`; skill instructions describe required practice, not completion status.
 
 ---
 

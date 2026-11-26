@@ -1,11 +1,13 @@
 # 📚 Synapse Technical Documentation Hub
 
-Welcome to the **Synapse Engineering Documentation Hub**. This directory provides architectural blueprints, domain module specifications, security audits, operational guides, and protocol references for the **Synapse** platform.
+Welcome to the **Synapse Engineering Documentation Hub**. This directory contains consolidated architecture, platform guides, domain references, security guidance, operational instructions, and protocol specifications for Synapse.
 
 Synapse is a local-first, multi-platform knowledge and study workstation spanning **React Web + Tauri v2 Desktop**, **Native Qt 6 Desktop**, **Native Kotlin/Compose Android**, and an **Expo/WebView Android Shell**, anchored by a unified Rust domain core (`core/synapse-core/`).
 
 > [!IMPORTANT]
-> **Authoritative Status & Audit Boundaries**: Local at-rest encryption and native client parity vary by target and data entity. Always consult [Documentation Ownership and Current Status](./documentation-status.md), the [Native Desktop Parity Matrix](./native-desktop-parity.md), and the [Native Encryption Audit](./security/native-encryption-audit.md) before making repository-wide completion or Zero-Knowledge claims.
+> **Authoritative status**: Local at-rest encryption, synchronization and native client coverage vary by target and data entity. Consult [Documentation Ownership and Current Status](./documentation-status.md), [Native Desktop Parity](./native-desktop-parity.md), [Native Encryption Coverage](./security/encryption-coverage.md), and [Firebase Sync Integrity](./security/firebase-sync-integrity.md) before making repository-wide completion or encryption claims.
+
+Active investigation records and unresolved implementation checklists are kept in the repository-root `audits/` directory. `docs/` contains consolidated project knowledge and verified current status; completed working audit artifacts are removed after their durable conclusions are recorded here.
 
 ---
 
@@ -15,10 +17,20 @@ Synapse is a local-first, multi-platform knowledge and study workstation spannin
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`documentation-status.md`**](./documentation-status.md) | **Documentation Ownership & Current Status** — Authoritative sources of truth, verified project status, and documentation maintenance rules. | All contributors & AI agents |
-| [**`audits/mobile-android-parity/README.md`**](./audits/mobile-android-parity/README.md) | **React-to-Android Parity Checklist** — Current Compose coverage, shared Core/UniFFI boundary, detailed implementation queue, security gates, and next-agent handoff. | Android & Core contributors |
-| [**`native-desktop-parity.md`**](./native-desktop-parity.md) | **Native Desktop Parity Matrix** — Module-by-module native Qt 6 coverage, verification evidence, and remaining differences vs. React. | Desktop & Qt contributors |
+| [**`platforms/android-native.md`**](./platforms/android-native.md) | **Native Android Architecture** — Compose, UniFFI/Core boundaries, lifecycle, platform APIs, localization and verification scope. | Android & Core contributors |
+| [**`native-desktop-parity.md`**](./native-desktop-parity.md) | **Native Desktop Parity** — Consolidated acceptance standard and current high-level status for Qt versus React. | Desktop & Qt contributors |
 
-### 2. System Architecture (`docs/architecture/`)
+### 2. Client Platform Guides (`docs/platforms/`)
+| Document | Description | Audience |
+| :--- | :--- | :--- |
+| [**`platforms/README.md`**](./platforms/README.md) | Client architecture index, ownership rules and shared Core contracts. | All contributors |
+| [**`platforms/react-web-tauri.md`**](./platforms/react-web-tauri.md) | React browser and Tauri runtime boundaries, persistence adapters and parity expectations. | Web & desktop contributors |
+| [**`platforms/desktop-qt.md`**](./platforms/desktop-qt.md) | Native QML/C++/Qt bridge architecture, UI parity, lifecycle and performance. | Desktop & Core contributors |
+| [**`platforms/android-native.md`**](./platforms/android-native.md) | Compose, UniFFI/Core integration and Android platform responsibilities. | Android & Core contributors |
+| [**`platforms/android-webview.md`**](./platforms/android-webview.md) | Expo shell lifecycle, WebView security, safe areas and back navigation. | Android & Web contributors |
+| [**`platforms/shared-core-and-bridges.md`**](./platforms/shared-core-and-bridges.md) | Shared domain ownership and the browser, Tauri, Qt and UniFFI call paths. | Architects & platform engineers |
+
+### 3. System Architecture (`docs/architecture/`)
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`architecture/overview.md`**](./architecture/overview.md) | **System Architecture Specification** — Four app targets, unified Rust core (`synapse-core`), platform bridges, WAL pool, and encryption boundaries. | Architects & Tech Leads |
@@ -26,9 +38,8 @@ Synapse is a local-first, multi-platform knowledge and study workstation spannin
 | [**`architecture/module-structure.md`**](./architecture/module-structure.md) | **Cross-Application Module Structure** — Canonical 18 module IDs, route inventory, and layer conventions across React, Qt, and Android. | Feature Engineers |
 | [**`architecture/sync-engine.md`**](./architecture/sync-engine.md) | **Sync & Autosave Architecture** — Zero-locking autosave, transactional batch upserts, indexed delta queries, Yjs convergence, and table inventory. | Cloud & Core Engineers |
 | [**`architecture/multiuser-workspace-action-plan.md`**](./architecture/multiuser-workspace-action-plan.md) | **Multi-User Workspace Proposal** — Proposed scoped subcollections, RBAC matrix, and key-sharing protocol (design proposal). | Product & Security Engineers |
-| [**`architecture/multiuser-workspace-analysis.md`**](./architecture/multiuser-workspace-analysis.md) | **Historical Multi-User Workspace Audit** — 2026-11-17 snapshot analyzing legacy single-user sync assumptions. | Security Auditors |
 
-### 3. Developer & Operations Guides (`docs/guides/`)
+### 4. Developer & Operations Guides (`docs/guides/`)
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`guides/setup-and-build.md`**](./guides/setup-and-build.md) | **Setup, Build & Operations Guide** — Prerequisites, multi-target build workflows (Web, Tauri, Qt 6, Android, WebView), and packaging. | Developers & DevOps |
@@ -36,7 +47,7 @@ Synapse is a local-first, multi-platform knowledge and study workstation spannin
 | [**`guides/testing-and-quality.md`**](./guides/testing-and-quality.md) | **Testing & Quality Assurance Guide** — Sub-second targeted Vitest workflows, Cargo core/bridge test suites, Qt CTest, and Android instrumentation. | All Engineers & QA |
 | [**`guides/docker-self-hosting.md`**](./guides/docker-self-hosting.md) | **Docker Self-Hosting Guide** — Multi-stage Nginx Alpine container deployment and reverse-proxy TLS configuration. | Self-Hosters & DevOps |
 
-### 4. Domain Modules (`docs/modules/`)
+### 5. Domain Modules (`docs/modules/`)
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`modules/index.md`**](./modules/index.md) | **System Modules Catalog** — Overview of all 18 canonical product modules and their source locations across clients. | Feature Engineers |
@@ -45,21 +56,21 @@ Synapse is a local-first, multi-platform knowledge and study workstation spannin
 | [**`modules/vault.md`**](./modules/vault.md) | **Password & Credential Vault** — Two-Tier Keychain field encryption, Shannon entropy generator, and HIBP k-anonymity breach detection. | Security Engineers |
 | [**`modules/mobile-android-finance.md`**](./modules/mobile-android-finance.md) | **Native Android Finance Module** — Jetpack Compose UI, UniFFI Rust bindings, local SQLite persistence, and explicit sync/encryption scope. | Android & Core Engineers |
 
-### 5. Security, Protocols & RFCs (`docs/security/`, `docs/protocols/`, `docs/rfcs/`)
+### 6. Security, Protocols & RFCs (`docs/security/`, `docs/protocols/`, `docs/rfcs/`)
 | Document | Description | Audience |
 | :--- | :--- | :--- |
-| [**`security/native-encryption-audit.md`**](./security/native-encryption-audit.md) | **Native Encryption Audit** — Verified cross-client encryption coverage, managed media recovery journal, and open plaintext data-at-rest gaps. | Security Auditors |
+| [**`security/encryption-coverage.md`**](./security/encryption-coverage.md) | **Native Encryption Coverage** — Verified cross-client protection, managed media recovery, and open plaintext data-at-rest gaps. | Security Engineers |
 | [**`security/cloud-account-encryption-migration.md`**](./security/cloud-account-encryption-migration.md) | **Cloud Account Encryption Migration** — Firebase account sign-in, transactional key envelope rewrap, and safe legacy-removal gates. | Security & Cloud Engineers |
 | [**`protocols/enc1-streaming.md`**](./protocols/enc1-streaming.md) | **Encrypted Media Container (ENC1)** — 16-byte header, 1 MiB AES-256-GCM chunk layout, random-access range math, and async protocol readers. | Systems Engineers |
 | [**`rfcs/RFC-001-contextual-vocabulary.md`**](./rfcs/RFC-001-contextual-vocabulary.md) | **RFC-001: Contextual Vocabulary Extraction** — Formal proposal for one-click EPUB/PDF dictionary lookup to FSRS flashcard pipeline. | Product & AI Engineers |
 
-### 6. Engineering Audits (`docs/audits/`)
+### 7. Consolidated Sync Documentation
 | Document | Description | Audience |
 | :--- | :--- | :--- |
-| [**`audits/firebase-sync-integrity-2026-11-17/README.md`**](./audits/firebase-sync-integrity-2026-11-17/README.md) | **Firebase Sync Integrity Audit** — Scoped Firestore reconciliation (5,005 documents), decrypted readback verification, and SQLite migration checks. | Cloud & Data Auditors |
+| [**`security/firebase-sync-integrity.md`**](./security/firebase-sync-integrity.md) | Verified scoped reconciliation, React Web pull evidence, data-retention boundaries and remaining client acceptance. | Cloud & Data Engineers |
 
 > [!TIP]
-> **Agent Skills & Engineering Playbooks**: For operational playbooks covering refactoring, design system tokens, security audits, and type safety, see [`.agents/skills/README.md`](../.agents/skills/README.md) and the root [`AGENTS.md`](../AGENTS.md).
+> **Agent Skills & Engineering Playbooks**: For operational playbooks covering refactoring, design tokens, security engineering, and type safety, see [`.agents/skills/README.md`](../.agents/skills/README.md) and the root [`AGENTS.md`](../AGENTS.md).
 
 ---
 

@@ -16,7 +16,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [Qt calendar API](../../../apps/desktop-qt/src/synapse_controller.h) create/update methods pass reminders and recurrence rule to `bridges/bridge-qt/src/domain/calendar.rs` and Core. Recurring series deletion is wired via `synapse_calendar_delete_event_series` and `deleteCalendarEventSeries`. `CalendarEventFormReminders.qml` and `CreateEventModal.qml` expose recurrence options (none, daily, weekly, monthly, yearly) and reminder minute arrays, and `CalendarView.qml` allows deleting recurring series or instances.
+**Evidence:** [Qt calendar API](../../apps/desktop-qt/src/synapse_controller.h) create/update methods pass reminders and recurrence rule to `bridges/bridge-qt/src/domain/calendar.rs` and Core. Recurring series deletion is wired via `synapse_calendar_delete_event_series` and `deleteCalendarEventSeries`. `CalendarEventFormReminders.qml` and `CreateEventModal.qml` expose recurrence options (none, daily, weekly, monthly, yearly) and reminder minute arrays, and `CalendarView.qml` allows deleting recurring series or instances.
 **Tasks:**
 - [x] Pass reminders through form, controller, bridge, and Core.
 - [x] Support recurring series and single-instance vs full-series deletion.
@@ -28,7 +28,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P0 — false success state
 **Status:** Resolved / Verified
-**Evidence:** [SettingsSyncTab.qml](../../../apps/desktop-qt/qml/settings/SettingsSyncTab.qml) was updated to eliminate the simulated 900 ms timer. The UI now honestly states that cloud sync is disabled in this profile, that SQLite WAL persistence operates locally under Zero-Knowledge principles, and provides a direct `PRAGMA wal_checkpoint(PASSIVE)` optimization action.
+**Evidence:** [SettingsSyncTab.qml](../../apps/desktop-qt/qml/settings/SettingsSyncTab.qml) was updated to eliminate the simulated 900 ms timer. The UI now honestly states that cloud sync is disabled in this profile, that SQLite WAL persistence operates locally under Zero-Knowledge principles, and provides a direct `PRAGMA wal_checkpoint(PASSIVE)` optimization action.
 **Tasks:**
 - [x] Mark sync unavailable until a real service is wired.
 - [x] Define account scope, encryption, conflicts, retry/backoff, offline queue, and recovery.
@@ -40,7 +40,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P0
 **Status:** Confirmed
-**Evidence:** React auth includes Firebase register/sign-in, account-password unlock, and legacy vault migration in [auth components](../../../apps/web-react/src/components/auth/). [Qt AccountEvolutionModal.qml](../../../apps/desktop-qt/qml/auth/AccountEvolutionModal.qml) says cloud auth/sync is unavailable. A local vault password is not an account identity.
+**Evidence:** React auth includes Firebase register/sign-in, account-password unlock, and legacy vault migration in [auth components](../../apps/web-react/src/components/auth/). [Qt AccountEvolutionModal.qml](../../apps/desktop-qt/qml/auth/AccountEvolutionModal.qml) says cloud auth/sync is unavailable. A local vault password is not an account identity.
 **Tasks:**
 - [ ] Define account scope and identity provider contract.
 - [ ] Implement sign-up/sign-in/out, expired session, offline, and recovery states if in scope.
@@ -51,7 +51,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [WorkspaceSwitcher.qml](../../../apps/desktop-qt/qml/workspace/WorkspaceSwitcher.qml), [WorkspaceCreateModal.qml](../../../apps/desktop-qt/qml/workspace/WorkspaceCreateModal.qml), and [WorkspaceMembersModal.qml](../../../apps/desktop-qt/qml/workspace/WorkspaceMembersModal.qml) are wired to durable config storage via `dataController.getConfig` and `setConfig`. Workspace records, icons, roles, and member invitations/removals are persisted across sessions in `workspaces_list` and active pointer in `workspaces_active_id`.
+**Evidence:** [WorkspaceSwitcher.qml](../../apps/desktop-qt/qml/workspace/WorkspaceSwitcher.qml), [WorkspaceCreateModal.qml](../../apps/desktop-qt/qml/workspace/WorkspaceCreateModal.qml), and [WorkspaceMembersModal.qml](../../apps/desktop-qt/qml/workspace/WorkspaceMembersModal.qml) are wired to durable config storage via `dataController.getConfig` and `setConfig`. Workspace records, icons, roles, and member invitations/removals are persisted across sessions in `workspaces_list` and active pointer in `workspaces_active_id`.
 **Tasks:**
 - [x] Add typed workspace/member/invitation contracts.
 - [x] Scope records and queries without breaking existing personal data.
@@ -63,7 +63,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [ShareModal.qml](../../../apps/desktop-qt/qml/sharing/ShareModal.qml) and [ShareManagementPanel.qml](../../../apps/desktop-qt/qml/sharing/ShareManagementPanel.qml) were wired to durable storage via `GlobalModalsHost.qml`. Shared page URLs, permissions (view/edit), password protection, and creation timestamps are persisted in `sharing_pages`, revocation deletes records, and the panel displays live shared pages or an honest empty state with zero fake mock data.
+**Evidence:** [ShareModal.qml](../../apps/desktop-qt/qml/sharing/ShareModal.qml) and [ShareManagementPanel.qml](../../apps/desktop-qt/qml/sharing/ShareManagementPanel.qml) were wired to durable storage via `GlobalModalsHost.qml`. Shared page URLs, permissions (view/edit), password protection, and creation timestamps are persisted in `sharing_pages`, revocation deletes records, and the panel displays live shared pages or an honest empty state with zero fake mock data.
 **Tasks:**
 - [x] Define token, permission, expiry, revocation, password, and snapshot semantics.
 - [x] Connect create/list/revoke and enforce access in a backend.
@@ -74,7 +74,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [AiClient.qml](../../../apps/desktop-qt/qml/ui/AiClient.qml) provides a unified provider integration calling Google Gemini API asynchronously with active context, custom prompts, and conversation history. [AiSidebarPanel.qml](../../../apps/desktop-qt/qml/ai-sidebar/AiSidebarPanel.qml) and [PracticeView.qml](../../../apps/desktop-qt/qml/practice/PracticeView.qml) query Gemini in real-time, eliminating canned timers, and provide clear user feedback if the API key needs configuration.
+**Evidence:** [AiClient.qml](../../apps/desktop-qt/qml/ui/AiClient.qml) provides a unified provider integration calling Google Gemini API asynchronously with active context, custom prompts, and conversation history. [AiSidebarPanel.qml](../../apps/desktop-qt/qml/ai-sidebar/AiSidebarPanel.qml) and [PracticeView.qml](../../apps/desktop-qt/qml/practice/PracticeView.qml) query Gemini in real-time, eliminating canned timers, and provide clear user feedback if the API key needs configuration.
 **Tasks:**
 - [x] Add secure provider adapter with cancellation, timeout, and errors.
 - [x] Persist assistant responses/session metadata through approved APIs.
@@ -86,7 +86,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** Native audio capture was implemented in `audio_recorder_controller.cpp` (`startAudioRecording`, `stopAudioRecording`, `cancelAudioRecording`, `audioRecordingLevelChanged`) using Linux `arecord` / `ffmpeg`. [PracticeMicTest.qml](../../../apps/desktop-qt/qml/practice/PracticeMicTest.qml) and [PracticeAudioVisualizer.qml](../../../apps/desktop-qt/qml/practice/PracticeAudioVisualizer.qml) were wired to measured live hardware microphone levels, replacing random math with real audio capture.
+**Evidence:** Native audio capture was implemented in `audio_recorder_controller.cpp` (`startAudioRecording`, `stopAudioRecording`, `cancelAudioRecording`, `audioRecordingLevelChanged`) using Linux `arecord` / `ffmpeg`. [PracticeMicTest.qml](../../apps/desktop-qt/qml/practice/PracticeMicTest.qml) and [PracticeAudioVisualizer.qml](../../apps/desktop-qt/qml/practice/PracticeAudioVisualizer.qml) were wired to measured live hardware microphone levels, replacing random math with real audio capture.
 **Tasks:**
 - [x] Implement actual permission and capture lifecycle.
 - [x] Feed measured levels/transcription state to UI.
@@ -97,7 +97,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [QuizAIGenerationModal.qml](../../../apps/desktop-qt/qml/questions/QuizAIGenerationModal.qml) was connected to `AiClient.promptStructured` requesting schema-validated JSON questions (prompt, type, options, correctIndex, explanation, tags) from Google Gemini, with robust JSON cleanup, schema validation, and defensive fallback.
+**Evidence:** [QuizAIGenerationModal.qml](../../apps/desktop-qt/qml/questions/QuizAIGenerationModal.qml) was connected to `AiClient.promptStructured` requesting schema-validated JSON questions (prompt, type, options, correctIndex, explanation, tags) from Google Gemini, with robust JSON cleanup, schema validation, and defensive fallback.
 **Tasks:**
 - [x] Connect provider through shared abstraction.
 - [x] Validate schema, answers, question count/type, and content before import.
@@ -108,7 +108,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [LibraryAiEnrichModal.qml](../../../apps/desktop-qt/qml/library/LibraryAiEnrichModal.qml) queries Google Books API and Gemini for real title, author, description, tags, and reading duration. [LibraryDictionaryModal.qml](../../../apps/desktop-qt/qml/library/LibraryDictionaryModal.qml) queries the public Free Dictionary API with Gemini fallback for real definitions, phonetics, parts of speech, and examples, eliminating mock definitions.
+**Evidence:** [LibraryAiEnrichModal.qml](../../apps/desktop-qt/qml/library/LibraryAiEnrichModal.qml) queries Google Books API and Gemini for real title, author, description, tags, and reading duration. [LibraryDictionaryModal.qml](../../apps/desktop-qt/qml/library/LibraryDictionaryModal.qml) queries the public Free Dictionary API with Gemini fallback for real definitions, phonetics, parts of speech, and examples, eliminating mock definitions.
 **Tasks:**
 - [x] Implement real lookup/enrichment with useful offline/error states.
 - [x] Define which book content AI analyzes and what is sent.
@@ -119,7 +119,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [FilesDocumentAiModal.qml](../../../apps/desktop-qt/qml/files/FilesDocumentAiModal.qml) queries Gemini via `AiClient` with document context for real summaries, analysis, and quiz question generation. [FilesFolderUploadModal.qml](../../../apps/desktop-qt/qml/files/FilesFolderUploadModal.qml) removed the hardcoded 12-file mock and fake timer, directly executing real recursive folder import and E2EE encryption via `dataController.importLocalFile`.
+**Evidence:** [FilesDocumentAiModal.qml](../../apps/desktop-qt/qml/files/FilesDocumentAiModal.qml) queries Gemini via `AiClient` with document context for real summaries, analysis, and quiz question generation. [FilesFolderUploadModal.qml](../../apps/desktop-qt/qml/files/FilesFolderUploadModal.qml) removed the hardcoded 12-file mock and fake timer, directly executing real recursive folder import and E2EE encryption via `dataController.importLocalFile`.
 **Tasks:**
 - [x] Connect document extraction/provider analysis with cancel and failure states.
 - [x] Replace simulated folder progress with actual per-file progress and partial-failure recovery.
@@ -130,7 +130,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** Native YouTube controller was implemented in `video_youtube_controller.cpp` (`fetchYouTubeInfo`, `downloadYouTubeVideo`, `cancelYouTubeDownload`) executing `yt-dlp` via `QProcess` with real metadata JSON extraction, sanitized error messages, and background download progress tracking. [YouTubeDownloadModal.qml](../../../apps/desktop-qt/qml/video/YouTubeDownloadModal.qml) and [VideoUploadModal.qml](../../../apps/desktop-qt/qml/video/VideoUploadModal.qml) connect directly to this pipeline and real AES-256-GCM video import.
+**Evidence:** Native YouTube controller was implemented in `video_youtube_controller.cpp` (`fetchYouTubeInfo`, `downloadYouTubeVideo`, `cancelYouTubeDownload`) executing `yt-dlp` via `QProcess` with real metadata JSON extraction, sanitized error messages, and background download progress tracking. [YouTubeDownloadModal.qml](../../apps/desktop-qt/qml/video/YouTubeDownloadModal.qml) and [VideoUploadModal.qml](../../apps/desktop-qt/qml/video/VideoUploadModal.qml) connect directly to this pipeline and real AES-256-GCM video import.
 **Tasks:**
 - [x] Connect actual download, progress, cancel, and process errors.
 - [x] Pass selected subtitles/quality through import and persistence.
@@ -142,7 +142,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [AnkiAudioRecorder.qml](../../../apps/desktop-qt/qml/anki/AnkiAudioRecorder.qml) was wired to `dataController.startAudioRecording()` and `stopAudioRecording()`, capturing real microphone audio to WAV files via `audio_recorder_controller.cpp` and attaching the real audio file path to flashcards.
+**Evidence:** [AnkiAudioRecorder.qml](../../apps/desktop-qt/qml/anki/AnkiAudioRecorder.qml) was wired to `dataController.startAudioRecording()` and `stopAudioRecording()`, capturing real microphone audio to WAV files via `audio_recorder_controller.cpp` and attaching the real audio file path to flashcards.
 **Tasks:**
 - [x] Record audio with device lifecycle and persisted file.
 - [x] Implement playback, delete/re-record, interruption, and missing-file recovery.
@@ -153,7 +153,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1 — data integrity
 **Status:** Resolved / Verified
-**Evidence:** [DiagramImportModal.qml](../../../apps/desktop-qt/qml/diagrams/DiagramImportModal.qml) and [DiagramsView.qml](../../../apps/desktop-qt/qml/diagrams/DiagramsView.qml) implement full bidirectional format normalization and round-tripping for Tldraw v2 snapshots. Import parses `geo` (rectangle, ellipse), `draw` (segments points), `arrow`, and `line` shapes with accurate hex color mappings into native whiteboard shapes. Export generates valid schema-versioned Tldraw v2 store snapshots (`exportToTldraw`) saved as `.tldraw` / `.json` via [DiagramExportModal.qml](../../../apps/desktop-qt/qml/diagrams/DiagramExportModal.qml), enabling complete round-trip compatibility with React's `DiagramEditor.tsx`.
+**Evidence:** [DiagramImportModal.qml](../../apps/desktop-qt/qml/diagrams/DiagramImportModal.qml) and [DiagramsView.qml](../../apps/desktop-qt/qml/diagrams/DiagramsView.qml) implement full bidirectional format normalization and round-tripping for Tldraw v2 snapshots. Import parses `geo` (rectangle, ellipse), `draw` (segments points), `arrow`, and `line` shapes with accurate hex color mappings into native whiteboard shapes. Export generates valid schema-versioned Tldraw v2 store snapshots (`exportToTldraw`) saved as `.tldraw` / `.json` via [DiagramExportModal.qml](../../apps/desktop-qt/qml/diagrams/DiagramExportModal.qml), enabling complete round-trip compatibility with React's `DiagramEditor.tsx`.
 **Tasks:**
 - [x] Collect/version real diagram fixtures before data changes.
 - [x] Define canonical format or safe bidirectional conversion.
@@ -176,7 +176,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P2
 **Status:** Resolved / Verified
-**Evidence:** Localization catalog workflow established via automated extraction utility `apps/desktop-qt/scripts/extract_translations.py`. 946 translation strings across 120 contexts were extracted from QML and C++ sources into standard Qt Linguist XML catalogs: [synapse_pt_BR.ts](../../../apps/desktop-qt/i18n/synapse_pt_BR.ts) and [synapse_en.ts](../../../apps/desktop-qt/i18n/synapse_en.ts). [main.cpp](../../../apps/desktop-qt/src/main.cpp) was updated with `QTranslator` runtime loading hooked into persisted user settings (`app_language`).
+**Evidence:** Localization catalog workflow established via automated extraction utility `apps/desktop-qt/scripts/extract_translations.py`. 946 translation strings across 120 contexts were extracted from QML and C++ sources into standard Qt Linguist XML catalogs: [synapse_pt_BR.ts](../../apps/desktop-qt/i18n/synapse_pt_BR.ts) and [synapse_en.ts](../../apps/desktop-qt/i18n/synapse_en.ts). [main.cpp](../../apps/desktop-qt/src/main.cpp) was updated with `QTranslator` runtime loading hooked into persisted user settings (`app_language`).
 **Tasks:**
 - [x] Define locale set and fallback.
 - [x] Extract UI strings, accessible names, errors, tooltips, and notifications.
@@ -199,7 +199,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P2
 **Status:** Resolved / Verified
-**Evidence:** Monolithic presentation components were refactored into cohesive SRP micro-components: `PracticeView.qml` (reduced from 645 to 330 lines) by extracting [PracticeSidebar.qml](../../../apps/desktop-qt/qml/practice/PracticeSidebar.qml) and [PracticeChatArea.qml](../../../apps/desktop-qt/qml/practice/PracticeChatArea.qml); `VaultItemDetails.qml` (reduced from 640 to 480 lines) by extracting [VaultItemCustomFields.qml](../../../apps/desktop-qt/qml/vault/VaultItemCustomFields.qml) and [VaultItemNotesCard.qml](../../../apps/desktop-qt/qml/vault/VaultItemNotesCard.qml).
+**Evidence:** Monolithic presentation components were refactored into cohesive SRP micro-components: `PracticeView.qml` (reduced from 645 to 330 lines) by extracting [PracticeSidebar.qml](../../apps/desktop-qt/qml/practice/PracticeSidebar.qml) and [PracticeChatArea.qml](../../apps/desktop-qt/qml/practice/PracticeChatArea.qml); `VaultItemDetails.qml` (reduced from 640 to 480 lines) by extracting [VaultItemCustomFields.qml](../../apps/desktop-qt/qml/vault/VaultItemCustomFields.qml) and [VaultItemNotesCard.qml](../../apps/desktop-qt/qml/vault/VaultItemNotesCard.qml).
 **Tasks:**
 - [x] Map responsibilities and signal/property contracts before refactoring.
 - [x] Keep controllers thin and domain calculations in Core.
@@ -210,7 +210,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Partial
-**Evidence:** Qt has stale-write/history protection. The [parity tracker](../../native-desktop-parity.md#L465) says live multi-client Yjs collaboration remains open. [NotesHelpDialog.qml](../../../apps/desktop-qt/qml/notes/NotesHelpDialog.qml) documents unsupported table/custom metadata that stay source-only. Notes is not generally missing; the native editor is extensive.
+**Evidence:** Qt has stale-write/history protection. The [prior detailed parity matrix](./native-desktop-parity-matrix-working.md#L465) records live multi-client Yjs collaboration as open. [NotesHelpDialog.qml](../../apps/desktop-qt/qml/notes/NotesHelpDialog.qml) documents unsupported table/custom metadata that stay source-only. Notes is not generally missing; the native editor is extensive.
 **Tasks:**
 - [ ] Specify supported React/Qt HTML/extension interchange and unknown-node behavior.
 - [ ] Preserve fixtures for every extension and unsupported block.
@@ -232,7 +232,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P0
 **Status:** Confirmed partial; current audit owns details
-**Evidence:** [Native encryption audit](../../security/native-encryption-audit.md) records sensitive domain columns/metadata that remain plaintext and no Qt equivalent of React Firebase account key migration. A master password or encrypted media path does not prove full at-rest encryption.
+**Evidence:** [Native encryption audit](../../docs/security/encryption-coverage.md) records sensitive domain columns/metadata that remain plaintext and no Qt equivalent of React Firebase account key migration. A master password or encrypted media path does not prove full at-rest encryption.
 **Tasks:**
 - [ ] Use current encryption audit as entity-level authority.
 - [ ] Define Qt migration/recovery behavior for each protected entity.
@@ -244,7 +244,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P2
 **Status:** Partial / Unverified
-**Evidence:** [Setup guide](../../guides/setup-and-build.md) and [native tracker](../../native-desktop-parity.md#L671) list Qt, libmpv, libarchive, Poppler tools, and optional ffprobe. End-user packaging is open.
+**Evidence:** [Setup guide](../../docs/guides/setup-and-build.md) and [prior detailed parity matrix](./native-desktop-parity-matrix-working.md#L671) list Qt, libmpv, libarchive, Poppler tools, and optional ffprobe. End-user packaging is open.
 **Tasks:**
 - [ ] Verify clean install on supported OSes without developer packages.
 - [ ] Package/document dependencies, licensing, and versions.
@@ -266,7 +266,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [FocusLofiView.qml](../../../apps/desktop-qt/qml/focus/FocusLofiView.qml) was equipped with an active scheduler ticker (`alarmSchedulerTimer`) that matches current time (HH:mm) against enabled alarms and day-of-week rules, triggers the alarm modal, handles snooze with a 10-minute offset, and updates one-off alarms to disabled on dismissal.
+**Evidence:** [FocusLofiView.qml](../../apps/desktop-qt/qml/focus/FocusLofiView.qml) was equipped with an active scheduler ticker (`alarmSchedulerTimer`) that matches current time (HH:mm) against enabled alarms and day-of-week rules, triggers the alarm modal, handles snooze with a 10-minute offset, and updates one-off alarms to disabled on dismissal.
 **Tasks:**
 - [x] Expose typed snooze, due-query/delivery, and calendar-reminder sync operations through bridge-qt.
 - [x] Add an app-lifecycle-safe scheduler and OS/native alert delivery as defined by product scope.
@@ -288,7 +288,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [FilesAudioPlayerModal.qml](../../../apps/desktop-qt/qml/files/FilesAudioPlayerModal.qml) now embeds native `MpvPlayerItem`, receiving true media duration, position, volume, and seeking via `seekRelative(-5)` / `seekRelative(5)` and scrubber slider binding, replacing the fixed 180s timer with real audio decoding.
+**Evidence:** [FilesAudioPlayerModal.qml](../../apps/desktop-qt/qml/files/FilesAudioPlayerModal.qml) now embeds native `MpvPlayerItem`, receiving true media duration, position, volume, and seeking via `seekRelative(-5)` / `seekRelative(5)` and scrubber slider binding, replacing the fixed 180s timer with real audio decoding.
 **Tasks:**
 - [x] Bind the modal to a native media/decoder service and verified decrypted temporary source where required.
 - [x] Derive duration, position, seeking, volume, errors, and end-of-file from actual playback.
@@ -299,7 +299,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [CultureMediaSearchModal.qml](../../../apps/desktop-qt/qml/culture/CultureMediaSearchModal.qml) was updated to perform asynchronous open metadata search via TVMaze and Jikan endpoints with real covers, years, and summaries, with honest empty/error feedback and zero simulated results.
+**Evidence:** [CultureMediaSearchModal.qml](../../apps/desktop-qt/qml/culture/CultureMediaSearchModal.qml) was updated to perform asynchronous open metadata search via TVMaze and Jikan endpoints with real covers, years, and summaries, with honest empty/error feedback and zero simulated results.
 **Tasks:**
 - [x] Define provider adapters, provider selection, request limits, attribution, and response normalization.
 - [x] Implement real query, loading, cancellation, network/error, and rate-limit states.
@@ -310,7 +310,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1 — data integrity and user trust
 **Status:** Resolved / Verified
-**Evidence:** [DiagramImportModal.qml](../../../apps/desktop-qt/qml/diagrams/DiagramImportModal.qml) normalizes Excalidraw and Tldraw records into native shape structures with format validation and error reporting. [DiagramExportModal.qml](../../../apps/desktop-qt/qml/diagrams/DiagramExportModal.qml) and [DiagramsView.qml](../../../apps/desktop-qt/qml/diagrams/DiagramsView.qml) generate true PNG image files via `whiteboardCanvas.grabToImage`, clean SVG, and structured JSON.
+**Evidence:** [DiagramImportModal.qml](../../apps/desktop-qt/qml/diagrams/DiagramImportModal.qml) normalizes Excalidraw and Tldraw records into native shape structures with format validation and error reporting. [DiagramExportModal.qml](../../apps/desktop-qt/qml/diagrams/DiagramExportModal.qml) and [DiagramsView.qml](../../apps/desktop-qt/qml/diagrams/DiagramsView.qml) generate true PNG image files via `whiteboardCanvas.grabToImage`, clean SVG, and structured JSON.
 **Tasks:**
 - [x] Validate format/version before creating a record and surface parsing errors without destructive blank import.
 - [x] Implement a documented converter or remove unsupported Excalidraw/Tldraw labels.
@@ -321,7 +321,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1
 **Status:** Resolved / Verified
-**Evidence:** [AnkiAIAssistantModal.qml](../../../apps/desktop-qt/qml/anki/AnkiAIAssistantModal.qml) was connected to `AiClient.promptStructured`, requesting high-yield flashcard pairs from Google Gemini with front/back schema validation, preview before import, and defensive text fallback.
+**Evidence:** [AnkiAIAssistantModal.qml](../../apps/desktop-qt/qml/anki/AnkiAIAssistantModal.qml) was connected to `AiClient.promptStructured`, requesting high-yield flashcard pairs from Google Gemini with front/back schema validation, preview before import, and defensive text fallback.
 **Tasks:**
 - [x] Connect the assistant to the same approved provider boundary used by other AI features.
 - [x] Validate card schema, cloze/media/type support, duplicate handling, and deck import transactionality.
@@ -332,7 +332,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P2
 **Status:** Resolved / Verified
-**Evidence:** [BackgroundTaskWidget.qml](../../../apps/desktop-qt/qml/layout/BackgroundTaskWidget.qml) is wired to `activeTasks` on `SynapseDataController` and receives real background task updates and cancellations from operations like YouTube downloads, encrypted video imports, and backups. [SyncStatusToast.qml](../../../apps/desktop-qt/qml/layout/SyncStatusToast.qml) is bound to active file and encryption operation states.
+**Evidence:** [BackgroundTaskWidget.qml](../../apps/desktop-qt/qml/layout/BackgroundTaskWidget.qml) is wired to `activeTasks` on `SynapseDataController` and receives real background task updates and cancellations from operations like YouTube downloads, encrypted video imports, and backups. [SyncStatusToast.qml](../../apps/desktop-qt/qml/layout/SyncStatusToast.qml) is bound to active file and encryption operation states.
 **Tasks:**
 - [x] Trace every task/status producer through `AuthenticatedApplication.qml`, controller, and service.
 - [x] Ensure cancel means real operation cancellation and does not only hide UI.
@@ -354,7 +354,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P2 — responsiveness and request correctness
 **Status:** Resolved / Verified
-**Evidence:** [vault_password_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_password_controller.cpp) eliminated the nested blocking `QEventLoop`. Asynchronous non-blocking network requests with request cancellation (`cancelPasswordBreachCheck`), tracking active query and revision guards, are now exposed via `checkPasswordBreachAsync` and wired into `VaultBreachBadge.qml`.
+**Evidence:** [vault_password_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_password_controller.cpp) eliminated the nested blocking `QEventLoop`. Asynchronous non-blocking network requests with request cancellation (`cancelPasswordBreachCheck`), tracking active query and revision guards, are now exposed via `checkPasswordBreachAsync` and wired into `VaultBreachBadge.qml`.
 **Tasks:**
 - [x] Expose asynchronous, cancellable breach lookup with explicit loading/error/result states.
 - [x] Bind responses to a credential/password revision and ignore stale completion.
@@ -378,7 +378,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1 — reader data visibility and parity
 **Status:** Resolved / Verified
-**Evidence:** [LibraryReaderView.qml](../../../apps/desktop-qt/qml/library/LibraryReaderView.qml) renders an overlay bar containing active page highlights with color indicators and note snippets directly above the reading canvas.
+**Evidence:** [LibraryReaderView.qml](../../apps/desktop-qt/qml/library/LibraryReaderView.qml) renders an overlay bar containing active page highlights with color indicators and note snippets directly above the reading canvas.
 **Tasks:**
 - [x] Define portable highlight anchors for PDF and EPUB, including selector/geometry fallback and source-version behavior.
 - [x] Render persisted highlights and notes over PDF pages and into EPUB content without corrupting source text.
@@ -390,7 +390,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P3 — product-truthfulness
 **Status:** Resolved / Verified
-**Evidence:** [HomeWeatherWidget.qml](../../../apps/desktop-qt/qml/home/HomeWeatherWidget.qml) was replaced with an honest, live Clock & Date panel that computes the user's localized date, day of week, time greeting (Bom dia / Boa tarde / Boa noite), and focus badge, completely removing misleading fixed temperature/weather strings.
+**Evidence:** [HomeWeatherWidget.qml](../../apps/desktop-qt/qml/home/HomeWeatherWidget.qml) was replaced with an honest, live Clock & Date panel that computes the user's localized date, day of week, time greeting (Bom dia / Boa tarde / Boa noite), and focus badge, completely removing misleading fixed temperature/weather strings.
 **Tasks:**
 - [x] Decide whether current weather is a supported product capability; remove/relabel the card if it is not.
 - [x] If supported, define consent, location/manual-city, provider, caching, offline, privacy, and rate-limit behavior.
@@ -401,7 +401,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1 — strict visual/interaction parity
 **Status:** Resolved / Verified
-**Evidence:** [LibraryReaderToolbar.qml](../../../apps/desktop-qt/qml/library/LibraryReaderToolbar.qml) was updated with interactive page jump input, Zoom In (+), Zoom Out (-), and Fit Width (⤢) buttons. [LibraryReaderView.qml](../../../apps/desktop-qt/qml/library/LibraryReaderView.qml) wires these controls to a responsive PDF `Flickable` scaling container and dynamic EPUB typography scaling.
+**Evidence:** [LibraryReaderToolbar.qml](../../apps/desktop-qt/qml/library/LibraryReaderToolbar.qml) was updated with interactive page jump input, Zoom In (+), Zoom Out (-), and Fit Width (⤢) buttons. [LibraryReaderView.qml](../../apps/desktop-qt/qml/library/LibraryReaderView.qml) wires these controls to a responsive PDF `Flickable` scaling container and dynamic EPUB typography scaling.
 **Tasks:**
 - [x] Build side-by-side visual references for Library browser, collection grid, book details, PDF reader, EPUB reader, annotations, search, typography, empty/loading/error, and import progress.
 - [x] Match the React reader layout, controls, shortcuts, and visible states for the supported desktop scope; retain evidence for every item.
@@ -414,7 +414,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P2 — Library information-surface parity
 **Status:** Resolved / Verified
-**Evidence:** [BookDetailsModal.qml](../../../apps/desktop-qt/qml/library/BookDetailsModal.qml) was expanded to match React's `BookInfoModal.tsx` layout: scrollable view with storage and cloud availability cards, reading progress statistics, metadata grid (publisher, published year, language, created date), reading stepper, reader open button, and delete confirmation dialog.
+**Evidence:** [BookDetailsModal.qml](../../apps/desktop-qt/qml/library/BookDetailsModal.qml) was expanded to match React's `BookInfoModal.tsx` layout: scrollable view with storage and cloud availability cards, reading progress statistics, metadata grid (publisher, published year, language, created date), reading stepper, reader open button, and delete confirmation dialog.
 **Tasks:**
 - [x] Define the intended book-details contract and decide whether Qt should match the React inspection surface or expose a clearly equivalent native flow.
 - [x] Present supported metadata, collections, status, timestamps, storage/cloud availability, and errors in a scroll-safe, accessible layout.
@@ -438,7 +438,7 @@ Severity prioritizes parity impact, user trust, or data/security risk. Findings 
 
 **Priority:** P1 — storage-state and card-action parity
 **Status:** Resolved / Verified
-**Evidence:** [LibraryBookActionsMenu.qml](../../../apps/desktop-qt/qml/library/LibraryBookActionsMenu.qml), [LibraryBookGrid.qml](../../../apps/desktop-qt/qml/library/LibraryBookGrid.qml), and [LibraryView.qml](../../../apps/desktop-qt/qml/library/LibraryView.qml) were updated to expose and handle offline download and local cache eviction actions ("Baixar para uso offline" and "Liberar espaço (remover cache local)").
+**Evidence:** [LibraryBookActionsMenu.qml](../../apps/desktop-qt/qml/library/LibraryBookActionsMenu.qml), [LibraryBookGrid.qml](../../apps/desktop-qt/qml/library/LibraryBookGrid.qml), and [LibraryView.qml](../../apps/desktop-qt/qml/library/LibraryView.qml) were updated to expose and handle offline download and local cache eviction actions ("Baixar para uso offline" and "Liberar espaço (remover cache local)").
 **Tasks:**
 - [x] Map the exact React local/synced/cloud-only states and their unavailable/loading/error variants to typed Qt state.
 - [x] Implement download-for-offline and evict-local-cache actions through approved storage/sync boundaries, with confirmation where data loss is possible.

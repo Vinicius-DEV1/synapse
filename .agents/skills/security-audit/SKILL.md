@@ -12,7 +12,7 @@ description: >-
 > This skill defines audit procedures and target controls; it is not a claim
 > that every client currently meets them. For verified Qt vault coverage and
 > remaining plaintext risks, use the
-> [native encryption audit](../../../docs/security/native-encryption-audit.md).
+> [encryption coverage guide](../../../docs/security/encryption-coverage.md).
 
 Activate this skill whenever auditing security, analyzing vulnerabilities, reviewing penetration defense, assessing data protection, or validating cryptography across the **Caderno** multiplatform ecosystem.
 

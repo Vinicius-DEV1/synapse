@@ -2,7 +2,7 @@
 
 > **Scope:** This document preserves React/Web sync and autosave design notes, including historical performance claims. It does not certify Qt or Android sync parity, zero-lock behavior, repository-wide E2EE, or that every implementation detail still matches the current code. Verify paths and contracts before changing the sync system.
 
-> **Verification status (2026-11-18):** Scoped rules and the latest web client are deployed to the four Hosting sites configured in `firebase.json`. Production anonymous root reads are denied, and the primary Firebase Auth account was validated. The protected source archive contains 4,873 root documents; eligible records were copied to the account scope, and the local database contains all 4,867 non-transient source IDs plus 138 local-only rows. An authenticated readback verified all 5,005 scoped sync documents, decrypted payloads, 41 encrypted chunk documents, and 3 protected config documents; no missing or remote-only sync IDs remain. The pass used 9,398 Firestore document reads without scanning unscoped roots. Schema version 1 was applied to the canonical SQLite database after a verified backup; all 55 previous tables and 5,044 rows were preserved. The active database has all 50 sync tables, 5,006 sync rows, and no blank IDs. The app UI pull remains open. Preserve source roots and rollback snapshots. See the [Firebase sync integrity audit](../audits/firebase-sync-integrity-2026-11-17/README.md). This verifies scoped cloud payload parity, not every client target or every item in the table inventory.
+> **Verified scope (2026-11-18):** Scoped Firestore reconciliation and decrypted payload readback covered 5,005 user-scoped sync documents, 41 encrypted chunk documents, and three protected configuration documents, with no missing or remote-only sync IDs. A fresh React Web sign-in and full pull succeeded. This does not establish installed Tauri/WebView compatibility, native Qt/Android Firebase sync, repository-wide encryption, or exact contents of every rollback snapshot. See [Firebase Sync Integrity](../security/firebase-sync-integrity.md) for the complete consolidated scope and retention boundary.
 
 ## 1. Architectural Overview
 
@@ -186,7 +186,7 @@ Differences in date formatting between SQLite native strings (`YYYY-MM-DD HH:MM:
      ```
    - Without a workspace, records live in the authenticated account's private subcollection. User config documents hold the account's sync signal and manifest; workspace config holds the workspace equivalents.
    - Checkpoints and deletion backfill flags are scoped by the same UID/workspace key. The first sync into a new scope performs a full table scan.
-   - The local account-evolution migration copies local records into the authenticated user's personal workspace. It never reads unscoped root collections. An authenticated, owner-approved reconciliation copied eligible historical root documents into the user's scope while preserving the originals. Document-by-document decrypted readback and isolated SQLite restore integrity checks pass; app UI pull remains tracked in the audit checklist.
+   - The local account-evolution migration copies local records into the authenticated user's personal workspace. It never reads unscoped root collections. An authenticated, owner-approved reconciliation copied eligible historical root documents into the user's scope while preserving the originals. Document-by-document decrypted readback, isolated SQLite restore integrity checks, and a React Web app-mediated full pull passed; other installed clients remain unverified. See [Firebase Sync Integrity](../security/firebase-sync-integrity.md).
 
 ---
 
@@ -211,7 +211,7 @@ During file uploads, encrypted video streaming, and attachment synchronization, 
 
 ## 8. Intended Sync Table Inventory & Tombstone Propagation
 
-The table list below is the current client-side sync allowlist. It documents intended participation, not proof of complete cloud persistence, field parity, or account ownership. The audit checklist tracks reconciliation separately.
+The table list below is the current client-side sync allowlist. It documents intended participation, not proof of complete cloud persistence, field parity, or account ownership. The [Firebase Sync Integrity guide](../security/firebase-sync-integrity.md) records the verified reconciliation scope and open client gates.
 
 | Module | Synchronized Tables | Primary Key | Soft Delete Tombstone |
 | --- | --- | --- | --- |

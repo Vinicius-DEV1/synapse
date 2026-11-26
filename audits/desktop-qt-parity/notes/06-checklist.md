@@ -188,7 +188,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare keyboard-only and screen-reader paths, accessible names, roles, state, order and selected-item announcements.
 - [ ] Compare English and Portuguese labels, errors, empty states and shortcut help.
 - [ ] Update `NotesHelpDialog.qml` so all descriptions match active controls and do not mention removed source/preview modes.
-- [ ] Update [native-desktop-parity.md](../../../native-desktop-parity.md), [modules/notes.md](../../../modules/notes.md), and documentation ownership whenever status changes.
+- [ ] Update [native-desktop-parity.md](../../../docs/native-desktop-parity.md), [modules/notes.md](../../../docs/modules/notes.md), and documentation ownership whenever status changes.
 
 ## K. Final acceptance
 

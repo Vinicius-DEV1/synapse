@@ -6,24 +6,24 @@ Qt app guidance says QML renders and dispatches, C++ controllers are thin orches
 
 ## Generic SQL is still exposed
 
-- [synapse_controller.h](../../../apps/desktop-qt/src/synapse_controller.h#L114) exposes executeSql as Q_INVOKABLE, making arbitrary SQL reachable from QML.
+- [synapse_controller.h](../../apps/desktop-qt/src/synapse_controller.h#L114) exposes executeSql as Q_INVOKABLE, making arbitrary SQL reachable from QML.
 - The shared controller declares generic executeQuery, executeQueryPrepared, and executeSqlPrepared methods and wraps generic bridge database functions.
 - Generic bridge SQL methods are described as deprecated in the parity tracker, yet the application wrapper still uses them.
-- This weakens typed contracts and conflicts with [apps/desktop-qt/AGENTS.md](../../../apps/desktop-qt/AGENTS.md).
+- This weakens typed contracts and conflicts with [apps/desktop-qt/AGENTS.md](../../apps/desktop-qt/AGENTS.md).
 
 ## SQL-containing app files
 
 Static scan found SQL in the following files:
 
-- [synapse_controller.cpp](../../../apps/desktop-qt/src/synapse_controller.cpp) — generic query/execute wrappers and keychain count.
-- [database_prepared_controller.cpp](../../../apps/desktop-qt/src/controllers/platform/database_prepared_controller.cpp) — generic prepared query/execute wrapper.
-- [system_controller.cpp](../../../apps/desktop-qt/src/controllers/platform/system_controller.cpp) — PRAGMA maintenance and SQLite diagnostics.
-- [vault_setup_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_setup_controller.cpp) — key migration transaction and selected legacy migration.
-- [vault_setup_assets_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_setup_assets_controller.cpp) — asset inventory/migration.
-- [vault_asset_migration_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_asset_migration_controller.cpp) — managed asset migration.
-- [vault_auth_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_auth_controller.cpp) — local vault/keychain handling.
-- [vault_password_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_password_controller.cpp) — password migration.
-- [vault_removal_controller.cpp](../../../apps/desktop-qt/src/controllers/vault/vault_removal_controller.cpp) — vault removal/re-encryption migration.
+- [synapse_controller.cpp](../../apps/desktop-qt/src/synapse_controller.cpp) — generic query/execute wrappers and keychain count.
+- [database_prepared_controller.cpp](../../apps/desktop-qt/src/controllers/platform/database_prepared_controller.cpp) — generic prepared query/execute wrapper.
+- [system_controller.cpp](../../apps/desktop-qt/src/controllers/platform/system_controller.cpp) — PRAGMA maintenance and SQLite diagnostics.
+- [vault_setup_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_setup_controller.cpp) — key migration transaction and selected legacy migration.
+- [vault_setup_assets_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_setup_assets_controller.cpp) — asset inventory/migration.
+- [vault_asset_migration_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_asset_migration_controller.cpp) — managed asset migration.
+- [vault_auth_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_auth_controller.cpp) — local vault/keychain handling.
+- [vault_password_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_password_controller.cpp) — password migration.
+- [vault_removal_controller.cpp](../../apps/desktop-qt/src/controllers/vault/vault_removal_controller.cpp) — vault removal/re-encryption migration.
 
 These statements have different risk profiles. Diagnostics and atomic recovery migrations may need narrow low-level operations. The goal is not to break vault recovery; it is to remove generic feature SQL and document/test infrastructure exceptions.
 
@@ -40,7 +40,7 @@ These statements have different risk profiles. Diagnostics and atomic recovery m
 
 ## Controller concentration
 
-The global [synapse_controller.h](../../../apps/desktop-qt/src/synapse_controller.h) is 526 lines. Static search found 194 unique QML dataController method references. This large dynamic surface makes ownership and contract drift difficult to inspect.
+The global [synapse_controller.h](../../apps/desktop-qt/src/synapse_controller.h) is 526 lines. Static search found 194 unique QML dataController method references. This large dynamic surface makes ownership and contract drift difficult to inspect.
 
 - [ ] Group declarations/implementations by module while preserving stable QML behavior.
 - [ ] Keep cross-module composition, app lifecycle, and platform functions at app level.

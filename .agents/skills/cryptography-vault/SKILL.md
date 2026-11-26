@@ -15,9 +15,9 @@ description: >-
 
 ---
 
-## Implementation Status Is Audited Separately
+## Implementation Coverage Is Tracked Separately
 
-This skill defines the required security posture and wire formats; it is not evidence that every application module currently meets them. Before claiming complete E2EE, read [`docs/security/native-encryption-audit.md`](../../../docs/security/native-encryption-audit.md) and verify its open gates against the code. Keep the specification and the implementation status separate, and update the audit when coverage changes.
+This skill defines the required security posture and wire formats; it is not evidence that every application module currently meets them. Before claiming complete E2EE, read [`docs/security/encryption-coverage.md`](../../../docs/security/encryption-coverage.md) and verify its open gates against the code. Keep the specification and the implementation status separate, and update the coverage guide when protection changes.
 
 ---
 
@@ -25,7 +25,7 @@ This skill defines the required security posture and wire formats; it is not evi
 
 This skill specifies required cryptographic behavior; it is not proof that every
 application, database field, or sync path implements it. The current verified
-coverage and open gaps are recorded in [`docs/security/native-encryption-audit.md`](../../../docs/security/native-encryption-audit.md).
+coverage and open gaps are recorded in [`docs/security/encryption-coverage.md`](../../../docs/security/encryption-coverage.md).
 
 1. **Encrypt at the boundary** — Encrypt sensitive content before it enters a
    remote sync or storage path. Verify each concrete path before making a claim
@@ -84,7 +84,7 @@ Firebase receives neither the derived root key nor module keys:
 
 The fixed local salt is a known limitation, not a per-vault random salt. A
 versioned salt migration remains open; do not describe this as unique-salt
-hardening. Check the native encryption audit for current compatibility behavior.
+hardening. Check the encryption coverage guide for current compatibility behavior.
 
 ### 2.2. Module Key Generation & Storage
 

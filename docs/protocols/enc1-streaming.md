@@ -1,6 +1,6 @@
 # ENC1 Encrypted Media Container
 
-**Status:** Wire-format reference for the Rust chunked-file implementation. Client integration and asset coverage vary; see the [native encryption audit](../security/native-encryption-audit.md).
+**Status:** Wire-format reference for the Rust chunked-file implementation. Client integration and asset coverage vary; see the [encryption coverage guide](../security/encryption-coverage.md).
 
 ## 1. Container Layout
 
@@ -44,7 +44,7 @@ The Tauri protocol uses a custom `encrypted://` URI and handles HTTP range reque
 
 Import flows encrypt supported local media when their vault is configured. Qt first-time vault setup also migrates referenced readable files inside the managed `files/`, `library/`, and `videos/` directories. It records pending replacements in `vault_asset_migrations` and resumes them on unlock. Setup stops when an existing referenced asset is outside its managed directory.
 
-ENC1 storage does not itself encrypt database titles, progress fields, paths, subtitle labels, or unrelated business records. See the [native encryption audit](../security/native-encryption-audit.md) for those gaps.
+ENC1 storage does not itself encrypt database titles, progress fields, paths, subtitle labels, or unrelated business records. See the [encryption coverage guide](../security/encryption-coverage.md) for those gaps.
 
 ## 6. Verification
 

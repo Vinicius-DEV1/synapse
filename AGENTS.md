@@ -24,7 +24,7 @@ Caderno is a multi-target application engineered for desktop, web, and high-perf
 - **Editor**: TipTap (ProseMirror) with rich custom extensions and real-time collaboration via **Yjs / y-prosemirror**.
 - **Persistence / Offline**: Direct SQLite WAL on desktop via `core/synapse-core/src/db/`; IndexedDB (`idb`) and Firebase/Firestore for web synchronization.
 - **Media & Utilities**: libmpv, FFmpeg, PDF.js, EpubJS, Tesseract OCR, Tldraw, Canvas Confetti.
-- **End-to-End Cryptography**: PBKDF2-HMAC-SHA256 (600,000 iterations), AES-256-GCM Two-Tier Keychain envelopes, selected field protection, and encrypted media flows. Coverage differs by client and data entity; consult [`docs/security/native-encryption-audit.md`](./docs/security/native-encryption-audit.md) before claiming full local at-rest encryption.
+- **End-to-End Cryptography**: PBKDF2-HMAC-SHA256 (600,000 iterations), AES-256-GCM Two-Tier Keychain envelopes, selected field protection, and encrypted media flows. Coverage differs by client and data entity; consult [`docs/security/encryption-coverage.md`](./docs/security/encryption-coverage.md) before claiming full local at-rest encryption.
 
 ### 2.1. Unified Domain Core SSOT & Zero Cross-Client Duplication
 
@@ -143,9 +143,16 @@ Every module, class, hook, and function must embody the **SOLID** software engin
 
 ### 6.1. Documentation Ownership and Status
 - Use [`docs/documentation-status.md`](./docs/documentation-status.md) to identify current sources of truth and historical snapshots.
-- Keep [`docs/native-desktop-parity.md`](./docs/native-desktop-parity.md) and [`docs/security/native-encryption-audit.md`](./docs/security/native-encryption-audit.md) synchronized with native feature and encryption changes.
+- Keep [`docs/native-desktop-parity.md`](./docs/native-desktop-parity.md) and [`docs/security/encryption-coverage.md`](./docs/security/encryption-coverage.md) synchronized with native feature and encryption changes.
 - Plans, old test totals, benchmark snapshots, and checked boxes are not implementation evidence. Revalidate every completion claim against the current code and a reproducible command.
 - Use relative repository links in Markdown. Do not include personal machine paths, local database locations, or `file://` links.
+
+### 6.2. Documentation and Audit Separation
+- Keep `docs/` as the home for consolidated, durable project documentation: architecture, platform guides, security boundaries, build instructions, and verified current status. Do not create an `audits/` subfolder inside `docs/`.
+- Store active audit work at the repository root in `audits/<topic>/`. Use it for working comparisons, unresolved findings, source maps, evidence logs, and implementation checklists.
+- When an audit is complete, move its durable conclusions and reproducible evidence into the appropriate `docs/` source, update `docs/README.md` and `docs/documentation-status.md`, then delete the completed working artifact. Do not delete an audit with unresolved acceptance gates before preserving its remaining work and status.
+- Keep the four client architecture guides current under `docs/platforms/`: React Web/Tauri, native Qt desktop, native Android, and the Android WebView shell. Explain shared Core and bridge ownership without claiming a capability is implemented until the call path is verified.
+- When comparing dialogs or modals, inventory every React entry point and state. Compare same-size viewports, dimensions, anchoring, backdrop, scrolling, visual tokens, controls, validation, empty/loading/error states, action ordering, keyboard behavior, initial/restored focus, and resize behavior. Track missing Qt dialogs as explicit parity gaps.
 
 ---
 

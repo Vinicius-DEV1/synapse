@@ -22,5 +22,5 @@ Before submitting this pull request, please verify:
 - [ ] **Zero Sensitive Data**: No real credentials, `.env` values, API keys, or personal tokens are included.
 - [ ] **Documentation**: Updated the relevant current sources of truth and app-level guidance; checked links and commands.
 - [ ] **Status Claims**: Historical plans and prior test totals are not used as evidence of current completion.
-- [ ] **Cryptography Changes**: Updated `docs/security/native-encryption-audit.md` and tested the modified client/bridge if crypto, keychain, or media protection changed.
+- [ ] **Cryptography Changes**: Updated `docs/security/encryption-coverage.md` and tested the modified client/bridge if crypto, keychain, or media protection changed.
 - [ ] **Native Parity**: Updated `docs/native-desktop-parity.md` if a Qt module's verified coverage or remaining gaps changed.

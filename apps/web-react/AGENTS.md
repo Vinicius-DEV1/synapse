@@ -13,4 +13,4 @@ Keep the React architecture's layer roots (`components/`, `hooks/`, `store/`, `s
 
 See [the repository layout guide](../../docs/architecture/repository-layout.md) for cross-app ownership and build commands.
 
-The React client is the functional and visual reference for native parity work. Keep the [native desktop parity matrix](../../docs/native-desktop-parity.md) synchronized when a shared behavior changes, and consult [documentation status](../../docs/documentation-status.md) before making cross-platform security or completion claims.
+The React client is the functional and visual reference for native parity work. Keep the [native desktop parity guide](../../docs/native-desktop-parity.md) synchronized with durable status when a shared behavior changes, and consult [documentation status](../../docs/documentation-status.md) before making cross-platform security or completion claims.

@@ -1,6 +1,6 @@
 # Synapse Module Catalog
 
-This catalog identifies product modules and their React and native source locations. It is not a completion checklist. Native Qt gaps are maintained in the [parity matrix](../native-desktop-parity.md); local encryption coverage is maintained in the [native encryption audit](../security/native-encryption-audit.md).
+This catalog identifies product modules and their React and native source locations. It is not a completion checklist. Native Qt status is summarized in the [parity guide](../native-desktop-parity.md); local encryption coverage is documented in the [encryption coverage guide](../security/encryption-coverage.md).
 
 ## Canonical Module IDs
 
@@ -41,7 +41,6 @@ The Kotlin/Compose client groups screens under `apps/mobile-android/app/src/main
 - [Vault](./vault.md)
 - [Anki and FSRS](./anki-fsrs.md)
 - [Native Android Finance](./mobile-android-finance.md)
-- [React-to-Android feature parity checklist](../audits/mobile-android-parity/README.md)
 - [ENC1 media protocol](../protocols/enc1-streaming.md)
 - [Native desktop parity](../native-desktop-parity.md)
-- [Native encryption coverage](../security/native-encryption-audit.md)
+- [Native encryption coverage](../security/encryption-coverage.md)

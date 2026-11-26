@@ -81,4 +81,4 @@ Synapse bridges passive reading with active recall through automated AI flashcar
 
 - **Hierarchical Deck Tagging**: Filter and review cards by subject, priority, or project tag.
 - **Retention Analytics**: Visual heatmaps display review density and projected memory stability over 30, 60, and 90-day horizons.
-- **At-Rest Encryption Scope**: The native Qt encryption audit currently lists Anki cards, review history, and related settings among the SQLite data that remains plaintext. A `anki_key` envelope is not proof that those records are encrypted. See the [native encryption audit](../security/native-encryption-audit.md) before making at-rest claims.
+- **At-Rest Encryption Scope**: The native Qt encryption coverage guide currently lists Anki cards, review history, and related settings among the SQLite data that remains plaintext. A `anki_key` envelope is not proof that those records are encrypted. See the [encryption coverage guide](../security/encryption-coverage.md) before making at-rest claims.

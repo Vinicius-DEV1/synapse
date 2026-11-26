@@ -50,7 +50,7 @@
 
 Aplicativos modernos de gestão de conhecimento pessoal frequentemente forçam uma escolha entre **conveniência** e **privacidade**, ou entre **velocidade** e **recursos ricos**. O Synapse é construído em torno desses objetivos; a implementação varia por aplicativo e módulo:
 
-1. **Privacidade e Cofre sob Controle do Usuário**: Fluxos de senha-mestre e AES-256-GCM protegem campos e mídias selecionados. A cobertura não é geral: alguns dados de negócio, metadados e arquivos fora das pastas gerenciadas permanecem em texto puro em repouso. A [auditoria de criptografia](./docs/security/native-encryption-audit.md) lista cobertura e riscos abertos.
+1. **Privacidade e Cofre sob Controle do Usuário**: Fluxos de senha-mestre e AES-256-GCM protegem campos e mídias selecionados. A cobertura não é geral: alguns dados de negócio, metadados e arquivos fora das pastas gerenciadas permanecem em texto puro em repouso. O [guia de cobertura de criptografia](./docs/security/encryption-coverage.md) lista a cobertura verificada e os riscos abertos.
 2. **Resiliência Local-First & Offline**: A aplicação lê e escreve imediatamente em bancos locais de latência zero (**SQLite** no Desktop, **IndexedDB** na Web). Você pode trabalhar continuamente sem conexão à internet, e as alterações se reconciliam deterministicamente ao reconectar.
 3. **Interações Responsivas**: O cliente Web usa cache e composição CSS quando apropriado. Taxa de quadros e latência variam por dispositivo e aplicativo; não há garantia universal de 60 FPS.
 4. **Opções de Runtime**: React Web/Tauri continua sendo a referência visual e funcional. Qt e Kotlin/Compose são clientes nativos separados; o shell Expo hospeda a versão web. A paridade de desempenho nativo é medida separadamente, não presumida pela arquitetura.
@@ -66,7 +66,7 @@ O Synapse foi arquitetado com uma base de código unificada capaz de rodar em si
 | :--- | :--- | :--- | :--- | :--- |
 | **React Web** | React 19, Vite, navegador | IndexedDB e adaptadores de sync configurados | APIs do navegador e service worker | Cliente ativo; consulte o guia de build |
 | **Desktop Tauri** | Frontend React, Tauri v2, Rust | SQLite pelo backend Tauri | Shell nativo, sistema de arquivos e Rust IPC | Cliente ativo; paridade acompanhada separadamente |
-| **Desktop Qt Nativo** | Qt Quick/QML, C++17, Rust C-ABI | SQLite via ponte Rust compartilhada | UI Qt nativa e integração de mídia libmpv | Em desenvolvimento; veja a [matriz de paridade](./docs/native-desktop-parity.md) |
+| **Desktop Qt Nativo** | Qt Quick/QML, C++17, Rust C-ABI | SQLite via ponte Rust compartilhada | UI Qt nativa e integração de mídia libmpv | Em desenvolvimento; veja o [guia de paridade](./docs/native-desktop-parity.md) |
 | **Android Nativo** | Kotlin, Jetpack Compose, UniFFI | Persistência do app Android e recursos Rust compartilhados | UI Android nativa e integrações Media3 | Em desenvolvimento; verifique a cobertura de cada módulo |
 | **Shell Android WebView** | Expo, React Native, WebView | Hospeda o app React | Safe areas, botão voltar, haptics e links nativos | Shell; não substitui o cliente Compose nativo |
 | **Docker / Self-Hosted** | Contêiner Linux, Nginx | Serve o build web | Hospedagem estática e serviços de nuvem configurados | Alvo de deploy; não comprova E2EE total |
@@ -162,7 +162,7 @@ Chave-Mestre (em memória durante a sessão; alguns buffers são limpos ao bloqu
 | **Higiene de Memória** | **Zeroização parcial** | Buffers e mapas selecionados são limpos ao bloquear. A limpeza completa de strings Qt/QML, buffers de query, páginas WAL e temporários ainda não foi comprovada. |
 | **Defesa contra XSS** | **DOMPurify & CSP** | As políticas variam por cliente e rota; consulte a auditoria de segurança antes de afirmar cobertura integral. |
 
-Para a cobertura verificada e os gaps abertos, consulte a [auditoria de criptografia nativa](./docs/security/native-encryption-audit.md).
+Para a cobertura verificada e os gaps abertos, consulte o [guia de cobertura de criptografia nativa](./docs/security/encryption-coverage.md).
 
 ---
 
@@ -203,7 +203,7 @@ Os limites de bundle de produção e otimizações de latência (pool SQLite WAL
 - Árvore de notas com reordenação por arrastar e soltar (`@dnd-kit`) e grafo bidirecional de links.
 
 ### 2. 🔐 Cofre Local & Gerador de Credenciais
-- Cofre de credenciais com gerador criptográfico de senhas e medidor de entropia. A cobertura de criptografia local varia; consulte a [auditoria de criptografia](./docs/security/native-encryption-audit.md).
+- Cofre de credenciais com gerador criptográfico de senhas e medidor de entropia. A cobertura de criptografia local varia; consulte o [guia de cobertura de criptografia](./docs/security/encryption-coverage.md).
 - Verificação de senhas comprometidas via Have I Been Pwned k-anonymity: o fluxo envia um prefixo do hash, não a senha em si.
 
 ### 3. 🧠 Cartões Mnemônicos FSRS & Flashcards Anki
@@ -236,7 +236,7 @@ Os limites de bundle de produção e otimizações de latência (pool SQLite WAL
 - Controle de receitas, despesas e orçamentos com gráficos interativos (`recharts`).
 
 ### 12. Workspaces Multiusuário (Plano de Evolução)
-O escopo por workspace, Firebase Authentication, RBAC e migração de dados estão em planejamento e auditoria. Não os trate como funcionalidades lançadas nem como E2EE colaborativa disponível. Consulte a [análise de workspaces multiusuário](./docs/architecture/multiuser-workspace-analysis.md) e o [plano de ação](./docs/architecture/multiuser-workspace-action-plan.md).
+O escopo por workspace, Firebase Authentication, RBAC e migração de dados estão em planejamento. Não os trate como funcionalidades lançadas nem como E2EE colaborativa disponível. Consulte o [plano de ação](./docs/architecture/multiuser-workspace-action-plan.md) e o [status de sincronização](./docs/security/firebase-sync-integrity.md).
 
 ---
 
@@ -251,7 +251,7 @@ O escopo por workspace, Firebase Authentication, RBAC e migração de dados est�
 
 ---
 
-O Synapse tem quatro alvos de aplicativo: a versão web React com seu shell Tauri (`apps/web-react/`), o desktop Qt totalmente nativo (`apps/desktop-qt/`), o Android nativo em Kotlin/Compose (`apps/mobile-android/`) e o shell Expo com WebView (`apps/mobile-webview/`). Consulte [o guia da estrutura do repositório](./docs/architecture/repository-layout.md) para conhecer a organização e os comandos de build. As lacunas atuais de paridade no Qt estão listadas na [matriz de paridade do desktop nativo](./docs/native-desktop-parity.md).
+O Synapse tem quatro alvos de aplicativo: a versão web React com seu shell Tauri (`apps/web-react/`), o desktop Qt totalmente nativo (`apps/desktop-qt/`), o Android nativo em Kotlin/Compose (`apps/mobile-android/`) e o shell Expo com WebView (`apps/mobile-webview/`). Consulte [o guia da estrutura do repositório](./docs/architecture/repository-layout.md) para conhecer a organização e os comandos de build. O status geral e os critérios de aceite do Qt estão resumidos no [guia de paridade do desktop nativo](./docs/native-desktop-parity.md).
 
 ### Instalação & Início Rápido
 

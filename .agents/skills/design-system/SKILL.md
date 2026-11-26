@@ -157,6 +157,8 @@ transition-all duration-150
 
 ### 4.4. Modals & Dialogs
 
+When matching a modal across clients, use the React modal as the visual and behavioral reference. Record its entry point and compare same-viewport width/height, placement, backdrop and blur, inner scroll bounds, section spacing, header/footer behavior, buttons and their order, validation/error/loading/empty states, Escape and outside-click behavior, initial focus, focus restoration and resize behavior. Keep Qt dialogs native while matching these observable details and the shared tokens below; a missing React modal is a parity gap, not a reason to omit it from the comparison.
+
 ```tsx
 {/* Backdrop */}
 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in" />

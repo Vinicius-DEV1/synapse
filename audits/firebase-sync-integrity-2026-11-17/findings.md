@@ -52,9 +52,9 @@ The table below records the initial ID-only comparison; it did not establish own
 
 ## Security and Account Scope
 
-The former rules included a public catch-all. The deployed [`firestore.rules`](../../../firestore.rules) now scopes personal data to `/users/{uid}/sync/data/...`, restricts workspace data by membership role, narrows share operations, and denies unmatched roots. The prior production ruleset `4dbee571-c0f9-4add-9f32-f6a1faa53e6f` remains available for rollback. Anonymous production root reads were verified as denied.
+The former rules included a public catch-all. The deployed [`firestore.rules`](../../firestore.rules) now scopes personal data to `/users/{uid}/sync/data/...`, restricts workspace data by membership role, narrows share operations, and denies unmatched roots. The prior production ruleset `4dbee571-c0f9-4add-9f32-f6a1faa53e6f` remains available for rollback. Anonymous production root reads were verified as denied.
 
-The primary Firebase Auth account was created and validated using the provided local credential file. Email/password and anonymous providers are enabled, and the four Hosting sites in [`firebase.json`](../../../firebase.json) are authorized. Account identifiers and secrets are intentionally omitted from repository documentation.
+The primary Firebase Auth account was created and validated using the provided local credential file. Email/password and anonymous providers are enabled, and the four Hosting sites in [`firebase.json`](../../firebase.json) are authorized. Account identifiers and secrets are intentionally omitted from repository documentation.
 
 The client's previous default-to-root path was removed. Personal sync requires a non-anonymous UID; workspace sync remains role-scoped. Manifest and signal checkpoints are scoped to the same identity. The account-evolution migrator now uses the master key retained by the auth flow and fails on local-read or cloud-push errors.
 
@@ -94,7 +94,7 @@ Older direct-share config could store a raw share key in publicly readable metad
 - SQLite migration version 1 runs atomically, checks columns before adding them, propagates query/DDL failures, and records its version only after all schema, quiz, index, and finance-seed steps succeed.
 - The former `DROP TABLE IF EXISTS sessions` migration was removed; a regression test proves any existing `sessions` table and its rows survive initialization.
 - Legacy data-directory copying uses a progress marker, resumes after interruption, leaves the marker on errors, and uses SQLite's online backup API to include committed WAL transactions; Tauri setup aborts with a contextual error instead of continuing with `conn: None`.
-- The document decrypt/upsert/rekey path is extracted into [`sync-pull-documents.ts`](../../../apps/web-react/src/services/sync/sync-pull-documents.ts).
+- The document decrypt/upsert/rekey path is extracted into [`sync-pull-documents.ts`](../../apps/web-react/src/services/sync/sync-pull-documents.ts).
 - The unused unscoped `hardResetCloud()` helper and deprecated no-op `restoreLastSyncTimesFromDb()` path were removed.
 
 ## Verification Evidence and Limits

@@ -1,6 +1,6 @@
 # 🤝 Contributing to Synapse
 
-Thank you for your interest in contributing to **Synapse**! Synapse is a local-first personal knowledge and study platform with several web and native app targets. Vault and encrypted-media protections cover selected flows; do not claim that all user data is encrypted at rest. See the [native encryption audit](./docs/security/native-encryption-audit.md) and [documentation status index](./docs/documentation-status.md).
+Thank you for your interest in contributing to **Synapse**! Synapse is a local-first personal knowledge and study platform with several web and native app targets. Vault and encrypted-media protections cover selected flows; do not claim that all user data is encrypted at rest. See the [encryption coverage guide](./docs/security/encryption-coverage.md) and [documentation status index](./docs/documentation-status.md).
 
 By participating in this project, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
@@ -29,7 +29,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](./
 2. **SOLID Architecture**:
    - Presentation components render UI; custom hooks coordinate state; domain services handle business logic; and infrastructure adapters handle storage and IPC.
 3. **Security Coverage and Honest Claims**:
-   - Follow the cryptography skill and the current encryption audit when changing protected data flows. Do not add plaintext transmission or persistence to a flow that promises encryption, and do not imply that existing unprotected fields are covered.
+   - Follow the cryptography skill and the current encryption coverage guide when changing protected data flows. Do not add plaintext transmission or persistence to a flow that promises encryption, and do not imply that existing unprotected fields are covered.
 
 ---
 

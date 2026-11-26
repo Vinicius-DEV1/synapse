@@ -1,6 +1,6 @@
 # 📝 Synapse Notes — Architecture & Technical Specification
 
-**Synapse Notes** is the React client's knowledge-authoring module, built on **TipTap v3**, **ProseMirror**, and Yjs CRDTs in supported web collaboration flows. This React design specification does not imply the same editor or Yjs collaboration exists in Qt or Compose; consult the [native desktop parity matrix](../native-desktop-parity.md).
+**Synapse Notes** is the React client's knowledge-authoring module, built on **TipTap v3**, **ProseMirror**, and Yjs CRDTs in supported web collaboration flows. This React design specification does not imply the same editor or Yjs collaboration exists in Qt or Compose; consult the [native desktop parity guide](../native-desktop-parity.md) and the [Qt platform guide](../platforms/desktop-qt.md).
 
 ---
 
@@ -83,7 +83,7 @@ To support deep research and version auditing, Synapse Notes captures historical
 - The React/Tauri and Qt clients have different storage and sync adapters. Verify the concrete path before assuming identical encryption behavior.
 - In native Qt, page and revision bodies are protected by the notes key in supported flows; titles, descriptions, and other page metadata remain plaintext at rest.
 - Cloud synchronization and sharing use entity-specific adapters. Do not assume titles, metadata, or every Yjs payload is encrypted on every path.
-- See the [native encryption audit](../security/native-encryption-audit.md) for Qt coverage and remaining at-rest gaps.
+- See the [encryption coverage guide](../security/encryption-coverage.md) for Qt coverage and remaining at-rest gaps.
 
 ## 6. Native Qt Hierarchy Controls
 
@@ -92,8 +92,8 @@ The Qt desktop client keeps the page tree in SQLite and exposes native hierarchy
 - Sub-pages can be reordered by dragging sibling cards, nested by dropping onto another page, or moved to the top level by dropping onto the root target.
 - Each page in the navigation tree and each sub-page card exposes **Move to…**, which opens a searchable destination dialog matching page titles and breadcrumbs. It marks the current parent and prevents selecting the source page or any of its descendants.
 - Reordering validates the complete sibling set and persists the new order in one transaction. Page moves validate the destination and reject hierarchy cycles in the controller before updating the parent link.
-- The Qt worktree is transitioning to a unified native block editor: HTML is parsed through the shared Notes AST, rich-text slices use Qt `TextArea`/`QTextDocument`, and native QML components render interactive blocks. This is not the TipTap/ProseMirror editor and does not currently provide an equivalent Yjs collaboration binding. See the [detailed Qt parity audit](../audits/desktop-qt-parity/notes/README.md); do not describe cross-client parity as complete until its acceptance gates pass.
+- The Qt worktree is transitioning to a unified native block editor: HTML is parsed through the shared Notes AST, rich-text slices use Qt `TextArea`/`QTextDocument`, and native QML components render interactive blocks. This is not the TipTap/ProseMirror editor and does not currently provide an equivalent Yjs collaboration binding. Runtime, visual, modal and cross-client acceptance remain incomplete; do not describe cross-client parity as complete until those checks pass.
 
 ## 7. Native Qt Visual Baseline
 
-React's desktop PageView uses a centered `max-w-5xl` canvas with responsive horizontal padding, producing a 928 px inner reading width at the desktop breakpoint. Qt now allows a 1,024 px outer canvas with 48 px desktop margins, which targets the same inner width; effective layout geometry still needs a matched-viewport capture. Qt has native page header, cover, hierarchy and sub-page components in the active worktree, but a fresh pixel comparison has not been recorded. The Qt page cover and hierarchy behaviors must be checked against the React flows before claiming equivalence. Cover metadata remains plaintext under the current shared schema; see the [native encryption audit](../security/native-encryption-audit.md). Existing page history and page unlock flows require focused interaction and persistence review. The detailed [Caderno parity audit](../audits/desktop-qt-parity/notes/README.md) is the current checklist for remaining work.
+React's desktop PageView uses a centered `max-w-5xl` canvas with responsive horizontal padding, producing a 928 px inner reading width at the desktop breakpoint. Qt now allows a 1,024 px outer canvas with 48 px desktop margins, which targets the same inner width; effective layout geometry still needs a matched-viewport capture. Qt has native page header, cover, hierarchy and sub-page components in the active worktree, but a fresh pixel comparison has not been recorded. The Qt page cover and hierarchy behaviors must be checked against the React flows before claiming equivalence. Cover metadata remains plaintext under the current shared schema; see the [encryption coverage guide](../security/encryption-coverage.md). Existing page history and page unlock flows require focused interaction and persistence review.

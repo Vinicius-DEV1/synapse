@@ -1,6 +1,6 @@
 # Security Policy and Vulnerability Disclosure
 
-Synapse uses cryptographic protections in selected vault, media, and sync flows. Coverage is not repository-wide: some local business records, metadata, and unmanaged assets are not encrypted at rest. See the [native encryption audit](./docs/security/native-encryption-audit.md) for verified behavior and current gaps. Do not assume a feature is secure solely because a module key exists.
+Synapse uses cryptographic protections in selected vault, media, and sync flows. Coverage is not repository-wide: some local business records, metadata, and unmanaged assets are not encrypted at rest. See the [encryption coverage guide](./docs/security/encryption-coverage.md) for verified behavior and current gaps. Do not assume a feature is secure solely because a module key exists.
 
 ## Supported Versions
 
@@ -37,6 +37,6 @@ The following are generally out of scope unless they expose a separate vulnerabi
 
 ## Security References
 
-- [Native encryption coverage and open risks](./docs/security/native-encryption-audit.md)
+- [Native encryption coverage and open risks](./docs/security/encryption-coverage.md)
 - [Current documentation sources](./docs/documentation-status.md)
 - [Contribution guide](./CONTRIBUTING.md)

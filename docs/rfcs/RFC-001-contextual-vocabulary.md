@@ -151,4 +151,4 @@ $$\text{Initial Interval} = I(S, R_{\text{desired}})$$
 
 - **Proposed Encryption Requirement**: If this feature is implemented, vocabulary definitions, context sentences, and notes must follow the active card-storage encryption contract. The RFC does not establish that these fields are currently encrypted.
 - **Proposed Offline Behavior**: Saved cards should persist locally and synchronize through the relevant adapter. Cross-client conflict and encryption behavior must be verified during implementation.
-- **Implementation Status**: This RFC remains Proposed / In Review. Consult the [native encryption audit](../security/native-encryption-audit.md) before making storage-protection claims.
+- **Implementation Status**: This RFC remains Proposed / In Review. Consult the [encryption coverage guide](../security/encryption-coverage.md) before making storage-protection claims.

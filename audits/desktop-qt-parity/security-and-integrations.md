@@ -1,6 +1,6 @@
 # Security and Integration Gaps
 
-The [native encryption audit](../../security/native-encryption-audit.md) owns exact encryption coverage and migration detail. This document does not replace it.
+The [native encryption audit](../../docs/security/encryption-coverage.md) owns exact encryption coverage and migration detail. This document does not replace it.
 
 ## Accounts, sync, and encryption
 
@@ -18,7 +18,7 @@ Checklist:
 - [ ] Verify every entity and encrypted field against the current inventory.
 - [ ] Test legacy local vaults and interrupted migration on disposable databases.
 
-References: [AccountEvolutionModal.qml](../../../apps/desktop-qt/qml/auth/AccountEvolutionModal.qml), [SettingsSyncTab.qml](../../../apps/desktop-qt/qml/settings/SettingsSyncTab.qml), [encryption audit](../../security/native-encryption-audit.md), [React auth](../../../apps/web-react/src/components/auth/).
+References: [AccountEvolutionModal.qml](../../apps/desktop-qt/qml/auth/AccountEvolutionModal.qml), [SettingsSyncTab.qml](../../apps/desktop-qt/qml/settings/SettingsSyncTab.qml), [encryption audit](../../docs/security/encryption-coverage.md), [React auth](../../apps/web-react/src/components/auth/).
 
 ## AI, credentials, and voice
 
@@ -32,7 +32,7 @@ Observed local demonstrations include a placeholder API key and timer-driven “
 - [x] Implement microphone permissions/capture and device-loss cleanup (`audio_recorder_controller.cpp`).
 - [x] Compare language/model selection, settings, history, and output behavior with React.
 
-References: [Settings AI](../../../apps/desktop-qt/qml/settings/SettingsAiTab.qml), [AI sidebar](../../../apps/desktop-qt/qml/ai-sidebar/AiSidebarPanel.qml), [PracticeView.qml](../../../apps/desktop-qt/qml/practice/PracticeView.qml), [QuizAIGenerationModal.qml](../../../apps/desktop-qt/qml/questions/QuizAIGenerationModal.qml), [FilesDocumentAiModal.qml](../../../apps/desktop-qt/qml/files/FilesDocumentAiModal.qml), [LibraryAiEnrichModal.qml](../../../apps/desktop-qt/qml/library/LibraryAiEnrichModal.qml), [LibraryDictionaryModal.qml](../../../apps/desktop-qt/qml/library/LibraryDictionaryModal.qml).
+References: [Settings AI](../../apps/desktop-qt/qml/settings/SettingsAiTab.qml), [AI sidebar](../../apps/desktop-qt/qml/ai-sidebar/AiSidebarPanel.qml), [PracticeView.qml](../../apps/desktop-qt/qml/practice/PracticeView.qml), [QuizAIGenerationModal.qml](../../apps/desktop-qt/qml/questions/QuizAIGenerationModal.qml), [FilesDocumentAiModal.qml](../../apps/desktop-qt/qml/files/FilesDocumentAiModal.qml), [LibraryAiEnrichModal.qml](../../apps/desktop-qt/qml/library/LibraryAiEnrichModal.qml), [LibraryDictionaryModal.qml](../../apps/desktop-qt/qml/library/LibraryDictionaryModal.qml).
 
 ## Workspace and share authorization
 
@@ -43,7 +43,7 @@ References: [Settings AI](../../../apps/desktop-qt/qml/settings/SettingsAiTab.qm
 - [x] Test invalid, expired, revoked, and cross-account access.
 - [x] Remove demo URLs/member lists/security badges until backend-backed.
 
-Relevant source: [workspace QML](../../../apps/desktop-qt/qml/workspace/), [sharing QML](../../../apps/desktop-qt/qml/sharing/), [GlobalModalsHost.qml](../../../apps/desktop-qt/qml/layout/GlobalModalsHost.qml), [React workspace](../../../apps/web-react/src/components/workspace/), [React sharing](../../../apps/web-react/src/components/sharing/).
+Relevant source: [workspace QML](../../apps/desktop-qt/qml/workspace/), [sharing QML](../../apps/desktop-qt/qml/sharing/), [GlobalModalsHost.qml](../../apps/desktop-qt/qml/layout/GlobalModalsHost.qml), [React workspace](../../apps/web-react/src/components/workspace/), [React sharing](../../apps/web-react/src/components/sharing/).
 
 ## Video and files
 

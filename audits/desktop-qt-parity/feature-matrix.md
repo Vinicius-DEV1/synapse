@@ -42,7 +42,7 @@ This is a gap-oriented map, not a scorecard. “Implemented; revalidate” means
 
 ## Source references
 
-- React canonical modules: [module structure](../../architecture/module-structure.md)
+- React canonical modules: [module structure](../../docs/architecture/module-structure.md)
 - Qt presentation: apps/desktop-qt/qml/<module>/
 - Qt orchestration: apps/desktop-qt/src/controllers/<module>/
 - Detailed evidence: [findings](findings.md), [security and integrations](security-and-integrations.md), [UX and verification](ux-and-verification.md)

@@ -6,7 +6,7 @@ Synapse keeps each distributable app in `apps/`, shared Rust logic in `core/`, a
 
 | Path | Product and responsibility | Build/dependency owner |
 | --- | --- | --- |
-| `apps/web-react/` | Original React web app and Tauri v2 hybrid desktop app; Core delegation is the target, with remaining direct domain SQL listed in the [current parity remediation findings](../audits/mobile-android-parity/core-and-react.md) | Root npm workspace and `apps/web-react/src-tauri/` Cargo package |
+| `apps/web-react/` | React web app and Tauri v2 hybrid desktop app; Core delegation is still being completed, and some legacy commands contain direct SQL or duplicated operations (see the [React Web and Tauri guide](../platforms/react-web-tauri.md)) | Root npm workspace and `apps/web-react/src-tauri/` Cargo package |
 | `apps/desktop-qt/` | Fully native Qt 6 desktop app with thin C++ controllers | CMake/Qt, linked to high-level domain APIs in `bridges/bridge-qt/` |
 | `apps/mobile-android/` | Fully native Kotlin/Compose Android app | Gradle, linked to UniFFI output from `bridges/bridge-uniffi/` |
 | `apps/mobile-webview/` | Expo shell that embeds the React web app in Android WebView | Independent npm lockfile and Expo CLI |

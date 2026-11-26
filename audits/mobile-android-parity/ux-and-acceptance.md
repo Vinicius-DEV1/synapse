@@ -15,4 +15,4 @@ See the [audit dashboard](./README.md) for overall status. Treat source implemen
 - [x] Add localized, categorized native guides for Finance, Focus, Culture, Habits, Library, Questions, Vault, and Trash; [ ] add guides for remaining routes with meaningful user-facing flows; [x] compile the current app source including the Trash guide; [ ] verify the guide and destructive Trash flows on device/instrumentation.
 - [ ] Build and exercise each completed route on a current Android package; record the exact command, device/API, and exercised path.
 - [ ] Add focused bridge, repository, and instrumentation coverage for domain persistence, error recovery, encryption, and lifecycle behavior.
-- [ ] Update [module structure](../../architecture/module-structure.md), [documentation status](../../documentation-status.md), and relevant security/finance guides in the same change as each capability.
+- [ ] Update [module structure](../../docs/architecture/module-structure.md), [documentation status](../../docs/documentation-status.md), and relevant security/finance guides in the same change as each capability.

@@ -5,10 +5,14 @@ description: Audit and reconcile Synapse local SQLite or IndexedDB rows with enc
 
 # Firebase Sync Integrity
 
-Use this skill for a Firebase sync audit, account-scoped migration, full data
-comparison, or cleanup of old Firestore collections. Read the current audit at
-[`docs/audits/firebase-sync-integrity-2026-11-17/`](../../../docs/audits/firebase-sync-integrity-2026-11-17/)
-and verify every recorded state against the live code and Firebase project.
+Use this skill for a Firebase sync integrity review, account-scoped migration,
+full data comparison, or cleanup of old Firestore collections. Read the active
+working evidence at [`audits/firebase-sync-integrity-2026-11-17/`](../../../audits/firebase-sync-integrity-2026-11-17/)
+and the consolidated status at [`docs/security/firebase-sync-integrity.md`](../../../docs/security/firebase-sync-integrity.md).
+Verify every recorded state against the live code and Firebase project. Keep
+working evidence outside `docs/`; once an audit is complete, consolidate durable
+findings into `docs/`, update the documentation index, and remove the completed
+working artifact while retaining unresolved acceptance gates.
 
 ## Required Checks
 
