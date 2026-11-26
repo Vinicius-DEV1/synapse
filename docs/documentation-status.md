@@ -17,7 +17,6 @@ This page identifies the current sources of truth across the repository. Older a
 | Qt desktop feature parity | [Native desktop parity matrix](./native-desktop-parity.md) | Verified Qt coverage and remaining React parity gaps |
 | Qt Caderno / Notes parity | [Caderno React-to-Qt audit](./audits/desktop-qt-parity/notes/README.md) | Notes-only source map, parity matrix, Qt bug register, architecture review, checklist, and verification plan |
 
-The Notes parity audit remains **Partial**. Recent source iterations fixed Qt color alpha conversion, palette idle polling, direct calendar event lookup/refresh wiring, default palette swatch styling, and attachment-routing evidence. Same-viewport visual review, runtime interaction and persistence acceptance, and the remaining Notes checklist are still open. The broader `desktop-qt-parity` folder contains unresolved cross-module findings and is not an obsolete completed artifact.
 | Native Android Finance | [Android Finance module](./modules/mobile-android-finance.md) | Compose UI, UniFFI API, local SQLite persistence, verification, and explicit cloud/encryption gaps |
 | Native Android feature parity | [React-to-Android parity checklist](./audits/mobile-android-parity/README.md) | Feature-by-feature React comparison, native route gaps, implementation checklist, and ongoing acceptance evidence |
 | Synchronization engine | [Sync Engine Architecture](./architecture/sync-engine.md) | Cloud synchronization, transactional batch upserts, indexed delta queries, and table sync inventory |
@@ -26,6 +25,8 @@ The Notes parity audit remains **Partial**. Recent source iterations fixed Qt co
 | Cloud account key migration | [Cloud account encryption migration](./security/cloud-account-encryption-migration.md) | React/Tauri/WebView migration flow, client coverage, quota footprint, and safe legacy-removal gates |
 | Engineering rules | [Root AGENTS.md](../AGENTS.md) and app-level `AGENTS.md` files | Required code, testing, documentation, and ownership rules |
 | Skill specifications | [Engineering skills index](../.agents/skills/README.md) | Agent playbooks; specifications are not implementation evidence |
+
+The Notes parity audit remains **Partial**. Recent source iterations fixed Qt color alpha conversion, palette idle polling, direct calendar event lookup/refresh wiring, default palette swatch styling, and attachment-routing evidence. Same-viewport visual review, runtime interaction and persistence acceptance, and the remaining Notes checklist are still open. The broader `desktop-qt-parity` folder contains unresolved cross-module findings and is not an obsolete completed artifact.
 
 ## Verified Project Status
 
