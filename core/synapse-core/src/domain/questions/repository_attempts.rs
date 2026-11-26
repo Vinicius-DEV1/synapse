@@ -1,5 +1,7 @@
-use super::models::{QuizAnswerResult, QuizAttemptDetail, QuizStats};
-use super::{attempts, QuizRepository};
+use super::models::{
+    QuizAiFeedback, QuizAnswerResult, QuizAttemptDetail, QuizOpenAnswerAttempt, QuizStats,
+};
+use super::{attempts, open_attempts, QuizRepository};
 use crate::db::Database;
 use crate::error::{Result, SynapseError};
 
@@ -70,5 +72,55 @@ impl QuizRepository {
         limit: i32,
     ) -> Result<Vec<QuizAttemptDetail>> {
         attempts::get_quiz_attempt_history(conn, battery_id, question_id, limit)
+    }
+
+    pub fn record_open_answer_attempt(
+        db: &Database,
+        battery_id: &str,
+        question_id: &str,
+        user_typed_answer: &str,
+        feedback: QuizAiFeedback,
+    ) -> Result<QuizOpenAnswerAttempt> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        open_attempts::record_open_answer_attempt(
+            &conn,
+            battery_id,
+            question_id,
+            user_typed_answer,
+            feedback,
+        )
+    }
+
+    pub fn record_open_answer_attempt_conn(
+        conn: &rusqlite::Connection,
+        battery_id: &str,
+        question_id: &str,
+        user_typed_answer: &str,
+        feedback: QuizAiFeedback,
+    ) -> Result<QuizOpenAnswerAttempt> {
+        open_attempts::record_open_answer_attempt(
+            conn,
+            battery_id,
+            question_id,
+            user_typed_answer,
+            feedback,
+        )
+    }
+
+    pub fn get_latest_quiz_attempts(
+        db: &Database,
+        battery_id: Option<&str>,
+        question_id: Option<&str>,
+    ) -> Result<Vec<QuizAttemptDetail>> {
+        let conn = db.lock().map_err(SynapseError::Database)?;
+        open_attempts::get_latest_quiz_attempts(&conn, battery_id, question_id)
+    }
+
+    pub fn get_latest_quiz_attempts_conn(
+        conn: &rusqlite::Connection,
+        battery_id: Option<&str>,
+        question_id: Option<&str>,
+    ) -> Result<Vec<QuizAttemptDetail>> {
+        open_attempts::get_latest_quiz_attempts(conn, battery_id, question_id)
     }
 }

@@ -405,6 +405,87 @@ pub unsafe extern "C" fn synapse_quiz_record_attempt(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_record_open_answer_attempt(
+    db: *mut Database,
+    battery_id: *const c_char,
+    question_id: *const c_char,
+    user_typed_answer: *const c_char,
+    verdict: *const c_char,
+    feedback: *const c_char,
+    model: *const c_char,
+) -> *mut c_char {
+    if db.is_null()
+        || battery_id.is_null()
+        || question_id.is_null()
+        || user_typed_answer.is_null()
+        || verdict.is_null()
+        || feedback.is_null()
+    {
+        return std::ptr::null_mut();
+    }
+    let Some(battery_id) = to_opt_str(battery_id) else {
+        return std::ptr::null_mut();
+    };
+    let Some(question_id) = to_opt_str(question_id) else {
+        return std::ptr::null_mut();
+    };
+    let Some(user_typed_answer) = to_opt_str(user_typed_answer) else {
+        return std::ptr::null_mut();
+    };
+    let Some(verdict) = to_opt_str(verdict) else {
+        return std::ptr::null_mut();
+    };
+    let Some(feedback_text) = to_opt_str(feedback) else {
+        return std::ptr::null_mut();
+    };
+    let feedback = synapse_core::domain::questions::QuizAiFeedback {
+        verdict: verdict.to_owned(),
+        feedback: feedback_text.to_owned(),
+        model: to_opt_str(model).map(str::to_owned),
+    };
+
+    match QuizRepository::record_open_answer_attempt(
+        &*db,
+        battery_id,
+        question_id,
+        user_typed_answer,
+        feedback,
+    ) {
+        Ok(attempt) => json_to_c_char(&attempt),
+        Err(error) => {
+            eprintln!(
+                "[Synapse Bridge] record_open_answer_attempt failed: {}",
+                error
+            );
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn synapse_quiz_get_latest_attempts(
+    db: *mut Database,
+    battery_id: *const c_char,
+    question_id: *const c_char,
+) -> *mut c_char {
+    if db.is_null() {
+        return std::ptr::null_mut();
+    }
+    let battery_id = to_opt_str(battery_id);
+    let question_id = to_opt_str(question_id);
+    match QuizRepository::get_latest_quiz_attempts(&*db, battery_id, question_id) {
+        Ok(attempts) => json_to_c_char(&attempts),
+        Err(error) => {
+            eprintln!(
+                "[Synapse Bridge] get_latest_quiz_attempts failed: {}",
+                error
+            );
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn synapse_quiz_get_stats(db: *mut Database) -> *mut c_char {
     if db.is_null() {
         return std::ptr::null_mut();

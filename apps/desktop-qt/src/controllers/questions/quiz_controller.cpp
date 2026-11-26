@@ -223,6 +223,58 @@ bool SynapseDataController::recordQuizAttempt(const QString &batteryId, const QS
     return false;
 }
 
+QVariantMap SynapseDataController::recordOpenQuizAttempt(
+    const QString &batteryId,
+    const QString &questionId,
+    const QString &userTypedAnswer,
+    const QString &verdict,
+    const QString &feedback,
+    const QString &model) {
+    if (!m_db || batteryId.trimmed().isEmpty() || questionId.trimmed().isEmpty()
+        || userTypedAnswer.trimmed().isEmpty() || verdict.trimmed().isEmpty()
+        || feedback.trimmed().isEmpty()) {
+        return QVariantMap();
+    }
+    const QByteArray batteryUtf8 = batteryId.trimmed().toUtf8();
+    const QByteArray questionUtf8 = questionId.trimmed().toUtf8();
+    const QByteArray answerUtf8 = userTypedAnswer.trimmed().toUtf8();
+    const QByteArray verdictUtf8 = verdict.trimmed().toUtf8();
+    const QByteArray feedbackUtf8 = feedback.trimmed().toUtf8();
+    const QByteArray modelUtf8 = model.trimmed().toUtf8();
+    char *raw = synapse_quiz_record_open_answer_attempt(
+        m_db,
+        batteryUtf8.constData(),
+        questionUtf8.constData(),
+        answerUtf8.constData(),
+        verdictUtf8.constData(),
+        feedbackUtf8.constData(),
+        modelUtf8.isEmpty() ? nullptr : modelUtf8.constData());
+    const QVariantMap attempt = parseJsonObject(raw).toVariantMap();
+    if (!attempt.isEmpty()) refreshStats();
+    return attempt;
+}
+
+QVariantMap SynapseDataController::getLatestQuizAttempts(
+    const QString &batteryId,
+    const QString &questionId) {
+    if (!m_db || (batteryId.trimmed().isEmpty() && questionId.trimmed().isEmpty())) {
+        return QVariantMap();
+    }
+    const QByteArray batteryUtf8 = batteryId.trimmed().toUtf8();
+    const QByteArray questionUtf8 = questionId.trimmed().toUtf8();
+    const QJsonArray attempts = parseJsonArray(synapse_quiz_get_latest_attempts(
+        m_db,
+        batteryUtf8.isEmpty() ? nullptr : batteryUtf8.constData(),
+        questionUtf8.isEmpty() ? nullptr : questionUtf8.constData()));
+    QVariantMap latestByQuestion;
+    for (const QJsonValue &value : attempts) {
+        const QJsonObject attempt = value.toObject();
+        const QString id = attempt.value(QStringLiteral("question_id")).toString();
+        if (!id.isEmpty()) latestByQuestion.insert(id, attempt.toVariantMap());
+    }
+    return latestByQuestion;
+}
+
 QVariantList SynapseDataController::getQuizBatteryTree() {
     if (!m_db) return QVariantList();
     char *raw = synapse_quiz_get_battery_tree(m_db);

@@ -4,9 +4,12 @@ pub mod batteries;
 pub mod hierarchy;
 pub mod import_parser;
 pub mod models;
+mod open_attempts;
 pub mod questions;
 mod repository_attempts;
 
+#[cfg(test)]
+mod open_attempts_tests;
 #[cfg(test)]
 mod tests;
 

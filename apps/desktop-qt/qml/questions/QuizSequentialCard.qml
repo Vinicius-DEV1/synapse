@@ -1,9 +1,11 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import "../notes" as Notes
 
 Rectangle {
     id: cardRoot
+    objectName: "quizSequentialCard"
     color: "#161524"
     radius: 16
     border.color: "#2e2b44"
@@ -14,10 +16,20 @@ Rectangle {
     property string openAnswerText: ""
     property bool isConfirmed: false
     property bool showExplanation: false
+    property bool openAnswerEvaluationEnabled: false
+    property bool isEvaluatingOpenAnswer: false
+    property var openAnswerFeedback: null
+    property string openAnswerError: ""
 
     signal optionSelected(int index)
     signal openAnswerChanged(string text)
+    signal openAnswerFocusChanged(bool focused)
+    signal evaluateOpenAnswerRequested()
     signal toggleExplanation()
+
+    onOpenAnswerTextChanged: {
+        if (openInput.text !== openAnswerText) openInput.text = openAnswerText
+    }
 
     readonly property bool isOpenAnswer: question && question.type === "open"
     readonly property int correctIndex: question ? (question.correctIndex !== undefined ? question.correctIndex : (question.correct_index !== undefined ? question.correct_index : 0)) : 0
@@ -131,31 +143,114 @@ Rectangle {
                 spacing: 8
                 visible: cardRoot.isOpenAnswer
 
-                Text {
-                    text: "Sua Resposta Discursiva:"
-                    color: "#94a1b2"
-                    font.pixelSize: 12
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Sua Resposta Discursiva:")
+                        color: "#94a1b2"
+                        font.pixelSize: cardRoot.openAnswerEvaluationEnabled ? 14 : 12
+                        font.weight: Font.Medium
+                    }
+                    Text {
+                        visible: cardRoot.openAnswerEvaluationEnabled
+                        text: qsTr("Pressione Enter para enviar (Shift+Enter para nova linha)")
+                        color: "#71717a"
+                        opacity: 0.8
+                        font.pixelSize: 11
+                    }
                 }
 
                 ScrollView {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 140
+                    Layout.preferredHeight: Math.min(260, Math.max(72, openInput.contentHeight + 30))
 
                     TextArea {
                         id: openInput
-                        placeholderText: "Escreva sua resposta para autoavaliação..."
+                        placeholderText: cardRoot.openAnswerEvaluationEnabled
+                            ? qsTr("Escreva sua resposta completa com clareza... (Shift+Enter para nova linha)")
+                            : qsTr("Escreva sua resposta para autoavaliação...")
                         color: "#fffffe"
                         wrapMode: TextEdit.Wrap
-                        font.pixelSize: 14
-                        enabled: !cardRoot.isConfirmed
+                        font.pixelSize: cardRoot.openAnswerEvaluationEnabled ? 16 : 14
+                        padding: cardRoot.openAnswerEvaluationEnabled ? 14 : 6
+                        enabled: !cardRoot.isConfirmed && !cardRoot.isEvaluatingOpenAnswer
                         background: Rectangle {
                             color: "#11101a"
-                            radius: 8
-                            border.color: openInput.activeFocus ? "#8b5cf6" : "#2e2b44"
+                            radius: cardRoot.openAnswerEvaluationEnabled ? 12 : 8
+                            border.color: openInput.activeFocus ? "#8b5cf6"
+                                : (cardRoot.openAnswerEvaluationEnabled ? "#ffffff17" : "#2e2b44")
                         }
+                        Component.onCompleted: text = cardRoot.openAnswerText
+                        onActiveFocusChanged: cardRoot.openAnswerFocusChanged(activeFocus)
                         onTextChanged: cardRoot.openAnswerChanged(openInput.text)
+                        Keys.onReturnPressed: function(event) {
+                            if (!(event.modifiers & Qt.ShiftModifier) && cardRoot.openAnswerEvaluationEnabled) {
+                                event.accepted = true
+                                cardRoot.evaluateOpenAnswerRequested()
+                            }
+                        }
+                        Keys.onEnterPressed: function(event) {
+                            if (!(event.modifiers & Qt.ShiftModifier) && cardRoot.openAnswerEvaluationEnabled) {
+                                event.accepted = true
+                                cardRoot.evaluateOpenAnswerRequested()
+                            }
+                        }
                     }
                 }
+
+                Button {
+                    objectName: "notesOpenAnswerEvaluateButton"
+                    visible: cardRoot.openAnswerEvaluationEnabled && !cardRoot.isConfirmed
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 44
+                    enabled: openInput.text.trim().length > 0 && !cardRoot.isEvaluatingOpenAnswer
+                    onClicked: cardRoot.evaluateOpenAnswerRequested()
+                    background: Rectangle {
+                        radius: 12
+                        color: parent.enabled ? "#338b5cf6" : "#1a8b5cf6"
+                        border.color: "#598b5cf6"
+                    }
+                    contentItem: RowLayout {
+                        spacing: 8
+                        Text { text: cardRoot.isEvaluatingOpenAnswer ? "◌" : "✦"; color: "#c4b5fd"; font.pixelSize: 15 }
+                        Text {
+                            Layout.fillWidth: true
+                            text: cardRoot.isEvaluatingOpenAnswer
+                                ? qsTr("Avaliando com IA do Gemini...")
+                                : (cardRoot.openAnswerError.length > 0
+                                   ? qsTr("Tentar avaliação novamente")
+                                   : qsTr("Enviar Resposta para Avaliação IA"))
+                            color: "#ddd6fe"
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+
+                Text {
+                    visible: cardRoot.openAnswerError.length > 0
+                    text: cardRoot.openAnswerError
+                    color: "#fda4af"
+                    font.pixelSize: 11
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+
+                Notes.NotesOpenAnswerFeedback {
+                    Layout.fillWidth: true
+                    feedback: cardRoot.openAnswerFeedback
+                }
+            }
+
+            Notes.NotesOpenAnswerReferenceAnswer {
+                Layout.fillWidth: true
+                visible: cardRoot.openAnswerEvaluationEnabled
+                    && cardRoot.isOpenAnswer
+                    && cardRoot.showExplanation
+                answerText: cardRoot.question
+                    ? String(cardRoot.question.expectedAnswer || cardRoot.question.expected_answer || "") : ""
             }
 
             // Explanation Section

@@ -34,6 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_pages_deleted_sort ON pages (deleted_at, sort_ord
 CREATE INDEX IF NOT EXISTS idx_pages_parent_deleted ON pages (parent_id, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_pages_updated ON pages(updated_at);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_question_created ON quiz_attempts(question_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_battery_created ON quiz_attempts(battery_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_quiz_batteries_parent ON quiz_batteries(parent_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_battery_deleted ON quiz_questions(battery_id, deleted_at, sort_order);
 CREATE INDEX IF NOT EXISTS idx_shared_page_keys_page ON shared_page_keys(page_id);
@@ -44,6 +45,35 @@ CREATE INDEX IF NOT EXISTS idx_vault_items_group ON vault_items (group_id, delet
 CREATE INDEX IF NOT EXISTS idx_vault_items_position ON vault_items (position);
 CREATE INDEX IF NOT EXISTS idx_youtube_summaries_video_id ON youtube_summaries(video_id);
 "##;
+
+pub(super) fn ensure_quiz_attempt_battery_index(conn: &Connection) -> Result<(), String> {
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'quiz_attempts')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Failed to inspect quiz_attempts table: {error}"))?;
+    if !table_exists {
+        return Ok(());
+    }
+
+    let has_required_columns: bool = conn
+        .query_row(
+            "SELECT COUNT(*) = 2 FROM pragma_table_info('quiz_attempts') WHERE name IN ('battery_id', 'created_at')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| format!("Failed to inspect quiz_attempts index columns: {error}"))?;
+    if !has_required_columns {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "CREATE INDEX IF NOT EXISTS idx_quiz_attempts_battery_created ON quiz_attempts(battery_id, created_at DESC);",
+    )
+    .map_err(|error| format!("Failed to create quiz attempt battery index: {error}"))
+}
 
 /// Sync tables whose timestamp columns (`updated_at`, `created_at`, `deleted_at`)
 /// should be indexed for fast incremental `sync_get_modified_rows` range scans.

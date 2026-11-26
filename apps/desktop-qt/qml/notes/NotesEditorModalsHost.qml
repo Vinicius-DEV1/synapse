@@ -5,6 +5,11 @@ Item {
     id: modalsHost
     anchors.fill: parent
 
+    NotesOpenAnswerEvaluator {
+        id: notesOpenAnswerEvaluator
+        controller: modalsHost.controller
+    }
+
     property var controller: null
     property string selectedPageId: ""
     property string activeTitle: ""
@@ -130,22 +135,15 @@ Item {
 
     function applyPendingQuizSession(item) {
         if (!item || !pendingQuizSession) return
-        item.batteryId = pendingQuizSession.batteryId
-        item.batteryTitle = pendingQuizSession.title
-        item.questions = pendingQuizSession.questions
+        item.notesController = modalsHost.controller
+        item.enableNotesOpenAnswerEvaluation = true
+        item.openAnswerEvaluator = notesOpenAnswerEvaluator
         item.requireFinishConfirmation = true
-        item.currentIndex = 0
-        item.selectedOption = -1
-        item.openAnswer = ""
-        item.isConfirmed = false
-        item.showExplanation = false
-        item.isCompleted = false
-        item.showFinishConfirmation = false
-        item.selectedAnswers = []
-        item.answeredQuestions = []
-        item.score = 0
-        item.elapsedSeconds = 0
-        item.visible = true
+        item.startQuiz(
+            pendingQuizSession.batteryId,
+            pendingQuizSession.title,
+            pendingQuizSession.questions
+        )
         pendingQuizSession = null
     }
 

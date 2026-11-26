@@ -29,7 +29,7 @@ fn initialization_is_versioned_idempotent_and_preserves_legacy_sessions() {
             row.get(0)
         })
         .expect("read migration version count");
-    assert_eq!(version_count, 10);
+    assert_eq!(version_count, 11);
 
     for table in [
         "shared_page_keys",
@@ -91,21 +91,21 @@ fn versioned_migrations_add_finance_columns_to_existing_databases() {
     assert!(has_updated_at);
     assert!(has_person);
     assert!(has_habit_category);
-    assert_eq!(version, 10);
+    assert_eq!(version, 11);
 }
 
 #[test]
-fn versioned_migrations_add_deleted_at_to_existing_quiz_attempts() {
+fn versioned_migrations_add_deleted_at_and_battery_index_to_existing_quiz_attempts() {
     let connection = Connection::open_in_memory().expect("open in-memory database");
     connection
         .execute_batch(
             "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
              INSERT INTO schema_migrations (version, applied_at) VALUES (9, 'existing');
-             CREATE TABLE quiz_attempts (id TEXT PRIMARY KEY, battery_id TEXT NOT NULL, question_id TEXT NOT NULL, user_answer TEXT NOT NULL DEFAULT '', is_correct BOOLEAN NOT NULL);",
+             CREATE TABLE quiz_attempts (id TEXT PRIMARY KEY, battery_id TEXT NOT NULL, question_id TEXT NOT NULL, user_answer TEXT NOT NULL DEFAULT '', is_correct BOOLEAN NOT NULL, created_at TEXT NOT NULL);",
         )
-        .expect("create version 9 database without quiz_attempts.deleted_at");
+        .expect("create version 9 database without quiz_attempts.deleted_at or battery index");
 
-    crate::db::migrations::run_migrations(&connection).expect("apply v10 migration");
+    crate::db::migrations::run_migrations(&connection).expect("apply pending quiz migrations");
 
     let has_deleted_at: bool = connection
         .query_row(
@@ -115,6 +115,14 @@ fn versioned_migrations_add_deleted_at_to_existing_quiz_attempts() {
         )
         .expect("check quiz_attempts.deleted_at column");
     assert!(has_deleted_at);
+    let has_battery_index: bool = connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_quiz_attempts_battery_created')",
+            [],
+            |row| row.get(0),
+        )
+        .expect("check targeted battery attempt index");
+    assert!(has_battery_index);
 }
 
 #[test]
@@ -153,7 +161,7 @@ fn initialization_rejects_a_database_from_a_newer_schema_version() {
     connection
         .execute_batch(
             "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
-             INSERT INTO schema_migrations (version, applied_at) VALUES (11, 'future');",
+             INSERT INTO schema_migrations (version, applied_at) VALUES (12, 'future');",
         )
         .expect("create newer schema marker");
 

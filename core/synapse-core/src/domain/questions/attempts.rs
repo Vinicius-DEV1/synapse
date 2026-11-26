@@ -1,7 +1,8 @@
-use super::models::{QuizAnswerResult, QuizAttemptDetail, QuizStats};
+use super::models::{QuizAiFeedback, QuizAnswerResult, QuizAttemptDetail, QuizStats};
 use crate::error::{Result, SynapseError};
 use chrono::Utc;
 use rusqlite::params;
+use rusqlite::types::Type;
 use rusqlite::OptionalExtension;
 use serde_json::Value;
 
@@ -195,7 +196,7 @@ pub fn get_quiz_attempt_history(
         "SELECT a.id, a.question_id, a.battery_id, COALESCE(q.question, ''), a.type,
                 a.selected_index, a.user_typed_answer, a.user_answer,
                 COALESCE(q.correct_answer, ''), q.explanation, a.is_correct,
-                COALESCE(a.duration_ms, 0), a.created_at
+                COALESCE(a.duration_ms, 0), a.created_at, a.ai_feedback
          FROM quiz_attempts a
          LEFT JOIN quiz_questions q ON q.id = a.question_id
          WHERE (?1 IS NULL OR a.battery_id = ?1)
@@ -205,6 +206,14 @@ pub fn get_quiz_attempt_history(
     )?;
 
     let rows = statement.query_map(params![battery_id, question_id, limit], |row| {
+        let feedback_json: Option<String> = row.get(13)?;
+        let ai_feedback = feedback_json
+            .map(|value| {
+                serde_json::from_str::<QuizAiFeedback>(&value).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(13, Type::Text, Box::new(error))
+                })
+            })
+            .transpose()?;
         Ok(QuizAttemptDetail {
             id: row.get(0)?,
             question_id: row.get(1)?,
@@ -219,6 +228,7 @@ pub fn get_quiz_attempt_history(
             is_correct: row.get(10)?,
             duration_ms: row.get(11)?,
             created_at: row.get(12)?,
+            ai_feedback,
         })
     })?;
 

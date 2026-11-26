@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 import "../notes" as Notes
+import "../notes/NotesOpenAnswerSession.js" as OpenAnswerSession
 
 Rectangle {
     id: sequentialModalRoot
@@ -20,9 +21,20 @@ Rectangle {
     property bool showExplanation: false
     property bool isCompleted: false
     property bool requireFinishConfirmation: false
+    property bool enableNotesOpenAnswerEvaluation: false
+    property var notesController: null
+    property var openAnswerEvaluator: null
     property bool showFinishConfirmation: false
     property var selectedAnswers: []
     property var answeredQuestions: []
+    property var openAnswersByQuestion: ({})
+    property var openFeedbackByQuestion: ({})
+    property var evaluationErrorsByQuestion: ({})
+    property var evaluatingByQuestion: ({})
+    property var pendingEvaluationsByQuestion: ({})
+    property bool openAnswerInputFocused: false
+    property bool sessionActive: false
+    property int evaluationSessionToken: 0
     property int score: 0
     property int elapsedSeconds: 0
 
@@ -32,6 +44,12 @@ Rectangle {
     readonly property int totalCount: questions.length
     readonly property int answeredCount: answeredQuestions.filter(function(answered) { return answered }).length
     readonly property var currentQuestion: (currentIndex >= 0 && currentIndex < totalCount) ? questions[currentIndex] : null
+    readonly property string currentQuestionKey: OpenAnswerSession.questionKey(currentQuestion, currentIndex)
+    readonly property bool currentQuestionIsEvaluating: Boolean(evaluatingByQuestion[currentQuestionKey])
+    readonly property var currentOpenAnswerFeedback: pendingEvaluationsByQuestion[currentQuestionKey]
+        || openFeedbackByQuestion[currentQuestionKey]
+        || (currentQuestion ? currentQuestion.aiFeedback : null)
+    readonly property string currentOpenAnswerError: evaluationErrorsByQuestion[currentQuestionKey] || ""
 
     Timer {
         id: quizTimer
@@ -42,13 +60,13 @@ Rectangle {
     }
 
     // Keyboard Shortcuts
-    Shortcut { sequence: "Escape"; enabled: sequentialModalRoot.visible && !sequentialModalRoot.showFinishConfirmation; onActivated: sequentialModalRoot.closed() }
-    Shortcut { sequence: "1"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(0) }
-    Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(1) }
-    Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(2) }
-    Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted; onActivated: selectOption(3) }
-    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted; onActivated: showExplanation = !showExplanation }
-    Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation; onActivated: handleConfirmOrNext() }
+    Shortcut { sequence: "Escape"; enabled: sequentialModalRoot.visible && !sequentialModalRoot.showFinishConfirmation; onActivated: OpenAnswerSession.close(sequentialModalRoot) }
+    Shortcut { sequence: "1"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(0) }
+    Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(1) }
+    Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(2) }
+    Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(3) }
+    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: showExplanation = !showExplanation }
+    Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: handleConfirmOrNext() }
 
     Notes.NotesQuizFinishConfirmDialog {
         visible: sequentialModalRoot.showFinishConfirmation
@@ -73,7 +91,7 @@ Rectangle {
             totalQuestions: sequentialModalRoot.totalCount
             timeElapsedSeconds: sequentialModalRoot.elapsedSeconds
             visible: !sequentialModalRoot.isCompleted
-            onExitRequested: sequentialModalRoot.closed()
+            onExitRequested: OpenAnswerSession.close(sequentialModalRoot)
         }
 
         // Center Content Area
@@ -90,10 +108,16 @@ Rectangle {
                 openAnswerText: sequentialModalRoot.openAnswer
                 isConfirmed: sequentialModalRoot.isConfirmed
                 showExplanation: sequentialModalRoot.showExplanation
+                openAnswerEvaluationEnabled: sequentialModalRoot.enableNotesOpenAnswerEvaluation
+                isEvaluatingOpenAnswer: sequentialModalRoot.currentQuestionIsEvaluating
+                openAnswerFeedback: sequentialModalRoot.currentOpenAnswerFeedback
+                openAnswerError: sequentialModalRoot.currentOpenAnswerError
                 visible: !sequentialModalRoot.isCompleted
 
                 onOptionSelected: function(idx) { selectOption(idx) }
-                onOpenAnswerChanged: function(txt) { sequentialModalRoot.openAnswer = txt }
+                onOpenAnswerChanged: function(txt) { OpenAnswerSession.handleInput(sequentialModalRoot, txt) }
+                onOpenAnswerFocusChanged: function(focused) { OpenAnswerSession.handleFocus(sequentialModalRoot, focused) }
+                onEvaluateOpenAnswerRequested: OpenAnswerSession.evaluate(sequentialModalRoot)
                 onToggleExplanation: sequentialModalRoot.showExplanation = !sequentialModalRoot.showExplanation
             }
 
@@ -107,7 +131,7 @@ Rectangle {
                 visible: sequentialModalRoot.isCompleted
 
                 onRestartRequested: restartQuiz()
-                onReturnRequested: sequentialModalRoot.closed()
+                onReturnRequested: OpenAnswerSession.close(sequentialModalRoot)
                 onReviewQuestionRequested: function(idx) {
                     sequentialModalRoot.currentIndex = idx
                     sequentialModalRoot.isConfirmed = true
@@ -171,6 +195,10 @@ Rectangle {
                 Item { Layout.fillWidth: true }
 
                 Button {
+                    visible: !sequentialModalRoot.enableNotesOpenAnswerEvaluation
+                        || !sequentialModalRoot.currentQuestion
+                        || sequentialModalRoot.currentQuestion.type !== "open"
+                        || sequentialModalRoot.isConfirmed
                     text: !sequentialModalRoot.isConfirmed ? "Confirmar Resposta (Enter)" : ((sequentialModalRoot.currentIndex === sequentialModalRoot.totalCount - 1) ? "Ver Resultado" : "Próxima Questão → (Enter)")
                     enabled: (sequentialModalRoot.selectedOption >= 0 || (currentQuestion && currentQuestion.type === "open" && sequentialModalRoot.openAnswer.trim().length > 0)) || sequentialModalRoot.isConfirmed
                     background: Rectangle {
@@ -198,6 +226,10 @@ Rectangle {
 
     function handleConfirmOrNext() {
         if (!isConfirmed) {
+            if (enableNotesOpenAnswerEvaluation && currentQuestion && currentQuestion.type === "open") {
+                OpenAnswerSession.evaluate(sequentialModalRoot)
+                return
+            }
             // Confirm answer
             isConfirmed = true
             showExplanation = true
@@ -234,10 +266,18 @@ Rectangle {
         isConfirmed = idx < answeredQuestions.length && answeredQuestions[idx] === true
         selectedOption = (idx < selectedAnswers.length) ? selectedAnswers[idx] : -1
         showExplanation = isConfirmed
-        openAnswer = ""
+        var targetQuestion = questions[idx]
+        if (enableNotesOpenAnswerEvaluation) {
+            var targetKey = OpenAnswerSession.questionKey(targetQuestion, idx)
+            openAnswer = String(openAnswersByQuestion[targetKey]
+                                || (targetQuestion ? targetQuestion.userTypedAnswer : "") || "")
+        } else {
+            openAnswer = ""
+        }
     }
 
     function restartQuiz() {
+        OpenAnswerSession.reset(sequentialModalRoot)
         currentIndex = 0
         selectedOption = -1
         openAnswer = ""
@@ -247,6 +287,7 @@ Rectangle {
         showFinishConfirmation = false
         selectedAnswers = []
         answeredQuestions = []
+        openAnswerInputFocused = false
         score = 0
         elapsedSeconds = 0
     }
@@ -256,6 +297,8 @@ Rectangle {
         batteryTitle = bTitle || "Simulado Sequencial"
         questions = qsList || []
         restartQuiz()
+        if (enableNotesOpenAnswerEvaluation) OpenAnswerSession.restore(sequentialModalRoot)
+        sessionActive = true
         visible = true
     }
 }

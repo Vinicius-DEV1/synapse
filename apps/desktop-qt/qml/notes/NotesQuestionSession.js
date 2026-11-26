@@ -28,15 +28,49 @@ function normalizeQuestion(question) {
     return normalized
 }
 
+function latestAttemptsByQuestion(controller, batteryId, questionId) {
+    if (!controller || typeof controller.getLatestQuizAttempts !== "function") return ({})
+    return controller.getLatestQuizAttempts(batteryId || "", questionId || "") || ({})
+}
+
+function applyLatestAttempt(question, attempt) {
+    if (!attempt) return question
+    var normalized = Object.assign({}, question)
+    var feedback = attempt.ai_feedback || attempt.aiFeedback || null
+    if (typeof feedback === "string") {
+        try {
+            feedback = JSON.parse(feedback)
+        } catch (error) {
+            console.warn("[NotesQuestionSession] Ignoring invalid saved quiz feedback JSON")
+            feedback = null
+        }
+    }
+    normalized.selectedIndex = attempt.selected_index !== undefined
+        ? attempt.selected_index : (attempt.selectedIndex !== undefined ? attempt.selectedIndex : null)
+    normalized.userTypedAnswer = String(attempt.user_typed_answer || attempt.userTypedAnswer || "")
+    normalized.aiFeedback = feedback && typeof feedback === "object" ? feedback : null
+    normalized.isCorrect = Boolean(attempt.is_correct !== undefined ? attempt.is_correct : attempt.isCorrect)
+    normalized.answered = true
+    normalized.showExplanation = true
+    return normalized
+}
+
 function loadQuestions(controller, batteryId, questionId) {
     if (controller && batteryId && typeof controller.getBatteryQuestions === "function") {
         var batteryQuestions = controller.getBatteryQuestions(batteryId) || []
-        return batteryQuestions.map(normalizeQuestion).filter(function(question) { return question !== null })
+        var latestByQuestion = latestAttemptsByQuestion(controller, batteryId, "")
+        return batteryQuestions.map(function(question) {
+            var normalized = normalizeQuestion(question)
+            if (!normalized) return null
+            return applyLatestAttempt(normalized, latestByQuestion[normalized.id])
+        }).filter(function(question) { return question !== null })
     }
     if (controller && questionId && typeof controller.getQuizQuestion === "function") {
         var question = controller.getQuizQuestion(questionId)
         var normalizedQuestion = normalizeQuestion(question)
-        return normalizedQuestion && normalizedQuestion.id ? [normalizedQuestion] : []
+        if (!normalizedQuestion || !normalizedQuestion.id) return []
+        var latestByQuestion = latestAttemptsByQuestion(controller, "", questionId)
+        return [applyLatestAttempt(normalizedQuestion, latestByQuestion[normalizedQuestion.id])]
     }
     return []
 }

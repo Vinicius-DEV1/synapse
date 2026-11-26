@@ -280,6 +280,8 @@ public:
     Q_INVOKABLE bool updateQuizQuestion(const QString &questionId, const QString &question, const QString &optionsJson, int correctIndex, const QString &explanation = "", const QString &tagsJson = "[]");
     Q_INVOKABLE bool deleteQuizQuestion(const QString &questionId);
     Q_INVOKABLE bool recordQuizAttempt(const QString &batteryId, const QString &questionId, int selectedIndex, bool isCorrect);
+    Q_INVOKABLE QVariantMap recordOpenQuizAttempt(const QString &batteryId, const QString &questionId, const QString &userTypedAnswer, const QString &verdict, const QString &feedback, const QString &model = "");
+    Q_INVOKABLE QVariantMap getLatestQuizAttempts(const QString &batteryId = "", const QString &questionId = "");
     Q_INVOKABLE QVariantList getQuizBatteryTree();
     Q_INVOKABLE QString createChildQuizBattery(const QString &parentId, const QString &title, const QString &description = "");
     Q_INVOKABLE QVariantList getAvailableQuizParentOptions(const QString &movingBatteryId = "");

@@ -62,6 +62,26 @@ pub struct QuizAttemptDetail {
     pub is_correct: bool,
     pub duration_ms: i64,
     pub created_at: Option<String>,
+    pub ai_feedback: Option<QuizAiFeedback>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizAiFeedback {
+    pub verdict: String,
+    pub feedback: String,
+    pub model: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct QuizOpenAnswerAttempt {
+    pub id: String,
+    pub question_id: String,
+    pub battery_id: String,
+    pub user_typed_answer: String,
+    pub is_correct: bool,
+    pub ai_feedback: QuizAiFeedback,
+    pub duration_ms: i64,
+    pub created_at: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]

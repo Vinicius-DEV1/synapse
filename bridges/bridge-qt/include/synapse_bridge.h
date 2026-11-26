@@ -126,6 +126,8 @@ int synapse_quiz_create_question(Database* db, const char* battery_id, const cha
 int synapse_quiz_update_question(Database* db, const char* question_id, const char* question, const char* options_json, int correct_index, const char* explanation, const char* tags_json);
 int synapse_quiz_delete_question(Database* db, const char* question_id);
 int synapse_quiz_record_attempt(Database* db, const char* battery_id, const char* question_id, int selected_index, int is_correct);
+char* synapse_quiz_record_open_answer_attempt(Database* db, const char* battery_id, const char* question_id, const char* user_typed_answer, const char* verdict, const char* feedback, const char* model);
+char* synapse_quiz_get_latest_attempts(Database* db, const char* battery_id, const char* question_id);
 char* synapse_quiz_get_stats(Database* db);
 
 // Domain APIs: Anki & Spaced Repetition
