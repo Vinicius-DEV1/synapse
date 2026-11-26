@@ -155,9 +155,9 @@ Popup {
                     background: Rectangle {
                         radius: 8
                         color: colorButton.modelData.value === "default"
-                            ? (colorButton.isSelected ? "#3b3a42" : "#262533")
+                            ? (colorButton.isSelected ? "#33ffffff" : "transparent")
                             : colorButton.modelData.value
-                        border.width: colorButton.isSelected ? 2 : 1
+                        border.width: colorButton.isSelected && colorButton.modelData.value !== "default" ? 2 : 1
                         border.color: colorButton.isSelected ? "#fffffe"
                             : (colorButton.hovered ? "#4dffffff" : "#26ffffff")
                     }
@@ -165,7 +165,7 @@ Popup {
                     contentItem: Text {
                         text: colorButton.modelData.value === "default" ? "×" : ""
                         color: "#fffffe"
-                        font.pixelSize: 15
+                        font.pixelSize: 12
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
