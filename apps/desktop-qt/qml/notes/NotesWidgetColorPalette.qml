@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.15
 
 Popup {
     id: paletteRoot
+    objectName: "notesWidgetColorPalette"
     parent: Overlay.overlay
     width: 200
     height: 104
