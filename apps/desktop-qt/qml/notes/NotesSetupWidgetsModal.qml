@@ -34,7 +34,10 @@ Item {
             searchFilter = pf.query || ""
         }
         var c = setupRoot.controller
-        if (!c) return
+        if (!c) {
+            if (mode === "habito") Qt.callLater(widgetPicker.focusSearchField)
+            return
+        }
         if (mode === "question" && typeof c.getQuizBatteries === "function") {
             listItems = c.getQuizBatteries() || []
         } else if (mode === "habito" && typeof c.getHabits === "function") {
@@ -42,6 +45,7 @@ Item {
         } else if (mode === "alarme" && typeof c.getAlarms === "function") {
             listItems = c.getAlarms() || []
         }
+        if (mode === "habito") Qt.callLater(widgetPicker.focusSearchField)
     }
 
     function close() { activeMode = ""; closed() }

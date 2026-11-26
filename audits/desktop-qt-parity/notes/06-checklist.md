@@ -145,7 +145,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [x] Match React Notes focus setup labels, icons, example placeholders and Tag → Description → Target Time ordering while preserving slash prefills and native actions; focused harness passes. See QT-NOTES-065.
 - [x] Give alarm creation its own large-time, optional-label and primary-save form; preserve existing-alarm linking as a collapsed secondary flow and verify creation/invalid time/link serialization. See QT-NOTES-066.
 - [x] Match Notes habit quick-create defaults, prevent case-insensitive duplicates, resolve the actual Core-created habit ID, and preserve IDs for existing selections. See QT-NOTES-067.
-- [ ] Add and verify the React HabitSelectModal keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), loading/empty/create feedback and exact focus return for the Notes habit picker. See QT-NOTES-067.
+- [x] Add the Notes habit picker keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), active-option highlighting, search focus and empty-state guidance; focused harness passes. See QT-NOTES-068.
+- [ ] Verify actual Qt key-event propagation in a visible app window, focus return, accessibility and same-viewport HabitSelect modal geometry. See QT-NOTES-068.
 - [x] Match Notes habit quick-create defaults, prevent case-insensitive duplicates, resolve the actual Core-created habit ID, and preserve IDs for existing selections. See QT-NOTES-067.
 - [ ] Add and verify the React HabitSelectModal keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), loading/empty/create feedback and exact focus return for the Notes habit picker. See QT-NOTES-067.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.

@@ -11,6 +11,7 @@ ColumnLayout {
     property var listItems: []
     property string searchFilter: ""
     property string errorMessage: ""
+    property int selectedHabitIndex: 0
     readonly property bool hasHabitTitleCollision: {
         if (mode !== "habito") return false
         var query = searchFilter.trim().toLowerCase()
@@ -19,6 +20,8 @@ ColumnLayout {
         })
     }
     readonly property bool showCreateAction: searchFilter.trim().length > 0 && !hasHabitTitleCollision
+    readonly property bool showHabitEmptyState: mode === "habito" && filteredListItems.length === 0 &&
+        !showCreateAction && errorMessage.length === 0
     readonly property var filteredListItems: {
         var query = searchFilter.trim().toLowerCase()
         var items = !query.length ? listItems : listItems.filter(function(item) {
@@ -37,6 +40,75 @@ ColumnLayout {
     signal closeRequested()
 
     spacing: 8
+
+    onSearchFilterChanged: selectedHabitIndex = 0
+    onListItemsChanged: selectedHabitIndex = 0
+
+    function focusSearchField() {
+        habitSearchField.forceActiveFocus()
+    }
+
+    function habitOptionCount() {
+        return filteredListItems.length + (showCreateAction ? 1 : 0)
+    }
+
+    function handleHabitNavigationKey(key) {
+        if (mode !== "habito") return false
+        var optionCount = habitOptionCount()
+        if (key === Qt.Key_Escape) {
+            closeRequested()
+            return true
+        }
+        if (optionCount <= 0) return false
+        if (key === Qt.Key_Down) {
+            selectedHabitIndex = (selectedHabitIndex + 1) % optionCount
+            return true
+        }
+        if (key === Qt.Key_Up) {
+            selectedHabitIndex = (selectedHabitIndex - 1 + optionCount) % optionCount
+            return true
+        }
+        if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+            activateHabitOption(selectedHabitIndex)
+            return true
+        }
+        if (key >= Qt.Key_1 && key <= Qt.Key_9) {
+            var numberIndex = key - Qt.Key_1
+            if (numberIndex < optionCount) {
+                selectedHabitIndex = numberIndex
+                activateHabitOption(numberIndex)
+                return true
+            }
+        }
+        return false
+    }
+
+    function activateHabitOption(index) {
+        var items = filteredListItems
+        if (index < 0 || index >= habitOptionCount()) return
+        if (index < items.length) insertPickedItem(items[index])
+        else createQuickRecord()
+    }
+
+    function insertPickedItem(item) {
+        if (mode === "question") {
+            var safeTitle = HtmlEscaping.escapeHtmlAttribute(item.title || "Bateria")
+            var safeId = HtmlEscaping.escapeHtmlAttribute(item.id)
+            insertWidgetRequested(
+                "<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" +
+                safeId + "\" data-cached-title=\"" + safeTitle + "\" data-title=\"" + safeTitle + "\"></div>")
+        } else if (mode === "habito") {
+            var habitTitle = HtmlEscaping.escapeHtmlAttribute(item.title || item.name || "Hábito")
+            var streak = Number(item.current_streak || 0)
+            var habitId = HtmlEscaping.escapeHtmlAttribute(item.id)
+            insertWidgetRequested(
+                "<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" +
+                habitId + "\" data-title=\"" + habitTitle + "\" data-streak=\"" + streak + "\"></span>")
+        } else {
+            return
+        }
+        closeRequested()
+    }
 
     function createQuickRecord() {
         var title = searchFilter.trim()
@@ -88,6 +160,8 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 6
         TextField {
+            id: habitSearchField
+            objectName: "notesSetupHabitSearchField"
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             text: pickerPanel.searchFilter
@@ -99,16 +173,26 @@ ColumnLayout {
                 pickerPanel.errorMessage = ""
                 pickerPanel.filterEdited(text)
             }
+            Keys.onPressed: function(event) {
+                if (pickerPanel.handleHabitNavigationKey(event.key)) event.accepted = true
+            }
             background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
         }
         Button {
+            id: createRecordButton
             objectName: "notesSetupCreateRecordButton"
             visible: pickerPanel.showCreateAction
             Layout.preferredHeight: 32
             leftPadding: 10
             rightPadding: 10
             onClicked: pickerPanel.createQuickRecord()
-            background: Rectangle { radius: 8; color: "#7c3aed" }
+            background: Rectangle {
+                radius: 8
+                color: pickerPanel.mode === "habito" && pickerPanel.selectedHabitIndex === pickerPanel.filteredListItems.length
+                    ? "#338b5cf6" : "#7c3aed"
+                border.color: pickerPanel.mode === "habito" && pickerPanel.selectedHabitIndex === pickerPanel.filteredListItems.length
+                    ? "#8b5cf6" : "transparent"
+            }
             contentItem: Text { text: qsTr("+ Criar"); color: "#fff"; font.pixelSize: 11 }
         }
     }
@@ -121,6 +205,33 @@ ColumnLayout {
         font.pixelSize: 11
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
+    }
+
+    Text {
+        objectName: "notesSetupHabitEmptyState"
+        visible: pickerPanel.showHabitEmptyState
+        text: qsTr("Nenhum hábito cadastrado. Digite um nome para criar.")
+        color: "#a7a9be"
+        font.pixelSize: 12
+        horizontalAlignment: Text.AlignHCenter
+        Layout.fillWidth: true
+    }
+
+    RowLayout {
+        objectName: "notesSetupHabitKeyboardHelp"
+        visible: pickerPanel.mode === "habito"
+        Layout.fillWidth: true
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("Navegue com ↑ ↓ e pressione Enter")
+            color: "#74778d"
+            font.pixelSize: 10
+        }
+        Text {
+            text: qsTr("Esc para fechar")
+            color: "#74778d"
+            font.pixelSize: 10
+        }
     }
 
     ScrollView {
@@ -149,26 +260,21 @@ ColumnLayout {
                     id: eventItemButton
                     objectName: "notesSetupPickerItem"
                     required property var modelData
+                    required property int index
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
-                    onClicked: {
-                        if (eventItemButton.modelData.__picker.mode === "question") {
-                            var safeTitle = HtmlEscaping.escapeHtmlAttribute(eventItemButton.modelData.title || "Bateria")
-                            var safeId = HtmlEscaping.escapeHtmlAttribute(eventItemButton.modelData.id)
-                            eventItemButton.modelData.__picker.insertWidgetRequested(
-                                "<div class=\"question-block\" data-type=\"question-block\" data-battery-id=\"" +
-                                safeId + "\" data-cached-title=\"" + safeTitle + "\" data-title=\"" + safeTitle + "\"></div>")
-                        } else if (eventItemButton.modelData.__picker.mode === "habito") {
-                            var habitTitle = HtmlEscaping.escapeHtmlAttribute(eventItemButton.modelData.title || eventItemButton.modelData.name || "Hábito")
-                            var streak = Number(eventItemButton.modelData.current_streak || 0)
-                            var habitId = HtmlEscaping.escapeHtmlAttribute(eventItemButton.modelData.id)
-                            eventItemButton.modelData.__picker.insertWidgetRequested(
-                                "<span class=\"habit-widget\" data-type=\"habit-widget\" data-habit-id=\"" +
-                                habitId + "\" data-title=\"" + habitTitle + "\" data-streak=\"" + streak + "\"></span>")
-                        }
-                        eventItemButton.modelData.__picker.closeRequested()
+                    onHoveredChanged: if (hovered && eventItemButton.modelData.__picker.mode === "habito")
+                        eventItemButton.modelData.__picker.selectedHabitIndex = index
+                    onClicked: eventItemButton.modelData.__picker.insertPickedItem(eventItemButton.modelData)
+                    background: Rectangle {
+                        radius: 8
+                        color: eventItemButton.modelData.__picker.mode === "habito" &&
+                            eventItemButton.modelData.__picker.selectedHabitIndex === eventItemButton.index
+                            ? "#1a10b981" : eventItemButton.hovered ? "#228b5cf6" : "#1d1c2e"
+                        border.color: eventItemButton.modelData.__picker.mode === "habito" &&
+                            eventItemButton.modelData.__picker.selectedHabitIndex === eventItemButton.index
+                            ? "#4d10b981" : "#15ffffff"
                     }
-                    background: Rectangle { radius: 8; color: eventItemButton.hovered ? "#228b5cf6" : "#1d1c2e"; border.color: "#15ffffff" }
                     contentItem: Text {
                         text: eventItemButton.modelData.title || eventItemButton.modelData.label ||
                             (eventItemButton.modelData.time || "")

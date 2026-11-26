@@ -524,6 +524,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only. |
 | `git diff --check` | Passed | Whitespace validation only. |
 
+### Notes habit picker keyboard and empty state (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for habit-picker navigation handlers | Passed: 5 behavior cases (7 QtTest results including setup/cleanup), 0 failures. Covers wrapped result selection, Enter on existing/create, direct 1–9, Escape, duplicate-name selection and empty state. | Qt 6.10.2, offscreen. Calls the picker navigation handler directly; actual native key propagation in a visible window and focus-return behavior remain unverified. |
+| Focused `qmllint` for Notes setup/picker components | Passed: exit 0, no warnings. | Static QML checks only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only. |
+| `git diff --check` | Passed | Whitespace validation only. |
+
 ### Notes Alarm setup hierarchy and routes (2026-11-26)
 
 | Check | Result | Scope and limits |
