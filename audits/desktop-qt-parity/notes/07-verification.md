@@ -631,3 +631,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` over six changed QML/JS implementation files | Passed: exit 0, no warnings. | Syntax and static QML checks only. |
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only; does not drive file selection or the live Notes UI. |
 | `git diff --check` | Passed | Whitespace validation only. |
+
+### Duplicate-link modal iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_link_duplicates_dialog.qml -import apps/desktop-qt/qml` | Passed: 4 behavior cases (6 QtTest results including setup/cleanup). Covers resource title/URL and ancestor ordering, no-open behavior for empty matches, clicking a duplicate row and verifying navigation plus dismissal, Escape, and outside-click dismissal. | Qt 6.10.2, offscreen. Uses a mock controller/page tree. It does not validate duplicate discovery from persisted Notes content, focus restoration or visual parity in the full editor. |
+| Focused `qmllint` for `NotesLinkDuplicatesDialog.qml`, `LinkPreviewCard.qml` and `LinkPreviewCardDrawers.qml` | Passed, exit code 0 | The new dialog produced no lint diagnostics. Existing warnings remain in neighboring files for an unused import, layout-managed icon sizing and a dynamic `Button.hovered` lookup. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native application target linked. This does not exercise the active Notes editor or persisted duplicate lookup. |
+| `git diff --check` | Passed | Patch formatting and whitespace only. |
+| Live duplicate discovery/navigation, focus restoration, same-viewport capture, accessibility and screen-edge/DPI comparison | Not run | Keep QT-NOTES-076 and its remaining modal acceptance checklist open until full-editor evidence is collected. |

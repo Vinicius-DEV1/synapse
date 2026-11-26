@@ -28,7 +28,6 @@ Rectangle {
     property bool notesExpanded: (attrs["showNotes"] || attrs["shownotes"] || attrs["show-notes"]) === "true"
     property bool showColorPicker: false
     property var duplicatePages: []
-    property bool duplicatesOpen: false
 
     readonly property bool isYouTube: /(?:youtube\.com|youtu\.be)/i.test(url)
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
@@ -53,6 +52,14 @@ Rectangle {
     signal removeRequested()
 
     HoverHandler { id: hoverHandler }
+
+    NotesLinkDuplicatesDialog {
+        id: duplicatesDialog
+        controller: linkCardRoot.controller
+        onNavigateToPage: function(targetPageId) {
+            linkCardRoot.openDuplicatePageRequested(targetPageId)
+        }
+    }
 
     function formatDuration(sec) {
         if (!sec || sec <= 0) return ""
@@ -268,7 +275,9 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: linkCardRoot.duplicatesOpen = !linkCardRoot.duplicatesOpen
+                                onClicked: duplicatesDialog.openFor(linkCardRoot.url,
+                                                                    linkCardRoot.title,
+                                                                    linkCardRoot.duplicatePages)
                             }
                         }
                     }
@@ -302,15 +311,12 @@ Rectangle {
         LinkPreviewCardDrawers {
             showColorPicker: linkCardRoot.showColorPicker
             accentColor: linkCardRoot.accentColor
-            duplicatesOpen: linkCardRoot.duplicatesOpen
-            duplicatePages: linkCardRoot.duplicatePages
             notesExpanded: linkCardRoot.notesExpanded
             notesText: linkCardRoot.notesText
             onColorSelected: function(colorVal) {
                 linkCardRoot.saveColor(colorVal)
                 linkCardRoot.showColorPicker = false
             }
-            onDuplicatePageClicked: function(pid) { linkCardRoot.openDuplicatePageRequested(pid) }
             onNotesSaved: function(text) {
                 linkCardRoot.notesText = text
                 if (linkCardRoot.controller && typeof linkCardRoot.controller.setLinkEntityNotes === "function") {

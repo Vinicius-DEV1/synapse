@@ -153,3 +153,9 @@ Sequential focus in a Notes question widget asks before showing results and disp
 Open-answer questions are a remaining parity gap: Desktop Qt currently accepts transient text but does not retain it across navigation, evaluate it with the React AI flow, or save typed feedback/attempt history. The required native provider, credential path and typed Core attempt contract are tracked in the Notes parity audit.
 
 Focused Core tests verify the page/layout/link data and ensure an invalid page leaves no battery or link behind. Focused QML checks verify the modal hierarchy, responsive result viewport, current-page context, Core ID insertion, existing ID selection and error copy. Live creation followed by saving/reopening the note, focus return and same-viewport comparison remain acceptance work. The React Notes host currently ignores the reuse flag emitted when a suggested existing question widget is selected; that client-side behavior is tracked in the parity audit rather than mirrored by Qt.
+
+## 15. Notes link duplicate modal
+
+When a resource URL appears on more than one Notes page, the duplicate-count action opens `NotesLinkDuplicatesDialog.qml`. The native dialog displays the link title and URL, each matching page and its ancestor path, and navigates to a selected page. It closes from its close button, Escape or an outside click. Duplicate rows are not expanded inside the link card; the card's color and annotation drawers remain independent.
+
+React's reference is `LinkDuplicatesModal.tsx` in the link extension. Focused Qt QML tests cover resource metadata, ancestor ordering, selecting a page, Escape and outside-click dismissal. Live duplicate lookup/navigation, focus restoration and matched-viewport visual comparison remain required acceptance work.
