@@ -24,8 +24,11 @@ inline constexpr int SpoilerOriginalForegroundPresent = QTextFormat::UserPropert
 inline constexpr int SpoilerOriginalForeground = QTextFormat::UserProperty + 10;
 inline constexpr int SpoilerOriginalBackgroundPresent = QTextFormat::UserProperty + 11;
 inline constexpr int SpoilerOriginalBackground = QTextFormat::UserProperty + 12;
-inline constexpr int PageReferenceBoundary = QTextFormat::UserProperty + 18;
+inline constexpr int PageReferenceId = QTextFormat::UserProperty + 18;
 inline constexpr int ImageAlignment = QTextFormat::UserProperty + 19;
 inline constexpr int ImageCaption = QTextFormat::UserProperty + 20;
 inline constexpr int TaskCheckboxObjectType = QTextFormat::UserObject + 1;
+inline constexpr int PageReferenceTitle = QTextFormat::UserProperty + 21;
+inline constexpr int PageReferenceDeleted = QTextFormat::UserProperty + 22;
+inline constexpr int PageReferenceObjectType = QTextFormat::UserObject + 2;
 }

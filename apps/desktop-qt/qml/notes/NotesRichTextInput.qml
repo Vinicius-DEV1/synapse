@@ -375,6 +375,7 @@ Item {
             onTapped: function(point) {
                 var position = richEditor.positionAt(point.position.x, point.position.y)
                 if (inputRoot.editorRoot.setSpoilerVisibility(position, "reveal")) return
+                if (referenceActions.activateAtPosition(position)) return
                 inputRoot.taskListControls.toggleItem(position, false)
             }
             onDoubleTapped: function(point) {
@@ -453,6 +454,8 @@ Item {
         pageList: inputRoot.editorRoot.pageList
         onPagePreviewRequested: function(pageId) { inputRoot.pagePreviewRequested(pageId) }
         onExternalLinkRequested: function(link) { inputRoot.externalLinkRequested(link) }
+        onContentModified: inputRoot.previousPlainText =
+            inputRoot.editorRoot.textOperations.richPlainText(richEditor.textDocument)
     }
 
     NotesRichPageReferenceFlow {

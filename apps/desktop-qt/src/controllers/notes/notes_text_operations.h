@@ -25,10 +25,15 @@ public:
                                                            const QString &href,
                                                            int hintPosition) const;
     Q_INVOKABLE bool removeRichPageReference(QQuickTextDocument *document, int start, int end) const;
+    Q_INVOKABLE int replaceRichPageReferenceText(QQuickTextDocument *document, int start, int end,
+                                                 const QString &replacement) const;
+    Q_INVOKABLE bool copyRichPageReference(QQuickTextDocument *document, int start, int end) const;
+    Q_INVOKABLE int pasteRichPageReference(QQuickTextDocument *document, int start, int end,
+                                           const QVariantList &pages) const;
     Q_INVOKABLE int insertRichPageReference(QQuickTextDocument *document, int position,
                                             const QString &pageId, const QString &title) const;
     Q_INVOKABLE bool prepareRichHeadings(QQuickTextDocument *document, const QString &source) const;
-    Q_INVOKABLE bool prepareRichPageReferenceBoundaries(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool prepareRichPageReferences(QQuickTextDocument *document) const;
     Q_INVOKABLE bool prepareRichCodeBlocks(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool isRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool canMoveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;

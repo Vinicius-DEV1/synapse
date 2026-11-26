@@ -97,10 +97,10 @@ Item {
             validationMessage = qsTr("This note contains an image that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
-        if (!textOperations.prepareRichPageReferenceBoundaries(editor.textDocument)) {
+        if (!textOperations.prepareRichPageReferences(editor.textDocument)) {
             isLoading = false
             canEditSource = false
-            validationMessage = qsTr("This note contains page references that the native editor could not load safely. Switch to source editing to preserve them.")
+            validationMessage = qsTr("This note contains a page reference that the native editor could not load as a safe inline object. Switch to source editing to preserve it.")
             return false
         }
         var prepared = textOperations.prepareRichHeadings(editor.textDocument, effectiveSource)

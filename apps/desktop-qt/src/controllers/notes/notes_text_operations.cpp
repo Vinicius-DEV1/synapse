@@ -51,11 +51,6 @@ int NotesTextOperations::richSourceOffsetForEditorPosition(QQuickTextDocument *d
             const int length = fragment.length();
             const int traversed = qMin(length, editorPosition - start);
             const QTextCharFormat format = fragment.charFormat();
-            if (format.boolProperty(NotesRichFormat::PageReferenceBoundary)) {
-                sourcePosition -= traversed;
-                ++iterator;
-                continue;
-            }
             if (!format.isAnchor() || !NotesRichMarkup::pageReferenceFromHref(format.anchorHref())) {
                 ++iterator;
                 continue;
@@ -273,21 +268,7 @@ bool NotesTextOperations::applyRichPendingMarks(QQuickTextDocument *document, co
 
 QString NotesTextOperations::richPlainText(QQuickTextDocument *document) const {
     if (!document || !document->textDocument()) return {};
-    QTextDocument *textDocument = document->textDocument();
-    QString plainText = textDocument->toPlainText();
-    for (int position = textDocument->characterCount() - 2; position >= 0; --position) {
-        const QTextBlock block = textDocument->findBlock(position);
-        for (auto it = block.begin(); !it.atEnd(); ++it) {
-            const QTextFragment fragment = it.fragment();
-            if (fragment.isValid() && position >= fragment.position() &&
-                position < fragment.position() + fragment.length() &&
-                fragment.charFormat().boolProperty(NotesRichFormat::PageReferenceBoundary)) {
-                plainText.remove(position, 1);
-                break;
-            }
-        }
-    }
-    return plainText;
+    return document->textDocument()->toPlainText();
 }
 
 bool NotesTextOperations::toggleRichBlock(QQuickTextDocument *document, int start, int end, const QString &blockType) const {

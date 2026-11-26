@@ -26,8 +26,10 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify the Core offset map against Qt `QTextDocument` at paragraph, heading, list, table-cell/row, `<br>`, image/object, nested-mark, combining-character, and supplementary-character cursor boundaries.
 - [x] Use the complete HTML5 named-character-reference table and HTML numeric-reference rules in Core Notes decoding; keep text and attribute contexts distinct and preserve unknown references in one pass.
 - [ ] Verify parse/serialize round-trips for named and numeric entities, semicolonless references in text and attributes, unknown/malformed references, ampersands, quotes, apostrophes, and angle brackets in both clients.
-- [ ] Verify page-reference cursor mapping around active/deleted labels, labels split across contiguous styled QTextFragments, and adjacent-reference word joiners; each native display label must map to one canonical inline atom.
-- [ ] Verify editing a native page-reference label fails with visible recovery instead of silently serializing an empty reference; compare node selection, Backspace/Delete, explicit removal and undo with React.
+- [ ] Verify page-reference cursor mapping around active/deleted references and adjacent identical/different references; each native `QTextObjectInterface` reference must consume one `QTextDocument` UTF-16 position and preparation must leave no boundary word joiner counted as content.
+- [ ] Verify pointer hit testing selects exactly one page-reference object; typing replaces the selected object; Backspace/Delete opens confirmation; Keep, confirmed removal, undo, and click behavior match React for active and deleted targets.
+- [ ] Verify copy/paste and cut for a selected reference, including canonical HTML and custom Qt MIME; round-trip Qt→React and React→Qt with titles containing quotes, ampersands, emoji and combining characters.
+- [ ] Verify a merged `QTextFragment` containing adjacent identical object-replacement characters serializes one canonical `span[data-page-id][title]` per reference and preserves order/count after reload.
 - [ ] Preserve block colors/highlights in the same semantic representation as React.
 - [ ] Keep Core files focused and below the repository's anti-monolith target; remeasure each Notes Core file after subsequent changes and split any new files that exceed 300 lines.
 
@@ -115,7 +117,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare creation/edit/save lifecycle for question, focus, alarm, calendar event, habit, collection, toggle, callout toggle, media, video, book, scrap, Mermaid, link preview and link group.
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
-- [ ] Replace or explicitly approve the text-backed page-reference label limitation only after testing that title text cannot be lost and atom-level keyboard behavior matches React.
+- [ ] Verify native page-reference object accessibility name/role, keyboard focus, visible selection, hit target, chip geometry/colors, and updated title/deleted state against React at the same viewport.
 - [ ] Preserve column widths, child metadata and target group attributes when dropping blocks into columns.
 - [ ] Verify maximum nesting depth and behavior at structural boundaries.
 - [ ] Verify every modal's loading, disabled, error, retry, empty, cancel and in-flight close behavior.

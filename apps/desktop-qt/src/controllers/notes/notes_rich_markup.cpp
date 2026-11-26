@@ -123,7 +123,8 @@ QString pageReferencesForEditor(const QString &source, const QVariantList &pages
         const auto attributes = xml.attributes();
         const QString id = attributes.value(QStringLiteral("data-page-id")).toString();
         const QString storedTitle = attributes.value(QStringLiteral("title")).toString();
-        const QString title = currentTitles.value(id, storedTitle.isEmpty() ? id : storedTitle);
+        const QString title = currentTitles.value(id, storedTitle.isEmpty()
+            ? QStringLiteral("Página") : storedTitle);
         const QString href = pageReferenceHref(id, title);
         if (href.isEmpty()) continue;
         const bool isActive = activePageIds.contains(id);

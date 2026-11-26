@@ -16,6 +16,7 @@ Item {
 
     signal pagePreviewRequested(string pageId)
     signal externalLinkRequested(string link)
+    signal contentModified()
 
     function hasActivePage(pageId) {
         for (var index = 0; index < pageList.length; ++index) {
@@ -24,16 +25,118 @@ Item {
         return false
     }
 
-    function handleKey(event) {
-        if (event.key !== Qt.Key_Backspace && event.key !== Qt.Key_Delete) return false
-        var preferPrevious = event.key === Qt.Key_Backspace
+    function selectedReference() {
+        if (textEditor.selectionStart === textEditor.selectionEnd) return null
         var reference = textOperations.richPageReferenceAt(
-                    textEditor.textDocument, textEditor.selectionStart,
-                    textEditor.selectionEnd, preferPrevious)
-        if (!reference || Number(reference.end) <= Number(reference.start)) return false
-        referenceDialog.openForRemoval(reference, false)
+                    textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, false)
+        return reference && Number(reference.end) === Number(reference.start) + 1 ? reference : null
+    }
+
+    function markContentModified() {
+        editorRoot.hasEditedSinceLoad = true
+        editorRoot.hasPendingChanges = true
+        commitTimer.restart()
+        contentModified()
+    }
+
+    function removeSelectedReference(reference) {
+        var nextPosition = textOperations.replaceRichPageReferenceText(
+                    textEditor.textDocument, reference.start, reference.end, "")
+        if (nextPosition < 0) return false
+        textEditor.cursorPosition = nextPosition
+        markContentModified()
+        return true
+    }
+
+    function handleKey(event) {
+        var commandModifier = (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) !== 0
+        var shiftModifier = (event.modifiers & Qt.ShiftModifier) !== 0
+        var pasteShortcut = (commandModifier && event.key === Qt.Key_V) ||
+                (event.key === Qt.Key_Insert && shiftModifier)
+        if (pasteShortcut) {
+            var pastedPosition = textOperations.pasteRichPageReference(
+                        textEditor.textDocument, textEditor.selectionStart,
+                        textEditor.selectionEnd, pageList)
+            if (pastedPosition >= 0) {
+                textEditor.cursorPosition = pastedPosition
+                markContentModified()
+                event.accepted = true
+                return true
+            }
+        }
+        var reference = selectedReference()
+        if (reference && commandModifier && event.key === Qt.Key_C) {
+            if (!textOperations.copyRichPageReference(
+                    textEditor.textDocument, reference.start, reference.end)) return false
+            event.accepted = true
+            return true
+        }
+        if (reference && ((commandModifier && event.key === Qt.Key_X) ||
+                          (event.key === Qt.Key_Delete && shiftModifier))) {
+            if (!textOperations.copyRichPageReference(
+                    textEditor.textDocument, reference.start, reference.end) ||
+                !removeSelectedReference(reference)) return false
+            event.accepted = true
+            return true
+        }
+        if (reference && pasteShortcut) {
+            if (!removeSelectedReference(reference)) {
+                event.accepted = true
+                return true
+            }
+            return false
+        }
+
+        if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
+            var preferPrevious = event.key === Qt.Key_Backspace
+            reference = textOperations.richPageReferenceAt(
+                        textEditor.textDocument, textEditor.selectionStart,
+                        textEditor.selectionEnd, preferPrevious)
+            if (!reference || Number(reference.end) <= Number(reference.start)) return false
+            referenceDialog.openForRemoval(reference, Boolean(reference.deleted))
+            event.accepted = true
+            return true
+        }
+
+        var hasPrintableText = Boolean(event.text) && !/[\u0000-\u001f\u007f]/.test(event.text)
+        if (commandModifier || (event.modifiers & Qt.AltModifier) !== 0 || !hasPrintableText ||
+                textEditor.selectionStart === textEditor.selectionEnd) return false
+
+        var selectedNodeReference = textOperations.richPageReferenceAt(
+                    textEditor.textDocument, textEditor.selectionStart, textEditor.selectionEnd, false)
+        if (!selectedNodeReference || Number(selectedNodeReference.end) !== Number(selectedNodeReference.start) + 1)
+            return false
+        var nextPosition = textOperations.replaceRichPageReferenceText(
+                    textEditor.textDocument, selectedNodeReference.start,
+                    selectedNodeReference.end, event.text)
+        if (nextPosition < 0) return false
+        textEditor.cursorPosition = nextPosition
+        markContentModified()
         event.accepted = true
         return true
+    }
+
+    function activateReference(reference) {
+        var pageId = String(reference.pageId || "")
+        if (pageId.length === 0) return false
+        if (hasActivePage(pageId)) {
+            pagePreviewRequested(pageId)
+            return true
+        }
+        referenceDialog.openForRemoval(reference, true)
+        return true
+    }
+
+    function activateAtPosition(position) {
+        var reference = textOperations.richPageReferenceAt(
+                    textEditor.textDocument, position, position, false)
+        if (!reference || Number(reference.end) <= Number(reference.start)) {
+            reference = textOperations.richPageReferenceAt(
+                        textEditor.textDocument, position, position, true)
+        }
+        if (!reference || Number(reference.end) <= Number(reference.start)) return false
+        textEditor.select(Number(reference.start), Number(reference.end))
+        return activateReference(reference)
     }
 
     function activateLink(link) {
@@ -42,25 +145,17 @@ Item {
             externalLinkRequested(link)
             return true
         }
-        if (hasActivePage(pageId)) {
-            pagePreviewRequested(pageId)
-            return true
-        }
-
         var reference = textOperations.richPageReferenceRangeForHref(
                     textEditor.textDocument, link, textEditor.cursorPosition)
         if (!reference || Number(reference.end) <= Number(reference.start))
             reference = { pageId: pageId, title: pageId, start: -1, end: -1 }
-        referenceDialog.openForRemoval(reference, true)
-        return true
+        return activateReference(reference)
     }
 
     function removeReference(start, end) {
         if (!textOperations.removeRichPageReference(textEditor.textDocument, start, end)) return false
         textEditor.cursorPosition = start
-        editorRoot.hasEditedSinceLoad = true
-        editorRoot.hasPendingChanges = true
-        commitTimer.restart()
+        markContentModified()
         textEditor.forceActiveFocus()
         return true
     }

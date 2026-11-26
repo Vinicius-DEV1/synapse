@@ -2,6 +2,7 @@
 #include "notes_rich_callouts.h"
 #include "notes_rich_markup.h"
 #include "notes_rich_inline_marks.h"
+#include "notes_rich_page_reference_object.h"
 #include "notes_rich_spoilers.h"
 
 #include <QtGui/QTextBlock>
@@ -14,19 +15,7 @@
 namespace NotesRichDocument {
 
 int insertPageReference(QTextDocument &document, int position, const QString &pageId, const QString &title) {
-    const QString href = NotesRichMarkup::pageReferenceHref(pageId, title);
-    if (href.isEmpty() || position < 0 || position > document.characterCount() - 1) return -1;
-    QTextCursor cursor(&document);
-    cursor.setPosition(position);
-    cursor.beginEditBlock();
-    QTextCharFormat format;
-    format.setAnchor(true);
-    format.setAnchorHref(href);
-    format.setForeground(QColor(255, 255, 255, 191));
-    format.setBackground(QColor(255, 255, 255, 10));
-    cursor.insertText(QStringLiteral("↗ ") + title, format);
-    cursor.endEditBlock();
-    return cursor.position();
+    return NotesRichPageReferences::insert(document, position, pageId, title);
 }
 
 bool toggleInline(QTextDocument &document, int start, int end, const QString &mark,
