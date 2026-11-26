@@ -797,6 +797,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify key dispatch in an active window, text entry vs modified navigation, first/last-question boundaries, finish-dialog behavior, unanswered/pending counts, draft and evaluated-answer restoration, shortcut propagation and matched-viewport comparison.
 - **Fix status:** Qt now registers Notes-only Left/Right and `<`/`>` sequences for the unfocused editor and Alt+Left/Right sequences independent of text focus. The helpers reuse `goToQuestion()`, preserve drafts and open the finish confirmation at the final question. Focused QML coverage validates sequences, focus gating, previous/next behavior, draft restoration and last-question confirmation. Active-window key dispatch, visible count/focus behavior and matched-viewport comparison remain open; see [07-verification.md](07-verification.md).
 
+## QT-NOTES-085: Notes focus option hotkeys stop at four choices
+
+- **Severity:** Medium; React supports number shortcuts 1–9 and letter shortcuts A–Z according to available choices, while Qt previously registered only 1–4. Questions with five or more choices could not be fully answered from the keyboard.
+- **Evidence:** React `QuizSequentialPlayer.tsx::handleContainerKeyDown()` maps numeric keys to the first nine choices and letters to choice indexes across the option list. Qt `QuizSequentialFocusModal.qml` registered four fixed numeric shortcuts and had no letter selection route.
+- **Reproduction:** Start a Notes multiple-choice question with at least five choices and try selecting the later options with number or letter keys. Before the fix, the keyboard path did not cover them.
+- **Root cause:** Native option shortcuts were copied as four hard-coded number bindings rather than generated from the current option list.
+- **Required fix:** Generate Notes-only shortcuts from the current question: `1–9` for the first nine choices and `A–Z` for the first 26 choices. Disable them while an input is focused, after confirmation, or outside Notes focus. When `G` is an available option, route it to that choice rather than the plain explanation toggle. Keep standalone Questions behavior unchanged.
+- **Acceptance:** Verify option-list changes update bindings; test 1/9, A/Z, the G conflict, short lists, open-answer questions, text focus, confirmed/completed sessions and real keyboard dispatch in the active window.
+- **Fix status:** Qt now generates number and letter shortcut bindings from each Notes multiple-choice question, disables them while typing or after confirmation, and uses the same helper to reject stale/out-of-range selections. Focused QML coverage verifies eight choices, number/letter mapping, the seventh option's G mapping, text focus and confirmed-state gates. Boundary lists, active-window dispatch and matched-viewport acceptance remain open; see [07-verification.md](07-verification.md).
+
 ## QT-NOTES-076: Duplicate Notes links expand inline instead of opening React's modal
 
 - **Severity:** Medium; the duplicate count badge exposed the matching pages, but Qt expanded them inside the link card. React presents a centered overlay with the target URL, page titles, ancestor paths, navigation actions, backdrop dismissal and Escape handling.
