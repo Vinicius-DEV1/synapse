@@ -160,6 +160,9 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare question-block delete confirmation size, text emphasis, backdrop, focus return, Escape behavior and live save/reopen against React. See QT-NOTES-073.
 - [x] Show the React finish confirmation before Notes focus results; track confirmed questions separately and allow Review, finish, Escape and backdrop cancel. Focused QML flow/dialog cases pass. See QT-NOTES-074.
 - [ ] Compare finish-dialog viewport geometry, icon, status colors/text, focus, shortcut propagation and result persistence against React. See QT-NOTES-074.
+- [ ] Preserve open-answer text through navigation and Notes focus close; add typed Core/bridge/controller attempt persistence and latest-feedback lookup. See QT-NOTES-075.
+- [ ] Add the same approved evaluation provider/prompt contract React uses, with loading, duplicate-submit guard, correct/partial/incorrect verdicts, error/retry, explanation and attempt history without exposing keys in QML. See QT-NOTES-075.
+- [ ] Verify open-answer results, history and counts after save/reopen and compare the visible response/evaluation states against React. See QT-NOTES-075.
 - [x] Match Notes habit quick-create defaults, prevent case-insensitive duplicates, resolve the actual Core-created habit ID, and preserve IDs for existing selections. See QT-NOTES-067.
 - [ ] Add and verify the React HabitSelectModal keyboard path (ArrowUp/ArrowDown, Enter, Escape, 1–9), loading/empty/create feedback and exact focus return for the Notes habit picker. See QT-NOTES-067.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.

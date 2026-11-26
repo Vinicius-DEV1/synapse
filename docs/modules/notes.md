@@ -150,4 +150,6 @@ Removing a question card from a note now requires explicit confirmation. The con
 
 Sequential focus in a Notes question widget asks before showing results and displays the number of answered and pending questions. Review returns to the last question; confirmation opens the result view. The Notes host enables this confirmation specifically for the Notes entry point.
 
+Open-answer questions are a remaining parity gap: Desktop Qt currently accepts transient text but does not retain it across navigation, evaluate it with the React AI flow, or save typed feedback/attempt history. The required native provider, credential path and typed Core attempt contract are tracked in the Notes parity audit.
+
 Focused Core tests verify the page/layout/link data and ensure an invalid page leaves no battery or link behind. Focused QML checks verify the modal hierarchy, responsive result viewport, current-page context, Core ID insertion, existing ID selection and error copy. Live creation followed by saving/reopening the note, focus return and same-viewport comparison remain acceptance work. The React Notes host currently ignores the reuse flag emitted when a suggested existing question widget is selected; that client-side behavior is tracked in the parity audit rather than mirrored by Qt.
