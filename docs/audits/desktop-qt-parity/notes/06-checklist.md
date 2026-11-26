@@ -11,7 +11,9 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Mount the refactored bundle widget and compare valid, empty and malformed metadata, title/color updates, manager/picker opening, signal order, saved attributes and Qt/React round-trip to confirm the extraction preserved visuals and event behavior.
 - [x] Split `FileAttachmentWidget.qml` into the Core-backed parent and focused `FileAttachmentIdentity.qml`, `FileAttachmentRenameEditor.qml`, and `FileAttachmentActionBar.qml` views; all four QML files are below 300 lines. Focused `qmllint` and the native app build pass.
 - [x] Match the React file-widget title flow in Qt source: wrap long names, grow row height from content with a 44 px minimum, and align the 32 px icon badge and 12 px icon/title spacing. Focused `qmllint` and the native app build pass; see QT-NOTES-053.
-- [ ] Mount the file widget and compare same-size geometry, long-name wrapping, rename input accessible name, focus and selection, action reveal/tab order, color palette anchoring, delete flow, and serialized attributes with React; source evidence alone does not verify runtime parity.
+- [x] Route Backspace at the start of a rich-text block after a file widget, and Delete at the end of the preceding rich-text block, through the existing file confirmation dialog; see QT-NOTES-054.
+- [ ] Mount the file widget and compare same-size geometry, long-name wrapping, React-equivalent selected state, rename input accessible name, focus and text selection, action reveal/tab order, color palette anchoring, both adjacent keyboard deletion directions, dialog return focus, and serialized attributes with React; source evidence alone does not verify runtime parity.
+- [ ] Add and verify UI-only file-widget selection state matching React's `NodeSelection`; preserve selection through preview open/return and clear it on another block/page focus without serializing it. See QT-NOTES-055.
 - [ ] Compare React `Editor.tsx`, `useEditorExtensions.ts`, `useEditorSync.ts`, `useEditorSave.ts`, `useSlashCommand.ts`, `useEditorDropPaste.ts`, and `PageView.tsx` against current Qt files.
 - [ ] Inventory every custom React extension/schema and every Qt AST `blockType`; identify unknown, legacy, and unhandled types.
 - [ ] Generate a React-to-Qt function/handler mapping for editor init, change, commit, flush, save, undo, redo, selection, keyboard, paste, drop, page change, and destroy.
@@ -172,7 +174,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Prevent excessive full-list Core serialization and unnecessary delegate rebuilds; preserve native focus/caret while optimizing.
 - [ ] Verify cancellation/cleanup for timers, connections, async import, metadata requests, preview tasks and media playback.
 - [ ] Compare React/Qt at matched window size, DPI, font environment, theme and content for page header, toolbar, editor, every widget, table, modal, hover and focus.
-- [ ] Split `NotesSetupWidgetsModal.qml` and `src/controllers/notes/notes_controller.cpp` along focused responsibilities; current source lengths exceed the 300-line target and must be remeasured after the split.
+- [ ] Decompose the remaining Notes files above 300 lines listed in [11-structural-debt.md](11-structural-debt.md), including `src/controllers/notes/notes_controller.cpp`, keeping each new QML/C++/Rust/bridge file focused and rechecking module imports, signals, Core contracts and behavior. `NotesSetupWidgetsModal.qml` is currently 265 lines and is below the target.
 - [ ] Compare keyboard-only and screen-reader paths, accessible names, roles, state, order and selected-item announcements.
 - [ ] Compare English and Portuguese labels, errors, empty states and shortcut help.
 - [ ] Update `NotesHelpDialog.qml` so all descriptions match active controls and do not mention removed source/preview modes.

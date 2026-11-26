@@ -503,6 +503,26 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify ordinary names retain the same minimum geometry; long spaced and unbroken names remain fully readable at wide and narrow editor widths; wrapped text does not overlap the rename/color/delete controls or following blocks; Qt save/reopen and React round-trip preserve the exact filename.
 - **Fix status:** Qt uses `Text.WrapAtWordBoundaryOrAnywhere`, sizes the parent from the row's implicit height with a 44 px minimum, and matches the source icon and gap measurements. The explicit wrap mode also handles unbroken filenames. Focused `qmllint` and the native app build pass; same-viewport visual, narrow-width and cross-client acceptance remains open.
 
+## QT-NOTES-054: Adjacent keyboard deletion skips the file confirmation flow
+
+- **Severity:** Medium; pressing Backspace at the start of a rich-text block after a file widget, or Delete at the end of the preceding rich-text block, did not open the attachment confirmation used by React. The file widget stayed in the note and keyboard users had no equivalent boundary action.
+- **Evidence:** React `FileWidgetBlock.ts` intercepts Backspace/Delete for a selected file node and for a cursor directly before or after it, then dispatches the file-widget delete request. Qt's `NotesRichTextInput.qml` previously routed Backspace at the start of a block to `mergeRichWithPrev()` but did not recognize a preceding file block; there was no corresponding Delete-at-end route. `BlockListEditor.qml::requestBlockDeletion()` already opens the file widget's existing confirmation dialog.
+- **Reproduction:** Place a file widget between two rich-text blocks. Put the cursor at the start of the following block and press Backspace; then put it at the end of the preceding block and press Delete. Both keys must open the attachment dialog without removing the widget immediately.
+- **Root cause:** The native AST editor handles rich-text boundaries through `mergeRichWithPrev()` and separate delegates, but did not route adjacent file-widget boundaries into the file-specific deletion confirmation.
+- **Required fix:** Route Backspace from the following rich-text slice and Delete from the preceding slice to `requestBlockDeletion()` only when the adjacent AST block is a file widget. Reuse the existing dialog and preserve other block-boundary key behavior.
+- **Acceptance:** Verify both directions for active and nested Notes editors; Cancel leaves the note unchanged; Unlink and local Trash use the existing save/error flow; neighboring non-file blocks keep their current Backspace/Delete behavior; save/reopen and React round-trip preserve the widget when canceled.
+- **Fix status:** Both adjacent key paths now call `requestBlockDeletion()` for a file widget, which opens the existing confirmation. Focused `qmllint` and the native app build pass; keyboard focus, dialog action and save/reopen acceptance remains open.
+
+## QT-NOTES-055: File attachment selection state is not reflected in Qt
+
+- **Severity:** Medium; selecting an attachment in React gives it a visible selection ring and a ProseMirror `NodeSelection`. Qt opens the preview on click but has no corresponding selected-widget state or selected border, so the selection state is lost when the user returns to the note.
+- **Evidence:** React `FileWidgetNodeView.tsx` calls `setNodeSelection(pos)` on mouse down and styles selected default, custom-color and missing-file widgets separately. `BlockListEditor.qml` has no selected block index/state, while `FileAttachmentWidget.qml` routes a click to preview without recording selection.
+- **Reproduction:** Click a normal, custom-color and missing-file widget in React, dismiss/return from its preview, and observe the selected border. Repeat in Qt and compare the retained visual state and subsequent keyboard action.
+- **Root cause:** The Qt NoteBlock repeater models each widget as a separate QML delegate but does not expose a selection state equivalent to React's node selection.
+- **Required fix:** Add presentation-only selected-widget state through the Notes block list/router; select on the same mouse-down path before preview, clear selection when another note block or page takes focus, and apply React-equivalent selected styling without changing persisted attributes.
+- **Acceptance:** Verify selection and clearing across normal/custom/missing file widgets, text blocks, nested Notes editors, preview open/return, file rename, color change and delete confirmation. Ensure this state is not serialized and that keyboard deletion still opens confirmation.
+- **Fix status:** Open. This remains a tracked functional and visual parity gap; no selection-state implementation has been made.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).

@@ -333,3 +333,21 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app target; the CMake target does not instantiate the local QML widget. |
 | Source comparison for React wrap, icon size, and combined spacing | Passed on second pass | React uses `break-words`, a 16 px icon inside `p-2` (32 px badge), and a 12 px combined icon/title gap. Qt now uses `Text.WrapAtWordBoundaryOrAnywhere`, which also breaks unbroken names, plus 32 px badge geometry and 12 px spacing. This does not prove same-viewport rendering. |
 | Wide/narrow runtime geometry, overlap, save/reopen and Qt/React filename round-trip | Not run | Check unbroken Unicode names, multiple wraps, control overlap, and following-block spacing before closing QT-NOTES-053. |
+
+### File-widget adjacent keyboard deletion iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Source route for Backspace from the following rich-text block | Passed | `mergeRichWithPrev()` now detects a preceding `fileWidget` and calls the existing `requestBlockDeletion()` with that block's widget instance. |
+| Source route for Delete from the preceding rich-text block | Passed | `NotesRichTextInput` only intercepts Delete at the text end when its live `nextBlockIsFileWidget` property is true; routing then uses `requestBlockDeletion()`. Other block boundaries are not intercepted by this branch. |
+| Focused Notes `qmllint` | Passed with existing Loader/dynamic-context diagnostics in `NotesRichTextEditor.qml`, `BlockDelegateRouter.qml`, and `BlockListEditor.qml`; no new warning points to the adjacent-key route | Confirms the new signal/property chain parses. It does not synthesize key events or open the dialog. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | The native app target builds; this does not exercise local QML key behavior. |
+| Backspace/Delete, nested editors, dialog focus, Cancel/Unlink/Trash, save failure and neighboring non-file block behavior | Not run | Verify the entire confirmation and persistence path before closing QT-NOTES-054. |
+
+### Notes source-length inventory iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Scoped `wc -l` scan over Desktop Qt Notes QML/controllers, `synapse-core` Notes domain, and Qt Notes bridge | Found 30 files above the strict 300-line target | The per-file counts and command are in [11-structural-debt.md](11-structural-debt.md). The snapshot is source-structure evidence, not proof that each listed file is a monolith; each split still needs responsibility and caller review. |
+| `NotesSetupWidgetsModal.qml` line count | 265 | It is below the target and has been removed from the over-limit inventory. |
+| Core/bridge and UI decomposition, public contract review, and post-split checks | Not run | The inventory is a backlog. Preserve NoteBlock data, Qt properties/signals, Core APIs, FFI contracts and runtime behavior during each separate extraction. |
