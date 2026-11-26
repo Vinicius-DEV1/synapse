@@ -234,6 +234,43 @@ TestCase {
         compare(quizModal.notesPlainGShortcutEnabled, false)
     }
 
+    function test_notesMultipleChoiceShortcutsFollowAvailableOptions() {
+        var choiceQuestion = {
+            id: "choice-1",
+            battery_id: "battery-notes",
+            type: "multiple_choice",
+            prompt: "Choose one",
+            options: ["A choice", "B choice", "C choice", "D choice", "E choice", "F choice", "G choice", "H choice"],
+            correctIndex: 0,
+            explanation: "Choice explanation"
+        }
+        quizModal.startQuiz("battery-notes", "Notes battery", [choiceQuestion])
+
+        var bindings = quizModal.notesOptionShortcutBindings
+        compare(bindings.length, 16)
+        compare(bindings[0].sequence, "1")
+        compare(bindings[0].optionIndex, 0)
+        var sevenBinding = bindings.filter(function(binding) { return binding.sequence === "7" })[0]
+        var gBinding = bindings.filter(function(binding) { return binding.sequence === "G" })[0]
+        verify(sevenBinding !== undefined)
+        verify(gBinding !== undefined)
+        compare(sevenBinding.optionIndex, 6)
+        compare(gBinding.optionIndex, 6)
+
+        quizModal.openAnswerInputFocused = true
+        compare(quizModal.notesOptionShortcutsEnabled, false)
+        quizModal.selectNotesOptionByShortcut(gBinding.optionIndex)
+        compare(quizModal.selectedOption, -1)
+
+        quizModal.openAnswerInputFocused = false
+        compare(quizModal.notesOptionShortcutsEnabled, true)
+        quizModal.selectNotesOptionByShortcut(gBinding.optionIndex)
+        compare(quizModal.selectedOption, 6)
+        quizModal.isConfirmed = true
+        quizModal.selectNotesOptionByShortcut(0)
+        compare(quizModal.selectedOption, 6)
+    }
+
     function test_providerFailureKeepsAnswerAndAllowsRetry() {
         mockEvaluator.nextSuccess = false
         OpenAnswerSession.setAnswer(quizModal, "Keep this answer")
