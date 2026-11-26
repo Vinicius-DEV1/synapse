@@ -396,3 +396,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | React `ColorPalettePicker.tsx` versus Qt `NotesWidgetColorPalette.qml` source comparison | Qt default swatch now has a transparent idle fill, white/20 selected fill, one-pixel selected border, and 12 px × glyph | React's selected clear swatch uses white/20 and a 12 px text glyph; other color swatches keep their two-pixel selection ring. Focused QML lint/build and matched-scale runtime visuals remain to be recorded. |
+
+
+### Desktop Qt offscreen startup smoke (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `apps/desktop-qt/build/synapse-desktop` with `QT_QPA_PLATFORM=offscreen` and a temporary `SYNAPSE_DATABASE_PATH` | Process remained active through the 8-second observation window; startup output reported opening the local database and loading the native interface; no QML/runtime error was printed | The temporary directory was removed after the process exited at the observation timeout. This confirms application startup only. It did not open a Caderno page, instantiate or interact with Notes widgets, or capture rendered output. |

@@ -22,7 +22,7 @@
 ## Evidence rules
 
 - React Web is the behavior and visual reference. The Qt application is the implementation target.
-- The audit and follow-up review inspected source and existing documentation. A focused `qmllint` pass and Core/bridge/Qt builds have run; no test suite, QML runtime, screen-reader review, or visual capture has been run. Current evidence and limits are recorded in [07-verification.md](07-verification.md).
+- The audit and follow-up review inspected source and existing documentation. Focused `qmllint`, Core/bridge/Qt builds, and one eight-second offscreen application-startup smoke with a disposable database have run. No Notes widget interaction session, screen-reader review, or matched-viewport visual capture has been run. Current evidence and limits are recorded in [07-verification.md](07-verification.md).
 - Existing checked boxes and historical test totals in other documents are not evidence for the current worktree.
 - Features visible in QML are marked `Unverified` until their complete action, error, persistence, and recovery paths are reviewed. Similar-looking controls do not establish parity.
 - The audit follows the current Qt Notes source structure, including focused widget components and controller adapters; unrelated modules were not audited.
