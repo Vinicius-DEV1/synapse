@@ -20,6 +20,7 @@ ColumnLayout {
     signal renameCanceled()
     signal colorPickerToggled()
     signal colorSelected(string nextColor)
+    signal colorPickerDismissed()
     signal managerRequested()
     signal expandedToggled()
     signal addRequested()
@@ -54,14 +55,16 @@ ColumnLayout {
             onRenameCanceled: bodyRoot.renameCanceled()
         }
 
-        DocumentBundleWidgetPalette {
-            isOpen: bodyRoot.showColorPicker
-            itemsInvalid: bodyRoot.itemsInvalid
+        NotesWidgetColorPalette {
+            anchorItem: widgetActions.colorAnchorItem
+            isOpen: bodyRoot.showColorPicker && !bodyRoot.itemsInvalid
             currentColor: bodyRoot.accentColor
             onColorSelected: function(nextColor) { bodyRoot.colorSelected(nextColor) }
+            onDismissed: bodyRoot.colorPickerDismissed()
         }
 
         DocumentBundleWidgetActions {
+            id: widgetActions
             pointerHovered: bodyRoot.pointerHovered || contentHover.hovered
             colorPickerOpen: bodyRoot.showColorPicker
             expanded: bodyRoot.expanded

@@ -217,6 +217,7 @@ Rectangle {
             bundleWidgetRoot.showColorPicker = false
             bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, nextColor, bundleWidgetRoot.items)
         }
+        onColorPickerDismissed: bundleWidgetRoot.showColorPicker = false
         onManagerRequested: {
             bundleWidgetRoot.deleteActionError = ""
             bundleWidgetRoot.setManagerOpen(true)

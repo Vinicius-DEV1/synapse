@@ -6,6 +6,7 @@ import "../ui"
 
 RowLayout {
     id: actionsRoot
+    property alias colorAnchorItem: colorButton
     property bool pointerHovered: false
     property bool colorPickerOpen: false
     property bool expanded: false

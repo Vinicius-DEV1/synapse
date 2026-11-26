@@ -281,58 +281,6 @@ Rectangle {
             }
         }
 
-        // Inline Color Picker Popover Pill (shown only when palette icon clicked)
-        Rectangle {
-            visible: fileWidgetRoot.showColorPicker
-            Layout.preferredHeight: 24
-            Layout.preferredWidth: swatchRow.implicitWidth + 12
-            radius: 6
-            color: "#1a1924"
-            border.color: "#22ffffff"
-            border.width: 1
-
-            RowLayout {
-                id: swatchRow
-                anchors.centerIn: parent
-                spacing: 5
-                Repeater {
-                    model: ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"]
-                    delegate: Rectangle {
-                        required property string modelData
-                        width: 13
-                        height: 13
-                        radius: 6.5
-                        color: modelData
-                        border.color: fileWidgetRoot.accentColor === modelData ? "#ffffff" : "#33ffffff"
-                        border.width: fileWidgetRoot.accentColor === modelData ? 1.5 : 1
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                fileWidgetRoot.accentColor = modelData
-                                fileWidgetRoot.showColorPicker = false
-                                fileWidgetRoot.commitAttr("data-color", modelData)
-                            }
-                        }
-                    }
-                }
-                ToolButton {
-                    Layout.preferredWidth: 16
-                    Layout.preferredHeight: 16
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Cor padrão")
-                    onClicked: {
-                        fileWidgetRoot.accentColor = "default"
-                        fileWidgetRoot.showColorPicker = false
-                        fileWidgetRoot.commitAttr("data-color", "default")
-                    }
-                    background: Rectangle { radius: 8; color: "transparent"; border.color: "#33ffffff" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 8; height: 8 }
-                }
-            }
-        }
-
         // Hover-revealed action buttons matching FileWidgetNodeView.tsx
         RowLayout {
             opacity: hoverHandler.hovered || fileWidgetRoot.showColorPicker ? 1 : 0
@@ -401,6 +349,18 @@ Rectangle {
                 height: 14
             }
         }
+    }
+
+    NotesWidgetColorPalette {
+        anchorItem: colorActionButton
+        isOpen: fileWidgetRoot.showColorPicker
+        currentColor: fileWidgetRoot.accentColor
+        onColorSelected: function(nextColor) {
+            fileWidgetRoot.accentColor = nextColor
+            fileWidgetRoot.showColorPicker = false
+            fileWidgetRoot.commitAttr("data-color", nextColor)
+        }
+        onDismissed: fileWidgetRoot.showColorPicker = false
     }
 
     FileAttachmentDeleteDialog {
