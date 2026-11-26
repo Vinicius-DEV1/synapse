@@ -18,8 +18,6 @@
     "benchmark": "node --expose-gc scripts/benchmark.mjs",
     "benchmark:scroll": "node scripts/benchmark-scroll.mjs",
     "check:budgets": "node scripts/check-perf-budgets.mjs",
-    "swarm:setup": "bash ../../.agents/skills/parallel-swarm-audit/scripts/setup.sh",
-    "swarm:merge": "bash ../../.agents/skills/parallel-swarm-audit/scripts/merge.sh",
     "typecheck": "tsc -b --noEmit",
     "test:related": "vitest related --run"
   },

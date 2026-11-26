@@ -21,8 +21,6 @@
     "benchmark": "npm run benchmark --workspace=@synapse/web-react",
     "benchmark:scroll": "npm run benchmark:scroll --workspace=@synapse/web-react",
     "check:budgets": "npm run check:budgets --workspace=@synapse/web-react",
-    "swarm:setup": "npm run swarm:setup --workspace=@synapse/web-react",
-    "swarm:merge": "npm run swarm:merge --workspace=@synapse/web-react",
     "mobile-webview:start": "npm --prefix apps/mobile-webview run start",
     "mobile-webview:android": "npm --prefix apps/mobile-webview run android"
   }

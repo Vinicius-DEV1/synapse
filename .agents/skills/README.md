@@ -17,7 +17,6 @@ These playbooks apply across the four app targets: React Web/Tauri (`apps/web-re
 | [**`immersive-minimalist-ux`**](./immersive-minimalist-ux/SKILL.md) | UX & Ergonomics | Zen canvas architecture (`zinc-950` full-viewport overlay), keyboard-first navigation engine (`useImmersiveKeyboard`), semantic feedback colors, and reading column ergonomics. | Ergonomic Typography, Distraction-Free UX |
 | [**`module-bug-audit`**](./module-bug-audit/SKILL.md) | Quality Assurance | Rigorous 4-phase audit protocol for race conditions, memory leaks, unmounted state updates, Rust `.unwrap()` panic paths, and SQL parameterization. | Static Analysis, Diagnostic Tracing |
 | [**`full-module-review`**](./full-module-review/SKILL.md) | Quality Orchestration | Comprehensive 6-dimension health scorecard (Correctness, Architecture, Type Safety, Performance, Security, Design) with prioritized remediation roadmaps. | Multi-Dimensional QA, Health Scoring |
-| [**`parallel-swarm-audit`**](./parallel-swarm-audit/SKILL.md) | Multi-Agent DevOps | Orchestration engine for parallel worker swarms across isolated Git Worktrees (3-Agent or 4-Agent Quad-Swarm), automated multi-way merge, and type reconciliation. | Git Worktrees, Multi-Agent Concurrency |
 | [**`security-audit`**](./security-audit/SKILL.md) | AppSec & Penetration Defense | 8-pillar threat modeling covering WebView sandboxing, Tauri CSP, command/SQL injection defense, path traversal containment, and dependency CVE auditing. | OWASP Top 10, CWE Classification |
 | [**`type-safety-hardening`**](./type-safety-hardening/SKILL.md) | TypeScript & Reliability | Zero-`any` enforcement, discriminated unions with exhaustiveness checks (`assertNever`), type guards, runtime schema validation (Zod), and branded domain types. | Compile-Time Safety, Strict TypeScript |
 | [**`desktop-qt-parity`**](./desktop-qt-parity/SKILL.md) | Multi-Client Parity & Qt 6 | Canonical engineering workflow, visual/functional parity standards, hybrid WYSIWYG block-editor architecture, and Core SSOT delegation rules for bringing Desktop Qt (`apps/desktop-qt/`) to 100% parity with React Web (`apps/web-react/`). | Qt 6 Quick/QML, Rust Core SSOT, Visual Parity |
@@ -56,16 +55,12 @@ The [documentation status index](../../docs/documentation-status.md) identifies 
 
 ## 🚀 Tooling & Automation Commands
 
+Use focused work with the repository instructions and review workflows. Parallel swarm orchestration and its npm commands have been retired.
+
 ```bash
 # Type contract verification across entire codebase
 npm run typecheck
 
 # Run targeted fast tests (sub-second feedback)
 npm run test -- src/services/crypto.test.ts
-
-# Launch automated Git Worktrees for parallel multi-agent audit
-npm run swarm:setup
-
-# Merge and reconcile parallel audit branches with automated validation
-npm run swarm:merge
 ```
