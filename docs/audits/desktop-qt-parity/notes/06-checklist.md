@@ -22,10 +22,14 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify custom node attributes for question, habit, focus, alarm, calendar event, file, bundle, media, scrap, Mermaid, link preview, link group, toggle, callout toggle, collection, column group, page reference, divider, image and encrypted image.
 - [ ] Verify malformed HTML has a safe, user-visible recovery path and cannot silently drop unsupported content.
 - [ ] Escape all dynamic HTML text/attribute interpolation once at serialization boundaries and preserve the raw values sent to Core; test ampersands, quotes, apostrophes and angle brackets on every widget type.
-- [ ] Resolve the UTF-16/Core offset mismatch for Qt insertion, selection and split APIs.
-- [ ] Make entity decoding/escaping complete and canonical without double-decoding.
+- [x] Define the Core rich-HTML split offset as UTF-16 and map text, supported block separators, void elements and decoded character references while keeping split tags balanced.
+- [ ] Verify the Core offset map against Qt `QTextDocument` at paragraph, heading, list, table-cell/row, `<br>`, image/object, nested-mark, combining-character, and supplementary-character cursor boundaries.
+- [x] Use the complete HTML5 named-character-reference table and HTML numeric-reference rules in Core Notes decoding; keep text and attribute contexts distinct and preserve unknown references in one pass.
+- [ ] Verify parse/serialize round-trips for named and numeric entities, semicolonless references in text and attributes, unknown/malformed references, ampersands, quotes, apostrophes, and angle brackets in both clients.
+- [ ] Verify page-reference cursor mapping around active/deleted labels, labels split across contiguous styled QTextFragments, and adjacent-reference word joiners; each native display label must map to one canonical inline atom.
+- [ ] Verify editing a native page-reference label fails with visible recovery instead of silently serializing an empty reference; compare node selection, Backspace/Delete, explicit removal and undo with React.
 - [ ] Preserve block colors/highlights in the same semantic representation as React.
-- [ ] Keep Core files focused and below the repository's anti-monolith target; split parser, serializer, helpers and tests by responsibility.
+- [ ] Keep Core files focused and below the repository's anti-monolith target; remeasure each Notes Core file after subsequent changes and split any new files that exceed 300 lines.
 
 ## C. Page view and hierarchy
 
@@ -111,6 +115,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare creation/edit/save lifecycle for question, focus, alarm, calendar event, habit, collection, toggle, callout toggle, media, video, book, scrap, Mermaid, link preview and link group.
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
+- [ ] Replace or explicitly approve the text-backed page-reference label limitation only after testing that title text cannot be lost and atom-level keyboard behavior matches React.
 - [ ] Preserve column widths, child metadata and target group attributes when dropping blocks into columns.
 - [ ] Verify maximum nesting depth and behavior at structural boundaries.
 - [ ] Verify every modal's loading, disabled, error, retry, empty, cancel and in-flight close behavior.

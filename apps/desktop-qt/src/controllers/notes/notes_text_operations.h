@@ -19,6 +19,8 @@ public:
     Q_INVOKABLE QString richPageReferenceId(const QString &href) const;
     Q_INVOKABLE QVariantMap richPageReferenceAt(QQuickTextDocument *document, int start, int end,
                                                  bool preferPreviousCharacter) const;
+    Q_INVOKABLE int richSourceOffsetForEditorPosition(QQuickTextDocument *document,
+                                                       int editorPosition) const;
     Q_INVOKABLE QVariantMap richPageReferenceRangeForHref(QQuickTextDocument *document,
                                                            const QString &href,
                                                            int hintPosition) const;

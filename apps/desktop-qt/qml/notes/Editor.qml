@@ -27,7 +27,9 @@ ColumnLayout {
     property string pendingFileDropRequestId: ""
     property string pendingFileDropPageId: ""
     property string pendingFileDropBlockId: ""
+    property string pendingFileDropBlockHtml: ""
     property int pendingFileDropCursorPosition: -1
+    property int pendingFileDropSourceOffset: -1
     property int fileImportRequestSequence: 0
     property string fileDropFeedback: ""
     readonly property string lastSlashQuery: blockListEditor.lastSlashQuery
@@ -133,6 +135,9 @@ ColumnLayout {
         pendingFileDropPageId = pageId
         pendingFileDropBlockId = String(target.blockId || "")
         pendingFileDropCursorPosition = Number(target.cursorPosition)
+        pendingFileDropSourceOffset = typeof target.sourceOffset === "number" ? target.sourceOffset : -1
+        pendingFileDropBlockHtml = pendingFileDropSourceOffset >= 0
+                ? String(target.blockHtml || "") : ""
         fileDropFeedback = rejectedCount > 0 ? qsTr("Alguns itens não eram arquivos locais e foram ignorados.") : ""
         startNextDroppedFileImport()
     }
@@ -169,16 +174,19 @@ ColumnLayout {
             if (pageId === pendingFileDropPageId &&
                     blockListEditor.insertWidgetHtmlAtBlock(
                         pendingFileDropBlockId, pendingFileDropCursorPosition,
-                        pendingFileDropWidgets.join(""))) {
+                        pendingFileDropWidgets.join(""), pendingFileDropSourceOffset,
+                        pendingFileDropSourceOffset >= 0 ? pendingFileDropBlockHtml : undefined)) {
                 if (fileDropFeedback.length === 0) fileDropFeedback = qsTr("Arquivo(s) importado(s) e anexado(s).")
             } else {
-                fileDropFeedback = qsTr("Os arquivos foram importados, mas a página ou bloco mudou antes de anexá-los.")
+                fileDropFeedback = qsTr("Os arquivos foram importados, mas não foi possível anexá-los ao conteúdo atual. Tente novamente.")
             }
         }
         pendingFileDropWidgets = []
         pendingFileDropPageId = ""
         pendingFileDropBlockId = ""
+        pendingFileDropBlockHtml = ""
         pendingFileDropCursorPosition = -1
+        pendingFileDropSourceOffset = -1
     }
 
     spacing: 8

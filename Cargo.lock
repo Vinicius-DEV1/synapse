@@ -4379,6 +4379,7 @@ dependencies = [
  "dirs 5.0.1",
  "hex",
  "log",
+ "markup5ever",
  "pbkdf2",
  "rand 0.8.8",
  "rusqlite",

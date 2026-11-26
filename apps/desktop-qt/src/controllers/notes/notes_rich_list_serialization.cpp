@@ -143,22 +143,28 @@ static void closeListItem(QString &result, const ListDescriptor &list) {
 
 bool appendBlockText(QString &result, const QTextBlock &block) {
     const int headingLevel = block.blockFormat().headingLevel();
-    for (auto it = block.begin(); !it.atEnd(); ++it) {
+    for (auto it = block.begin(); !it.atEnd();) {
         const QTextFragment fragment = it.fragment();
-        if (!fragment.isValid()) continue;
+        if (!fragment.isValid()) {
+            ++it;
+            continue;
+        }
         if (fragment.charFormat().isImageFormat()) {
             QString imageHtml;
             if (!NotesRichImages::serialize(fragment.charFormat().toImageFormat(), imageHtml)) return false;
             result += imageHtml;
+            ++it;
             continue;
         }
         if (fragment.charFormat().objectType() == NotesRichFormat::TaskCheckboxObjectType) {
             if (!block.textList() || !block.textList()->format().boolProperty(NotesRichFormat::TaskListState) ||
                 !block.blockFormat().hasProperty(NotesRichFormat::TaskItemChecked)) return false;
+            ++it;
             continue;
         }
         if (fragment.charFormat().boolProperty(NotesRichFormat::PageReferenceBoundary)) {
             if (fragment.text() != QString(QChar(0x2060))) return false;
+            ++it;
             continue;
         }
         QTextCharFormat format = fragment.charFormat();
@@ -168,7 +174,33 @@ bool appendBlockText(QString &result, const QTextBlock &block) {
             format = saved.value<QTextCharFormat>();
         }
         if (!supportedCharacterFormat(format, headingLevel)) return false;
+
+        QString pageTitle;
+        if (format.isAnchor() &&
+            NotesRichMarkup::pageReferenceFromHref(format.anchorHref(), nullptr, &pageTitle)) {
+            QString displayedLabel;
+            int nextPosition = fragment.position();
+            auto referenceIt = it;
+            while (!referenceIt.atEnd()) {
+                const QTextFragment part = referenceIt.fragment();
+                if (!part.isValid() || part.position() != nextPosition ||
+                    !part.charFormat().isAnchor() ||
+                    part.charFormat().anchorHref() != format.anchorHref()) break;
+                if (!supportedCharacterFormat(part.charFormat(), headingLevel)) return false;
+                displayedLabel += part.text();
+                nextPosition += part.length();
+                ++referenceIt;
+            }
+            const QString activeLabel = QStringLiteral("↗ ") + pageTitle;
+            const QString deletedLabel = QStringLiteral("⚠ ") + pageTitle +
+                QStringLiteral(" (Deleted)");
+            if (displayedLabel != activeLabel && displayedLabel != deletedLabel) return false;
+            result += inlineHtml(displayedLabel, format, headingLevel);
+            it = referenceIt;
+            continue;
+        }
         result += inlineHtml(fragment.text(), format, headingLevel);
+        ++it;
     }
     return true;
 }

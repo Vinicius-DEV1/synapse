@@ -136,9 +136,12 @@ ColumnLayout {
         return plain.length > 0 || /<(?:img|hr|span\b[^>]*data-page-id)/i.test(String(sliceHtml))
     }
 
-    function insertWidgetHtmlAfter(idx, widgetHtml, cursorPosition) {
-        if (!controller || typeof controller.parseNoteBlocks !== "function") return
-        var parsed = widgetHtml && widgetHtml.trim().length > 0 ? (controller.parseNoteBlocks(widgetHtml) || []) : []
+    function insertWidgetHtmlAfter(idx, widgetHtml, cursorPosition, canonicalSourceOffset) {
+        if (!controller || typeof controller.parseNoteBlocks !== "function" ||
+                typeof controller.serializeNoteBlocks !== "function") return false
+        var hasWidgetHtml = Boolean(widgetHtml && widgetHtml.trim().length > 0)
+        var parsed = hasWidgetHtml ? controller.parseNoteBlocks(widgetHtml) : []
+        if (!Array.isArray(parsed) || (hasWidgetHtml && parsed.length === 0)) return false
         var next = blocks.slice()
         var splitPosition = typeof cursorPosition === "number" ? cursorPosition
             : (focusedRichSlice && focusedRichSliceBlockId === (next[idx] ? next[idx].id : "") &&
@@ -147,10 +150,23 @@ ColumnLayout {
                 typeof controller.splitRichHtml === "function") {
             var row = blockRepeater.itemAt(idx)
             if (row && row.router && typeof row.router.flushPendingEdits === "function" &&
-                    !row.router.flushPendingEdits()) return
+                    !row.router.flushPendingEdits()) return false
             next = blocks.slice()
-            if (idx >= next.length || next[idx].blockType !== "richText") return
-            var split = controller.splitRichHtml(next[idx].html || "", splitPosition)
+            if (idx >= next.length || next[idx].blockType !== "richText") return false
+            var hasCanonicalSourceOffset = typeof canonicalSourceOffset === "number" &&
+                    canonicalSourceOffset >= 0
+            var sourceOffset = hasCanonicalSourceOffset ? canonicalSourceOffset : splitPosition
+            if (!hasCanonicalSourceOffset) {
+                var richEditor = focusedRichSlice && focusedRichSliceBlockId === String(next[idx].id || "")
+                        ? focusedRichSlice.editor : null
+                if (richEditor && richEditor.textDocument && textOperations &&
+                        typeof textOperations.richSourceOffsetForEditorPosition === "function") {
+                    sourceOffset = textOperations.richSourceOffsetForEditorPosition(
+                                richEditor.textDocument, splitPosition)
+                }
+            }
+            if (typeof sourceOffset !== "number" || sourceOffset < 0) return false
+            var split = controller.splitRichHtml(next[idx].html || "", sourceOffset)
             var replacement = []
             if (hasMeaningfulSliceHtml(split.before)) {
                 replacement.push({ id: next[idx].id, blockType: "richText", attrs: ({}), html: split.before, innerHtml: split.before })
@@ -160,13 +176,14 @@ ColumnLayout {
             replacement.push({ id: "blk_after_" + Date.now(), blockType: "richText", attrs: ({}), html: afterHtml, innerHtml: afterHtml })
             Array.prototype.splice.apply(next, [idx, 1].concat(replacement))
             commitBlocks(next)
-            return
+            return true
         }
         var insertPos = idx >= 0 && idx < next.length ? idx + 1 : next.length
         var args = [insertPos, 0].concat(parsed)
         args.push({ id: "blk_" + Date.now(), blockType: "richText", attrs: ({}), html: "<p><br/></p>", innerHtml: "<p><br/></p>" })
         Array.prototype.splice.apply(next, args)
         commitBlocks(next)
+        return true
     }
 
     function focusDropTargetAt(x, y) {
@@ -178,13 +195,28 @@ ColumnLayout {
             var block = blocks[i]
             var textEditor = row.router && row.router.item ? row.router.item.editor : null
             if (block && block.blockType === "richText" && textEditor) {
+                if (!flushActiveRichSlices()) {
+                    return { blockId: "", cursorPosition: -1, sourceOffset: -1, blockHtml: "" }
+                }
+                block = blocks[i]
+                if (!block || block.blockType !== "richText")
+                    return { blockId: "", cursorPosition: -1, sourceOffset: -1, blockHtml: "" }
                 var localPoint = textEditor.mapFromItem(blockListRoot, x, y)
                 var cursorPosition = textEditor.positionAt(localPoint.x, localPoint.y)
                 textEditor.forceActiveFocus()
                 textEditor.cursorPosition = cursorPosition
                 focusedRichSlice = row.router.item
                 focusedRichSliceBlockId = block.id
-                return { blockId: block.id, cursorPosition: cursorPosition }
+                var sourceOffset = textOperations &&
+                        typeof textOperations.richSourceOffsetForEditorPosition === "function"
+                        ? textOperations.richSourceOffsetForEditorPosition(textEditor.textDocument, cursorPosition)
+                        : cursorPosition
+                return {
+                    blockId: block.id,
+                    cursorPosition: cursorPosition,
+                    sourceOffset: sourceOffset,
+                    blockHtml: String(block.html || "")
+                }
             }
             return { blockId: block ? block.id : "", cursorPosition: -1 }
         }
@@ -192,7 +224,7 @@ ColumnLayout {
         return { blockId: lastBlock ? lastBlock.id : "", cursorPosition: -1 }
     }
 
-    function insertWidgetHtmlAtBlock(blockId, cursorPosition, widgetHtml) {
+    function insertWidgetHtmlAtBlock(blockId, cursorPosition, widgetHtml, canonicalSourceOffset, expectedBlockHtml) {
         var targetIndex = -1
         for (var i = 0; i < blocks.length; ++i) {
             if (String(blocks[i].id || "") === blockId) {
@@ -202,13 +234,15 @@ ColumnLayout {
         }
         if (targetIndex < 0) {
             if (blocks.length === 0) {
-                insertWidgetHtmlAfter(-1, widgetHtml)
-                return true
+                return insertWidgetHtmlAfter(-1, widgetHtml) === true
             }
             return false
         }
-        insertWidgetHtmlAfter(targetIndex, widgetHtml, cursorPosition)
-        return true
+        if (typeof expectedBlockHtml === "string") {
+            if (!flushActiveRichSlices()) return false
+            if (String(blocks[targetIndex].html || "") !== expectedBlockHtml) return false
+        }
+        return insertWidgetHtmlAfter(targetIndex, widgetHtml, cursorPosition, canonicalSourceOffset) === true
     }
 
     function appendTrailingParagraph() {

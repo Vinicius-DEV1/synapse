@@ -8,7 +8,7 @@ pub(super) fn attr_value(tag_open: &str, name: &str) -> Option<String> {
         if let Some(pos) = tag_open.find(&needle) {
             let after = &tag_open[pos + needle.len()..];
             if let Some(end) = after.find(quote) {
-                return Some(html_unescape(&after[..end]));
+                return Some(html_unescape_attribute(&after[..end]));
             }
         }
     }
@@ -55,7 +55,7 @@ pub(super) fn parse_all_data_attrs(tag_open: &str) -> BTreeMap<String, String> {
                 while i < bytes.len() && bytes[i] != q {
                     i += 1;
                 }
-                let val = html_unescape(&tag_open[val_start..i]);
+                let val = html_unescape_attribute(&tag_open[val_start..i]);
                 if !name.is_empty() {
                     map.insert(name.to_string(), val);
                 }
@@ -70,82 +70,16 @@ pub(super) fn parse_all_data_attrs(tag_open: &str) -> BTreeMap<String, String> {
     map
 }
 
-/// Decodes numeric references and common named entities used by Notes HTML.
-/// Supported names: amp, apos, bull, copy, euro, gt, hellip, ldquo, lsquo, lt,
-/// mdash, nbsp, ndash, quot, rdquo, reg, rsquo and trade. Unknown names stay unchanged.
 pub(in crate::domain::notes) fn html_unescape(s: &str) -> String {
-    fn decode_entity(entity: &str) -> Option<char> {
-        let body = entity.strip_prefix('&')?.strip_suffix(';')?;
-        let character = match body {
-            "quot" => '"',
-            "apos" | "#39" => '\'',
-            "amp" => '&',
-            "lt" => '<',
-            "gt" => '>',
-            "nbsp" => '\u{00a0}',
-            "copy" => '\u{00a9}',
-            "reg" => '\u{00ae}',
-            "trade" => '\u{2122}',
-            "euro" => '\u{20ac}',
-            "ndash" => '\u{2013}',
-            "mdash" => '\u{2014}',
-            "hellip" => '\u{2026}',
-            "lsquo" => '\u{2018}',
-            "rsquo" => '\u{2019}',
-            "ldquo" => '\u{201c}',
-            "rdquo" => '\u{201d}',
-            "bull" => '\u{2022}',
-            _ => {
-                let numeric = body.strip_prefix('#')?;
-                let (digits, radix) = numeric
-                    .strip_prefix('x')
-                    .or_else(|| numeric.strip_prefix('X'))
-                    .map(|hex| (hex, 16))
-                    .unwrap_or((numeric, 10));
-                return u32::from_str_radix(digits, radix)
-                    .ok()
-                    .and_then(char::from_u32);
-            }
-        };
-        Some(character)
-    }
-
-    let mut output = String::with_capacity(s.len());
-    let mut cursor = 0usize;
-    while cursor < s.len() {
-        let Some(relative_ampersand) = s[cursor..].find('&') else {
-            output.push_str(&s[cursor..]);
-            break;
-        };
-        let ampersand = cursor + relative_ampersand;
-        output.push_str(&s[cursor..ampersand]);
-        let Some(relative_semicolon) = s[ampersand..].find(';') else {
-            output.push_str(&s[ampersand..]);
-            break;
-        };
-        let semicolon = ampersand + relative_semicolon;
-        if semicolon - ampersand > 16 {
-            output.push('&');
-            cursor = ampersand + 1;
-            continue;
-        }
-        let entity = &s[ampersand..=semicolon];
-        if let Some(character) = decode_entity(entity) {
-            output.push(character);
-            cursor = semicolon + 1;
-        } else {
-            output.push_str(entity);
-            cursor = semicolon + 1;
-        }
-    }
-    output
+    super::entities::html_unescape(s)
 }
 
 pub(super) fn html_escape_attr(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('"', "&quot;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
+    super::entities::html_escape_attr(s)
+}
+
+fn html_unescape_attribute(s: &str) -> String {
+    super::entities::html_unescape_attribute(s)
 }
 
 pub(super) fn find_matching_close(html: &str, open_end: usize, tag_name: &str) -> usize {

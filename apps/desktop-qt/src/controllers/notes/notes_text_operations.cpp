@@ -30,6 +30,62 @@ bool NotesTextOperations::supportsRichSource(const QString &source) const {
     return NotesRichDocument::supportsSource(source);
 }
 
+int NotesTextOperations::richSourceOffsetForEditorPosition(QQuickTextDocument *document,
+                                                             int editorPosition) const {
+    if (!document || !document->textDocument() || editorPosition < 0) return editorPosition;
+    const QTextDocument &textDocument = *document->textDocument();
+    const int maximumPosition = textDocument.characterCount() - 1;
+    if (editorPosition > maximumPosition) return editorPosition;
+
+    int sourcePosition = editorPosition;
+    for (QTextBlock block = textDocument.begin(); block.isValid(); block = block.next()) {
+        for (auto iterator = block.begin(); !iterator.atEnd();) {
+            const QTextFragment fragment = iterator.fragment();
+            if (!fragment.isValid()) {
+                ++iterator;
+                continue;
+            }
+            const int start = fragment.position();
+            if (start >= editorPosition) return qMax(0, sourcePosition);
+
+            const int length = fragment.length();
+            const int traversed = qMin(length, editorPosition - start);
+            const QTextCharFormat format = fragment.charFormat();
+            if (format.boolProperty(NotesRichFormat::PageReferenceBoundary)) {
+                sourcePosition -= traversed;
+                ++iterator;
+                continue;
+            }
+            if (!format.isAnchor() || !NotesRichMarkup::pageReferenceFromHref(format.anchorHref())) {
+                ++iterator;
+                continue;
+            }
+
+            const QString href = format.anchorHref();
+            int referenceLength = 0;
+            int referenceEnd = start;
+            auto referenceIterator = iterator;
+            while (!referenceIterator.atEnd()) {
+                const QTextFragment part = referenceIterator.fragment();
+                if (!part.isValid() || part.position() != referenceEnd ||
+                    !part.charFormat().isAnchor() || part.charFormat().anchorHref() != href) break;
+                referenceLength += part.length();
+                referenceEnd += part.length();
+                ++referenceIterator;
+            }
+
+            const int referenceOffset = qBound(0, editorPosition - start, referenceLength);
+            if (editorPosition < referenceEnd) {
+                sourcePosition -= referenceOffset;
+                return qMax(0, sourcePosition);
+            }
+            sourcePosition -= referenceLength - 1;
+            iterator = referenceIterator;
+        }
+    }
+    return qMax(0, sourcePosition);
+}
+
 QString NotesTextOperations::richSourceForEditor(const QString &source) const {
     QString normalized;
     QVector<NotesRichTaskMarkup::ListItemState> items;

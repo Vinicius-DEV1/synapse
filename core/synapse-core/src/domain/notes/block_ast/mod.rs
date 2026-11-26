@@ -1,5 +1,7 @@
 //! TipTap HTML <-> Typed Block AST parser, serializer, column rebalancing & loose file scanner.
 
+mod cursor_split;
+mod entities;
 pub(super) mod helpers;
 mod parser;
 mod serializer;
@@ -9,8 +11,9 @@ mod tests;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+pub use cursor_split::split_rich_html_at_text_offset;
 pub use parser::parse_note_blocks;
-pub use serializer::{serialize_note_blocks, split_rich_html_at_text_offset};
+pub use serializer::serialize_note_blocks;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
