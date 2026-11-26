@@ -14,6 +14,7 @@
 #include <QtCore/QUrl>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QtTest>
+#include <algorithm>
 
 int runNativeNotesCalloutQmlTest(int argc, char **argv);
 int runNativeNotesCodeLanguageQmlTest(int argc, char **argv);
@@ -684,6 +685,22 @@ private slots:
         QTRY_COMPARE(modal->property("proposal").toString(),
                      QStringLiteral("# Chapter\n\nRevised paragraph."));
         QVERIFY(modal->property("messages").toList().size() >= 3);
+        QObject *proposalPreview = findQuickObject(rootItem, "notesMarkdownAiProposalPreview");
+        QVERIFY(proposalPreview);
+        const QVariantList diffLines = proposalPreview->property("diffLines").toList();
+        QVERIFY(diffLines.size() >= 4);
+        QVERIFY(std::any_of(diffLines.cbegin(), diffLines.cend(), [](const QVariant &line) {
+            return line.toMap().value(QStringLiteral("kind")).toString() == QStringLiteral("removed");
+        }));
+        QVERIFY(std::any_of(diffLines.cbegin(), diffLines.cend(), [](const QVariant &line) {
+            return line.toMap().value(QStringLiteral("kind")).toString() == QStringLiteral("added");
+        }));
+        QObject *toggleRawButton = findQuickObject(rootItem, "notesMarkdownAiToggleRawProposalButton");
+        QVERIFY(toggleRawButton);
+        QVERIFY(QMetaObject::invokeMethod(toggleRawButton, "clicked"));
+        QVERIFY(proposalPreview->property("showRawProposal").toBool());
+        QVERIFY(QMetaObject::invokeMethod(toggleRawButton, "clicked"));
+        QVERIFY(!proposalPreview->property("showRawProposal").toBool());
         QSignalSpy applySpy(modal, SIGNAL(applyProposalRequested(QString)));
         QVERIFY(QMetaObject::invokeMethod(modal, "applyProposal"));
         QCOMPARE(applySpy.count(), 1);
