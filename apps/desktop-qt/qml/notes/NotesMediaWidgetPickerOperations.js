@@ -1,0 +1,60 @@
+.pragma library
+.import "NotesHtmlEscaping.js" as HtmlEscaping
+
+function filteredItems(items, search) {
+    var query = String(search || "").trim().toLowerCase()
+    if (!query) return items || []
+    return (items || []).filter(function(item) {
+        var label = String(item.name || item.title || "").toLowerCase()
+        return label.indexOf(query) >= 0
+    })
+}
+
+function localUploadCompletion(requestId, result, fallbackError) {
+    if (!requestId || !result || result.operation !== "import" ||
+            String(result.requestId || "") !== String(requestId || "")) return null
+    if (!result.success || !result.id) {
+        return { success: false, error: String(result.error || fallbackError) }
+    }
+    var label = HtmlEscaping.escapeHtmlAttribute(result.name || "Arquivo")
+    var fileId = HtmlEscaping.escapeHtmlAttribute(result.id)
+    var fileType = HtmlEscaping.escapeHtmlAttribute(result.file_type || "document")
+    var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(result.file_size)
+    return {
+        success: true,
+        html: "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
+            "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
+            fileType + "\" data-file-size=\"" + fileSize + "\"></div>"
+    }
+}
+
+function widgetHtmlForPickedItem(item, mode) {
+    var label = HtmlEscaping.escapeHtmlAttribute(item.name || item.title || "Item")
+    var itemId = HtmlEscaping.escapeHtmlAttribute(item.id)
+    if (mode === "documento") {
+        var fileType = HtmlEscaping.escapeHtmlAttribute(item.file_type || "document")
+        var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(item.file_size)
+        return "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + itemId +
+            "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
+            fileType + "\" data-file-size=\"" + fileSize + "\"></div>"
+    }
+    var mediaType = mode === "livro" ? "book" : "video"
+    return "<span class=\"media-widget\" data-type=\"media-widget\" data-media-type=\"" + mediaType +
+        "\" data-media-id=\"" + itemId + "\" data-title=\"" + label + "\"></span>"
+}
+
+function filePathFromUrl(fileUrl) {
+    return decodeURIComponent(String(fileUrl || "").replace(/^file:\/\//, ""))
+}
+
+function capturedScrapWidgetHtml(title, url, result) {
+    var safeTitle = HtmlEscaping.escapeHtmlAttribute(title || (result && result.title) || "Captura Web")
+    var safeUrl = HtmlEscaping.escapeHtmlAttribute((result && result.url) || url || "")
+    var attributes = " title=\"" + safeTitle + "\" data-title=\"" + safeTitle +
+        "\" url=\"" + safeUrl + "\" data-url=\"" + safeUrl + "\""
+    if (!result) return "<div class=\"scrap-widget-block\" data-type=\"scrap-widget\"" + attributes + "></div>"
+    var size = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(result.file_size)
+    var excerpt = HtmlEscaping.escapeHtmlAttribute(result.excerpt || "")
+    return "<div class=\"scrap-widget-block\" data-type=\"scrap-widget\" data-status=\"ready\"" +
+        attributes + " data-file-size=\"" + size + "\" data-excerpt=\"" + excerpt + "\"></div>"
+}

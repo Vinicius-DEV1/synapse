@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
-import "NotesHtmlEscaping.js" as HtmlEscaping
+import "NotesMediaWidgetPickerOperations.js" as PickerOperations
 import "NotesSlashCommandArguments.js" as SlashArgs
 import "../ui"
 
@@ -18,9 +18,11 @@ Item {
     property string searchFilter: ""
     property bool isCapturingScrap: false
     property string scrapError: ""
+    property string localUploadError: ""
     property string pendingScrapRequestId: ""
+    property string pendingLocalUploadRequestId: ""
+    property int localUploadRequestSequence: 0
     property bool waitingLocalUpload: false
-    property int preUploadCount: 0
 
     signal insertWidgetRequested(string html)
     signal closed()
@@ -31,6 +33,9 @@ Item {
         searchFilter = ""
         isCapturingScrap = false
         scrapError = ""
+        localUploadError = ""
+        pendingLocalUploadRequestId = ""
+        waitingLocalUpload = false
         if (mode === "scrap" && prefillUrl && String(prefillUrl).trim().length > 0) {
             scrapUrlInput.text = String(prefillUrl).trim()
             if (autoCaptureScrap === true) {
@@ -62,23 +67,36 @@ Item {
             pendingScrapRequestId = "scrap_" + Date.now()
             c.captureWebScrap(u, pendingScrapRequestId)
         } else {
-            var t = HtmlEscaping.escapeHtmlAttribute(scrapTitleInput.text.trim() || "Captura Web")
-            var eu = HtmlEscaping.escapeHtmlAttribute(u)
-            mediaPickerRoot.insertWidgetRequested("<div class=\"scrap-widget-block\" data-type=\"scrap-widget\" title=\"" + t + "\" data-title=\"" + t + "\" url=\"" + eu + "\" data-url=\"" + eu + "\"></div>")
+            mediaPickerRoot.insertWidgetRequested(PickerOperations.capturedScrapWidgetHtml(
+                scrapTitleInput.text.trim(), u, null))
             mediaPickerRoot.close()
         }
     }
 
     readonly property var filteredItems: {
-        var q = searchFilter.trim().toLowerCase()
-        if (q.length === 0) return listItems
-        return listItems.filter(function(item) {
-            var lbl = String(item.name || item.title || "").toLowerCase()
-            return lbl.indexOf(q) >= 0
-        })
+        return PickerOperations.filteredItems(listItems, searchFilter)
+    }
+    function close() {
+        activeMode = ""
+        isCapturingScrap = false
+        waitingLocalUpload = false
+        pendingLocalUploadRequestId = ""
+        closed()
     }
 
-    function close() { activeMode = ""; isCapturingScrap = false; waitingLocalUpload = false; closed() }
+    function finishLocalUpload(result) {
+        var completion = PickerOperations.localUploadCompletion(
+            pendingLocalUploadRequestId, result, qsTr("Não foi possível importar o arquivo."))
+        if (!completion) return
+        waitingLocalUpload = false
+        pendingLocalUploadRequestId = ""
+        if (!completion.success) {
+            localUploadError = completion.error
+            return
+        }
+        insertWidgetRequested(completion.html)
+        close()
+    }
 
     Connections {
         target: mediaPickerRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
@@ -90,36 +108,11 @@ Item {
                 mediaPickerRoot.scrapError = result.error_reason || qsTr("Falha ao capturar página.")
                 return
             }
-            var t = HtmlEscaping.escapeHtmlAttribute(scrapTitleInput.text.trim() || result.title || "Captura Web")
-            var u = HtmlEscaping.escapeHtmlAttribute(result.url || scrapUrlInput.text.trim())
-            var sz = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(result.file_size)
-            var exc = HtmlEscaping.escapeHtmlAttribute(result.excerpt || "")
-            mediaPickerRoot.insertWidgetRequested(
-                "<div class=\"scrap-widget-block\" data-type=\"scrap-widget\" data-status=\"ready\" title=\"" + t +
-                "\" data-title=\"" + t + "\" url=\"" + u + "\" data-url=\"" + u + "\" data-file-size=\"" + sz +
-                "\" data-excerpt=\"" + exc + "\"></div>"
-            )
+            mediaPickerRoot.insertWidgetRequested(PickerOperations.capturedScrapWidgetHtml(
+                scrapTitleInput.text.trim(), scrapUrlInput.text.trim(), result))
             mediaPickerRoot.close()
         }
-        function onStatsChanged() {
-            var c = mediaPickerRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
-            if (!mediaPickerRoot.waitingLocalUpload || !c) return
-            var files = c.getFiles("") || []
-            if (files.length > mediaPickerRoot.preUploadCount) {
-                mediaPickerRoot.waitingLocalUpload = false
-                var newest = files[0]
-                var label = HtmlEscaping.escapeHtmlAttribute(newest.name || "Arquivo")
-                var fileId = HtmlEscaping.escapeHtmlAttribute(newest.id)
-                var fileType = HtmlEscaping.escapeHtmlAttribute(newest.file_type || "document")
-                var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(newest.file_size)
-                mediaPickerRoot.insertWidgetRequested(
-                    "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
-                    "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
-                    fileType + "\" data-file-size=\"" + fileSize + "\"></div>"
-                )
-                mediaPickerRoot.close()
-            }
-        }
+        function onFileOperationFinished(result) { mediaPickerRoot.finishLocalUpload(result) }
     }
 
     FileDialog {
@@ -127,12 +120,17 @@ Item {
         title: qsTr("Selecionar arquivo local (será criptografado com ENC1)")
         onAccepted: {
             var c = mediaPickerRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
-            if (!c || typeof c.importLocalFile !== "function") return
-            var files = c.getFiles("") || []
-            mediaPickerRoot.preUploadCount = files.length
+            if (!c || typeof c.importLocalFile !== "function") {
+                mediaPickerRoot.localUploadError = qsTr("A importação de arquivos não está disponível.")
+                return
+            }
+            mediaPickerRoot.localUploadRequestSequence += 1
+            mediaPickerRoot.pendingLocalUploadRequestId = "notes_widget_upload_" + Date.now() + "_" +
+                mediaPickerRoot.localUploadRequestSequence
+            mediaPickerRoot.localUploadError = ""
             mediaPickerRoot.waitingLocalUpload = true
-            var path = selectedFile.toString().replace(/^file:\/\//, "")
-            c.importLocalFile(decodeURIComponent(path), "")
+            c.importLocalFile(PickerOperations.filePathFromUrl(selectedFile), "",
+                              mediaPickerRoot.pendingLocalUploadRequestId)
         }
     }
 
@@ -201,6 +199,15 @@ Item {
                 }
             }
 
+            Text {
+                visible: mediaPickerRoot.activeMode === "documento" && mediaPickerRoot.localUploadError.length > 0
+                text: mediaPickerRoot.localUploadError
+                color: "#fda4af"
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
             TextField {
                 visible: mediaPickerRoot.activeMode !== "scrap"
                 Layout.fillWidth: true
@@ -229,16 +236,8 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 40
                             onClicked: {
-                                var label = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.name || itemBtn.modelData.title || "Item")
-                                var mediaId = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.id)
-                                if (mediaPickerRoot.activeMode === "documento") {
-                                    var fileType = HtmlEscaping.escapeHtmlAttribute(itemBtn.modelData.file_type || "document")
-                                    var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(itemBtn.modelData.file_size)
-                                    mediaPickerRoot.insertWidgetRequested("<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + mediaId + "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" + fileType + "\" data-file-size=\"" + fileSize + "\"></div>")
-                                } else {
-                                    var mType = mediaPickerRoot.activeMode === "livro" ? "book" : "video"
-                                    mediaPickerRoot.insertWidgetRequested("<span class=\"media-widget\" data-type=\"media-widget\" data-media-type=\"" + mType + "\" data-media-id=\"" + mediaId + "\" data-title=\"" + label + "\"></span>")
-                                }
+                                mediaPickerRoot.insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(
+                                    itemBtn.modelData, mediaPickerRoot.activeMode))
                                 mediaPickerRoot.close()
                             }
                             background: Rectangle { radius: 8; color: itemBtn.hovered ? "#228b5cf6" : "#1d1c2e"; border.color: "#15ffffff" }

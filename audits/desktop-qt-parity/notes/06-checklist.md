@@ -141,6 +141,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare image viewer/crop and image-delete dialog geometry, controls, keyboard behavior, focus, errors, undo, and save/reopen behavior at matching viewport/DPI.
 - [ ] Compare consolidated setup/picker surfaces with React focus, alarm, event, habit, question, file upload/select, and media select dialogs, including fields, defaults, search, validation, cancellation, busy/error/empty states, and insertion target.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.
+- [x] Correlate local Notes upload completion by the Core operation request ID, build the widget from the returned file metadata, ignore stale results, show import failures and decode the selected local file URL; focused harness passes 4/4 cases. See QT-NOTES-061.
+- [ ] Verify local encrypted import and the inserted attachment in a live Notes page, including encoded local paths, cancellation during import, retry, save/reopen, and error/focus behavior. See QT-NOTES-061.
 - [ ] Capture same-viewport screenshots for each modal's default, populated, validation/error, and confirmation states; record any intentional native adaptation and remaining mismatch.
 
 ## H. Native widgets and nested blocks

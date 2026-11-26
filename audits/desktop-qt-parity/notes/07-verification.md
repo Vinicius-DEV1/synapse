@@ -505,3 +505,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | --- | --- | --- |
 | Temporary `qmltestrunner` harness mounting the actual `DocumentBundleWidget.qml` in a `Flickable` | Passed: 4 passed, 0 failed. Verified viewport tracking, scroll repositioning, Escape/outside dismissal, and focus restoration to an editor field. | Qt 6.10.2, offscreen; temporary test only. The harness uses a valid empty bundle and does not instantiate the manager or page-level nested editor chain. |
 | Bundle palette swatch selection and `attrsUpdated` payload | Passed: selecting `#22C55E` closes the palette, updates `data-color` to the selected six-digit hex and preserves `data-type="document-bundle"` | Verifies widget attribute behavior only; PageView save, reload and React round-trip remain open. |
+
+
+### Notes local file import result correlation (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for `NotesMediaWidgetPickerModal.qml` and a mocked `fileOperationFinished` signal | Passed: 4 test cases (6 QtTest totals including setup/cleanup), 0 failures. Matching imports insert the escaped returned ID/name/type/size; stale, unscoped and non-import results are ignored; failed imports keep the picker open with the Core error; file URLs decode spaces and literal percent signs. | Qt 6.10.2, offscreen. The test exercises signal correlation and presentation state, not a real file dialog, encrypted import, note insertion into the editor, cancellation of an in-flight import or persistence. |
+| Focused `qmllint` for `NotesMediaWidgetPickerModal.qml` and its extracted operations module, plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing layout, nested-scope and controller-fallback warnings remain. The new `selectedFile.toLocalFile()` warning was removed by using the tested URL-path helper. | Confirms target compilation and QML syntax only. Live encrypted import and Notes save/reopen remain open. |
+| `git diff --check` | Passed | Whitespace validation only. |
