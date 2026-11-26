@@ -26,6 +26,7 @@ Rectangle {
     property bool isSyncingAttributesFromCore: false
     property bool isNotFound: false
     property string renameErrorMessage: ""
+    readonly property bool hasActionFocus: renameActionButton.activeFocus || colorActionButton.activeFocus
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default" && !isNotFound
 
@@ -251,9 +252,15 @@ Rectangle {
                 id: renameConfirmButton
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
-                focusPolicy: Qt.NoFocus
+                focusPolicy: Qt.TabFocus
+                Accessible.name: qsTr("Salvar nome do arquivo")
                 onClicked: nameInput.accepted()
-                background: Rectangle { radius: 4; color: renameConfirmButton.hovered ? "#3310b981" : "transparent" }
+                background: Rectangle {
+                    radius: 4
+                    color: renameConfirmButton.hovered || renameConfirmButton.activeFocus ? "#3310b981" : "transparent"
+                    border.color: renameConfirmButton.activeFocus ? "#9934d399" : "transparent"
+                    border.width: renameConfirmButton.activeFocus ? 1 : 0
+                }
                 contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 13; height: 13 }
             }
 
@@ -261,12 +268,18 @@ Rectangle {
                 id: renameCancelButton
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
-                focusPolicy: Qt.NoFocus
+                focusPolicy: Qt.TabFocus
+                Accessible.name: qsTr("Cancelar renomeação do arquivo")
                 onClicked: {
                     fileWidgetRoot.renameErrorMessage = ""
                     fileWidgetRoot.renaming = false
                 }
-                background: Rectangle { radius: 4; color: renameCancelButton.hovered ? "#1affffff" : "transparent" }
+                background: Rectangle {
+                    radius: 4
+                    color: renameCancelButton.hovered || renameCancelButton.activeFocus ? "#1affffff" : "transparent"
+                    border.color: renameCancelButton.activeFocus ? "#998b5cf6" : "transparent"
+                    border.width: renameCancelButton.activeFocus ? 1 : 0
+                }
                 contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 12; height: 12 }
             }
         }
@@ -295,7 +308,7 @@ Rectangle {
 
         // Hover-revealed action buttons matching FileWidgetNodeView.tsx
         RowLayout {
-            opacity: hoverHandler.hovered || fileWidgetRoot.showColorPicker ? 1 : 0
+            opacity: hoverHandler.hovered || fileWidgetRoot.showColorPicker || fileWidgetRoot.hasActionFocus ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 150 } }
             spacing: 2
 
@@ -304,15 +317,20 @@ Rectangle {
                 visible: !fileWidgetRoot.renaming && !fileWidgetRoot.isNotFound
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
-                focusPolicy: Qt.NoFocus
+                focusPolicy: Qt.TabFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Renomear arquivo")
                 onClicked: fileWidgetRoot.startRename()
-                background: Rectangle { radius: 5; color: renameActionButton.hovered ? "#4d000000" : "transparent" }
+                background: Rectangle {
+                    radius: 5
+                    color: renameActionButton.hovered || renameActionButton.activeFocus ? "#4d000000" : "transparent"
+                    border.color: renameActionButton.activeFocus ? "#998b5cf6" : "transparent"
+                    border.width: renameActionButton.activeFocus ? 1 : 0
+                }
                 contentItem: AppIcon {
                     anchors.centerIn: parent
                     name: "edit"
-                    color: renameActionButton.hovered ? "#fffffe" : "#a7a9be"
+                    color: renameActionButton.hovered || renameActionButton.activeFocus ? "#fffffe" : "#a7a9be"
                     width: 12
                     height: 12
                 }
@@ -322,18 +340,20 @@ Rectangle {
                 id: colorActionButton
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
-                focusPolicy: Qt.NoFocus
+                focusPolicy: Qt.TabFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Personalizar cor do widget")
                 onClicked: fileWidgetRoot.showColorPicker = !fileWidgetRoot.showColorPicker
                 background: Rectangle {
                     radius: 5
-                    color: fileWidgetRoot.showColorPicker || colorActionButton.hovered ? "#4d000000" : "transparent"
+                    color: fileWidgetRoot.showColorPicker || colorActionButton.hovered || colorActionButton.activeFocus ? "#4d000000" : "transparent"
+                    border.color: colorActionButton.activeFocus ? "#998b5cf6" : "transparent"
+                    border.width: colorActionButton.activeFocus ? 1 : 0
                 }
                 contentItem: AppIcon {
                     anchors.centerIn: parent
                     name: "palette"
-                    color: colorActionButton.hovered ? "#fffffe" : "#a7a9be"
+                    color: colorActionButton.hovered || colorActionButton.activeFocus ? "#fffffe" : "#a7a9be"
                     width: 12
                     height: 12
                 }
@@ -344,11 +364,17 @@ Rectangle {
             id: deleteAttachmentButton
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24
-            focusPolicy: Qt.NoFocus
+            focusPolicy: Qt.TabFocus
+            Accessible.name: qsTr("Remover anexo desta nota")
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Remover anexo")
             onClicked: fileWidgetRoot.requestDeleteConfirmation()
-            background: Rectangle { radius: 6; color: deleteAttachmentButton.hovered ? "#33000000" : "transparent" }
+            background: Rectangle {
+                radius: 6
+                color: deleteAttachmentButton.hovered || deleteAttachmentButton.activeFocus ? "#33000000" : "transparent"
+                border.color: deleteAttachmentButton.activeFocus ? "#998b5cf6" : "transparent"
+                border.width: deleteAttachmentButton.activeFocus ? 1 : 0
+            }
             contentItem: AppIcon {
                 anchors.centerIn: parent
                 name: "close"
