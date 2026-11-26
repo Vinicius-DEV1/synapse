@@ -8,6 +8,7 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: Math.max(44, attachmentContent.implicitHeight + 12)
     radius: 8
+    focus: isSelected
 
     property var blockData: ({})
     property var controller: null
@@ -56,6 +57,18 @@ Rectangle {
     signal deleteLocalRequested(string fileId)
 
     HoverHandler { id: hoverHandler }
+
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: function(event) {
+        if (!fileWidgetRoot.isSelected || event.modifiers !== Qt.NoModifier ||
+                fileWidgetRoot.renaming || fileWidgetRoot.showColorPicker ||
+                fileWidgetRoot.isDeleteDialogOpen || fileWidgetRoot.isMissingDialogOpen ||
+                fileWidgetRoot.hasActionFocus || deleteAttachmentButton.activeFocus) return
+        if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
+            event.accepted = true
+            fileWidgetRoot.requestDeleteConfirmation()
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
