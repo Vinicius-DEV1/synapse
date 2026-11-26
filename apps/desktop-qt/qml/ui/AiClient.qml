@@ -92,9 +92,10 @@ QtObject {
         }
 
         var xhr = new XMLHttpRequest()
-        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key)
+        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent"
         xhr.open("POST", url)
         xhr.setRequestHeader("Content-Type", "application/json")
+        xhr.setRequestHeader("x-goog-api-key", key)
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
