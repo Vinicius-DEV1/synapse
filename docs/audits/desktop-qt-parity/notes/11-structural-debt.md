@@ -71,7 +71,7 @@ Total: **30 files** above the source-length target in this scoped scan.
 
 ## Recent decomposition check
 
-`FileAttachmentWidget.qml` now delegates identity, rename, toolbar actions, and selected-widget keyboard handling to focused sibling components. Current line counts are 298 lines for the Core-backed widget, 106 for `FileAttachmentRenameEditor.qml`, 72 for `FileAttachmentIdentity.qml`, 72 for `FileAttachmentActionBar.qml`, and 21 for `FileAttachmentKeyboardActions.qml`; all are below the target. The extracted keyboard scope parses and the native app target builds, but preview-return focus and key routing still need runtime acceptance.
+`FileAttachmentWidget.qml` now delegates identity, rename, toolbar actions, and selected-widget keyboard handling to focused sibling components. Current line counts are 299 lines for the Core-backed widget, 106 for `FileAttachmentRenameEditor.qml`, 72 for `FileAttachmentIdentity.qml`, 72 for `FileAttachmentActionBar.qml`, and 21 for `FileAttachmentKeyboardActions.qml`; all are below the target. The extracted keyboard scope parses and the native app target builds, but preview-return focus and key routing still need runtime acceptance.
 
 ## Decomposition requirements
 
