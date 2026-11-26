@@ -1,4 +1,5 @@
 .pragma library
+.import "NotesHtmlEscaping.js" as HtmlEscaping
 
 var MAX_COLUMNS = 5
 
@@ -29,8 +30,7 @@ function extractColumnSlices(innerHtml) {
 }
 
 function setQuotedAttribute(tag, name, value) {
-    var escaped = String(value).replace(/&/g, "&amp;").replace(/\"/g, "&quot;")
-        .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    var escaped = HtmlEscaping.escapeHtmlAttribute(value)
     var attribute = new RegExp("(\\s" + name + "\\s*=\\s*)([\\\"'])(.*?)\\2", "i")
     if (attribute.test(tag)) return tag.replace(attribute, "$1\"" + escaped + "\"")
     return tag.replace(/>$/, " " + name + "=\"" + escaped + "\">")
