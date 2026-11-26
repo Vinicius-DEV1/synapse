@@ -6,7 +6,7 @@ This document compares only the file-attachment widget inside Caderno. It does n
 
 | Responsibility | React Web | Desktop Qt |
 | --- | --- | --- |
-| Editor node and UI | `apps/web-react/src/components/editor-extensions/FileWidgetBlock.ts` and `FileWidgetNodeView.tsx` | `apps/desktop-qt/qml/notes/FileAttachmentWidget.qml` through `BlockDelegateRouter.qml` |
+| Editor node and UI | `apps/web-react/src/components/editor-extensions/FileWidgetBlock.ts` and `FileWidgetNodeView.tsx` | `apps/desktop-qt/qml/notes/FileAttachmentWidget.qml` owns Core-backed state and operations, composed from `apps/desktop-qt/qml/notes/FileAttachmentIdentity.qml`, `FileAttachmentRenameEditor.qml`, and `FileAttachmentActionBar.qml`, through `BlockDelegateRouter.qml` |
 | Missing-record and delete prompts | `FileWidgetDeletedNoticeModal.tsx`, `FileWidgetDeleteConfirmModal.tsx` | `FileAttachmentMissingDialog.qml`, `FileAttachmentDeleteDialog.qml` |
 | File record lookup | `window.api.files.getById(fileId)` | Core `synapse_files_get_file` through `SynapseDataController::getFileWidgetMetadata` |
 | File preview | `FileViewer`, `FloatingPdfViewer`, `AudioPlayerModal`, file actions and module navigation | `previewLocalFile` and the `FilesPreviewOverlay` listener owned by `FilesView` |

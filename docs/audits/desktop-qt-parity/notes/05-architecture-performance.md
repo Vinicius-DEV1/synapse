@@ -35,6 +35,7 @@ Qt and React do not currently share a live Yjs editor implementation. Qt must no
 - Keep interaction feedback native and quick. Avoid full-document reloads when changing a single block, filter, icon or metadata field.
 - Linked calendar event widgets should resolve their Core record by ID rather than request and scan the capped full Agenda list. Use a focused native mutation signal so visible widgets refresh after local changes without periodic polling.
 - Bundle-widget metadata parsing and extension-badge projection now live in the Notes-local `DocumentBundleOperations.js`; `DocumentBundleWidget.qml` is below the 300-line target while its body, actions, and dialogs remain separately composed QML views. Runtime visual and event-order acceptance for this extraction remains open.
+- File attachment presentation is split into the Core-backed `FileAttachmentWidget.qml` parent and focused identity, rename-editor, and action-bar QML views; each file is below 300 lines. Runtime geometry, focus, interaction and React round-trip acceptance remains open.
 - Remaining Notes implementation debt: `NotesSetupWidgetsModal.qml` and `src/controllers/notes/notes_controller.cpp` exceed the 300-line target in the current worktree. Split the modal into cohesive native views and move controller adapters by domain before expanding these files further; verify QML imports and CMake registration with each extraction.
 
 ## Performance budgets to record

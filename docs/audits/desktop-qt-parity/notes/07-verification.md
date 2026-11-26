@@ -313,3 +313,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Focused `qmllint` for `DocumentBundleWidget.qml` and `DocumentBundleOperations.js` | Passed, exit code 0 | Confirms the extracted helper import and QML/JS syntax. It does not execute malformed metadata or signal-order behavior. |
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native target after adding the helper import. This does not execute metadata parsing or render the widget. |
 | Runtime metadata, visual, event-order and Qt/React round-trip acceptance | Not run | Compare canonical, empty, malformed and legacy values before treating the refactor as behaviorally accepted. |
+
+### File-attachment view extraction iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Focused `/usr/lib/qt6/bin/qmllint` on `FileAttachmentWidget.qml`, `FileAttachmentRenameEditor.qml`, `FileAttachmentActionBar.qml`, and `FileAttachmentIdentity.qml` | Passed, exit code 0, no diagnostics after removing an unused import | Confirms QML/JS syntax and local component references. It does not instantiate the widgets or verify runtime layout, focus, signal order, or Core behavior. |
+| `wc -l` for the four file-widget QML components | Passed; 272, 106, 72, and 72 lines | All are under the 300-line source target. This is structural evidence only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app target. The project loads QML from the workspace at runtime, so this does not replace widget instantiation or visual acceptance. |
+| `git diff --check` | Passed | No whitespace errors in the view extraction or parity records. |
+| Runtime visual, keyboard/accessibility, rename, palette, delete, serialized-attribute and React round-trip acceptance | Not run | Verify same-viewport geometry, focus and event behavior before treating this extraction as behaviorally accepted. No React source was changed. |
