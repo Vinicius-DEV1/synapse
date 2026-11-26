@@ -322,4 +322,5 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `wc -l` for the four file-widget QML components | Passed; 272, 106, 72, and 72 lines | All are under the 300-line source target. This is structural evidence only. |
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Rebuilt the native app target. The project loads QML from the workspace at runtime, so this does not replace widget instantiation or visual acceptance. |
 | `git diff --check` | Passed | No whitespace errors in the view extraction or parity records. |
+| Rename field accessible-name source check | Passed: `FileAttachmentRenameEditor.qml` sets `Accessible.name` and retains the error as `Accessible.description`; focused `qmllint` passes | No screen reader or accessibility-tree runtime inspection was run. |
 | Runtime visual, keyboard/accessibility, rename, palette, delete, serialized-attribute and React round-trip acceptance | Not run | Verify same-viewport geometry, focus and event behavior before treating this extraction as behaviorally accepted. No React source was changed. |
