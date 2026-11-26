@@ -7,6 +7,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Capture current React and Qt commits, worktree status, build options, Qt version, Core bridge version, and platform.
 - [ ] Re-read root and app `AGENTS.md`, the parity skill, design-system skill and bug-audit workflow before implementation.
 - [ ] Confirm all modified/untracked Qt Notes files have a clear owner and are included in the new folder structure without breaking QML imports or `qmldir` registrations.
+- [ ] Split the existing oversized `DocumentBundleWidget.qml` into focused Notes components while preserving its current QML hierarchy, visuals and event ordering; keep each resulting source file below the project anti-monolith target.
 - [ ] Compare React `Editor.tsx`, `useEditorExtensions.ts`, `useEditorSync.ts`, `useEditorSave.ts`, `useSlashCommand.ts`, `useEditorDropPaste.ts`, and `PageView.tsx` against current Qt files.
 - [ ] Inventory every custom React extension/schema and every Qt AST `blockType`; identify unknown, legacy, and unhandled types.
 - [ ] Generate a React-to-Qt function/handler mapping for editor init, change, commit, flush, save, undo, redo, selection, keyboard, paste, drop, page change, and destroy.
@@ -120,6 +121,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 - [ ] Compare creation/edit/save lifecycle for question, focus, alarm, calendar event, habit, collection, toggle, callout toggle, media, video, book, scrap, Mermaid, link preview and link group.
 - [ ] Verify legacy link-group metadata parses ordinary JSON before attempting URI-decoding; percent-escaped URLs remain byte-for-byte intact, encoded legacy JSON still loads, and malformed entries are reported without allowing an edit to overwrite them.
+- [ ] Verify document-bundle metadata parses ordinary JSON before legacy URI-decoding; filenames with `%` survive unchanged, malformed bundles cannot be overwritten by rename/recolor/add/remove, and valid bundles round-trip through React.
 - [ ] Verify live data refresh and deletion/soft-delete states for linked Core records.
 - [ ] Verify nested editor slash commands, AI, page references, selection, drag/drop, undo and persistence recursively.
 - [ ] Verify native page-reference object accessibility name/role, keyboard focus, visible selection, hit target, chip geometry/colors, and updated title/deleted state against React at the same viewport.

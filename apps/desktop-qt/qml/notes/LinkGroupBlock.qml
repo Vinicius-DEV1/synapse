@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesJsonAttribute.js" as NotesJsonAttribute
 import "../ui"
 
 Item {
@@ -13,38 +14,13 @@ Item {
     property var controller: null
     property var attrs: blockData.attrs || ({})
     function parseLegacyLinkData(raw) {
-        if (typeof raw !== "string") {
-            console.warn("[Notes:LinkGroupBlock] Legacy link metadata must be text; editing is disabled to preserve the stored value.")
+        var result = NotesJsonAttribute.parseJsonAttribute(raw, true)
+        if (!result.valid) {
+            console.warn("[Notes:LinkGroupBlock] Could not parse legacy link metadata; editing is disabled to preserve the stored value.", result.error)
             return { valid: false, cards: [] }
         }
 
-        var parsed
-        var parsedSuccessfully = false
-        var parseError = null
-
-        try {
-            parsed = JSON.parse(raw)
-            parsedSuccessfully = true
-        } catch (error) {
-            parseError = error
-        }
-
-        // Qt's older format URI-encoded the complete JSON value. Parse ordinary
-        // JSON first so percent-escaped characters inside URLs stay untouched.
-        if (!parsedSuccessfully && raw.indexOf("%") >= 0) {
-            try {
-                parsed = JSON.parse(decodeURIComponent(raw))
-                parsedSuccessfully = true
-            } catch (error) {
-                parseError = error
-            }
-        }
-
-        if (!parsedSuccessfully) {
-            console.warn("[Notes:LinkGroupBlock] Could not parse legacy link metadata; editing is disabled to preserve the stored value.", parseError)
-            return { valid: false, cards: [] }
-        }
-
+        var parsed = result.value
         if (!Array.isArray(parsed)) {
             console.warn("[Notes:LinkGroupBlock] Legacy link metadata must be a JSON array; editing is disabled to preserve the stored value.")
             return { valid: false, cards: [] }

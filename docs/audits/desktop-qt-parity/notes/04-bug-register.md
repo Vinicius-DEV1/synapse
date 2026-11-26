@@ -342,7 +342,17 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The fallback decode ran before validating the ordinary JSON representation, and parse errors did not expose a recoverable state.
 - **Required fix:** Parse ordinary JSON first, use URI decoding only as a legacy fallback, validate the array and its card fields, report invalid metadata, and block edits that would overwrite it.
 - **Acceptance:** Percent escapes in valid URLs survive unchanged; complete URI-encoded legacy JSON remains readable; malformed/invalid data produces a clear warning, cannot be overwritten through add/edit, and remains available for repair or explicit group removal.
-- **Fix status:** Source fix applied in `LinkGroupBlock.qml`. Focused QML lint and whitespace checks pass with pre-existing diagnostics; runtime percent-URL, legacy-decoding and preservation scenarios remain open.
+- **Fix status:** Source fix applied in `LinkGroupBlock.qml` through the Notes-local `NotesJsonAttribute.js` parser. Focused QML lint and whitespace checks pass with pre-existing diagnostics; runtime percent-URL, legacy-decoding and preservation scenarios remain open.
+
+## QT-NOTES-038: Document-bundle metadata can change or be lost on edit
+
+- **Severity:** High; a filename containing a percent escape can be changed while parsing, and malformed file metadata previously appeared as an empty list that rename, recolor, or item removal could save over.
+- **Evidence:** `DocumentBundleWidget.qml` decoded the entire `data-items` value whenever it contained `%`, caught JSON errors by returning `[]`, and passed that fallback to `saveBundle()`. React's `DocumentBundleBlock` parses ordinary JSON and does not URI-decode this attribute.
+- **Reproduction:** Open a bundle containing a file name such as `lecture%20notes.pdf`; then open a bundle with malformed or non-array `data-items` and rename, recolor, or remove an item.
+- **Root cause:** Qt applied the legacy URI-decoding heuristic before parsing normal JSON and did not distinguish valid empty bundles from invalid metadata.
+- **Required fix:** Parse ordinary JSON first, use URI decoding only for complete legacy encoded JSON, validate the list and item identities, show a recoverable warning, and block edits that could overwrite invalid metadata.
+- **Acceptance:** Percent characters survive Qt display/save and React round-trip; encoded legacy bundles still load; invalid arrays or items show a warning and cannot be renamed, recolored, extended, or item-edited; explicit group removal remains available.
+- **Fix status:** Source fix applied in `DocumentBundleWidget.qml` using the shared Notes-local `NotesJsonAttribute.js` parser. Focused QML lint and whitespace checks pass with existing diagnostics; runtime value-preservation, malformed-state and cross-client round-trip scenarios remain open.
 
 ## Second-pass review
 

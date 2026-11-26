@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "NotesJsonAttribute.js" as NotesJsonAttribute
 import "../ui"
 
 Rectangle {
@@ -16,17 +17,38 @@ Rectangle {
     property var attrs: blockData.attrs || ({})
     property string title: attrs["data-title"] || attrs["title"] || qsTr("Documentos")
     property string accentColor: attrs["data-color"] || attrs["color"] || "default"
-    property var items: {
-        var raw = attrs["data-items"] || attrs["items"] || "[]"
-        try {
-            var parsed = typeof raw === "string"
-                ? JSON.parse(raw.indexOf("%") >= 0 ? decodeURIComponent(raw) : raw)
-                : raw
-            return Array.isArray(parsed) ? parsed : []
-        } catch (e) {
-            return []
+    function parseBundleItems() {
+        var raw = attrs["data-items"]
+        if (raw === undefined || raw === null || raw === "") raw = attrs["items"]
+        if (raw === undefined || raw === null || raw === "") raw = "[]"
+
+        var result = typeof raw === "string"
+            ? NotesJsonAttribute.parseJsonAttribute(raw, true)
+            : { valid: Array.isArray(raw), value: raw, error: "Expected a JSON array." }
+        if (!result.valid) {
+            console.warn("[Notes:DocumentBundle] Could not parse bundled file metadata; editing is disabled to preserve the stored value.", result.error)
+            return { valid: false, items: [] }
         }
+
+        if (!Array.isArray(result.value)) {
+            console.warn("[Notes:DocumentBundle] Bundled file metadata must be an array; editing is disabled to preserve the stored value.")
+            return { valid: false, items: [] }
+        }
+
+        for (var i = 0; i < result.value.length; i++) {
+            var item = result.value[i]
+            var itemId = item && (item.fileId || item.id)
+            if (!item || typeof item !== "object" || Array.isArray(item)
+                    || typeof itemId !== "string" || itemId.length === 0) {
+                console.warn("[Notes:DocumentBundle] Bundled file metadata contains an invalid item; editing is disabled to preserve the stored value.")
+                return { valid: false, items: [] }
+            }
+        }
+        return { valid: true, items: result.value }
     }
+    property var itemsState: parseBundleItems()
+    property var items: itemsState.items
+    property bool itemsInvalid: !itemsState.valid
     property var uniqueExtensions: {
         var seen = ({})
         var out = []
@@ -50,7 +72,7 @@ Rectangle {
     property bool autoOpenConsumed: false
 
     Component.onCompleted: {
-        if (!autoOpenConsumed && (attrs["data-auto-open"] || "") === "true" && items.length === 0) {
+        if (!autoOpenConsumed && !itemsInvalid && (attrs["data-auto-open"] || "") === "true" && items.length === 0) {
             autoOpenConsumed = true
             isModalOpen = true
         }
@@ -75,6 +97,7 @@ Rectangle {
     HoverHandler { id: hoverHandler }
 
     function saveBundle(nextTitle, nextColor, nextItems) {
+        if (itemsInvalid) return false
         var next = Object.assign({}, attrs)
         next["data-type"] = "document-bundle"
         next["data-title"] = nextTitle
@@ -83,6 +106,7 @@ Rectangle {
         delete next["data-auto-open"]
         next["data-items"] = JSON.stringify(nextItems)
         attrsUpdated(next)
+        return true
     }
 
     ColumnLayout {
@@ -143,7 +167,7 @@ Rectangle {
 
             // Inline rename field
             RowLayout {
-                visible: bundleWidgetRoot.renaming
+                visible: bundleWidgetRoot.renaming && !bundleWidgetRoot.itemsInvalid
                 Layout.fillWidth: true
                 spacing: 4
 
@@ -164,6 +188,10 @@ Rectangle {
                         border.width: 1
                     }
                     onAccepted: {
+                        if (bundleWidgetRoot.itemsInvalid) {
+                            bundleWidgetRoot.renaming = false
+                            return
+                        }
                         var trimmed = text.trim() || qsTr("Documentos")
                         bundleWidgetRoot.title = trimmed
                         bundleWidgetRoot.renaming = false
@@ -193,7 +221,7 @@ Rectangle {
 
             // Title & extension badges
             RowLayout {
-                visible: !bundleWidgetRoot.renaming
+                visible: !bundleWidgetRoot.renaming || bundleWidgetRoot.itemsInvalid
                 Layout.fillWidth: true
                 spacing: 8
 
@@ -210,6 +238,7 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
                         onDoubleClicked: {
+                            if (bundleWidgetRoot.itemsInvalid) return
                             bundleWidgetRoot.renaming = true
                             bundleRenameInput.forceActiveFocus()
                         }
@@ -241,9 +270,18 @@ Rectangle {
                 }
             }
 
+            Text {
+                visible: bundleWidgetRoot.itemsInvalid
+                text: qsTr("Itens salvos inválidos; edição bloqueada para preservar os dados.")
+                color: "#fbbf24"
+                font.pixelSize: 10
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
             // Color picker popover
             Rectangle {
-                visible: bundleWidgetRoot.showColorPicker
+                visible: bundleWidgetRoot.showColorPicker && !bundleWidgetRoot.itemsInvalid
                 Layout.preferredHeight: 24
                 Layout.preferredWidth: bundleSwatchRow.implicitWidth + 12
                 radius: 6
@@ -269,6 +307,7 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
+                                    if (bundleWidgetRoot.itemsInvalid) return
                                     bundleWidgetRoot.accentColor = modelData
                                     bundleWidgetRoot.showColorPicker = false
                                     bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, modelData, bundleWidgetRoot.items)
@@ -286,13 +325,14 @@ Rectangle {
                 spacing: 2
 
                 ToolButton {
-                    visible: !bundleWidgetRoot.renaming
+                    visible: !bundleWidgetRoot.renaming && !bundleWidgetRoot.itemsInvalid
                     Layout.preferredWidth: 24
                     Layout.preferredHeight: 24
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Renomear agrupamento")
                     onClicked: {
+                        if (bundleWidgetRoot.itemsInvalid) return
                         bundleWidgetRoot.renaming = true
                         bundleRenameInput.forceActiveFocus()
                     }
@@ -301,9 +341,11 @@ Rectangle {
                 }
 
                 ToolButton {
+                    visible: !bundleWidgetRoot.itemsInvalid
                     Layout.preferredWidth: 24
                     Layout.preferredHeight: 24
                     focusPolicy: Qt.NoFocus
+                    enabled: !bundleWidgetRoot.itemsInvalid
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Personalizar cor do widget")
                     onClicked: bundleWidgetRoot.showColorPicker = !bundleWidgetRoot.showColorPicker
@@ -312,9 +354,11 @@ Rectangle {
                 }
 
                 ToolButton {
+                    visible: !bundleWidgetRoot.itemsInvalid
                     Layout.preferredWidth: 24
                     Layout.preferredHeight: 24
                     focusPolicy: Qt.NoFocus
+                    enabled: !bundleWidgetRoot.itemsInvalid
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Adicionar item ao pacote")
                     onClicked: bundleWidgetRoot.isModalOpen = true
@@ -339,7 +383,7 @@ Rectangle {
         Flow {
             Layout.fillWidth: true
             spacing: 6
-            visible: bundleWidgetRoot.expanded && bundleWidgetRoot.items.length > 0
+            visible: bundleWidgetRoot.expanded && bundleWidgetRoot.items.length > 0 && !bundleWidgetRoot.itemsInvalid
 
             Repeater {
                 model: bundleWidgetRoot.items
@@ -374,6 +418,7 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
+                                    if (bundleWidgetRoot.itemsInvalid) return
                                     var next = bundleWidgetRoot.items.slice()
                                     next.splice(itemDelegate.index, 1)
                                     bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
@@ -402,9 +447,13 @@ Rectangle {
     DocumentBundleModal {
         controller: bundleWidgetRoot.controller
         pageId: bundleWidgetRoot.pageId
-        isOpen: bundleWidgetRoot.isModalOpen
+        isOpen: bundleWidgetRoot.isModalOpen && !bundleWidgetRoot.itemsInvalid
         existingIds: bundleWidgetRoot.items.map(function(it) { return it.fileId || it.id || "" })
         onFileSelected: function(fileItem) {
+            if (bundleWidgetRoot.itemsInvalid) {
+                bundleWidgetRoot.isModalOpen = false
+                return
+            }
             var next = bundleWidgetRoot.items.slice()
             var exists = next.some(function(it) { return (it.fileId || it.id) === fileItem.id })
             if (!exists) {
@@ -414,6 +463,10 @@ Rectangle {
             bundleWidgetRoot.isModalOpen = false
         }
         onAbsorbFilesRequested: function(filesList) {
+            if (bundleWidgetRoot.itemsInvalid) {
+                bundleWidgetRoot.isModalOpen = false
+                return
+            }
             var next = bundleWidgetRoot.items.slice()
             for (var i = 0; i < filesList.length; ++i) {
                 var f = filesList[i]
