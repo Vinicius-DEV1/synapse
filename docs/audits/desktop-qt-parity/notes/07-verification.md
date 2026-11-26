@@ -71,7 +71,7 @@ Exact focused QML lint command for the document-bundle manager iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | Focused document-bundle `qmllint` command below | Passed, exit code 0, with 25 existing dynamic-object/context warnings in `BlockDelegateRouter.qml` and `BlockListEditor.qml` | No warning points to the loose-file row, manager, bundle widget or metadata helper. This parses QML/JS only. |
-| Source review of React `DocumentBundleModal.tsx::handleAbsorbLooseFile`, Qt `BlockListEditor.qml`, `DocumentBundleOperations.js`, and the Notes `NoteBlock` projection | Confirmed Qt now lists live top-level `fileWidget` blocks, copies their metadata into one bundle item, removes the exact source block and serializes both changes together | Source review only. React discovers nested descendants; the flat Qt projection currently exposes only top-level blocks. Verify source-index changes and nested-file behavior at runtime. |
+| Source review of React `DocumentBundleModal.tsx::handleAbsorbLooseFile`, Qt `BlockListEditor.qml`, `DocumentBundleOperations.js`, and the Notes `NoteBlock` projection | At this earlier pass, Qt listed live top-level `fileWidget` blocks, copied their metadata into one bundle item, removed the exact source block and serialized both changes together | Source review only. This pass preceded recursive nested-container paths; see the follow-up record below. |
 | `git diff --check` | Passed | No whitespace errors in the loose-file absorption and crosswalk updates. |
 | Runtime item absorption, note undo/autosave, stale-index response and React round-trip | Not run | These remain open acceptance scenarios. No tests or runtime UI were run in this iteration. |
 
@@ -192,3 +192,26 @@ For every checklist group, record:
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml apps/desktop-qt/qml/notes/DocumentBundleManagerItem.qml` | Passed, exit code 0, no diagnostics | The native drag handle, matching drop targets, source-index MIME payload, arrow fallback and reorder signal parse. This does not exercise pointer movement, the drop target, delegate recreation, note autosave or persisted ordering. |
 | `git diff --check` | Passed | No whitespace errors in the drag-reorder implementation or parity documents. |
 | Runtime drag/drop, first/last boundaries, keyboard alternatives, order after save/reload and React round-trip | Not run | Keep manager acceptance unchecked until these interactions and same-viewport feedback are reviewed. |
+
+### Nested loose-file absorption iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Focused document-bundle `qmllint` command below | Passed, exit code 0, with existing dynamic-object and context-access diagnostics in `BlockDelegateRouter.qml` and `BlockListEditor.qml` | No diagnostic points to the recursive collection/removal helpers or the updated manager signal chain. QML/JS parsing does not prove nested HTML round-trip behavior. |
+| Source review of React descendant traversal and Qt `NoteBlock` parsing/serialization | Added bounded recursive discovery and path-based removal for toggle, blockquote-toggle, collection, blockquote and link-group containers; source ID is revalidated before changing a copy of the AST | The parent container is serialized by the Core-backed NoteBlock serializer and the bundle update is committed in the same page serialization. Column-group descendants are excluded because the parser does not model `columnBlock` wrappers. No runtime markup comparison was run. |
+| `git diff --check` | Passed | No whitespace errors in the recursive path flow or parity records. |
+| Nested markup preservation, stale-path rejection, column-group exclusion, page save/reload, undo and React round-trip | Not run | Check these manually before marking QT-NOTES-040 or the manager checklist complete. |
+
+Exact focused QML lint command for the nested loose-file iteration:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleLooseFileItem.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleModal.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleOperations.js \
+  apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml
+```

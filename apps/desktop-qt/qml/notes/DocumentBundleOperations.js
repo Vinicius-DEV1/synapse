@@ -1,6 +1,14 @@
 .pragma library
 .import "NotesHtmlEscaping.js" as HtmlEscaping
 
+var MAX_NESTED_EDITOR_DEPTH = 24
+
+function isNestedBlockContainer(blockType) {
+    return blockType === "toggleBlock" || blockType === "blockquoteToggle" ||
+        blockType === "collectionBlock" || blockType === "blockquote" ||
+        blockType === "linkGroup"
+}
+
 function createBundleItemFromFileWidget(block, fallbackName) {
     if (!block || block.blockType !== "fileWidget") return { valid: false, item: null }
     var attrs = block.attrs || ({})
@@ -27,6 +35,74 @@ function createBundleItemFromFileWidget(block, fallbackName) {
         item.fileSize = Math.floor(fileSize)
     }
     return { valid: true, item: item }
+}
+
+function collectLooseFileWidgets(blocks, controller, fallbackName, parentPath) {
+    if (!Array.isArray(blocks) || !controller || typeof controller.parseNoteBlocks !== "function") return []
+    var pathPrefix = Array.isArray(parentPath) ? parentPath : []
+    if (pathPrefix.length >= MAX_NESTED_EDITOR_DEPTH) return []
+
+    var looseFiles = []
+    for (var i = 0; i < blocks.length; ++i) {
+        var block = blocks[i]
+        if (!block) continue
+        var blockPath = pathPrefix.concat([i])
+        if (block.blockType === "fileWidget") {
+            var result = createBundleItemFromFileWidget(block, fallbackName)
+            if (!result.valid) continue
+            var item = Object.assign({}, result.item)
+            item.sourceBlockPath = blockPath
+            looseFiles.push(item)
+            continue
+        }
+        if (!isNestedBlockContainer(block.blockType) || !block.innerHtml) continue
+        var childBlocks = controller.parseNoteBlocks(String(block.innerHtml)) || []
+        var nestedFiles = collectLooseFileWidgets(childBlocks, controller, fallbackName, blockPath)
+        Array.prototype.push.apply(looseFiles, nestedFiles)
+    }
+    return looseFiles
+}
+
+function removeLooseFileWidgetAtPath(blocks, sourceBlockPath, fileId, controller, depth) {
+    var currentDepth = Number(depth || 0)
+    if (!Array.isArray(blocks) || !Array.isArray(sourceBlockPath) || sourceBlockPath.length === 0 ||
+            currentDepth >= sourceBlockPath.length || currentDepth >= MAX_NESTED_EDITOR_DEPTH) {
+        return { valid: false, blocks: [] }
+    }
+
+    var index = Number(sourceBlockPath[currentDepth])
+    if (!isFinite(index) || Math.floor(index) !== index || index < 0 || index >= blocks.length) {
+        return { valid: false, blocks: [] }
+    }
+    var block = blocks[index]
+    if (!block) return { valid: false, blocks: [] }
+
+    var nextBlocks = blocks.slice()
+    if (currentDepth === sourceBlockPath.length - 1) {
+        var sourceItem = createBundleItemFromFileWidget(block, "Documento")
+        if (!sourceItem.valid || sourceItem.item.fileId !== String(fileId || "")) {
+            return { valid: false, blocks: [] }
+        }
+        nextBlocks.splice(index, 1)
+        return { valid: true, blocks: nextBlocks, item: sourceItem.item }
+    }
+
+    if (!isNestedBlockContainer(block.blockType) || !block.innerHtml || !controller ||
+            typeof controller.parseNoteBlocks !== "function" ||
+            typeof controller.serializeNoteBlocks !== "function") {
+        return { valid: false, blocks: [] }
+    }
+    var childBlocks = controller.parseNoteBlocks(String(block.innerHtml)) || []
+    var childResult = removeLooseFileWidgetAtPath(
+        childBlocks, sourceBlockPath, fileId, controller, currentDepth + 1)
+    if (!childResult.valid) return { valid: false, blocks: [] }
+
+    var updatedBlock = Object.assign({}, block)
+    var updatedInnerHtml = controller.serializeNoteBlocks(childResult.blocks)
+    if (typeof updatedInnerHtml !== "string") return { valid: false, blocks: [] }
+    updatedBlock.innerHtml = updatedInnerHtml
+    nextBlocks[index] = updatedBlock
+    return { valid: true, blocks: nextBlocks, item: childResult.item }
 }
 
 function createFileWidgetBlocks(items, groupColor, controller, fallbackName) {

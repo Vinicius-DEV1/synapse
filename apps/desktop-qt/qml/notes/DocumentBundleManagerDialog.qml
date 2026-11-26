@@ -30,7 +30,7 @@ Dialog {
     signal itemsReordered(var nextItems)
     signal titleUpdateRequested(string nextTitle)
     signal addFilesRequested()
-    signal absorbLooseFileRequested(int sourceBlockIndex, string fileId)
+    signal absorbLooseFileRequested(var sourceBlockPath, string fileId)
     signal itemUngroupRequested(string fileId)
     signal itemRemovalRequested(string fileId, bool moveToTrash)
     signal ungroupAllRequested()
@@ -229,8 +229,8 @@ Dialog {
                 required property var modelData
                 width: ListView.view.width
                 itemData: modelData
-                onAbsorbRequested: function(sourceBlockIndex, fileId) {
-                    managerRoot.absorbLooseFileRequested(sourceBlockIndex, fileId)
+                onAbsorbRequested: function(sourceBlockPath, fileId) {
+                    managerRoot.absorbLooseFileRequested(sourceBlockPath, fileId)
                 }
             }
 

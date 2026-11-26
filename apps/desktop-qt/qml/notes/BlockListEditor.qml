@@ -125,18 +125,8 @@ ColumnLayout {
     }
 
     function collectLooseDocumentBundleFiles() {
-        var looseFiles = []
-        for (var i = 0; i < blocks.length; ++i) {
-            var block = blocks[i]
-            if (!block || block.blockType !== "fileWidget") continue
-            var result = DocumentBundleOperations.createBundleItemFromFileWidget(
-                block, qsTr("Documento"))
-            if (!result.valid) continue
-            var item = Object.assign({}, result.item)
-            item.sourceBlockIndex = i
-            looseFiles.push(item)
-        }
-        return looseFiles
+        return DocumentBundleOperations.collectLooseFileWidgets(
+            blocks, controller, qsTr("Documento"), [])
     }
 
     function requestBlockDeletion(index, widget) {
@@ -240,32 +230,34 @@ ColumnLayout {
         return commitDocumentBundleBlocks(next)
     }
 
-    function absorbLooseDocumentBundleFile(bundleIndex, sourceBlockIndex, fileId, bundledItems) {
-        if (bundleIndex < 0 || bundleIndex >= blocks.length || sourceBlockIndex < 0 ||
-                sourceBlockIndex >= blocks.length || sourceBlockIndex === bundleIndex ||
-                !Array.isArray(bundledItems) || !controller ||
+    function absorbLooseDocumentBundleFile(bundleIndex, sourceBlockPath, fileId, bundledItems) {
+        if (bundleIndex < 0 || bundleIndex >= blocks.length || !Array.isArray(sourceBlockPath) ||
+                sourceBlockPath.length === 0 || !Array.isArray(bundledItems) || !controller ||
                 typeof controller.serializeNoteBlocks !== "function" ||
                 !flushActiveRichSlices()) return false
 
         var bundleBlock = blocks[bundleIndex]
-        var looseBlock = blocks[sourceBlockIndex]
+        var sourceTopLevelIndex = Number(sourceBlockPath[0])
         if (!bundleBlock || bundleBlock.blockType !== "documentBundle" ||
-                !looseBlock || looseBlock.blockType !== "fileWidget") return false
+                !isFinite(sourceTopLevelIndex) || Math.floor(sourceTopLevelIndex) !== sourceTopLevelIndex ||
+                sourceTopLevelIndex < 0 || sourceTopLevelIndex >= blocks.length ||
+                sourceTopLevelIndex === bundleIndex) return false
 
-        var looseItemResult = DocumentBundleOperations.createBundleItemFromFileWidget(
-            looseBlock, qsTr("Documento"))
-        if (!looseItemResult.valid || looseItemResult.item.fileId !== fileId) return false
+        var sourceResult = DocumentBundleOperations.removeLooseFileWidgetAtPath(
+            blocks, sourceBlockPath, fileId, controller, 0)
+        if (!sourceResult.valid) return false
 
         var updatedBundle = Object.assign({}, bundleBlock)
         var updatedAttrs = Object.assign({}, bundleBlock.attrs || ({}))
         var nextItems = bundledItems.slice()
-        nextItems.push(looseItemResult.item)
+        if (!sourceResult.item) return false
+        nextItems.push(sourceResult.item)
         updatedAttrs["data-items"] = JSON.stringify(nextItems)
         updatedBundle.attrs = updatedAttrs
 
-        var nextBlocks = blocks.slice()
-        nextBlocks.splice(sourceBlockIndex, 1)
-        var adjustedBundleIndex = bundleIndex - (sourceBlockIndex < bundleIndex ? 1 : 0)
+        var nextBlocks = sourceResult.blocks
+        var adjustedBundleIndex = bundleIndex - (sourceBlockPath.length === 1 &&
+            sourceTopLevelIndex < bundleIndex ? 1 : 0)
         nextBlocks[adjustedBundleIndex] = updatedBundle
         return commitDocumentBundleBlocks(nextBlocks)
     }
@@ -565,9 +557,9 @@ ColumnLayout {
                     }
                 }
                 onAbsorbDocumentBundleLooseFileRequested: function(
-                        bundleIndex, sourceBlockIndex, fileId, items, color, bundleWidget) {
+                        bundleIndex, sourceBlockPath, fileId, items, color, bundleWidget) {
                     if (!blockListRoot.absorbLooseDocumentBundleFile(
-                                bundleIndex, sourceBlockIndex, fileId, items)) {
+                                bundleIndex, sourceBlockPath, fileId, items)) {
                         blockListRoot.reportBundleActionFailure(
                             bundleIndex, bundleWidget,
                             qsTr("Could not move this page document into the bundle. No page block was changed."))

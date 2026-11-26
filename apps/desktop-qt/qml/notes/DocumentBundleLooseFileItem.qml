@@ -8,7 +8,7 @@ Rectangle {
     id: looseItemRoot
     required property var itemData
 
-    signal absorbRequested(int sourceBlockIndex, string fileId)
+    signal absorbRequested(var sourceBlockPath, string fileId)
 
     function iconName() {
         var type = String(looseItemRoot.itemData.fileType || "").toLowerCase()
@@ -64,7 +64,7 @@ Rectangle {
             text: qsTr("Mover para o grupo")
             Accessible.name: qsTr("Mover %1 para o agrupamento").arg(looseItemRoot.itemData.name || qsTr("documento"))
             onClicked: looseItemRoot.absorbRequested(
-                           Number(looseItemRoot.itemData.sourceBlockIndex),
+                           looseItemRoot.itemData.sourceBlockPath,
                            String(looseItemRoot.itemData.fileId || ""))
             background: Rectangle {
                 radius: 6

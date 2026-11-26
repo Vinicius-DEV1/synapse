@@ -25,7 +25,7 @@ Loader {
     signal unlinkDocumentBundleRequested(int idx, var bundleWidget)
     signal unwrapDocumentBundleRequested(int idx, var bundledItems, string groupColor, var bundleWidget)
     signal unwrapDocumentBundleItemRequested(int idx, string fileId, var bundledItems, string groupColor, var bundleWidget)
-    signal absorbDocumentBundleLooseFileRequested(int bundleIndex, int sourceBlockIndex, string fileId, var bundledItems, string groupColor, var bundleWidget)
+    signal absorbDocumentBundleLooseFileRequested(int bundleIndex, var sourceBlockPath, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal documentBundleManagerStateRequested(string blockId, bool isOpen)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
@@ -200,9 +200,9 @@ Loader {
             onManagerOpenStateRequested: function(blockId, isOpen) {
                 routerLoader.documentBundleManagerStateRequested(blockId, isOpen)
             }
-            onAbsorbLooseFileRequested: function(sourceBlockIndex, fileId) {
+            onAbsorbLooseFileRequested: function(sourceBlockPath, fileId) {
                 routerLoader.absorbDocumentBundleLooseFileRequested(
-                    routerLoader.blockIndex, sourceBlockIndex, fileId, routedBundleWidget.items,
+                    routerLoader.blockIndex, sourceBlockPath, fileId, routedBundleWidget.items,
                     routedBundleWidget.accentColor, routedBundleWidget)
             }
             onUnlinkRequested: routerLoader.unlinkDocumentBundleRequested(

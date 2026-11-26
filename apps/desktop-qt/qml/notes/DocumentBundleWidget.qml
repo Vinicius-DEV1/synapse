@@ -105,7 +105,7 @@ Rectangle {
     signal unlinkRequested()
     signal ungroupRequested(var bundledItems, string groupColor)
     signal ungroupItemRequested(string fileId, var bundledItems, string groupColor)
-    signal absorbLooseFileRequested(int sourceBlockIndex, string fileId)
+    signal absorbLooseFileRequested(var sourceBlockPath, string fileId)
     signal managerOpenStateRequested(string blockId, bool isOpen)
 
     Keys.priority: Keys.BeforeItem
@@ -263,8 +263,8 @@ Rectangle {
         onItemRemovalRequested: function(fileId, moveToTrash) {
             bundleWidgetRoot.handleBundleItemRemoval(fileId, moveToTrash)
         }
-        onAbsorbLooseFileRequested: function(sourceBlockIndex, fileId) {
-            bundleWidgetRoot.absorbLooseFileRequested(sourceBlockIndex, fileId)
+        onAbsorbLooseFileRequested: function(sourceBlockPath, fileId) {
+            bundleWidgetRoot.absorbLooseFileRequested(sourceBlockPath, fileId)
         }
         onUngroupAllRequested: function(items, color) {
             bundleWidgetRoot.ungroupRequested(items, color)

@@ -20,7 +20,7 @@ Item {
     signal addFilesRequested()
     signal itemUngroupRequested(string fileId, var bundledItems, string groupColor)
     signal itemRemovalRequested(string fileId, bool moveToTrash)
-    signal absorbLooseFileRequested(int sourceBlockIndex, string fileId)
+    signal absorbLooseFileRequested(var sourceBlockPath, string fileId)
     signal ungroupAllRequested(var bundledItems, string groupColor)
     signal fileSelected(var fileItem)
     signal pickerClosed()
@@ -48,8 +48,8 @@ Item {
         onItemsReordered: function(nextItems) { dialogsRoot.managerItemsReordered(nextItems) }
         onTitleUpdateRequested: function(nextTitle) { dialogsRoot.managerTitleUpdateRequested(nextTitle) }
         onAddFilesRequested: dialogsRoot.addFilesRequested()
-        onAbsorbLooseFileRequested: function(sourceBlockIndex, fileId) {
-            dialogsRoot.absorbLooseFileRequested(sourceBlockIndex, fileId)
+        onAbsorbLooseFileRequested: function(sourceBlockPath, fileId) {
+            dialogsRoot.absorbLooseFileRequested(sourceBlockPath, fileId)
         }
         onItemUngroupRequested: function(fileId) {
             dialogsRoot.itemUngroupRequested(fileId, dialogsRoot.bundleItems, dialogsRoot.groupColor)
