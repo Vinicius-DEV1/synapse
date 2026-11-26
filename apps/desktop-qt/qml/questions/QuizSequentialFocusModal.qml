@@ -9,6 +9,7 @@ Rectangle {
     anchors.fill: parent
     color: "#0f0e17"
     visible: false
+    focus: visible && enableNotesOpenAnswerEvaluation
     z: 140
 
     property string batteryId: ""
@@ -33,6 +34,7 @@ Rectangle {
     property var evaluatingByQuestion: ({})
     property var pendingEvaluationsByQuestion: ({})
     property bool openAnswerInputFocused: false
+    property bool discussionDialogOpen: false
     property bool sessionActive: false
     property int evaluationSessionToken: 0
     property int score: 0
@@ -40,6 +42,7 @@ Rectangle {
 
     signal closed()
     signal recordAttemptRequested(string bId, string qId, int selIndex, bool correct)
+    signal discussionRequested(string title, var question, int questionIndex)
 
     readonly property int totalCount: questions.length
     readonly property int answeredCount: answeredQuestions.filter(function(answered) { return answered }).length
@@ -60,13 +63,13 @@ Rectangle {
     }
 
     // Keyboard Shortcuts
-    Shortcut { sequence: "Escape"; enabled: sequentialModalRoot.visible && !sequentialModalRoot.showFinishConfirmation; onActivated: OpenAnswerSession.close(sequentialModalRoot) }
-    Shortcut { sequence: "1"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(0) }
-    Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(1) }
-    Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(2) }
-    Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(3) }
-    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: showExplanation = !showExplanation }
-    Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: handleConfirmOrNext() }
+    Shortcut { sequence: "Escape"; enabled: sequentialModalRoot.visible && !sequentialModalRoot.showFinishConfirmation && !sequentialModalRoot.discussionDialogOpen; onActivated: OpenAnswerSession.close(sequentialModalRoot) }
+    Shortcut { sequence: "1"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(0) }
+    Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(1) }
+    Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(2) }
+    Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: selectOption(3) }
+    Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: showExplanation = !showExplanation }
+    Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: handleConfirmOrNext() }
 
     Notes.NotesQuizFinishConfirmDialog {
         visible: sequentialModalRoot.showFinishConfirmation
@@ -118,6 +121,14 @@ Rectangle {
                 onOpenAnswerChanged: function(txt) { OpenAnswerSession.handleInput(sequentialModalRoot, txt) }
                 onOpenAnswerFocusChanged: function(focused) { OpenAnswerSession.handleFocus(sequentialModalRoot, focused) }
                 onEvaluateOpenAnswerRequested: OpenAnswerSession.evaluate(sequentialModalRoot)
+                onDiscussOpenAnswerRequested: {
+                    sequentialModalRoot.discussionDialogOpen = true
+                    sequentialModalRoot.discussionRequested(
+                        sequentialModalRoot.batteryTitle,
+                        sequentialModalRoot.currentQuestion,
+                        sequentialModalRoot.currentIndex
+                    )
+                }
                 onToggleExplanation: sequentialModalRoot.showExplanation = !sequentialModalRoot.showExplanation
             }
 

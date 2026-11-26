@@ -239,6 +239,19 @@ For every checklist group, record:
 - Known limitation and linked bug ID.
 - Reviewer and date.
 
+### Notes open-answer discussion assistant iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_quiz_discussion.qml -import apps/desktop-qt/qml` | Passed: 8 QtTest results (6 behavior cases plus setup/cleanup) | A mocked evaluator verifies the React-shaped question/answer/verdict/reference prompt, optional answer/reference behavior, follow-up history, clear, provider error, close notification, late-response invalidation, and conversation cleanup when the parent focus session ends. No Gemini request is sent. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_open_answer_flow.qml -import apps/desktop-qt/qml` | Passed: 14 QtTest results | Open-answer persistence/restoration, retry, navigation, provider errors and non-Notes behavior remain intact with the discussion action added. The mock does not verify the live Core database. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_question_session_loading.qml -import apps/desktop-qt/qml` | Passed: 6 QtTest results | Confirms existing targeted Notes question loading and malformed-options behavior. |
+| Focused finish-confirmation and finish-flow QML harnesses | Passed: 5 and 4 QtTest results | Existing review/finish/cancel behavior remains intact. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native app target links. This does not exercise live Gemini, assistant display in a real Notes window or visual parity. |
+| Focused `qmllint` on the discussion components and changed Notes/quiz host chain | Passed, exit code 0; existing warnings remain in neighboring shared quiz/host files | New assistant component files have no lint warnings. Existing layout, unqualified-access and dynamic `Loader.item` warnings in shared neighbors were not part of this feature. |
+| `git diff --check` | Passed | No whitespace errors in the current iteration. |
+| Live Gemini conversation, real Notes focus-session close/reopen, focus restoration, provider transport review, suggested-action handling and same-viewport React/Qt comparison | Not run | Suggested question action cards and accept/reject are tracked separately as QT-NOTES-079. Keep both QT-NOTES-078 and QT-NOTES-079 partial/open until live and visual evidence exists. |
+
 ### Native bundle drag-reorder iteration (2026-11-26)
 
 | Check | Result | Scope and limits |

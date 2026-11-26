@@ -1,10 +1,14 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Controls 2.15
 
 Rectangle {
     id: feedbackRoot
     objectName: "notesOpenAnswerFeedback"
     property var feedback: null
+    property bool discussionEnabled: false
+
+    signal discussRequested()
 
     visible: feedback !== null
     implicitHeight: feedbackColumn.implicitHeight + 28
@@ -50,6 +54,18 @@ Rectangle {
             color: "#e4e4e7"
             font.pixelSize: 12
             wrapMode: Text.Wrap
+        }
+        Rectangle {
+            visible: feedbackRoot.discussionEnabled
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: "#10ffffff"
+        }
+        Button {
+            visible: feedbackRoot.discussionEnabled
+            Layout.alignment: Qt.AlignRight
+            text: qsTr("Discutir com Assistente IA")
+            onClicked: feedbackRoot.discussRequested()
         }
     }
 }

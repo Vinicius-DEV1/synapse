@@ -10,6 +10,17 @@ Item {
         controller: modalsHost.controller
     }
 
+    NotesQuizDiscussionEvaluator {
+        id: notesQuizDiscussionEvaluator
+        controller: modalsHost.controller
+    }
+
+    NotesQuizDiscussionDialog {
+        id: notesQuizDiscussionDialog
+        anchors.fill: parent
+        evaluator: notesQuizDiscussionEvaluator
+    }
+
     property var controller: null
     property string selectedPageId: ""
     property string activeTitle: ""
@@ -331,11 +342,25 @@ Item {
     Connections {
         target: quizModalLoader.item
         ignoreUnknownSignals: true
-        function onClosed() { quizModalLoader.active = false }
+        function onClosed() {
+            notesQuizDiscussionDialog.closeSession()
+            quizModalLoader.active = false
+        }
+        function onDiscussionRequested(title, question, questionIndex) {
+            notesQuizDiscussionDialog.openForQuestion(title, question, questionIndex)
+        }
         function onRecordAttemptRequested(bId, qId, selIndex, correct) {
             if (modalsHost.controller && typeof modalsHost.controller.recordQuizAttempt === "function") {
                 modalsHost.controller.recordQuizAttempt(bId, qId, selIndex, correct)
             }
+        }
+    }
+
+    Connections {
+        target: notesQuizDiscussionDialog
+        ignoreUnknownSignals: true
+        function onCloseRequested() {
+            if (quizModalLoader.item) quizModalLoader.item.discussionDialogOpen = false
         }
     }
 

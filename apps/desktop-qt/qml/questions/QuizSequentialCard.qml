@@ -25,6 +25,7 @@ Rectangle {
     signal openAnswerChanged(string text)
     signal openAnswerFocusChanged(bool focused)
     signal evaluateOpenAnswerRequested()
+    signal discussOpenAnswerRequested()
     signal toggleExplanation()
 
     onOpenAnswerTextChanged: {
@@ -241,6 +242,8 @@ Rectangle {
                 Notes.NotesOpenAnswerFeedback {
                     Layout.fillWidth: true
                     feedback: cardRoot.openAnswerFeedback
+                    discussionEnabled: cardRoot.openAnswerEvaluationEnabled
+                    onDiscussRequested: cardRoot.discussOpenAnswerRequested()
                 }
             }
 
