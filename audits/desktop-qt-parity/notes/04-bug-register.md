@@ -807,6 +807,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify option-list changes update bindings; test 1/9, A/Z, the G conflict, short lists, open-answer questions, text focus, confirmed/completed sessions and real keyboard dispatch in the active window.
 - **Fix status:** Qt now generates number and letter shortcut bindings from each Notes multiple-choice question, disables them while typing or after confirmation, and uses the same helper to reject stale/out-of-range selections. Focused QML coverage verifies eight choices, number/letter mapping, the seventh option's G mapping, text focus and confirmed-state gates. Boundary lists, active-window dispatch and matched-viewport acceptance remain open; see [07-verification.md](07-verification.md).
 
+## QT-NOTES-086: Space toggles the Notes answer panel instead of advancing
+
+- **Severity:** Low; after answering, React uses Space for fast progression to the next question or finish confirmation. Qt previously kept Space bound to explanation visibility for Notes focus.
+- **Evidence:** React `QuizSequentialPlayer.tsx::handleContainerKeyDown()` handles Enter and Space in the answered-question branch. Qt `QuizSequentialFocusModal.qml` bound Space to `toggleExplanation()` for every unfinished session; the in-card Notes control already has its own `Gabarito` action.
+- **Reproduction:** Evaluate an open answer and press Space. Before the fix, Qt toggled the answer panel instead of moving to the next question.
+- **Root cause:** The shared generic quiz Space shortcut remained active in the Notes-specific sequential session.
+- **Required fix:** Preserve the generic Space behavior outside Notes. In Notes focus, do nothing for Space on an unconfirmed question; advance an answered question with the same next/finish behavior as React, unless the answer editor still owns focus.
+- **Acceptance:** Verify unanswered, answered, last-question, finish-dialog and text-focus states with active-window key events; compare the transition and explanation panel with React.
+- **Fix status:** Generic Space toggling is now disabled only when the Notes evaluation mode is active. A Notes-only Space shortcut uses the guarded navigation helper after confirmation and is gated while the answer field, finish dialog or assistant is active. The focused QML harness verifies the state gate; active-window dispatch and visual comparison remain open. See [07-verification.md](07-verification.md).
+
 ## QT-NOTES-076: Duplicate Notes links expand inline instead of opening React's modal
 
 - **Severity:** Medium; the duplicate count badge exposed the matching pages, but Qt expanded them inside the link card. React presents a centered overlay with the target URL, page titles, ancestor paths, navigation actions, backdrop dismissal and Escape handling.
