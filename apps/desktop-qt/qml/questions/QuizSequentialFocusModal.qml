@@ -56,6 +56,8 @@ Rectangle {
     readonly property string currentOpenAnswerError: evaluationErrorsByQuestion[currentQuestionKey] || ""
     readonly property bool notesPlainGShortcutEnabled: enableNotesOpenAnswerEvaluation
         && !openAnswerInputFocused && !isCompleted && !discussionDialogOpen
+        && !(currentQuestion && currentQuestion.type === "multiple_choice"
+             && currentQuestion.options && currentQuestion.options.length > 6)
 
     Timer {
         id: quizTimer

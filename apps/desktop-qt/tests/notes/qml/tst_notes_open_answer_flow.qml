@@ -220,6 +220,20 @@ TestCase {
         compare(referenceAnswer.visible, false)
     }
 
+    function test_plainGShortcutLeavesSeventhMultipleChoiceOptionAvailable() {
+        quizModal.questions = [Object.assign({}, quizModal.currentQuestion, {
+            type: "multiple_choice",
+            options: ["A", "B", "C", "D", "E", "F"]
+        })]
+        compare(quizModal.notesPlainGShortcutEnabled, true)
+
+        quizModal.questions = [Object.assign({}, quizModal.currentQuestion, {
+            type: "multiple_choice",
+            options: ["A", "B", "C", "D", "E", "F", "G"]
+        })]
+        compare(quizModal.notesPlainGShortcutEnabled, false)
+    }
+
     function test_providerFailureKeepsAnswerAndAllowsRetry() {
         mockEvaluator.nextSuccess = false
         OpenAnswerSession.setAnswer(quizModal, "Keep this answer")
