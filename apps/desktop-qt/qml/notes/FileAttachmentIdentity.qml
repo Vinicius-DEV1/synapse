@@ -59,7 +59,7 @@ RowLayout {
         color: identityRoot.isMissing ? "#f87171" : (identityRoot.pointerHovered ? "#ffffff" : "#fffffe")
         font.pixelSize: 13
         font.weight: Font.Medium
-        wrapMode: Text.WordWrap
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
         MouseArea {
             anchors.fill: parent
