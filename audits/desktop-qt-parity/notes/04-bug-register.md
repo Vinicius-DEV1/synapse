@@ -777,6 +777,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Verify all three shortcuts share the same explanation toggle, are scoped to Notes focus, and plain G is disabled while the answer editor has focus or a seventh multiple-choice option exists. Verify dispatch from the active application window and text field; compare the card state with React.
 - **Fix status:** Qt registers `Alt+G` and `Ctrl+G` together and a separate plain `G` shortcut that is enabled only for a visible Notes open-answer session while the answer field is unfocused, the session is active, and the current multiple-choice question has no seventh option. All route to `toggleExplanation()`. Focused QML coverage confirms sequence registration, focus/completion/dialog gating, and the six/seven-option rule. Active-window and text-field key dispatch plus matched-viewport comparison remain open; see [07-verification.md](07-verification.md).
 
+## QT-NOTES-083: Notes focus reopens explanations after question navigation
+
+- **Severity:** Low; the evaluated response is correctly restored when returning to a question, but Qt also reopens its explanation panel without the learner asking for it. React closes explanations when navigation changes the active question.
+- **Evidence:** React `QuizSequentialPlayer.tsx::goToQuestion()` closes explanation state for both the question being left and the destination. Qt `QuizSequentialFocusModal.qml::goToQuestion()` set `showExplanation` to `isConfirmed`, reopening the disclosure for an answered question.
+- **Reproduction:** Evaluate an open answer, advance to another question, then navigate back. Before the fix, the response and feedback returned with the reference-answer/explanation disclosure already open.
+- **Root cause:** Qt coupled the destination's answered state to the explanation panel's visibility.
+- **Required fix:** In Notes focus mode, close the explanation on every question change while preserving the saved answer, evaluation and answered status. Keep the generic standalone flow unchanged in this Notes-scoped fix.
+- **Acceptance:** Verify next/back navigation closes the disclosure for both source and destination, preserves typed answer and evaluation, and does not change the result count. Compare navigation state with React.
+- **Fix status:** `goToQuestion()` now clears `showExplanation` for the Notes focus flow and retains the existing generic behavior. The focused QML integration test evaluates the first of two questions, advances, evaluates the second, and returns to verify the first answer/verdict remains confirmed while its explanation is closed. Active-window and matched-viewport acceptance remain open; see [07-verification.md](07-verification.md).
+
 ## QT-NOTES-076: Duplicate Notes links expand inline instead of opening React's modal
 
 - **Severity:** Medium; the duplicate count badge exposed the matching pages, but Qt expanded them inside the link card. React presents a centered overlay with the target URL, page titles, ancestor paths, navigation actions, backdrop dismissal and Escape handling.
