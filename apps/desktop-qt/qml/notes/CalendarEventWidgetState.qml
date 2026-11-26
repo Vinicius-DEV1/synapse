@@ -43,21 +43,12 @@ QtObject {
 
     function syncFromCore() {
         var c = eventState.controller
-        if (!eventId || !c || typeof c.getCalendarEvents !== "function") {
+        if (!eventId || !c || typeof c.getCalendarEvent !== "function") {
             eventLookupComplete = !!eventId
             eventRecord = ({})
             return
         }
-        var found = typeof c.getCalendarEvent === "function" ? c.getCalendarEvent(eventId) : null
-        if (!found && typeof c.getCalendarEvents === "function") {
-            var events = c.getCalendarEvents() || []
-            for (var i = 0; i < events.length; i++) {
-                if (events[i].id === eventId) {
-                    found = events[i]
-                    break
-                }
-            }
-        }
+        var found = c.getCalendarEvent(eventId)
         if (found && found.id) {
             title = found.title || title
             dateStr = String(found.start_date || dateStr)
