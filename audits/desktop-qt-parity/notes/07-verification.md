@@ -39,6 +39,16 @@ The current source audit, event-widget changes, Core cursor/entity fix, and nati
 | Audit Markdown relative-link check and `git diff --check` | Passed | Changed audit links resolve; no trailing whitespace or patch formatting errors. |
 | Same-viewport React/Qt capture; real app flow for standalone, nested, floating and bundle file previews; target failure and tab switching | Not run | Keep QT-NOTES-058 and the relevant checklist items open until live application behavior and visuals are checked. |
 
+### Typed table-column selector iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_table_column_type_popover.qml -import apps/desktop-qt/qml` | Passed: 6 passed, 0 failed. Verified the 240 px selector, changing to Number without closing, explicit close action, removing only the selected column's filter, and re-projecting an unrelated filter after a mock schema write. | Qt 6.10.2, offscreen. The persistent harness mounts the real selector and table-grip component with mock Core/editor boundaries. It does not run a real Core schema mutation, persist/reload a note, or test real table row contents. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_linked_item_actions.qml -import apps/desktop-qt/qml` | Passed: 6 passed, 0 failed | Regression check for the previously added linked file/media action dialog; it does not cover app-level tab routing. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Confirms the native QML application target links after the filter lifecycle change; runtime table persistence is not established. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesTableColumnTypePopover.qml` | Passed, exit code 0, with nested-component context-binding warnings | QML parses. The remaining warnings concern the existing outer-popup/delegate scope pattern; lint does not check screen-edge placement, keyboard focus or visual matching. |
+| Real table with multiple active filters, schema persistence/reload, React round-trip, edge placement and matched-viewport capture | Not run | Keep QT-NOTES-059 and its related [table checklist items](06-checklist.md#f-tables) open until these scenarios have application evidence. |
+
 Exact focused QML lint command for this iteration:
 
 ```bash

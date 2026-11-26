@@ -24,6 +24,7 @@ Item {
     property int dropColIndex: -1
     property int dragRowIndex: -1
     property int dropRowIndex: -1
+    property bool schemaWriteInProgress: false
     property var tableGeom: ({ valid: false, x: 0, y: 0, width: 0, height: 0, rows: 0, columns: 0, currentRow: 0, currentCol: 0, currentCellText: "", colWidths: [], rowHeights: [] })
 
     readonly property var ctrl: editorRoot && editorRoot.controller ? editorRoot.controller : null
@@ -103,6 +104,15 @@ Item {
         }
     }
 
+    function clearColumnFilter(columnIndex) {
+        colTypePopover.activeFilterObj = null
+        if (!Object.prototype.hasOwnProperty.call(activeFilters, columnIndex)) return false
+        var next = Object.assign({}, activeFilters)
+        delete next[columnIndex]
+        activeFilters = next
+        return true
+    }
+
     function commitReorderedHtml(nextHtml) {
         if (!nextHtml || nextHtml === editorRoot.sourceHtml) return
         if (isFiltering) clearVisualFilters()
@@ -124,6 +134,7 @@ Item {
         target: gripsRoot.editorRoot; ignoreUnknownSignals: true
         function onParentPageIdChanged() { if (gripsRoot.isFiltering) gripsRoot.clearVisualFilters() }
         function onSourceHtmlChanged() {
+            if (gripsRoot.schemaWriteInProgress) return
             if (gripsRoot.unfilteredSourceHtml.length > 0 &&
                     gripsRoot.editorRoot.sourceHtml !== gripsRoot.unfilteredSourceHtml) {
                 gripsRoot.activeFilters = ({})
@@ -212,7 +223,13 @@ Item {
                                 colTypePopover.numberFormat = (colGripItem.cfg && colGripItem.cfg.number_format) ? colGripItem.cfg.number_format : "decimal"
                                 colTypePopover.dateFormat = (colGripItem.cfg && colGripItem.cfg.date_format) ? colGripItem.cfg.date_format : "YYYY-MM-DD"
                                 colTypePopover.activeFilterObj = gripsRoot.activeFilters[colGripItem.index] || null
-                                colTypePopover.x = Math.min(gripsRoot.width - 284, gripsRoot.tableGeom.x + colGripItem.x); colTypePopover.y = gripsRoot.tableGeom.y
+                                var popoverHeight = colTypePopover.implicitContentHeight + colTypePopover.topPadding + colTypePopover.bottomPadding
+                                var anchorX = gripsRoot.tableGeom.x + colGripItem.x
+                                var anchorY = gripsRoot.tableGeom.y + 4
+                                colTypePopover.x = Math.max(8, Math.min(gripsRoot.width - colTypePopover.width - 8, anchorX))
+                                colTypePopover.y = anchorY + popoverHeight <= gripsRoot.height - 8
+                                    ? anchorY
+                                    : Math.max(8, gripsRoot.tableGeom.y - popoverHeight - 4)
                                 colTypePopover.open()
                             }
                             gripsRoot.dragColIndex = -1; gripsRoot.dropColIndex = -1; dragged = false
@@ -300,14 +317,30 @@ Item {
 
     NotesTableColumnTypePopover {
         id: colTypePopover
+        objectName: "notesTableColumnTypePopover"
+        onTypePicked: function(colIdx) {
+            gripsRoot.clearColumnFilter(colIdx)
+        }
         onTypeSelected: function(colIdx, colType, opts, numFmt, dateFmt) {
             if (!gripsRoot.editorRoot) return
             var tableIndex = gripsRoot.tableGeom.tableIndex || 0
-            var upd = gripsRoot.ctrl && typeof gripsRoot.ctrl.updateTableColumnSchemaAt === "function"
-                ? gripsRoot.ctrl.updateTableColumnSchemaAt(
-                    gripsRoot.editorRoot.sourceHtml || "", tableIndex, colIdx, colType, opts, numFmt, dateFmt)
-                : gripsRoot.editorRoot.sourceHtml
-            if (upd !== gripsRoot.editorRoot.sourceHtml) { gripsRoot.editorRoot.sourceHtml = upd; gripsRoot.editorRoot.contentModified(upd); gripsRoot.syncSchemaFromHtml() }
+            var sourceHtml = gripsRoot.editorRoot.sourceHtml || ""
+            var upd = sourceHtml
+            gripsRoot.schemaWriteInProgress = true
+            try {
+                if (gripsRoot.ctrl && typeof gripsRoot.ctrl.updateTableColumnSchemaAt === "function") {
+                    upd = gripsRoot.ctrl.updateTableColumnSchemaAt(sourceHtml, tableIndex, colIdx, colType, opts, numFmt, dateFmt)
+                }
+                if (upd !== sourceHtml) {
+                    if (gripsRoot.unfilteredSourceHtml.length > 0) gripsRoot.unfilteredSourceHtml = upd
+                    gripsRoot.editorRoot.sourceHtml = upd
+                    gripsRoot.editorRoot.contentModified(upd)
+                    gripsRoot.syncSchemaFromHtml()
+                }
+            } finally {
+                gripsRoot.schemaWriteInProgress = false
+            }
+            Qt.callLater(function() { gripsRoot.applyVisualFilterEvaluation() })
         }
         onFilterUpdated: function(colIdx, obj) {
             var next = Object.assign({}, gripsRoot.activeFilters)

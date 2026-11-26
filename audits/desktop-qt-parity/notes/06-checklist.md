@@ -108,6 +108,9 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Identify the table under the cursor; apply schema, validation, filter, movement and formatting to that table only.
 - [ ] Support multiple tables in a single rich slice and multiple slices without cross-table effects.
 - [ ] Compare each text/number/date/select/checkbox filter operator, empty handling, locale parsing and date/number format.
+- [x] Make the Qt typed-column selector use React's 240 px three-column layout and close control; selecting a type clears only its own filter, preserves other filters through the schema write, and recalculates/restores the read-only projection. Persistent offscreen QML coverage passes; see QT-NOTES-059.
+- [ ] In the running app, apply filters to two columns, change one column's type, and verify only that column's filter clears while the other filter and visible rows remain correct through save, reload and React round-trip.
+- [ ] Compare the column-type popover at left/right/top/bottom editor edges and at matched viewport/DPI; verify clamping, flipping, selected and hover states, Escape/outside close, keyboard focus and accessible labels.
 - [ ] Compare clear-one/clear-all filter behavior and result counts with React.
 - [ ] Verify row/column insert, delete, move and resize preserve cell content, column types, options, header semantics, width, spans and backgrounds.
 - [ ] Verify merged cells, nested content, table split, selection range, copy/paste and undo/redo.

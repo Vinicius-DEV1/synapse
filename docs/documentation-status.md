@@ -26,7 +26,7 @@ This page identifies the consolidated sources of truth across the repository. Ac
 | Engineering rules | [Root AGENTS.md](../AGENTS.md) and app-level `AGENTS.md` files | Required code, testing, documentation, and ownership rules |
 | Skill specifications | [Engineering skills index](../.agents/skills/README.md) | Agent playbooks; specifications are not implementation evidence |
 
-The Notes parity effort remains **Partial**. Recent source iterations fixed Qt color alpha conversion, palette idle polling, direct calendar event lookup/refresh wiring, default palette swatch styling, attachment routing, and column-wrapper preservation during bundle absorption. Same-viewport visual review, runtime interaction and persistence acceptance, modal inventory, and remaining Notes checklist items are still open. Active comparison evidence is maintained outside `docs/` until acceptance is complete.
+The Notes parity effort remains **Partial**. Recent source iterations fixed Qt color alpha conversion, palette idle polling, direct calendar event lookup/refresh wiring, default palette swatch styling, attachment routing, column-wrapper preservation during bundle absorption, and typed table-column filter clearing. Same-viewport visual review, runtime interaction and persistence acceptance, modal inventory, and remaining Notes checklist items are still open. Active comparison evidence is maintained outside `docs/` until acceptance is complete.
 
 ## Verified Project Status
 
