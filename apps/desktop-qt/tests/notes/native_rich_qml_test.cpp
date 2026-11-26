@@ -440,10 +440,12 @@ private slots:
         root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
         QObject *progress = root->findChild<QObject *>("notesFileReadingProgress");
         QObject *viewer = root->findChild<QObject *>("notesFilePreviewSurface");
+        QObject *textContent = root->findChild<QObject *>("notesFilePreviewTextContent");
         QObject *resumeCard = root->findChild<QObject *>("notesFileReadingResumeCard");
         QObject *bookmarksButton = root->findChild<QObject *>("notesFileReadingBookmarksButton");
         QVERIFY(progress);
         QVERIFY(viewer);
+        QVERIFY(textContent);
         QVERIFY(resumeCard);
         QVERIFY(bookmarksButton);
         window.show();
@@ -453,6 +455,11 @@ private slots:
         controller.publish({{"success", true}, {"path", "/tmp/protected-note.txt"},
                             {"url", "file:///tmp/protected-note.txt"}, {"file_type", "text"},
                             {"name", "Note.txt"}, {"request_id", requestId}});
+        QTRY_VERIFY(textContent->property("width").toReal() > 0.0);
+        QVERIFY(textContent->property("width").toReal() <= 768.0);
+        const qreal desktopTextWidth = textContent->property("width").toReal();
+        window.resize(480, 640);
+        QTRY_VERIFY_WITH_TIMEOUT(textContent->property("width").toReal() < desktopTextWidth, 1000);
         QTRY_VERIFY(progress->property("showResumePrompt").toBool());
         QVERIFY(resumeCard->property("visible").toBool());
         QCOMPARE(bookmarksButton->property("text").toString(), QString("Marcadores (1)"));

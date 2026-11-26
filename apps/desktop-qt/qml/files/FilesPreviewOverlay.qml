@@ -202,20 +202,29 @@ Rectangle {
                 id: textScrollView
                 anchors.fill: parent
                 anchors.margins: 14
+                contentWidth: availableWidth
                 visible: !previewOverlay.loading && (previewOverlay.previewType === "text" || previewOverlay.previewType === "code") && previewOverlay.previewError.length === 0
                 clip: true
                 onContentHeightChanged: previewOverlay.textScrollChanged()
                 onHeightChanged: previewOverlay.textScrollChanged()
                 TextArea {
-                    width: parent.width
+                    objectName: previewOverlay.notesMarkdownEditingEnabled ? "notesFilePreviewTextContent" : "filesPreviewTextContent"
+                    width: previewOverlay.notesMarkdownEditingEnabled
+                        ? Math.min(textScrollView.availableWidth, 768) : textScrollView.availableWidth
+                    x: previewOverlay.notesMarkdownEditingEnabled
+                        ? Math.max(0, (textScrollView.availableWidth - width) / 2) : 0
                     text: previewOverlay.previewText
                     textFormat: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? TextEdit.MarkdownText : TextEdit.PlainText
                     readOnly: true
                     selectByMouse: true
-                    wrapMode: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? TextEdit.Wrap : TextEdit.NoWrap
+                    wrapMode: previewOverlay.notesMarkdownEditingEnabled
+                        ? ((previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? TextEdit.Wrap : TextEdit.WrapAnywhere)
+                        : ((previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? TextEdit.Wrap : TextEdit.NoWrap)
                     color: theme.textSubtext
                     font.family: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? theme.fontFamily : theme.fontMono
-                    font.pixelSize: (previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? 13 : 11
+                    font.pixelSize: previewOverlay.notesMarkdownEditingEnabled
+                        ? ((previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? 15 : 12)
+                        : ((previewOverlay.isMarkdownFile && previewOverlay.markdownRendered) ? 13 : 11)
                     background: Rectangle { color: "transparent" }
                 }
                 Connections {

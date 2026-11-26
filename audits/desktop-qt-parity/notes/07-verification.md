@@ -776,6 +776,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `git diff --check` | Passed | No whitespace errors in the implementation and audit update. |
 | Real database persistence across restart, resume dismissal behavior, bookmark editing/keyboard flow, actual protected text files, active/floating/nested Notes routes and matched-viewport visuals | Not run | Keep these QT-NOTES-045 acceptance items open; mocked config tests prove UI state transitions, not app-level or cross-client persistence. |
 
+### Notes text attachment reading column (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | Recompiled the focused harness after adding responsive text-column assertions. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=reading-progress` | Passed: 3 QtTest results | Checks the Notes preview text area is capped at 768 px in the 900 px window, narrows after resizing to 480 px, and retains reading-progress/bookmark behavior. The test validates geometry/state, not rendered screenshot equivalence. |
+| `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/files/FilesPreviewOverlay.qml apps/desktop-qt/qml/notes/NotesFilePreviewModal.qml` | Passed with no diagnostics | Confirms QML parse and bindings; the Notes-only flag leaves Files viewer dimensions and typography at their prior values. |
+| GFM table overflow, links, code-block highlighting/decorations, blockquote styling, long unbroken strings and matched-viewport screenshots | Not run | Qt `TextEdit.MarkdownText` supports CommonMark plus GFM tables/task lists, but its native decorations differ from ReactMarkdown. Keep these appearance/interaction checks open under QT-NOTES-045. |
+
 ### Notes Markdown attachment source editing (2026-11-26)
 
 | Check | Result | Scope and limits |
