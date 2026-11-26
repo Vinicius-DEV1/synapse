@@ -85,6 +85,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify a linked event status toggle updates Core before the widget node and survives reload; failure must leave the prior status intact and visible.
 - [ ] Add and verify React-equivalent event deletion confirmation, including cancellation, missing events, expired events, and Core failure; the agenda record must not be silently deleted.
 - [ ] Verify every event deletion entry point, including the widget control, popover, and generic block handle, uses the same confirmation path.
+- [ ] Compare the default color swatch selected/idle fill, border thickness and × glyph against React at the same scale; confirm all nine color swatches retain their current selection ring (QT-NOTES-048).
 - [ ] Verify the new native event popover stays anchored at all editor edges, repositions while scrolling, closes on Escape/outside click, and never blocks unrelated note content.
 - [ ] Verify the native “Abrir na Agenda” popover action opens the calendar module from top-level and nested Notes editors without changing the note or event.
 - [ ] Verify recurring event widget deletion asks clearly, deletes the complete active Core series on confirmation, preserves it on cancellation/failure, and keeps expired-series records when removing the note widget.

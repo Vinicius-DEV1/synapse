@@ -389,3 +389,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `CalendarEventWidgetState.qml::syncFromCore()` caller and API scan | Passed: source now calls only `getCalendarEvent(eventId)` and has no `getCalendarEvents()` fallback | Prevents per-widget full-list scans and respects Core's indexed identity query independent of its 300-row list page. This is source evidence; create/update/delete refresh and >300-record resolution still require runtime acceptance. |
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/CalendarEventWidget.qml apps/desktop-qt/qml/notes/CalendarEventWidgetState.qml` | Passed, exit code 0, no diagnostics | Moving `Connections` to the visual `CalendarEventWidget` removes the invalid `QtObject` default-property warning and keeps the mutation signal connected to its state controller. This verifies QML diagnostics, not runtime signal delivery. |
 | `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed, exit code 0 | Native target compiles. This does not exercise linked record lookup or signal refresh at runtime. |
+
+
+### Widget palette default swatch comparison (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| React `ColorPalettePicker.tsx` versus Qt `NotesWidgetColorPalette.qml` source comparison | Qt default swatch now has a transparent idle fill, white/20 selected fill, one-pixel selected border, and 12 px × glyph | React's selected clear swatch uses white/20 and a 12 px text glyph; other color swatches keep their two-pixel selection ring. Focused QML lint/build and matched-scale runtime visuals remain to be recorded. |
