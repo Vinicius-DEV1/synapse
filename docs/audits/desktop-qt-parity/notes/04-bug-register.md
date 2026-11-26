@@ -401,7 +401,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** The widget used a folder-list API to resolve an entity by ID and the Trash restore adapter omitted the file-change notification.
 - **Required fix:** Expose a narrow Core-backed file-widget metadata lookup by ID; use the widget's injected controller for metadata and preview; mark missing records visibly; refresh on `filesChanged`; emit that signal after restoring a file.
 - **Acceptance:** Verify active files in root and nested folders resolve; renames and type/size changes refresh; moving to Trash marks a linked widget missing; restoring clears that state and enables preview; malformed widgets without IDs display a recoverable missing state; locked vault behavior does not expose protected paths.
-- **Fix status:** Added the Core-backed `getFileWidgetMetadata` controller adapter and changed the native file widget to resolve by ID through its injected controller, show missing records and refresh on `filesChanged`. Restoring a local file now emits `filesChanged`. Focused QML lint and whitespace checks pass; C++ build and runtime folder/Trash/restore acceptance remain open.
+- **Fix status:** Added the Core-backed `getFileWidgetMetadata` controller adapter and changed the native file widget to resolve by ID through its injected controller, show missing records and refresh on `filesChanged`. Restoring a local file now emits `filesChanged`. Focused QML lint and the `synapse-desktop` target build pass; runtime folder/Trash/restore acceptance remains open.
 
 ## QT-NOTES-044: Failed file rename still changes the note widget
 
