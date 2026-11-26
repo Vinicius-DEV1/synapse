@@ -72,7 +72,7 @@ Rectangle {
     Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: sequentialModalRoot.toggleExplanation() }
     Shortcut {
         objectName: "notesOpenAnswerExplanationShortcut"
-        sequence: "Alt+G"
+        sequences: ["Alt+G", "Ctrl+G"]
         enabled: sequentialModalRoot.visible && sequentialModalRoot.enableNotesOpenAnswerEvaluation
             && !sequentialModalRoot.isCompleted && !sequentialModalRoot.discussionDialogOpen
         onActivated: sequentialModalRoot.toggleExplanation()
