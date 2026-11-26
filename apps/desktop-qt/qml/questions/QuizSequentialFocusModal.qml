@@ -3,6 +3,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 import "../notes" as Notes
 import "../notes/NotesOpenAnswerSession.js" as OpenAnswerSession
+import "../notes/NotesQuizAssistantSession.js" as AssistantSession
 
 Rectangle {
     id: sequentialModalRoot
@@ -42,7 +43,7 @@ Rectangle {
 
     signal closed()
     signal recordAttemptRequested(string bId, string qId, int selIndex, bool correct)
-    signal discussionRequested(string title, var question, int questionIndex)
+    signal discussionRequested(string title, string batteryId, var question, int questionIndex, var questions)
 
     readonly property int totalCount: questions.length
     readonly property int answeredCount: answeredQuestions.filter(function(answered) { return answered }).length
@@ -125,8 +126,10 @@ Rectangle {
                     sequentialModalRoot.discussionDialogOpen = true
                     sequentialModalRoot.discussionRequested(
                         sequentialModalRoot.batteryTitle,
+                        sequentialModalRoot.batteryId,
                         sequentialModalRoot.currentQuestion,
-                        sequentialModalRoot.currentIndex
+                        sequentialModalRoot.currentIndex,
+                        sequentialModalRoot.questions
                     )
                 }
                 onToggleExplanation: sequentialModalRoot.showExplanation = !sequentialModalRoot.showExplanation
@@ -301,6 +304,10 @@ Rectangle {
         openAnswerInputFocused = false
         score = 0
         elapsedSeconds = 0
+    }
+
+    function replaceQuestionsFromAssistant(updatedQuestions) {
+        AssistantSession.replaceQuestions(sequentialModalRoot, updatedQuestions)
     }
 
     function startQuiz(bId, bTitle, qsList) {

@@ -687,6 +687,18 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | --- | --- | --- |
 | `cargo test -p synapse-core assistant_actions_tests -- --nocapture` | Passed: 3 tests | Exercises create/edit/delete/reorder, open-answer type changes, partial order preservation, rejection of cross-battery IDs and invalid multiple-choice choices, and all-or-nothing rollback using a temporary Core database. |
 | `cargo build --release -p synapse-bridge-qt` | Passed | Builds the JSON boundary that deserializes typed assistant actions and returns either the refreshed battery questions or a structured failure. |
-| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Rebuilt the native app/controller against the new typed action bridge. The action dialog does not call this API yet. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed at that stage | Rebuilt the native app/controller against the typed action bridge before the proposal UI was wired; current native build evidence is listed below. |
 | `git diff --check` | Passed | No whitespace errors in this stage. |
-| Mocked Qt controller invocation, accepted/rejected card interactions, batch failure UI and live question list refresh | Not run | These are still required before the Qt proposal UI can claim action parity; see QT-NOTES-079. |
+| Mocked Qt controller invocation, accepted/rejected card interactions, batch failure UI and live question list refresh | Not run at that stage | The tests below now cover the mocked proposal lifecycle; live Core-backed Qt acceptance remains open. |
+
+### Notes assistant proposal lifecycle (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_quiz_discussion.qml -import apps/desktop-qt/qml` | Passed: 19 QtTest results | Covers contextual conversation, response parsing and truncated-JSON recovery, stable target mapping, invalid suggestions, validation merge, single/batch accept/reject, no persistence on rejection, Core controller adapter success/failure, retry, and stable-question/answer refresh after reorder. Provider and action persistence are mocked in this QML harness. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_open_answer_flow.qml -import apps/desktop-qt/qml` | Passed: 14 QtTest results | Existing Notes open-answer flow and generic focus fallback remain intact. |
+| `cargo test -p synapse-core assistant_actions_tests -- --nocapture` | Passed: 3 tests | Verifies transaction actions, same-battery constraints, validation and rollback. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native executable links with the current Notes assistant, proposal components and Core-backed controller. |
+| Focused `qmllint` on the changed assistant components | Passed with warnings only in the shared sequential-focus modal; new proposal/assistant files are warning-free after cleanup | This does not claim the entire QML folder is warning-free. |
+| `git diff --check` | Passed | No patch whitespace errors. |
+| Live Gemini, QML-to-Core accepted action, saved-note reopen, keyboard/focus return, matched viewport | Not run | Keep QT-NOTES-078/079 open. Qt currently uses the same configured Gemini model for generation and validation, unlike React's separate validator-model preference. |

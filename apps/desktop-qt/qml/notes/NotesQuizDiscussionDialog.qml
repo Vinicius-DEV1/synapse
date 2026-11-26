@@ -1,8 +1,11 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 import "." as Notes
 import "NotesQuizDiscussionPrompt.js" as DiscussionPrompt
+import "NotesQuizDiscussionActions.js" as DiscussionActions
 
 Rectangle {
     id: dialogRoot
@@ -14,7 +17,9 @@ Rectangle {
 
     property var evaluator: null
     property string batteryTitle: ""
+    property string batteryId: ""
     property var question: null
+    property var questions: []
     property int questionIndex: 0
     property var chatHistory: []
     property string chatInput: ""
@@ -22,8 +27,11 @@ Rectangle {
     property string activeModel: ""
     property string errorText: ""
     property int requestToken: 0
+    property string progressStep: "generating"
+    property bool isApplying: false
 
     signal closeRequested()
+    signal questionsUpdated(var questions)
 
     Shortcut {
         sequence: "Escape"
@@ -111,8 +119,16 @@ Rectangle {
                         model: dialogRoot.chatHistory
                         delegate: Notes.NotesQuizDiscussionMessage {
                             required property var modelData
+                            required property int index
                             role: String(modelData.role || "assistant")
                             bodyText: String(modelData.text || "")
+                            actions: modelData.actions || []
+                            validationSummary: String(modelData.validationSummary || "")
+                            actionsBusy: dialogRoot.isApplying
+                            onApplyActionRequested: function(actionId) { dialogRoot.applyActions(index, [actionId]) }
+                            onRejectActionRequested: function(actionId) { dialogRoot.rejectActions(index, [actionId]) }
+                            onApplyAllRequested: dialogRoot.applyAll(index)
+                            onRejectAllRequested: dialogRoot.rejectAll(index)
                         }
                     }
 
@@ -130,7 +146,8 @@ Rectangle {
                             spacing: 8
                             Text { text: "◌"; color: "#c4b5fd"; font.pixelSize: 15 }
                             Text {
-                                text: qsTr("Gerando resposta com IA...")
+                                text: dialogRoot.progressStep === "validating"
+                                    ? qsTr("Revisando sugestões com IA...") : qsTr("Gerando resposta com IA...")
                                 color: "#e9d5ff"
                                 font.pixelSize: 11
                             }
@@ -196,10 +213,12 @@ Rectangle {
         }
     }
 
-    function openForQuestion(title, currentQuestion, currentIndex) {
+    function openForQuestion(title, currentBatteryId, currentQuestion, currentIndex, currentQuestions) {
         if (!currentQuestion) return
         dialogRoot.batteryTitle = title || qsTr("Bateria de Exercícios")
+        dialogRoot.batteryId = String(currentBatteryId || "")
         dialogRoot.question = currentQuestion
+        dialogRoot.questions = Array.isArray(currentQuestions) ? currentQuestions.slice() : [currentQuestion]
         dialogRoot.questionIndex = currentIndex
         dialogRoot.activeModel = evaluator && typeof evaluator.modelName === "function" ? evaluator.modelName() : ""
         dialogRoot.isOpen = true
@@ -224,13 +243,16 @@ Rectangle {
         dialogRoot.isSending = true
         var token = dialogRoot.requestToken
         var context = dialogRoot.question
-        dialogRoot.evaluator.evaluate(dialogRoot.batteryTitle, context, dialogRoot.questionIndex, history, messageText,
-                           function(success, reply, failure) {
+        dialogRoot.evaluator.evaluate(dialogRoot.batteryTitle, context, dialogRoot.questionIndex,
+                           dialogRoot.questions, history, messageText,
+                           function(success, result, failure) {
             if (token !== dialogRoot.requestToken) return
             dialogRoot.isSending = false
-            if (success && reply) {
+            if (success && result) {
                 var updated = dialogRoot.chatHistory.slice()
-                updated.push({ id: "assistant_" + Date.now(), role: "assistant", text: reply })
+                updated.push({ id: "assistant_" + Date.now(), role: "assistant",
+                    text: String(result.message || ""), actions: result.actions || [],
+                    validationSummary: String(result.validationSummary || "") })
                 dialogRoot.chatHistory = updated
                 return
             }
@@ -238,8 +260,17 @@ Rectangle {
             var failed = dialogRoot.chatHistory.slice()
             failed.push({ id: "assistant_error_" + Date.now(), role: "assistant", text: "⚠️ **Erro de comunicação com a IA**\n\n" + dialogRoot.errorText })
             dialogRoot.chatHistory = failed
+        }, function(step, model) {
+            if (token !== dialogRoot.requestToken) return
+            dialogRoot.progressStep = String(step || "generating")
+            if (model) dialogRoot.activeModel = String(model)
         })
     }
+
+    function applyActions(messageIndex, requestedIds) { DiscussionActions.applyActions(dialogRoot, messageIndex, requestedIds) }
+    function applyAll(messageIndex) { DiscussionActions.applyAll(dialogRoot, messageIndex) }
+    function rejectActions(messageIndex, actionIds) { DiscussionActions.rejectActions(dialogRoot, messageIndex, actionIds) }
+    function rejectAll(messageIndex) { DiscussionActions.rejectAll(dialogRoot, messageIndex) }
 
     function clearHistory() {
         dialogRoot.chatHistory = []
@@ -257,7 +288,10 @@ Rectangle {
         dialogRoot.requestClose()
         dialogRoot.chatHistory = []
         dialogRoot.question = null
+        dialogRoot.questions = []
+        dialogRoot.batteryId = ""
         dialogRoot.chatInput = ""
         dialogRoot.errorText = ""
+        dialogRoot.isApplying = false
     }
 }

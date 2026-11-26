@@ -346,8 +346,8 @@ Item {
             notesQuizDiscussionDialog.closeSession()
             quizModalLoader.active = false
         }
-        function onDiscussionRequested(title, question, questionIndex) {
-            notesQuizDiscussionDialog.openForQuestion(title, question, questionIndex)
+        function onDiscussionRequested(title, batteryId, question, questionIndex, questions) {
+            notesQuizDiscussionDialog.openForQuestion(title, batteryId, question, questionIndex, questions)
         }
         function onRecordAttemptRequested(bId, qId, selIndex, correct) {
             if (modalsHost.controller && typeof modalsHost.controller.recordQuizAttempt === "function") {
@@ -359,6 +359,10 @@ Item {
     Connections {
         target: notesQuizDiscussionDialog
         ignoreUnknownSignals: true
+        function onQuestionsUpdated(questions) {
+            if (quizModalLoader.item && typeof quizModalLoader.item.replaceQuestionsFromAssistant === "function")
+                quizModalLoader.item.replaceQuestionsFromAssistant(questions)
+        }
         function onCloseRequested() {
             if (quizModalLoader.item) quizModalLoader.item.discussionDialogOpen = false
         }
