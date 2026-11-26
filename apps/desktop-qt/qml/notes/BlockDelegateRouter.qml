@@ -22,6 +22,7 @@ Loader {
     signal unwrapColumnGroupRequested(int idx, var columnsList)
     signal unlinkDocumentBundleRequested(int idx, var bundleWidget)
     signal unwrapDocumentBundleRequested(int idx, var bundledItems, string groupColor, var bundleWidget)
+    signal unwrapDocumentBundleItemRequested(int idx, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal insertAfterRequested(int idx, string widgetHtml)
     signal focusRichRequested(int idx, bool atEnd)
     signal focusRichSliceChanged(var sliceItem)
@@ -193,6 +194,10 @@ Loader {
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
             onUnlinkRequested: routerLoader.unlinkDocumentBundleRequested(
                                    routerLoader.blockIndex, routedBundleWidget)
+            onUngroupItemRequested: function(fileId, items, color) {
+                routerLoader.unwrapDocumentBundleItemRequested(
+                    routerLoader.blockIndex, fileId, items, color, routedBundleWidget)
+            }
             onUngroupRequested: function(items, color) {
                 routerLoader.unwrapDocumentBundleRequested(
                     routerLoader.blockIndex, items, color, routedBundleWidget)

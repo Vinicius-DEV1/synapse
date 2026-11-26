@@ -155,6 +155,8 @@ ColumnLayout {
         console.warn("[Notes:BlockListEditor] " + message)
         if (widget && typeof widget.setDeleteActionError === "function")
             widget.setDeleteActionError(message)
+        if (widget && typeof widget.setManagerActionError === "function")
+            widget.setManagerActionError(message)
     }
 
     function unwrapDocumentBundle(index, bundledItems, groupColor) {
@@ -172,6 +174,45 @@ ColumnLayout {
 
         var next = blocks.slice()
         Array.prototype.splice.apply(next, [index, 1].concat(result.blocks))
+        return commitDocumentBundleBlocks(next)
+    }
+
+    function unwrapDocumentBundleItem(index, fileId, bundledItems, groupColor) {
+        if (index < 0 || index >= blocks.length || !blocks[index] ||
+                blocks[index].blockType !== "documentBundle" || !Array.isArray(bundledItems) ||
+                !controller || typeof controller.serializeNoteBlocks !== "function" ||
+                !flushActiveRichSlices()) return false
+
+        var targetItem = null
+        for (var itemIndex = 0; itemIndex < bundledItems.length; ++itemIndex) {
+            var itemId = String(bundledItems[itemIndex].fileId || bundledItems[itemIndex].id || "")
+            if (itemId === fileId) {
+                targetItem = bundledItems[itemIndex]
+                break
+            }
+        }
+        if (!targetItem || index >= blocks.length || !blocks[index] ||
+                blocks[index].blockType !== "documentBundle") return false
+
+        var result = DocumentBundleOperations.createFileWidgetBlocks(
+            [targetItem], groupColor, controller, qsTr("Documento"))
+        if (!result.valid || result.blocks.length !== 1) return false
+
+        var remainingItems = bundledItems.filter(function(item) {
+            return String(item.fileId || item.id || "") !== fileId
+        })
+        var replacementBlocks = []
+        if (remainingItems.length > 0) {
+            var updatedBundle = Object.assign({}, blocks[index])
+            var updatedAttrs = Object.assign({}, blocks[index].attrs || ({}))
+            updatedAttrs["data-items"] = JSON.stringify(remainingItems)
+            updatedBundle.attrs = updatedAttrs
+            replacementBlocks.push(updatedBundle)
+        }
+        replacementBlocks.push(result.blocks[0])
+
+        var next = blocks.slice()
+        Array.prototype.splice.apply(next, [index, 1].concat(replacementBlocks))
         return commitDocumentBundleBlocks(next)
     }
 
@@ -456,6 +497,12 @@ ColumnLayout {
                     if (!blockListRoot.unwrapDocumentBundle(idx, items, color)) {
                         blockListRoot.reportBundleActionFailure(
                             idx, bundleWidget, qsTr("Could not ungroup these files. The bundle was kept unchanged."))
+                    }
+                }
+                onUnwrapDocumentBundleItemRequested: function(idx, fileId, items, color, bundleWidget) {
+                    if (!blockListRoot.unwrapDocumentBundleItem(idx, fileId, items, color)) {
+                        blockListRoot.reportBundleActionFailure(
+                            idx, bundleWidget, qsTr("Could not ungroup this file. The bundle was kept unchanged."))
                     }
                 }
                 onInsertAfterRequested: function(idx, html) { blockListRoot.insertWidgetHtmlAfter(idx, html) }

@@ -1,14 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesJsonAttribute.js" as NotesJsonAttribute
-import "../ui"
 
 Rectangle {
     id: bundleWidgetRoot
     Layout.fillWidth: true
-    implicitHeight: contentCol.implicitHeight + 12
+    implicitHeight: widgetBody.implicitHeight
     radius: 8
 
     property var blockData: ({})
@@ -68,6 +66,7 @@ Rectangle {
     property bool renaming: false
     property bool showColorPicker: false
     property bool expanded: false
+    property bool managerOpen: false
     property bool isModalOpen: false
     property bool deleteDialogOpen: false
     property string deleteActionError: ""
@@ -96,11 +95,13 @@ Rectangle {
     signal pageOpenRequested(string pageId)
     signal unlinkRequested()
     signal ungroupRequested(var bundledItems, string groupColor)
+    signal ungroupItemRequested(string fileId, var bundledItems, string groupColor)
 
     Keys.priority: Keys.BeforeItem
     Keys.onPressed: function(event) {
         if (event.modifiers !== Qt.NoModifier || bundleWidgetRoot.renaming ||
-                bundleWidgetRoot.isModalOpen || bundleWidgetRoot.deleteDialogOpen) return
+                bundleWidgetRoot.isModalOpen || bundleWidgetRoot.deleteDialogOpen ||
+                bundleWidgetRoot.managerOpen) return
         if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
             event.accepted = true
             bundleWidgetRoot.requestDeleteConfirmation()
@@ -131,358 +132,130 @@ Rectangle {
         deleteActionError = String(message || "")
     }
 
-    ColumnLayout {
-        id: contentCol
-        anchors.fill: parent
-        anchors.leftMargin: 12
-        anchors.rightMargin: 10
-        anchors.topMargin: 6
-        anchors.bottomMargin: 6
-        spacing: 8
+    function setManagerActionError(message) {
+        widgetDialogs.setManagerActionError(message)
+    }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            // Icon with floating badge count matching DocumentBundleNodeView.tsx
-            Item {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                Layout.rightMargin: 2
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 8
-                    color: "#0f0e17"
-                    border.color: "#0dffffff"
-                    border.width: 1
-
-                    AppIcon {
-                        anchors.centerIn: parent
-                        name: "layers"
-                        color: "#a78bfa"
-                        width: 16
-                        height: 16
-                    }
-                }
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.topMargin: -4
-                    anchors.rightMargin: -5
-                    height: 15
-                    width: Math.max(15, countTxt.implicitWidth + 6)
-                    radius: 7.5
-                    color: "#8b5cf6"
-                    Text {
-                        id: countTxt
-                        anchors.centerIn: parent
-                        text: String(bundleWidgetRoot.items.length)
-                        color: "#ffffff"
-                        font.pixelSize: 9
-                        font.family: "monospace"
-                        font.bold: true
-                    }
-                }
-            }
-
-            // Inline rename field
-            RowLayout {
-                visible: bundleWidgetRoot.renaming && !bundleWidgetRoot.itemsInvalid
-                Layout.fillWidth: true
-                spacing: 4
-
-                TextField {
-                    id: bundleRenameInput
-                    Layout.preferredWidth: 200
-                    Layout.preferredHeight: 26
-                    text: bundleWidgetRoot.title
-                    color: "#fffffe"
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                    leftPadding: 6
-                    rightPadding: 6
-                    background: Rectangle {
-                        radius: 4
-                        color: "#66000000"
-                        border.color: "#cc8b5cf6"
-                        border.width: 1
-                    }
-                    onAccepted: {
-                        if (bundleWidgetRoot.itemsInvalid) {
-                            bundleWidgetRoot.renaming = false
-                            return
-                        }
-                        var trimmed = text.trim() || qsTr("Documentos")
-                        bundleWidgetRoot.title = trimmed
-                        bundleWidgetRoot.renaming = false
-                        bundleWidgetRoot.saveBundle(trimmed, bundleWidgetRoot.accentColor, bundleWidgetRoot.items)
-                    }
-                    Keys.onEscapePressed: bundleWidgetRoot.renaming = false
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 22
-                    Layout.preferredHeight: 22
-                    focusPolicy: Qt.NoFocus
-                    onClicked: bundleRenameInput.accepted()
-                    background: Rectangle { radius: 4; color: parent.hovered ? "#3310b981" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "check"; color: "#34d399"; width: 13; height: 13 }
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 22
-                    Layout.preferredHeight: 22
-                    focusPolicy: Qt.NoFocus
-                    onClicked: bundleWidgetRoot.renaming = false
-                    background: Rectangle { radius: 4; color: parent.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#a7a9be"; width: 12; height: 12 }
-                }
-            }
-
-            // Title & extension badges
-            RowLayout {
-                visible: !bundleWidgetRoot.renaming || bundleWidgetRoot.itemsInvalid
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: bundleWidgetRoot.title
-                    color: hoverHandler.hovered ? "#ffffff" : "#f4f4f5"
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                    elide: Text.ElideRight
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            bundleWidgetRoot.forceActiveFocus()
-                            bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
-                        }
-                        onDoubleClicked: {
-                            if (bundleWidgetRoot.itemsInvalid) return
-                            bundleWidgetRoot.renaming = true
-                            bundleRenameInput.forceActiveFocus()
-                        }
-                    }
-                }
-
-                RowLayout {
-                    spacing: 4
-                    Repeater {
-                        model: bundleWidgetRoot.uniqueExtensions
-                        delegate: Rectangle {
-                            required property string modelData
-                            Layout.preferredHeight: 18
-                            Layout.preferredWidth: extTxt.implicitWidth + 8
-                            radius: 4
-                            color: "#0dffffff"
-                            border.color: "#0dffffff"
-                            border.width: 1
-                            Text {
-                                id: extTxt
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: "#a1a1aa"
-                                font.pixelSize: 9
-                                font.family: "monospace"
-                            }
-                        }
-                    }
-                }
-            }
-
-            Text {
-                visible: bundleWidgetRoot.itemsInvalid
-                text: qsTr("Itens salvos inválidos; edição bloqueada para preservar os dados.")
-                color: "#fbbf24"
-                font.pixelSize: 10
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-
-            // Color picker popover
-            Rectangle {
-                visible: bundleWidgetRoot.showColorPicker && !bundleWidgetRoot.itemsInvalid
-                Layout.preferredHeight: 24
-                Layout.preferredWidth: bundleSwatchRow.implicitWidth + 12
-                radius: 6
-                color: "#1a1924"
-                border.color: "#22ffffff"
-                border.width: 1
-
-                RowLayout {
-                    id: bundleSwatchRow
-                    anchors.centerIn: parent
-                    spacing: 5
-                    Repeater {
-                        model: ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899"]
-                        delegate: Rectangle {
-                            required property string modelData
-                            width: 13
-                            height: 13
-                            radius: 6.5
-                            color: modelData
-                            border.color: bundleWidgetRoot.accentColor === modelData ? "#ffffff" : "#33ffffff"
-                            border.width: 1
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (bundleWidgetRoot.itemsInvalid) return
-                                    bundleWidgetRoot.accentColor = modelData
-                                    bundleWidgetRoot.showColorPicker = false
-                                    bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, modelData, bundleWidgetRoot.items)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Hover-revealed quick actions matching DocumentBundleNodeView.tsx
-            RowLayout {
-                opacity: hoverHandler.hovered || bundleWidgetRoot.showColorPicker || bundleWidgetRoot.expanded ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                spacing: 2
-
-                ToolButton {
-                    visible: !bundleWidgetRoot.renaming && !bundleWidgetRoot.itemsInvalid
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Renomear agrupamento")
-                    onClicked: {
-                        if (bundleWidgetRoot.itemsInvalid) return
-                        bundleWidgetRoot.renaming = true
-                        bundleRenameInput.forceActiveFocus()
-                    }
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "edit"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
-                }
-
-                ToolButton {
-                    visible: !bundleWidgetRoot.itemsInvalid
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    enabled: !bundleWidgetRoot.itemsInvalid
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Personalizar cor do widget")
-                    onClicked: bundleWidgetRoot.showColorPicker = !bundleWidgetRoot.showColorPicker
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "palette"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
-                }
-
-                ToolButton {
-                    visible: !bundleWidgetRoot.itemsInvalid
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    enabled: !bundleWidgetRoot.itemsInvalid
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Adicionar item ao pacote")
-                    onClicked: bundleWidgetRoot.isModalOpen = true
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#4d000000" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "plus"; color: parent.hovered ? "#fffffe" : "#a7a9be"; width: 12; height: 12 }
-                }
-
-                ToolButton {
-                    Layout.preferredWidth: 24
-                    Layout.preferredHeight: 24
-                    focusPolicy: Qt.NoFocus
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Remover agrupamento")
-                    onClicked: bundleWidgetRoot.requestDeleteConfirmation()
-                    background: Rectangle { radius: 5; color: parent.hovered ? "#22ef4444" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: parent.hovered ? "#f87171" : "#a7a9be"; width: 12; height: 12 }
-                }
+    function handleBundleItemRemoval(fileId, moveToTrash) {
+        widgetDialogs.setManagerActionError("")
+        if (itemsInvalid) {
+            widgetDialogs.setManagerActionError(qsTr("Os dados do agrupamento são inválidos e foram mantidos."))
+            return
+        }
+        var targetId = String(fileId || "")
+        var fileIndex = items.findIndex(function(item) {
+            return String(item.fileId || item.id || "") === targetId
+        })
+        if (!targetId || fileIndex < 0) {
+            widgetDialogs.setManagerActionError(qsTr("Este arquivo não está mais neste agrupamento."))
+            return
+        }
+        if (moveToTrash) {
+            var fileController = controller
+            if (!fileController || typeof fileController.deleteFile !== "function" ||
+                    !fileController.deleteFile(targetId)) {
+                widgetDialogs.setManagerActionError(qsTr("Não foi possível mover o arquivo para a Lixeira local. O agrupamento foi mantido."))
+                return
             }
         }
+        var nextItems = items.filter(function(item) {
+            return String(item.fileId || item.id || "") !== targetId
+        })
+        if (nextItems.length === 0) {
+            unlinkRequested()
+            return
+        }
+        if (!saveBundle(title, accentColor, nextItems))
+            widgetDialogs.setManagerActionError(qsTr("Não foi possível atualizar o agrupamento. O arquivo não foi removido dele."))
+    }
 
-        // Expandable bundled items drawer
-        Flow {
-            Layout.fillWidth: true
-            spacing: 6
-            visible: bundleWidgetRoot.expanded && bundleWidgetRoot.items.length > 0 && !bundleWidgetRoot.itemsInvalid
-
-            Repeater {
-                model: bundleWidgetRoot.items
-                delegate: Rectangle {
-                    id: itemDelegate
-                    required property var modelData
-                    required property int index
-                    height: 28
-                    width: itemRow.implicitWidth + 16
-                    radius: 6
-                    color: itemMouse.containsMouse ? "#268b5cf6" : "#0f0e17"
-                    border.color: itemMouse.containsMouse ? "#4d8b5cf6" : "#1affffff"
-                    border.width: 1
-
-                    RowLayout {
-                        id: itemRow
-                        anchors.centerIn: parent
-                        spacing: 6
-                        AppIcon { name: "file-text"; color: "#a78bfa"; width: 12; height: 12 }
-                        Text {
-                            text: itemDelegate.modelData.name || itemDelegate.modelData.title || qsTr("Documento")
-                            color: "#e2e8f0"
-                            font.pixelSize: 11
-                            font.weight: Font.Medium
-                        }
-                        AppIcon {
-                            name: "close"
-                            color: "#71717a"
-                            width: 10
-                            height: 10
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (bundleWidgetRoot.itemsInvalid) return
-                                    var next = bundleWidgetRoot.items.slice()
-                                    next.splice(itemDelegate.index, 1)
-                                    bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
-                                }
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: itemMouse
-                        anchors.fill: parent
-                        z: -1
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            var c = bundleWidgetRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
-                            var targetId = itemDelegate.modelData.fileId || itemDelegate.modelData.id || ""
-                            if (targetId && c && typeof c.previewLocalFile === "function") c.previewLocalFile(targetId)
-                        }
-                    }
-                }
-            }
+    DocumentBundleWidgetBody {
+        id: widgetBody
+        anchors.fill: parent
+        items: bundleWidgetRoot.items
+        uniqueExtensions: bundleWidgetRoot.uniqueExtensions
+        controller: bundleWidgetRoot.controller
+        title: bundleWidgetRoot.title
+        accentColor: bundleWidgetRoot.accentColor
+        itemsInvalid: bundleWidgetRoot.itemsInvalid
+        renaming: bundleWidgetRoot.renaming
+        expanded: bundleWidgetRoot.expanded
+        showColorPicker: bundleWidgetRoot.showColorPicker
+        pointerHovered: hoverHandler.hovered
+        onTitleClicked: {
+            bundleWidgetRoot.forceActiveFocus()
+            bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
+        }
+        onRenameRequested: {
+            if (bundleWidgetRoot.itemsInvalid) return
+            bundleWidgetRoot.renaming = true
+        }
+        onTitleSaveRequested: function(nextTitle) {
+            bundleWidgetRoot.renaming = false
+            bundleWidgetRoot.saveBundle(nextTitle, bundleWidgetRoot.accentColor, bundleWidgetRoot.items)
+        }
+        onRenameCanceled: bundleWidgetRoot.renaming = false
+        onColorPickerToggled: bundleWidgetRoot.showColorPicker = !bundleWidgetRoot.showColorPicker
+        onColorSelected: function(nextColor) {
+            bundleWidgetRoot.showColorPicker = false
+            bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, nextColor, bundleWidgetRoot.items)
+        }
+        onManagerRequested: {
+            bundleWidgetRoot.deleteActionError = ""
+            bundleWidgetRoot.managerOpen = true
+        }
+        onExpandedToggled: bundleWidgetRoot.expanded = !bundleWidgetRoot.expanded
+        onAddRequested: bundleWidgetRoot.isModalOpen = true
+        onDeleteRequested: bundleWidgetRoot.requestDeleteConfirmation()
+        onRemoveItemRequested: function(fileId, itemName) {
+            bundleWidgetRoot.managerOpen = true
+            Qt.callLater(function() { widgetDialogs.openItemRemoval(fileId, itemName) })
         }
     }
 
-    DocumentBundleModal {
+    DocumentBundleWidgetDialogs {
+        id: widgetDialogs
+        anchors.fill: parent
         controller: bundleWidgetRoot.controller
         pageId: bundleWidgetRoot.pageId
-        isOpen: bundleWidgetRoot.isModalOpen && !bundleWidgetRoot.itemsInvalid
-        existingIds: bundleWidgetRoot.items.map(function(it) { return it.fileId || it.id || "" })
+        bundleTitle: bundleWidgetRoot.title
+        groupColor: bundleWidgetRoot.accentColor
+        bundleItems: bundleWidgetRoot.items
+        itemsInvalid: bundleWidgetRoot.itemsInvalid
+        managerOpen: bundleWidgetRoot.managerOpen
+        pickerOpen: bundleWidgetRoot.isModalOpen
+        deleteConfirmationOpen: bundleWidgetRoot.deleteDialogOpen
+        deleteActionError: bundleWidgetRoot.deleteActionError
+        onManagerClosed: bundleWidgetRoot.managerOpen = false
+        onManagerItemsReordered: function(nextItems) {
+            bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, nextItems)
+        }
+        onManagerTitleUpdateRequested: function(nextTitle) {
+            bundleWidgetRoot.saveBundle(nextTitle, bundleWidgetRoot.accentColor, bundleWidgetRoot.items)
+        }
+        onAddFilesRequested: {
+            bundleWidgetRoot.managerOpen = false
+            Qt.callLater(function() { bundleWidgetRoot.isModalOpen = true })
+        }
+        onItemUngroupRequested: function(fileId, items, color) {
+            bundleWidgetRoot.ungroupItemRequested(fileId, items, color)
+        }
+        onItemRemovalRequested: function(fileId, moveToTrash) {
+            bundleWidgetRoot.handleBundleItemRemoval(fileId, moveToTrash)
+        }
+        onUngroupAllRequested: function(items, color) {
+            bundleWidgetRoot.ungroupRequested(items, color)
+        }
         onFileSelected: function(fileItem) {
             if (bundleWidgetRoot.itemsInvalid) {
                 bundleWidgetRoot.isModalOpen = false
                 return
             }
             var next = bundleWidgetRoot.items.slice()
-            var exists = next.some(function(it) { return (it.fileId || it.id) === fileItem.id })
+            var exists = next.some(function(item) { return (item.fileId || item.id) === fileItem.id })
             if (!exists) {
-                next.push({ id: fileItem.id, fileId: fileItem.id, name: fileItem.name || "Documento", fileType: fileItem.file_type || "doc", fileSize: Number(fileItem.file_size || 0) })
+                next.push({ id: fileItem.id, fileId: fileItem.id, name: fileItem.name || "Documento",
+                    fileType: fileItem.file_type || "doc", fileSize: Number(fileItem.file_size || 0) })
                 bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
             }
             bundleWidgetRoot.isModalOpen = false
@@ -494,36 +267,29 @@ Rectangle {
             }
             var next = bundleWidgetRoot.items.slice()
             for (var i = 0; i < filesList.length; ++i) {
-                var f = filesList[i]
-                if (!next.some(function(it) { return (it.fileId || it.id) === f.id })) {
-                    next.push({ id: f.id, fileId: f.id, name: f.name || "Documento", fileType: f.file_type || "doc", fileSize: Number(f.file_size || 0) })
+                var fileItem = filesList[i]
+                if (!next.some(function(item) { return (item.fileId || item.id) === fileItem.id })) {
+                    next.push({ id: fileItem.id, fileId: fileItem.id, name: fileItem.name || "Documento",
+                        fileType: fileItem.file_type || "doc", fileSize: Number(fileItem.file_size || 0) })
                 }
             }
             bundleWidgetRoot.saveBundle(bundleWidgetRoot.title, bundleWidgetRoot.accentColor, next)
             bundleWidgetRoot.isModalOpen = false
         }
-        onClosed: {
+        onPickerClosed: {
             bundleWidgetRoot.isModalOpen = false
             if ((bundleWidgetRoot.attrs["data-auto-open"] || "") === "true") {
-                var cleaned = Object.assign({}, bundleWidgetRoot.attrs)
-                delete cleaned["data-auto-open"]
-                bundleWidgetRoot.attrsUpdated(cleaned)
+                var cleanedAttrs = Object.assign({}, bundleWidgetRoot.attrs)
+                delete cleanedAttrs["data-auto-open"]
+                bundleWidgetRoot.attrsUpdated(cleanedAttrs)
             }
         }
-    }
-
-    DocumentBundleDeleteDialog {
-        isOpen: bundleWidgetRoot.deleteDialogOpen
-        bundleTitle: bundleWidgetRoot.title
-        errorMessage: bundleWidgetRoot.deleteActionError
-        itemCount: bundleWidgetRoot.items.length
-        itemsInvalid: bundleWidgetRoot.itemsInvalid
         onUnlinkRequested: bundleWidgetRoot.unlinkRequested()
-        onUngroupRequested: bundleWidgetRoot.ungroupRequested(
-                                bundleWidgetRoot.items, bundleWidgetRoot.accentColor)
-        onDismissed: {
+        onUngroupRequested: function(items, color) { bundleWidgetRoot.ungroupRequested(items, color) }
+        onDeleteDialogDismissed: {
             bundleWidgetRoot.deleteDialogOpen = false
             bundleWidgetRoot.deleteActionError = ""
         }
     }
+
 }

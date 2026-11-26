@@ -10,7 +10,7 @@ Dialog {
     modal: true
     focus: true
     padding: 18
-    closePolicy: Popup.CloseOnEscape
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     standardButtons: Dialog.NoButton
 
     property string bundleTitle: ""
@@ -71,7 +71,7 @@ Dialog {
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             enabled: !deleteDialogRoot.itemsInvalid && deleteDialogRoot.itemCount > 0
-            Accessible.name: qsTr("Ungroup files and keep them on this page")
+            Accessible.name: qsTr("Desagrupar arquivos e mantê-los nesta página")
             onClicked: deleteDialogRoot.ungroupRequested()
             background: Rectangle {
                 radius: 9
@@ -98,7 +98,7 @@ Dialog {
             id: unlinkButton
             Layout.fillWidth: true
             Layout.preferredHeight: 56
-            Accessible.name: qsTr("Unlink the bundle from this page and keep its files")
+            Accessible.name: qsTr("Desvincular o agrupamento desta página e manter os arquivos")
             onClicked: deleteDialogRoot.unlinkRequested()
             background: Rectangle {
                 radius: 9
@@ -125,7 +125,7 @@ Dialog {
             id: cancelButton
             Layout.alignment: Qt.AlignRight
             text: qsTr("Cancelar")
-            Accessible.name: qsTr("Cancel removing the document bundle")
+            Accessible.name: qsTr("Cancelar a remoção do agrupamento")
             onClicked: deleteDialogRoot.close()
             background: Rectangle {
                 radius: 7

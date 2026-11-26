@@ -7,6 +7,7 @@ import ".."
 // Document picker & page-loose-file absorber mirroring apps/web-react/src/components/modals/DocumentBundleModal.tsx.
 Item {
     id: bundleModalRoot
+    parent: Overlay.overlay
     anchors.fill: parent
     visible: isOpen
     z: 100
@@ -24,7 +25,7 @@ Item {
     signal closed()
 
     function refreshList() {
-        var c = bundleModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        var c = bundleModalRoot.controller
         if (!c) { allFiles = []; filteredFiles = []; return }
         allFiles = (typeof c.getFiles === "function") ? (c.getFiles("") || []) : []
         if (bundleModalRoot.pageId && typeof c.getPage === "function" && typeof c.extractLooseFileWidgetIds === "function") {
@@ -92,6 +93,7 @@ Item {
             }
 
             Button {
+                id: absorbFilesButton
                 visible: bundleModalRoot.loosePageFileIds.length > 0
                 Layout.fillWidth: true; Layout.preferredHeight: 34; focusPolicy: Qt.NoFocus
                 onClicked: {
@@ -102,7 +104,7 @@ Item {
                     bundleModalRoot.absorbFilesRequested(matched)
                     bundleModalRoot.closed()
                 }
-                background: Rectangle { radius: 8; color: parent.hovered ? "#338b5cf6" : "#1e1b2e"; border.color: "#4d8b5cf6" }
+                background: Rectangle { radius: 8; color: absorbFilesButton.hovered ? "#338b5cf6" : "#1e1b2e"; border.color: "#4d8b5cf6" }
                 contentItem: Text {
                     text: qsTr("Importar %1 documento(s) solto(s) desta página").arg(bundleModalRoot.loosePageFileIds.length)
                     color: "#c4b5fd"; font.pixelSize: 12; font.weight: Font.DemiBold
@@ -117,6 +119,7 @@ Item {
                 color: "#fffffe"; placeholderTextColor: "#4b5563"; font.pixelSize: 12
                 background: Rectangle { radius: 8; color: "#0f0e17"; border.color: searchField.activeFocus ? "#7c3aed" : "#2e2e38"; border.width: 1 }
                 onTextEdited: bundleModalRoot.applySearch()
+                Keys.onEscapePressed: bundleModalRoot.closed()
             }
 
             ListView {

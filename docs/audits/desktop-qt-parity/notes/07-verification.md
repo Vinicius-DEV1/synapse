@@ -35,6 +35,37 @@ The current source audit, event-widget changes, Core cursor/entity fix, and nati
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/DocumentBundleDeleteDialog.qml apps/desktop-qt/qml/notes/DocumentBundleWidget.qml apps/desktop-qt/qml/notes/BlockDelegateRouter.qml apps/desktop-qt/qml/notes/BlockListEditor.qml apps/desktop-qt/qml/notes/DocumentBundleOperations.js` | Passed with existing Notes layout, hover, context-access and dynamic-delegate warnings | The confirmation dialog, router forwarding, source flush and Core-parsed ungroup path parse. This does not instantiate the dialog, confirm AST round-trip, test cancellation, or verify file/Drive deletion. |
 | `git diff --check` | Passed after QT-NOTES-039 | No whitespace errors in the bundle action flow or its audit records. |
 
+### Document-bundle manager iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Focused document-bundle `qmllint` command below | Passed, exit code 0, with existing dynamic-object and context-access warnings in `BlockDelegateRouter.qml` and `BlockListEditor.qml` | The new manager, header, row, removal dialog and extracted widget components produced no lint diagnostics. This parses QML/JS but does not load the overlay or exercise focus, bindings, autosave or file operations. |
+| Core file-Trash source inspection: `files/items/mutations.rs`, `trash/repository.rs`, `files_items_controller.cpp`, and `trash_controller.cpp` | Confirmed `deleteFile` sets `deleted_at`; Trash lists file records and restores `item_type="file"` | Source inspection only. No Qt interaction was run. The file restore wrapper does not emit `filesChanged`; verify the visible library refresh after restoring. |
+| `git diff --check` | Passed | No whitespace errors in the manager implementation and audit updates. |
+| Runtime UI, keyboard/focus, note autosave failure, Trash restore refresh, Drive, and React round-trip | Not run | These remain required acceptance scenarios. The Qt flow only soft-deletes the local file row and leaves any Drive copy intact. |
+
+Exact focused QML lint command for the document-bundle manager iteration:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleModal.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleDeleteDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleItemRemovalDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleItemsPreview.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerHeader.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleManagerItem.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetActions.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetBody.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetHeader.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetPalette.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleOperations.js
+```
+
 Exact QML lint command for this pass:
 
 ```bash
