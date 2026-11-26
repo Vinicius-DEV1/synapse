@@ -128,6 +128,7 @@ public:
     QString savedNotesRequestId;
     QHash<QString, QString> configValues;
     int renderedPage = 0;
+    int quizBatteryListCalls = 0;
 
     Q_INVOKABLE void previewLocalFile(const QString &fileId, const QString &requestId) {
         requestedFileId = fileId;
@@ -153,6 +154,20 @@ public:
         savedNotesFileId = fileId;
         savedNotesText = text;
         savedNotesRequestId = requestId;
+    }
+    Q_INVOKABLE QVariantList getQuizBatteries() {
+        quizBatteryListCalls++;
+        return {QVariantMap{{QStringLiteral("id"), QStringLiteral("notes-battery")},
+                            {QStringLiteral("title"), QStringLiteral("Notes questions")},
+                            {QStringLiteral("page_id"), QStringLiteral("notes-page")},
+                            {QStringLiteral("page_title"), QStringLiteral("Chapter")}}};
+    }
+    Q_INVOKABLE QVariantList getBatteryQuestions(const QString &) const {
+        return {QVariantMap{{QStringLiteral("id"), QStringLiteral("notes-question")},
+                            {QStringLiteral("type"), QStringLiteral("multiple_choice")},
+                            {QStringLiteral("question"), QStringLiteral("What is documented?")},
+                            {QStringLiteral("options"), QStringLiteral("[\"A\",\"B\"]")},
+                            {QStringLiteral("correct_index"), 1}}};
     }
     Q_INVOKABLE QString getConfig(const QString &key, const QString &defaultValue = QString()) const {
         return configValues.value(key, defaultValue);
@@ -370,6 +385,7 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(openAiButton, "clicked"));
         QObject *aiModal = root->findChild<QObject *>("notesMarkdownAiModal");
         QVERIFY(aiModal);
+        QCOMPARE(aiModal->property("controller").value<QObject *>(), static_cast<QObject *>(&controller));
         QTRY_VERIFY(aiModal->property("visible").toBool());
         aiModal->setProperty("proposal", QStringLiteral("# Revised chapter"));
         QObject *applyButton = aiModal->findChild<QObject *>("notesMarkdownAiApplyProposalButton");
@@ -397,6 +413,23 @@ private slots:
         QTRY_COMPARE(viewer->property("previewText").toString(), QString("# Revised chapter"));
         QVERIFY(!aiModal->property("visible").toBool());
         QVERIFY(aiModal->property("documentText").toString().isEmpty());
+
+        QVERIFY(QMetaObject::invokeMethod(openAiButton, "clicked"));
+        QVERIFY(aiModal->property("visible").toBool());
+        QCOMPARE(controller.quizBatteryListCalls, 2);
+        QVERIFY2(aiModal->property("batteryLoadError").toString().isEmpty(),
+                 qPrintable(aiModal->property("batteryLoadError").toString()));
+        QCOMPARE(aiModal->property("availableBatteries").toList().size(), 1);
+        QVERIFY(QMetaObject::invokeMethod(aiModal, "selectBatteryMention",
+                                          Q_ARG(QVariant, QStringLiteral("notes-battery"))));
+        const QVariantList attachedBatteries = aiModal->property("attachedBatteries").toList();
+        QCOMPARE(attachedBatteries.size(), 1);
+        QCOMPARE(attachedBatteries.first().toMap().value(QStringLiteral("questions")).toList().size(), 1);
+        controller.invalidate();
+        QVERIFY(!root->property("visible").toBool());
+        QVERIFY(!aiModal->property("visible").toBool());
+        QVERIFY(aiModal->property("documentText").toString().isEmpty());
+        QVERIFY(aiModal->property("attachedBatteries").toList().isEmpty());
     }
 
     void notesFilePreviewCancelsPendingRequestAndClosesOnVaultInvalidation() {

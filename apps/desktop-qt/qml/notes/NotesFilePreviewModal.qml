@@ -283,6 +283,7 @@ Rectangle {
         id: notesMarkdownAi
         anchors.fill: parent
         aiClient: notesAiClient
+        controller: modalRoot.controller
         documentFileId: viewer.previewFileId
         saving: modalRoot.savePending && modalRoot.pendingSaveSource === "ai"
         onApplyProposalRequested: function(markdown) { modalRoot.saveMarkdown(markdown, "ai") }

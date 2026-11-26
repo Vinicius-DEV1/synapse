@@ -12,6 +12,14 @@ function parseOptions(value) {
     }
 }
 
+function toArray(value) {
+    if (Array.isArray(value)) return value
+    if (!value || typeof value.length !== "number") return []
+    var result = []
+    for (var i = 0; i < value.length; ++i) result.push(value[i])
+    return result
+}
+
 function normalizeQuestion(question) {
     if (!question || typeof question !== "object") return null
     var normalized = Object.assign({}, question)
@@ -57,7 +65,7 @@ function applyLatestAttempt(question, attempt) {
 
 function loadQuestions(controller, batteryId, questionId) {
     if (controller && batteryId && typeof controller.getBatteryQuestions === "function") {
-        var batteryQuestions = controller.getBatteryQuestions(batteryId) || []
+        var batteryQuestions = toArray(controller.getBatteryQuestions(batteryId))
         var latestByQuestion = latestAttemptsByQuestion(controller, batteryId, "")
         return batteryQuestions.map(function(question) {
             var normalized = normalizeQuestion(question)

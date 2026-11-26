@@ -4,7 +4,7 @@
 
 function normalizeBatteries(raw, currentBatteryId) {
     var currentId = String(currentBatteryId || "")
-    return (Array.isArray(raw) ? raw : []).map(function(item) {
+    return QuestionSession.toArray(raw).map(function(item) {
         var battery = item || ({})
         return {
             id: String(battery.id || ""),
