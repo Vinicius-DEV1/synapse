@@ -95,6 +95,20 @@ Rectangle {
         attrsUpdated(next)
     }
 
+    function startRename() {
+        if (isNotFound || renaming) return
+        renameErrorMessage = ""
+        nameInput.text = fileName
+        renaming = true
+        Qt.callLater(function() {
+            if (!fileWidgetRoot.renaming) return
+            nameInput.forceActiveFocus()
+            var extensionIndex = nameInput.text.lastIndexOf(".")
+            if (extensionIndex > 0) nameInput.select(0, extensionIndex)
+            else nameInput.selectAll()
+        })
+    }
+
     function requestDeleteConfirmation() {
         deleteDialog.errorMessage = ""
         isDeleteDialogOpen = true
@@ -273,9 +287,7 @@ Rectangle {
                 onClicked: fileWidgetRoot.openFilePreview()
                 onDoubleClicked: {
                     if (!fileWidgetRoot.isNotFound) {
-                        fileWidgetRoot.renameErrorMessage = ""
-                        fileWidgetRoot.renaming = true
-                        nameInput.forceActiveFocus()
+                        fileWidgetRoot.startRename()
                     }
                 }
             }
@@ -295,11 +307,7 @@ Rectangle {
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Renomear arquivo")
-                onClicked: {
-                    fileWidgetRoot.renameErrorMessage = ""
-                    fileWidgetRoot.renaming = true
-                    nameInput.forceActiveFocus()
-                }
+                onClicked: fileWidgetRoot.startRename()
                 background: Rectangle { radius: 5; color: renameActionButton.hovered ? "#4d000000" : "transparent" }
                 contentItem: AppIcon {
                     anchors.centerIn: parent
