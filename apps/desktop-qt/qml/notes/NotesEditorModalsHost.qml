@@ -25,6 +25,7 @@ Item {
     signal applyAiHtmlRequested(string html)
     signal insertAiTextRequested(string text)
     signal insertWidgetRequested(string widgetHtml)
+    signal linkedTargetOpenRequested(string moduleKey, string entityId, string title, bool newTab, bool quickPreview)
     signal deleteNoteConfirmed()
     signal deleteCancelled()
 
@@ -95,6 +96,17 @@ Item {
 
     function openMediaWidgetPicker(mode, prefillUrl, autoCaptureScrap) {
         mediaPickerModal.openMode(mode, prefillUrl, autoCaptureScrap)
+    }
+
+    function openLinkedItemActions(kind, itemId, title) {
+        linkedItemActionDialog.openFor(kind, itemId, title)
+    }
+
+    function openLinkedItemTarget(kind, itemId, title, newTab, quickPreview) {
+        var moduleKey = kind === "video" ? "video"
+                      : kind === "file" ? "library" : "library"
+        linkedTargetOpenRequested(moduleKey, String(itemId || ""), String(title || ""),
+                                  Boolean(newTab), Boolean(quickPreview))
     }
 
     function openDeleteDialog(errMessage) {
@@ -293,6 +305,19 @@ Item {
         id: mediaPickerModal
         controller: modalsHost.controller
         onInsertWidgetRequested: function(html) { modalsHost.insertWidgetRequested(html) }
+    }
+
+    NotesLinkedItemActionDialog {
+        id: linkedItemActionDialog
+        onPreviewRequested: function(itemId, itemTitle) {
+            modalsHost.openLinkedItemTarget("file", itemId, itemTitle, true, true)
+        }
+        onOpenCurrentTabRequested: function(kind, itemId, itemTitle) {
+            modalsHost.openLinkedItemTarget(kind, itemId, itemTitle, false, false)
+        }
+        onOpenNewTabRequested: function(kind, itemId, itemTitle) {
+            modalsHost.openLinkedItemTarget(kind, itemId, itemTitle, true, false)
+        }
     }
 
     Loader {

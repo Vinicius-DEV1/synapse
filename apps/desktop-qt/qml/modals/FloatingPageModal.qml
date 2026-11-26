@@ -16,6 +16,7 @@ Popup {
     signal expandRequested(string pageId)
     signal pageSaved(string savedPageId, string newTitle)
     signal navigateModuleRequested(string moduleKey)
+    signal linkedTargetOpenRequested(string moduleKey, string entityId, string title, bool newTab, bool quickPreview)
 
     modal: true
     focus: true
@@ -138,6 +139,10 @@ Popup {
             onNavigateModuleRequested: function(moduleKey) {
                 floatingRoot.close()
                 floatingRoot.navigateModuleRequested(moduleKey)
+            }
+            onLinkedTargetOpenRequested: function(moduleKey, entityId, title, newTab, quickPreview) {
+                floatingRoot.close()
+                floatingRoot.linkedTargetOpenRequested(moduleKey, entityId, title, newTab, quickPreview)
             }
         }
     }

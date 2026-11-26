@@ -50,6 +50,7 @@ Rectangle {
     signal shareRequested(string pageId)
     signal openInNewTabRequested(string pageId)
     signal navigateModuleRequested(string moduleKey)
+    signal linkedTargetOpenRequested(string moduleKey, string entityId, string title, bool newTab, bool quickPreview)
     signal pageSavedExternal(string pageId, string title)
 
     Theme { id: theme }
@@ -482,7 +483,11 @@ Rectangle {
                         if (pageViewRoot.queueFileTrashAfterSave(fileId))
                             pageViewRoot.saveActiveNote()
                     }
-                    onFilePreviewRequested: function(fileId, fileName) {
+                    onFilePreviewRequested: function(fileId, fileName, showOpenActions) {
+                        if (showOpenActions) {
+                            viewModals.innerModalsHost.openLinkedItemActions("file", fileId, fileName)
+                            return
+                        }
                         if (fileId && pageViewRoot.controller &&
                                 typeof pageViewRoot.controller.previewLocalFile === "function") {
                             pageViewRoot.controller.previewLocalFile(fileId)
@@ -499,7 +504,10 @@ Rectangle {
                     onYoutubeWatchRequested: function(u, t) { viewModals.innerModalsHost.openYoutubeModal(u, t) }
                     onMermaidFullscreenRequested: function(c) { viewModals.innerModalsHost.openMermaidModal(c) }
                     onHabitStatsRequested: function(hid) { viewModals.innerModalsHost.openHabitHeatmap(hid) }
-                    onOpenMediaRequested: function() { pageViewRoot.navigateModuleRequested("library") }
+                    onOpenMediaRequested: function(mediaType, mediaId, title) {
+                        var kind = String(mediaType || "video").toLowerCase() === "book" ? "book" : "video"
+                        viewModals.innerModalsHost.openLinkedItemActions(kind, mediaId, title)
+                    }
                 }
 
                 MouseArea {
@@ -539,6 +547,9 @@ Rectangle {
         onHelpClosed: pageViewRoot.isHelpOpen = false
         onNavigateModuleRequested: function(moduleKey) {
             pageViewRoot.navigateModuleRequested(moduleKey)
+        }
+        onLinkedTargetOpenRequested: function(moduleKey, entityId, title, newTab, quickPreview) {
+            pageViewRoot.linkedTargetOpenRequested(moduleKey, entityId, title, newTab, quickPreview)
         }
         onSelectPageRequested: function(pid) { pageViewRoot.selectPage(pid) }
         onImportedPage: function(newId) { pageViewRoot.refreshPageTree(); pageViewRoot.selectPage(newId) }

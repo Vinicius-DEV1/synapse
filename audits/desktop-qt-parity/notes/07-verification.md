@@ -28,6 +28,41 @@ The current source audit, event-widget changes, Core cursor/entity fix, and nati
 | `git diff --check` | Passed after each atomic change | No whitespace errors in the reviewed Notes changes. |
 | Runtime filter failure recovery, dropped-file cross-client viewer, page-reference state/cursor/undo behavior | Not run | These acceptance scenarios remain open and must not be inferred from compilation or lint. |
 
+### Linked file/media action dialog iteration (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_linked_item_actions.qml -import apps/desktop-qt/qml` | Passed: 6 passed, 0 failed. Verified file quick preview/current/new reader actions, book/video current/new actions, media hides the file-only preview option, payload identity and Escape dismissal. | Qt 6.10.2, offscreen. This mounts the actual dialog and exercises button clicks; it does not instantiate the application tab coordinator or real Library/Video/Files modules. |
+| Focused `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml` for the new dialog and its Notes/PageView/application routing chain | Passed, exit code 0; existing dynamic-loader, unqualified-context and module-wide warnings remain | QML parses. Lint does not instantiate the real Notes page or prove linked item resolution, visual parity or focus restoration. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Native target links successfully. Runtime startup, actual same/new tab routes, pinned tabs, file types and video restore remain open. |
+| 8-second offscreen `synapse-desktop` startup with isolated temporary HOME/XDG directories | Passed: the application opened the local database and loaded the native interface, then remained alive for the full smoke window | This catches root QML/component load failures but does not click Notes widgets or prove dialog/tab behavior. The temporary data and logs are under `/tmp/synapse-notes-modal-smoke`. |
+| Audit Markdown relative-link check and `git diff --check` | Passed | Changed audit links resolve; no trailing whitespace or patch formatting errors. |
+| Same-viewport React/Qt capture; real app flow for standalone, nested, floating and bundle file previews; target failure and tab switching | Not run | Keep QT-NOTES-058 and the relevant checklist items open until live application behavior and visuals are checked. |
+
+Exact focused QML lint command for this iteration:
+
+```bash
+/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml \
+  apps/desktop-qt/qml/notes/NotesLinkedItemActionDialog.qml \
+  apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml \
+  apps/desktop-qt/qml/notes/MediaWidget.qml \
+  apps/desktop-qt/qml/notes/FileAttachmentWidget.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidget.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetBody.qml \
+  apps/desktop-qt/qml/notes/DocumentBundleWidgetDialogs.qml \
+  apps/desktop-qt/qml/notes/BlockDelegateRouter.qml \
+  apps/desktop-qt/qml/notes/BlockListEditor.qml \
+  apps/desktop-qt/qml/notes/NotesColumnLayout.qml \
+  apps/desktop-qt/qml/notes/NotesToggleBlock.qml \
+  apps/desktop-qt/qml/notes/CollectionBlock.qml \
+  apps/desktop-qt/qml/notes/Editor.qml \
+  apps/desktop-qt/qml/page-view/PageViewModalsHost.qml \
+  apps/desktop-qt/qml/page-view/PageView.qml \
+  apps/desktop-qt/qml/modals/FloatingPageModal.qml \
+  apps/desktop-qt/qml/video/VideoPlayerView.qml \
+  apps/desktop-qt/qml/AuthenticatedApplication.qml
+```
+
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/LinkGroupBlock.qml` | Passed with existing layout and dynamic `Button.hovered` warnings | The fallback parser and invalid-metadata state parse. This does not execute JavaScript against real legacy payloads or verify the warning/disabled-control behavior at runtime. |
 | `git diff --check` | Passed after QT-NOTES-037 | No whitespace errors in the link-group parser, checklist or bug-register edits. |
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/DocumentBundleWidget.qml apps/desktop-qt/qml/notes/LinkGroupBlock.qml` | Passed with existing layout, `Button.hovered`, and context-access warnings | Both metadata consumers parse with the shared Notes-local JSON attribute helper. No runtime payload, modal, or cross-client behavior was exercised. |

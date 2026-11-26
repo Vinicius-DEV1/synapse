@@ -30,7 +30,7 @@ Loader {
     signal absorbDocumentBundleLooseFileRequested(int bundleIndex, var sourceBlockPath, string fileId, var bundledItems, string groupColor, var bundleWidget)
     signal documentBundleManagerStateRequested(string blockId, bool isOpen)
     signal localFileTrashAfterSaveRequested(string fileId)
-    signal filePreviewRequested(string fileId, string fileName)
+    signal filePreviewRequested(string fileId, string fileName, bool showOpenActions)
     signal fileAttachmentRemovalConfirmed(int idx, var fileWidget)
     signal fileAttachmentDeleteLocalConfirmed(int idx, var fileWidget, string fileId)
     signal insertAfterRequested(int idx, string widgetHtml)
@@ -194,7 +194,7 @@ Loader {
     Component { id: focusComp; FocusWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: alarmComp; AlarmWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex) } }
     Component { id: eventComp; CalendarEventWidget { width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onRemoveRequested: routerLoader.deleteRequested(routerLoader.blockIndex); onMoveUpRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, -1); onMoveDownRequested: routerLoader.moveBlockRequested(routerLoader.blockIndex, 1); onOpenCalendarRequested: routerLoader.openCalendarRequested() } }
-    Component { id: fileComp; FileAttachmentWidget { id: routedFileWidget; width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; isSelected: routerLoader.fileWidgetSelected; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPreviewFileRequested: function(fileId, fileName) { routerLoader.filePreviewRequested(fileId, fileName) }; onRemoveRequested: routerLoader.fileAttachmentRemovalConfirmed(routerLoader.blockIndex, routedFileWidget); onDeleteLocalRequested: function(fileId) { routerLoader.fileAttachmentDeleteLocalConfirmed(routerLoader.blockIndex, routedFileWidget, fileId) } } }
+    Component { id: fileComp; FileAttachmentWidget { id: routedFileWidget; width: routerLoader.width; blockData: routerLoader.blockData; controller: routerLoader.controller; isSelected: routerLoader.fileWidgetSelected; onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }; onPreviewFileRequested: function(fileId, fileName, showOpenActions) { routerLoader.filePreviewRequested(fileId, fileName, showOpenActions) }; onRemoveRequested: routerLoader.fileAttachmentRemovalConfirmed(routerLoader.blockIndex, routedFileWidget); onDeleteLocalRequested: function(fileId) { routerLoader.fileAttachmentDeleteLocalConfirmed(routerLoader.blockIndex, routedFileWidget, fileId) } } }
     Component {
         id: bundleComp
         DocumentBundleWidget {
@@ -206,8 +206,8 @@ Loader {
             managerInitiallyOpen: routerLoader.documentBundleManagerOpen
             onAttrsUpdated: function(na) { routerLoader.updateAttrs(na) }
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
-            onFilePreviewRequested: function(fileId, fileName) {
-                routerLoader.filePreviewRequested(fileId, fileName)
+            onFilePreviewRequested: function(fileId, fileName, showOpenActions) {
+                routerLoader.filePreviewRequested(fileId, fileName, showOpenActions)
             }
             onManagerOpenStateRequested: function(blockId, isOpen) {
                 routerLoader.documentBundleManagerStateRequested(blockId, isOpen)
@@ -257,8 +257,8 @@ Loader {
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
-            onFilePreviewRequested: function(fileId, fileName) {
-                routerLoader.filePreviewRequested(fileId, fileName)
+            onFilePreviewRequested: function(fileId, fileName, showOpenActions) {
+                routerLoader.filePreviewRequested(fileId, fileName, showOpenActions)
             }
             onLocalFileTrashAfterSaveRequested: function(fileId) {
                 routerLoader.localFileTrashAfterSaveRequested(fileId)
@@ -285,8 +285,8 @@ Loader {
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
-            onFilePreviewRequested: function(fileId, fileName) {
-                routerLoader.filePreviewRequested(fileId, fileName)
+            onFilePreviewRequested: function(fileId, fileName, showOpenActions) {
+                routerLoader.filePreviewRequested(fileId, fileName, showOpenActions)
             }
             onLocalFileTrashAfterSaveRequested: function(fileId) {
                 routerLoader.localFileTrashAfterSaveRequested(fileId)
@@ -315,8 +315,8 @@ Loader {
             onMermaidFullscreenRequested: function(c) { routerLoader.mermaidFullscreenRequested(c) }
             onHabitStatsRequested: function(hid) { routerLoader.habitStatsRequested(hid) }
             onOpenMediaRequested: function(mt, mid, t) { routerLoader.openMediaRequested(mt, mid, t) }
-            onFilePreviewRequested: function(fileId, fileName) {
-                routerLoader.filePreviewRequested(fileId, fileName)
+            onFilePreviewRequested: function(fileId, fileName, showOpenActions) {
+                routerLoader.filePreviewRequested(fileId, fileName, showOpenActions)
             }
             onLocalFileTrashAfterSaveRequested: function(fileId) {
                 routerLoader.localFileTrashAfterSaveRequested(fileId)

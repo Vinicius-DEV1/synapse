@@ -52,7 +52,7 @@ Rectangle {
     Behavior on border.color { ColorAnimation { duration: 150 } }
 
     signal attrsUpdated(var newAttrs)
-    signal previewFileRequested(string fileId, string fileName)
+    signal previewFileRequested(string fileId, string fileName, bool showOpenActions)
     signal removeRequested()
     signal deleteLocalRequested(string fileId)
 
@@ -173,7 +173,7 @@ Rectangle {
             isMissingDialogOpen = true
             return
         }
-        previewFileRequested(fileId, fileName)
+        previewFileRequested(fileId, fileName, true)
     }
 
     Component.onCompleted: syncFromCore()

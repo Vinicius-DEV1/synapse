@@ -40,8 +40,17 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: mediaActionPopup.open()
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.RightButton) {
+                mediaActionPopup.open()
+                return
+            }
+            mediaWidgetRoot.openMediaRequested(mediaWidgetRoot.mediaType,
+                                               mediaWidgetRoot.mediaId,
+                                               mediaWidgetRoot.title)
+        }
     }
 
     Popup {
@@ -58,7 +67,9 @@ Rectangle {
                 Layout.preferredHeight: 30
                 onClicked: {
                     mediaActionPopup.close()
-                    mediaWidgetRoot.openMediaRequested(mediaWidgetRoot.mediaType, mediaWidgetRoot.mediaId, mediaWidgetRoot.title)
+                    mediaWidgetRoot.openMediaRequested(mediaWidgetRoot.mediaType,
+                                                       mediaWidgetRoot.mediaId,
+                                                       mediaWidgetRoot.title)
                 }
                 background: Rectangle { radius: 6; color: hovered ? "#228b5cf6" : "transparent" }
                 contentItem: RowLayout {

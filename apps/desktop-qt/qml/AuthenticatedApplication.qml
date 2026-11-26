@@ -96,6 +96,11 @@ Item {
             patch.bookId = libraryView.activeBookId || null
             patch.bookTitle = libraryView.activeBookTitle || ""
             patch.title = patch.bookId ? patch.bookTitle : "Biblioteca"
+        } else if (cur.module === "video" && videoView && videoView.activeVideo) {
+            patch.moduleState = Object.assign({}, cur.moduleState || ({}), {
+                videoId: String(videoView.activeVideo.id || "")
+            })
+            patch.title = String(videoView.activeVideo.title || "Vídeos")
         }
         var nextTabs = tabsList.slice()
         nextTabs[idx] = Object.assign({}, cur, patch)
@@ -119,6 +124,25 @@ Item {
         }
     }
 
+    function syncActiveVideoTabMeta() {
+        if (activeTab !== "video" || !videoView) return
+        var activeVideo = videoView.activeVideo
+        var videoId = activeVideo ? String(activeVideo.id || "") : ""
+        var videoTitle = activeVideo ? String(activeVideo.title || "Vídeos") : "Vídeos"
+        for (var i = 0; i < tabsList.length; ++i) {
+            if (tabsList[i].id !== currentTabId || tabsList[i].module !== "video") continue
+            var currentState = tabsList[i].moduleState || ({})
+            if (String(currentState.videoId || "") === videoId && tabsList[i].title === videoTitle) break
+            var nextTabs = tabsList.slice()
+            nextTabs[i] = Object.assign({}, tabsList[i], {
+                title: videoTitle,
+                moduleState: Object.assign({}, currentState, { videoId: videoId || null })
+            })
+            tabsList = nextTabs
+            break
+        }
+    }
+
     function restoreTabState(tabObj) {
         if (!tabObj) return
         if (tabObj.module === "notes" && notesView && tabObj.pageId) {
@@ -134,7 +158,38 @@ Item {
         } else if (tabObj.module === "library" && libraryView) {
             if (tabObj.bookId) libraryView.openBookById(tabObj.bookId)
             else libraryView.closeReaderIfOpen()
+        } else if (tabObj.module === "video" && videoView) {
+            var savedVideoId = String((tabObj.moduleState || ({})).videoId || "")
+            if (savedVideoId) videoView.openVideoById(savedVideoId)
+            else videoView.exitPlayer()
         }
+    }
+
+    function openNotesLinkedTarget(moduleKey, entityId, title, newTab, quickPreview) {
+        var id = String(entityId || "").trim()
+        if (!id) return
+        var targetModule = quickPreview ? "files" : String(moduleKey || "library")
+        var targetTitle = String(title || getModuleInfo(targetModule).title)
+        var targetIcon = getModuleInfo(targetModule).icon
+
+        if (quickPreview) {
+            if (newTab) addNewTab(targetModule, targetTitle, targetIcon)
+            else updateActiveTabModule(targetModule, targetTitle, targetIcon)
+            if (dataController && typeof dataController.previewLocalFile === "function")
+                dataController.previewLocalFile(id)
+            return
+        }
+
+        if (newTab) addNewTab(targetModule, targetTitle, targetIcon)
+        else updateActiveTabModule(targetModule, targetTitle, targetIcon)
+
+        Qt.callLater(function() {
+            if (targetModule === "library" && libraryView) {
+                libraryView.openBookById(id)
+            } else if (targetModule === "video" && videoView) {
+                videoView.openVideoById(id)
+            }
+        })
     }
 
     function switchToTab(tabId) {
@@ -695,6 +750,9 @@ Item {
                             var info = rootWindow.getModuleInfo(modKey)
                             rootWindow.updateActiveTabModule(modKey, info.title, info.icon)
                         }
+                        onLinkedTargetOpenRequested: function(modKey, entityId, title, newTab, quickPreview) {
+                            rootWindow.openNotesLinkedTarget(modKey, entityId, title, newTab, quickPreview)
+                        }
                     }
                     ZenQuizView { id: quizView }
                     LibraryView {
@@ -707,6 +765,7 @@ Item {
                     VideoPlayerView {
                         id: videoView
                         viewportWidth: rootWindow.width
+                        onActiveVideoChanged: rootWindow.syncActiveVideoTabMeta()
                         onFullscreenToggled: {
                             if (!rootWindow.windowRoot) return
                             if (videoView.isPlayerFullscreen) {

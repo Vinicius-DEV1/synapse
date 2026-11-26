@@ -41,6 +41,7 @@ Item {
     signal historyClosed()
     signal helpClosed()
     signal navigateModuleRequested(string moduleKey)
+    signal linkedTargetOpenRequested(string moduleKey, string entityId, string title, bool newTab, bool quickPreview)
 
     function openMoveFor(pageId) {
         moveModal.openForPage(pageId || selectedPageId)
@@ -117,6 +118,9 @@ Item {
         function onNavigateModuleRequested(moduleKey) {
             hostRoot.navigateModuleRequested(moduleKey)
         }
+        function onLinkedTargetOpenRequested(moduleKey, entityId, title, newTab, quickPreview) {
+            hostRoot.linkedTargetOpenRequested(moduleKey, entityId, title, newTab, quickPreview)
+        }
     }
 
     Connections {
@@ -146,6 +150,9 @@ Item {
         onApplyAiHtmlRequested: function(html) { hostRoot.applyAiHtmlRequested(html) }
         onInsertAiTextRequested: function(txt) { hostRoot.insertAiTextRequested(txt) }
         onInsertWidgetRequested: function(html) { hostRoot.insertWidgetRequested(html) }
+        onLinkedTargetOpenRequested: function(moduleKey, entityId, title, newTab, quickPreview) {
+            hostRoot.linkedTargetOpenRequested(moduleKey, entityId, title, newTab, quickPreview)
+        }
         onDeleteCancelled: hostRoot.pendingDeleteTargetId = ""
         onDeleteNoteConfirmed: {
             var targetId = hostRoot.pendingDeleteTargetId || hostRoot.selectedPageId

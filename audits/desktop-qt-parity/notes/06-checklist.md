@@ -129,8 +129,10 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 ## G.1. Notes modal parity
 
 - [ ] Complete [11-modal-crosswalk.md](11-modal-crosswalk.md): match every React Notes editor modal/popover to its native host and verify each Notes entry point.
-- [ ] Add the missing media action dialog with React-equivalent linked-item identity and current-tab/new-tab choices; preserve the media ID and title through every Notes signal and verify tab restoration.
-- [ ] Add the missing file action dialog with quick preview, full reader in the current tab, and full reader in a new tab; handle missing/unsupported IDs and route each file type correctly.
+- [x] Add the native Notes media action dialog with current-tab/new-tab choices; preserve media type, ID and title through Notes signals and add video tab state capture/restore. QML harness and source build pass; verify player/module loading and tab restore in the running app.
+- [x] Add the native Notes file action dialog with quick preview, full reader in the current tab, and full reader in a new tab; preserve direct-widget actions separately from bundle previews. QML harness and source build pass; verify file types, missing IDs, failure states and visual parity in the running app.
+- [ ] Verify live current/new tab routing for linked books, videos and files, including switching away/back, pinned tabs, missing/deleted target IDs, and saved-tab metadata.
+- [ ] Compare React's in-place quick file viewer with Qt's protected preview in a separate Files tab; ensure the note stays intact and the preview can be dismissed without losing its current editor state.
 - [ ] Compare image viewer/crop and image-delete dialog geometry, controls, keyboard behavior, focus, errors, undo, and save/reopen behavior at matching viewport/DPI.
 - [ ] Compare consolidated setup/picker surfaces with React focus, alarm, event, habit, question, file upload/select, and media select dialogs, including fields, defaults, search, validation, cancellation, busy/error/empty states, and insertion target.
 - [ ] Verify every modal/popover loading, disabled, error, retry, empty, cancel, outside-click, Escape, tab-order, focus-return, stacking and close-during-work state.

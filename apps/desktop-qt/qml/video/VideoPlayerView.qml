@@ -38,6 +38,22 @@ Rectangle {
     function loadVideos() {
         videos = galleryCollections.loadVideos(selectedCollection)
     }
+    function openVideoById(videoId) {
+        var targetId = String(videoId || "").trim()
+        if (!targetId) return false
+        if (activeVideo && String(activeVideo.id || "") === targetId) return true
+        selectedCollection = "__all__"
+        loadVideos()
+        for (var i = 0; i < videos.length; ++i) {
+            if (String(videos[i].id || "") === targetId) {
+                playVideo(videos[i])
+                return Boolean(activeVideo && String(activeVideo.id || "") === targetId)
+            }
+        }
+        playerError = qsTr("O vídeo vinculado não está disponível na biblioteca.")
+        importStatus = playerError
+        return false
+    }
     function applyFolderResult(result) {
         if (!result.success) { importStatus = result.message; return }
         selectedCollection = result.selectedId
