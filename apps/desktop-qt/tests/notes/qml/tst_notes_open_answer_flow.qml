@@ -185,6 +185,19 @@ TestCase {
     }
 
     function test_altGShortcutAndInlineGabaritoControlShareExplanationState() {
+        var plainShortcut = findChild(quizModal, "notesOpenAnswerPlainGExplanationShortcut")
+        verify(plainShortcut !== null)
+        compare(plainShortcut.sequence, "G")
+        quizModal.openAnswerInputFocused = false
+        compare(quizModal.enableNotesOpenAnswerEvaluation, true)
+        compare(quizModal.isCompleted, false)
+        compare(quizModal.discussionDialogOpen, false)
+        compare(quizModal.openAnswerInputFocused, false)
+        compare(quizModal.notesPlainGShortcutEnabled, true)
+        quizModal.openAnswerInputFocused = true
+        compare(quizModal.notesPlainGShortcutEnabled, false)
+        quizModal.openAnswerInputFocused = false
+
         OpenAnswerSession.setAnswer(quizModal, "My response")
         quizModal.handleConfirmOrNext()
 

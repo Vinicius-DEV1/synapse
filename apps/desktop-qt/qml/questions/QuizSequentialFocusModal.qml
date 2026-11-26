@@ -54,6 +54,8 @@ Rectangle {
         || openFeedbackByQuestion[currentQuestionKey]
         || (currentQuestion ? currentQuestion.aiFeedback : null)
     readonly property string currentOpenAnswerError: evaluationErrorsByQuestion[currentQuestionKey] || ""
+    readonly property bool notesPlainGShortcutEnabled: enableNotesOpenAnswerEvaluation
+        && !openAnswerInputFocused && !isCompleted && !discussionDialogOpen
 
     Timer {
         id: quizTimer
@@ -75,6 +77,12 @@ Rectangle {
         sequences: ["Alt+G", "Ctrl+G"]
         enabled: sequentialModalRoot.visible && sequentialModalRoot.enableNotesOpenAnswerEvaluation
             && !sequentialModalRoot.isCompleted && !sequentialModalRoot.discussionDialogOpen
+        onActivated: sequentialModalRoot.toggleExplanation()
+    }
+    Shortcut {
+        objectName: "notesOpenAnswerPlainGExplanationShortcut"
+        sequence: "G"
+        enabled: sequentialModalRoot.visible && sequentialModalRoot.notesPlainGShortcutEnabled
         onActivated: sequentialModalRoot.toggleExplanation()
     }
     Shortcut { sequence: "Return"; enabled: sequentialModalRoot.visible && !isCompleted && !sequentialModalRoot.showFinishConfirmation && !sequentialModalRoot.discussionDialogOpen && (!enableNotesOpenAnswerEvaluation || !openAnswerInputFocused); onActivated: handleConfirmOrNext() }
