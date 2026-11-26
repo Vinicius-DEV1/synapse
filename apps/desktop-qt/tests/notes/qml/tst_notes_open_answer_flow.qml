@@ -278,6 +278,26 @@ TestCase {
         compare(quizModal.openAnswer, "Second response")
     }
 
+    function test_navigationClosesRestoredOpenAnswerExplanation() {
+        questions = [openQuestion("open-1", "First"), openQuestion("open-2", "Second")]
+        quizModal.startQuiz("battery-notes", "Notes battery", questions)
+        OpenAnswerSession.setAnswer(quizModal, "First response")
+        quizModal.handleConfirmOrNext()
+        compare(quizModal.showExplanation, true)
+
+        quizModal.handleConfirmOrNext()
+        compare(quizModal.currentIndex, 1)
+        compare(quizModal.showExplanation, false)
+
+        OpenAnswerSession.setAnswer(quizModal, "Second response")
+        quizModal.handleConfirmOrNext()
+        quizModal.goToQuestion(0)
+        compare(quizModal.currentIndex, 0)
+        compare(quizModal.openAnswer, "First response")
+        compare(quizModal.isConfirmed, true)
+        compare(quizModal.showExplanation, false)
+    }
+
     function test_evaluationsForDifferentQuestionsCanFinishOutOfOrder() {
         questions = [openQuestion("open-1", "First"), openQuestion("open-2", "Second")]
         quizModal.startQuiz("battery-notes", "Notes battery", questions)

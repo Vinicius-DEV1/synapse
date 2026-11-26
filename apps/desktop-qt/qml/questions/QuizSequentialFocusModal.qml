@@ -297,7 +297,7 @@ Rectangle {
         currentIndex = idx
         isConfirmed = idx < answeredQuestions.length && answeredQuestions[idx] === true
         selectedOption = (idx < selectedAnswers.length) ? selectedAnswers[idx] : -1
-        showExplanation = isConfirmed
+        showExplanation = enableNotesOpenAnswerEvaluation ? false : isConfirmed
         var targetQuestion = questions[idx]
         if (enableNotesOpenAnswerEvaluation) {
             var targetKey = OpenAnswerSession.questionKey(targetQuestion, idx)
