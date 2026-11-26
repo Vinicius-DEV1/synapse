@@ -180,6 +180,13 @@ Rectangle {
     }
 
     Component.onCompleted: refreshPageTree()
+
+    Connections {
+        target: pageViewRoot.controller
+        ignoreUnknownSignals: true
+        function onNotesHierarchyChanged() { pageViewRoot.refreshPageTree() }
+    }
+
     Timer { id: autoSaveTimer; interval: 900; onTriggered: pageViewRoot.saveActiveNote() }
 
     NotesEditorShortcuts {

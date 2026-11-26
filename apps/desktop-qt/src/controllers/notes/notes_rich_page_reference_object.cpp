@@ -6,28 +6,17 @@
 #include <algorithm>
 #include <QtCore/QVector>
 #include <QtGui/QAbstractTextDocumentLayout>
-#include <QtGui/QColor>
-#include <QtGui/QFontMetricsF>
-#include <QtGui/QPainter>
-#include <QtGui/QPainterPath>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextFragment>
+#include <utility>
 
 namespace {
 
 QString displayTitle(const QString &title) {
     return title.isEmpty() ? QStringLiteral("Página") : title;
-}
-
-QFont referenceFont(const QTextDocument *document, const QTextFormat &format) {
-    QFont font = format.toCharFormat().font();
-    if (document) font = font.resolve(document->defaultFont());
-    font.setPixelSize(14);
-    font.setWeight(QFont::Medium);
-    return font;
 }
 
 QTextCharFormat objectFormat(const QTextCharFormat &source, const QString &pageId,
@@ -48,6 +37,12 @@ void ensureHandler(QTextDocument &document) {
         auto *handler = new NotesRichPageReferenceObject(layout);
         layout->registerHandler(NotesRichFormat::PageReferenceObjectType, handler);
     }
+}
+
+NotesRichPageReferenceObject *pageReferenceHandler(QTextDocument &document) {
+    ensureHandler(document);
+    return dynamic_cast<NotesRichPageReferenceObject *>(
+        document.documentLayout()->handlerForObject(NotesRichFormat::PageReferenceObjectType));
 }
 
 struct Replacement {
@@ -129,73 +124,60 @@ bool collectReplacements(const QTextDocument &document, QVector<Replacement> &re
 
 }
 
-QSizeF NotesRichPageReferenceObject::intrinsicSize(QTextDocument *document, int,
-                                                    const QTextFormat &format) {
-    const QString title = displayTitle(
-        format.stringProperty(NotesRichFormat::PageReferenceTitle));
-    const QFont font = referenceFont(document, format);
-    const QFontMetricsF metrics(font);
-    return QSizeF(44.0 + metrics.horizontalAdvance(title), qMax(22.0, metrics.height() + 4.0));
-}
-
-void NotesRichPageReferenceObject::drawObject(QPainter *painter, const QRectF &rect,
-                                              QTextDocument *document, int,
-                                              const QTextFormat &format) {
-    if (!painter) return;
-    const bool deleted = format.boolProperty(NotesRichFormat::PageReferenceDeleted);
-    const QString title = displayTitle(format.stringProperty(NotesRichFormat::PageReferenceTitle));
-    const QColor background = deleted ? QColor(239, 68, 68, 20) : QColor(255, 255, 255, 10);
-    const QColor border = deleted ? QColor(239, 68, 68, 102) : QColor(255, 255, 255, 31);
-    const QColor foreground = deleted ? QColor(248, 113, 113) : QColor(255, 255, 255, 191);
-    const QFont font = referenceFont(document, format);
-    const QFontMetricsF metrics(font);
-    const QRectF chip = rect.adjusted(4.5, 0.5, -4.5, -0.5);
-
-    painter->save();
-    painter->setRenderHint(QPainter::Antialiasing, true);
-    painter->setPen(QPen(border, 1.0));
-    painter->setBrush(background);
-    painter->drawRoundedRect(chip, 8.0, 8.0);
-
-    const qreal iconLeft = rect.left() + 11.0;
-    const qreal iconTop = rect.center().y() - 6.0;
-    const QColor iconColor = deleted ? QColor(239, 68, 68, 230) : QColor(255, 255, 255, 153);
-    painter->setPen(QPen(iconColor, 1.1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    painter->setBrush(Qt::NoBrush);
-    if (deleted) {
-        painter->drawEllipse(QRectF(iconLeft + 0.5, iconTop + 0.5, 11.0, 11.0));
-        painter->drawLine(QPointF(iconLeft + 6.0, iconTop + 3.0),
-                          QPointF(iconLeft + 6.0, iconTop + 7.0));
-        painter->drawPoint(QPointF(iconLeft + 6.0, iconTop + 9.0));
-    } else {
-        QPainterPath documentPath;
-        documentPath.moveTo(iconLeft + 1.0, iconTop + 0.5);
-        documentPath.lineTo(iconLeft + 7.5, iconTop + 0.5);
-        documentPath.lineTo(iconLeft + 11.0, iconTop + 4.0);
-        documentPath.lineTo(iconLeft + 11.0, iconTop + 12.0);
-        documentPath.lineTo(iconLeft + 1.0, iconTop + 12.0);
-        documentPath.closeSubpath();
-        painter->drawPath(documentPath);
-        painter->drawLine(QPointF(iconLeft + 3.0, iconTop + 7.0),
-                          QPointF(iconLeft + 9.0, iconTop + 7.0));
-        painter->drawLine(QPointF(iconLeft + 3.0, iconTop + 9.5),
-                          QPointF(iconLeft + 8.0, iconTop + 9.5));
-    }
-
-    painter->setFont(font);
-    painter->setPen(foreground);
-    const qreal baseline = rect.center().y() + (metrics.ascent() - metrics.descent()) / 2.0;
-    painter->drawText(QPointF(rect.left() + 31.0, baseline), title);
-    painter->restore();
-}
-
 namespace NotesRichPageReferences {
 
-bool prepare(QTextDocument &document) {
-    ensureHandler(document);
+bool refreshPageSnapshot(QTextDocument &document, const QVariantList &pages) {
+    auto *handler = pageReferenceHandler(document);
+    if (!handler) return false;
+
+    struct PresentationSnapshot {
+        int position;
+        int length;
+        QString title;
+        bool deleted;
+        QTextCharFormat format;
+    };
+    QVector<PresentationSnapshot> changedCandidates;
+    for (QTextBlock block = document.begin(); block.isValid(); block = block.next()) {
+        for (auto iterator = block.begin(); !iterator.atEnd(); ++iterator) {
+            const QTextFragment fragment = iterator.fragment();
+            if (!fragment.isValid() ||
+                fragment.charFormat().objectType() != NotesRichFormat::PageReferenceObjectType) continue;
+            const QTextCharFormat format = fragment.charFormat();
+            changedCandidates.append({fragment.position(), fragment.length(),
+                                      handler->resolvedTitle(format),
+                                      handler->resolvedDeleted(format), format});
+        }
+    }
+    if (!handler->setPageSnapshot(pages)) return true;
+    for (const auto &candidate : changedCandidates) {
+        if (candidate.title != handler->resolvedTitle(candidate.format) ||
+            candidate.deleted != handler->resolvedDeleted(candidate.format)) {
+            document.markContentsDirty(candidate.position, candidate.length);
+        }
+    }
+    return true;
+}
+
+QString resolvedTitle(const QTextDocument &document, const QTextFormat &format) {
+    const auto *handler = dynamic_cast<const NotesRichPageReferenceObject *>(
+        document.documentLayout()->handlerForObject(NotesRichFormat::PageReferenceObjectType));
+    return handler ? handler->resolvedTitle(format)
+                   : displayTitle(format.stringProperty(NotesRichFormat::PageReferenceTitle));
+}
+
+bool resolvedDeleted(const QTextDocument &document, const QTextFormat &format) {
+    const auto *handler = dynamic_cast<const NotesRichPageReferenceObject *>(
+        document.documentLayout()->handlerForObject(NotesRichFormat::PageReferenceObjectType));
+    return handler ? handler->resolvedDeleted(format)
+                   : format.boolProperty(NotesRichFormat::PageReferenceDeleted);
+}
+
+bool prepare(QTextDocument &document, const QVariantList &pages) {
+    if (!pageReferenceHandler(document)) return false;
     QVector<Replacement> replacements;
     if (!collectReplacements(document, replacements)) return false;
-    if (replacements.isEmpty()) return true;
+    if (replacements.isEmpty()) return refreshPageSnapshot(document, pages);
 
     const bool undoEnabled = document.isUndoRedoEnabled();
     document.setUndoRedoEnabled(false);
@@ -211,7 +193,7 @@ bool prepare(QTextDocument &document) {
     }
     document.setUndoRedoEnabled(undoEnabled);
     document.setModified(false);
-    return true;
+    return refreshPageSnapshot(document, pages);
 }
 
 int insertAtCursor(QTextCursor &cursor, const QString &pageId, const QString &title, bool deleted) {

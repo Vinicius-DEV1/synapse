@@ -39,12 +39,12 @@ QVariantMap referenceRangeAtCharacter(const QTextDocument &document, int positio
     if (format.objectType() == NotesRichFormat::PageReferenceObjectType) {
         if (document.characterAt(position) != QChar::ObjectReplacementCharacter) return {};
         const QString pageId = format.stringProperty(NotesRichFormat::PageReferenceId);
-        const QString title = format.stringProperty(NotesRichFormat::PageReferenceTitle);
+        const QString title = NotesRichPageReferences::resolvedTitle(document, format);
         const QString href = NotesRichMarkup::pageReferenceHref(pageId, title);
         if (href.isEmpty()) return {};
         return {{"start", position}, {"end", position + 1}, {"href", href},
                 {"pageId", pageId}, {"title", title},
-                {"deleted", format.boolProperty(NotesRichFormat::PageReferenceDeleted)}};
+                {"deleted", NotesRichPageReferences::resolvedDeleted(document, format)}};
     }
     if (!format.isAnchor()) return {};
 
@@ -112,9 +112,16 @@ bool referenceFromClipboardHtml(const QString &clipboardHtml, QString &pageId, Q
 
 }
 
-bool NotesTextOperations::prepareRichPageReferences(QQuickTextDocument *document) const {
+bool NotesTextOperations::prepareRichPageReferences(QQuickTextDocument *document,
+                                                       const QVariantList &pages) const {
     return document && document->textDocument() &&
-        NotesRichPageReferences::prepare(*document->textDocument());
+        NotesRichPageReferences::prepare(*document->textDocument(), pages);
+}
+
+bool NotesTextOperations::refreshRichPageReferences(QQuickTextDocument *document,
+                                                       const QVariantList &pages) const {
+    return document && document->textDocument() &&
+        NotesRichPageReferences::refreshPageSnapshot(*document->textDocument(), pages);
 }
 
 QVariantMap NotesTextOperations::richPageReferenceAt(QQuickTextDocument *document, int start, int end,

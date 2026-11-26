@@ -522,6 +522,7 @@ public:
 signals:
     void dbPathChanged();
     void countsChanged();
+    void notesHierarchyChanged();
     void vaultStateChanged();
     void autoLockMinutesChanged();
     void vaultLockErrorChanged();

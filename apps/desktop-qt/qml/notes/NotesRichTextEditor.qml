@@ -97,7 +97,7 @@ Item {
             validationMessage = qsTr("This note contains an image that the native editor could not load safely. Switch to source editing to preserve it.")
             return false
         }
-        if (!textOperations.prepareRichPageReferences(editor.textDocument)) {
+        if (!textOperations.prepareRichPageReferences(editor.textDocument, pageList)) {
             isLoading = false
             canEditSource = false
             validationMessage = qsTr("This note contains a page reference that the native editor could not load as a safe inline object. Switch to source editing to preserve it.")
@@ -222,6 +222,13 @@ Item {
 
     onSourceHtmlChanged: {
         if (isComponentReady && !isLoading && sourceHtml !== lastPublishedHtml && sourceHtml !== lastLoadedSource) eligibilityTimer.restart()
+    }
+
+    onPageListChanged: {
+        if (editor && editor.textDocument && textOperations &&
+                typeof textOperations.refreshRichPageReferences === "function") {
+            textOperations.refreshRichPageReferences(editor.textDocument, pageList)
+        }
     }
     onActiveChanged: {
         if (!isComponentReady) return

@@ -25,6 +25,7 @@ bool SynapseDataController::restoreTrashItem(const QString &id, const QString &i
     );
     if (ret == 1) {
         refreshStats();
+        if (itemType.trimmed() == QStringLiteral("page")) emit notesHierarchyChanged();
         return true;
     }
     return false;

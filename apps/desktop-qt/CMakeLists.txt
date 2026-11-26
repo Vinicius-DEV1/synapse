@@ -38,6 +38,7 @@ add_executable(synapse-desktop
     src/controllers/notes/notes_text_operations.cpp
     src/controllers/notes/notes_rich_page_reference_actions.cpp
     src/controllers/notes/notes_rich_page_reference_object.cpp
+    src/controllers/notes/notes_rich_page_reference_presentation.cpp
     src/controllers/notes/notes_rich_page_reference_object.h
     src/controllers/notes/notes_rich_image_controller.cpp
     src/controllers/notes/notes_rich_image_export.cpp
@@ -224,6 +225,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_page_reference_actions.cpp
         src/controllers/notes/notes_rich_page_reference_object.cpp
+        src/controllers/notes/notes_rich_page_reference_presentation.cpp
         src/controllers/notes/notes_rich_page_reference_object.h
         src/controllers/notes/notes_rich_image_controller.cpp
         src/controllers/notes/notes_rich_image_export.cpp
@@ -378,6 +380,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_rich_image_operations.cpp
         src/controllers/notes/notes_rich_page_reference_actions.cpp
         src/controllers/notes/notes_rich_page_reference_object.cpp
+        src/controllers/notes/notes_rich_page_reference_presentation.cpp
         src/controllers/notes/notes_rich_page_reference_object.h
         src/controllers/notes/notes_text_table_operations.cpp
         src/controllers/notes/notes_rich_slash_commands.cpp
@@ -433,6 +436,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         src/controllers/notes/notes_text_operations.cpp
         src/controllers/notes/notes_rich_page_reference_actions.cpp
         src/controllers/notes/notes_rich_page_reference_object.cpp
+        src/controllers/notes/notes_rich_page_reference_presentation.cpp
         src/controllers/notes/notes_rich_page_reference_object.h
         src/controllers/notes/notes_rich_images.cpp
         src/controllers/notes/notes_rich_image_insertions.cpp

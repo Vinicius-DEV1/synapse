@@ -33,7 +33,10 @@ public:
     Q_INVOKABLE int insertRichPageReference(QQuickTextDocument *document, int position,
                                             const QString &pageId, const QString &title) const;
     Q_INVOKABLE bool prepareRichHeadings(QQuickTextDocument *document, const QString &source) const;
-    Q_INVOKABLE bool prepareRichPageReferences(QQuickTextDocument *document) const;
+    Q_INVOKABLE bool prepareRichPageReferences(QQuickTextDocument *document,
+                                                const QVariantList &pages) const;
+    Q_INVOKABLE bool refreshRichPageReferences(QQuickTextDocument *document,
+                                                const QVariantList &pages) const;
     Q_INVOKABLE bool prepareRichCodeBlocks(QQuickTextDocument *document, const QString &source) const;
     Q_INVOKABLE bool isRichCodeBlock(QQuickTextDocument *document, int position) const;
     Q_INVOKABLE bool canMoveRichCodeBlock(QQuickTextDocument *document, int position, bool upward) const;

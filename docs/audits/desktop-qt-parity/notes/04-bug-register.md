@@ -284,6 +284,16 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Adjacent identical references, adjacent different references and references separated by text each serialize to the same count/order of canonical spans; Qt reopen and React round-trip retain every page ID/title; deletion and cursor selection still target exactly one object.
 - **Fix status:** Source serializer fix applied and included in the desktop build. Runtime confirmation of Qt fragment coalescing and round-trip remains open.
 
+## QT-NOTES-032: Open page-reference chips do not refresh after target changes
+
+- **Severity:** Medium; a note left open can show a stale target title or active/deleted state, and can offer the wrong click action.
+- **Evidence:** React `PageReference.tsx` derives the target from the live page store and updates its local title on page-update events. Qt previously converted each canonical reference into a native object with a fixed title/deleted snapshot; `PageView.qml::refreshPageTree()` reassigned `pageList`, but the open `QTextDocument` had no presentation refresh path. Restoring a page from Trash also did not notify the Notes page tree.
+- **Reproduction:** Keep a note open with a reference to another page. Rename, trash, or restore the target without reloading the referenced note; compare the chip title, color, preview action, and deleted-page dialog.
+- **Root cause:** The Qt inline object retained a presentation snapshot from the moment its source HTML was loaded.
+- **Required fix:** Refresh the native object's resolved title/deleted presentation when the active page tree changes, including after page restoration from Trash. Invalidate only affected object layout ranges; do not rewrite canonical note content, mark it dirty, move the cursor, or add an undo step.
+- **Acceptance:** Rename, trash, restore, and rename-again update every matching reference in open top-level and nested editors. Backspace/Delete confirmation and copied plain text use the live title/status. A follow-up save does not count the presentation-only refresh as an edit, and cursor, selection, undo history, and stored canonical markup remain unchanged.
+- **Fix status:** Source fix applied in `NotesRichPageReferenceObject`, `NotesTextOperations`, `NotesRichTextEditor.qml`, `PageView.qml`, and the page restore notification. Page-tree snapshots now resolve live chip labels and deleted state; only references whose visible presentation changed are marked layout-dirty, and range actions use the same live title/status. Desktop build passes and the edited QML parses with existing warnings. Runtime rename/trash/restore, dirty-state, undo, clipboard, and nested-editor acceptance remain open.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; and help instructions against visible QML. Then complete [07-verification.md](07-verification.md).
