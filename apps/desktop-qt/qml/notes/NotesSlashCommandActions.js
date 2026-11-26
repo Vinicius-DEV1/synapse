@@ -1,5 +1,6 @@
 .pragma library
 .import "NotesSlashCommandArguments.js" as SlashArgs
+.import "NotesMediaWidgetPickerOperations.js" as MediaPicker
 
 function handleSlashWidgetCommand(editorRoot, blockListEditor, cmdId, blockIdx) {
     editorRoot.pendingWidgetBlockIndex = blockIdx
@@ -74,9 +75,9 @@ function handleSlashWidgetCommand(editorRoot, blockListEditor, cmdId, blockIdx) 
         return
     }
 
-    var mediaMode = cmdId === "file" ? "documento" : cmdId === "book" ? "livro" : cmdId
+    var mediaMode = MediaPicker.mediaPickerModeForSlashCommand(cmdId)
     if (modalsHost && typeof modalsHost.openMediaWidgetPicker === "function" &&
-        ["documento", "media", "livro", "video", "scrap"].indexOf(mediaMode) >= 0) {
+        ["documento", "file-select", "media", "livro", "video", "scrap"].indexOf(mediaMode) >= 0) {
         var scrapArgument = mediaMode === "scrap"
             ? SlashArgs.extractSlashCommandArgument(blockListEditor.lastSlashQuery,
                 ["snapshot web", "snapshot", "scrap", "capturar", "offline", "copia", "web"])

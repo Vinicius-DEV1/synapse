@@ -1,9 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Dialogs
 import "NotesMediaWidgetPickerOperations.js" as PickerOperations
 import "../ui"
 
@@ -21,7 +19,10 @@ ColumnLayout {
     property string errorMessage: ""
     property bool waiting: false
     property bool groupAsBundle: true
+    property bool isLink: false
     readonly property bool busy: waiting
+    readonly property int progressPercent: waiting && localFiles.length > 0
+        ? Math.round(activeFileIndex * 100 / localFiles.length) : 0
 
     signal widgetHtmlReady(string html)
 
@@ -56,8 +57,7 @@ ColumnLayout {
     }
 
     function finishUpload() {
-        var html = PickerOperations.widgetHtmlForUploadedFiles(
-            importedFiles, groupAsBundle, "")
+        var html = PickerOperations.widgetHtmlForUploadedFiles(importedFiles, groupAsBundle)
         if (!html) {
             errorMessage = qsTr("Não foi possível preparar os arquivos para a página.")
             return
@@ -77,7 +77,7 @@ ColumnLayout {
             finishUpload()
             return
         }
-        var c = controller || (typeof dataController !== "undefined" ? dataController : null)
+        var c = controller
         if (!c || typeof c.importLocalFile !== "function") {
             errorMessage = qsTr("A importação de arquivos não está disponível.")
             activeFileIndex = -1
@@ -100,6 +100,7 @@ ColumnLayout {
             return
         }
         var nextImportedFiles = importedFiles.slice()
+        completion.file.isLink = localUploadRoot.isLink
         nextImportedFiles.push(completion.file)
         importedFiles = nextImportedFiles
         activeFileIndex += 1
@@ -108,141 +109,77 @@ ColumnLayout {
     }
 
     Connections {
-        target: localUploadRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        target: localUploadRoot.controller
         ignoreUnknownSignals: true
         function onFileOperationFinished(result) { localUploadRoot.handleImportFinished(result) }
     }
 
-    FileDialog {
-        id: localFileDialog
-        title: qsTr("Selecionar arquivos locais para criptografar com ENC1")
-        fileMode: FileDialog.OpenFiles
-        onAccepted: localUploadRoot.addFiles(selectedFiles)
+    NotesLocalUploadSelection {
+        objectName: "notesLocalUploadSelection"
+        localFiles: localUploadRoot.localFiles
+        waiting: localUploadRoot.waiting
+        canRemove: localUploadRoot.activeFileIndex < 0
+        groupAsBundle: localUploadRoot.groupAsBundle
+        onFilesSelected: function(urls) { localUploadRoot.addFiles(urls) }
+        onFileRemovalRequested: function(index) { localUploadRoot.removeFile(index) }
+        onGroupingChanged: function(grouped) { localUploadRoot.groupAsBundle = grouped }
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        Button {
-            id: addFilesButton
-            objectName: "notesLocalAddFilesButton"
-            Layout.fillWidth: true
-            Layout.preferredHeight: 36
-            enabled: !localUploadRoot.waiting
-            onClicked: localFileDialog.open()
-            Accessible.name: qsTr("Selecionar arquivos locais")
-            background: Rectangle {
-                radius: 8
-                color: addFilesButton.enabled ? (addFilesButton.hovered ? "#338b5cf6" : "#228b5cf6") : "#14141420"
-                border.color: "#668b5cf6"
-            }
-            contentItem: RowLayout {
-                spacing: 6
-                Item { Layout.fillWidth: true }
-                AppIcon {
-                    name: "upload"
-                    color: "#c4b5fd"
-                    Layout.preferredWidth: 14
-                    Layout.preferredHeight: 14
-                }
-                Text {
-                    text: qsTr("Adicionar arquivos locais")
-                    color: "#c4b5fd"
-                    font.pixelSize: 12
-                    font.bold: true
-                }
-                Item { Layout.fillWidth: true }
-            }
-        }
-    }
-
-    ScrollView {
-        visible: localUploadRoot.localFiles.length > 0
-        Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(108, localUploadRoot.localFiles.length * 34)
-        clip: true
-        ColumnLayout {
-            width: parent.width
-            spacing: 4
-            Repeater {
-                model: localUploadRoot.localFiles
-                delegate: Rectangle {
-                    id: selectedFileRow
-                    required property int index
-                    required property string modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 32
-                    radius: 7
-                    color: "#0f0e17"
-                    border.color: "#15ffffff"
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 9
-                        anchors.rightMargin: 4
-                        Text {
-                            Layout.fillWidth: true
-                            text: PickerOperations.fileNameFromUrl(selectedFileRow.modelData)
-                            color: "#fffffe"
-                            font.pixelSize: 11
-                            elide: Text.ElideMiddle
-                        }
-                        ToolButton {
-                            Layout.preferredWidth: 24
-                            Layout.preferredHeight: 24
-                            enabled: !localUploadRoot.waiting && localUploadRoot.activeFileIndex < 0
-                            Accessible.name: qsTr("Remover %1 da seleção").arg(PickerOperations.fileNameFromUrl(selectedFileRow.modelData))
-                            onClicked: localUploadRoot.removeFile(selectedFileRow.index)
-                            contentItem: AppIcon {
-                                name: "close"
-                                color: parent.enabled ? "#a7a9be" : "#555563"
-                                width: 11
-                                height: 11
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    CheckBox {
-        visible: localUploadRoot.localFiles.length > 1
-        text: qsTr("Agrupar arquivos em um único bloco")
-        checked: localUploadRoot.groupAsBundle
-        enabled: !localUploadRoot.waiting
-        onToggled: localUploadRoot.groupAsBundle = checked
-        Accessible.name: qsTr("Agrupar arquivos selecionados em um pacote")
-    }
-
-    Button {
-        visible: localUploadRoot.localFiles.length > 0
-        Layout.fillWidth: true
-        Layout.preferredHeight: 36
-        enabled: !localUploadRoot.waiting
-        onClicked: localUploadRoot.startUpload()
-        background: Rectangle {
-            radius: 8
-            color: parent.enabled ? "#7c3aed" : "#4d7c3aed"
-        }
-        contentItem: Text {
-            text: localUploadRoot.waiting
-                ? qsTr("Criptografando %1 de %2 com ENC1...").arg(localUploadRoot.activeFileIndex + 1).arg(localUploadRoot.localFiles.length)
-                : localUploadRoot.activeFileIndex >= 0
-                    ? qsTr("Tentar novamente (%1 arquivo(s) restantes)").arg(localUploadRoot.localFiles.length - localUploadRoot.activeFileIndex)
-                    : qsTr("Anexar %1 arquivo(s)").arg(localUploadRoot.localFiles.length)
-            color: "#ffffff"
-            font.pixelSize: 12
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-    }
-
-    Text {
+    Rectangle {
         visible: localUploadRoot.errorMessage.length > 0
-        text: localUploadRoot.errorMessage
-        color: "#fda4af"
-        font.pixelSize: 11
-        wrapMode: Text.WordWrap
         Layout.fillWidth: true
+        implicitHeight: errorText.implicitHeight + 20
+        radius: 8
+        color: "#1af43f5e"
+        border.color: "#33f43f5e"
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
+            AppIcon { name: "alert-circle"; color: "#fb7185"; Layout.preferredWidth: 17; Layout.preferredHeight: 17 }
+            Text {
+                id: errorText
+                Layout.fillWidth: true
+                text: localUploadRoot.errorMessage
+                color: "#fecdd3"
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    ColumnLayout {
+        visible: localUploadRoot.waiting
+        Layout.fillWidth: true
+        spacing: 7
+        RowLayout {
+            Layout.fillWidth: true
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Criptografando arquivo %1 de %2 com ENC1...")
+                    .arg(localUploadRoot.activeFileIndex + 1).arg(localUploadRoot.localFiles.length)
+                color: "#a7a9be"
+                font.pixelSize: 12
+            }
+            Text {
+                text: localUploadRoot.progressPercent + "%"
+                color: "#a7a9be"
+                font.pixelSize: 12
+            }
+        }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 7
+            radius: 4
+            color: "#0f0e17"
+            clip: true
+            Rectangle {
+                width: parent.width * localUploadRoot.progressPercent / 100
+                height: parent.height
+                radius: 4
+                color: "#8b5cf6"
+                Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            }
+        }
     }
 }

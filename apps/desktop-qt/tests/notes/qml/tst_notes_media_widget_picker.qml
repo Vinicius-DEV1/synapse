@@ -20,7 +20,12 @@ TestCase {
         property string lastImportPath: ""
         property string lastRequestId: ""
         property var importPaths: []
+        property var existingFiles: []
         signal fileOperationFinished(var result)
+
+        function getFiles(folderId) {
+            return existingFiles
+        }
 
         function importLocalFile(path, folderId, requestId) {
             lastImportPath = path
@@ -49,6 +54,7 @@ TestCase {
         mockController.lastImportPath = ""
         mockController.lastRequestId = ""
         mockController.importPaths = []
+        mockController.existingFiles = []
         uploader = createTemporaryObject(uploaderComponent, testCase)
         verify(uploader !== null)
     }
@@ -97,6 +103,45 @@ TestCase {
         uploader.removeFile(1)
         compare(uploader.localFiles.length, 2)
         compare(PickerOperations.fileNameFromUrl(uploader.localFiles[1]), "Third.pdf")
+    }
+
+    function test_filePickerCommandsUseDistinctUploadAndSelectionSurfaces() {
+        compare(PickerOperations.mediaPickerModeForSlashCommand("documento"), "documento")
+        compare(PickerOperations.mediaPickerModeForSlashCommand("file-upload"), "documento")
+        compare(PickerOperations.mediaPickerModeForSlashCommand("file"), "file-select")
+        compare(PickerOperations.mediaPickerModeForSlashCommand("documento-link"), "file-select")
+        compare(PickerOperations.mediaPickerModeForSlashCommand("file-link"), "documento-link")
+
+        picker = createTemporaryObject(pickerComponent, testCase)
+        verify(picker !== null)
+        mockController.existingFiles = [{
+            id: "saved-8", name: "Resumo.pdf", file_type: "pdf", file_size: 1024
+        }]
+        picker.openMode("file-select", "", false)
+        compare(picker.activeMode, "file-select")
+        compare(picker.listItems.length, 1)
+        compare(picker.filteredItems[0].id, "saved-8")
+        var selectorUpload = findVisualChild(picker, "notesLocalFileUpload")
+        var searchField = findVisualChild(picker, "notesMediaWidgetSearchField")
+        var itemList = findVisualChild(picker, "notesMediaWidgetItems")
+        verify(selectorUpload !== null)
+        verify(searchField !== null)
+        compare(searchField.placeholderText, "Buscar arquivos...")
+        verify(itemList !== null)
+        compare(itemList.itemMode, "file-select")
+        var linkedHtml = PickerOperations.widgetHtmlForPickedItem(mockController.existingFiles[0], "file-select")
+        verify(linkedHtml.indexOf('data-file-id="saved-8"') >= 0)
+        verify(linkedHtml.indexOf('data-file-type="pdf"') >= 0)
+        verify(linkedHtml.indexOf('data-is-link="true"') >= 0)
+
+        picker.openMode("documento-link", "", false)
+        compare(picker.activeMode, "documento-link")
+        compare(selectorUpload.isLink, true)
+
+        picker.openMode("documento", "", false)
+        compare(picker.activeMode, "documento")
+        compare(selectorUpload.isLink, false)
+        compare(itemList.itemMode, "documento")
     }
 
     function test_pickerCannotCloseDuringEncryptedImport() {
@@ -221,6 +266,26 @@ TestCase {
         compare((html.match(/data-type=\"file-widget\"/g) || []).length, 2)
         compare(html.indexOf("document-bundle"), -1)
         verify(html.indexOf('data-file-size="20"') >= 0)
+    }
+
+    function test_uploadedFileLinkFlagMatchesTheRequestedFlow() {
+        var linked = PickerOperations.widgetHtmlForUploadedFiles([
+            { id: "linked-upload", name: "Linked.pdf", fileType: "pdf", fileSize: 50, isLink: true }
+        ], false)
+        verify(linked.indexOf('data-is-link="true"') >= 0)
+        var bundle = PickerOperations.widgetHtmlForUploadedFiles([
+            { id: "linked-a", name: "A.pdf", fileType: "pdf", fileSize: 10, isLink: true },
+            { id: "linked-b", name: "B.pdf", fileType: "pdf", fileSize: 20, isLink: true }
+        ], true)
+        verify(bundle.indexOf('data-type="document-bundle"') >= 0)
+        var itemsAttribute = bundle.match(/data-items=\"([^\"]+)\"/)
+        verify(itemsAttribute !== null)
+        var serialized = itemsAttribute[1].replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
+            .replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&")
+        var parsed = DocumentBundleOperations.parseBundleItems({ "data-items": serialized })
+        compare(parsed.valid, true)
+        compare(parsed.items[0].isLink, true)
+        compare(parsed.items[1].isLink, true)
     }
 
     function test_fileUrlDecodesSpacesPercentAndWindowsSeparators() {

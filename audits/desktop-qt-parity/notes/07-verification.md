@@ -514,3 +514,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Persistent `qmltestrunner` harness for `NotesMediaWidgetPickerLocalUpload.qml`, its operations module, and a mocked `fileOperationFinished` signal | Passed: 8 test cases (10 QtTest totals including setup/cleanup), 0 failures. Covers queue metadata, stale/unrelated results, failure and retry, multi-file sequential import, bundle HTML parsed by the existing bundle operation, separate widget output, add/remove/deduplication, and Linux/Windows URL path decoding. | Qt 6.10.2, offscreen. Does not drive the native `OpenFiles` dialog, real encryption, parent modal dismissal/focus, editor insertion/save/reopen, or matched-viewport visuals. |
 | Focused `qmllint` for the picker and upload components/operations plus native `synapse-desktop` build | Build passed. `qmllint` exit 0; existing controller-fallback, nested-scope, and parent-hover warnings remain. | Confirms target compilation and QML syntax only. No full-app file-dialog or persistence acceptance. |
 | `git diff --check` | Passed | Whitespace validation only. |
+
+### Notes upload and existing-file mode separation (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Persistent `qmltestrunner` harness for `NotesMediaWidgetPickerModal.qml`, upload operations, existing-file list and a mocked controller | Passed: 10 behavior cases (12 QtTest results including setup/cleanup), 0 failures. Covers separate slash-command routing, existing-file lookup/filtering, linked-file serialization, upload serialization, multi-file queue, grouping, retry, stale results, path decoding and close-while-importing guard. | Qt 6.10.2, offscreen. Test parent is not visible, so effective child visibility is not asserted; mode selection, list data and serialized outputs are asserted. Native open dialog, real ENC1 encryption, insertion/save/reopen and matched-viewport visuals remain open. |
+| Focused `qmllint` over six changed QML/JS implementation files | Passed: exit 0, no warnings. | Syntax and static QML checks only. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed: target linked successfully. | Build validation only; does not drive file selection or the live Notes UI. |
+| `git diff --check` | Passed | Whitespace validation only. |

@@ -29,15 +29,24 @@ function localUploadCompletion(requestId, result, fallbackError) {
     }
 }
 
+function mediaPickerModeForSlashCommand(commandId) {
+    if (commandId === "file" || commandId === "documento-link") return "file-select"
+    if (commandId === "file-upload" || commandId === "documento") return "documento"
+    if (commandId === "file-link") return "documento-link"
+    if (commandId === "book") return "livro"
+    return commandId
+}
+
 function widgetHtmlForPickedItem(item, mode) {
     var label = HtmlEscaping.escapeHtmlAttribute(item.name || item.title || "Item")
     var itemId = HtmlEscaping.escapeHtmlAttribute(item.id)
-    if (mode === "documento") {
+    if (mode === "documento" || mode === "file-select") {
         var fileType = HtmlEscaping.escapeHtmlAttribute(item.file_type || "document")
         var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(item.file_size)
         return "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + itemId +
             "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
-            fileType + "\" data-file-size=\"" + fileSize + "\"></div>"
+            fileType + "\" data-file-size=\"" + fileSize + "\" data-is-link=\"" +
+            (mode === "file-select" ? "true" : "false") + "\"></div>"
     }
     var mediaType = mode === "livro" ? "book" : "video"
     return "<span class=\"media-widget\" data-type=\"media-widget\" data-media-type=\"" + mediaType +
@@ -53,7 +62,7 @@ function widgetHtmlForUploadedFiles(files, groupAsBundle) {
                 name: String(file.name || "Arquivo"),
                 fileType: String(file.fileType || "other"),
                 fileSize: Math.max(0, Math.floor(Number(file.fileSize) || 0)),
-                isLink: false,
+                isLink: Boolean(file.isLink),
                 addedAt: Date.now()
             }
         })
@@ -69,7 +78,8 @@ function widgetHtmlForUploadedFiles(files, groupAsBundle) {
         var fileSize = HtmlEscaping.escapeHtmlNonNegativeIntegerAttribute(file.fileSize)
         return "<div class=\"file-widget\" data-type=\"file-widget\" data-file-id=\"" + fileId +
             "\" data-name=\"" + label + "\" data-file-name=\"" + label + "\" data-file-type=\"" +
-            fileType + "\" data-file-size=\"" + fileSize + "\" data-is-link=\"false\"></div>"
+            fileType + "\" data-file-size=\"" + fileSize + "\" data-is-link=\"" +
+            (file.isLink ? "true" : "false") + "\"></div>"
     }).join("")
 }
 
