@@ -663,6 +663,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `git diff --check` | Passed | Patch whitespace only. |
 | Full Core-backed Notes focus session, question render, answer interaction and saved attempt round-trip | Not run | Keep QT-NOTES-077 and the open-answer acceptance items active until application evidence is collected. |
 
+### Notes open-answer database reopen round-trip (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo test -p synapse-core open_attempts_tests -- --nocapture` | Passed: 3 tests | Adds a file-backed Core round-trip: save an open answer and feedback, drop the database handle, reopen the same SQLite file, and recover the latest typed attempt by battery and question. Also covers verdict/target validation and latest-attempt lookup. This verifies Core persistence across a database reopen; it does not launch the Qt Notes UI, reopen a saved note, contact Gemini, or establish cross-client visibility. |
+| `git diff --check` | Passed | Patch whitespace only. |
+
 ### Notes open-answer evaluation and attempt persistence (2026-11-26)
 
 | Check | Result | Scope and limits |
