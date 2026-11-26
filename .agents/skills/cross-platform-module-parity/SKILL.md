@@ -24,6 +24,7 @@ Use this skill when a feature is being compared, added, renamed, refactored, or 
 - Module roots and counterpart map: [`docs/architecture/module-structure.md`](../../../docs/architecture/module-structure.md)
 - Project constraints and Core SSOT: [`AGENTS.md`](../../../AGENTS.md)
 - Qt-specific implementation and visual workflow: [`desktop-qt-parity`](../desktop-qt-parity/SKILL.md)
+- Native Android Compose/UniFFI workflow: [`android-native-parity`](../android-native-parity/SKILL.md)
 - Atomic refactoring workflow: [`code-quality-refactoring`](../code-quality-refactoring/SKILL.md)
 
 When a shared path, public action, or intentional client difference changes, update the module structure guide and the owning app guidance in the same logical stage. Keep detailed active findings in `audits/`; move only accepted, durable architecture facts into `docs/`.

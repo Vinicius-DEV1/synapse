@@ -1,9 +1,7 @@
 ---
 name: immersive-minimalist-ux
 description: >-
-  Actionable patterns and code recipes for building full-canvas, distraction-free
-  study and reading experiences with ergonomic typography, cognitive noise suppression,
-  and keyboard-first fluidity (zero mouse fatigue).
+  Applies immersive study and reading principles to React Web, Qt Quick, and Android Compose, with ergonomic typography, restrained feedback, keyboard support on desktop, and touch/back-friendly mobile flows.
 ---
 
 # Immersive Minimalist Architecture & Zen Visual Design
@@ -28,14 +26,17 @@ description: >-
 
 ---
 
+## Client Adaptation
+
+React snippets below are web-specific examples. Keep the shared immersive principles (focused canvas, clear exit, readable content, restrained feedback, keyboard support where available) in Qt Quick and Compose using native controls, focus models, window insets, touch targets, and Android Back behavior. Do not copy Tailwind/CSS or web-only shortcut hooks into native targets. The mobile layout may adapt to a narrow viewport while preserving the same task flow and information priority. The Expo WebView uses React product UI with shell-provided safe areas.
+
 ## 1. Core Philosophy
 
 1. **Full-Canvas Viewport over Floating Modals** — Study and reading sessions demand
    unbroken cognitive flow. Never constrain the user inside floating pop-up boxes.
 2. **Silence the Noise** — Replace high-saturation colors with refined neutrals.
    Accents must be functional, subdued, and gentle.
-3. **Keyboard-First Navigation** — 100% of workflow must be drivable via keyboard.
-   Mouse is optional, never required.
+3. **Fluid, Accessible Navigation** — Support keyboard-first use on desktop and preserve touch-first ergonomics on phones. Provide keyboard actions where the client supports them; expose equivalent discoverable touch actions, accessible semantics, and Android Back behavior on native Android.
 
 ---
 

@@ -1,10 +1,7 @@
 ---
 name: module-bug-audit
 description: >-
-  Thoroughly audits a specified module or directory for bugs, race conditions,
-  memory leaks, SOLID violations, and integration flaws across both frontend
-  (React/TypeScript) and backend (Tauri/Rust), generating a complete mitigation
-  plan with mandatory second-pass review and diagnostic logging strategies.
+  Audits a specified feature across React/Tauri, Desktop Qt, and native Android for bugs, races, lifecycle leaks, and integration flaws, with an evidence-based mitigation plan and mandatory second-pass review.
 ---
 
 # Deep Module Bug Audit & Mitigation Plan
@@ -19,6 +16,10 @@ description: >-
 
 ---
 
+## Client and Layer Coverage
+
+Select the actual target(s) before scanning: React Web/Tauri, Desktop Qt, native Android Compose, and, when requested, the Expo WebView shell. Inspect React hooks/services and Tauri IPC; QML/C++ controllers and `bridge-qt`; Compose/ViewModels and UniFFI; and shell lifecycle/back/inset integration as applicable. Verify shared rules in Rust Core once, then check each adapter and UI lifecycle separately. The WebView shell is not a separate copy of product modules.
+
 ## 1. Objectives
 
 Perform a thorough, multi-stage inspection to:
@@ -27,10 +28,8 @@ Perform a thorough, multi-stage inspection to:
   errors, malformed payloads, async race conditions.
 - **Audit Architectural Health** — Detect monolithic files (> 300 lines), SRP
   violations, tight coupling between UI and storage/IPC drivers.
-- **Audit Multiplatform Integrations** — Tauri v2 IPC vs Web/IndexedDB/Firestore
-  compatibility, unhandled platform errors, path resolution edge cases.
-- **Inspect Reactivity & Lifecycle** — Unmounted state updates, memory leaks in
-  listeners/timers/Yjs observers, infinite re-render loops, stale closures.
+- **Audit Multiplatform Integrations** — React Web/Tauri browser-vs-IPC behavior, Qt QML/C++/FFI, Android Compose/ViewModel/UniFFI, shell integration, unhandled platform errors, URI/path resolution, and per-client persistence or sync differences.
+- **Inspect Lifecycle & Concurrency** — React effects and Yjs observers, Qt signal/slot and QObject lifetimes, Android coroutine/Flow and lifecycle cancellation, shell listeners, timers, stale responses, and navigation races.
 - **Validate Type Safety** — Detect `any`, `as any`, unvalidated assertions,
   missing return type contracts.
 - **Audit Rust Backend & Core Architecture** — Unchecked `.unwrap()`, unhandled `Result` propagation,
@@ -48,7 +47,7 @@ Perform a thorough, multi-stage inspection to:
 1. Identify all files belonging to the target module.
 2. Map public contracts (interfaces, types, exports) and consumer modules.
 3. Check existing automated tests and their coverage.
-4. Identify platform boundaries (Tauri IPC, IndexedDB, Firebase sync points).
+4. Identify the target client boundaries (browser/IndexedDB, Tauri IPC, Qt invokables/FFI, Android UniFFI and OS APIs, WebView shell bridge) and only the sync points implemented by that target.
 
 ### Phase 2: First Pass — Line-by-Line Deep Scan
 
@@ -74,6 +73,12 @@ Perform a thorough, multi-stage inspection to:
 5. **Reactivity, Performance & Cleanup**:
    - Listeners, intervals, RAF, and Yjs observers properly cleaned up?
    - Accurate dependency arrays in `useCallback` / `useMemo`?
+
+#### Native Qt and Android
+
+- **Qt 6 / QML / C++**: Check QML-exposed invokables for validation and lifetime safety, QObject ownership, signal disconnection, asynchronous callback freshness, controller thread affinity, bridge error propagation, and native file/path handling.
+- **Android / Kotlin / Compose**: Check lifecycle-aware Flow collection, coroutine cancellation, ViewModel state restoration, recomposition stability, system Back and predictive Back handling, `WindowInsets`/IME behavior, document-provider URI grant persistence, permission timing, and UniFFI error/nullability conversion.
+- **Shared domain contract**: Verify equivalent actions and payload meanings across Tauri, `bridge-qt`, and UniFFI; verify Core owns shared rules and native clients do not imitate missing capabilities.
 
 #### Backend (Rust / Tauri)
 

@@ -15,6 +15,10 @@ description: >-
 
 ---
 
+## Client Coverage and Boundary
+
+The three product clients are React Web/Tauri, Desktop Qt, and native Android Compose. React Web and its Tauri wrapper share the React UI but use different platform adapters. Qt uses QML/C++ and `bridge-qt`; Android uses Compose/ViewModels and UniFFI. The Expo WebView shell reuses React and owns shell integration only. Treat encryption as implementation-specific: Qt's legacy local credential and React/Tauri account-key flow are distinct; Android does not have an equivalent account keychain flow. Read the coverage guide before assuming a flow is shared or claiming parity.
+
 ## Implementation Coverage Is Tracked Separately
 
 This skill defines the required security posture and wire formats; it is not evidence that every application module currently meets them. Before claiming complete E2EE, read [`docs/security/encryption-coverage.md`](../../../docs/security/encryption-coverage.md) and verify its open gates against the code. Keep the specification and the implementation status separate, and update the coverage guide when protection changes.
@@ -44,10 +48,7 @@ coverage and open gaps are recorded in [`docs/security/encryption-coverage.md`](
 
 ## 2. Two-Tier Key Hierarchy (Keychain Architecture)
 
-Each client uses a **Two-Tier Envelope Key System**. React Web/Tauri intentionally
-use the authenticated Firebase account password as the local key-derivation input;
-Qt retains its independent local credential until a separate verified migration.
-Firebase receives neither the derived root key nor module keys:
+React Web/Tauri and Qt implement a **Two-Tier Envelope Key System** with different credential flows. React Web/Tauri use the authenticated Firebase account password as the local key-derivation input; Qt retains its independent local credential until a separate verified migration. Native Android does not have a completed equivalent account keychain flow. Firebase receives neither the derived root key nor module keys:
 
 ```
 [ Account Password (React/Tauri) or Legacy Local Credential (Qt) ]
@@ -97,7 +98,7 @@ hardening. Check the encryption coverage guide for current compatibility behavio
 
 ---
 
-## 3. Dual-Platform Cryptographic Implementations
+## 3. Client-Specific Cryptographic Implementations
 
 ### 3.1. Desktop Backend — Rust (`apps/web-react/src-tauri/src/crypto.rs`)
 
@@ -167,6 +168,10 @@ export async function decryptFile(encryptedBuffer: ArrayBuffer, masterKey: Crypt
   - Auto-lock timer and memory wipe on lock and application shutdown.
 
 ---
+
+### 3.4. Native Android Compose
+
+Native Android has no completed account-key/keychain or Vault persistence flow. Keep Vault non-persistent until an audited Android key lifecycle and typed encrypted Core/UniFFI operations exist. Never pass plaintext credentials to Core CRUD or claim account-key migration, sync, or complete at-rest encryption for Android. Follow [`apps/mobile-android/AGENTS.md`](../../../apps/mobile-android/AGENTS.md) and the encryption coverage guide before changing this boundary. The Android WebView shell uses the React client flow and is not evidence of native Android coverage.
 
 ## 4. Entity-Level Encryption Matrix
 

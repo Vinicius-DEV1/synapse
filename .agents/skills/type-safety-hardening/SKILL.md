@@ -15,6 +15,10 @@ Activate this skill when eliminating `any`, fixing unsafe type assertions (`as a
 
 ---
 
+## Client Scope
+
+The TypeScript recipes in this skill apply to React Web/Tauri contracts and browser data boundaries. For Qt C++/QML and Android Kotlin/Compose, enforce the same semantic contract with each language's native types and validate FFI inputs/results at the adapter boundary; do not apply TypeScript-only rules to those files. Keep shared wire field meaning aligned across Tauri, `bridge-qt`, UniFFI, and WASM where that operation exists. The Expo WebView reuses React TypeScript and only adds typed shell-bridge boundaries.
+
 ## 1. Advanced Type Safety Patterns & Recipes
 
 ### 1.1. Discriminated Unions for State & Action Payloads

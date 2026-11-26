@@ -14,6 +14,10 @@ working evidence outside `docs/`; once an audit is complete, consolidate durable
 findings into `docs/`, update the documentation index, and remove the completed
 working artifact while retaining unresolved acceptance gates.
 
+## Client Scope and Sync Boundaries
+
+Treat React Web/Tauri, Desktop Qt, and native Android as independent sync implementations until code and deployed behavior prove otherwise. React uses IndexedDB in browser mode and Tauri/native storage in its desktop mode; Qt and Android use native Core-backed persistence and may have different or absent Firebase adapters. Expo WebView hosts React. Compare enabled entities, account/workspace scoping, payload formats, conflict rules, encryption, and tombstones per actual adapter. Never infer that a local row in a native client is synced merely because the web client supports the entity.
+
 ## Required Checks
 
 1. Identify the active local database from application configuration; do not

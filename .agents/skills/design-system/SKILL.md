@@ -20,6 +20,10 @@ description: >-
 
 ---
 
+## 1.0 Client Rendering Map
+
+These tokens describe one product visual language, not one shared widget toolkit. React Web/Tauri uses Tailwind and CSS; Qt mirrors the tokens in `apps/desktop-qt/qml/ui/Theme.qml` and native QML components; Android maps them into its Compose theme and resource system. Compare the rendered result at each target's intended viewport and density. Do not paste Tailwind classes into native clients or treat native layout adaptations as permission to change React. The Expo WebView renders React UI and handles shell-only safe-area integration.
+
 ## 1. Color Architecture
 
 All tokens are defined in `apps/web-react/tailwind.config.mjs` and must never be replaced with
@@ -157,7 +161,7 @@ transition-all duration-150
 
 ### 4.4. Modals & Dialogs
 
-When matching a modal across clients, use the React modal as the visual and behavioral reference. Record its entry point and compare same-viewport width/height, placement, backdrop and blur, inner scroll bounds, section spacing, header/footer behavior, buttons and their order, validation/error/loading/empty states, Escape and outside-click behavior, initial focus, focus restoration and resize behavior. Keep Qt dialogs native while matching these observable details and the shared tokens below; a missing React modal is a parity gap, not a reason to omit it from the comparison.
+When matching a modal across clients, use the React modal as the visual and behavioral reference. Record its entry point and compare same-viewport width/height, placement, backdrop and blur, inner scroll bounds, section spacing, header/footer behavior, buttons and their order, validation/error/loading/empty states, Escape and outside-click behavior, initial focus, focus restoration and resize behavior. Keep Qt dialogs native and implement Android dialogs with Compose while matching observable behavior, accessibility, and shared tokens below; a missing React modal is a parity gap, not a reason to omit it from the comparison.
 
 ```tsx
 {/* Backdrop */}

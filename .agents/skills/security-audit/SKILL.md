@@ -1,10 +1,7 @@
 ---
 name: security-audit
 description: >-
-  Conducts comprehensive, file-by-file security audits across Tauri backend (Rust)
-  and Web frontend (React/TypeScript), identifying injection, sandbox escapes,
-  cryptographic flaws, supply chain risks, auth breaches, and providing defensive
-  mitigation plans with OWASP/CWE classification.
+  Audits security boundaries across React Web/Tauri, Desktop Qt, native Android, and the Expo WebView shell, identifying injection, sandbox escapes, cryptographic gaps, supply-chain risks, and authorization flaws with OWASP/CWE classifications.
 ---
 
 # Skill: Comprehensive Multiplatform Security Audit & Mitigation Protocol
@@ -21,9 +18,13 @@ Activate this skill whenever auditing security, analyzing vulnerabilities, revie
 
 ---
 
+## Client-Specific Attack Surfaces
+
+Include only the clients in scope, but consider the boundaries between them: browser/IndexedDB and React services; Tauri IPC and capabilities; Qt QML-to-C++/FFI and native filesystem/media handlers; Android Compose/ViewModels, UniFFI/JNI, document-provider URI grants and app lifecycle; and Expo WebView origin, injected scripts, safe-area/back bridges, and shell permissions. Shared Rust Core reduces duplicated domain code but does not make client adapters, local stores, or encryption coverage equivalent. Verify each path independently.
+
 ## 1. Threat Modeling Scope & Attack Surface
 
-Caderno operates as a hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeScript / Vite) application. The attack surface spans:
+Caderno has three product clients—React Web/Tauri, native Desktop Qt, and native Android Compose—plus an Expo shell that hosts React. The attack surface spans only the implementations present in the selected scope:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -36,12 +37,24 @@ Caderno operates as a hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeS
   [ Cloud Boundaries ]   ──► Firebase Firestore Sync, Google Drive E2EE
 ```
 
+### Client Boundary Matrix
+
+| Target | Boundaries to inspect |
+| :--- | :--- |
+| React Web | Browser origin, DOM/HTML, IndexedDB, web APIs, file handles, Firebase |
+| React/Tauri desktop | React WebView, Tauri capabilities/commands, Rust backend, filesystem and native protocols |
+| Desktop Qt | QML/C++ exposure, Qt invokables/signals, `bridge-qt` FFI, native file/media paths, Rust Core |
+| Native Android | Compose/ViewModels, UniFFI/JNI, Android permissions, document-provider URI grants, intents, backup and app lifecycle |
+| Expo/WebView shell | Origin allowlist, injected scripts, navigation, hardware Back, safe-area bridge, shell permissions |
+
+The WebView shell uses React product UI. Core sharing does not replace per-client boundary validation; verify each adapter and storage flow independently.
+
 ### Core Audit Objectives:
 1. **WebView & Sandbox Isolation**: Untrusted content (web clippings, imported books, Anki cards) must never escape execution boundaries or access native IPC APIs.
 2. **Injection Defense**: Eliminate OS Command Injection, SQL Injection, CLI Argument Injection, DOM/Stored XSS, and custom URI scheme exploits.
 3. **Cryptographic & E2EE Integrity**: Ensure high-iteration key derivation, fresh cryptographically secure IVs, authenticated cipher modes (AES-256-GCM), and memory scrubbing.
 4. **Filesystem Confinement & Path Traversal**: Ensure all local file operations strictly confine paths to allowed sandbox directories.
-5. **Access Control & Cloud Boundaries**: Enforce least-privilege Firestore rules (`request.auth.uid == userId`) and zero-knowledge Drive backups.
+5. **Access Control & Cloud Boundaries**: Enforce least-privilege Firestore rules (`request.auth.uid == userId`) and verify the actual encryption/account scoping of each Drive backup flow where implemented.
 6. **Credential Hygiene**: Prevent hardcoded secrets, unprotected OAuth credentials, or sensitive residual data in unencrypted storage.
 7. **Local Network & Binary Integrity**: Enforce loopback restrictions, token-authenticated media streaming, and SHA-256 verification of external binaries (`ffmpeg`, `yt-dlp`).
 8. **Supply Chain Hygiene**: Continuously audit npm and cargo dependency trees for known CVEs.
@@ -121,8 +134,8 @@ Caderno operates as a hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeS
 
 ### Pillar 6: Credential Storage & API Secrets
 - **No Hardcoded OAuth Secrets**: Use OAuth 2.0 with PKCE (Proof Key for Code Exchange) for public desktop clients.
-- **Encrypted Cache at Rest**: When vault encryption is active, all cached search indexes, notes, and credentials must be stored encrypted.
-- **Sanitized Exports**: Database export routines must purge the `keychain` table and invoke `VACUUM` before generating plaintext backups.
+- **Per-Entity At-Rest Review**: Verify each table, index, credential, cache, and media path against the encryption coverage guide. Do not assume that enabling a client vault encrypts all persisted data or metadata.
+- **Sanitized Exports**: Verify export behavior for the selected client and data model. Exclude key material and sensitive fields by design; never rely on `VACUUM` as a substitute for controlled export contents.
 
 ### Pillar 7: Localhost Services & Binary Integrity
 - **Local Stream Server**: Bind exclusively to `127.0.0.1`, disallow external network interfaces (`0.0.0.0`), restrict CORS headers, and validate short-lived authentication tokens.
@@ -143,7 +156,7 @@ Caderno operates as a hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeS
 | **SQL Injection** | Search for `format!` or string concatenation in SQLite queries | 🔴 Critical |
 | **Path Traversal** | Verify `canonicalize()?.starts_with(&base_dir)` in file handlers | 🔴 Critical |
 | **IV Reuse** | Verify fresh 12-byte random IV generation on every encryption call | 🔴 Critical |
-| **Tauri CSP** | Inspect `tauri.conf.json` for restrictive `security.csp` | 🟠 High |
+| **Tauri CSP** | Inspect Tauri CSP/capabilities, Qt QML exposure, Android manifest/URI grants, and WebView origin/injected-script boundaries for the selected client | 🟠 High |
 | **Cloud Rules** | Verify Firestore rules enforce `request.auth.uid == userId` | 🟠 High |
 | **Hardcoded Secrets** | Scan codebase for API keys, bearer tokens, and static passwords | 🟠 High |
 | **Dependency CVEs** | Run `npm audit` and `cargo audit` | 🟡 Medium |
@@ -153,7 +166,7 @@ Caderno operates as a hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeS
 ## 4. Four-Phase Audit Protocol
 
 ### Phase 1: Attack Surface Discovery & Boundary Mapping
-1. Identify all boundary interfaces: Tauri commands, custom URI protocols (`encrypted://`), local HTTP servers, cloud sync handlers.
+1. Identify client boundaries: browser APIs and IndexedDB; Tauri commands/capabilities; Qt QML-to-C++ invokables, `bridge-qt`, custom URI protocols and local HTTP servers; Android UniFFI/JNI, manifests, intents and document URI grants; WebView origin, injected scripts and navigation; plus cloud sync handlers where implemented.
 2. Catalog all cryptographic operations, key derivation routines, and persistent storage sinks.
 3. Enumerate all untrusted input vectors (web clips, markdown imports, external media).
 
@@ -169,6 +182,8 @@ Caderno operates as a hybrid Desktop (Tauri v2 / Rust) and Web (React 19 / TypeS
 > - *Can an unauthenticated local page access the local stream server to read private media?*
 > - *Can an attacker with local SQLite database access extract module keys without the Master Password?*
 > - *Can a malicious npm dependency exfiltrate keys at build or runtime?*
+> - *Can an untrusted Android content URI, intent, or restored lifecycle state cross its intended owner boundary?*
+> - *Can QML invoke an exposed native operation with invalid or unauthorized arguments?*
 
 ### Phase 4: Structured Mitigation Plan Generation
 Format findings into an actionable report:
@@ -177,7 +192,7 @@ Format findings into an actionable report:
 ### [SEC-01] [Vulnerability Title]
 - **Severity**: Critical | High | Medium | Low
 - **OWASP / CWE**: e.g., CWE-78: OS Command Injection / OWASP A03:2021
-- **Location**: Inspect the current video command modules under `apps/web-react/src-tauri/src/cmd_video/` and the stream bridge before recording line-level findings; the backend is split across several files.
+- **Location**: Record exact source paths in the selected client, including the relevant React/Tauri, Qt, Android, Core, bridge, or shell boundary.
 - **Mechanics & Risk**: Explanation of how the flaw can be exploited.
 - **Defensive Remediation**: Concrete code patch eliminating the vulnerability.
 - **Parity Guarantee**: Verification that application functionality and UX remain intact.

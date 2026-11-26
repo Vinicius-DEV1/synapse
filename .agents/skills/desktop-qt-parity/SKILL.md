@@ -1,6 +1,6 @@
 ---
 name: desktop-qt-parity
-description: Canonical engineering workflow, visual/functional parity standards, hybrid WYSIWYG block-editor architecture, and Core SSOT delegation rules for bringing Desktop Qt (apps/desktop-qt/) to 100% parity with React Web (apps/web-react/).
+description: Native Qt implementation workflow for matching React Web/Tauri behavior while keeping Android Compose as a separate native client and sharing domain rules through Core.
 ---
 
 # Desktop Qt Parity (`apps/desktop-qt/` vs `apps/web-react/`)
@@ -8,6 +8,10 @@ description: Canonical engineering workflow, visual/functional parity standards,
 Use this skill whenever auditing, implementing, refactoring, or verifying feature, visual, widget, or architectural parity between the React Web reference client (`apps/web-react/`) and the Native Desktop Qt 6 / QML / C++ client (`apps/desktop-qt/`).
 
 ---
+
+## Client Scope
+
+This skill's implementation target is Desktop Qt and its reference is React Web/Tauri. Native Android has its own Compose/UniFFI workflow in [`android-native-parity`](../android-native-parity/SKILL.md); do not fold Android implementation into a Qt change. Cross-client domain behavior and public contracts still follow [`cross-platform-module-parity`](../cross-platform-module-parity/SKILL.md) and `synapse-core`. The Expo WebView shell continues to reuse the React UI.
 
 ## 1. Golden Rules of React-to-Qt Parity
 

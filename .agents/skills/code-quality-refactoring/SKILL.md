@@ -92,6 +92,8 @@ description: >-
 
 ## 3. Cross-Application Module Boundaries
 
+Shared refactoring outcomes are equivalent behavior and maintainable counterpart structure, not identical physical trees. React/Tauri uses its established UI/hook/service/API layers; Qt uses QML plus thin C++ controllers and `bridge-qt`; Compose uses `features/<module>/ui/` plus ViewModels/UniFFI; the Expo shell remains integration-only. For Android lifecycle and native UX checks, use [`android-native-parity`](../android-native-parity/SKILL.md).
+
 Keep each module discoverable under the same canonical ID across app targets. Follow each app's layer boundaries instead of copying one framework's folder layout into every client:
 
 | App | Presentation | Orchestration | Domain and persistence |

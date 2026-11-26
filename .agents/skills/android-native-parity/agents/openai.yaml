@@ -1,0 +1,4 @@
+interface:
+  display_name: "Android Native Parity"
+  short_description: "Implement native Compose parity through UniFFI and shared Core"
+  default_prompt: "Use $android-native-parity to implement native Android feature parity through Compose, UniFFI, and shared Core while preserving Android UX."

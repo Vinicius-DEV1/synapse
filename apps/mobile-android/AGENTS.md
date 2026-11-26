@@ -1,6 +1,7 @@
 # Native Android Guidance
 
 This app owns the fully native Kotlin and Jetpack Compose client. Follow the repository [engineering rules](../../AGENTS.md), [application boundaries](../AGENTS.md), and [cross-app module structure](../../docs/architecture/module-structure.md).
+Use the repository [native Android parity skill](../../.agents/skills/android-native-parity/SKILL.md) for Compose/UniFFI feature work and the [cross-client parity skill](../../.agents/skills/cross-platform-module-parity/SKILL.md) when mapping public behavior across clients.
 
 - Keep each screen in `app/src/main/java/com/synapse/features/<module>/ui/` using the canonical module ID. Match feature, action, and typed payload vocabulary with React/Tauri and Qt counterparts where responsibilities correspond; retain Compose conventions (`<Feature>Screen`, ViewModels) and record direct name mappings rather than forcing React or QML directory layouts into Android.
 - Add `viewmodel/`, `domain/`, and `data/` packages under that module only when the feature has those responsibilities.

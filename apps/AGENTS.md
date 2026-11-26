@@ -1,6 +1,6 @@
 # Application Workspace Guidance
 
-The repository has four separately owned application targets anchored by a unified Rust core. Keep application code, assets, manifests, and app-specific build output inside the owning directory. Shared domain logic, data models, repository queries, and persistence belong in `../core/synapse-core/`; platform-specific bindings belong in `../bridges/`.
+The repository has three product clients and one React-hosting Android shell, anchored by a unified Rust core. Keep application code, assets, manifests, and app-specific build output inside the owning directory. Shared domain logic, data models, repository queries, and persistence belong in `../core/synapse-core/`; platform-specific bindings belong in `../bridges/`.
 
 | App | Stack | Owns |
 | --- | --- | --- |
@@ -14,6 +14,7 @@ Applications own only UI presentation, local view state, and thin orchestration.
 Use the nearest app manifest and build system. The root `package.json` is an npm workspace command facade for `web-react`; the Expo shell has an independent `package.json` and lockfile. The root `Cargo.toml` owns the shared Rust workspace.
 
 See [the app directory guide](../docs/architecture/repository-layout.md) for commands, dependency ownership, and output paths.
+Use [cross-platform-module-parity](../.agents/skills/cross-platform-module-parity/SKILL.md) for counterpart contracts, [desktop-qt-parity](../.agents/skills/desktop-qt-parity/SKILL.md) for React-to-Qt work, and [android-native-parity](../.agents/skills/android-native-parity/SKILL.md) for Compose/UniFFI work. These skills define separate client workflows; the WebView shell reuses React.
 Use [documentation status](../docs/documentation-status.md) to find current parity, security, and build sources of truth. Historical plans and report checkboxes are not completion evidence.
 
 Use the same canonical module IDs, feature vocabulary, typed action names, and payload meanings across app targets. Keep equivalent files and module-local subdirectories paired by responsibility, and keep each file atomic. Retain framework-correct roots: React `web-react/src/components/<module>` and established hook/service/API layers, Qt `desktop-qt/qml/<module>` plus `src/controllers/<module>`, and Compose `mobile-android/.../features/<module>/ui` with state/data packages only when needed. Do not create empty mirror folders or wrappers solely to copy another framework's tree. The WebView shell hosts React and must not grow duplicate product modules. Update the counterpart map in [the module structure guide](../docs/architecture/module-structure.md) when shared paths, actions, contracts, or intentional differences change.

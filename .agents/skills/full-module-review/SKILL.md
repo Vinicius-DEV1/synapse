@@ -25,6 +25,10 @@ description: >-
 
 ---
 
+## Client Scope
+
+At intake, identify the requested client or comparison set: React Web, React/Tauri desktop, Desktop Qt, native Android Compose, or Android WebView shell. The first three product clients can share Core-owned behavior while retaining different presentation and platform adapters. The WebView shell reuses React and should be reviewed for shell integration only. Do not report an unimplemented client capability as a bug in another client; identify gaps and status per client. Use [`cross-platform-module-parity`](../cross-platform-module-parity/SKILL.md) for counterpart naming and mapping.
+
 ## 1. Constraints
 
 > [!CAUTION]
@@ -126,7 +130,7 @@ Format all findings using the template below.
 ```markdown
 # Full Module Review: [Module Name]
 
-**Path**: `apps/web-react/src/components/<module>/`
+**Client(s) / Paths**: `[React Web/Tauri | Desktop Qt | Native Android | WebView shell]` and the exact roots inspected
 **Files Reviewed**: [N] files, [M] total lines
 **Test Coverage**: [existing test files]
 **Review Date**: [YYYY-MM-DD]
@@ -174,28 +178,25 @@ Format all findings using the template below.
 ## Verification Plan
 - [ ] Targeted tests: `npm run test -- <paths>`
 - [ ] Type check: `npm run typecheck`
-- [ ] Visual regression: Tailwind class preservation review
+- [ ] Visual and interaction review with each client-specific method (DOM/CSS, Qt Quick, Compose, or WebView shell)
 ```
 
 ---
 
 ## 5. App-Wide Review Mode
 
-When reviewing the **entire application** module-by-module:
+When reviewing the **entire application**, first choose whether the review covers one client or a cross-client feature. For a cross-client review, complete one layer across all clients before comparing contracts and outcomes:
 
-### Execution Order (dependency-first)
-
-1. **Infrastructure**: `apps/web-react/src/api/`, `apps/web-react/src/services/storage/`, `apps/web-react/src/services/crypto.ts`
-2. **Domain Services**: `apps/web-react/src/services/`, `apps/web-react/src/utils/`
-3. **State Management**: `apps/web-react/src/store/`, shared hooks in `apps/web-react/src/hooks/`
-4. **Feature Modules** (alphabetical or by priority):
-   - `apps/web-react/src/components/anki/`, `apps/web-react/src/components/editor/`, `apps/web-react/src/components/files/`,
-    `apps/web-react/src/components/questions/`, `apps/web-react/src/components/vault/`, `apps/web-react/src/components/settings/`
-5. **Shell & Layout**: `apps/web-react/src/components/layout/`, `App.tsx`, routing
+1. **Shared domain**: `core/synapse-core/` and relevant typed bridge modules (`bridge-wasm`, `bridge-qt`, `bridge-uniffi`).
+2. **React Web/Tauri**: React module components, hooks/store/services/API; browser and Tauri adapters as separate execution modes.
+3. **Desktop Qt**: `apps/desktop-qt/qml/<module>/`, `src/controllers/<module>/`, bridge calls, and native tests.
+4. **Native Android**: `apps/mobile-android/.../features/<module>/ui/`, ViewModels, UniFFI/data adapters, and Kotlin tests.
+5. **WebView shell**: `apps/mobile-webview/` shell lifecycle, origin, safe-area, navigation/back, and native bridge only; product UI is the React implementation.
+6. **Cross-client contracts**: compare names, fields, defaults, validation, persistence meaning, errors, permissions, and supported user actions. Mark unavailable client capabilities explicitly rather than counting shell reuse as native parity.
 
 ### Progress Tracking
 
-After each module: `[x] Module — Health: [A-F] — Criticals: [N] — Fixes: [N/total]`
+After each module and client: `[x] Module / Client — Health: [A-F] — Criticals: [N] — Fixes: [N/total]`. Record `Not implemented`, `Not applicable`, or `Unverified` distinctly.
 
 ### Consolidated Dashboard
 
