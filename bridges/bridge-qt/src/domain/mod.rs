@@ -13,6 +13,8 @@ pub mod notes;
 pub mod notifications;
 pub mod practice;
 pub mod questions;
+#[cfg(test)]
+mod questions_open_attempt_tests;
 pub mod trash;
 pub mod vault;
 pub mod video;
