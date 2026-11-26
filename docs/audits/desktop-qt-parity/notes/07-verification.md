@@ -425,3 +425,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | Temporary `qmltestrunner` harness with outer and inner `Flickable`s, 2D inner content, and a palette anchored inside the inner viewport | Passed: 3 passed, 0 failed. The popup selected the nearest inner viewport, stayed aligned while `contentX` and `contentY` changed, recalculated clamping after the window narrowed from 700 px to 500 px, and cleared the observer on close. | Qt 6.10.2, offscreen; the generated QML test remained in a temporary directory. This exercises generic nested Flickables, not the real file/bundle widget parent chains or focus/dismissal behavior. |
+
+
+### Palette dismissal and focus harness (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Temporary `qmltestrunner` harness with active `ApplicationWindow`, focused `TextField`, and shared `NotesWidgetColorPalette` | Passed: 4 passed, 0 failed. Escape closes the popup and restores focus to the editor; clicking outside closes it; each close emits one dismissal. | Qt 6.10.2, offscreen, temporary harness not committed. The runner emitted a `keyToAscii` warning while synthesizing Escape, but the Qt close/focus assertions passed. Does not prove focus behavior in actual file/bundle delegates or nested editors. |
