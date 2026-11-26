@@ -373,3 +373,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Scoped scan for alpha-byte concatenation in `apps/desktop-qt/qml/notes/` | Passed; no remaining `+ "xx"` custom color suffixes | Static QML colors retain their alpha-first `#AARRGGBB` literals; all dynamic custom-color alpha paths use the helper. Stored palette values are unchanged. This is a source scan, not a visual check. |
 | `wc -l` and scoped Notes monolith inventory | Passed; `FileAttachmentWidget.qml` is 299 lines, helper is 11 lines, and the scoped >300-line inventory remains 30 files | The new color helper is below target and did not add a file to the over-limit set. |
 | Matched-viewport color opacity, hover/selection transitions, high-DPI rendering and React/Qt round-trip | Not run | Compare the actual rendered colors in file, toggle, media, event, link and bundle widgets before closing QT-NOTES-056. No tests or screenshots were run. |
+
+
+### Widget color-palette positioning review (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `NotesWidgetColorPalette.qml` timer and positioning connections | Found an unconditional 40 ms repeating timer while the popup is open, alongside open, anchor geometry and overlay resize handlers | Source review establishes recurring wakeups, but no idle CPU profile or scroll runtime capture was taken. Removing the timer safely requires identifying all containing Notes scroll viewports, including nested editors. Tracked in QT-NOTES-057. |

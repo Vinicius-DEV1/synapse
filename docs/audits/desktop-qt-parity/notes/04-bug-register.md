@@ -534,6 +534,17 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** At a matched viewport, compare each custom color in default, hover, selected and nested bundle/event states; verify the intended hue/opacity, hover transitions, saved six-digit color, and React/Qt round-trip. Include a valid named color and a legacy/custom palette value if these remain accepted inputs.
 - **Fix status:** `NotesColorUtils.withHexAlpha()` now uses `Qt.color()` and `Qt.alpha()`, and all custom-alpha concatenations in the scoped Notes QML files use the helper. Focused QML lint and the native app target build pass; matched-viewport appearance and cross-client persistence remain unchecked.
 
+
+## QT-NOTES-057: Widget color palette polls its anchor while open
+
+- **Severity:** Low; the palette runs a repeating 40 ms timer (25 wakeups per second) for its entire open lifetime, even when the window, anchor and scroll position are stationary. This adds avoidable work to a short-lived native popup and conflicts with the lightweight target.
+- **Evidence:** `apps/desktop-qt/qml/notes/NotesWidgetColorPalette.qml` starts a repeating `Timer` whenever `paletteRoot.opened` is true. `updatePosition()` is also called on open and through `Connections` for anchor geometry and overlay size changes. The timer appears to cover movement such as scrolling, which does not necessarily change the anchor item's local x/y values.
+- **Reproduction:** Open a widget color palette and leave the note idle. The 40 ms timer continues firing until the popup closes. Scroll the note while the palette is open and confirm the popup stays attached to its anchor.
+- **Root cause:** Popup positioning uses periodic polling to detect visual movement instead of subscribing to the active Notes viewport's scroll/transform changes.
+- **Required fix:** Replace the unconditional timer with event-driven updates from the actual scroll viewport(s) that contain the supported palette anchors. Keep updates on open, anchor geometry and overlay resize; preserve correct attachment while scrolling, nested editors and file/bundle/event widgets.
+- **Acceptance:** With each palette anchor type, verify position at top/bottom viewport edges, during vertical scrolling and window resize, then inspect that no repeating timer runs while idle. Confirm closing/dismissing the palette disconnects any temporary viewport observers and keyboard escape/outside-click behavior remains unchanged.
+- **Fix status:** Open. Source review found the 40 ms polling timer; no behavior change was made because the exact scroll viewport ancestry needs to be traced before removing the fallback safely.
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; help instructions against visible QML, and dynamic widget color alpha conversion for valid hex, named, and legacy palette values. Then complete [07-verification.md](07-verification.md).
