@@ -379,7 +379,7 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 
 | Check | Result | Scope and limits |
 | --- | --- | --- |
-| `NotesWidgetColorPalette.qml` timer and positioning connections | Source fix removes the 40 ms poll, resolves the nearest ancestor `Flickable`, observes `contentX`/`contentY`, performs a one-shot update after popup opening, and disconnects on close | Focused `qmllint` passes without diagnostics and the native app target builds. An isolated harness verifies top-edge flip, vertical-scroll repositioning and observer cleanup. Horizontal scroll, resize, real nested editor behavior and idle resource profiling remain open under QT-NOTES-057. |
+| `NotesWidgetColorPalette.qml` timer and positioning connections | Source fix removes the 40 ms poll, resolves the nearest ancestor `Flickable`, observes `contentX`/`contentY`, performs a one-shot update after popup opening, and disconnects on close | Focused `qmllint` passes without diagnostics and the native app target builds. Isolated harnesses verify top-edge flip, vertical-scroll repositioning and observer cleanup. Horizontal scroll, resize and nearest nested-Flickable updates also pass; anchoring in real Notes widgets/editors and idle resource profiling remain open under QT-NOTES-057. |
 
 
 ### Linked calendar event identity lookup re-review (2026-11-26)
@@ -418,3 +418,10 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | --- | --- | --- |
 | Temporary `qmltestrunner` `TestCase` with `ApplicationWindow`, `Flickable`, anchor at y=500, and `NotesWidgetColorPalette` | Passed: 3 passed, 0 failed. With a 600×600 window the popup opens above at y=390, then after `contentY=100` flips below at y=436; closing clears the `scrollViewport` reference. | Ran with Qt 6.10.2 and `QT_QPA_PLATFORM=offscreen`; the test file lived in a temporary directory and was not added to the repository. Covers one vertical scroll viewport and edge-flip path, not a real Notes page, horizontal scrolling, resize, high DPI, focus/dismissal, or visual parity. |
 | Focused `qmllint` and `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` after initial-position fix | Passed; no focused lint diagnostics, build exit code 0 | Confirms QML syntax and native target compilation only. |
+
+
+### Nested viewport, horizontal scroll and resize harness (2026-11-26)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| Temporary `qmltestrunner` harness with outer and inner `Flickable`s, 2D inner content, and a palette anchored inside the inner viewport | Passed: 3 passed, 0 failed. The popup selected the nearest inner viewport, stayed aligned while `contentX` and `contentY` changed, recalculated clamping after the window narrowed from 700 px to 500 px, and cleared the observer on close. | Qt 6.10.2, offscreen; the generated QML test remained in a temporary directory. This exercises generic nested Flickables, not the real file/bundle widget parent chains or focus/dismissal behavior. |
