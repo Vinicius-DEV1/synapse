@@ -62,7 +62,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 - [ ] Complete source and runtime review of all 31 React command IDs and exact keyword aliases using [08-slash-command-crosswalk.md](08-slash-command-crosswalk.md); keep Mermaid as additive Qt-only command.
 - [ ] Compare command titles, descriptions, icons, grouping, localization, search normalization and result ordering.
-- [ ] Match each selected command's real React outcome, including `/foco` starting a global timer and Qt's current paused inline widget behavior; preserve an inline widget as a separate action only if it remains reachable without changing React slash semantics.
+- [ ] Verify `/foco` starts the global Qt timer and `/alarme` saves an active alarm without inserting note widgets; confirm inline timer insertion and existing-alarm linking remain separate Notes actions.
 - [ ] Verify keyboard navigation: arrows, Enter, Escape, Left, Space, Backspace, and modifier keys.
 - [ ] Verify menu no-result state, error message, selected option announcement and focus restoration.
 - [ ] Verify caret location and query deletion for every command.

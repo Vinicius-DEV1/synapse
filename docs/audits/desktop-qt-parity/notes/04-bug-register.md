@@ -115,10 +115,10 @@ Findings are based on source inspection of the active worktree. Severity is base
 ## QT-NOTES-013: Focus and alarm slash actions have different outcomes
 
 - **Severity:** High; selecting a command creates different application state across clients.
-- **Evidence:** React `useSlashCommand.ts` opens `focus/SetupModal.tsx`; submit calls `handleStartTimer`, starting the global focus timer. Qt routes `/foco` to `NotesSetupWidgetsModal.qml`, whose submit inserts a paused inline focus widget. React `/alarme` opens `focus/AlarmSetupModal.tsx` and saves through `handleSaveAlarm`; Qt creates/selects an alarm and inserts an inline alarm widget.
-- **Required fix:** Make the native slash flows produce the same timer/alarm state as React through the Qt/Core contract. Keep an inline note widget as a separate Notes action if it is not part of the React slash behavior.
-- **Acceptance:** With identical inputs, both clients create/start the same timer or alarm record, show equivalent status, persist/reopen consistently, and do not create a Qt-only inline widget from the slash action.
-- **Fix status:** Not fixed. Native controller/Core action contracts and timer/alarm behavior need a focused follow-up before command parity can be claimed.
+- **Evidence (pre-fix):** React `useSlashCommand.ts` opens `focus/SetupModal.tsx`; submit calls `handleStartTimer`, starting the global focus timer. Qt routed `/foco` to `NotesSetupWidgetsModal.qml`, whose submit inserted a paused inline focus widget. React `/alarme` opens `focus/AlarmSetupModal.tsx` and saves through `handleSaveAlarm`; Qt created/selected an alarm and inserted an inline alarm widget.
+- **Required fix:** Make `/foco` start the running native timer and make `/alarme` save an active alarm through the existing typed controller/Core contract. Keep inline focus widgets and linking existing alarms behind separate Notes actions.
+- **Acceptance:** With identical inputs, Qt starts the same timer values or saves the same alarm time/label/active state as React; cancel leaves state unchanged; `/foco` and `/alarme` do not insert note widgets; a separate Notes action can still insert a focus widget or link an existing alarm; save/reopen and timer completion remain consistent.
+- **Fix status:** Source fix applied in the Notes setup flow: the primary focus action calls `startFocusTimer`, the primary alarm action persists through `createAlarm`, and inline focus insertion/alarm linking are separate explicit actions. Runtime state, alarm scheduling, cancellation, error and save/reopen acceptance remain open.
 
 ## QT-NOTES-014: Widget HTML interpolation does not consistently escape entity characters
 

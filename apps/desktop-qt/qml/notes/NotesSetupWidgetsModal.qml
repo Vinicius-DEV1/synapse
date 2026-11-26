@@ -17,6 +17,7 @@ Item {
     property var listItems: []
     property string searchFilter: ""
     property string selectedFocusDuration: "30"
+    property string actionErrorMessage: ""
     readonly property var focusDurationOptions: [
         { duration: 15, setup: setupRoot },
         { duration: 25, setup: setupRoot },
@@ -32,6 +33,7 @@ Item {
         activeMode = mode
         listItems = []
         searchFilter = ""
+        actionErrorMessage = ""
         var pf = (typeof prefill === "string") ? ({ query: prefill, title: prefill, desc: prefill }) : (prefill || ({}))
         if (mode === "foco") {
             mainTitleField.text = pf.desc || ""
@@ -134,6 +136,7 @@ Item {
                     id: mainTitleField
                     Layout.fillWidth: true
                     placeholderText: qsTr("Descrição (ex: Revisão)")
+                    onTextEdited: setupRoot.actionErrorMessage = ""
                     color: "#fffffe"
                     background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
                 }
@@ -142,6 +145,7 @@ Item {
                     Layout.fillWidth: true
                     placeholderText: qsTr("Tag (ex: Estudo, Código)")
                     text: ""
+                    onTextEdited: setupRoot.actionErrorMessage = ""
                     color: "#fffffe"
                     background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
                 }
@@ -175,7 +179,11 @@ Item {
                     Layout.fillWidth: true
                     placeholderText: qsTr("Duração em minutos (ex: 25)")
                     text: setupRoot.selectedFocusDuration
-                    onTextEdited: setupRoot.selectedFocusDuration = text
+                    validator: IntValidator { bottom: 1; top: 240 }
+                    onTextEdited: {
+                        setupRoot.selectedFocusDuration = text
+                        setupRoot.actionErrorMessage = ""
+                    }
                     color: "#fffffe"
                     background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
                 }
@@ -183,11 +191,38 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     enabled: mainTitleField.text.trim().length > 0 && tagField.text.trim().length > 0 &&
-                        Number(setupRoot.selectedFocusDuration) >= 1 && Number(setupRoot.selectedFocusDuration) % 1 === 0
+                        Number(setupRoot.selectedFocusDuration) >= 1 && Number(setupRoot.selectedFocusDuration) <= 240 &&
+                        Number(setupRoot.selectedFocusDuration) % 1 === 0
+                    onClicked: {
+                        var controller = setupRoot.controller
+                        if (!controller || typeof controller.startFocusTimer !== "function") {
+                            setupRoot.actionErrorMessage = qsTr("O timer de foco não está disponível.")
+                            return
+                        }
+                        var mins = Math.max(1, parseInt(setupRoot.selectedFocusDuration, 10))
+                        controller.startFocusTimer(mins, tagField.text.trim(), mainTitleField.text.trim())
+                        setupRoot.close()
+                    }
+                    background: Rectangle { radius: 8; color: "#7c3aed" }
+                    contentItem: Text {
+                        text: qsTr("Iniciar Foco")
+                        color: "#ffffff"
+                        font.pixelSize: 12
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                    enabled: mainTitleField.text.trim().length > 0 && tagField.text.trim().length > 0 &&
+                        Number(setupRoot.selectedFocusDuration) >= 1 && Number(setupRoot.selectedFocusDuration) <= 240 &&
+                        Number(setupRoot.selectedFocusDuration) % 1 === 0
                     onClicked: {
                         var rawTitle = mainTitleField.text.trim()
                         var title = HtmlEscaping.escapeHtmlAttribute(rawTitle)
-                        var mins = Math.max(1, parseInt(setupRoot.selectedFocusDuration || "30", 10) || 30)
+                        var mins = Math.max(1, parseInt(setupRoot.selectedFocusDuration, 10))
                         var tag = HtmlEscaping.escapeHtmlAttribute(tagField.text.trim())
                         setupRoot.insertWidgetRequested(
                             "<span data-type=\"focus-widget\" data-duration=\"" + mins +
@@ -195,15 +230,22 @@ Item {
                             "\" data-status=\"paused\"></span>")
                         setupRoot.close()
                     }
-                    background: Rectangle { radius: 8; color: "#7c3aed" }
+                    background: Rectangle { radius: 8; color: "#1d1c2e"; border.color: "#2e2e38" }
                     contentItem: Text {
-                        text: qsTr("Inserir na Nota")
-                        color: "#ffffff"
-                        font.pixelSize: 12
-                        font.bold: true
+                        text: qsTr("Inserir timer na nota")
+                        color: "#e2e8f0"
+                        font.pixelSize: 11
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
+                }
+                Text {
+                    visible: setupRoot.actionErrorMessage.length > 0
+                    text: setupRoot.actionErrorMessage
+                    color: "#fda4af"
+                    font.pixelSize: 11
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
                 }
             }
 
