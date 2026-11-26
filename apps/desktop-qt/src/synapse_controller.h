@@ -534,6 +534,7 @@ signals:
     void dbPathChanged();
     void countsChanged();
     void notesHierarchyChanged();
+    void quizQuestionsChanged(const QString &batteryId);
     void vaultStateChanged();
     void autoLockMinutesChanged();
     void vaultLockErrorChanged();

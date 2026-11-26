@@ -60,7 +60,10 @@ QVariantMap SynapseDataController::applyQuizAssistantActions(
     const QByteArray actionsJson = QJsonDocument::fromVariant(actions).toJson(QJsonDocument::Compact);
     const QVariantMap result = parseJsonObject(synapse_quiz_apply_assistant_actions(
         m_db, batteryUtf8.constData(), actionsJson.constData())).toVariantMap();
-    if (result.value(QStringLiteral("success")).toBool()) refreshStats();
+    if (result.value(QStringLiteral("success")).toBool()) {
+        refreshStats();
+        emit quizQuestionsChanged(batteryId.trimmed());
+    }
     return result;
 }
 

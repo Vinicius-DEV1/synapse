@@ -48,7 +48,7 @@ Rectangle {
 
     HoverHandler { id: hoverHandler }
 
-    function refreshFromCore() {
+    function refreshFromCore(forceQuestionRefresh) {
         var c = qBlockRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (!c) return
         batteryInfo = batteryId.length > 0 && typeof c.getQuizBattery === "function"
@@ -60,7 +60,7 @@ Rectangle {
         }
         questionList = []
         var inlineRaw = attrs["data-questions"] || attrs["questions"] || ""
-        if (inlineRaw.length > 0) {
+        if (!forceQuestionRefresh && inlineRaw.length > 0) {
             try {
                 var parsed = JSON.parse(inlineRaw.indexOf("%") >= 0 ? decodeURIComponent(inlineRaw) : inlineRaw)
                 if (Array.isArray(parsed)) questionList = parsed
@@ -68,11 +68,11 @@ Rectangle {
                 console.warn("[QuestionBlock] Failed to parse data-questions:", e)
             }
         }
-        if (expanded) loadQuestionPreview()
+        if (expanded) loadQuestionPreview(Boolean(forceQuestionRefresh))
     }
 
-    function loadQuestionPreview() {
-        if (questionList.length > 0) return
+    function loadQuestionPreview(forceCoreRefresh) {
+        if (questionList.length > 0 && !forceCoreRefresh) return
         var c = qBlockRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (!c) return
         if (batteryId.length > 0 && typeof c.getBatteryQuestions === "function") {
@@ -89,6 +89,15 @@ Rectangle {
     }
     onBlockDataChanged: if (componentReady) refreshFromCore()
     onExpandedChanged: if (expanded) loadQuestionPreview()
+
+    Connections {
+        target: qBlockRoot.controller
+        ignoreUnknownSignals: true
+        function onQuizQuestionsChanged(changedBatteryId) {
+            if (String(changedBatteryId || "") !== qBlockRoot.batteryId) return
+            qBlockRoot.refreshFromCore(true)
+        }
+    }
 
     readonly property int totalCount: batteryInfo && batteryInfo.question_count !== undefined
         ? Number(batteryInfo.question_count)

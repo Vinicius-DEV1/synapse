@@ -668,7 +668,13 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(modal, "sendMessage",
             Q_ARG(QVariant, QStringLiteral("Improve the paragraph.")),
             Q_ARG(QVariant, false)));
-        QVERIFY(harness->property("capturedSystemPrompt").toString().contains(original));
+        const QString capturedPrompt = harness->property("capturedSystemPrompt").toString();
+        const QString payloadMarker = QStringLiteral("Dados JSON do documento e das referências:\n");
+        const qsizetype payloadStart = capturedPrompt.indexOf(payloadMarker);
+        QVERIFY(payloadStart >= 0);
+        const QJsonDocument promptPayload = QJsonDocument::fromJson(capturedPrompt.mid(payloadStart + payloadMarker.size()).toUtf8());
+        QCOMPARE(promptPayload.object().value(QStringLiteral("document")).toObject()
+                     .value(QStringLiteral("markdown")).toString(), original);
         QCOMPARE(harness->property("capturedUserPrompt").toString(), QStringLiteral("Improve the paragraph."));
 
         QVERIFY(QMetaObject::invokeMethod(harness.data(), "resolveRequest",
@@ -715,6 +721,142 @@ private slots:
         QCOMPARE(modal->property("proposal").toString(), QString());
         QCOMPARE(modal->property("messages").toList().size(), 2);
         QVERIFY(!modal->property("isGenerating").toBool());
+    }
+
+    void notesMarkdownAiReferencesAndAddsTypedQuestions() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/qml/NotesMarkdownAiHarness.qml")));
+        QScopedPointer<QObject> harness(component.create());
+        QVERIFY2(harness, qPrintable(component.errorString()));
+
+        QObject *modal = harness->findChild<QObject *>("notesMarkdownAiModal");
+        QVERIFY(modal);
+        QVERIFY(QMetaObject::invokeMethod(modal, "openForDocument",
+            Q_ARG(QVariant, QStringLiteral("history.md")),
+            Q_ARG(QVariant, QStringLiteral("# History\n\nSource content.")),
+            Q_ARG(QVariant, QStringLiteral("file-history"))));
+        QCOMPARE(modal->property("availableBatteries").toList().size(), 2);
+
+        QVERIFY(QMetaObject::invokeMethod(modal, "updatePromptInput", Q_ARG(QVariant, QStringLiteral("Make questions @His"))));
+        QVERIFY(modal->property("showMentionMenu").toBool());
+        QCOMPARE(modal->property("filteredBatteries").toList().size(), 1);
+        QVERIFY(QMetaObject::invokeMethod(modal, "selectBatteryMention", Q_ARG(QVariant, QStringLiteral("battery-history"))));
+        QVERIFY(!modal->property("showMentionMenu").toBool());
+        QVERIFY(modal->property("inputText").toString().contains(QStringLiteral("Make questions")));
+        QVariantList attached = modal->property("attachedBatteries").toList();
+        QCOMPARE(attached.size(), 1);
+        QCOMPARE(attached.first().toMap().value(QStringLiteral("questions")).toList().size(), 1);
+
+        const QString generationPrompt = QStringLiteral("Create new study questions for the referenced battery.");
+        QVERIFY(QMetaObject::invokeMethod(modal, "sendMessage",
+            Q_ARG(QVariant, generationPrompt), Q_ARG(QVariant, false)));
+        const QString contextPrompt = harness->property("capturedSystemPrompt").toString();
+        QVERIFY(contextPrompt.contains(QStringLiteral("History Review")));
+        QVERIFY(contextPrompt.contains(QStringLiteral("What is already covered?")));
+        QVERIFY(contextPrompt.contains(QStringLiteral("correctIndex")));
+
+        const QString questionResponse = QStringLiteral(
+            "Gerei duas questões para revisar o capítulo.\n```json\n["
+            "{\"type\":\"multiple_choice\",\"question\":\"Which event came first?\",\"options\":[\"A\",\"B\",\"C\",\"D\"],\"correctIndex\":2,\"explanation\":\"The timeline in the text places C first.\"},"
+            "{\"type\":\"open\",\"question\":\"Explain the cause.\",\"expectedAnswer\":\"The source describes the economic cause.\",\"explanation\":\"Use the document's second section.\"}"
+            "]\n```");
+        QVERIFY(QMetaObject::invokeMethod(harness.data(), "resolveRequest",
+            Q_ARG(QVariant, true), Q_ARG(QVariant, questionResponse), Q_ARG(QVariant, QString())));
+
+        QVariantList messages = modal->property("messages").toList();
+        QCOMPARE(messages.size(), 3);
+        QVariantMap answer = messages.last().toMap();
+        QVariantList generated = answer.value(QStringLiteral("generatedQuestions")).toList();
+        QCOMPARE(generated.size(), 2);
+        QCOMPARE(generated.at(0).toMap().value(QStringLiteral("correctIndex")).toInt(), 2);
+        QCOMPARE(generated.at(1).toMap().value(QStringLiteral("expectedAnswer")).toString(),
+                 QStringLiteral("The source describes the economic cause."));
+        QCOMPARE(answer.value(QStringLiteral("targetBattery")).toMap().value(QStringLiteral("id")).toString(),
+                 QStringLiteral("battery-history"));
+        QVERIFY(!answer.value(QStringLiteral("text")).toString().contains(QStringLiteral("correctIndex")));
+
+        harness->setProperty("failQuestionInsert", true);
+        QVERIFY(QMetaObject::invokeMethod(modal, "addGeneratedQuestions", Q_ARG(QVariant, 2)));
+        messages = modal->property("messages").toList();
+        QCOMPARE(messages.last().toMap().value(QStringLiteral("questionAddError")).toString(),
+                 QStringLiteral("Battery could not be updated."));
+        QVERIFY(!messages.last().toMap().value(QStringLiteral("questionsAdded")).toBool());
+        harness->setProperty("failQuestionInsert", false);
+        QVERIFY(QMetaObject::invokeMethod(modal, "addGeneratedQuestions", Q_ARG(QVariant, 2)));
+        QCOMPARE(harness->property("appliedBatteryId").toString(), QStringLiteral("battery-history"));
+        QVariantList actions = harness->property("appliedActions").toList();
+        QCOMPARE(actions.size(), 2);
+        QCOMPARE(actions.at(0).toMap().value(QStringLiteral("actionType")).toString(), QStringLiteral("create"));
+        QCOMPARE(actions.at(0).toMap().value(QStringLiteral("type")).toString(), QStringLiteral("multiple_choice"));
+        QCOMPARE(actions.at(0).toMap().value(QStringLiteral("correctIndex")).toInt(), 2);
+        QCOMPARE(actions.at(1).toMap().value(QStringLiteral("type")).toString(), QStringLiteral("open"));
+        QCOMPARE(actions.at(1).toMap().value(QStringLiteral("expectedAnswer")).toString(),
+                 QStringLiteral("The source describes the economic cause."));
+        messages = modal->property("messages").toList();
+        QVERIFY(messages.last().toMap().value(QStringLiteral("questionsAdded")).toBool());
+        QCOMPARE(modal->property("attachedBatteries").toList().first().toMap()
+                     .value(QStringLiteral("questionCount")).toInt(), 3);
+    }
+
+    void notesMarkdownAiBatteryPickerSupportsKeyboardAndRemoval() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/tests/notes/qml/NotesMarkdownAiHarness.qml")));
+        QScopedPointer<QObject> harness(component.create());
+        QVERIFY2(harness, qPrintable(component.errorString()));
+        QQuickWindow window;
+        window.resize(920, 680);
+        auto *rootItem = qobject_cast<QQuickItem *>(harness.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        window.show();
+
+        QObject *modal = harness->findChild<QObject *>("notesMarkdownAiModal");
+        QVERIFY(modal);
+        QVERIFY(QMetaObject::invokeMethod(modal, "openForDocument",
+            Q_ARG(QVariant, QStringLiteral("history.md")),
+            Q_ARG(QVariant, QStringLiteral("Source content.")),
+            Q_ARG(QVariant, QStringLiteral("file-keyboard"))));
+        QObject *promptInput = harness->findChild<QObject *>("notesMarkdownAiPromptInput");
+        QVERIFY(promptInput);
+        QObject *composer = harness->findChild<QObject *>("notesMarkdownAiComposer");
+        QVERIFY(composer);
+        const auto editPrompt = [composer](const QString &text) {
+            return QMetaObject::invokeMethod(composer, "promptEdited",
+                Q_ARG(QString, text));
+        };
+        QTRY_VERIFY(promptInput->property("activeFocus").toBool());
+
+        QVERIFY(editPrompt(QStringLiteral("@")));
+        QTRY_VERIFY(modal->property("showMentionMenu").toBool());
+        QCOMPARE(modal->property("filteredBatteries").toList().size(), 2);
+        QTest::keyClick(&window, Qt::Key_Down);
+        QCOMPARE(modal->property("selectedMentionIndex").toInt(), 1);
+        QTest::keyClick(&window, Qt::Key_Return);
+        QTRY_COMPARE(modal->property("attachedBatteries").toList().size(), 1);
+        QCOMPARE(modal->property("attachedBatteries").toList().first().toMap()
+                     .value(QStringLiteral("id")).toString(), QStringLiteral("battery-science"));
+        QVERIFY(!modal->property("showMentionMenu").toBool());
+        QVERIFY(modal->property("inputText").toString().isEmpty());
+
+        QVERIFY(editPrompt(QStringLiteral("@History")));
+        QTRY_VERIFY(modal->property("showMentionMenu").toBool());
+        QCOMPARE(modal->property("filteredBatteries").toList().size(), 1);
+        QTest::keyClick(&window, Qt::Key_Return);
+        QTRY_COMPARE(modal->property("attachedBatteries").toList().size(), 2);
+        QObject *removeButton = findQuickObject(rootItem, "notesMarkdownAiRemoveBatteryButton");
+        QVERIFY(removeButton);
+        QVERIFY(QMetaObject::invokeMethod(removeButton, "clicked"));
+        QCOMPARE(modal->property("attachedBatteries").toList().size(), 1);
+
+        QVERIFY(editPrompt(QStringLiteral(" @missing")));
+        QTRY_VERIFY(modal->property("showMentionMenu").toBool());
+        QCOMPARE(modal->property("filteredBatteries").toList().size(), 0);
+        QTest::keyClick(&window, Qt::Key_Escape);
+        QTRY_VERIFY(!modal->property("showMentionMenu").toBool());
     }
 
     void collapsedCursorFormattingAppliesOnlyToFollowingText() {
@@ -988,12 +1130,18 @@ int main(int argc, char **argv) {
         char contextTest[] = "notesMarkdownAiUsesDocumentContextAndReviewsProposals";
         char cancellationTest[] = "notesMarkdownAiCancelsPendingAndIgnoresStaleResponses";
         char saveFlowTest[] = "notesMarkdownAiProposalUsesEncryptedFileSaveFlow";
+        char batteryTest[] = "notesMarkdownAiReferencesAndAddsTypedQuestions";
+        char pickerTest[] = "notesMarkdownAiBatteryPickerSupportsKeyboardAndRemoval";
         char *contextArguments[] = {argv[0], contextTest};
         char *cancellationArguments[] = {argv[0], cancellationTest};
         char *saveFlowArguments[] = {argv[0], saveFlowTest};
+        char *batteryArguments[] = {argv[0], batteryTest};
+        char *pickerArguments[] = {argv[0], pickerTest};
         return QTest::qExec(&test, 2, contextArguments) |
             QTest::qExec(&test, 2, cancellationArguments) |
-            QTest::qExec(&test, 2, saveFlowArguments);
+            QTest::qExec(&test, 2, saveFlowArguments) |
+            QTest::qExec(&test, 2, batteryArguments) |
+            QTest::qExec(&test, 2, pickerArguments);
     }
     const int richResult = QTest::qExec(&test, argc, argv);
     return richResult | runNativeNotesLinkPreviewQmlTest() | runNativeNotesLinkColorQmlTest(argc, argv) |

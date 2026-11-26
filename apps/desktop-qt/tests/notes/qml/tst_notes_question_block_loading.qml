@@ -20,6 +20,10 @@ TestCase {
         property int allQuestionListCalls: 0
         property string lastBatteryId: ""
         property string lastQuestionId: ""
+        property int batteryQuestionCount: 2
+        property var storedBatteryQuestions: [{ id: "q-1", battery_id: "battery-42", question: "First question" }]
+
+        signal quizQuestionsChanged(string batteryId)
 
         function getQuizBattery(batteryId) {
             batterySummaryCalls += 1
@@ -28,14 +32,14 @@ TestCase {
                 id: batteryId,
                 title: "Target battery",
                 description: "Point lookup summary",
-                question_count: 2
+                question_count: batteryQuestionCount
             }
         }
 
         function getBatteryQuestions(batteryId) {
             batteryQuestionCalls += 1
             lastBatteryId = batteryId
-            return [{ id: "q-1", battery_id: batteryId, question: "First question" }]
+            return storedBatteryQuestions
         }
 
         function getQuizQuestion(questionId) {
@@ -68,6 +72,18 @@ TestCase {
     }
 
     Component {
+        id: cachedBatteryBlockComponent
+        Notes.QuestionBlock {
+            controller: mockController
+            blockData: ({ attrs: {
+                "data-battery-id": "battery-42",
+                "data-cached-title": "Cached title",
+                "data-questions": JSON.stringify([{ id: "stale-1", question: "Cached question" }])
+            } })
+        }
+    }
+
+    Component {
         id: questionBlockComponent
         Notes.QuestionBlock {
             controller: mockController
@@ -83,6 +99,8 @@ TestCase {
         mockController.allQuestionListCalls = 0
         mockController.lastBatteryId = ""
         mockController.lastQuestionId = ""
+        mockController.batteryQuestionCount = 2
+        mockController.storedBatteryQuestions = [{ id: "q-1", battery_id: "battery-42", question: "First question" }]
         block = null
     }
 
@@ -117,5 +135,27 @@ TestCase {
         compare(mockController.lastQuestionId, "question-7")
         compare(block.questionList.length, 1)
         compare(block.questionList[0].question, "Single question")
+    }
+
+    function test_matchingCoreQuestionChangeRefreshesCachedExpandedBattery() {
+        block = createTemporaryObject(cachedBatteryBlockComponent, testCase)
+        verify(block !== null)
+        block.expanded = true
+        compare(block.questionList.length, 1)
+        compare(block.questionList[0].question, "Cached question")
+        compare(mockController.batteryQuestionCalls, 0)
+
+        mockController.storedBatteryQuestions = [
+            { id: "q-core-1", battery_id: "battery-42", question: "Updated from Core" },
+            { id: "q-core-2", battery_id: "battery-42", question: "Newly added from AI" }
+        ]
+        mockController.batteryQuestionCount = 2
+        mockController.quizQuestionsChanged("another-battery")
+        compare(block.questionList[0].question, "Cached question")
+        mockController.quizQuestionsChanged("battery-42")
+        compare(mockController.batteryQuestionCalls, 1)
+        compare(block.questionList.length, 2)
+        compare(block.questionList[1].question, "Newly added from AI")
+        compare(block.totalCount, 2)
     }
 }
