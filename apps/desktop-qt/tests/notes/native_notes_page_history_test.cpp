@@ -9,6 +9,7 @@
 #include <QtCore/QUrl>
 #include <QtGui/QColor>
 #include <QtGui/QFont>
+#include <QtGui/QAccessible>
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
 #include <QtTest/QtTest>
@@ -274,6 +275,11 @@ private slots:
         QTRY_VERIFY((currentRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-0"))));
         QQuickItem *olderRevision = nullptr;
         QTRY_VERIFY((olderRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-1"))));
+        QAccessibleInterface *accessibleRevision = QAccessible::queryAccessibleInterface(currentRevision);
+        QVERIFY(accessibleRevision);
+        QCOMPARE(accessibleRevision->role(), QAccessible::Button);
+        QVERIFY(accessibleRevision->text(QAccessible::Name).contains(QStringLiteral("Versão Atual")));
+        QVERIFY(accessibleRevision->text(QAccessible::Name).contains(QStringLiteral("2026")));
         currentRevision->forceActiveFocus();
         QVERIFY(currentRevision->hasActiveFocus());
         QCOMPARE(qvariant_cast<QColor>(currentRevision->property("revisionBorderColor")), QColor(QStringLiteral("#6d28d9")));
