@@ -46,7 +46,7 @@ Item {
     }
     readonly property string visibleErrorMessage: searchErrorMessage || errorMessage
     readonly property int footerHeight: visibleErrorMessage.length > 0 ? 36 : 0
-    readonly property int menuHeight: Math.min(320, 72 + (options.length === 0
+    readonly property int menuHeight: Math.min(320, 68 + (options.length === 0
         ? 48 : Math.min(240, options.length * 48)) + footerHeight)
 
     signal pageSelected(string pageId, string title, bool createNew)
@@ -134,7 +134,7 @@ Item {
 
         Rectangle {
             width: parent.width
-            height: 40
+            height: 36
             color: "#08ffffff"
             Rectangle {
                 anchors.left: parent.left
@@ -182,7 +182,7 @@ Item {
             id: pageList
             objectName: "notesRichPageReferenceList"
             width: parent.width
-            height: Math.max(0, referenceMenu.height - 72 - referenceMenu.footerHeight)
+            height: Math.max(0, referenceMenu.height - 68 - referenceMenu.footerHeight)
             clip: true
             model: referenceMenu.options
             currentIndex: referenceMenu.selectedIndex
@@ -201,7 +201,8 @@ Item {
                 background: Rectangle {
                     radius: 6
                     color: pageButton.hovered || referenceMenu.selectedIndex === pageButton.index
-                        ? "#1affffff" : "transparent"
+                        ? (referenceMenu.selectedIndex === pageButton.index ? "#1affffff" : "#0dffffff")
+                        : "transparent"
                 }
                 contentItem: Row {
                     spacing: 12
