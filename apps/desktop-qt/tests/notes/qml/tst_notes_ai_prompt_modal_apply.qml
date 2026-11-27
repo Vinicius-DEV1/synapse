@@ -175,9 +175,8 @@ TestCase {
 
         var scroll = findChild(modal, "notesAiMessageScroll")
         verify(scroll !== null)
-        var flickable = scroll.contentItem
-        verify(flickable.contentHeight > scroll.height)
-        verify(flickable.contentY > 0)
-        verify(flickable.contentY >= flickable.contentHeight - scroll.height - 1)
+        verify(scroll.contentHeight > scroll.height)
+        verify(scroll.contentY > 0)
+        verify(scroll.contentY >= scroll.contentHeight - scroll.height - 1)
     }
 }
