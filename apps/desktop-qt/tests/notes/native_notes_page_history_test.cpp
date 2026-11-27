@@ -157,6 +157,11 @@ private slots:
         QVERIFY(QRegularExpression(QStringLiteral("^\\d{2} de ")).match(timestamp.toString()).hasMatch());
         QVERIFY(timestamp.toString().contains(QStringLiteral(" de 2026, ")));
         QVERIFY(timestamp.toString().contains(QRegularExpression(QStringLiteral("\\d{2}:\\d{2}:\\d{2}"))));
+
+        QVERIFY(QMetaObject::invokeMethod(modal.data(), "formatTimestamp",
+                                          Q_RETURN_ARG(QVariant, timestamp),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("2026-09-02")))));
+        QVERIFY(timestamp.toString().startsWith(QStringLiteral("02 de ")));
     }
 };
 

@@ -36,8 +36,12 @@ Rectangle {
     }
 
     function formatTimestamp(value) {
-        var date = new Date(value || "")
-        if (isNaN(date.getTime())) return String(value || "")
+        var source = String(value || "")
+        var localDate = /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z?)?$/.exec(source)
+        var date = localDate
+                ? new Date(Number(localDate[1]), Number(localDate[2]) - 1, Number(localDate[3]))
+                : new Date(source)
+        if (isNaN(date.getTime())) return source
         var locale = Qt.locale("pt_BR")
         function twoDigits(number) { return ("0" + number).slice(-2) }
         return twoDigits(date.getDate()) + " de " + locale.monthName(date.getMonth() + 1, Locale.ShortFormat)
