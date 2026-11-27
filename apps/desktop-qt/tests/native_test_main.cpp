@@ -4,6 +4,7 @@
 int runNativeNotesTest(int argc, char **argv);
 int runNativeNotesOpenAnswerControllerTest(int argc, char **argv);
 int runNativeNotesShortcutsTest(int argc, char **argv);
+int runNativeNotesAssistantActionsTest(int argc, char **argv);
 int runNativeNotesLinkVaultTest(int argc, char **argv);
 int runNativeNotesRichImagesTest(int argc, char **argv);
 int runNativeNotesRichImageClipboardTest(int argc, char **argv);
@@ -49,6 +50,9 @@ int main(int argc, char **argv) {
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-shortcuts") == 0) {
         return runNativeNotesShortcutsTest(argc - 1, argv + 1);
     }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-assistant-actions") == 0) {
+        return runNativeNotesAssistantActionsTest(argc - 1, argv + 1);
+    }
     if (argc > 1 && std::strcmp(argv[1], "--suite=files") == 0) {
         return runNativeFilesTest(argc - 1, argv + 1);
     }
@@ -60,6 +64,7 @@ int main(int argc, char **argv) {
     result |= runNativeNotesTest(argc, argv);
     result |= runNativeNotesOpenAnswerControllerTest(argc, argv);
     result |= runNativeNotesShortcutsTest(argc, argv);
+    result |= runNativeNotesAssistantActionsTest(argc, argv);
     result |= runNativeNotesLinkVaultTest(argc, argv);
     result |= runNativeNotesRichImagesTest(argc, argv);
     result |= runNativeNotesRichImageClipboardTest(argc, argv);

@@ -182,6 +182,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_test.cpp
         tests/notes/native_notes_open_answer_controller_test.cpp
         tests/notes/native_notes_shortcuts_test.cpp
+        tests/notes/native_notes_assistant_actions_test.cpp
         tests/notes/native_notes_link_vault_test.cpp
         tests/notes/native_notes_rich_images_test.cpp
         tests/notes/native_notes_rich_image_clipboard_test.cpp
