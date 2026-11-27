@@ -133,7 +133,7 @@ TestCase {
         compare(modal.chatHistory.length, 2)
         var card = findChild(modal, "notesAiPromptCard")
         verify(card !== null)
-        compare(card.width, 370)
+        tryCompare(card, "width", 370)
         verify(card.x >= 12 && card.x + card.width <= modal.width - 12)
         verify(card.y >= 12 && card.y + card.height <= modal.height - 12)
 
@@ -248,7 +248,7 @@ TestCase {
         compare(modal.diffMessageIndex, 1)
         verify(findChild(firstAssistant, "notesAiDiffHeader") !== null)
         verify(findChild(firstAssistant, "notesAiDiffMessageText").text.indexOf("newValue") >= 0)
-        compare(findChild(modal, "notesAiPromptCard").width, 420)
+        tryCompare(findChild(modal, "notesAiPromptCard"), "width", 420)
 
         findChild(firstAssistant, "notesAiApplyMessage").clicked()
         compare(appliedValue, "```js\nconst newValue = 2;\n```")

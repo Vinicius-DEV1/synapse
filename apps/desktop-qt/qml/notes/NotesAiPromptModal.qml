@@ -265,6 +265,7 @@ Item {
         width: aiModalRoot.blockScoped
             ? Math.min(parent.width - 24, aiModalRoot.showDiff || aiModalRoot.diffMessageIndex >= 0 ? 420 : 370)
             : Math.min(parent.width - 48, 560)
+        Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
         height: Math.min(parent.height - 24, aiModalRoot.blockScoped ? 520 : contentCol.implicitHeight + 40)
         radius: aiModalRoot.blockScoped ? 12 : 16
         color: aiModalRoot.blockScoped ? "#12141a" : "#161522"
