@@ -61,6 +61,18 @@ private slots:
         QTRY_VERIFY((currentRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-0"))));
         QQuickItem *olderRevision = nullptr;
         QTRY_VERIFY((olderRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-1"))));
+        QQuickItem *closeButton = nullptr;
+        QTRY_VERIFY((closeButton = findVisualItem(modalItem, QStringLiteral("historyCloseButton"))));
+        QAccessibleInterface *accessibleClose = QAccessible::queryAccessibleInterface(closeButton);
+        QVERIFY(accessibleClose);
+        QCOMPARE(accessibleClose->role(), QAccessible::Button);
+        QCOMPARE(accessibleClose->text(QAccessible::Name), QStringLiteral("Fechar histórico de edições"));
+        QCOMPARE(qRound(closeButton->width()), 34);
+        QCOMPARE(qRound(closeButton->height()), 34);
+        QQuickItem *closeIcon = findVisualItem(modalItem, QStringLiteral("historyCloseIcon"));
+        QVERIFY(closeIcon);
+        QCOMPARE(qRound(closeIcon->width()), 18);
+        QCOMPARE(qRound(closeIcon->height()), 18);
         QAccessibleInterface *accessibleRevision = QAccessible::queryAccessibleInterface(currentRevision);
         QVERIFY(accessibleRevision);
         QCOMPARE(accessibleRevision->role(), QAccessible::Button);

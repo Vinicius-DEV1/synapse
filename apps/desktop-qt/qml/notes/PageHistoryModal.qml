@@ -150,14 +150,27 @@ Rectangle {
                 }
 
                 ToolButton {
-                    text: "×"
-                    implicitWidth: 32
-                    implicitHeight: 32
+                    id: historyCloseButton
+                    objectName: "historyCloseButton"
+                    Accessible.name: qsTr("Fechar histórico de edições")
+                    implicitWidth: 34
+                    implicitHeight: 34
                     onClicked: historyRoot.closeRequested()
                     ToolTip.visible: hovered
-                    ToolTip.text: "Fechar (Esc)"
-                    background: Rectangle { color: parent.hovered ? "#14ffffff" : "transparent"; radius: 7 }
-                    contentItem: Text { text: parent.text; color: theme.textSubtext; font.pixelSize: 20; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    ToolTip.text: qsTr("Fechar (Esc)")
+                    background: Rectangle { color: parent.hovered ? "#1affffff" : "transparent"; radius: 8 }
+                    contentItem: Item {
+                        implicitWidth: 18
+                        implicitHeight: 18
+                        AppIcon {
+                            objectName: "historyCloseIcon"
+                            anchors.centerIn: parent
+                            name: "close"
+                            color: historyCloseButton.hovered ? theme.textDark : "#a1a1aa"
+                            width: 18
+                            height: 18
+                        }
+                    }
                 }
             }
         }
