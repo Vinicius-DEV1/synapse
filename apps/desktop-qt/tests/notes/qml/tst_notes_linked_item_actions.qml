@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtTest
 import "../../../qml/notes" as Notes
@@ -56,6 +58,10 @@ TestCase {
         actionDialog.openFor("file", "file-123", "Study notes.pdf")
         tryCompare(actionDialog, "visible", true)
         wait(80)
+        compare(actionDialog.width, Math.min(actionDialog.parent.width - 32, 400))
+        var prompt = findChild(actionDialog, "notesLinkedItemActionPrompt")
+        verify(prompt !== null)
+        compare(prompt.text, "Como deseja abrir o arquivo Study notes.pdf?")
         var quickPreview = findChild(actionDialog, "notesLinkedItemQuickPreviewButton")
         verify(quickPreview !== null && quickPreview.visible)
         mouseClick(quickPreview, quickPreview.width / 2, quickPreview.height / 2)
@@ -91,6 +97,9 @@ TestCase {
         actionDialog.openFor("video", "video-123", "Lecture")
         tryCompare(actionDialog, "visible", true)
         wait(80)
+        var prompt = findChild(actionDialog, "notesLinkedItemActionPrompt")
+        verify(prompt !== null)
+        compare(prompt.text, "Como deseja abrir Lecture?")
         var quickPreview = findChild(actionDialog, "notesLinkedItemQuickPreviewButton")
         verify(quickPreview !== null && !quickPreview.visible)
         var currentTab = findChild(actionDialog, "notesLinkedItemCurrentTabButton")
@@ -110,6 +119,23 @@ TestCase {
         compare(requestedKind, "book")
         compare(requestedId, "book-123")
         compare(requestedTitle, "Field Guide")
+    }
+
+    function test_filePromptUsesReactFallbackTitle() {
+        actionDialog.openFor("file", "file-no-title", "")
+        tryCompare(actionDialog, "visible", true)
+        var prompt = findChild(actionDialog, "notesLinkedItemActionPrompt")
+        verify(prompt !== null)
+        compare(prompt.text, "Como deseja abrir o arquivo Documento?")
+    }
+
+    function test_actionDialogFitsNarrowNotesViewport() {
+        width = 360
+        actionDialog.openFor("file", "file-compact", "Compact.pdf")
+        tryCompare(actionDialog, "visible", true)
+        tryCompare(actionDialog, "width", 328)
+        verify(actionDialog.x >= 0)
+        verify(actionDialog.x + actionDialog.width <= width)
     }
 
     function test_escapeClosesWithoutOpeningTarget() {
