@@ -15,6 +15,7 @@ Item {
     z: 140
 
     property var controller: null
+    property var aiClientOverride: null
     property bool isOpen: false
     property string selectedText: ""
     property string noteContextHtml: ""
@@ -199,7 +200,8 @@ Item {
         var c = aiModalRoot.controller
         var historySnapshot = chatHistory.slice()
         var providerHistory = BlockAiPrompt.providerHistory(historySnapshot)
-        aiClient.promptText(sysPrompt, userPrompt, providerHistory, function(ok, reply, err) {
+        var promptClient = aiClientOverride || aiClient
+        promptClient.promptText(sysPrompt, userPrompt, providerHistory, function(ok, reply, err) {
             if (!aiModalRoot.isOpen || generation !== aiModalRoot.requestGeneration) return
             aiModalRoot.isGenerating = false
             if (!ok) {

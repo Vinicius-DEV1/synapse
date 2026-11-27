@@ -113,6 +113,33 @@ TestCase {
         compare(closeCount, 1)
     }
 
+    function test_followUpRequestReceivesProviderShapedHistoryWithoutChangingChatRecords() {
+        var receivedHistory = []
+        modal.aiClientOverride = {
+            promptText: function(systemPrompt, userPrompt, history, callback) {
+                receivedHistory = history
+                callback(true, "Second response", "")
+                return null
+            }
+        }
+        modal.openModal("", "", null)
+        modal.chatHistory = [
+            { role: "user", content: "First request" },
+            { role: "assistant", content: "First response" }
+        ]
+
+        modal.runPrompt("Follow-up request")
+
+        compare(receivedHistory.length, 2)
+        compare(receivedHistory[0].role, "user")
+        compare(receivedHistory[0].messageText, "First request")
+        compare(receivedHistory[1].role, "assistant")
+        compare(receivedHistory[1].messageText, "First response")
+        compare(modal.chatHistory[0].content, "First request")
+        compare(modal.chatHistory[1].content, "First response")
+        compare(modal.chatHistory[3].content, "Second response")
+    }
+
     function test_blockAssistantClampsToViewportAndRestoresItsConversation() {
         var sessionId = "page-ai::block-ai"
         BlockAiSession.save(sessionId, [
