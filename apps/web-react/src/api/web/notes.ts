@@ -64,7 +64,7 @@ export const createWebNotesApi = (
     }
 
     let content = page.content || '';
-    if (!content && page.encrypted_content && !page.is_locked) {
+    if (!content && page.encrypted_content && (!page.is_locked || !page.password_salt)) {
       const key = getMasterKey ? getMasterKey() : null;
       if (key) {
         try {

@@ -100,4 +100,35 @@ describe('PageView Component', () => {
       expect(api.getPageContent).toHaveBeenCalledTimes(2);
     });
   });
+
+  it('renders Editor directly when is_locked is set but content is already decrypted', async () => {
+    const lockedWithDecrypted: Page = { ...mockPage, id: 'page_decrypted_123', is_locked: 1 };
+    const api = (window as unknown as { api: ApiWithGetContent }).api;
+    api.getPageContent.mockResolvedValueOnce({
+      content: '<p>Conteúdo já descriptografado</p>',
+      encrypted_content: null,
+    });
+
+    render(<PageView page={lockedWithDecrypted} {...dummyProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('editor-mock')).toBeDefined();
+      expect(screen.getByText('<p>Conteúdo já descriptografado</p>')).toBeDefined();
+    });
+  });
+
+  it('renders PageUnlockForm when is_locked is set and encrypted_content could not be decrypted', async () => {
+    const lockedPage: Page = { ...mockPage, id: 'page_locked_456', is_locked: 1, password_salt: 'salt-1' };
+    const api = (window as unknown as { api: ApiWithGetContent }).api;
+    api.getPageContent.mockResolvedValueOnce({
+      content: '',
+      encrypted_content: 'cipher-text',
+    });
+
+    render(<PageView page={lockedPage} {...dummyProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Locked Page|Página Trancada/i)).toBeDefined();
+    });
+  });
 });

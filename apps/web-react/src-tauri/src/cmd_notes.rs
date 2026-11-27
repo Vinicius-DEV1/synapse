@@ -151,6 +151,9 @@ pub async fn notes_get_page_content(
                     }
                     _ => decrypted,
                 };
+                // Clear encrypted_content once decrypted with the unlocked app's notes key
+                // so the UI does not prompt for a separate page password.
+                content.encrypted_content = None;
             }
         }
 

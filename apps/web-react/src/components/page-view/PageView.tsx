@@ -188,7 +188,7 @@ function PageView({ page, onUpdateContent, onCreatePage, onCreateLinkedPage, onU
 
         {!contentData ? (
            <div className="text-dark-subtext mt-8 flex justify-center">{t('notes.loadingContent')}</div>
-        ) : page.is_locked && !isUnlocked ? (
+        ) : isLocked && !isUnlocked && !contentData.content && Boolean(contentData.encrypted_content) ? (
            <PageUnlockForm 
              page={page} 
              encryptedContent={contentData.encrypted_content} 
