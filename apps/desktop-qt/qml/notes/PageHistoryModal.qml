@@ -93,12 +93,22 @@ Rectangle {
         return newText
     }
 
+    function selectedRevisionBody() {
+        var current = selectedEntry()
+        if (!current) return ""
+        var previous = previousEntry()
+        if (showDiff && canShowDiff()) return computeDiffHtml(previous.content || "", current.content || "")
+        return current.content || ""
+    }
+
+    readonly property string displayedRevisionBody: selectedRevisionBody()
+
     onVisibleChanged: if (visible) selectedIndex = 0
 
     PageHistoryFocusManager {
         modalVisible: historyRoot.visible
         hasRevisions: historyRoot.history.length > 0
-        revisionTarget: revisionList.currentItem
+        revisionTarget: historyRevisionSidebar.currentRevisionItem
         returnTarget: historyRoot.focusReturnItem
     }
 
@@ -112,119 +122,16 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
-            Layout.fillWidth: true
-            height: 56
-            color: "#0f0f11"
-            border.color: "#0affffff"
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: historyRoot.width >= 640 ? 32 : 20
-                anchors.rightMargin: historyRoot.width >= 640 ? 32 : 20
-                spacing: 10
-                Rectangle {
-                    width: 32
-                    height: 32
-                    radius: 8
-                    color: "#08ffffff"
-                    border.color: "#0affffff"
-                    AppIcon { anchors.centerIn: parent; width: 15; height: 15; name: "clock"; color: theme.textSubtext }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Text { objectName: "historyModalTitle"; text: "Histórico de Edições"; color: theme.textDark; font.pixelSize: 14; font.bold: true }
-                    Text {
-                        objectName: "historyRevisionCount"
-                        text: "• " + historyRoot.history.length + (historyRoot.history.length === 1 ? " revisão" : " revisões")
-                        color: theme.textMuted
-                        font.pixelSize: 12
-                        font.family: theme.fontMono
-                        visible: historyRoot.width >= 640
-                    }
-                }
-
-                Button {
-                    objectName: "historyDiffToggleButton"
-                    text: historyRoot.showDiff ? qsTr("Modo Diff Ativo ✓") : qsTr("Ver Diff")
-                    flat: true
-                    visible: historyRoot.width >= 768 && historyRoot.canShowDiff()
-                    enabled: historyRoot.canShowDiff()
-                    onClicked: historyRoot.showDiff = !historyRoot.showDiff
-                    contentItem: Text {
-                        text: parent.text
-                        color: historyRoot.showDiff ? "#34d399" : "#a1a1aa"
-                        font.pixelSize: 11
-                    }
-                }
-
-                Button {
-                    objectName: "historyRestoreButton"
-                    text: qsTr("Restaurar Esta Versão")
-                    flat: true
-                    visible: historyRoot.width >= 768 && historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
-                    enabled: historyRoot.canRestoreSelectedRevision()
-                    onClicked: historyRoot.restoreSelectedRevision()
-                    contentItem: Text {
-                        text: parent.text
-                        color: "#a78bfa"
-                        font.pixelSize: 11
-                        font.bold: true
-                    }
-                }
-
-                ToolButton {
-                    objectName: "historyHeaderOverflowButton"
-                    visible: historyRoot.width < 768
-                    text: "⋯"
-                    Accessible.name: qsTr("Mais ações do histórico")
-                    implicitWidth: 28
-                    implicitHeight: 28
-                    onClicked: historyHeaderOverflowMenu.open()
-                    background: Rectangle { radius: 7; color: parent.hovered ? "#14ffffff" : "transparent" }
-                }
-
-                ToolButton {
-                    id: historyCloseButton
-                    objectName: "historyCloseButton"
-                    Accessible.name: qsTr("Fechar histórico de edições")
-                    implicitWidth: 34
-                    implicitHeight: 34
-                    onClicked: historyRoot.closeRequested()
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Fechar (Esc)")
-                    background: Rectangle { color: parent.hovered ? "#1affffff" : "transparent"; radius: 8 }
-                    contentItem: Item {
-                        implicitWidth: 18
-                        implicitHeight: 18
-                        AppIcon {
-                            objectName: "historyCloseIcon"
-                            anchors.centerIn: parent
-                            name: "close"
-                            color: historyCloseButton.hovered ? theme.textDark : "#a1a1aa"
-                            width: 18
-                            height: 18
-                        }
-                    }
-                }
-            }
-        }
-
-        Menu {
-            id: historyHeaderOverflowMenu
-            objectName: "historyHeaderOverflowMenu"
-            MenuItem {
-                objectName: "historyDiffMenuItem"
-                text: historyRoot.showDiff ? qsTr("Desativar diff") : qsTr("Ativar diff")
-                enabled: historyRoot.canShowDiff()
-                onTriggered: historyRoot.showDiff = !historyRoot.showDiff
-            }
-            MenuItem {
-                objectName: "historyRestoreMenuItem"
-                text: qsTr("Restaurar esta versão")
-                enabled: historyRoot.canRestoreSelectedRevision()
-                onTriggered: historyRoot.restoreSelectedRevision()
-            }
+        PageHistoryHeader {
+            viewportWidth: historyRoot.width
+            history: historyRoot.history
+            selectedIndex: historyRoot.selectedIndex
+            showDiff: historyRoot.showDiff
+            diffEnabled: historyRoot.canShowDiff()
+            restoreEnabled: historyRoot.canRestoreSelectedRevision()
+            onDiffToggleRequested: historyRoot.showDiff = !historyRoot.showDiff
+            onRestoreRequested: historyRoot.restoreSelectedRevision()
+            onCloseRequested: historyRoot.closeRequested()
         }
 
         RowLayout {
@@ -232,134 +139,32 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 0
 
-            Rectangle {
-                Layout.preferredWidth: historyRoot.width >= 640 ? 320 : 288
-                Layout.fillHeight: true
-                color: "#121214"
-                border.color: "#08ffffff"
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 6
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        objectName: "historyRevisionListArea"
-                        ListView {
-                            id: revisionList
-                            anchors.fill: parent
-                            visible: historyRoot.history.length > 0
-                            clip: true
-                            spacing: 6
-                            model: historyRoot.history
-                            delegate: PageHistoryRevisionButton {
-                                width: revisionList.width
-                                selectedIndex: historyRoot.selectedIndex
-                                historyCount: historyRoot.history.length
-                                timestampText: historyRoot.formatTimestamp(modelData.created_at)
-                                onRevisionSelected: function(index) { historyRoot.selectedIndex = index }
-                            }
-                        }
-                        ColumnLayout {
-                            id: historyEmptyState
-                            objectName: "historyEmptyState"
-                            anchors.centerIn: parent
-                            visible: historyRoot.history.length === 0
-                            spacing: 8
-                            AppIcon { objectName: "historyEmptyIcon"; Layout.alignment: Qt.AlignHCenter; width: 28; height: 28; name: "alert-circle"; color: theme.textMuted; opacity: 0.6 }
-                            Text { Layout.maximumWidth: revisionList.width - 24; Layout.alignment: Qt.AlignHCenter; text: "Nenhum histórico encontrado."; color: theme.textMuted; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.6 }
-                        }
-                    }
-                }
+            PageHistoryRevisionSidebar {
+                id: historyRevisionSidebar
+                viewportWidth: historyRoot.width
+                history: historyRoot.history
+                selectedIndex: historyRoot.selectedIndex
+                timestampFormatter: historyRoot.formatTimestamp
+                onRevisionSelected: function(index) { historyRoot.selectedIndex = index }
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: "#0f0f11"
-                ScrollView {
-                    id: historyContentScroll
-                    anchors.fill: parent
-                    contentWidth: availableWidth
-                    clip: true
-                    visible: historyRoot.selectedEntry() !== null
-
-                    ColumnLayout {
-                        objectName: "historyCanvasColumn"
-                        width: Math.max(0, Math.min(historyContentScroll.availableWidth, 768)
-                                        - (historyRoot.width >= 640 ? 96 : 48))
-                        x: Math.max(0, (historyContentScroll.availableWidth - width) / 2)
-                        spacing: 0
-
-                        Item { Layout.fillWidth: true; height: historyRoot.width >= 640 ? 64 : 40 }
-                        Text {
-                            Layout.fillWidth: true
-                            text: historyRoot.selectedIndex === 0 ? "Versão Atual" : "Revisão " + (historyRoot.history.length - historyRoot.selectedIndex)
-                            color: theme.textDark
-                            font.pixelSize: 24
-                            font.bold: true
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
-                            text: historyRoot.selectedIndex === 0
-                                  ? "Visualizando versão atual"
-                                  : "Visualizando revisão salva em " + historyRoot.formatTimestamp(historyRoot.selectedEntry().created_at)
-                            color: theme.textMuted
-                            font.pixelSize: 12
-                            font.family: theme.fontMono
-                            wrapMode: Text.Wrap
-                        }
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.topMargin: 16
-                            Layout.bottomMargin: 32
-                            height: 1
-                            color: "#0affffff"
-                        }
-                        Text {
-                            objectName: "historyDecryptionError"
-                            Layout.fillWidth: true
-                            visible: historyRoot.selectedEntryHasDecryptionError()
-                            text: qsTr("Não foi possível descriptografar esta revisão. Desbloqueie o cofre ou verifique a chave antes de tentar novamente.")
-                            color: "#fda4af"
-                            font.pixelSize: 14
-                            wrapMode: Text.Wrap
-                            Accessible.role: Accessible.AlertMessage
-                            Accessible.name: text
-                        }
-                        Text {
-                            objectName: "historyRevisionContent"
-                            Layout.fillWidth: true
-                            visible: !historyRoot.selectedEntryHasDecryptionError()
-                            text: {
-                                var current = historyRoot.selectedEntry()
-                                if (!current) return ""
-                                var prev = historyRoot.previousEntry()
-                                if (historyRoot.showDiff && historyRoot.canShowDiff()) {
-                                    return historyRoot.computeDiffHtml(prev.content || "", current.content || "")
-                                }
-                                return current.content || ""
-                            }
-                            textFormat: (historyRoot.showDiff && historyRoot.canShowDiff()) || historyRoot.isHtmlDocument(text) ? Text.RichText : Text.MarkdownText
-                            color: "#e4e4e7"
-                            font.pixelSize: 16
-                            wrapMode: Text.Wrap
-                            lineHeight: 1.8
-                            lineHeightMode: Text.ProportionalHeight
-                            onLinkActivated: function(link) { historyRoot.openExternalLink(link) }
-                        }
-                        Item { Layout.fillWidth: true; height: historyRoot.width >= 640 ? 64 : 40 }
-                    }
-                }
-                Text {
-                    anchors.centerIn: parent
-                    visible: historyRoot.selectedEntry() === null
-                    text: "Selecione uma revisão à esquerda"
-                    color: theme.textMuted
-                    font.pixelSize: 12
-                    font.family: theme.fontMono
-                }
+            PageHistoryRevisionCanvas {
+                viewportWidth: historyRoot.width
+                selectedEntry: historyRoot.selectedEntry()
+                selectedIndex: historyRoot.selectedIndex
+                heading: historyRoot.selectedIndex === 0
+                         ? qsTr("Versão Atual")
+                         : qsTr("Revisão ") + (historyRoot.history.length - historyRoot.selectedIndex)
+                subtitle: historyRoot.selectedIndex === 0
+                          ? qsTr("Visualizando versão atual")
+                          : qsTr("Visualizando revisão salva em ")
+                            + historyRoot.formatTimestamp(historyRoot.selectedEntry().created_at)
+                bodyText: historyRoot.displayedRevisionBody
+                bodyIsRichText: (historyRoot.showDiff && historyRoot.canShowDiff())
+                                || historyRoot.isHtmlDocument(historyRoot.displayedRevisionBody)
+                decryptionFailed: historyRoot.selectedEntryHasDecryptionError()
+                decryptionErrorText: qsTr("Não foi possível descriptografar esta revisão. Desbloqueie o cofre ou verifique a chave antes de tentar novamente.")
+                onExternalLinkActivated: function(link) { historyRoot.openExternalLink(link) }
             }
         }
     }
