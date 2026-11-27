@@ -191,6 +191,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_table_filter_persistence_test.cpp
         tests/notes/native_notes_dropped_file_test.cpp
         tests/notes/native_notes_block_color_and_column_test.cpp
+        tests/notes/native_notes_file_widget_lifecycle_test.cpp
         tests/notes/native_notes_cursor_split_test.cpp
         tests/notes/native_notes_page_history_test.cpp
         tests/notes/native_notes_page_history_keyboard_test.cpp
