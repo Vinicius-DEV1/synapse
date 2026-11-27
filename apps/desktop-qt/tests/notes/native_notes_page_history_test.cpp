@@ -173,6 +173,17 @@ private slots:
         QTest::keyClick(&window, Qt::Key_Escape);
         QTRY_VERIFY(!pageView->property("isHistoryOpen").toBool());
         QTRY_VERIFY(historyAction->hasActiveFocus());
+
+        QVERIFY(QMetaObject::invokeMethod(pageViewModalsHost, "openMoveFor",
+                                          Qt::DirectConnection,
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("page-one")))));
+        QObject *movePageModal = pageView->findChild<QObject *>(QStringLiteral("movePageModal"));
+        QVERIFY(movePageModal);
+        QTRY_VERIFY(movePageModal->property("visible").toBool());
+        QTRY_VERIFY(movePageModal->property("width").toReal() > 0.0);
+        QTRY_VERIFY(movePageModal->property("height").toReal() > 0.0);
+        QVERIFY(QMetaObject::invokeMethod(movePageModal, "close", Qt::DirectConnection));
+        QTRY_VERIFY(!movePageModal->property("visible").toBool());
     }
 
     void richHtmlHistoryDiffDisplaysTextWithoutMarkup() {
