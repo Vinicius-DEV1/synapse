@@ -35,11 +35,11 @@ Item {
 
     function cropImage(x, y, width, height, requestId) {
         if (!controller || typeof controller.cropNotesRichImage !== "function") {
-            imageViewer.showError(qsTr("Image cropping is unavailable in this session."))
+            imageViewer.showError(qsTr("O recorte de imagem não está disponível nesta sessão."))
             return
         }
         if (controller.fileOperationRunning) {
-            imageViewer.showError(qsTr("Wait for the current file operation to finish."))
+            imageViewer.showError(qsTr("Aguarde a conclusão da operação de arquivo atual."))
             return
         }
         pendingRequestId = String(requestId)
@@ -55,17 +55,17 @@ Item {
         pendingRequestId = ""
         if (!imageViewer.visible || !active) return
         if (!result.success) {
-            imageViewer.showError(String(result.error || qsTr("The crop could not be saved.")))
+            imageViewer.showError(String(result.error || qsTr("Não foi possível salvar o recorte.")))
             return
         }
         if (String(pageId) !== pendingPageId ||
                 String(textOperations.richImageData(textEditor.textDocument, pendingPosition) || "") !== pendingSource) {
-            imageViewer.showError(qsTr("The selected image changed before the crop finished. Reopen the viewer and try again."))
+            imageViewer.showError(qsTr("A imagem selecionada mudou antes do fim do recorte. Abra o visualizador novamente e tente de novo."))
             return
         }
         const croppedSource = String(result.imageDataUrl || "")
         if (!textOperations.replaceRichImageSource(textEditor.textDocument, pendingPosition, croppedSource)) {
-            imageViewer.showError(qsTr("The cropped image could not be applied to the selected image."))
+            imageViewer.showError(qsTr("Não foi possível aplicar o recorte à imagem selecionada."))
             return
         }
         textEditor.cursorPosition = pendingPosition

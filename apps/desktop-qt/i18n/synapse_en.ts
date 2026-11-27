@@ -2390,90 +2390,93 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
   <context>
     <name>NotesRichImageViewer</name>
     <message>
-      <source>Wait for the image to finish loading before cropping.</source>
-      <translation type="unfinished">Wait for the image to finish loading before cropping.</translation>
+      <source>Aguarde a imagem terminar de carregar antes de recortá-la.</source>
+      <translation>Wait for the image to finish loading before cropping.</translation>
     </message>
     <message>
-      <source>Choose a crop area inside the image.</source>
-      <translation type="unfinished">Choose a crop area inside the image.</translation>
+      <source>Escolha uma área da imagem para recortar.</source>
+      <translation>Choose an area of the image to crop.</translation>
     </message>
     <message>
-      <source>The crop could not be saved.</source>
-      <translation type="unfinished">The crop could not be saved.</translation>
+      <source>Não foi possível salvar o recorte.</source>
+      <translation>The crop could not be saved.</translation>
     </message>
     <message>
-      <source>Image viewer</source>
-      <translation type="unfinished">Image viewer</translation>
+      <source>Visualizador de imagem</source>
+      <translation>Image viewer</translation>
     </message>
     <message>
-      <source>Crop image</source>
-      <translation type="unfinished">Crop image</translation>
+      <source>Recortar imagem</source>
+      <translation>Crop image</translation>
     </message>
     <message>
-      <source>Crop</source>
-      <translation type="unfinished">Crop</translation>
+      <source>Recortar</source>
+      <translation>Crop</translation>
     </message>
     <message>
-      <source>Cancel</source>
-      <translation type="unfinished">Cancel</translation>
+      <source>Cancelar</source>
+      <translation>Cancel</translation>
     </message>
     <message>
-      <source>Saving…</source>
-      <translation type="unfinished">Saving…</translation>
+      <source>Salvando…</source>
+      <translation>Saving…</translation>
     </message>
     <message>
-      <source>Save crop</source>
-      <translation type="unfinished">Save crop</translation>
+      <source>Salvar recorte</source>
+      <translation>Save crop</translation>
     </message>
     <message>
-      <source>Close image viewer</source>
-      <translation type="unfinished">Close image viewer</translation>
-    </message>
-    <message>
-      <source>Zoom out</source>
-      <translation type="unfinished">Zoom out</translation>
-    </message>
-    <message>
-      <source>Image zoom</source>
-      <translation type="unfinished">Image zoom</translation>
-    </message>
-    <message>
-      <source>Zoom in</source>
-      <translation type="unfinished">Zoom in</translation>
-    </message>
-    <message>
-      <source>Drag to select a crop · Shift-drag or right-drag to move the image</source>
-      <translation type="unfinished">Drag to select a crop · Shift-drag or right-drag to move the image</translation>
+      <source>Fechar visualizador de imagem</source>
+      <translation>Close image viewer</translation>
     </message>
   </context>
   <context>
     <name>NotesRichImageViewerCanvas</name>
     <message>
-      <source>The selected image could not be loaded.</source>
-      <translation type="unfinished">The selected image could not be loaded.</translation>
+      <source>Não foi possível carregar a imagem selecionada.</source>
+      <translation>The selected image could not be loaded.</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesRichImageViewerZoomControls</name>
+    <message>
+      <source>Diminuir zoom</source>
+      <translation>Zoom out</translation>
+    </message>
+    <message>
+      <source>Zoom da imagem</source>
+      <translation>Image zoom</translation>
+    </message>
+    <message>
+      <source>Aumentar zoom</source>
+      <translation>Zoom in</translation>
+    </message>
+    <message>
+      <source>Arraste para selecionar o recorte · Shift + arraste ou arraste com o botão direito para mover a imagem</source>
+      <translation>Drag to select a crop · Shift-drag or right-drag to move the image</translation>
     </message>
   </context>
   <context>
     <name>NotesRichImageViewerFlow</name>
     <message>
-      <source>Image cropping is unavailable in this session.</source>
-      <translation type="unfinished">Image cropping is unavailable in this session.</translation>
+      <source>O recorte de imagem não está disponível nesta sessão.</source>
+      <translation>Image cropping is unavailable in this session.</translation>
     </message>
     <message>
-      <source>Wait for the current file operation to finish.</source>
-      <translation type="unfinished">Wait for the current file operation to finish.</translation>
+      <source>Aguarde a conclusão da operação de arquivo atual.</source>
+      <translation>Wait for the current file operation to finish.</translation>
     </message>
     <message>
-      <source>The crop could not be saved.</source>
-      <translation type="unfinished">The crop could not be saved.</translation>
+      <source>Não foi possível salvar o recorte.</source>
+      <translation>The crop could not be saved.</translation>
     </message>
     <message>
-      <source>The selected image changed before the crop finished. Reopen the viewer and try again.</source>
-      <translation type="unfinished">The selected image changed before the crop finished. Reopen the viewer and try again.</translation>
+      <source>A imagem selecionada mudou antes do fim do recorte. Abra o visualizador novamente e tente de novo.</source>
+      <translation>The selected image changed before the crop finished. Reopen the viewer and try again.</translation>
     </message>
     <message>
-      <source>The cropped image could not be applied to the selected image.</source>
-      <translation type="unfinished">The cropped image could not be applied to the selected image.</translation>
+      <source>Não foi possível aplicar o recorte à imagem selecionada.</source>
+      <translation>The cropped image could not be applied to the selected image.</translation>
     </message>
   </context>
   <context>

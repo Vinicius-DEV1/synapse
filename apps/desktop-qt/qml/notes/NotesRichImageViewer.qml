@@ -43,7 +43,7 @@ Popup {
 
     function beginCrop() {
         if (!cropCanvas.imageReady) {
-            showError(qsTr("Wait for the image to finish loading before cropping."))
+            showError(qsTr("Aguarde a imagem terminar de carregar antes de recortá-la."))
             return
         }
         mode = "crop"
@@ -54,7 +54,7 @@ Popup {
     function requestCrop() {
         const area = cropCanvas.cropPixels
         if (mode !== "crop" || saving || area.width < 1 || area.height < 1) {
-            showError(qsTr("Choose a crop area inside the image."))
+            showError(qsTr("Escolha uma área da imagem para recortar."))
             return false
         }
         requestSequence += 1
@@ -66,7 +66,7 @@ Popup {
 
     function showError(message) {
         saving = false
-        errorMessage = String(message || qsTr("The crop could not be saved."))
+        errorMessage = String(message || qsTr("Não foi possível salvar o recorte."))
     }
 
     function finishCrop() {
@@ -85,50 +85,118 @@ Popup {
 
     background: Rectangle { color: "#f20a0910" }
 
-    contentItem: ColumnLayout {
-        spacing: 0
-
+    contentItem: Item {
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 68
-            color: "#dd0a0910"
+            id: viewerHeader
+            anchors.top: parent.top
+            width: parent.width
+            height: 72
+            gradient: Gradient {
+                GradientStop { position: 0; color: "#cc000000" }
+                GradientStop { position: 1; color: "#00000000" }
+            }
+            z: 2
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 18
-                spacing: 16
+                anchors.leftMargin: 32
+                anchors.rightMargin: 16
+                spacing: 12
                 Label {
+                    objectName: "notesRichImageViewerTitle"
                     Layout.fillWidth: true
-                    text: viewer.mode === "view" ? qsTr("Image viewer") : qsTr("Crop image")
+                    text: viewer.mode === "view" ? qsTr("Visualizador de imagem") : qsTr("Recortar imagem")
                     color: "#fffffe"
-                    font.pixelSize: 19
+                    font.pixelSize: 18
                     font.weight: Font.Medium
                 }
                 Button {
+                    id: startCropButton
                     objectName: "notesRichImageStartCrop"
                     visible: viewer.mode === "view"
                     enabled: cropCanvas.imageReady && !viewer.saving
-                    text: qsTr("Crop")
+                    text: qsTr("Recortar")
+                    leftPadding: 16
+                    rightPadding: 16
+                    implicitHeight: 40
+                    contentItem: Label {
+                        text: startCropButton.text
+                        color: "#fffffe"
+                        font.pixelSize: 14
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: startCropButton.hovered || startCropButton.down ? "#33ffffff" : "#1affffff"
+                        radius: 8
+                    }
                     onClicked: viewer.beginCrop()
                 }
                 Button {
+                    id: cancelCropButton
                     objectName: "notesRichImageCancelCrop"
                     visible: viewer.mode === "crop"
                     enabled: !viewer.saving
-                    text: qsTr("Cancel")
+                    text: qsTr("Cancelar")
+                    leftPadding: 16
+                    rightPadding: 16
+                    implicitHeight: 40
+                    contentItem: Label {
+                        text: cancelCropButton.text
+                        color: "#fffffe"
+                        font.pixelSize: 14
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: cancelCropButton.hovered || cancelCropButton.down ? "#33ffffff" : "#1affffff"
+                        radius: 8
+                    }
                     onClicked: viewer.cancelCrop()
                 }
                 Button {
+                    id: saveCropButton
                     objectName: "notesRichImageSaveCrop"
                     visible: viewer.mode === "crop"
                     enabled: !viewer.saving
-                    text: viewer.saving ? qsTr("Saving…") : qsTr("Save crop")
+                    text: viewer.saving ? qsTr("Salvando…") : qsTr("Salvar recorte")
+                    leftPadding: 16
+                    rightPadding: 16
+                    implicitHeight: 40
+                    contentItem: Label {
+                        text: saveCropButton.text
+                        color: "#fffffe"
+                        font.pixelSize: 14
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: saveCropButton.down ? "#7c3aed"
+                            : saveCropButton.hovered ? "#8b5cf6" : "#7c3aed"
+                        radius: 8
+                    }
                     onClicked: viewer.requestCrop()
                 }
                 ToolButton {
+                    id: closeViewerButton
                     objectName: "notesRichImageCloseViewer"
                     text: "×"
-                    Accessible.name: qsTr("Close image viewer")
+                    Accessible.name: qsTr("Fechar visualizador de imagem")
+                    implicitWidth: 40
+                    implicitHeight: 40
+                    contentItem: Label {
+                        text: "×"
+                        color: "#fffffe"
+                        font.pixelSize: 24
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: closeViewerButton.hovered || closeViewerButton.down ? "#33ffffff" : "#1affffff"
+                        radius: width / 2
+                    }
                     onClicked: viewer.close()
                 }
             }
@@ -136,61 +204,27 @@ Popup {
 
         NotesRichImageViewerCanvas {
             id: cropCanvas
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            anchors.fill: parent
             imageSource: viewer.imageSource
             mode: viewer.mode
             zoom: viewer.zoom
+            z: 0
             onZoomStepRequested: function(amount) {
                 viewer.zoom = viewer.clamp(viewer.zoom + amount, 0.5, 5)
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: viewer.errorMessage.length > 0 ? 82 : 66
-            color: "#cc0a0910"
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                anchors.topMargin: 8
-                anchors.bottomMargin: 8
-                spacing: 2
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.maximumWidth: 520
-                    Layout.alignment: Qt.AlignHCenter
-                    Label { text: "−"; color: "#a7a9be"; Accessible.name: qsTr("Zoom out") }
-                    Slider {
-                        id: zoomSlider
-                        objectName: "notesRichImageZoomSlider"
-                        Layout.fillWidth: true
-                        from: 0.5
-                        to: 5
-                        stepSize: 0.1
-                        value: viewer.zoom
-                        onMoved: viewer.zoom = value
-                        Accessible.name: qsTr("Image zoom")
-                    }
-                    Label { text: "+"; color: "#a7a9be"; Accessible.name: qsTr("Zoom in") }
-                    Label {
-                        Layout.preferredWidth: 48
-                        text: Math.round(viewer.zoom * 100) + "%"
-                        color: "#a7a9be"
-                        font.family: "monospace"
-                    }
-                }
-                Label {
-                    Layout.alignment: Qt.AlignHCenter
-                    visible: viewer.mode === "crop" || viewer.errorMessage.length > 0
-                    text: viewer.errorMessage.length > 0 ? viewer.errorMessage
-                        : qsTr("Drag to select a crop · Shift-drag or right-drag to move the image")
-                    color: viewer.errorMessage.length > 0 ? "#fda4af" : "#a7a9be"
-                    font.pixelSize: 12
-                    wrapMode: Text.Wrap
-                }
-            }
+        NotesRichImageViewerZoomControls {
+            id: zoomControls
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 24
+            width: Math.max(0, Math.min(parent.width - 32, 384))
+            zoom: viewer.zoom
+            mode: viewer.mode
+            message: viewer.errorMessage
+            z: 2
+            onZoomRequested: function(value) { viewer.zoom = value }
         }
     }
 }

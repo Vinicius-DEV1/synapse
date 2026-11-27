@@ -109,7 +109,7 @@ Item {
     Label {
         anchors.centerIn: parent
         visible: imagePreview.status === Image.Error || canvas.imageSource.length === 0
-        text: qsTr("The selected image could not be loaded.")
+        text: qsTr("Não foi possível carregar a imagem selecionada.")
         color: "#fda4af"
     }
 
