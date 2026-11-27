@@ -1,5 +1,13 @@
 # Caderno Verification Plan
 
+### Document-bundle metadata, manager delegate, ungroup & nested absorption iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml apps/desktop-qt/qml/notes/DocumentBundleManagerItem.qml apps/desktop-qt/qml/notes/DocumentBundleOperations.js apps/desktop-qt/qml/notes/BlockListEditor.qml` | Passed, exit code 0; existing `BlockListEditor.qml` dynamic-router diagnostics remain | Fixed `DocumentBundleManagerDialog.qml` shadowed `required property int index` and `QVariantList` `toArray()` normalization in `BlockListEditor.qml` / `DocumentBundleOperations.js`. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Built `synapse-desktop-tests` with `native_notes_document_bundle_test.cpp`. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-bundles` | Passed: 3 passed, 0 failed (`initTestCase`, `bundlePercentFilenamesMalformedGuardUngroupAndNestedAbsorption`, `cleanupTestCase`) | Qt 6.10.2, offscreen. Production `PageView.qml` + `SynapseDataController` + SQLite verifies `"100% Notes.pdf"` preservation, malformed JSON guard, stale-path absorption rejection, nested `columnBlock` + top-level file absorption with wrapper/sibling preservation, `unwrapDocumentBundleItem`, and `unwrapDocumentBundle` across save. Cross-client React round-trip and same-viewport visuals remain open. |
+
 ### Performance benchmark baseline iteration (2026-11-27)
 
 | Check | Result | Scope and limits |
