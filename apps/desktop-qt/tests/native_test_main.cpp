@@ -15,6 +15,7 @@ int runNativeNotesDroppedFileTest(int argc, char **argv);
 int runNativeNotesBlockColorAndColumnTest(int argc, char **argv);
 int runNativeNotesFileWidgetLifecycleTest(int argc, char **argv);
 int runNativeNotesPerformanceBenchmarkTest(int argc, char **argv);
+int runNativeNotesDocumentBundleTest(int argc, char **argv);
 int runNativeNotesCursorSplitTest(int argc, char **argv);
 int runNativeNotesPageHistoryTest(int argc, char **argv);
 int runNativeNotesPageHistoryKeyboardTest(int argc, char **argv);
@@ -86,6 +87,9 @@ int main(int argc, char **argv) {
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-benchmark") == 0) {
         return runNativeNotesPerformanceBenchmarkTest(argc - 1, argv + 1);
+    }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-bundles") == 0) {
+        return runNativeNotesDocumentBundleTest(argc - 1, argv + 1);
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-cursor-split") == 0) {
         return runNativeNotesCursorSplitTest(argc - 1, argv + 1);
