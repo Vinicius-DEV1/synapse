@@ -898,3 +898,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 2 behavior tests (4 QtTest results including setup/cleanup) | Covers failed history-restore save/retry, rich HTML diff visible-text output, and UTC/date-only timestamps formatted with day + Portuguese abbreviated month + year + local time. The timestamp assertions check structure and local date-only day retention rather than exact abbreviation or alternate timezone behavior; invalid values and visual truncation are not checked. |
 | `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/notes/PageHistoryModal.qml apps/desktop-qt/qml/page-view/PageView.qml` | Passed with no diagnostics | Checks the history formatter and PageView integration syntax. |
 | Same-timezone React/Qt screenshot, invalid timestamp fallback, narrow viewport, exact month abbreviation and stored timestamp preservation | Not run | Keep QT-NOTES-090 partial pending runtime and matched-viewport acceptance. |
+
+### Notes history revision canvas geometry (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Builds the production-QML geometry assertions into the focused Notes test binary. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 3 behavior tests (5 QtTest results including setup/cleanup) | Covers failed restore retry, HTML visible-text diff and timestamp behavior, plus a mounted `PageHistoryModal.qml` at 1280×900 verifying a centered 672 px inner text column within the responsive outer canvas, 16 px body font and React's `#e4e4e7` body color. It does not measure the rail at both breakpoints or compare rendered pixels. |
+| `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/notes/PageHistoryModal.qml apps/desktop-qt/qml/page-view/PageView.qml` | Passed with no diagnostics | Checks the production history modal and page-view host syntax. |
+| `git diff --check` | Passed | No whitespace errors in the QML, test and audit changes. |
+| Matched-viewport React/Qt capture, rail at 288 and 320 px, resized header actions, empty/error states, scroll boundary, keyboard/focus, high DPI and accessibility | Not run | Keep QT-NOTES-091 partial until visible runtime and screenshot acceptance. |
