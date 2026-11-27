@@ -1006,3 +1006,25 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | `git diff --check` | Passed | No whitespace errors in the implementation changes. |
 | Same-viewport React/Qt screenshots, live Core media, thumbnail contract, error/loading behavior, and large-catalog responsiveness | Not run | Keep QT-NOTES-104 partial. Core `VideoRecord` has no `thumbnail_url`; React data loading is async while Qt picker getters are synchronous. |
 | `wc -l apps/desktop-qt/qml/notes/NotesMediaWidgetPickerModal.qml apps/desktop-qt/qml/notes/NotesMediaWidgetPickerHeader.qml apps/desktop-qt/qml/notes/NotesMediaWidgetPickerSearchField.qml` | Passed: 280 / 57 / 59 lines | The modal coordinator now stays under 300 lines; header and search field each have one cohesive presentation responsibility. |
+
+
+### Rich-image deletion dialog geometry, copy, and interaction (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | Rebuilt the focused rich-image deletion production-QML harness and test-suite entry point. |
+| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=image-deletion` | Passed: 1 behavior test (3 QtTest rows including setup/cleanup) | Visible `NotesRichTextEditor` test checks 384 px dialog geometry, nonzero height, Portuguese title/prompt/description/actions, initial confirm focus, cancel-button and backdrop dismissal, Escape, Delete/Enter confirmation, canonical image removal, undo, and flush. The harness uses a visible 800×360 viewport; running application DPI and screenshots remain open. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesRichImageDeletion.qml apps/desktop-qt/qml/notes/NotesRichImageActions.qml apps/desktop-qt/qml/notes/NotesRichImageToolbar.qml` | Passed with no diagnostics | Parses the modified modal and its Notes action/toolbar callers. |
+| Python `xml.etree.ElementTree.parse` for `synapse_pt_BR.ts` and `synapse_en.ts` | Passed | Both catalogs are valid XML and contain the updated image-delete labels. `lrelease` is unavailable in the current environment, and no generated `.qm` file is present in the checkout/build tree, so generated-catalog loading/packaging is unverified. |
+| Matched-viewport screenshot, modal blur/shadow/animation, narrow viewport, focus return/accessibility, locale switching and `.qm` generation | Not run | Keep QT-NOTES-105 partial; the focused harness establishes geometry and behavior but not these visual/runtime gates. |
+
+
+### Rich editor references, slash search and combined Notes regression pass (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | Rebuilt the Notes rich-editor and page-reference QtTest harnesses. |
+| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests` | Passed: 80 QtTest rows, 0 failed, 0 skipped | Combined Notes rich editor, slash menu, page reference, reference search/actions, code, divider, image and deletion harnesses. This is module-focused coverage, not full application or Core-wide verification. |
+| Regression test cross-review | Passed | Updated slash-menu expectations to React's substring-in-either-direction matching, verified rich page references as native QTextObjectInterface objects with typed page metadata, used the actual page-reference end position for Backspace, and removed a QSignalSpy configured for a nonexistent signal. Production Notes behavior and React were unchanged. |
+| Runtime diagnostics during the combined run | Observed | The failure-path page-preview test intentionally logs its rejected-description `QCRITICAL`; the application Notes harness also emits a QML `Connections` warning from `FilesPreviewOverlay.qml`. The latter was outside this Notes-only change and was not investigated or modified. |
+| Matched-viewport visual review, active/deleted page-reference focus and accessibility, and full cursor mapping around nested/adjacent widgets | Not run | Keep related page-reference visual and interaction checklist items open. The passing harnesses do not establish full behavior parity or real Core persistence. |
