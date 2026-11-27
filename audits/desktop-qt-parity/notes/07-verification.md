@@ -941,3 +941,15 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/notes/PageHistoryModal.qml` | Passed with no diagnostics | Parses the modified history modal QML. |
 | `git diff --check` | Passed | No whitespace errors in the current changes. |
 | Real encrypted-history decrypt/lock/key recovery, valid empty-history restore, screen-reader announcement and matched-viewport failure state | Not run | Keep QT-NOTES-097 partial until these actual-controller and visual acceptance cases are covered. |
+
+
+### Page-history presentation decomposition (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 4 behavior tests (8 QtTest results across history and keyboard harnesses, including setup/cleanup) | Exercises the decomposed production history QML, including revision focus, responsive header/menu, diff/restore, accessible decryption failure, Markdown fallback, PageView modal host sizing, and MovePageModal sizing. Existing geometry assertions remain green. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-page-switch` | Passed: 4 behavior tests (8 QtTest results across page-switch and Core conflict classes, including setup/cleanup) | Confirms the production PageView and modal-host changes still coexist with save retry, pending file-Trash retry and Core conflict navigation. The intentional file-Trash failure emits the expected warning. |
+| `/usr/lib/qt6/bin/qmllint --ignore-settings -s` on PageView header/host and all `PageHistory*.qml` components | Passed with no diagnostics | Parses the new component boundaries and their production caller chain. |
+| `wc -l` on page-history QML files | Passed | `PageHistoryModal.qml` 171 lines; `PageHistoryHeader.qml` 160; `PageHistoryRevisionSidebar.qml` 78; `PageHistoryRevisionCanvas.qml` 98. No extracted component exceeds the 300-line target. |
+| `git diff --check` | Passed | No whitespace errors after extraction. |
+| Same-viewport React/Qt screenshots and screen-reader output | Not run | Extraction preserves current source layout and interaction evidence, but does not establish visual or assistive-technology parity. |

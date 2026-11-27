@@ -4,7 +4,7 @@ This inventory is limited to Caderno Notes paths in Desktop Qt, the Notes domain
 
 ## Snapshot
 
-Line counts were refreshed on 2026-11-27 with `wc -l` from the active worktree after the page-history fixes. Re-run the command before each extraction because later edits can change the counts.
+Line counts were refreshed on 2026-11-27 with `wc -l` from the active worktree after decomposing the page-history modal. Re-run the command before each extraction because later edits can change the counts.
 
 ```bash
 find apps/desktop-qt/qml/notes \
@@ -26,7 +26,6 @@ find apps/desktop-qt/qml/notes \
 | 438 | `apps/desktop-qt/qml/notes/NotesToggleBlock.qml` |
 | 422 | `apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml` |
 | 393 | `apps/desktop-qt/qml/notes/NotesRichTextEditor.qml` |
-| 366 | `apps/desktop-qt/qml/notes/PageHistoryModal.qml` |
 | 360 | `apps/desktop-qt/qml/notes/QuestionBlock.qml` |
 | 354 | `apps/desktop-qt/qml/notes/BlockDelegateRouter.qml` |
 | 353 | `apps/desktop-qt/qml/notes/NotesTableExcelGrips.qml` |
@@ -69,9 +68,11 @@ find apps/desktop-qt/qml/notes \
 | 374 | `bridges/bridge-qt/src/domain/notes/pages.rs` |
 | 332 | `bridges/bridge-qt/src/domain/notes/table_ast_ffi.rs` |
 
-Total: **32 files** above the source-length target in this scoped scan.
+Total: **31 files** above the source-length target in this scoped scan. The decomposed page-history files (`PageHistoryModal.qml`, `PageHistoryHeader.qml`, `PageHistoryRevisionSidebar.qml`, and `PageHistoryRevisionCanvas.qml`) are each below 300 lines.
 
 ## Recent decomposition check
+
+`PageHistoryModal.qml` was decomposed into the modal coordinator, responsive header/actions, revision sidebar, and revision canvas. The resulting files are 171, 160, 78, and 98 lines respectively. Focused visible-window history and PageView tests, plus changed-file QML lint, pass; same-viewport captures and screen-reader output remain open.
 
 `FileAttachmentWidget.qml` delegates identity, rename, toolbar actions, and selected-widget keyboard handling to focused sibling components. Its current count is 301 lines, so it remains just above the target despite the extraction; `FileAttachmentRenameEditor.qml`, `FileAttachmentIdentity.qml`, `FileAttachmentActionBar.qml`, and `FileAttachmentKeyboardActions.qml` remain individually below 300 lines. The extracted keyboard scope parses and the native app target builds, but preview-return focus and key routing still need runtime acceptance.
 
