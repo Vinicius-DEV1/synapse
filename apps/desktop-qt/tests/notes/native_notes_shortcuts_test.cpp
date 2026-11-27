@@ -85,6 +85,10 @@ private slots:
         QCOMPARE(focusModalObject->property("openAnswer").toString(),
                  QStringLiteral("Draft through the active field"));
         QVERIFY(!focusModalObject->property("showExplanation").toBool());
+        QTest::keyClick(&window, Qt::Key_Right);
+        QCOMPARE(focusModalObject->property("currentIndex").toInt(), 0);
+        QCOMPARE(focusModalObject->property("openAnswer").toString(),
+                 QStringLiteral("Draft through the active field"));
 
         focusModal->forceActiveFocus();
         QTRY_VERIFY(!focusModalObject->property("openAnswerInputFocused").toBool());
