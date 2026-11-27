@@ -102,22 +102,6 @@ Item {
         return true
     }
 
-    TapHandler {
-        id: outsideClickHandler
-        acceptedButtons: Qt.LeftButton
-        enabled: referenceFlow.open
-        onTapped: function(eventPoint) {
-            var point = pageReferenceMenu.mapFromItem(referenceFlow,
-                eventPoint.position.x, eventPoint.position.y)
-            var insideMenu = point.x >= 0 && point.y >= 0
-                    && point.x <= pageReferenceMenu.width && point.y <= pageReferenceMenu.height
-            if (insideMenu) {
-                return
-            }
-            referenceFlow.close()
-        }
-    }
-
     NotesRichPageReferenceMenu {
         id: pageReferenceMenu
         open: referenceFlow.open
