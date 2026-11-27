@@ -1,5 +1,15 @@
 # Caderno Verification Plan
 
+### Table-cell page references, UTF-16 cursor split, 928 px reading width & event widget state (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo test --manifest-path core/synapse-core/Cargo.toml domain::notes` | Passed: 21 passed, 0 failed | Verified Core Notes domain unit tests including `cursor_split` `taskItem` checkbox wrapper preservation. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-cursor-split` | Passed: 4 passed, 0 failed | Qt 6.10.2, offscreen. Verified `QQuickTextDocument` UTF-16 cursor offsets against `splitRichHtml` for supplementary emoji, combining marks, named/numeric entities, nested marks, task lists, adjacent `PageReferenceObjectType`, and `<br/>`/headings. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests pageViewDesktopReadingWidthMatchesReact928Px` (`NativeNotesTest`) | Passed: 3 passed, 0 failed | Verified `pageContentColumn` inner width is 928 px at 1280/1440/1920 and 636/468 px at 700/500. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/page-view/PageView.qml apps/desktop-qt/qml/notes/CalendarEventWidgetState.qml` | Passed, exit code 0 | Zero warnings on both modified QML files. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_calendar_event_widget.qml -import apps/desktop-qt/qml` | Passed: 6 passed, 0 failed | Verified `CalendarEventWidgetState` Core sync, independent widget color, failed toggle guard, space-separated date edit + duration/reminder preservation, `-15m`/`+60m` live boundaries, and active/recurring/expired/unlinked delete confirmation. |
+
 ### Dropped-file encrypted import & stale-target iteration (2026-11-27)
 
 | Check | Result | Scope and limits |

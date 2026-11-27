@@ -48,7 +48,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 ## C. Page view and hierarchy
 
-- [ ] Compare React and Qt page canvas width at 1280, 1440 and 1920 px; align Qt's desktop reading column to the 928 px React content width.
+- [x] Compare React and Qt page canvas width at 1280, 1440 and 1920 px; align Qt's desktop reading column to the 928 px React content width. (`PageView.qml` now caps `pageContentColumn` at `1024 - 2 * responsivePageMargin`; `NativeNotesTest::pageViewDesktopReadingWidthMatchesReact928Px` verifies 928 px at 1280/1440/1920 and 636/468 px at 700/500. Same-viewport visual capture remains open.)
 - [ ] Compare responsive margins, cover offset, title, icon, description, breadcrumbs, sub-page grid and footer spacing.
 - [ ] Verify root/child creation, linked page creation, rename, description, icon, pin, duplicate, move, reorder, delete, restore, import, export and share actions.
 - [ ] Verify hierarchy cycle rejection, deleted/missing parent handling, sort order, breadcrumb refresh, and failed persistence feedback.
