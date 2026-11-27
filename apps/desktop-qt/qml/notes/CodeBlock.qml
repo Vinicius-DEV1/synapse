@@ -203,7 +203,8 @@ Rectangle {
                     id: aiPromptButton
                     objectName: "notesCodeBlockAiButton"
                     Layout.preferredHeight: 24; Layout.preferredWidth: 26
-                    focusPolicy: Qt.NoFocus
+                    focusPolicy: Qt.TabFocus
+                    Accessible.name: qsTr("Assistente de IA")
                     ToolTip.visible: hovered; ToolTip.text: qsTr("Explicar ou melhorar com IA")
                     onClicked: codeBlockRoot.askAiRequested(codeEdit.selectedText || codeEdit.text)
                     background: Rectangle { radius: 6; color: parent.hovered ? "#338b5cf6" : "transparent" }

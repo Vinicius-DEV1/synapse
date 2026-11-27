@@ -112,6 +112,8 @@ TestCase {
         var aiButton = findChild(editor, "notesCodeBlockAiButton")
         verify(aiButton !== null)
         verify(aiButton.enabled)
+        compare(aiButton.focusPolicy, Qt.TabFocus)
+        compare(aiButton.Accessible.name, "Assistente de IA")
         aiButton.clicked()
         verify(typeof capturedApplyHandler === "function")
         compare(capturedApplyHandler.sessionId, "page-1::code-1")
@@ -192,9 +194,15 @@ TestCase {
         var aiButton = findChild(toggle, "notesToggleBlockAiButton")
         verify(aiButton !== null)
         compare(toggle.aiButtonItem, aiButton)
+        compare(aiButton.focusPolicy, Qt.TabFocus)
+        compare(aiButton.Accessible.name, "Assistente de IA")
 
+        var toolbar = findChild(toggle, "notesToggleBlockToolbar")
+        verify(toolbar !== null)
         aiButton.clicked()
         compare(capturedAiSelection, "Nested\nold")
+        aiButton.forceActiveFocus()
+        tryCompare(toolbar, "opacity", 1)
     }
 
     function test_toggleAssistantActionAppliesToItsStableBlock() {

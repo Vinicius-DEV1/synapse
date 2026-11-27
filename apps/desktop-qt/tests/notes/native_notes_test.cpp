@@ -1597,6 +1597,14 @@ private slots:
         QVERIFY(quoteBlockItem);
         QObject *quoteAiButton = quoteBlockItem->property("aiButtonItem").value<QObject *>();
         QVERIFY(quoteAiButton);
+        QCOMPARE(quoteAiButton->property("focusPolicy").toInt(), static_cast<int>(Qt::TabFocus));
+        QQuickItem *quoteAiItem = qobject_cast<QQuickItem *>(quoteAiButton);
+        QVERIFY(quoteAiItem);
+        quoteAiItem->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(quoteAiItem->hasActiveFocus());
+        QQuickItem *quoteToolbar = findItemByName(rootItem, QStringLiteral("notesColorBlockquoteToolbar"));
+        QVERIFY(quoteToolbar);
+        QTRY_COMPARE(quoteToolbar->opacity(), 1.0);
         QVERIFY(QMetaObject::invokeMethod(quoteAiButton, "clicked", Qt::DirectConnection));
         QVERIFY(blockAiModal->property("isOpen").toBool());
         const QVariantMap quoteAiReply{

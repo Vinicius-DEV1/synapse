@@ -127,7 +127,9 @@ Rectangle {
 
     // Floating hover toolbar (Color palette + AI + Delete)
     Rectangle {
-        visible: hoverHandler.hovered || blockquoteRoot.showColorMenu
+        objectName: "notesColorBlockquoteToolbar"
+        opacity: hoverHandler.hovered || blockquoteRoot.showColorMenu || aiPromptButton.activeFocus ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 150 } }
         anchors.top: parent.top; anchors.topMargin: 6
         anchors.right: parent.right; anchors.rightMargin: 8
         z: 10
@@ -152,8 +154,10 @@ Rectangle {
 
             ToolButton {
                 id: aiPromptButton
+                objectName: "notesColorBlockquoteAiButton"
                 Layout.preferredWidth: 22; Layout.preferredHeight: 22
-                focusPolicy: Qt.NoFocus
+                focusPolicy: Qt.TabFocus
+                Accessible.name: qsTr("Assistente de IA")
                 ToolTip.visible: hovered; ToolTip.text: qsTr("Melhorar citação com IA")
                 onClicked: blockquoteRoot.askAiRequested(quoteEdit.selectedText || quoteEdit.text)
                 background: Rectangle { radius: 5; color: parent.hovered ? "#338b5cf6" : "transparent" }

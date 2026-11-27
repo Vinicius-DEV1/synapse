@@ -277,8 +277,9 @@ Rectangle {
             }
 
             Rectangle {
-                opacity: blockHover.hovered || titleInput.activeFocus || toggleRoot.showColorPicker ? 1 : 0
-                visible: opacity > 0
+                objectName: "notesToggleBlockToolbar"
+                opacity: blockHover.hovered || titleInput.activeFocus || toggleRoot.showColorPicker || aiPromptButton.activeFocus ? 1 : 0
+                visible: true
                 Behavior on opacity { NumberAnimation { duration: 150 } }
                 Layout.preferredHeight: 26
                 Layout.preferredWidth: actionRow.implicitWidth + 8
@@ -309,7 +310,8 @@ Rectangle {
                         objectName: "notesToggleBlockAiButton"
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: 22
-                        focusPolicy: Qt.NoFocus
+                        focusPolicy: Qt.TabFocus
+                        Accessible.name: qsTr("Assistente de IA")
                         ToolTip.visible: hovered
                         ToolTip.text: qsTr("Assistente de IA")
                         onClicked: toggleRoot.askAiRequested(
