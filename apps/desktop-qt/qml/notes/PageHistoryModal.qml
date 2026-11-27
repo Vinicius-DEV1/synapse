@@ -37,7 +37,12 @@ Rectangle {
 
     function formatTimestamp(value) {
         var date = new Date(value || "")
-        return isNaN(date.getTime()) ? String(value || "") : Qt.formatDateTime(date, "yyyy-MM-dd HH:mm:ss")
+        if (isNaN(date.getTime())) return String(value || "")
+        var locale = Qt.locale("pt_BR")
+        function twoDigits(number) { return ("0" + number).slice(-2) }
+        return twoDigits(date.getDate()) + " de " + locale.monthName(date.getMonth() + 1, Locale.ShortFormat)
+                + " de " + date.getFullYear() + ", " + twoDigits(date.getHours()) + ":"
+                + twoDigits(date.getMinutes()) + ":" + twoDigits(date.getSeconds())
     }
 
     function computeDiffHtml(oldText, newText) {

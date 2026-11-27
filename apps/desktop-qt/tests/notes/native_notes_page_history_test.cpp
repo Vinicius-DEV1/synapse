@@ -5,6 +5,7 @@
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QUrl>
 #include <QtTest/QtTest>
 
@@ -148,6 +149,14 @@ private slots:
         QVERIFY(renderedDiff.contains(QStringLiteral("stable")));
         QVERIFY(renderedDiff.contains(QStringLiteral("changed")));
         QVERIFY(!renderedDiff.contains(QStringLiteral("&lt;")));
+
+        QVariant timestamp;
+        QVERIFY(QMetaObject::invokeMethod(modal.data(), "formatTimestamp",
+                                          Q_RETURN_ARG(QVariant, timestamp),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("2026-09-02T18:00:00Z")))));
+        QVERIFY(QRegularExpression(QStringLiteral("^\\d{2} de ")).match(timestamp.toString()).hasMatch());
+        QVERIFY(timestamp.toString().contains(QStringLiteral(" de 2026, ")));
+        QVERIFY(timestamp.toString().contains(QRegularExpression(QStringLiteral("\\d{2}:\\d{2}:\\d{2}"))));
     }
 };
 
