@@ -1,5 +1,13 @@
 # Caderno Verification Plan
 
+### Dropped-file encrypted import & stale-target iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/Editor.qml` | Passed, exit code 0; existing unused-import and unqualified-context warnings remain | `Editor.qml` parses with no new diagnostics. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Built `synapse-desktop-tests` with `native_notes_dropped_file_test.cpp`. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-dropped-files` | Passed: 4 passed, 0 failed (`initTestCase`, `droppedFilesImportEncryptOrderAndPersistAcrossReload`, `droppedFileLockedVaultStaleTargetAndPageSwitchRejectInsertion`, `cleanupTestCase`) | Qt 6.10.2, offscreen. Production `PageView.qml` + `SynapseDataController` + unlocked SQLite vault verifies multi-file encrypted import order (`first-doc.pdf`, `second note.txt`), canonical `data-file-id`/`data-file-type`/`data-file-size` attributes, `getFileWidgetMetadata()`, save/page-switch/reload, locked-vault rejection, stale-target cancellation, and page-switch cancellation. Cross-client React viewer routing and live preview open remain open. |
+
 ### Filtered table projection & persistence iteration (2026-11-27)
 
 | Check | Result | Scope and limits |

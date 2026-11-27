@@ -133,8 +133,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 
 ## G. Images and files
 
-- [ ] Route dropped non-image files through encrypted file import and insert canonical Core file IDs.
-- [ ] Queue multi-file drops safely with stable ordering and error feedback; avoid duplicate import or duplicate widget insertion.
+- [x] Route dropped non-image files through encrypted file import and insert canonical Core file IDs.
+- [x] Queue multi-file drops safely with stable ordering and error feedback; avoid duplicate import or duplicate widget insertion.
 - [ ] Compare file picker, drag-drop, attachment selection, link/reference, upload, rename, delete, preview, export, file-missing and lock states.
 - [ ] Compare image format allowlist, MIME sniffing, size/pixel limits, single/batch path and clipboard behavior.
 - [ ] Compare image alignment, dimensions, caption, alt/title, resize handles, natural-size reset, fit width and undo granularity.
