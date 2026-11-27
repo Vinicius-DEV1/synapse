@@ -94,4 +94,17 @@ inline QString inlineHtml(const QTextFragment &fragment, int headingLevel, bool 
     return inlineHtml(fragment.text(), fragment.charFormat(), headingLevel, inTableHeader);
 }
 
+inline bool appendPageReferenceHtml(QString &result, const QTextCharFormat &format, const QString &objectCharacters) {
+    if (format.objectType() != NotesRichFormat::PageReferenceObjectType) return false;
+    const QString pageId = format.stringProperty(NotesRichFormat::PageReferenceId);
+    const QString title = format.stringProperty(NotesRichFormat::PageReferenceTitle);
+    if (objectCharacters.isEmpty() || NotesRichMarkup::pageReferenceHref(pageId, title).isEmpty()) return false;
+    for (const QChar character : objectCharacters) {
+        if (character != QChar::ObjectReplacementCharacter) return false;
+        result += QStringLiteral("<span data-page-id=\"%1\" title=\"%2\"></span>")
+            .arg(pageId.toHtmlEscaped(), title.toHtmlEscaped());
+    }
+    return true;
+}
+
 }

@@ -21,17 +21,7 @@ bool appendBlockText(QString &result, const QTextBlock &block) {
             continue;
         }
         if (fragment.charFormat().objectType() == NotesRichFormat::PageReferenceObjectType) {
-            const QTextCharFormat format = fragment.charFormat();
-            const QString pageId = format.stringProperty(NotesRichFormat::PageReferenceId);
-            const QString title = format.stringProperty(NotesRichFormat::PageReferenceTitle);
-            const QString objectCharacters = fragment.text();
-            if (objectCharacters.isEmpty() ||
-                NotesRichMarkup::pageReferenceHref(pageId, title).isEmpty()) return false;
-            for (const QChar character : objectCharacters) {
-                if (character != QChar::ObjectReplacementCharacter) return false;
-                result += QStringLiteral("<span data-page-id=\"%1\" title=\"%2\"></span>")
-                    .arg(pageId.toHtmlEscaped(), title.toHtmlEscaped());
-            }
+            if (!appendPageReferenceHtml(result, fragment.charFormat(), fragment.text())) return false;
             ++it;
             continue;
         }

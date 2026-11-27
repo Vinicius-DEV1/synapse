@@ -207,8 +207,13 @@ bool appendCell(QString &html, const QTextTableCell &cell, bool header) {
             const QTextFragment value = fragment.fragment();
             if (!value.isValid()) continue;
             QTextCharFormat textFormat = value.charFormat();
-            if (!stripVisualCellProperties(textFormat) ||
-                !NotesRichSerialization::supportedCharacterFormat(textFormat, 0)) return false;
+            if (!stripVisualCellProperties(textFormat)) return false;
+            if (textFormat.objectType() == NotesRichFormat::PageReferenceObjectType) {
+                if (!NotesRichSerialization::appendPageReferenceHtml(html, textFormat, value.text()))
+                    return false;
+                continue;
+            }
+            if (!NotesRichSerialization::supportedCharacterFormat(textFormat, 0)) return false;
             html += NotesRichSerialization::inlineHtml(value.text(), textFormat, 0, header);
         }
         html += "</p>";

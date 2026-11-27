@@ -35,6 +35,10 @@ class NativeNotesTest final : public QObject {
     Q_OBJECT
 
 private slots:
+    void initTestCase() {
+        registerNotesPageSwitchTestTypes();
+    }
+
     void richDividerInsertionIsUndoable() {
         QTextDocument document;
         document.setHtml("<p>BeforeAfter</p>");

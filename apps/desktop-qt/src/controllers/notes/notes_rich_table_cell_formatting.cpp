@@ -195,7 +195,8 @@ bool clearFormattingOnSelection(QTextDocument &document, int selectionStart, int
 
                 QTextCharFormat format = fragment.charFormat();
                 QString pageId;
-                if (format.isAnchor() && NotesRichMarkup::pageReferenceFromHref(format.anchorHref(), &pageId))
+                if (format.objectType() == NotesRichFormat::PageReferenceObjectType ||
+                    (format.isAnchor() && NotesRichMarkup::pageReferenceFromHref(format.anchorHref(), &pageId)))
                     continue;
 
                 if (format.boolProperty(NotesRichFormat::SpoilerMark))
