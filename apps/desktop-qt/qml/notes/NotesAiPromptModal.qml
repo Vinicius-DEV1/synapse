@@ -61,6 +61,16 @@ Item {
         return content
     }
 
+    function scrollConversationToEnd() {
+        Qt.callLater(function() {
+            var flickable = messageScroll.contentItem
+            if (!flickable || typeof flickable.contentY !== "number") return
+            flickable.contentY = Math.max(0, flickable.contentHeight - messageScroll.height)
+        })
+    }
+
+    onChatHistoryChanged: scrollConversationToEnd()
+
     function openModal(selection, fullHtml, applyHandler) {
         requestGeneration++
         selectedText = String(selection || "")
@@ -349,6 +359,8 @@ Item {
                 color: "#0f0e17"
                 border.color: "#24ffffff"
                 ScrollView {
+                    id: messageScroll
+                    objectName: "notesAiMessageScroll"
                     anchors.fill: parent
                     anchors.margins: 10
                     clip: true
@@ -356,6 +368,7 @@ Item {
                         id: messageColumn
                         width: parent.width
                         spacing: 12
+                        onHeightChanged: aiModalRoot.scrollConversationToEnd()
                         Repeater {
                             id: aiMessagesRepeater
                             objectName: "notesAiMessagesRepeater"
