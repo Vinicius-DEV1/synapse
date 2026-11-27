@@ -904,8 +904,8 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Reproduction:** Try to reach the history action with Tab and activate with Space. When history is open, close with Escape and check whether focus returns to the control that opened it. Before the fix, the action was not in the keyboard focus order and focus management was unspecified.
 - **Root cause:** The Qt header action was implemented as a decorative rectangle with a mouse handler, and the modal had no explicit opener reference.
 - **Required fix:** Render page-header actions as native accessible Qt buttons; pass the history trigger through the PageView modal hosts; focus the current revision after opening and restore focus to the trigger after closing. Avoid an active retry timer when there are no revisions.
-- **Acceptance:** Production component tests verify header role/name and Space activation; a visible-window history test verifies initial revision focus, Escape while focused, and focus return to a supplied trigger. Run the actual PageHeader-to-modal signal path in the desktop app and check screen-reader announcements and matched-viewport focus visuals.
-- **Fix status:** Added `PageHeaderActionButton.qml` and `PageHistoryFocusManager.qml`; the active history target is passed through `PageView.qml`, `PageViewModalsHost.qml` and `NotesEditorModalsHost.qml`. Focused production-component tests cover accessible header activation, automatic current-revision focus, Escape dismissal and focus restoration to the supplied opener. The live app signal path, screen-reader announcement and matched-viewport visuals remain open; see [07-verification.md](07-verification.md).
+- **Acceptance:** Production component tests verify header role/name and Space activation; a visible-window PageView integration test follows the production header-to-modal path and verifies initial revision focus, Escape dismissal and focus return. Screen-reader announcements and matched-viewport focus visuals remain open.
+- **Fix status:** Added `PageHeaderActionButton.qml` and `PageHistoryFocusManager.qml`; the active history target is passed through `PageView.qml`, `PageViewModalsHost.qml` and `NotesEditorModalsHost.qml`. A production `PageView` mounted in a 1280×900 `QQuickWindow` verifies Space activation of its actual header button, history loading and viewport sizing, automatic current-revision focus, Escape dismissal and return to that same header action. Screen-reader announcement, running desktop app and matched-viewport visuals remain open; see [07-verification.md](07-verification.md).
 
 
 ## QT-NOTES-094: Page-history close control does not match React
@@ -928,6 +928,17 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Required fix:** Keep Diff and Restore inline at desktop widths; below 768 px, move them into a keyboard accessible overflow menu and retain their availability/enabled states. Keep the close target within the same right margin as React.
 - **Acceptance:** A production `QQuickWindow` test at 360 px verifies the close right edge, overflow button accessibility, menu presence, Diff availability and Restore's disabled state for the current revision. The test covers the 639/640 px count breakpoint, 767/768 px action breakpoint and no-overlap geometry for both Diff and Restore states. The test also activates Restore from the menu for an older revision and verifies the emitted HTML and close request. Compare responsive appearance against React in the running app.
 - **Fix status:** Qt now moves Diff and Restore into a native `Menu` below 768 px. The visible-window test verifies the 360 px close margin, accessible overflow name, menu enabled state, the 639/640 px count transition, the 767/768 px action transition and non-overlapping header geometry for current/older revisions. Matched-viewport appearance remains open; see [07-verification.md](07-verification.md).
+
+
+## QT-NOTES-096: PageView modal host has zero dimensions
+
+- **Severity:** High for modal usability; the history state and revision data loaded, but its containing overlay had no geometry, so the visible modal and its controls occupied 0×0 pixels.
+- **Evidence:** A production `PageView.qml` mounted in a visible `QQuickWindow` showed `isHistoryOpen=true` and two history entries while `PageViewModalsHost` and `PageHistoryModal` remained 0×0. The modal host root was an `Item` with no anchors or explicit size.
+- **Reproduction:** Mount PageView at 1280×900, open history from its header action, and inspect host/modal dimensions. Before the fix, the modal was logically open but invisible/unusable due to zero geometry.
+- **Root cause:** `PageViewModalsHost.qml` was nested as an unanchored child; its overlay children derived their viewport size from that zero-sized parent.
+- **Required fix:** Make the modal host fill the PageView parent and verify the production modal receives the complete viewport while preserving all other PageView modal routes.
+- **Acceptance:** A production-tree visible-window test verifies host and modal dimensions at 1280×900, opens history through the actual header button with Space, verifies revision data/focus, dismisses with Escape and checks focus return. Recheck sibling modal sizing and matched-viewport visual behavior.
+- **Fix status:** Added `anchors.fill: parent` to the host. The PageView history integration test now proves the host and modal are both 1280×900 and the history flow is keyboard usable. Focused page-switch and history regression suites pass; sibling overlay routes and matched-viewport screenshots remain open; see [07-verification.md](07-verification.md).
 
 ## Second-pass review
 
