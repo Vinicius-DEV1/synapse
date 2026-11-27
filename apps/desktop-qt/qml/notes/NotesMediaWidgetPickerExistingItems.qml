@@ -23,6 +23,17 @@ ScrollView {
     ColumnLayout {
         width: existingItemsRoot.availableWidth
         spacing: 4
+        Text {
+            objectName: "notesMediaWidgetEmptyState"
+            visible: existingItemsRoot.filteredItems.length === 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 72
+            text: qsTr("Nenhum resultado encontrado.")
+            color: "#a7a9be"
+            font.pixelSize: 12
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
         Repeater {
             model: existingItemsRoot.filteredItems
             delegate: Button {

@@ -126,8 +126,9 @@ TestCase {
         compare(PickerOperations.mediaPickerModeForSlashCommand("documento-link"), "file-select")
         compare(PickerOperations.mediaPickerModeForSlashCommand("file-link"), "documento-link")
 
-        picker = createTemporaryObject(pickerComponent, testCase)
+        picker = createTemporaryObject(pickerComponent, null)
         verify(picker !== null)
+        picker.parent = testCase.Window.window.contentItem
         mockController.existingFiles = [{
             id: "saved-8", name: "Resumo.pdf", file_type: "pdf", file_size: 1024
         }]
@@ -159,8 +160,9 @@ TestCase {
     }
 
     function test_mediaPickerSearchesAuthorsAndShowsMetadataAndCovers() {
-        picker = createTemporaryObject(pickerComponent, testCase)
+        picker = createTemporaryObject(pickerComponent, null)
         verify(picker !== null)
+        picker.parent = testCase.Window.window.contentItem
         mockController.books = [{
             id: "book-1", title: "Systems Design", author: "A. Writer",
             cover_image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E"
@@ -201,6 +203,13 @@ TestCase {
         verify(videoCover !== null)
         compare(videoSubtitle.text, "2:05")
         verify(videoCover.source.toString().indexOf("data:image/svg+xml") === 0)
+
+        picker.searchFilter = "missing media"
+        var emptyState = findVisualChild(itemList, "notesMediaWidgetEmptyState")
+        verify(emptyState !== null)
+        compare(itemList.filteredItems.length, 0)
+        compare(emptyState.visible, true)
+        compare(emptyState.text, "Nenhum resultado encontrado.")
     }
 
     function test_mediaPickerBackdropDoesNotCloseAndCloseButtonDoes() {
