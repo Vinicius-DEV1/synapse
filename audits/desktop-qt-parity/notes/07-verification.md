@@ -1072,3 +1072,11 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesLinkedItemActionDialog.qml apps/desktop-qt/tests/notes/qml/tst_notes_linked_item_actions.qml` | Passed with no diagnostics | Includes the test's bound component behavior and the changed production dialog. |
 | Python `xml.etree.ElementTree.parse` plus action-dialog context check on both Qt catalogs | Passed | Portuguese and English catalogs parse and contain 17 action-dialog strings, including the file-specific prompt. Generated `.qm` runtime remains unverified. |
 | React/Qt source-level second pass | Partial | Confirmed matching action types, labels, icon family, title and body dimensions, copy/fallback and responsive width cap. Qt still does not establish React's backdrop blur/shadow/animation, matched screenshots, screen-reader/focus-return parity, or real route and restoration outcomes. Keep QT-NOTES-109 partial. |
+
+### Notes block-scoped AI apply routing audit (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| React/Qt source trace from block AI triggers to the apply callback | Failure confirmed | React's four node-view integrations provide block-aware `onApplyReplacement` handlers. Qt block signals reach `openAiPrompt(selection, blockHtml)` without source identity; `NotesAiPromptModal` emits general HTML/text results and `Editor.applyAiResult()` appends to the last block when no slash-command insertion index is pending. This is a source-traced behavior defect, not a runtime reproduction. |
+| Focused regression test for replacing a source block while preserving neighbors | Not run; no such test found | `rg --files apps/desktop-qt/tests/notes | rg -i '(ai|editor|block)'` found Markdown-AI and question-block tests but no harness for `NotesAiPromptModal` or `Editor.applyAiResult`. Add production block-list/modal coverage before closing QT-NOTES-110. |
+| Same-viewport React/Qt block assistant capture | Not run | Qt's current full-note assistant differs from React's anchored per-block assistant. Popup placement, chat state/actions and supported block transforms need an explicit parity implementation and acceptance matrix. |
