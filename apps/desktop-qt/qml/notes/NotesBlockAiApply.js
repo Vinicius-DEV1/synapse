@@ -22,6 +22,7 @@ function createHandler(editor, index) {
             sourcePageId, sourceBlockId, sourceState, String(result || ""), Boolean(isCanonicalBlockHtml))
     }
     applyHandler.sessionId = sourcePageId + "::" + sourceBlockId
+    applyHandler.sourceBlockState = sourceState
     applyHandler.blockType = String(block.blockType || "")
     applyHandler.blockTitle = block.blockType === "codeBlock" ? "IA • Bloco de Código"
         : block.blockType === "blockquote" ? "IA • Callout"

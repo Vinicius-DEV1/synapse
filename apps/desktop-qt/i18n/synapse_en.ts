@@ -4470,12 +4470,55 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Could not insert content into this block.</translation>
     </message>
     <message>
+      <source>Não foi possível copiar a resposta.</source>
+      <translation>Could not copy the response.</translation>
+    </message>
+    <message>
       <source>Como posso ajudar com este bloco?</source>
       <translation>How can I help with this block?</translation>
     </message>
     <message>
       <source>O escopo de edição está restrito a este elemento.</source>
       <translation>Editing is limited to this element.</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesAiConversation</name>
+    <message>
+      <source>Aplicar cirurgicamente (%1)</source>
+      <translation>Apply surgically (%1)</translation>
+    </message>
+    <message>
+      <source>Substituir Código</source>
+      <translation>Replace Code</translation>
+    </message>
+    <message>
+      <source>Substituir no Bloco</source>
+      <translation>Replace in Block</translation>
+    </message>
+    <message>
+      <source>Ver resposta</source>
+      <translation>View Reply</translation>
+    </message>
+    <message>
+      <source>Ver Diff</source>
+      <translation>View Diff</translation>
+    </message>
+    <message>
+      <source>Inserir</source>
+      <translation>Insert</translation>
+    </message>
+    <message>
+      <source>Copiar</source>
+      <translation>Copy</translation>
+    </message>
+    <message>
+      <source>Copiado</source>
+      <translation>Copied</translation>
+    </message>
+    <message>
+      <source>IA pensando…</source>
+      <translation>AI is thinking…</translation>
     </message>
   </context>
 </TS>

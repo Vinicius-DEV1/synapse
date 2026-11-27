@@ -6,7 +6,6 @@ import QtQuick.Layouts 1.15
 import "../ui"
 import "NotesBlockAiSession.js" as BlockAiSession
 import "NotesBlockAiPrompt.js" as BlockAiPrompt
-import "NotesBlockAiOperations.js" as BlockAiOperations
 
 Item {
     id: aiModalRoot
@@ -24,6 +23,7 @@ Item {
     property var blockApplyHandler: null
     property int requestGeneration: 0
     property bool showDiff: false
+    property int diffMessageIndex: -1
     property int copiedMessageIndex: -1
     readonly property bool blockScoped: typeof blockApplyHandler === "function"
     readonly property real blockAnchorX: blockAnchor("anchorX", parent ? parent.width / 2 - 185 : 0)
@@ -52,22 +52,51 @@ Item {
         return blockScoped && blockApplyHandler && typeof blockApplyHandler.insertContent === "function"
     }
 
-    function displayMessage(message, index) {
-        var content = String(message && message.content || "")
-        if (index === 0 && content.indexOf("Contexto:\n") === 0) {
-            var instructionStart = content.indexOf("Instrução:\n")
-            if (instructionStart >= 0) return content.substring(instructionStart + "Instrução:\n".length)
+    function applyMessageProposal(message, isValid) {
+        if (!message || message.role !== "assistant" || isGenerating) return false
+        if (!isValid) {
+            errorText = qsTr("Não foi possível aplicar a proposta. O bloco pode ter mudado ou a resposta ser incompatível.")
+            return false
         }
-        return content
+        aiReply = String(message.content || "")
+        previewHtml = ""
+        errorText = ""
+        showDiff = false
+        diffMessageIndex = -1
+        return applyResponse()
     }
 
-    function scrollConversationToEnd() {
-        Qt.callLater(function() {
-            messageScroll.contentY = Math.max(0, messageScroll.contentHeight - messageScroll.height)
-        })
+    function insertMessageProposal(message, cleanText, isSearchReplace) {
+        if (isGenerating) return false
+        if (!message || message.role !== "assistant" || isSearchReplace || !hasBlockInsertAction()) return false
+        var inserted = false
+        try {
+            inserted = Boolean(blockApplyHandler.insertContent.call(null, cleanText))
+        } catch (error) {
+            console.error("[Notes:BlockAI] Could not insert a message proposal:", error)
+        }
+        if (!inserted) {
+            errorText = qsTr("Não foi possível inserir conteúdo neste bloco.")
+            return false
+        }
+        closeModal()
+        return true
     }
 
-    onChatHistoryChanged: scrollConversationToEnd()
+    function copyMessageProposal(message, index, cleanText) {
+        var c = aiModalRoot.controller
+        if (!message || message.role !== "assistant" || !c || typeof c.copyToClipboard !== "function") return false
+        try {
+            c.copyToClipboard(cleanText || String(message.content || ""))
+        } catch (error) {
+            console.error("[Notes:BlockAI] Could not copy a message proposal:", error)
+            errorText = qsTr("Não foi possível copiar a resposta.")
+            return false
+        }
+        copiedMessageIndex = index
+        copyResetTimer.restart()
+        return true
+    }
 
     function openModal(selection, fullHtml, applyHandler) {
         requestGeneration++
@@ -87,6 +116,7 @@ Item {
         previewDiffHtml = ""
         errorText = ""
         showDiff = false
+        diffMessageIndex = -1
         copiedMessageIndex = -1
         customInput.text = ""
         isOpen = true
@@ -110,6 +140,7 @@ Item {
         previewDiffHtml = ""
         errorText = ""
         showDiff = false
+        diffMessageIndex = -1
     }
 
     function copyBlockResponse() {
@@ -117,6 +148,7 @@ Item {
         if (!blockScoped || !aiReply || !c || typeof c.copyToClipboard !== "function") return false
         c.copyToClipboard(aiReply)
         copiedMessageIndex = chatHistory.length - 1
+        copyResetTimer.restart()
         return true
     }
 
@@ -202,6 +234,13 @@ Item {
         dataController: aiModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
     }
 
+    Timer {
+        id: copyResetTimer
+        interval: 2000
+        repeat: false
+        onTriggered: aiModalRoot.copiedMessageIndex = -1
+    }
+
     Shortcut {
         sequence: "Escape"
         context: Qt.WindowShortcut
@@ -223,7 +262,8 @@ Item {
         y: aiModalRoot.blockScoped
             ? Math.max(12, Math.min(aiModalRoot.blockAnchorY, parent.height - height - 12))
             : (parent.height - height) / 2
-        width: aiModalRoot.blockScoped ? Math.min(parent.width - 24, aiModalRoot.showDiff ? 420 : 370)
+        width: aiModalRoot.blockScoped
+            ? Math.min(parent.width - 24, aiModalRoot.showDiff || aiModalRoot.diffMessageIndex >= 0 ? 420 : 370)
             : Math.min(parent.width - 48, 560)
         height: Math.min(parent.height - 24, aiModalRoot.blockScoped ? 520 : contentCol.implicitHeight + 40)
         radius: aiModalRoot.blockScoped ? 12 : 16
@@ -350,80 +390,34 @@ Item {
                 }
             }
 
-            Rectangle {
+            NotesAiConversation {
+                id: aiConversation
+                objectName: "notesAiConversation"
                 visible: aiModalRoot.chatHistory.length > 0 || aiModalRoot.isGenerating
                 Layout.fillWidth: true
                 Layout.preferredHeight: aiModalRoot.blockScoped ? 210 : 190
-                radius: 8
-                color: "#0f0e17"
-                border.color: "#24ffffff"
-                Flickable {
-                    id: messageScroll
-                    objectName: "notesAiMessageScroll"
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    clip: true
-                    contentWidth: width
-                    contentHeight: messageColumn.implicitHeight
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-
-                    Column {
-                        id: messageColumn
-                        width: parent.width
-                        height: implicitHeight
-                        spacing: 12
-                        onHeightChanged: aiModalRoot.scrollConversationToEnd()
-                        Repeater {
-                            id: aiMessagesRepeater
-                            objectName: "notesAiMessagesRepeater"
-                            model: aiModalRoot.chatHistory
-                            delegate: Item {
-                                id: messageRow
-                                objectName: "notesAiMessageRow"
-                                required property var modelData
-                                required property int index
-                                readonly property bool userMessage: String(modelData.role || "") === "user"
-                                width: messageColumn.width
-                                height: messageBubble.implicitHeight
-                                Rectangle {
-                                    id: messageBubble
-                                    x: messageRow.userMessage ? messageRow.width - width : 0
-                                    width: Math.min(messageRow.width * 0.88, messageText.implicitWidth + 24)
-                                    height: messageText.implicitHeight + 16
-                                    implicitHeight: height
-                                    radius: 10
-                                    color: messageRow.userMessage ? "#6d28d9" : "#1a1b22"
-                                    border.color: messageRow.userMessage ? "transparent" : "#24ffffff"
-                                    Text {
-                                        id: messageText
-                                        objectName: "notesAiMessageText"
-                                        anchors.fill: parent
-                                        anchors.margins: 8
-                                        text: messageRow.userMessage
-                                            ? aiModalRoot.displayMessage(messageRow.modelData, messageRow.index)
-                                            : BlockAiOperations.richContentHtml(String(messageRow.modelData.content || ""))
-                                        textFormat: messageRow.userMessage ? Text.PlainText : Text.RichText
-                                        color: messageRow.userMessage ? "#ffffff" : "#e4e4e7"
-                                        font.pixelSize: 12
-                                        wrapMode: Text.WordWrap
-                                    }
-                                }
-                            }
-                        }
-                        Text {
-                            visible: aiModalRoot.isGenerating
-                            text: qsTr("IA pensando…")
-                            color: "#a1a1aa"
-                            font.pixelSize: 11
-                        }
-                    }
+                messages: aiModalRoot.chatHistory
+                blockScoped: aiModalRoot.blockScoped
+                isGenerating: aiModalRoot.isGenerating
+                blockType: aiModalRoot.blockMetadata("blockType")
+                sourceBlockState: aiModalRoot.blockScoped ? String(aiModalRoot.blockApplyHandler.sourceBlockState || "") : ""
+                controller: aiModalRoot.controller
+                diffMessageIndex: aiModalRoot.diffMessageIndex
+                copiedMessageIndex: aiModalRoot.copiedMessageIndex
+                onApplyRequested: function(message, isValid) {
+                    aiModalRoot.applyMessageProposal(message, isValid)
+                }
+                onDiffToggled: function(messageIndex) { aiModalRoot.diffMessageIndex = messageIndex }
+                onInsertRequested: function(message, cleanText, isSearchReplace) {
+                    aiModalRoot.insertMessageProposal(message, cleanText, isSearchReplace)
+                }
+                onCopyRequested: function(message, messageIndex, cleanText) {
+                    aiModalRoot.copyMessageProposal(message, messageIndex, cleanText)
                 }
             }
 
             RowLayout {
-                visible: aiModalRoot.aiReply.length > 0
+                visible: !aiModalRoot.blockScoped && aiModalRoot.aiReply.length > 0
                 Layout.fillWidth: true
                 spacing: 8
                 Item { Layout.fillWidth: true }
