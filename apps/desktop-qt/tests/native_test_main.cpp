@@ -10,6 +10,7 @@ int runNativeNotesAiMarkdownTest(int argc, char **argv);
 int runNativeNotesAiToggleTargetTest(int argc, char **argv);
 int runNativeNotesPageSwitchTest(int argc, char **argv);
 int runNativeNotesPageSwitchCoreTest(int argc, char **argv);
+int runNativeNotesTableFilterPersistenceTest(int argc, char **argv);
 int runNativeNotesPageHistoryTest(int argc, char **argv);
 int runNativeNotesPageHistoryKeyboardTest(int argc, char **argv);
 int runNativeNotesPageHeaderActionTest(int argc, char **argv);
@@ -65,6 +66,9 @@ int main(int argc, char **argv) {
         int result = runNativeNotesPageSwitchTest(argc - 1, argv + 1);
         result |= runNativeNotesPageSwitchCoreTest(argc - 1, argv + 1);
         return result;
+    }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-table-filter") == 0) {
+        return runNativeNotesTableFilterPersistenceTest(argc - 1, argv + 1);
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-history") == 0) {
         int result = runNativeNotesPageHistoryTest(argc - 1, argv + 1);
