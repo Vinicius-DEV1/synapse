@@ -11,7 +11,6 @@ Rectangle {
     color: "#0f0f11"
 
     property var controller: null
-    property string pageTitle: ""
     property var history: []
     property int selectedIndex: 0
     property bool showDiff: true
@@ -82,27 +81,33 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            height: 58
+            height: 56
             color: "#0f0f11"
             border.color: "#0affffff"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 22
-                anchors.rightMargin: 18
+                anchors.leftMargin: historyRoot.width >= 640 ? 32 : 20
+                anchors.rightMargin: historyRoot.width >= 640 ? 32 : 20
                 spacing: 10
                 Rectangle {
-                    width: 30
-                    height: 30
+                    width: 32
+                    height: 32
                     radius: 8
                     color: "#08ffffff"
                     border.color: "#0affffff"
                     AppIcon { anchors.centerIn: parent; width: 15; height: 15; name: "clock"; color: theme.textSubtext }
                 }
-                ColumnLayout {
+                RowLayout {
                     Layout.fillWidth: true
-                    spacing: 2
-                    Text { text: "Histórico de edições"; color: theme.textDark; font.pixelSize: 12; font.bold: true }
-                    Text { text: historyRoot.history.length + (historyRoot.history.length === 1 ? " revisão" : " revisões") + " · " + historyRoot.pageTitle; color: theme.textMuted; font.pixelSize: 9; elide: Text.ElideRight }
+                    spacing: 8
+                    Text { text: "Histórico de Edições"; color: theme.textDark; font.pixelSize: 14; font.bold: true }
+                    Text {
+                        text: "• " + historyRoot.history.length + (historyRoot.history.length === 1 ? " revisão" : " revisões")
+                        color: theme.textMuted
+                        font.pixelSize: 12
+                        font.family: theme.fontMono
+                        visible: historyRoot.width >= 640
+                    }
                 }
 
                 // Diff View Toggle
@@ -157,15 +162,14 @@ Rectangle {
             spacing: 0
 
             Rectangle {
-                Layout.preferredWidth: 286
+                Layout.preferredWidth: historyRoot.width >= 640 ? 320 : 288
                 Layout.fillHeight: true
                 color: "#121214"
                 border.color: "#08ffffff"
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 12
-                    spacing: 8
-                    Label { text: "REVISÕES"; color: theme.textMuted; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.6; Layout.leftMargin: 6 }
+                    spacing: 6
                     ListView {
                         id: revisionList
                         Layout.fillWidth: true
@@ -211,34 +215,49 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 color: "#0f0f11"
-                ColumnLayout {
+                ScrollView {
+                    id: historyContentScroll
                     anchors.fill: parent
-                    anchors.margins: 30
-                    spacing: 12
-                    Text {
-                        text: historyRoot.selectedEntry()
-                              ? (historyRoot.selectedIndex === 0 ? "Versão atual" : "Revisão " + (historyRoot.history.length - historyRoot.selectedIndex))
-                              : ""
-                        color: theme.textDark
-                        font.pixelSize: 21
-                        font.bold: true
-                    }
-                    Text {
-                        text: historyRoot.selectedEntry()
-                              ? "Salva em " + historyRoot.formatTimestamp(historyRoot.selectedEntry().created_at) +
-                                (historyRoot.showDiff && historyRoot.previousEntry() ? " (comparando com revisão anterior)" : "")
-                              : "Selecione uma revisão à esquerda para visualizar o conteúdo."
-                        color: theme.textMuted
-                        font.pixelSize: 9
-                        font.family: theme.fontMono
-                    }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#0affffff" }
-                    ScrollView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
+                    contentWidth: availableWidth
+                    clip: true
+                    visible: historyRoot.selectedEntry() !== null
+
+                    ColumnLayout {
+                        objectName: "historyCanvasColumn"
+                        width: Math.max(0, Math.min(historyContentScroll.availableWidth, 768)
+                                        - (historyRoot.width >= 640 ? 96 : 48))
+                        x: Math.max(0, (historyContentScroll.availableWidth - width) / 2)
+                        spacing: 0
+
+                        Item { Layout.fillWidth: true; height: historyRoot.width >= 640 ? 64 : 40 }
                         Text {
-                            width: parent.width
+                            Layout.fillWidth: true
+                            text: historyRoot.selectedIndex === 0 ? "Versão Atual" : "Revisão " + (historyRoot.history.length - historyRoot.selectedIndex)
+                            color: theme.textDark
+                            font.pixelSize: 24
+                            font.bold: true
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                            text: historyRoot.selectedIndex === 0
+                                  ? "Visualizando versão atual"
+                                  : "Visualizando revisão salva em " + historyRoot.formatTimestamp(historyRoot.selectedEntry().created_at)
+                            color: theme.textMuted
+                            font.pixelSize: 12
+                            font.family: theme.fontMono
+                            wrapMode: Text.Wrap
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.topMargin: 16
+                            Layout.bottomMargin: 32
+                            height: 1
+                            color: "#0affffff"
+                        }
+                        Text {
+                            objectName: "historyRevisionContent"
+                            Layout.fillWidth: true
                             text: {
                                 var current = historyRoot.selectedEntry()
                                 if (!current) return ""
@@ -249,13 +268,23 @@ Rectangle {
                                 return current.content || ""
                             }
                             textFormat: (historyRoot.showDiff && historyRoot.previousEntry()) || historyRoot.isHtmlDocument(text) ? Text.RichText : Text.MarkdownText
-                            color: theme.textSubtext
-                            font.pixelSize: 14
+                            color: "#e4e4e7"
+                            font.pixelSize: 16
                             wrapMode: Text.Wrap
-                            lineHeight: 1.45
+                            lineHeight: 1.8
+                            lineHeightMode: Text.ProportionalHeight
                             onLinkActivated: function(link) { historyRoot.openExternalLink(link) }
                         }
+                        Item { Layout.fillWidth: true; height: historyRoot.width >= 640 ? 64 : 40 }
                     }
+                }
+                Text {
+                    anchors.centerIn: parent
+                    visible: historyRoot.selectedEntry() === null
+                    text: "Selecione uma revisão à esquerda"
+                    color: theme.textMuted
+                    font.pixelSize: 12
+                    font.family: theme.fontMono
                 }
             }
         }

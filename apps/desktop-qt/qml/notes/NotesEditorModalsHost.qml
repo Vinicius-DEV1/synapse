@@ -280,7 +280,6 @@ Item {
     PageHistoryModal {
         controller: modalsHost.controller
         visible: modalsHost.isHistoryOpen
-        pageTitle: modalsHost.activeTitle
         history: modalsHost.pageHistoryEntries
         onCloseRequested: modalsHost.historyClosed()
         onRestoreRevisionRequested: function(content) { modalsHost.restoreRevisionRequested(content) }

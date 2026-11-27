@@ -7,6 +7,9 @@
 #include <QtQml/QQmlEngine>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QUrl>
+#include <QtGui/QColor>
+#include <QtGui/QFont>
+#include <QtQuick/QQuickItem>
 #include <QtTest/QtTest>
 
 class NotesPageHistoryController final : public QObject {
@@ -162,6 +165,50 @@ private slots:
                                           Q_RETURN_ARG(QVariant, timestamp),
                                           Q_ARG(QVariant, QVariant(QStringLiteral("2026-09-02")))));
         QVERIFY(timestamp.toString().startsWith(QStringLiteral("02 de ")));
+    }
+
+    void historyContentUsesReactCanvasWidthAndTypography() {
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), QVariantMap{
+            {QStringLiteral("textSubtext"), QStringLiteral("#a7a9be")},
+            {QStringLiteral("textDark"), QStringLiteral("#fffffe")},
+            {QStringLiteral("textMuted"), QStringLiteral("#71717a")},
+            {QStringLiteral("fontMono"), QStringLiteral("monospace")},
+        });
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
+                                             + QStringLiteral("/qml/notes/PageHistoryModal.qml")));
+        QScopedPointer<QObject> modal(component.create());
+        QVERIFY2(modal, qPrintable(component.errorString()));
+        auto *modalItem = qobject_cast<QQuickItem *>(modal.data());
+        QVERIFY(modalItem);
+        QQuickItem viewport;
+        viewport.setWidth(1280);
+        viewport.setHeight(900);
+        modalItem->setParentItem(&viewport);
+        modal->setProperty("history", QVariant::fromValue(QVariantList{
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("current")},
+                        {QStringLiteral("content"), QStringLiteral("<p>Current revision</p>")},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-09-02T18:00:00Z")}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
+                        {QStringLiteral("content"), QStringLiteral("<p>Older revision</p>")},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-09-01T18:00:00Z")}},
+        }));
+        modal->setProperty("visible", true);
+
+        QQuickItem *canvas = modal->findChild<QQuickItem *>(QStringLiteral("historyCanvasColumn"));
+        QTRY_VERIFY(canvas);
+        QTRY_COMPARE(qRound(canvas->width()), 672);
+        QQuickItem *scrollContent = canvas->parentItem();
+        QVERIFY(scrollContent);
+        QCOMPARE(qRound(canvas->x() + canvas->width() / 2), qRound(scrollContent->width() / 2));
+        QQuickItem *revisionContent = modal->findChild<QQuickItem *>(QStringLiteral("historyRevisionContent"));
+        QVERIFY(revisionContent);
+        QTRY_COMPARE(qRound(revisionContent->width()), 672);
+        const QFont bodyFont = qvariant_cast<QFont>(revisionContent->property("font"));
+        QCOMPARE(bodyFont.pixelSize(), 16);
+        const QColor bodyColor = qvariant_cast<QColor>(revisionContent->property("color"));
+        QCOMPARE(bodyColor, QColor(QStringLiteral("#e4e4e7")));
     }
 };
 
