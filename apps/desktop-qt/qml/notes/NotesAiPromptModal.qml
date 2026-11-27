@@ -198,7 +198,8 @@ Item {
 
         var c = aiModalRoot.controller
         var historySnapshot = chatHistory.slice()
-        aiClient.promptText(sysPrompt, userPrompt, historySnapshot, function(ok, reply, err) {
+        var providerHistory = BlockAiPrompt.providerHistory(historySnapshot)
+        aiClient.promptText(sysPrompt, userPrompt, providerHistory, function(ok, reply, err) {
             if (!aiModalRoot.isOpen || generation !== aiModalRoot.requestGeneration) return
             aiModalRoot.isGenerating = false
             if (!ok) {

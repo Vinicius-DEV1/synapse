@@ -29,6 +29,22 @@ TestCase {
         verify(context.indexOf("<strong>") < 0)
     }
 
+    function test_providerHistoryMapsVisibleMessagesToAiClientContract() {
+        var mapped = BlockAiPrompt.providerHistory([
+            { role: "user", content: "First request" },
+            { role: "assistant", content: "First response" },
+            { role: "system", content: "Ignore unsupported roles" },
+            null
+        ])
+
+        compare(mapped.length, 2)
+        compare(mapped[0].role, "user")
+        compare(mapped[0].messageText, "First request")
+        compare(mapped[1].role, "assistant")
+        compare(mapped[1].messageText, "First response")
+        compare(BlockAiPrompt.providerHistory(null).length, 0)
+    }
+
     function test_systemRulesAreSpecificAndAllowSurgicalEdits() {
         var codePrompt = BlockAiPrompt.systemInstruction("codeBlock", "json")
         var togglePrompt = BlockAiPrompt.systemInstruction("blockquoteToggle", "auto")

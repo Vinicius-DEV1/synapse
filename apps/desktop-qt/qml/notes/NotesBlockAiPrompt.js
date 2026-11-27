@@ -34,6 +34,20 @@ function contextFor(handler) {
             : body)
 }
 
+function providerHistory(history) {
+    if (!Array.isArray(history)) return []
+    var result = []
+    for (var i = 0; i < history.length; ++i) {
+        var message = history[i]
+        if (!message || (message.role !== "user" && message.role !== "assistant")) continue
+        result.push({
+            role: message.role,
+            messageText: String(message.content || "")
+        })
+    }
+    return result
+}
+
 function systemInstruction(blockType, language) {
     var surgical = "\n\nDICA DE EDIÇÃO CIRÚRGICA:\nQuando a solicitação alterar apenas trechos pontuais, pode emitir um ou mais blocos neste formato exato:\n<<<<<<< SEARCH\n[trecho exato original existente neste bloco]\n=======\n[novo trecho]\n>>>>>>>\nUse texto original literal, sem alterar espaços ou formatação dentro do trecho de busca."
     if (blockType === "codeBlock") {
