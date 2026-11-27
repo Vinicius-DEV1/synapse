@@ -267,8 +267,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Verify the real PageHeader-to-modal focus path in the running app, screen-reader announcements and matched-viewport focus appearance (QT-NOTES-093).
 - [x] Match React page history close-button semantics and geometry with a named accessible button, 18 px close icon, 34 px target, 8 px corners, 10% hover surface and Escape tooltip. A visible-window test checks role/name and dimensions (QT-NOTES-094).
 - [ ] Compare close icon stroke and hover rendering against React at a matched viewport (QT-NOTES-094).
-- [x] Keep the page-history header within a 360 px viewport by moving Qt-only Diff/Restore actions into an accessible overflow menu below 640 px. A production test verifies the close margin and menu action availability/enabled state (QT-NOTES-095).
-- [ ] Verify the 639/640 px boundary, Restore activation from the overflow menu, and matched-viewport responsive header appearance (QT-NOTES-095).
+- [x] Keep the page-history header within a 360 px viewport by moving Qt-only Diff/Restore actions into an accessible overflow menu below 768 px. A production test verifies close margin, menu action state and no-overlap geometry at the 767/768 px breakpoint for current/older revisions (QT-NOTES-095).
+- [ ] Verify Restore activation from the overflow menu and matched-viewport responsive header appearance (QT-NOTES-095).
 - [ ] Verify optimistic conflict detection and recovery without overwriting another client’s newer content.
 - [ ] Verify editor backup/recovery after restart and stale backup invalidation after a successful save.
 - [ ] Verify page switching, tab switching, window close and app shutdown flush all active blocks.
