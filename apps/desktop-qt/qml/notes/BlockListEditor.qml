@@ -241,8 +241,9 @@ ColumnLayout {
     }
 
     function unwrapDocumentBundleItem(index, fileId, bundledItems, groupColor) {
+        bundledItems = DocumentBundleOperations.toArray(bundledItems)
         if (index < 0 || index >= blocks.length || !blocks[index] ||
-                blocks[index].blockType !== "documentBundle" || !Array.isArray(bundledItems) ||
+                blocks[index].blockType !== "documentBundle" ||
                 !controller || typeof controller.serializeNoteBlocks !== "function" ||
                 !flushActiveRichSlices()) return false
 
@@ -280,8 +281,10 @@ ColumnLayout {
     }
 
     function absorbLooseDocumentBundleFile(bundleIndex, sourceBlockPath, fileId, bundledItems) {
-        if (bundleIndex < 0 || bundleIndex >= blocks.length || !Array.isArray(sourceBlockPath) ||
-                sourceBlockPath.length === 0 || !Array.isArray(bundledItems) || !controller ||
+        sourceBlockPath = DocumentBundleOperations.toArray(sourceBlockPath)
+        bundledItems = DocumentBundleOperations.toArray(bundledItems)
+        if (bundleIndex < 0 || bundleIndex >= blocks.length ||
+                sourceBlockPath.length === 0 || !controller ||
                 typeof controller.serializeNoteBlocks !== "function" ||
                 !flushActiveRichSlices()) return false
 

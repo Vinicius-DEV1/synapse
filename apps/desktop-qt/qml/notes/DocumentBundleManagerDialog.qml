@@ -141,7 +141,6 @@ Dialog {
 
             delegate: DocumentBundleManagerItem {
                 required property var modelData
-                required property int index
                 width: ListView.view.width
                 itemData: modelData
                 isFirst: index === 0

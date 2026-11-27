@@ -59,7 +59,7 @@ function parseBundleItems(attrs) {
 function uniqueFileExtensions(items) {
     var seen = ({})
     var out = []
-    var sourceItems = Array.isArray(items) ? items : []
+    var sourceItems = toArray(items)
     for (var i = 0; i < sourceItems.length; i++) {
         var item = sourceItems[i] || ({})
         var name = String(item.name || item.title || "")
@@ -140,8 +140,9 @@ function collectLooseFileWidgets(blocks, controller, fallbackName, parentPath) {
 
 function removeLooseFileWidgetAtPath(blocks, sourceBlockPath, fileId, controller, depth) {
     blocks = toArray(blocks)
+    sourceBlockPath = toArray(sourceBlockPath)
     var currentDepth = Number(depth || 0)
-    if (!Array.isArray(sourceBlockPath) || sourceBlockPath.length === 0 ||
+    if (sourceBlockPath.length === 0 ||
             currentDepth >= sourceBlockPath.length || currentDepth >= MAX_NESTED_EDITOR_DEPTH) {
         return { valid: false, blocks: [] }
     }
@@ -182,7 +183,8 @@ function removeLooseFileWidgetAtPath(blocks, sourceBlockPath, fileId, controller
 }
 
 function createFileWidgetBlocks(items, groupColor, controller, fallbackName) {
-    if (!Array.isArray(items) || items.length === 0 || !controller ||
+    items = toArray(items)
+    if (items.length === 0 || !controller ||
             typeof controller.parseNoteBlocks !== "function") {
         return { valid: false, blocks: [] }
     }
