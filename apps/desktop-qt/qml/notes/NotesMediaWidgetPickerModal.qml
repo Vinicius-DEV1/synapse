@@ -76,6 +76,7 @@ Item {
     readonly property var filteredItems: {
         return PickerOperations.filteredItems(listItems, searchFilter)
     }
+    readonly property bool uploadMode: activeMode === "documento" || activeMode === "documento-link"
     function close() {
         if (localFileUpload.busy) return
         activeMode = ""
@@ -100,9 +101,10 @@ Item {
     }
 
     Rectangle {
+        objectName: "notesMediaWidgetPickerBackdrop"
         anchors.fill: parent
         color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-            ? "#80000000" : "#b0000000"
+            || mediaPickerRoot.uploadMode ? "#80000000" : "#b0000000"
         MouseArea {
             anchors.fill: parent
             onClicked: {
@@ -115,14 +117,18 @@ Item {
     }
 
     Rectangle {
+        objectName: "notesMediaWidgetPickerCard"
         width: mediaPickerRoot.activeMode === "file-select" ? 512
             : mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                ? Math.max(0, Math.min(448, parent.width - 32)) : 440
+                ? Math.max(0, Math.min(448, parent.width - 32))
+                : mediaPickerRoot.uploadMode ? Math.max(0, Math.min(448, parent.width - 32)) : 440
         height: mediaPickerRoot.activeMode === "file-select"
             ? Math.min(parent.height - 48, Math.max(320, parent.height * 0.7))
             : mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
                 ? Math.min(parent.height * 0.8, cardCol.implicitHeight + 32)
-            : Math.min(parent.height - 48, cardCol.implicitHeight + 40)
+            : mediaPickerRoot.uploadMode
+                ? Math.min(parent.height - 32, Math.max(320, localFileUpload.implicitHeight + 168))
+                : Math.min(parent.height - 48, cardCol.implicitHeight + 40)
         anchors.centerIn: parent
         radius: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 12 : 16
         color: "#1a1924"
@@ -134,13 +140,127 @@ Item {
 
         ColumnLayout {
             id: cardCol
+            objectName: "notesMediaWidgetPickerCardLayout"
+            visible: !mediaPickerRoot.uploadMode
             anchors.fill: parent
-            anchors.margins: mediaPickerRoot.activeMode === "documento" ||
+            anchors.margins: mediaPickerRoot.uploadMode ? 0 : mediaPickerRoot.activeMode === "documento" ||
                 mediaPickerRoot.activeMode === "documento-link" ||
                 mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 20
-            spacing: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 0 : 12
+            spacing: mediaPickerRoot.uploadMode || mediaPickerRoot.activeMode === "video" ||
+                mediaPickerRoot.activeMode === "livro" ? 0 : 12
 
             NotesMediaWidgetPickerHeader {
+                objectName: "notesMediaWidgetPickerSecondaryHeader"
+                mode: mediaPickerRoot.activeMode
+                closeEnabled: !localFileUpload.busy
+                onCloseRequested: mediaPickerRoot.close()
+            }
+
+            Item {
+                objectName: "notesMediaWidgetPickerSearchContainer"
+                visible: mediaPickerRoot.activeMode === "file-select" ||
+                    mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                Layout.fillWidth: true
+                Layout.preferredHeight: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                    ? 68 : visible ? 36 : 0
+                implicitHeight: Layout.preferredHeight
+
+                NotesMediaWidgetPickerSearchField {
+                    id: mediaSearchSection
+                    anchors.fill: parent
+                    mode: mediaPickerRoot.activeMode
+                    searchFilter: mediaPickerRoot.searchFilter
+                    onSearchFilterEdited: function(value) { mediaPickerRoot.searchFilter = value }
+                }
+            }
+
+            Item {
+                objectName: "notesMediaWidgetPickerExistingItemsContainer"
+                visible: mediaPickerRoot.activeMode === "file-select" ||
+                    mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                Layout.fillWidth: true
+                Layout.fillHeight: visible
+                Layout.minimumHeight: visible ? 140 : 0
+                Layout.preferredHeight: visible ? 220 : 0
+
+                NotesMediaWidgetPickerExistingItems {
+                    id: existingItems
+                    anchors.fill: parent
+                    itemMode: mediaPickerRoot.activeMode
+                    items: mediaPickerRoot.listItems
+                    searchFilter: mediaPickerRoot.searchFilter
+                    onItemSelected: function(item, mode) {
+                        mediaPickerRoot.insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(item, mode))
+                        mediaPickerRoot.close()
+                    }
+                }
+            }
+
+            Item {
+                objectName: "notesMediaWidgetPickerScrapContainer"
+                visible: mediaPickerRoot.activeMode === "scrap"
+                Layout.fillWidth: true
+                Layout.preferredHeight: visible ? scrapForm.implicitHeight : 0
+                implicitHeight: visible ? scrapForm.implicitHeight : 0
+
+                ColumnLayout {
+                    id: scrapForm
+                    anchors.fill: parent
+                    spacing: 8
+                    TextField {
+                        id: scrapUrlInput
+                        objectName: "scrapUrlInput"
+                        Layout.fillWidth: true
+                        placeholderText: "https://..."
+                        color: "#fffffe"
+                        background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
+                        onAccepted: mediaPickerRoot.startScrapCapture()
+                    }
+                    TextField {
+                        id: scrapTitleInput
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Título personalizado (opcional)")
+                        color: "#fffffe"
+                        background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
+                    }
+                    Text {
+                        visible: mediaPickerRoot.scrapError.length > 0
+                        text: mediaPickerRoot.scrapError
+                        color: "#fda4af"
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 36
+                        enabled: !mediaPickerRoot.isCapturingScrap && scrapUrlInput.text.trim().length > 0
+                        onClicked: mediaPickerRoot.startScrapCapture()
+                        background: Rectangle { radius: 8; color: mediaPickerRoot.isCapturingScrap ? "#4d7c3aed" : "#7c3aed" }
+                        contentItem: Text {
+                            text: mediaPickerRoot.isCapturingScrap ? qsTr("Capturando página...") : qsTr("Capturar Snapshot")
+                            color: "#ffffff"
+                            font.pixelSize: 12
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
+        }
+
+        Item {
+            objectName: "notesMediaWidgetPickerUploadContainer"
+            visible: mediaPickerRoot.uploadMode
+            anchors.fill: parent
+
+            NotesMediaWidgetPickerHeader {
+                objectName: "notesMediaWidgetPickerHeader"
+                x: 16
+                y: 0
+                width: parent.width - 32
+                height: 56
                 mode: mediaPickerRoot.activeMode
                 closeEnabled: !localFileUpload.busy
                 onCloseRequested: mediaPickerRoot.close()
@@ -149,8 +269,10 @@ Item {
             NotesMediaWidgetPickerLocalUpload {
                 id: localFileUpload
                 objectName: "notesLocalFileUpload"
-                visible: mediaPickerRoot.activeMode === "documento" ||
-                    mediaPickerRoot.activeMode === "documento-link"
+                x: 24
+                y: 80
+                width: Math.max(0, parent.width - 48)
+                height: Math.max(0, parent.height - 128)
                 controller: mediaPickerRoot.controller
                 isLink: mediaPickerRoot.activeMode === "documento-link"
                 onWidgetHtmlReady: function(html) {
@@ -159,121 +281,14 @@ Item {
                 }
             }
 
-            NotesMediaWidgetPickerSearchField {
-                id: mediaSearchSection
-                mode: mediaPickerRoot.activeMode
-                searchFilter: mediaPickerRoot.searchFilter
-                onSearchFilterEdited: function(value) { mediaPickerRoot.searchFilter = value }
-            }
-
-            NotesMediaWidgetPickerExistingItems {
-                id: existingItems
-                itemMode: mediaPickerRoot.activeMode
-                items: mediaPickerRoot.listItems
-                searchFilter: mediaPickerRoot.searchFilter
-                visible: mediaPickerRoot.activeMode === "file-select" ||
-                    mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.minimumHeight: 140
-                Layout.preferredHeight: 220
-                onItemSelected: function(item, mode) {
-                    mediaPickerRoot.insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(item, mode))
-                    mediaPickerRoot.close()
-                }
-            }
-
-            RowLayout {
-                visible: mediaPickerRoot.activeMode === "documento" ||
-                    mediaPickerRoot.activeMode === "documento-link"
-                Layout.fillWidth: true
-                spacing: 10
-                Item { Layout.fillWidth: true }
-                Button {
-                    id: cancelUploadButton
-                    text: qsTr("Cancelar")
-                    enabled: !localFileUpload.waiting
-                    onClicked: mediaPickerRoot.close()
-                    background: Rectangle { radius: 8; color: cancelUploadButton.hovered ? "#1affffff" : "transparent" }
-                    contentItem: Text {
-                        text: cancelUploadButton.text
-                        color: "#a7a9be"
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        leftPadding: 10
-                        rightPadding: 10
-                    }
-                }
-                Button {
-                    id: uploadActionButton
-                    objectName: "notesLocalUploadActionButton"
-                    enabled: localFileUpload.localFiles.length > 0 && !localFileUpload.waiting
-                    onClicked: localFileUpload.startUpload()
-                    background: Rectangle {
-                        radius: 8
-                        color: uploadActionButton.enabled ? (uploadActionButton.hovered ? "#7c3aed" : "#8b5cf6") : "#7c8b5cf6"
-                    }
-                    contentItem: Text {
-                        text: localFileUpload.waiting
-                            ? qsTr("Criptografando...")
-                            : localFileUpload.activeFileIndex >= 0
-                                ? qsTr("Tentar novamente")
-                                : qsTr("Enviar %1 arquivo(s)").arg(localFileUpload.localFiles.length)
-                        color: localFileUpload.localFiles.length > 0 ? "#ffffff" : "#ffffff80"
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        leftPadding: 14
-                        rightPadding: 14
-                    }
-                }
-            }
-
-            ColumnLayout {
-                visible: mediaPickerRoot.activeMode === "scrap"
-                Layout.fillWidth: true
-                spacing: 8
-                TextField {
-                    id: scrapUrlInput
-                    Layout.fillWidth: true
-                    placeholderText: "https://..."
-                    color: "#fffffe"
-                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
-                    onAccepted: mediaPickerRoot.startScrapCapture()
-                }
-                TextField {
-                    id: scrapTitleInput
-                    Layout.fillWidth: true
-                    placeholderText: qsTr("Título personalizado (opcional)")
-                    color: "#fffffe"
-                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
-                }
-                Text {
-                    visible: mediaPickerRoot.scrapError.length > 0
-                    text: mediaPickerRoot.scrapError
-                    color: "#fda4af"
-                    font.pixelSize: 11
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
-                }
-                Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    enabled: !mediaPickerRoot.isCapturingScrap && scrapUrlInput.text.trim().length > 0
-                    onClicked: mediaPickerRoot.startScrapCapture()
-                    background: Rectangle { radius: 8; color: mediaPickerRoot.isCapturingScrap ? "#4d7c3aed" : "#7c3aed" }
-                    contentItem: Text {
-                        text: mediaPickerRoot.isCapturingScrap ? qsTr("Capturando página...") : qsTr("Capturar Snapshot")
-                        color: "#ffffff"
-                        font.pixelSize: 12
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
+            NotesMediaWidgetPickerUploadFooter {
+                objectName: "notesLocalUploadFooter"
+                width: parent.width
+                height: 64
+                anchors.bottom: parent.bottom
+                upload: localFileUpload
+                onCancelRequested: mediaPickerRoot.close()
+                onUploadRequested: localFileUpload.startUpload()
             }
         }
     }

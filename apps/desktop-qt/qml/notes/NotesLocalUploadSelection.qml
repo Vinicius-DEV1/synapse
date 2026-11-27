@@ -33,7 +33,7 @@ ColumnLayout {
     Rectangle {
         visible: selectionRoot.localFiles.length === 0
         Layout.fillWidth: true
-        Layout.preferredHeight: 156
+        Layout.preferredHeight: 176
         radius: 12
         color: selectionRoot.isDraggingOver ? "#1a8b5cf6" : "transparent"
         border.color: selectionRoot.isDraggingOver ? "#8b5cf6" : "#15ffffff"
@@ -59,52 +59,44 @@ ColumnLayout {
                 drop.acceptProposedAction()
             }
         }
+        MouseArea {
+            objectName: "notesLocalUploadDropArea"
+            anchors.fill: parent
+            enabled: !selectionRoot.waiting
+            onClicked: localFileDialog.open()
+        }
         ColumnLayout {
             anchors.centerIn: parent
-            spacing: 7
+            spacing: 8
             AppIcon {
                 name: "upload-cloud"
                 color: selectionRoot.isDraggingOver ? "#a78bfa" : "#8b5cf6"
-                Layout.preferredWidth: 38
-                Layout.preferredHeight: 38
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
                 Layout.alignment: Qt.AlignHCenter
             }
             Text {
-                text: selectionRoot.isDraggingOver ? qsTr("Solte os arquivos aqui") : qsTr("Clique ou arraste arquivos")
+                text: selectionRoot.isDraggingOver ? qsTr("Solte os arquivos aqui") : qsTr("Clique ou arraste arquivo(s)")
                 color: "#fffffe"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignHCenter
             }
             Text {
-                text: qsTr("Arquivos locais serão criptografados antes de serem anexados.")
+                text: qsTr("PDFs, Imagens, Slides, Vídeos e mais (vários simultâneos)")
                 color: "#a7a9be"
-                font.pixelSize: 11
+                font.pixelSize: 12
                 Layout.alignment: Qt.AlignHCenter
                 horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                Layout.maximumWidth: 280
             }
-            Button {
-                id: addFilesButton
-                objectName: "notesLocalAddFilesButton"
-                Layout.preferredHeight: 30
-                enabled: !selectionRoot.waiting
-                onClicked: localFileDialog.open()
-                Accessible.name: qsTr("Selecionar arquivos locais")
-                background: Rectangle {
-                    radius: 8
-                    color: addFilesButton.hovered ? "#338b5cf6" : "#228b5cf6"
-                    border.color: "#668b5cf6"
-                }
-                contentItem: Text {
-                    text: qsTr("Selecionar arquivos")
-                    color: "#c4b5fd"
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: 12
-                    rightPadding: 12
-                }
+            Text {
+                text: qsTr("Os arquivos locais são criptografados antes de serem anexados.")
+                color: "#a7a9be"
+                font.pixelSize: 10
+                Layout.alignment: Qt.AlignHCenter
+                horizontalAlignment: Text.AlignHCenter
             }
         }
     }
@@ -112,19 +104,21 @@ ColumnLayout {
     ScrollView {
         visible: selectionRoot.localFiles.length > 0
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(192, selectionRoot.localFiles.length * 52)
+        Layout.preferredHeight: Math.min(192, selectionRoot.localFiles.length * 72)
         clip: true
         ColumnLayout {
             width: parent.width
-            spacing: 4
+            spacing: 8
             Repeater {
                 model: selectionRoot.localFiles
                 delegate: Rectangle {
                     id: selectedFileRow
+                    objectName: "notesLocalUploadRow_" + selectedFileRow.index
                     required property int index
                     required property string modelData
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 48
+                    Layout.preferredHeight: 64
+                    implicitHeight: 64
                     radius: 9
                     color: "#0dffffff"
                     border.color: "#0fffffff"
@@ -132,15 +126,16 @@ ColumnLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 5
-                        spacing: 10
+                        spacing: 12
                         Rectangle {
-                            Layout.preferredWidth: 32
-                            Layout.preferredHeight: 32
+                            Layout.preferredWidth: 40
+                            Layout.preferredHeight: 40
                             radius: 8
                             color: "#338b5cf6"
-                            AppIcon { anchors.centerIn: parent; name: "file"; color: "#a78bfa"; width: 17; height: 17 }
+                            AppIcon { anchors.centerIn: parent; name: "file"; color: "#a78bfa"; width: 20; height: 20 }
                         }
                         Text {
+                            objectName: "notesLocalUploadFileName"
                             Layout.fillWidth: true
                             text: PickerOperations.fileNameFromUrl(selectedFileRow.modelData)
                             color: "#fffffe"
@@ -183,14 +178,15 @@ ColumnLayout {
         }
         contentItem: RowLayout {
             AppIcon { name: "upload"; color: "#a7a9be"; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
-            Text { text: qsTr("Adicionar mais arquivos"); color: "#a7a9be"; font.pixelSize: 11 }
+            Text { text: qsTr("+ Adicionar mais arquivos (ou arraste aqui)"); color: "#a7a9be"; font.pixelSize: 11 }
             Item { Layout.fillWidth: true }
         }
     }
 
     CheckBox {
+        objectName: "notesLocalUploadGroupAsBundle"
         visible: selectionRoot.showGroupOption
-        text: qsTr("Agrupar arquivos em um único bloco")
+        text: qsTr("Agrupar arquivos em um único widget")
         checked: selectionRoot.groupAsBundle
         enabled: !selectionRoot.waiting
         onToggled: selectionRoot.groupingChanged(checked)

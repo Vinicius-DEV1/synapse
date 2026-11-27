@@ -4191,4 +4191,112 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation type="unfinished">Abrir no Navegador</translation>
     </message>
   </context>
+  <context>
+    <name>NotesMediaWidgetPickerHeader</name>
+    <message>
+      <source>Enviar Arquivo(s)</source>
+      <translation>Upload File(s)</translation>
+    </message>
+    <message>
+      <source>Enviar Arquivo(s) como link</source>
+      <translation>Upload File(s) as Link</translation>
+    </message>
+    <message>
+      <source>Vincular arquivo existente</source>
+      <translation>Link Existing File</translation>
+    </message>
+    <message>
+      <source>Vincular Vídeo</source>
+      <translation>Link Video</translation>
+    </message>
+    <message>
+      <source>Vincular Livro</source>
+      <translation>Link Book</translation>
+    </message>
+    <message>
+      <source>Snapshot Web Offline (Scrap)</source>
+      <translation>Offline Web Snapshot (Scrap)</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesLocalUploadSelection</name>
+    <message>
+      <source>Selecionar arquivos locais para criptografar com ENC1</source>
+      <translation>Select local files to encrypt with ENC1</translation>
+    </message>
+    <message>
+      <source>Solte os arquivos aqui</source>
+      <translation>Drop files here</translation>
+    </message>
+    <message>
+      <source>Clique ou arraste arquivo(s)</source>
+      <translation>Click or drag file(s)</translation>
+    </message>
+    <message>
+      <source>PDFs, Imagens, Slides, Vídeos e mais (vários simultâneos)</source>
+      <translation>PDFs, Images, Slides, Videos and more (multiple files supported)</translation>
+    </message>
+    <message>
+      <source>Os arquivos locais são criptografados antes de serem anexados.</source>
+      <translation>Local files are encrypted before they are attached.</translation>
+    </message>
+    <message>
+      <source>Remover %1 da seleção</source>
+      <translation>Remove %1 from selection</translation>
+    </message>
+    <message>
+      <source>+ Adicionar mais arquivos (ou arraste aqui)</source>
+      <translation>+ Add more files (or drag here)</translation>
+    </message>
+    <message>
+      <source>Agrupar arquivos em um único widget</source>
+      <translation>Group files into a single widget</translation>
+    </message>
+    <message>
+      <source>Agrupar arquivos selecionados em um pacote</source>
+      <translation>Group selected files into a bundle</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesMediaWidgetPickerLocalUpload</name>
+    <message>
+      <source>Não foi possível preparar os arquivos para a página.</source>
+      <translation>Could not prepare files for the page.</translation>
+    </message>
+    <message>
+      <source>A importação de arquivos não está disponível.</source>
+      <translation>File import is unavailable.</translation>
+    </message>
+    <message>
+      <source>Não foi possível importar o arquivo.</source>
+      <translation>Could not import the file.</translation>
+    </message>
+    <message>
+      <source>Importando arquivo %1 de %2 (criptografia local)...</source>
+      <translation>Importing file %1 of %2 (local encryption)...</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesMediaWidgetPickerUploadFooter</name>
+    <message>
+      <source>Cancelar</source>
+      <translation>Cancel</translation>
+    </message>
+    <message>
+      <source>Criptografando...</source>
+      <translation>Encrypting...</translation>
+    </message>
+    <message>
+      <source>Tentar novamente</source>
+      <translation>Try Again</translation>
+    </message>
+    <message>
+      <source>Enviar</source>
+      <translation>Upload</translation>
+    </message>
+    <message>
+      <source>Fazer Upload (%1)</source>
+      <translation>Upload (%1)</translation>
+    </message>
+  </context>
 </TS>

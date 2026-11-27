@@ -4191,4 +4191,112 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Abrir no Navegador</translation>
     </message>
   </context>
+  <context>
+    <name>NotesMediaWidgetPickerHeader</name>
+    <message>
+      <source>Enviar Arquivo(s)</source>
+      <translation>Enviar Arquivo(s)</translation>
+    </message>
+    <message>
+      <source>Enviar Arquivo(s) como link</source>
+      <translation>Enviar Arquivo(s) como link</translation>
+    </message>
+    <message>
+      <source>Vincular arquivo existente</source>
+      <translation>Vincular arquivo existente</translation>
+    </message>
+    <message>
+      <source>Vincular Vídeo</source>
+      <translation>Vincular Vídeo</translation>
+    </message>
+    <message>
+      <source>Vincular Livro</source>
+      <translation>Vincular Livro</translation>
+    </message>
+    <message>
+      <source>Snapshot Web Offline (Scrap)</source>
+      <translation>Snapshot Web Offline (Scrap)</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesLocalUploadSelection</name>
+    <message>
+      <source>Selecionar arquivos locais para criptografar com ENC1</source>
+      <translation>Selecionar arquivos locais para criptografar com ENC1</translation>
+    </message>
+    <message>
+      <source>Solte os arquivos aqui</source>
+      <translation>Solte os arquivos aqui</translation>
+    </message>
+    <message>
+      <source>Clique ou arraste arquivo(s)</source>
+      <translation>Clique ou arraste arquivo(s)</translation>
+    </message>
+    <message>
+      <source>PDFs, Imagens, Slides, Vídeos e mais (vários simultâneos)</source>
+      <translation>PDFs, Imagens, Slides, Vídeos e mais (vários simultâneos)</translation>
+    </message>
+    <message>
+      <source>Os arquivos locais são criptografados antes de serem anexados.</source>
+      <translation>Os arquivos locais são criptografados antes de serem anexados.</translation>
+    </message>
+    <message>
+      <source>Remover %1 da seleção</source>
+      <translation>Remover %1 da seleção</translation>
+    </message>
+    <message>
+      <source>+ Adicionar mais arquivos (ou arraste aqui)</source>
+      <translation>+ Adicionar mais arquivos (ou arraste aqui)</translation>
+    </message>
+    <message>
+      <source>Agrupar arquivos em um único widget</source>
+      <translation>Agrupar arquivos em um único widget</translation>
+    </message>
+    <message>
+      <source>Agrupar arquivos selecionados em um pacote</source>
+      <translation>Agrupar arquivos selecionados em um pacote</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesMediaWidgetPickerLocalUpload</name>
+    <message>
+      <source>Não foi possível preparar os arquivos para a página.</source>
+      <translation>Não foi possível preparar os arquivos para a página.</translation>
+    </message>
+    <message>
+      <source>A importação de arquivos não está disponível.</source>
+      <translation>A importação de arquivos não está disponível.</translation>
+    </message>
+    <message>
+      <source>Não foi possível importar o arquivo.</source>
+      <translation>Não foi possível importar o arquivo.</translation>
+    </message>
+    <message>
+      <source>Importando arquivo %1 de %2 (criptografia local)...</source>
+      <translation>Importando arquivo %1 de %2 (criptografia local)...</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesMediaWidgetPickerUploadFooter</name>
+    <message>
+      <source>Cancelar</source>
+      <translation>Cancelar</translation>
+    </message>
+    <message>
+      <source>Criptografando...</source>
+      <translation>Criptografando...</translation>
+    </message>
+    <message>
+      <source>Tentar novamente</source>
+      <translation>Tentar novamente</translation>
+    </message>
+    <message>
+      <source>Enviar</source>
+      <translation>Enviar</translation>
+    </message>
+    <message>
+      <source>Fazer Upload (%1)</source>
+      <translation>Fazer Upload (%1)</translation>
+    </message>
+  </context>
 </TS>

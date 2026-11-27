@@ -156,7 +156,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Criptografando arquivo %1 de %2 com ENC1...")
+                text: qsTr("Importando arquivo %1 de %2 (criptografia local)...")
                     .arg(localUploadRoot.activeFileIndex + 1).arg(localUploadRoot.localFiles.length)
                 color: "#a7a9be"
                 font.pixelSize: 12
