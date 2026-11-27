@@ -1,5 +1,6 @@
 #include "notes_rich_inline_marks.h"
 #include "notes_rich_format.h"
+#include "notes_rich_markup.h"
 #include "notes_rich_spoilers.h"
 
 #include <QtCore/QHash>
@@ -24,10 +25,21 @@ static bool isExplicitBold(const QTextCharFormat &format, int headingLevel) {
 
 namespace {
 using InlineMarkState = QHash<QString, bool>;
+struct InlineColorState {
+    bool hasForeground = false;
+    QString foreground;
+    bool hasBackground = false;
+    QString background;
+};
 
 QHash<QTextDocument *, InlineMarkState> &insertionMarks() {
     static QHash<QTextDocument *, InlineMarkState> marks;
     return marks;
+}
+
+QHash<QTextDocument *, InlineColorState> &insertionColors() {
+    static QHash<QTextDocument *, InlineColorState> colors;
+    return colors;
 }
 
 QSet<QTextDocument *> &trackedInsertionMarkDocuments() {
@@ -41,6 +53,7 @@ void trackInsertionMarkDocument(QTextDocument &document) {
     QTextDocument *documentPointer = &document;
     QObject::connect(&document, &QObject::destroyed, [documentPointer]() {
         insertionMarks().remove(documentPointer);
+        insertionColors().remove(documentPointer);
         trackedInsertionMarkDocuments().remove(documentPointer);
     });
 }
@@ -161,7 +174,23 @@ bool toggleAtCursor(QTextDocument &document, int position, const QString &mark) 
 }
 
 bool clearInsertionMarks(QTextDocument &document) {
-    return insertionMarks().remove(&document) > 0;
+    const bool removedMarks = insertionMarks().remove(&document) > 0;
+    const bool removedColors = insertionColors().remove(&document) > 0;
+    return removedMarks || removedColors;
+}
+
+bool setPendingColor(QTextDocument &document, const QString &colorValue, bool background) {
+    if (!colorValue.isEmpty() && !NotesRichMarkup::parseCssColor(colorValue).isValid()) return false;
+    trackInsertionMarkDocument(document);
+    InlineColorState &state = insertionColors()[&document];
+    if (background) {
+        state.hasBackground = true;
+        state.background = colorValue;
+    } else {
+        state.hasForeground = true;
+        state.foreground = colorValue;
+    }
+    return true;
 }
 
 bool applyMark(QTextDocument &document, int start, int end, const QString &mark,
@@ -194,9 +223,33 @@ bool applyMark(QTextDocument &document, int start, int end, const QString &mark,
 bool applyPendingMarks(QTextDocument &document, int start, int end) {
     if (start < 0 || end <= start || end > document.characterCount() - 1) return false;
     const InlineMarkState marks = insertionMarks().value(&document);
-    if (marks.isEmpty()) return true;
+    const bool hasColors = insertionColors().contains(&document);
+    if (marks.isEmpty() && !hasColors) return true;
     for (const auto &mark : marks.asKeyValueRange())
         if (!applyMark(document, start, end, mark.first, mark.second, true)) return false;
+    if (hasColors) {
+        const InlineColorState colors = insertionColors().value(&document);
+        auto applyColor = [&](const QString &colorValue, bool background) {
+            QTextCursor cursor(&document);
+            cursor.setPosition(start);
+            cursor.setPosition(end, QTextCursor::KeepAnchor);
+            cursor.joinPreviousEditBlock();
+            const QColor parsed = colorValue.isEmpty() ? QColor() : NotesRichMarkup::parseCssColor(colorValue);
+            if (!parsed.isValid()) {
+                QTextCharFormat fmt = cursor.charFormat();
+                fmt.clearProperty(background ? QTextFormat::BackgroundBrush : QTextFormat::ForegroundBrush);
+                cursor.setCharFormat(fmt);
+            } else {
+                QTextCharFormat fmt;
+                if (background) fmt.setBackground(parsed);
+                else fmt.setForeground(parsed);
+                cursor.mergeCharFormat(fmt);
+            }
+            cursor.endEditBlock();
+        };
+        if (colors.hasForeground) applyColor(colors.foreground, false);
+        if (colors.hasBackground) applyColor(colors.background, true);
+    }
     return true;
 }
 

@@ -62,9 +62,12 @@ bool isSpoilerRevealedAt(QTextDocument &document, int position) {
 
 
 bool setColor(QTextDocument &document, int start, int end, const QString &colorValue, bool background) {
-    if (start < 0 || end <= start || end > document.characterCount() - 1) return false;
+    if (start < 0 || end < start || end > document.characterCount() - 1) return false;
     const QColor color = colorValue.isEmpty() ? QColor() : NotesRichMarkup::parseCssColor(colorValue);
     if (!colorValue.isEmpty() && !color.isValid()) return false;
+    if (start == end) {
+        return NotesRichInlineMarks::setPendingColor(document, colorValue, background);
+    }
     QTextCursor cursor(&document);
     cursor.setPosition(start);
     cursor.setPosition(end, QTextCursor::KeepAnchor);

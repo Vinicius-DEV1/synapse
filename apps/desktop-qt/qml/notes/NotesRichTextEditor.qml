@@ -182,8 +182,9 @@ Item {
         if (!active || hasInvalidContent || hasVisualTableFilter || !editor || !editor.textDocument ||
                 !textOperations || typeof textOperations.setRichColor !== "function") return false
         var value = color === "inherit" || color === "transparent" || color === "default" ? "" : color
+        var hadContent = editor.length > 0
         if (!textOperations.setRichColor(editor.textDocument, 0, editor.length, value, background)) return false
-        richCommands.contentModified()
+        if (hadContent) richCommands.contentModified()
         editor.forceActiveFocus()
         return true
     }

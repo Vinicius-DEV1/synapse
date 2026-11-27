@@ -9,6 +9,7 @@ bool toggle(QTextDocument &document, int start, int end, const QString &mark,
             bool joinPreviousEditBlock = false);
 bool toggleAtCursor(QTextDocument &document, int position, const QString &mark);
 bool clearInsertionMarks(QTextDocument &document);
+bool setPendingColor(QTextDocument &document, const QString &colorValue, bool background);
 bool applyMark(QTextDocument &document, int start, int end, const QString &mark,
                bool enabled, bool joinPreviousEditBlock = false);
 bool applyPendingMarks(QTextDocument &document, int start, int end);
