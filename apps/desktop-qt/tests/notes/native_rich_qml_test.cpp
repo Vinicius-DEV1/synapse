@@ -1150,6 +1150,11 @@ int main(int argc, char **argv) {
         char *searchArguments[] = {argv[0], searchTest};
         return runNativeNotesReferenceSearchQmlTest(2, searchArguments);
     }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=image-deletion")) {
+        char deletionTest[] = "adjacentImageKeysSelectThenConfirmDeletionAndUndo";
+        char *deletionArguments[] = {argv[0], deletionTest};
+        return runNativeNotesRichImageDeletionQmlTest(2, deletionArguments);
+    }
     if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=audio-preview")) {
         char correlationTest[] = "notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath";
         char cancellationTest[] = "notesAudioPreviewCancelsOnlyItsPendingRequest";

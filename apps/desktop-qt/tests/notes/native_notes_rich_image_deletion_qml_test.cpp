@@ -49,6 +49,8 @@ private slots:
         window.resize(800, 360);
         auto *rootItem = qobject_cast<QQuickItem *>(root.data());
         QVERIFY(rootItem);
+        rootItem->setWidth(window.width());
+        rootItem->setHeight(window.height());
         rootItem->setParentItem(window.contentItem());
         window.show();
         QTRY_VERIFY(window.isVisible());
@@ -85,8 +87,37 @@ private slots:
 
         QTest::keyClick(&window, Qt::Key_Backspace);
         QTRY_VERIFY(deleteDialog->property("visible").toBool());
+        QCOMPARE(deleteDialog->property("width").toDouble(), 384.0);
+        QVERIFY(deleteDialog->property("height").toDouble() > 0);
+        QObject *deleteTitle = root->findChild<QObject *>("notesRichImageDeleteTitle");
+        QObject *deletePrompt = root->findChild<QObject *>("notesRichImageDeletePrompt");
+        QObject *deleteDescription = root->findChild<QObject *>("notesRichImageDeleteDescription");
+        QObject *cancelButton = root->findChild<QObject *>("notesRichImageDeleteCancelButton");
+        QObject *confirmButton = root->findChild<QObject *>("notesRichImageDeleteConfirmButton");
+        QObject *closeButton = root->findChild<QObject *>("notesRichImageDeleteCloseButton");
+        QVERIFY(deleteTitle);
+        QVERIFY(deletePrompt);
+        QVERIFY(deleteDescription);
+        QVERIFY(cancelButton);
+        QVERIFY(confirmButton);
+        QVERIFY(closeButton);
+        QCOMPARE(deleteTitle->property("text").toString(), QString("Delete image"));
+        QCOMPARE(deletePrompt->property("text").toString(),
+                 QString("Do you really want to delete this image?"));
+        QCOMPARE(deleteDescription->property("text").toString(),
+                 QString("This action will remove the selected image from the document."));
+        QCOMPARE(cancelButton->property("text").toString(), QString("Cancel"));
+        QCOMPARE(confirmButton->property("text").toString(), QString("Delete"));
+        QVERIFY(confirmButton->property("activeFocus").toBool());
         QCOMPARE(operations.serializeRich(quickDocument).value("html").toString(), originalHtml);
-        QTest::keyClick(&window, Qt::Key_Escape);
+
+        QVERIFY(QMetaObject::invokeMethod(cancelButton, "clicked", Qt::DirectConnection));
+        QTRY_VERIFY(!deleteDialog->property("visible").toBool());
+        QCOMPARE(operations.serializeRich(quickDocument).value("html").toString(), originalHtml);
+
+        QTest::keyClick(&window, Qt::Key_Backspace);
+        QTRY_VERIFY(deleteDialog->property("visible").toBool());
+        QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, QPoint(8, 8));
         QTRY_VERIFY(!deleteDialog->property("visible").toBool());
         QCOMPARE(operations.serializeRich(quickDocument).value("html").toString(), originalHtml);
 
