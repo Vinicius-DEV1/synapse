@@ -341,7 +341,7 @@ Rectangle {
                                 }
                                 return current.content || ""
                             }
-                            textFormat: (historyRoot.showDiff && historyRoot.previousEntry()) || historyRoot.isHtmlDocument(text) ? Text.RichText : Text.MarkdownText
+                            textFormat: (historyRoot.showDiff && historyRoot.canShowDiff()) || historyRoot.isHtmlDocument(text) ? Text.RichText : Text.MarkdownText
                             color: "#e4e4e7"
                             font.pixelSize: 16
                             wrapMode: Text.Wrap
