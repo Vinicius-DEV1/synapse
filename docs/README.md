@@ -51,7 +51,7 @@ Active investigation records and unresolved implementation checklists are kept i
 | Document | Description | Audience |
 | :--- | :--- | :--- |
 | [**`modules/index.md`**](./modules/index.md) | **System Modules Catalog** — Overview of all 18 canonical product modules and their source locations across clients. | Feature Engineers |
-| [**`modules/notes.md`**](./modules/notes.md) | **Synapse Notes Architecture** — TipTap v3 / ProseMirror schema, on-demand metadata hydration, lazy syntax highlighting, and Yjs CRDT compaction. | Frontend & Editor Engineers |
+| [**`modules/notes.md`**](./modules/notes.md) | **Synapse Notes Architecture** — React editor and Yjs boundaries, native Qt editor status, page-reference search behavior, on-demand hydration, and current parity limits. | Frontend & Editor Engineers |
 | [**`modules/anki-fsrs.md`**](./modules/anki-fsrs.md) | **Spaced Repetition & FSRS Engine** — Modern DSR cognitive memory model, review rating curves, and Gemini AI flashcard synthesis. | Learning & AI Engineers |
 | [**`modules/vault.md`**](./modules/vault.md) | **Password & Credential Vault** — Two-Tier Keychain field encryption, Shannon entropy generator, and HIBP k-anonymity breach detection. | Security Engineers |
 | [**`modules/mobile-android-finance.md`**](./modules/mobile-android-finance.md) | **Native Android Finance Module** — Jetpack Compose UI, UniFFI Rust bindings, local SQLite persistence, and explicit sync/encryption scope. | Android & Core Engineers |

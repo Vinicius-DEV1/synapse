@@ -98,7 +98,15 @@ The Qt desktop client keeps the page tree in SQLite and exposes native hierarchy
 
 React's desktop PageView uses a centered `max-w-5xl` canvas with responsive horizontal padding, producing a 928 px inner reading width at the desktop breakpoint. Qt now allows a 1,024 px outer canvas with 48 px desktop margins, which targets the same inner width; effective layout geometry still needs a matched-viewport capture. Qt has native page header, cover, hierarchy and sub-page components in the active worktree, but a fresh pixel comparison has not been recorded. The Qt page cover and hierarchy behaviors must be checked against the React flows before claiming equivalence. Cover metadata remains plaintext under the current shared schema; see the [encryption coverage guide](../security/encryption-coverage.md). Existing page history and page unlock flows require focused interaction and persistence review.
 
-## 8. Typed Table Controls
+## 8. Page Reference Search and Inline References
+
+React presents page search in `apps/web-react/src/components/PageSearchMenu.tsx`. It filters active pages by title and plain-text note content, preserves `link` and `create` modes, and mounts a fixed 288 px popover capped at 320 px. It closes on Escape and on document-level outside clicks, navigates results with arrow keys, and inserts the selected page reference at the saved editor position.
+
+Qt implements the equivalent rich-editor flow in `apps/desktop-qt/qml/notes/NotesRichPageReferenceFlow.qml` and `NotesRichPageReferenceMenu.qml`. The flow fills the `NotesRichTextInput` viewport, and the menu uses the same maximum dimensions and React-like heading, search field, 48 px result rows and 32 px icon tiles. Qt keeps content search in its Core-backed Notes controller, debounces requests, cancels superseded work, and ignores stale responses. Link/create modes and keyboard selection are retained. The outside-click catcher currently covers the editor viewport and lets the click pass through; it does not yet match React's document-wide outside listener.
+
+A production QtTest suite validates nonzero menu geometry, the 288×320 px bounds, search debounce, cancellation and stale-result handling, and outside-click dismissal within the editor. `qmllint` passes for the changed QML. The fixed geometry and source tests do not establish exact visual parity: matched viewport screenshots, vertical placement near viewport edges, narrow resizing, hover, focus return, accessible announcements, click propagation outside the editor, and save/reopen of inserted references remain required acceptance work. Current status is partial; active evidence and the implementation checklist are in [`audits/desktop-qt-parity/notes/`](../../audits/desktop-qt-parity/notes/README.md).
+
+## 9. Typed Table Controls
 
 React Notes defines five typed table columns: text, number, date, select and checkbox. The type selector is a 240 px closeable popover with a three-column choice grid. The “Filtrar Coluna” section starts collapsed when there is no active filter; operator and value edits stay as a draft until Apply, while Clear removes the applied filter and resets the draft. Selecting a type updates the table schema and clears the filter attached to that column; edits to select options do not clear filters. React provides select/checkbox choices and a native date input for date filters. The React type and filter controls are implemented by `apps/web-react/src/components/notes/components/table/TableColumnTypePopover.tsx`, `TableColumnOptionsEditor.tsx` and `TableColumnFilterSection.tsx`.
 
@@ -106,7 +114,7 @@ Qt renders the equivalent selector in `apps/desktop-qt/qml/notes/NotesTableColum
 
 Qt also exposes native number/date format controls and column insertion/deletion in this popover. These are native affordances layered around the common five-type selector; they must preserve the same table schema and filter behavior. Filtered rows are a view projection and must never become the saved note body. Full runtime persistence, edge placement, keyboard/focus and same-viewport visual comparisons remain part of Qt acceptance; a successful QML harness or native build alone does not establish complete parity.
 
-## 9. Native Notes File Import
+## 10. Native Notes File Import
 
 The Qt Notes media picker delegates local encryption and file-record creation to `SynapseDataController::importLocalFile()`. The visible local-upload mode supports selecting multiple local files, adding more, removing individual selections, and choosing whether multiple successful imports become one document bundle or separate file widgets. Bundling is on by default when multiple files are selected, matching React. Existing-file selection is a separate mode and serializes its chosen record as a linked file widget; it is not combined with the visible upload surface. Core accepts one local import at a time, so Qt processes the queue sequentially and correlates each `fileOperationFinished` result by a unique request ID. Widget HTML is built from the returned file ID, name, type and size; an unrelated file-list refresh cannot change which attachment is inserted. A later failure preserves earlier successful results in memory and retry continues at the failed file without reimporting completed files. A Notes-local helper decodes each file dialog `file:` URL into a local path before calling the controller.
 
@@ -134,31 +142,31 @@ Markdown attachment source editing is available inside the Notes-owned viewer. T
 
 The native viewer currently displays an explanatory fallback for EPUB, slides, archives and unsupported types; Qt's common preview limit is 250 MiB and text preview is limited to 4 MiB. React's `FileViewer` supports additional formats and has different controls and layout. Real image/video codec support, interactive PDF page behavior on user files, export, error/retry behavior, actual config persistence across restarts, bookmark keyboard handling, nested/floating Notes routes and matched-viewport comparison remain open; see QT-NOTES-045 and the audit file-widget crosswalk.
 
-## 10. Inline Calendar Event Flow
+## 11. Inline Calendar Event Flow
 
 The Notes `/evento` command opens an inline event form linked to the current page. The form starts with tomorrow at 14:00, selects Mentoria by default, and enables four reminders by default: one day, two hours, 15 minutes, and the event time. The user can set the title, date, time, event type and reminder choices before creating the event. The event is persisted through the active platform service and a `calendar-event-widget` containing the returned event ID, title, date and linked page ID is inserted into the note.
 
 Both clients expose explicit Cancel and Create actions. React renders a dedicated event modal; Desktop Qt hosts its native form within the Notes setup modal and offers additional native color and recurrence controls. Cancel closes without creating an event. Date/time validation and one active submission guard prevent invalid or duplicate creation. The Qt focused QML harness covers the Cancel and create signal paths; live Core persistence, reminder delivery and exact modal geometry remain native runtime acceptance items.
 
-## 11. Inline Focus Session Setup
+## 12. Inline Focus Session Setup
 
 The Notes `/foco` command opens a setup form for a focus session. Its visible order is the session tag, description and target duration, with preset choices for 15, 25, 30, 45 and 60 minutes plus a numeric duration field. Slash-command arguments can prefill the tag, description and duration. The current React Notes host does not pass the Focus screen's existing tag list into this modal, so tag autocomplete is not part of this Notes entry point.
 
 Desktop Qt presents the same labeled field order and prefill behavior in the native Notes setup host. It also retains an additional **Inserir timer na nota** action alongside **Iniciar Foco**; the React Notes host only starts the focus timer. The QML harness verifies visible labels, order, example placeholders and prefill. Live timer behavior, focus return and exact viewport geometry remain runtime acceptance items.
 
-## 12. Inline Alarm Setup
+## 13. Inline Alarm Setup
 
 The Notes `/alarme` command opens alarm setup with the time initialized from a valid slash argument or `12:00`. The user can set a time and an optional label up to 30 characters, then save the alarm. The saved alarm uses the active platform service. Notes also retains a separate secondary action for linking an existing alarm as an inline widget; that is a native addition beyond React's create-alarm modal.
 
 Desktop Qt presents alarm setup on a translucent, full-canvas surface with a scrollable centered column capped at React's 672 px content width. It uses responsive title/time typography, separate time and optional-label cards, a full-width save action, and keeps existing-alarm linking collapsed until requested. React also applies backdrop blur; Qt currently uses the translucent canvas without blur. Focused QML tests cover viewport sizing, small-window scrolling, slash prefill, time validation, save, existing-alarm link serialization, Escape and header close. Backdrop dismissal, blur comparison, live Core error recovery, reminder delivery and matched-viewport geometry remain runtime acceptance items.
 
-## 13. Inline Habit Selection and Creation
+## 14. Inline Habit Selection and Creation
 
 The Notes `/habito` command opens a picker for existing habits or a new habit name. Existing choices create an inline widget linked by the Core habit ID. A new habit uses the emerald color, Flame icon and seven-day weekly target by default; the widget must store the created record's actual Core ID so it resolves in the Notes page. Matching an existing name without regard to case selects that existing habit instead of offering a duplicate create action.
 
 React's Notes entry point uses its dedicated searchable HabitSelect modal. Desktop Qt keeps the flow within its setup host and also offers a native **Todos os hábitos do dia** action. The Qt create path reads the created record after Core success and uses that record ID for the inserted widget. Its search field focuses on open, supports wrapped ArrowUp/ArrowDown, Enter, Escape and 1–9 selection, highlights the active choice and explains the empty list. Focused QML coverage verifies keyboard routing logic, create defaults, duplicate prevention and selected/created IDs; visible-window key propagation, loading/error feedback, live Core persistence, focus return and saved-note reopen remain acceptance items.
 
-## 14. Inline Question Battery Creation
+## 15. Inline Question Battery Creation
 
 The Notes `/question` command creates an inline question block. In Desktop Qt, the Notes-specific Core operation validates the current page and transactionally creates a battery with `sequential` layout, its owning `page_id`, and a `quiz_page_links` record. The bridge returns the actual battery ID, which the QML picker stores in the block. Standalone question-module battery creation keeps its existing API and defaults.
 
@@ -186,13 +194,13 @@ The assistant composer also has the four React quick prompts and an `@` picker f
 
 Focused Core tests verify the page/layout/link data and ensure an invalid page leaves no battery or link behind. Focused QML checks verify the modal hierarchy, responsive result viewport, current-page context, Core ID insertion, existing ID selection and error copy. Live creation followed by saving/reopening the note, focus return and same-viewport comparison remain acceptance work. The React Notes host currently ignores the reuse flag emitted when a suggested existing question widget is selected; that client-side behavior is tracked in the parity audit rather than mirrored by Qt.
 
-## 15. Notes link duplicate modal
+## 16. Notes link duplicate modal
 
 When a resource URL appears on more than one Notes page, the duplicate-count action opens `NotesLinkDuplicatesDialog.qml`. The native dialog displays the link title and URL, each matching page and its ancestor path, and navigates to a selected page. It closes from its close button, Escape or an outside click. Duplicate rows are not expanded inside the link card; the card's color and annotation drawers remain independent.
 
 React's reference is `LinkDuplicatesModal.tsx` in the link extension. Focused Qt QML tests cover resource metadata, ancestor ordering, selecting a page, Escape and outside-click dismissal. Live duplicate lookup/navigation, focus restoration and matched-viewport visual comparison remain required acceptance work.
 
-## 16. Native Qt page-switch save recovery
+## 17. Native Qt page-switch save recovery
 
 Desktop Qt blocks page navigation when the selected Notes page has unsaved changes and `savePage` fails. The active page, editor content and dirty/error state stay available for retry. A stale timestamp opens a native conflict choice: keeping local edits reloads the latest timestamp before retrying, while loading the saved version refreshes the editor from Core and clears the dirty state. Focused QtTests instantiate the production `PageView.qml`; besides deterministic failure/reload coverage, an integration case uses a real `SynapseDataController` and temporary SQLite database to verify stale-conflict delivery and local-edit persistence after retry. Separate-process/client concurrency, pending file-Trash reconciliation, encrypted-page behavior, modal keyboard/focus behavior and same-viewport visual parity remain unverified; see [the active Notes parity checklist](../../audits/desktop-qt-parity/notes/06-checklist.md).
 
