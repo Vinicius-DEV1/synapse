@@ -251,6 +251,9 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 ## I. Save, history, collaboration and security
 
 - [ ] Verify dirty state, autosave debounce, explicit save, flush, failure retry and user feedback.
+- [x] Mark restored page-history content dirty before saving; if save fails, keep the restored content dirty/error-visible and retryable. A focused production-PageView test covers failed save and retry. Stale conflict during restore and live history data remain unchecked (QT-NOTES-088).
+- [x] Allow restoring a historical revision whose content is an empty string; the modal now checks string presence rather than truthiness. Empty revision UI interaction remains unverified (QT-NOTES-088).
+- [ ] Force a stale timestamp during revision restore; confirm the conflict dialog appears, both local and saved choices behave correctly, and navigation cannot discard a failed restored revision. Verify encrypted and empty-content revisions, focus return, and matched viewport against React's read-only history modal (QT-NOTES-088).
 - [ ] Verify optimistic conflict detection and recovery without overwriting another client’s newer content.
 - [ ] Verify editor backup/recovery after restart and stale backup invalidation after a successful save.
 - [ ] Verify page switching, tab switching, window close and app shutdown flush all active blocks.
