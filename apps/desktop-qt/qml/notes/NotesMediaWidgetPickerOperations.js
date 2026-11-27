@@ -6,7 +6,8 @@ function filteredItems(items, search) {
     if (!query) return items || []
     return (items || []).filter(function(item) {
         var label = String(item.name || item.title || "").toLowerCase()
-        return label.indexOf(query) >= 0
+        var author = String(item.author || "").toLowerCase()
+        return label.indexOf(query) >= 0 || author.indexOf(query) >= 0
     })
 }
 

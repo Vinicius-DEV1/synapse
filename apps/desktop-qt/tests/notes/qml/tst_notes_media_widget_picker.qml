@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtTest
 import "../../../qml/notes" as Notes
 import "../../../qml/notes/DocumentBundleOperations.js" as DocumentBundleOperations
@@ -21,10 +22,20 @@ TestCase {
         property string lastRequestId: ""
         property var importPaths: []
         property var existingFiles: []
+        property var videos: []
+        property var books: []
         signal fileOperationFinished(var result)
 
         function getFiles(folderId) {
             return existingFiles
+        }
+
+        function getVideos() {
+            return videos
+        }
+
+        function getLibraryBooks(filter) {
+            return books
         }
 
         function importLocalFile(path, folderId, requestId) {
@@ -46,6 +57,7 @@ TestCase {
         id: pickerComponent
         Notes.NotesMediaWidgetPickerModal {
             controller: mockController
+            onInsertWidgetRequested: function(html) { testCase.emittedHtml = html }
         }
     }
 
@@ -55,6 +67,8 @@ TestCase {
         mockController.lastRequestId = ""
         mockController.importPaths = []
         mockController.existingFiles = []
+        mockController.videos = []
+        mockController.books = []
         uploader = createTemporaryObject(uploaderComponent, testCase)
         verify(uploader !== null)
     }
@@ -142,6 +156,84 @@ TestCase {
         compare(picker.activeMode, "documento")
         compare(selectorUpload.isLink, false)
         compare(itemList.itemMode, "documento")
+    }
+
+    function test_mediaPickerSearchesAuthorsAndShowsMetadataAndCovers() {
+        picker = createTemporaryObject(pickerComponent, testCase)
+        verify(picker !== null)
+        mockController.books = [{
+            id: "book-1", title: "Systems Design", author: "A. Writer",
+            cover_image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E"
+        }]
+        mockController.videos = [{
+            id: "video-1", title: "Qt Basics", duration: 125,
+            thumbnail_url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E"
+        }]
+
+        picker.openMode("livro", "", false)
+        var searchField = findVisualChild(picker, "notesMediaWidgetSearchField")
+        var itemList = findVisualChild(picker, "notesMediaWidgetItems")
+        verify(searchField !== null)
+        verify(itemList !== null)
+        compare(picker.listItems.length, 1)
+        picker.searchFilter = "writer"
+        compare(picker.filteredItems.length, 1)
+        compare(picker.filteredItems[0].id, "book-1")
+        tryVerify(function() { return findVisualChild(itemList, "notesMediaWidgetItem_book-1") !== null })
+        var bookRow = findVisualChild(itemList, "notesMediaWidgetItem_book-1")
+        var bookSubtitle = findVisualChild(bookRow, "notesMediaWidgetItemSubtitle_book-1")
+        var bookCover = findVisualChild(bookRow, "notesMediaWidgetCover_book-1")
+        verify(bookSubtitle !== null)
+        verify(bookCover !== null)
+        compare(bookSubtitle.text, "A. Writer")
+        verify(bookCover.source.toString().indexOf("data:image/svg+xml") === 0)
+        compare(bookRow.height, 56)
+
+        picker.openMode("video", "", false)
+        compare(picker.listItems.length, 1)
+        picker.searchFilter = "qt basics"
+        compare(picker.filteredItems[0].id, "video-1")
+        tryVerify(function() { return findVisualChild(itemList, "notesMediaWidgetItem_video-1") !== null })
+        var videoRow = findVisualChild(itemList, "notesMediaWidgetItem_video-1")
+        var videoSubtitle = findVisualChild(videoRow, "notesMediaWidgetItemSubtitle_video-1")
+        var videoCover = findVisualChild(videoRow, "notesMediaWidgetCover_video-1")
+        verify(videoSubtitle !== null)
+        verify(videoCover !== null)
+        compare(videoSubtitle.text, "2:05")
+        verify(videoCover.source.toString().indexOf("data:image/svg+xml") === 0)
+    }
+
+    function test_mediaPickerBackdropDoesNotCloseAndCloseButtonDoes() {
+        picker = createTemporaryObject(pickerComponent, null)
+        verify(picker !== null)
+        picker.parent = testCase.Window.window.contentItem
+        mockController.videos = [
+            { id: "video-2", title: "Keep open", duration: 0 },
+            { id: "video-3", title: "Select with Enter", duration: 90 }
+        ]
+        picker.openMode("video", "", false)
+        compare(picker.activeMode, "video")
+        tryVerify(function() { return picker.visible })
+        var searchField = findVisualChild(picker, "notesMediaWidgetSearchField")
+        verify(searchField !== null)
+        tryVerify(function() { return searchField.activeFocus })
+
+        mouseClick(picker, 8, 8)
+        compare(picker.activeMode, "video")
+        tryVerify(function() { return searchField.activeFocus })
+
+        keyClick(Qt.Key_Down)
+        compare(picker.selectedIndex, 1)
+        keyClick(Qt.Key_Return)
+        compare(picker.activeMode, "")
+        verify(emittedHtml.indexOf('data-media-id="video-3"') >= 0)
+
+        picker.openMode("video", "", false)
+
+        var closeButton = findVisualChild(picker, "notesMediaWidgetPickerCloseButton")
+        verify(closeButton !== null)
+        mouseClick(closeButton)
+        tryCompare(picker, "activeMode", "")
     }
 
     function test_pickerCannotCloseDuringEncryptedImport() {

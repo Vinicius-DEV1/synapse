@@ -17,6 +17,7 @@ Item {
     property string activeMode: "" // "documento" | "file-select" | "scrap" | "video" | "livro"
     property var listItems: []
     property string searchFilter: ""
+    property int selectedIndex: 0
     property bool isCapturingScrap: false
     property string scrapError: ""
     property string pendingScrapRequestId: ""
@@ -24,10 +25,26 @@ Item {
     signal insertWidgetRequested(string html)
     signal closed()
 
+    onSearchFilterChanged: selectedIndex = 0
+
+    function moveMediaSelection(delta) {
+        var itemCount = filteredItems.length
+        if (itemCount <= 0) return
+        selectedIndex = (selectedIndex + delta + itemCount) % itemCount
+    }
+
+    function selectMediaSelection() {
+        if (selectedIndex < 0 || selectedIndex >= filteredItems.length) return
+        var item = filteredItems[selectedIndex]
+        insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(item, activeMode))
+        close()
+    }
+
     function openMode(mode, prefillUrl, autoCaptureScrap) {
         activeMode = mode
         listItems = []
         searchFilter = ""
+        selectedIndex = 0
         isCapturingScrap = false
         scrapError = ""
         localFileUpload.reset()
@@ -46,6 +63,12 @@ Item {
             listItems = c.getVideos() || []
         } else if (mode === "livro" && typeof c.getLibraryBooks === "function") {
             listItems = c.getLibraryBooks("") || []
+        }
+        if (mode === "video" || mode === "livro" || mode === "file-select") {
+            Qt.callLater(function() {
+                if (mediaPickerRoot.activeMode === mode && mediaSearchField.visible)
+                    mediaSearchField.forceActiveFocus()
+            })
         }
     }
 
@@ -96,19 +119,30 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#b0000000"
-        MouseArea { anchors.fill: parent; onClicked: mediaPickerRoot.close() }
+        color: "#80000000"
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if (mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro")
+                    mediaSearchField.forceActiveFocus()
+            }
+        }
     }
 
     Rectangle {
-        width: mediaPickerRoot.activeMode === "file-select" ? 512 : 440
+        width: mediaPickerRoot.activeMode === "file-select" ? 512
+            : mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                ? Math.max(0, Math.min(448, parent.width - 32)) : 440
         height: mediaPickerRoot.activeMode === "file-select"
             ? Math.min(parent.height - 48, Math.max(320, parent.height * 0.7))
+            : mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                ? Math.min(parent.height * 0.8, cardCol.implicitHeight + 32)
             : Math.min(parent.height - 48, cardCol.implicitHeight + 40)
         anchors.centerIn: parent
-        radius: 16
+        radius: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 12 : 16
         color: "#1a1924"
-        border.color: "#0fffffff"
+        border.color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+            ? "#1affffff" : "#0fffffff"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -117,17 +151,27 @@ Item {
             id: cardCol
             anchors.fill: parent
             anchors.margins: mediaPickerRoot.activeMode === "documento" ||
-                mediaPickerRoot.activeMode === "documento-link" ? 16 : 20
-            spacing: 12
+                mediaPickerRoot.activeMode === "documento-link" ||
+                mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 20
+            spacing: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 0 : 12
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.preferredHeight: mediaPickerRoot.activeMode === "video" ||
+                    mediaPickerRoot.activeMode === "livro" ? 24 : -1
+                AppIcon {
+                    visible: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                    name: mediaPickerRoot.activeMode === "livro" ? "book-open" : "film"
+                    color: mediaPickerRoot.activeMode === "livro" ? "#60a5fa" : "#c084fc"
+                    Layout.preferredWidth: 18
+                    Layout.preferredHeight: 18
+                }
                 Text {
                     text: mediaPickerRoot.activeMode === "documento" ? qsTr("Enviar arquivo(s)")
                         : mediaPickerRoot.activeMode === "documento-link" ? qsTr("Enviar arquivo(s) como link")
                         : mediaPickerRoot.activeMode === "file-select" ? qsTr("Vincular arquivo existente")
                         : mediaPickerRoot.activeMode === "video" ? qsTr("Vincular Vídeo")
-                        : mediaPickerRoot.activeMode === "livro" ? qsTr("Vincular Livro da Biblioteca")
+                        : mediaPickerRoot.activeMode === "livro" ? qsTr("Vincular Livro")
                         : qsTr("Snapshot Web Offline (Scrap)")
                     color: "#fffffe"
                     font.pixelSize: 15
@@ -136,12 +180,13 @@ Item {
                 }
                 ToolButton {
                     id: closeButton
+                    objectName: "notesMediaWidgetPickerCloseButton"
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
                     enabled: !localFileUpload.busy
                     onClicked: mediaPickerRoot.close()
                     background: Rectangle { radius: 6; color: closeButton.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 12; height: 12 }
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 16; height: 16 }
                 }
             }
 
@@ -158,25 +203,70 @@ Item {
                 }
             }
 
-            TextField {
-                objectName: "notesMediaWidgetSearchField"
+            Rectangle {
+                objectName: "notesMediaWidgetSearchSection"
                 visible: mediaPickerRoot.activeMode === "file-select" ||
                     mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
                 Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                text: mediaPickerRoot.searchFilter
-                placeholderText: mediaPickerRoot.activeMode === "file-select"
-                    ? qsTr("Buscar arquivos...") : qsTr("Buscar...")
-                color: "#fffffe"
-                font.pixelSize: 12
-                onTextEdited: mediaPickerRoot.searchFilter = text
-                background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
+                Layout.preferredHeight: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                    ? 68 : 36
+                color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                    ? "#08ffffff" : "transparent"
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 1 : 0
+                    color: "#0dffffff"
+                }
+                TextField {
+                    id: mediaSearchField
+                    objectName: "notesMediaWidgetSearchField"
+                    anchors.fill: parent
+                    anchors.margins: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 0
+                    text: mediaPickerRoot.searchFilter
+                    placeholderText: mediaPickerRoot.activeMode === "file-select"
+                        ? qsTr("Buscar arquivos...") : qsTr("Buscar...")
+                    color: "#fffffe"
+                    font.pixelSize: 14
+                    leftPadding: 34
+                    onTextEdited: mediaPickerRoot.searchFilter = text
+                    Keys.priority: Keys.BeforeItem
+                    Keys.onPressed: function(event) {
+                        if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                            mediaPickerRoot.moveMediaSelection(event.key === Qt.Key_Down ? 1 : -1)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                            mediaPickerRoot.selectMediaSelection()
+                            event.accepted = true
+                        }
+                    }
+                    background: Rectangle {
+                        radius: 8
+                        color: "#0f0e17"
+                        border.color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                            ? "#1affffff" : "#2e2e38"
+                        AppIcon {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "search"
+                            color: "#a7a9be"
+                            width: 16
+                            height: 16
+                        }
+                    }
+                    Accessible.name: mediaPickerRoot.activeMode === "file-select"
+                        ? qsTr("Buscar arquivos") : qsTr("Buscar mídia")
+                }
             }
 
             NotesMediaWidgetPickerExistingItems {
+                id: existingItems
                 itemMode: mediaPickerRoot.activeMode
                 items: mediaPickerRoot.listItems
                 searchFilter: mediaPickerRoot.searchFilter
+                selectedIndex: mediaPickerRoot.selectedIndex
                 visible: mediaPickerRoot.activeMode === "file-select" ||
                     mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
                 Layout.fillWidth: true
@@ -187,6 +277,7 @@ Item {
                     mediaPickerRoot.insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(item, mode))
                     mediaPickerRoot.close()
                 }
+                onSelectedIndexRequested: function(index) { mediaPickerRoot.selectedIndex = index }
             }
 
             RowLayout {

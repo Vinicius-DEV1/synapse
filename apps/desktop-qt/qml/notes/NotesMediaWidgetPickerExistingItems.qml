@@ -14,9 +14,11 @@ ScrollView {
     property var items: []
     property string searchFilter: ""
     property string itemMode: "file-select"
+    property int selectedIndex: 0
     readonly property var filteredItems: PickerOperations.filteredItems(items, searchFilter)
 
     signal itemSelected(var item, string mode)
+    signal selectedIndexRequested(int index)
 
     ColumnLayout {
         width: existingItemsRoot.availableWidth
@@ -26,12 +28,17 @@ ScrollView {
             delegate: Button {
                 id: itemButton
                 required property var modelData
+                required property int index
+                objectName: "notesMediaWidgetItem_" + String(modelData.id || "")
                 Layout.fillWidth: true
-                Layout.preferredHeight: existingItemsRoot.itemMode === "file-select" ? 60 : 40
+                Layout.preferredHeight: existingItemsRoot.itemMode === "file-select" ? 60 : 56
+                implicitHeight: existingItemsRoot.itemMode === "file-select" ? 60 : 56
+                onHoveredChanged: if (hovered) existingItemsRoot.selectedIndexRequested(index)
                 onClicked: existingItemsRoot.itemSelected(itemButton.modelData, existingItemsRoot.itemMode)
                 background: Rectangle {
                     radius: 8
-                    color: itemButton.hovered ? "#0dffffff" : "transparent"
+                    color: existingItemsRoot.selectedIndex === itemButton.index
+                        ? "#1affffff" : itemButton.hovered ? "#0dffffff" : "transparent"
                 }
                 contentItem: RowLayout {
                     spacing: 12
@@ -41,12 +48,27 @@ ScrollView {
                         radius: 8
                         color: "#0f0e17"
                         border.color: "#14ffffff"
+                        clip: true
+                        Image {
+                            id: coverImage
+                            objectName: "notesMediaWidgetCover_" + String(itemButton.modelData.id || "")
+                            anchors.fill: parent
+                            visible: existingItemsRoot.itemMode !== "file-select" &&
+                                source.toString().length > 0 && status !== Image.Error
+                            source: String(itemButton.modelData.cover_image || itemButton.modelData.thumbnail_url || "")
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            cache: true
+                            mipmap: true
+                        }
                         AppIcon {
                             anchors.centerIn: parent
                             name: existingItemsRoot.iconNameFor(itemButton.modelData)
                             color: existingItemsRoot.iconColorFor(itemButton.modelData)
                             width: 20
                             height: 20
+                            visible: existingItemsRoot.itemMode === "file-select" ||
+                                !coverImage.visible || coverImage.status !== Image.Ready
                         }
                     }
                     ColumnLayout {
@@ -56,16 +78,24 @@ ScrollView {
                             Layout.fillWidth: true
                             text: itemButton.modelData.name || itemButton.modelData.title || ""
                             color: "#fffffe"
-                            font.pixelSize: 12
-                            font.weight: Font.DemiBold
+                            font.pixelSize: existingItemsRoot.itemMode === "file-select" ? 12 : 14
+                            font.weight: Font.Medium
                             elide: Text.ElideRight
                         }
                         Text {
+                            objectName: "notesMediaWidgetItemSubtitle_" + String(itemButton.modelData.id || "")
                             visible: existingItemsRoot.itemMode === "file-select"
+                                || existingItemsRoot.itemMode === "video"
+                                || existingItemsRoot.itemMode === "livro"
                             Layout.fillWidth: true
-                            text: qsTr("%1 MB").arg((Number(itemButton.modelData.file_size || 0) / 1024 / 1024).toFixed(2))
+                            text: existingItemsRoot.itemMode === "file-select"
+                                ? qsTr("%1 MB").arg((Number(itemButton.modelData.file_size || 0) / 1024 / 1024).toFixed(2))
+                                : existingItemsRoot.itemMode === "livro"
+                                    ? String(itemButton.modelData.author || "")
+                                    : existingItemsRoot.videoDurationText(itemButton.modelData.duration)
                             color: "#a7a9be"
-                            font.pixelSize: 11
+                            font.pixelSize: existingItemsRoot.itemMode === "file-select" ? 11 : 12
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -106,5 +136,11 @@ ScrollView {
         case "code": return "#22d3ee"
         default: return "#a7a9be"
         }
+    }
+
+    function videoDurationText(duration) {
+        var seconds = Math.max(0, Math.floor(Number(duration) || 0))
+        if (seconds === 0) return ""
+        return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0")
     }
 }
