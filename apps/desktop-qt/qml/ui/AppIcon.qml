@@ -414,12 +414,22 @@ Canvas {
             line([11, 9, 15, 9, 15, 13])
             break
         case "file-diff":
-            line([14, 2, 6, 2, 4, 4, 4, 20, 20, 20, 20, 8, 14, 2])
-            line([14, 2, 14, 8, 20, 8])
-            line([8, 13, 10, 13])
-            line([14, 13, 16, 13])
-            line([8, 17, 10, 17])
-            line([14, 17, 16, 17])
+            ctx.beginPath()
+            ctx.moveTo(6, 22)
+            ctx.quadraticCurveTo(4, 22, 4, 20)
+            ctx.lineTo(4, 4)
+            ctx.quadraticCurveTo(4, 2, 6, 2)
+            ctx.lineTo(14, 2)
+            ctx.quadraticCurveTo(15.1, 2, 15.7, 2.7)
+            ctx.lineTo(19.3, 6.3)
+            ctx.quadraticCurveTo(20, 7, 20, 8)
+            ctx.lineTo(20, 20)
+            ctx.quadraticCurveTo(20, 22, 18, 22)
+            ctx.closePath()
+            ctx.stroke()
+            line([9, 10, 15, 10])
+            line([12, 13, 12, 7])
+            line([9, 17, 15, 17])
             break
         case "external-link":
             line([15, 3, 21, 3, 21, 9])
