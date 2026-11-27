@@ -4,6 +4,8 @@ use synapse_core::domain::notes::{apply_search_replace, parse_search_replace_blo
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Fixture {
+    trim_whitespace: Vec<String>,
+    non_trim_whitespace: Vec<String>,
     parse_cases: Vec<ParseCase>,
     apply_cases: Vec<ApplyCase>,
 }
@@ -62,5 +64,29 @@ fn shared_react_parity_fixtures_match() {
             case.name
         );
         assert_eq!(result.error, case.error, "error: {}", case.name);
+    }
+
+    for whitespace in fixture.trim_whitespace {
+        let result = apply_search_replace(
+            "target",
+            &parse_search_replace_blocks(&format!(
+                "<<<<<<< SEARCH\n{whitespace}target{whitespace}\n=======\n{whitespace}done{whitespace}\n>>>>>>>"
+            )),
+        );
+        assert!(result.success, "ECMAScript whitespace: {whitespace:?}");
+        assert_eq!(
+            result.result, "done",
+            "ECMAScript whitespace: {whitespace:?}"
+        );
+    }
+
+    for character in fixture.non_trim_whitespace {
+        let result = apply_search_replace(
+            "target",
+            &parse_search_replace_blocks(&format!(
+                "<<<<<<< SEARCH\n{character}target{character}\n=======\n{character}done{character}\n>>>>>>>"
+            )),
+        );
+        assert!(!result.success, "non-whitespace: {character:?}");
     }
 }

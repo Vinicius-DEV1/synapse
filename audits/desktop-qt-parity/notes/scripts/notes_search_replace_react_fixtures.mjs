@@ -18,4 +18,17 @@ for (const testCase of fixture.applyCases) {
   if (testCase.error !== undefined) assert.equal(result.error, testCase.error, `error: ${testCase.name}`);
 }
 
-console.log(`React SEARCH/REPLACE parity fixtures passed (${fixture.parseCases.length + fixture.applyCases.length} cases).`);
+for (const whitespace of fixture.trimWhitespace) {
+  const proposal = `<<<<<<< SEARCH\n${whitespace}target${whitespace}\n=======\n${whitespace}done${whitespace}\n>>>>>>>`;
+  const result = applySearchReplace('target', parseSearchReplaceBlocks(proposal));
+  assert.equal(result.success, true, `ECMAScript whitespace: ${JSON.stringify(whitespace)}`);
+  assert.equal(result.result, 'done', `ECMAScript whitespace: ${JSON.stringify(whitespace)}`);
+}
+
+for (const character of fixture.nonTrimWhitespace) {
+  const proposal = `<<<<<<< SEARCH\n${character}target${character}\n=======\n${character}done${character}\n>>>>>>>`;
+  const result = applySearchReplace('target', parseSearchReplaceBlocks(proposal));
+  assert.equal(result.success, false, `non-whitespace: ${JSON.stringify(character)}`);
+}
+
+console.log(`React SEARCH/REPLACE parity fixtures passed (${fixture.parseCases.length + fixture.applyCases.length} named cases, ${fixture.trimWhitespace.length + fixture.nonTrimWhitespace.length} whitespace probes).`);
