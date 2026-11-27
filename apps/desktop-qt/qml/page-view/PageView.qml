@@ -415,8 +415,10 @@ Rectangle {
             }
 
             ColumnLayout {
+                id: pageContentColumn
+                objectName: "pageContentColumn"
                 Layout.fillWidth: true
-                Layout.maximumWidth: 1024
+                Layout.maximumWidth: 1024 - (pageViewRoot.responsivePageMargin * 2)
                 Layout.alignment: Qt.AlignHCenter
                 Layout.leftMargin: pageViewRoot.responsivePageMargin
                 Layout.rightMargin: pageViewRoot.responsivePageMargin

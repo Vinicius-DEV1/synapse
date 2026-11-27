@@ -1640,6 +1640,54 @@ private slots:
         QCOMPARE(root->property("saveStatus").toString(), QStringLiteral("saved"));
         QVERIFY(controller.getPage(colQuoteId).value("content").toString().contains("Extra AI text"));
     }
+
+    void pageViewDesktopReadingWidthMatchesReact928Px() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+        SynapseDataController controller(nullptr, false);
+        QVERIFY(controller.openDatabase(tempDir.filePath("width_test.db")));
+        NotesTextOperations ops;
+
+        const QString pageId = controller.createSubPage("", "Width Check", "📄");
+        QVERIFY(!pageId.isEmpty());
+        QVERIFY(controller.savePage(pageId, "Width Check", "<p>Reading width</p>", "📄"));
+
+        QQuickWindow window;
+        window.resize(1280, 800);
+        window.show();
+
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("dataController", &controller);
+        engine.rootContext()->setContextProperty("notesTextOperations", &ops);
+        QQmlComponent comp(&engine);
+        comp.loadUrl(QUrl::fromLocalFile(QStringLiteral(
+            SYNAPSE_DESKTOP_SOURCE_DIR "/qml/page-view/PageView.qml")));
+        QScopedPointer<QObject> root(comp.create());
+        QVERIFY2(root, qPrintable(comp.errorString()));
+        QQuickItem *rootItem = qobject_cast<QQuickItem *>(root.data());
+        QVERIFY(rootItem);
+        rootItem->setParentItem(window.contentItem());
+        rootItem->setWidth(1280);
+        rootItem->setHeight(800);
+        root->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_ARG(QVariant, QVariant(pageId))));
+
+        QQuickItem *contentColumn = rootItem->findChild<QQuickItem *>(QStringLiteral("pageContentColumn"));
+        QVERIFY(contentColumn);
+        QTRY_COMPARE(qRound(contentColumn->width()), 928);
+
+        rootItem->setWidth(1440);
+        QTRY_COMPARE(qRound(contentColumn->width()), 928);
+
+        rootItem->setWidth(1920);
+        QTRY_COMPARE(qRound(contentColumn->width()), 928);
+
+        rootItem->setWidth(700);
+        QTRY_COMPARE(qRound(contentColumn->width()), 636);
+
+        rootItem->setWidth(500);
+        QTRY_COMPARE(qRound(contentColumn->width()), 468);
+    }
 };
 
 int runNativeNotesTest(int argc, char **argv) {
