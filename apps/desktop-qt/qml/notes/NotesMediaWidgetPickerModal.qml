@@ -5,7 +5,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesMediaWidgetPickerOperations.js" as PickerOperations
 import "NotesSlashCommandArguments.js" as SlashArgs
-import "../ui"
 
 Item {
     id: mediaPickerRoot
@@ -49,8 +48,8 @@ Item {
         }
         if (mode === "video" || mode === "livro") {
             Qt.callLater(function() {
-                if (mediaPickerRoot.activeMode === mode && mediaSearchField.visible)
-                    mediaSearchField.forceActiveFocus()
+                if (mediaPickerRoot.activeMode === mode && mediaSearchSection.inputField.visible)
+                    mediaSearchSection.inputField.forceActiveFocus()
             })
         }
     }
@@ -108,7 +107,7 @@ Item {
             anchors.fill: parent
             onClicked: {
                 if (mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro")
-                    mediaSearchField.forceActiveFocus()
+                    mediaSearchSection.inputField.forceActiveFocus()
                 else
                     mediaPickerRoot.close()
             }
@@ -141,45 +140,10 @@ Item {
                 mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 20
             spacing: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 0 : 12
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: mediaPickerRoot.activeMode === "video" ||
-                    mediaPickerRoot.activeMode === "livro" ? 24 : -1
-                AppIcon {
-                    visible: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                    name: mediaPickerRoot.activeMode === "livro" ? "book-open" : "film"
-                    color: mediaPickerRoot.activeMode === "livro" ? "#60a5fa" : "#c084fc"
-                    Layout.preferredWidth: 18
-                    Layout.preferredHeight: 18
-                }
-                Text {
-                    text: mediaPickerRoot.activeMode === "documento" ? qsTr("Enviar arquivo(s)")
-                        : mediaPickerRoot.activeMode === "documento-link" ? qsTr("Enviar arquivo(s) como link")
-                        : mediaPickerRoot.activeMode === "file-select" ? qsTr("Vincular arquivo existente")
-                        : mediaPickerRoot.activeMode === "video" ? qsTr("Vincular Vídeo")
-                        : mediaPickerRoot.activeMode === "livro" ? qsTr("Vincular Livro")
-                        : qsTr("Snapshot Web Offline (Scrap)")
-                    color: "#fffffe"
-                    font.pixelSize: 15
-                    font.bold: true
-                    Layout.fillWidth: true
-                }
-                ToolButton {
-                    id: closeButton
-                    objectName: "notesMediaWidgetPickerCloseButton"
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    enabled: !localFileUpload.busy
-                    onClicked: mediaPickerRoot.close()
-                    background: Rectangle { radius: 6; color: closeButton.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon {
-                        anchors.centerIn: parent
-                        name: "close"
-                        color: "#94a1b2"
-                        width: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 12
-                        height: width
-                    }
-                }
+            NotesMediaWidgetPickerHeader {
+                mode: mediaPickerRoot.activeMode
+                closeEnabled: !localFileUpload.busy
+                onCloseRequested: mediaPickerRoot.close()
             }
 
             NotesMediaWidgetPickerLocalUpload {
@@ -195,55 +159,11 @@ Item {
                 }
             }
 
-            Rectangle {
-                objectName: "notesMediaWidgetSearchSection"
-                visible: mediaPickerRoot.activeMode === "file-select" ||
-                    mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                Layout.fillWidth: true
-                Layout.preferredHeight: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                    ? 68 : 36
-                color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                    ? "#08ffffff" : "transparent"
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 1 : 0
-                    color: "#0dffffff"
-                }
-                TextField {
-                    id: mediaSearchField
-                    objectName: "notesMediaWidgetSearchField"
-                    anchors.fill: parent
-                    anchors.margins: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 0
-                    text: mediaPickerRoot.searchFilter
-                    placeholderText: mediaPickerRoot.activeMode === "file-select"
-                        ? qsTr("Buscar arquivos...") : qsTr("Buscar...")
-                    color: "#fffffe"
-                    font.pixelSize: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                        ? 14 : 12
-                    leftPadding: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                        ? 34 : 12
-                    onTextEdited: mediaPickerRoot.searchFilter = text
-                    background: Rectangle {
-                        radius: 8
-                        color: "#0f0e17"
-                        border.color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                            ? "#1affffff" : "#2e2e38"
-                        AppIcon {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 10
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
-                            name: "search"
-                            color: "#a7a9be"
-                            width: 16
-                            height: 16
-                        }
-                    }
-                    Accessible.name: mediaPickerRoot.activeMode === "file-select"
-                        ? qsTr("Buscar arquivos") : qsTr("Buscar mídia")
-                }
+            NotesMediaWidgetPickerSearchField {
+                id: mediaSearchSection
+                mode: mediaPickerRoot.activeMode
+                searchFilter: mediaPickerRoot.searchFilter
+                onSearchFilterEdited: function(value) { mediaPickerRoot.searchFilter = value }
             }
 
             NotesMediaWidgetPickerExistingItems {
