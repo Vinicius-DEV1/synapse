@@ -1028,3 +1028,15 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | Regression test cross-review | Passed | Updated slash-menu expectations to React's substring-in-either-direction matching, verified rich page references as native QTextObjectInterface objects with typed page metadata, used the actual page-reference end position for Backspace, and removed a QSignalSpy configured for a nonexistent signal. Production Notes behavior and React were unchanged. |
 | Runtime diagnostics during the combined run | Observed | The failure-path page-preview test intentionally logs its rejected-description `QCRITICAL`; the application Notes harness also emits a QML `Connections` warning from `FilesPreviewOverlay.qml`. The latter was outside this Notes-only change and was not investigated or modified. |
 | Matched-viewport visual review, active/deleted page-reference focus and accessibility, and full cursor mapping around nested/adjacent widgets | Not run | Keep related page-reference visual and interaction checklist items open. The passing harnesses do not establish full behavior parity or real Core persistence. |
+
+
+### Rich-image viewer locale and floating zoom controls (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | Rebuilt the production Notes rich-image harness. |
+| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=image-viewer` | Passed: 1 behavior test (3 QtTest rows including setup/cleanup) | Checks Portuguese view/crop labels, floating zoom-panel width/placement, actual slider click input, wheel zoom bounds, crop selection/cancel, saving state, Core-result handling, metadata retention, and undo in a visible 1000×420 window. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesRichImageViewer.qml apps/desktop-qt/qml/notes/NotesRichImageViewerCanvas.qml apps/desktop-qt/qml/notes/NotesRichImageViewerFlow.qml apps/desktop-qt/qml/notes/NotesRichImageViewerZoomControls.qml` | Passed with no diagnostics | Covers the changed viewer and extracted zoom component. |
+| Python `xml.etree.ElementTree.parse` and QML `qsTr`/catalog-context check for both `synapse_pt_BR.ts` and `synapse_en.ts` | Passed | All active viewer, canvas, flow, and zoom-control translation keys exist in the matching QML contexts. |
+| `wc -l` for `NotesRichImageViewer.qml` and `NotesRichImageViewerZoomControls.qml` | Passed: 230 / 110 lines | Both focused QML files remain under the project 300-line target. |
+| Runtime locale loading, generated `.qm`, matched-viewport screenshots, narrow/high-DPI, focus/accessibility, and React crop-gesture/output comparison | Not run | `lrelease` is unavailable and the build tree has no generated catalog files. Keep QT-NOTES-106 partial. |
