@@ -40,7 +40,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** Qt emits a paragraph style that Core's canonical normalizer discards; the clients use different semantic representations.
 - **Required fix:** Match React's semantic text color/highlight marks for the block action. Keep the Core style/color allowlists narrow and do not retain arbitrary CSS.
 - **Acceptance:** Color and highlight survive Qt save/reopen and React round-trip; clear/reset matches React; unsafe CSS is rejected.
-- **Fix status:** Source fix applied: the Qt block action now emits inline `span` text-color marks and `mark` highlight marks; Core retains their sanitized React-compatible color attributes. Empty-block stored-mark behavior and React open/edit/save round-trip remain unverified.
+- **Fix status:** Source fix applied: the Qt block action now emits inline `span` text-color marks and `mark` highlight marks; Core retains their sanitized React-compatible color attributes. Empty-block stored-mark color/background support is implemented in `NotesRichInlineMarks::setPendingColor()` / `applyPendingMarks()` and `NotesRichDocument::setColor()`. Focused production `PageView.qml` + SQLite regression (`--suite=notes-color-columns`, 4 QtTest rows) verifies unsafe-CSS rejection, empty-block stored foreground/background color application on subsequent typing, SQLite save persistence, and clearing foreground while preserving background. React open/edit/save round-trip remains unverified.
 
 ## QT-NOTES-005: Table filtering targets the first table but strips rows from every table
 
@@ -60,7 +60,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Root cause:** Qt regenerated every child wrapper from only its body and width and created a new group without the old attributes/ID.
 - **Required fix:** Preserve existing group attributes/ID and child opening-tag attributes while updating width. When adding a column, redistribute widths equally to match React.
 - **Acceptance:** Resize, reorder, and drop preserve all unrelated group/child attributes and content; widths follow React's equal redistribution on add; undo restores the previous structure.
-- **Fix status:** Source fix applied: Qt retains the group attributes/ID and existing child opening tags across layout operations, updating only width and flex style. Static-source review passed; drag/resize/undo runtime acceptance remains unverified.
+- **Fix status:** Source fix applied: Qt retains the group attributes/ID and existing child opening tags across layout operations, updating only width and flex style. Focused production `PageView.qml` + SQLite regression (`--suite=notes-color-columns`) verifies `NotesColumnLayout.saveColumns()` preserves `data-custom-group` and `data-custom-col` attributes with updated `data-width` across save. Drag-drop redistribution and undo runtime acceptance remain unverified.
 
 ## QT-NOTES-007: HTML attribute decoding is incomplete for AST values
 
@@ -86,7 +86,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Evidence:** Core `move_table_column()` reconstructed rows with a bare `<tr>` and reordered cell fragments without checking `rowspan`/`colspan`.
 - **Required fix:** Keep row opening/closing markup and reject structural movement that cannot preserve merged cells or inconsistent row widths.
 - **Acceptance:** Row attributes survive column movement; merged or malformed tables remain unchanged; ordinary tables move columns without losing content or formatting.
-- **Fix status:** Source fix applied: row framing is preserved and Core returns the original table for inconsistent grids or merged spans. Runtime acceptance remains unverified.
+- **Fix status:** Source fix applied: row framing is preserved and Core returns the original table for inconsistent grids or merged spans. Focused native controller regression (`--suite=notes-color-columns`) verifies `moveTableColumnAt()` preserves custom `<tr class="..." data-row-id="...">` attributes and returns merged `colspan` tables unchanged. Runtime drag-reorder acceptance remains unverified.
 
 ## QT-NOTES-010: Slash command arguments do not reach native setup flows
 

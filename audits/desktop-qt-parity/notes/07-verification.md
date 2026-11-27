@@ -1,5 +1,13 @@
 # Caderno Verification Plan
 
+### Empty-block colors, column metadata & table column movement iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesRichTextEditor.qml` | Passed, exit code 0; existing unqualified `notesTextOperations` diagnostic remains | `NotesRichTextEditor.qml` parses with no new diagnostics. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Built `synapse-desktop-tests` with `native_notes_block_color_and_column_test.cpp`. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-color-columns` | Passed: 4 passed, 0 failed (`initTestCase`, `emptyAndPopulatedBlockColorsPersistAcrossCoreSaveAndClear`, `columnResizeAndTableColumnMovePreserveMetadataAndMergedCells`, `cleanupTestCase`) | Qt 6.10.2, offscreen. Production `PageView.qml` + `SynapseDataController` + SQLite verifies unsafe CSS rejection, empty-block stored foreground/background color application and clear, column resize preserving `data-custom-group` / `data-custom-col`, and `moveTableColumnAt` preserving row attributes while rejecting `colspan` tables. React round-trip and drag-drop/undo remain open. |
+
 ### Table-cell page references, UTF-16 cursor split, 928 px reading width & event widget state (2026-11-27)
 
 | Check | Result | Scope and limits |
