@@ -182,6 +182,13 @@ private slots:
         QTRY_VERIFY(movePageModal->property("visible").toBool());
         QTRY_VERIFY(movePageModal->property("width").toReal() > 0.0);
         QTRY_VERIFY(movePageModal->property("height").toReal() > 0.0);
+        QObject *confirmMoveButton = pageView->findChild<QObject *>(QStringLiteral("confirmMoveButton"));
+        QVERIFY(confirmMoveButton);
+        QVERIFY(!confirmMoveButton->property("enabled").toBool());
+        movePageModal->setProperty("selectedTargetId", QStringLiteral("page-two"));
+        QTRY_VERIFY(confirmMoveButton->property("enabled").toBool());
+        movePageModal->setProperty("selectedTargetId", QString());
+        QTRY_VERIFY(!confirmMoveButton->property("enabled").toBool());
         QVERIFY(QMetaObject::invokeMethod(movePageModal, "close", Qt::DirectConnection));
         QTRY_VERIFY(!movePageModal->property("visible").toBool());
     }
