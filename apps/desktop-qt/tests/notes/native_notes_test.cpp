@@ -1582,6 +1582,39 @@ private slots:
         QVERIFY(pageChangeResult.toBool());
         QTRY_VERIFY(root->property("activeContent").toString().contains("const aiApplied = 9;"));
 
+        // Verify a colored blockquote uses its own target callback and preserves the code neighbor.
+        QQuickItem *quoteBlockItem = nullptr;
+        std::function<void(QQuickItem *)> findQuoteBlock = [&](QQuickItem *item) {
+            if (!item || quoteBlockItem) return;
+            if (item->metaObject()->indexOfProperty("aiButtonItem") >= 0 &&
+                item->property("contentHtml").toString().contains(QStringLiteral("Col callout edited"))) {
+                quoteBlockItem = item;
+                return;
+            }
+            for (QQuickItem *child : item->childItems()) findQuoteBlock(child);
+        };
+        findQuoteBlock(rootItem);
+        QVERIFY(quoteBlockItem);
+        QObject *quoteAiButton = quoteBlockItem->property("aiButtonItem").value<QObject *>();
+        QVERIFY(quoteAiButton);
+        QVERIFY(QMetaObject::invokeMethod(quoteAiButton, "clicked", Qt::DirectConnection));
+        QVERIFY(blockAiModal->property("isOpen").toBool());
+        const QVariantMap quoteAiReply{
+            {QStringLiteral("role"), QStringLiteral("assistant")},
+            {QStringLiteral("content"), QStringLiteral("AI callout revised")},
+        };
+        QVERIFY(QMetaObject::invokeMethod(blockAiModal, "applyMessageProposal", Qt::DirectConnection,
+                                          Q_RETURN_ARG(QVariant, applyResult),
+                                          Q_ARG(QVariant, quoteAiReply), Q_ARG(QVariant, QVariant(true))));
+        QVERIFY(applyResult.toBool());
+        savedSpy.clear();
+        QTRY_VERIFY_WITH_TIMEOUT(savedSpy.count() >= 1, 2500);
+        QTest::qWait(250);
+        QCOMPARE(savedSpy.count(), 1);
+        const QString quoteAiSavedHtml = controller.getPage(colQuoteId).value("content").toString();
+        QVERIFY2(quoteAiSavedHtml.contains(QStringLiteral("AI callout revised")), qPrintable(quoteAiSavedHtml));
+        QVERIFY2(quoteAiSavedHtml.contains(QStringLiteral("const aiApplied = 9;")), qPrintable(quoteAiSavedHtml));
+
         // Verify metadata update + subsequent save does not trigger a false conflict
         QSignalSpy conflictSpy(&controller, SIGNAL(pageConflictDetected(QString,QString)));
         QTest::qWait(1100); // ensure timestamp ticks past previous second/ms
