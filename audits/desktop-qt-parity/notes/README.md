@@ -141,3 +141,5 @@ Do not change the status to `Complete` until every required item in [06-checklis
 
 
 93. **Ordered GFM task state is visible in block-AI chat.** The Qt Markdown parser captured `[x]`/`[ ]` in numbered list markers but dropped the state when constructing list items. Assistant conversation rendering now shows checked/unchecked glyphs for numbered tasks. The display path is separate from applied block HTML, which remains schema-compatible with Core’s unordered-only task node. Native Markdown and modal QML tests pass; exact checkbox visuals still need matched-viewport review.
+
+94. **Notes help text and keyboard shortcuts now have focused parity checks.** The guide was reconciled with current editing, page, and shortcut controls, and the regression test checks all three sections for removed source/preview modes and Ctrl/Cmd+E while verifying the documented save, formatting, spoiler and slash-menu keys against the active shortcut handler. Six QtTest rows pass; translated-catalog runtime and matched-viewport visuals remain open under the broader acceptance checklist. See [QT-NOTES-008](04-bug-register.md#qt-notes-008-help-text-describes-removed-editor-modes).

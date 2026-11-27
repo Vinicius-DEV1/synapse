@@ -326,8 +326,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Decompose the remaining Notes files above 300 lines listed in [11-structural-debt.md](11-structural-debt.md), including `src/controllers/notes/notes_controller.cpp`, keeping each new QML/C++/Rust/bridge file focused and rechecking module imports, signals, Core contracts and behavior. `NotesSetupWidgetsModal.qml` is currently 265 lines and is below the target.
 - [ ] Compare keyboard-only and screen-reader paths, accessible names, roles, state, order and selected-item announcements.
 - [ ] Compare English and Portuguese labels, errors, empty states and shortcut help.
-- [ ] Update `NotesHelpDialog.qml` so all descriptions match active controls and do not mention removed source/preview modes.
-- [ ] Update [native-desktop-parity.md](../../../docs/native-desktop-parity.md), [modules/notes.md](../../../docs/modules/notes.md), and documentation ownership whenever status changes.
+- [x] Update `NotesHelpDialog.qml` so all descriptions match active controls and do not mention removed source/preview modes. The focused guide test checks all three sections for removed mode/shortcut copy and confirms the listed save/format/slash-menu keys against the active shortcut component; see QT-NOTES-008 and [verification](07-verification.md#notes-help-and-shortcut-guide-2026-11-27). Runtime translated-catalog and matched-viewport review remain outside this item’s source/test acceptance.
+- [x] Update [native-desktop-parity.md](../../../docs/native-desktop-parity.md), [modules/notes.md](../../../docs/modules/notes.md), and documentation ownership whenever status changes. The verified guide state and remaining locale/visual limits are consolidated in both documents and [documentation status](../../../docs/documentation-status.md).
 
 ## K. Final acceptance
 

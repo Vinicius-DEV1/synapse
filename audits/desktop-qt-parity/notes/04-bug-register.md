@@ -78,7 +78,7 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Evidence:** `NotesHelpDialog.qml` contains a large paragraph that describes source/preview modes and unsupported structures staying in source mode, while the active worktree routes notes through a unified block editor and removes legacy source/preview QML surfaces.
 - **Required fix:** Reconcile the guide with the current native block editor, including limitations still real today. Keep UI help in the Qt module and technical status in the audit docs.
 - **Acceptance:** Every guide instruction names a visible control or keyboard action, and no removed mode is described as available.
-- **Fix status:** Source fix applied in `NotesHelpDialog.qml`: removed instructions for source/preview modes and the obsolete Ctrl/Cmd+E shortcut, and documented the linked event widget's actions, expiry rule, reorder controls, and live window. Verify the guide against the running UI and localization before closing.
+- **Fix status:** Verified in source and focused Qt tests. `NotesHelpDialog.qml` no longer describes source/preview modes or Ctrl/Cmd+E; the guide test checks every section and the live shortcut component for the documented save, formatting, spoiler, and slash-menu actions. The test also checks current Editing and Pages guidance. Translation-catalog runtime loading and matched-viewport visual review were not part of this acceptance and remain general Notes parity gates; see [verification](07-verification.md#notes-help-and-shortcut-guide-2026-11-27).
 
 ## QT-NOTES-009: Table column movement rewrites row markup
 
