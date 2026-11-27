@@ -217,3 +217,6 @@ On screens narrower than 768 px, the Qt history header moves its additional Diff
 
 
 The `PageViewModalsHost` now fills its parent viewport. A production PageView test caught a 0×0 host that left history logically open but visually unusable; the fix verifies a 1280×900 host and history modal, with the real header action, revision focus, Escape and focus return; the production MovePageModal also opens at non-zero dimensions through the shared host. Other modal routes and matched-viewport screenshots remain under review in [QT-NOTES-096](../../audits/desktop-qt-parity/notes/04-bug-register.md#qt-notes-096-pageview-modal-host-has-zero-dimensions).
+
+
+Page history now distinguishes an unreadable encrypted revision from a legitimate empty revision. When Qt receives `decryption_error`, the modal shows an explicit alert, hides the revision body, disables diffs involving unreadable content and refuses restore without closing. A production modal test verifies the accessible alert role/name, hidden content, disabled desktop and overflow actions, and absence of restore signals. The real vault/key recovery lifecycle, valid empty revision restore and matched-viewport copy/layout remain open under [QT-NOTES-097](../../audits/desktop-qt-parity/notes/04-bug-register.md#qt-notes-097-unreadable-encrypted-history-can-be-restored-as-empty-content).
