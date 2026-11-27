@@ -165,9 +165,21 @@ private slots:
 
         QObject *viewer = root->findChild<QObject *>("notesRichImageViewer");
         QObject *viewerCanvas = root->findChild<QObject *>("notesRichImageViewerViewport");
+        QObject *viewerTitle = root->findChild<QObject *>("notesRichImageViewerTitle");
+        QObject *zoomPanel = root->findChild<QObject *>("notesRichImageZoomPanel");
+        QQuickItem *zoomSlider = rootItem->findChild<QQuickItem *>("notesRichImageZoomSlider");
+        QObject *startCropButton = root->findChild<QObject *>("notesRichImageStartCrop");
+        QObject *cancelCropButton = root->findChild<QObject *>("notesRichImageCancelCrop");
+        QObject *saveCropButton = root->findChild<QObject *>("notesRichImageSaveCrop");
         QQuickItem *openViewerTarget = rootItem->findChild<QQuickItem *>("notesRichImageOpenViewerTarget");
         QVERIFY(viewer);
         QVERIFY(viewerCanvas);
+        QVERIFY(viewerTitle);
+        QVERIFY(zoomPanel);
+        QVERIFY(zoomSlider);
+        QVERIFY(startCropButton);
+        QVERIFY(cancelCropButton);
+        QVERIFY(saveCropButton);
         QVERIFY(openViewerTarget);
         QVERIFY(openViewerTarget->isVisible());
         QVERIFY(openViewerTarget->width() > 0 && openViewerTarget->height() > 0);
@@ -181,7 +193,14 @@ private slots:
         QTRY_VERIFY(viewer->property("visible").toBool());
         QCOMPARE(viewer->property("imageSource").toString(), dataUrl);
         QCOMPARE(viewer->property("mode").toString(), QString("view"));
+        QCOMPARE(viewerTitle->property("text").toString(), QString("Visualizador de imagem"));
+        QCOMPARE(startCropButton->property("text").toString(), QString("Recortar"));
+        QCOMPARE(zoomPanel->property("width").toInt(), 384);
+        QVERIFY(zoomPanel->property("y").toReal() > 0);
+        QVERIFY(zoomPanel->property("y").toReal() + zoomPanel->property("height").toReal() <=
+                viewer->property("height").toReal() - 23);
         QTRY_VERIFY(viewerCanvas->property("imageReady").toBool());
+        QVERIFY(zoomSlider->isVisible());
         QVERIFY(QMetaObject::invokeMethod(viewerCanvas, "zoomStepRequested", Qt::DirectConnection,
                                           Q_ARG(qreal, 0.15)));
         QCOMPARE(viewer->property("zoom").toDouble(), 1.15);
@@ -192,10 +211,18 @@ private slots:
                                           Q_ARG(qreal, -20.0)));
         QCOMPARE(viewer->property("zoom").toDouble(), 0.5);
         viewer->setProperty("zoom", 1.0);
+        const QPoint zoomTrackPosition = zoomSlider->mapToScene(
+            QPointF(zoomSlider->width() * 0.78, zoomSlider->height() / 2)).toPoint();
+        QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, zoomTrackPosition);
+        QTRY_VERIFY(viewer->property("zoom").toDouble() > 1.0);
+        viewer->setProperty("zoom", 1.0);
 
         const QString beforeCrop = serializer.serializeRich(quickDocument).value("html").toString();
         QVERIFY(QMetaObject::invokeMethod(viewer, "beginCrop", Qt::DirectConnection));
         QCOMPARE(viewer->property("mode").toString(), QString("crop"));
+        QCOMPARE(viewerTitle->property("text").toString(), QString("Recortar imagem"));
+        QCOMPARE(cancelCropButton->property("text").toString(), QString("Cancelar"));
+        QCOMPARE(saveCropButton->property("text").toString(), QString("Salvar recorte"));
         QVERIFY(viewerCanvas->property("cropPixels").toRect().width() > 0);
         QVERIFY(QMetaObject::invokeMethod(viewer, "cancelCrop", Qt::DirectConnection));
         QCOMPARE(viewer->property("mode").toString(), QString("view"));
@@ -203,6 +230,7 @@ private slots:
 
         QVERIFY(QMetaObject::invokeMethod(viewer, "beginCrop", Qt::DirectConnection));
         QVERIFY(QMetaObject::invokeMethod(viewer, "requestCrop", Qt::DirectConnection));
+        QCOMPARE(saveCropButton->property("text").toString(), QString("Salvando…"));
         QCOMPARE(cropRequests.count(), 1);
         const QList<QVariant> cropRequest = cropRequests.takeFirst();
         QCOMPARE(cropRequest.at(0).toString(), dataUrl);

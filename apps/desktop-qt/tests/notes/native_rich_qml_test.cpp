@@ -1173,6 +1173,11 @@ int main(int argc, char **argv) {
         char *testArguments[] = {argv[0], testName};
         return runNativeNotesSlashMenuQmlTest(2, testArguments);
     }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=image-viewer")) {
+        char testName[] = "preparedImageInsertionUsesRichEditorUndoPath";
+        char *testArguments[] = {argv[0], testName};
+        return runNativeNotesRichImagesQmlTest(2, testArguments);
+    }
     if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=audio-preview")) {
         char correlationTest[] = "notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath";
         char cancellationTest[] = "notesAudioPreviewCancelsOnlyItsPendingRequest";
