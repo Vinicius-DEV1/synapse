@@ -1063,3 +1063,12 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | Python `xml.etree.ElementTree.parse` and component-context check on `synapse_pt_BR.ts` and `synapse_en.ts` | Passed | Both catalogs parse and contain the new title/type field and shared setup-header source contexts. `lrelease` and runtime `.qm` loading remain unavailable. |
 | `wc -l` for setup modal/event form components | Passed: setup modal 241, setup header 92, event form 282, title field 35, type field 47 | Each stays under the project 300-line target. |
 | Same-viewport modal and live event acceptance | Not run | Blur/shadow/animation, header/body/footer separators, native date/time picker parity, timezone conversion, focus return/accessibility, narrow-height scrolling, runtime `.qm`, live Core persistence, save/reopen, and React round-trip remain open under QT-NOTES-108; existing event data/default gates QT-NOTES-017/018/064 also remain partial. |
+
+### Notes linked file/media action dialogs (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_linked_item_actions.qml` | Passed: 8 QtTest rows, 0 failures | Covers file-specific prompt and fallback content, 400 px maximum based on overlay geometry, narrow viewport bounds, quick preview/current/new file dispatch, current/new video/book dispatch, file-only preview visibility, linked kind/ID/title retention and Escape. The harness checks emitted requests, not actual destination module results. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesLinkedItemActionDialog.qml apps/desktop-qt/tests/notes/qml/tst_notes_linked_item_actions.qml` | Passed with no diagnostics | Includes the test's bound component behavior and the changed production dialog. |
+| Python `xml.etree.ElementTree.parse` plus action-dialog context check on both Qt catalogs | Passed | Portuguese and English catalogs parse and contain 17 action-dialog strings, including the file-specific prompt. Generated `.qm` runtime remains unverified. |
+| React/Qt source-level second pass | Partial | Confirmed matching action types, labels, icon family, title and body dimensions, copy/fallback and responsive width cap. Qt still does not establish React's backdrop blur/shadow/animation, matched screenshots, screen-reader/focus-return parity, or real route and restoration outcomes. Keep QT-NOTES-109 partial. |
