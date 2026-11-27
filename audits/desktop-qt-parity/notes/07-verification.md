@@ -1121,4 +1121,14 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_ai_prompt_modal_apply.qml -import apps/desktop-qt/qml` | Passed: 15 QtTest rows, 0 failures | A stub request is aborted on close, target replacement and conversation clear; replacement clears `isGenerating`, and late callbacks cannot change the active conversation or restore cleared messages. |
 | Focused `qmllint` on `NotesAiPromptModal.qml` and `tst_notes_ai_prompt_modal_apply.qml` | Passed with no diagnostics | Covers the request handle/abort path and the QML regression harness. |
 | `git diff --check` | Passed | No whitespace errors in the cancellation fix and audit update. |
-| Production PageView block removal/page switch during a pending provider request | Not run | The modal's abort and generation checks are covered with a stub. The live editor flow that removes the source widget or switches pages during generation remains open under QT-NOTES-110. |
+| Production PageView block removal/page switch during a pending provider request | Partial: page-switch case passed; source-block removal not run | The focused suite now switches to another SQLite-backed page while a production toggle request is pending, delivers the delayed response and confirms neither page changed. The source widget removal case remains open under QT-NOTES-110. |
+
+### Notes production PageView switch during a pending block AI request (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Builds the native production `PageView` test and its request-client harness. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-ai-toggle-targets` | Passed: 3 QtTest results including setup/cleanup | After verifying the simple and callout-toggle apply routes, opens a pending AI request from the real toggle, switches the production `PageView` to another SQLite-backed page, then delivers the delayed proposal. The modal either closes/aborts on navigation or stays open and rejects Apply against its captured stale page; both source and destination page content remain unchanged. The companion harness does not contact Gemini. This covers navigation; removing the source block while its request is pending remains open. |
+| `tst_notes_ai_prompt_modal_apply.qml` | Passed: 15 QtTest rows, 0 failures | Separately verifies request abort and late-callback behavior on close, target replacement, conversation clear and modal destruction. |
+| Focused `qmllint` on `NotesAiPromptModal.qml` and request harnesses | Passed with no diagnostics | Confirms the modal destruction cleanup and both stub harnesses parse. |
+| `git diff --check` | Passed | No whitespace errors in the production integration and audit updates. |
