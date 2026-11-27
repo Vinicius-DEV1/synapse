@@ -30,7 +30,7 @@ Item {
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
-    signal askAiRequested(string selection, string blockHtml)
+    signal askAiRequested(string selection, string blockHtml, var applyBlockResult)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
     signal openCalendarRequested()
@@ -317,7 +317,9 @@ Item {
                             function onPagePreviewRequested(pid) { colLayoutRoot.pagePreviewRequested(pid) }
                             function onPageOpenRequested(pid) { colLayoutRoot.pageOpenRequested(pid) }
                             function onExternalLinkRequested(lnk) { colLayoutRoot.externalLinkRequested(lnk) }
-                            function onAskAiRequested(sel, bHtml) { colLayoutRoot.askAiRequested(sel, bHtml) }
+                            function onAskAiRequested(sel, bHtml, applyBlockResult) {
+                                colLayoutRoot.askAiRequested(sel, bHtml, applyBlockResult)
+                            }
                             function onPlayQuestionRequested(bid, qid, t) { colLayoutRoot.playQuestionRequested(bid, qid, t) }
                             function onOpenInQuestionsRequested(bid) { colLayoutRoot.openInQuestionsRequested(bid) }
                             function onOpenCalendarRequested() { colLayoutRoot.openCalendarRequested() }

@@ -3,6 +3,7 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import "BlockDragDrop.js" as Helpers
 import "DocumentBundleOperations.js" as DocumentBundleOperations
+import "NotesBlockAiApply.js" as BlockAiApply
 
 // Block-by-block WYSIWYG canvas backed by core synapse-core HTML <-> Block AST parser/serializer.
 ColumnLayout {
@@ -19,6 +20,7 @@ ColumnLayout {
     property bool active: false
     property int nestingDepth: 0
     property var blocks: []
+    property alias aiBlockRepeater: blockRepeater
     property int looseFileWidgetsRevision: 0
     property bool isSyncingFromSource: false
     property string lastEmittedHtml: ""
@@ -41,7 +43,7 @@ ColumnLayout {
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
-    signal askAiRequested(string selection, string blockHtml)
+    signal askAiRequested(string selection, string blockHtml, var applyBlockResult)
     signal slashWidgetRequested(string commandId, int blockIndex)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
@@ -324,6 +326,15 @@ ColumnLayout {
         if (serialized === lastEmittedHtml) return
         lastEmittedHtml = serialized
         htmlChanged(serialized)
+    }
+
+    function createAiBlockApplyHandler(index) {
+        return BlockAiApply.createHandler(blockListRoot, index)
+    }
+
+    function applyAiBlockResult(sourcePageId, sourceBlockId, sourceState, result, isCanonicalBlockHtml) {
+        return BlockAiApply.applyResult(
+            blockListRoot, sourcePageId, sourceBlockId, sourceState, result, isCanonicalBlockHtml)
     }
 
     function hasMeaningfulSliceHtml(sliceHtml) {
@@ -684,7 +695,13 @@ ColumnLayout {
                 onPagePreviewRequested: function(pid) { blockListRoot.pagePreviewRequested(pid) }
                 onPageOpenRequested: function(pid) { blockListRoot.pageOpenRequested(pid) }
                 onExternalLinkRequested: function(lnk) { blockListRoot.externalLinkRequested(lnk) }
-                onAskAiRequested: function(sel, bHtml) { blockListRoot.askAiRequested(sel, bHtml) }
+                onAskAiRequested: function(sel, bHtml, applyBlockResult) {
+                    if (typeof applyBlockResult !== "function") {
+                        blockListRoot.flushActiveRichSlices()
+                        applyBlockResult = blockListRoot.createAiBlockApplyHandler(blockRow.index)
+                    }
+                    blockListRoot.askAiRequested(sel, bHtml, applyBlockResult)
+                }
                 onSlashWidgetRequested: function(cmd, idx) { blockListRoot.slashWidgetRequested(cmd, idx) }
                 onPlayQuestionRequested: function(bid, qid, t) { blockListRoot.playQuestionRequested(bid, qid, t) }
                 onOpenInQuestionsRequested: function(bid) { blockListRoot.openInQuestionsRequested(bid) }

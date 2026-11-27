@@ -33,7 +33,7 @@ Rectangle {
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
-    signal askAiRequested(string selection, string blockHtml)
+    signal askAiRequested(string selection, string blockHtml, var applyBlockResult)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
     signal openCalendarRequested()
@@ -275,7 +275,9 @@ Rectangle {
                 function onPagePreviewRequested(pid) { collectionRoot.pagePreviewRequested(pid) }
                 function onPageOpenRequested(pid) { collectionRoot.pageOpenRequested(pid) }
                 function onExternalLinkRequested(lnk) { collectionRoot.externalLinkRequested(lnk) }
-                function onAskAiRequested(sel, bHtml) { collectionRoot.askAiRequested(sel, bHtml) }
+                function onAskAiRequested(sel, bHtml, applyBlockResult) {
+                    collectionRoot.askAiRequested(sel, bHtml, applyBlockResult)
+                }
                 function onPlayQuestionRequested(bid, qid, t) { collectionRoot.playQuestionRequested(bid, qid, t) }
                 function onOpenInQuestionsRequested(bid) { collectionRoot.openInQuestionsRequested(bid) }
                 function onOpenCalendarRequested() { collectionRoot.openCalendarRequested() }

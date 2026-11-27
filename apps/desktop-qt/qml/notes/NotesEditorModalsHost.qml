@@ -106,8 +106,8 @@ Item {
         referencePreview.openForPage(pageId)
     }
 
-    function openAiPrompt(selectionText, contextHtml) {
-        notesAiModal.openModal(selectionText, contextHtml)
+    function openAiPrompt(selectionText, contextHtml, applyBlockResult) {
+        notesAiModal.openModal(selectionText, contextHtml, applyBlockResult)
     }
 
     function openSetupWidget(mode, prefill) {

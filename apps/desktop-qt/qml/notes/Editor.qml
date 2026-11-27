@@ -237,9 +237,9 @@ ColumnLayout {
             onPagePreviewRequested: function(pid) { editorRoot.pagePreviewRequested(pid) }
             onPageOpenRequested: function(pid) { editorRoot.pageOpenRequested(pid) }
             onExternalLinkRequested: function(lnk) { editorRoot.externalLinkRequested(lnk) }
-            onAskAiRequested: function(sel, bHtml) {
+            onAskAiRequested: function(sel, bHtml, applyBlockResult) {
                 if (editorRoot.modalsHost && typeof editorRoot.modalsHost.openAiPrompt === "function") {
-                    editorRoot.modalsHost.openAiPrompt(sel, bHtml)
+                    editorRoot.modalsHost.openAiPrompt(sel, bHtml, applyBlockResult)
                 }
             }
             onSlashWidgetRequested: function(cmd, idx) { editorRoot.handleSlashWidgetCommand(cmd, idx) }

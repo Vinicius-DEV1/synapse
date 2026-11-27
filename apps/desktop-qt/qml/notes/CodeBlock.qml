@@ -199,6 +199,7 @@ Rectangle {
                 }
 
                 ToolButton {
+                    objectName: "notesCodeBlockAiButton"
                     Layout.preferredHeight: 24; Layout.preferredWidth: 26
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered; ToolTip.text: qsTr("Explicar ou melhorar com IA")

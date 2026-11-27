@@ -39,7 +39,7 @@ Rectangle {
 
     signal blockChanged(var updatedBlock)
     signal convertToSubPageRequested(string title, string html)
-    signal askAiRequested(string text)
+    signal askAiRequested(string text, string blockHtml, var applyBlockResult)
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
@@ -308,7 +308,8 @@ Rectangle {
                         focusPolicy: Qt.NoFocus
                         ToolTip.visible: hovered
                         ToolTip.text: qsTr("Assistente de IA")
-                        onClicked: toggleRoot.askAiRequested(titleInput.text + "\n" + toggleRoot.plainSummary(toggleRoot.bodyHtml))
+                        onClicked: toggleRoot.askAiRequested(
+                            titleInput.text + "\n" + toggleRoot.plainSummary(toggleRoot.bodyHtml), toggleRoot.bodyHtml, null)
                         background: Rectangle { radius: 5; color: parent.hovered ? "#338b5cf6" : "transparent" }
                         contentItem: AppIcon { anchors.centerIn: parent; name: "sparkles"; color: "#a78bfa"; width: 13; height: 13 }
                     }
@@ -418,7 +419,9 @@ Rectangle {
                 function onPagePreviewRequested(pid) { toggleRoot.pagePreviewRequested(pid) }
                 function onPageOpenRequested(pid) { toggleRoot.pageOpenRequested(pid) }
                 function onExternalLinkRequested(lnk) { toggleRoot.externalLinkRequested(lnk) }
-                function onAskAiRequested(sel) { toggleRoot.askAiRequested(sel) }
+                function onAskAiRequested(sel, blockHtml, applyBlockResult) {
+                    toggleRoot.askAiRequested(sel, blockHtml, applyBlockResult)
+                }
                 function onPlayQuestionRequested(bid, qid, t) { toggleRoot.playQuestionRequested(bid, qid, t) }
                 function onOpenInQuestionsRequested(bid) { toggleRoot.openInQuestionsRequested(bid) }
                 function onOpenCalendarRequested() { toggleRoot.openCalendarRequested() }

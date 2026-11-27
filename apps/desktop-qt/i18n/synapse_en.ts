@@ -4415,4 +4415,15 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Keeps this note open</translation>
     </message>
   </context>
+  <context>
+    <name>NotesAiPromptModal</name>
+    <message>
+      <source>Aplicar no bloco</source>
+      <translation>Apply to Block</translation>
+    </message>
+    <message>
+      <source>Não foi possível aplicar a proposta. O bloco pode ter mudado ou a resposta ser incompatível.</source>
+      <translation>The proposal could not be applied. The block may have changed or the response may be incompatible.</translation>
+    </message>
+  </context>
 </TS>

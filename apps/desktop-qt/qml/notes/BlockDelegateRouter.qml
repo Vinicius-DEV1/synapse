@@ -40,7 +40,7 @@ Loader {
     signal pagePreviewRequested(string pageId)
     signal pageOpenRequested(string pageId)
     signal externalLinkRequested(string link)
-    signal askAiRequested(string selection, string blockHtml)
+    signal askAiRequested(string selection, string blockHtml, var applyBlockResult)
     signal slashWidgetRequested(string commandId, int blockIndex)
     signal playQuestionRequested(string batteryId, string questionId, string title)
     signal openInQuestionsRequested(string batteryId)
@@ -132,7 +132,7 @@ Loader {
                 routerLoader.lastSlashQueryChanged(sliceRich.lastSlashQuery || "")
                 routerLoader.slashWidgetRequested(cmd, routerLoader.blockIndex)
             }
-            onAskAiRequested: function(sel) { routerLoader.askAiRequested(sel, routerLoader.blockData.html || "") }
+            onAskAiRequested: function(sel) { routerLoader.askAiRequested(sel, routerLoader.blockData.html || "", null) }
             onNavigatePrevRequested: routerLoader.navigatePrevRequested(routerLoader.blockIndex)
             onNavigateNextRequested: routerLoader.navigateNextRequested(routerLoader.blockIndex)
             onMergePrevRequested: routerLoader.mergePrevRequested(routerLoader.blockIndex)
@@ -162,7 +162,7 @@ Loader {
                 na["language"] = newLang
                 routerLoader.updateAttrs(na)
             }
-            onAskAiRequested: function(sel) { routerLoader.askAiRequested(sel, routerLoader.blockData.html || "") }
+            onAskAiRequested: function(sel) { routerLoader.askAiRequested(sel, routerLoader.blockData.innerHtml || "", null) }
             onDeleteRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }
     }
@@ -184,7 +184,7 @@ Loader {
                 na["color"] = newColor
                 routerLoader.updateAttrs(na)
             }
-            onAskAiRequested: function(sel) { routerLoader.askAiRequested(sel, routerLoader.blockData.innerHtml || "") }
+            onAskAiRequested: function(sel) { routerLoader.askAiRequested(sel, routerLoader.blockData.innerHtml || "", null) }
             onDeleteRequested: routerLoader.deleteRequested(routerLoader.blockIndex)
         }
     }
@@ -245,7 +245,9 @@ Loader {
             pageId: routerLoader.pageId; pageTitle: routerLoader.pageTitle
             nestingDepth: routerLoader.nestingDepth; active: routerLoader.active
             onBlockChanged: function(ub) { routerLoader.blockChanged(routerLoader.blockIndex, ub) }
-            onAskAiRequested: function(txt) { routerLoader.askAiRequested(txt, routerLoader.blockData.html || "") }
+            onAskAiRequested: function(txt, blockHtml, applyBlockResult) {
+                routerLoader.askAiRequested(txt, blockHtml || routerLoader.blockData.innerHtml || "", applyBlockResult)
+            }
             onConvertToSubPageRequested: function(t, h) { routerLoader.createSubPageWithContent(t, h) }
             onPagePreviewRequested: function(pid) { routerLoader.pagePreviewRequested(pid) }
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
@@ -277,7 +279,9 @@ Loader {
             onPagePreviewRequested: function(pid) { routerLoader.pagePreviewRequested(pid) }
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
             onExternalLinkRequested: function(lnk) { routerLoader.externalLinkRequested(lnk) }
-            onAskAiRequested: function(sel, bHtml) { routerLoader.askAiRequested(sel, bHtml) }
+            onAskAiRequested: function(sel, bHtml, applyBlockResult) {
+                routerLoader.askAiRequested(sel, bHtml, applyBlockResult)
+            }
             onPlayQuestionRequested: function(bid, qid, t) { routerLoader.playQuestionRequested(bid, qid, t) }
             onOpenInQuestionsRequested: function(bid) { routerLoader.openInQuestionsRequested(bid) }
             onOpenCalendarRequested: routerLoader.openCalendarRequested()
@@ -307,7 +311,9 @@ Loader {
             onPagePreviewRequested: function(pid) { routerLoader.pagePreviewRequested(pid) }
             onPageOpenRequested: function(pid) { routerLoader.pageOpenRequested(pid) }
             onExternalLinkRequested: function(lnk) { routerLoader.externalLinkRequested(lnk) }
-            onAskAiRequested: function(sel, bHtml) { routerLoader.askAiRequested(sel, bHtml) }
+            onAskAiRequested: function(sel, bHtml, applyBlockResult) {
+                routerLoader.askAiRequested(sel, bHtml, applyBlockResult)
+            }
             onPlayQuestionRequested: function(bid, qid, t) { routerLoader.playQuestionRequested(bid, qid, t) }
             onOpenInQuestionsRequested: function(bid) { routerLoader.openInQuestionsRequested(bid) }
             onOpenCalendarRequested: routerLoader.openCalendarRequested()

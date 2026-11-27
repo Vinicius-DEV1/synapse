@@ -5,6 +5,7 @@ import "../ui"
 
 Item {
     id: aiModalRoot
+    objectName: "notesAiPromptModal"
     anchors.fill: parent
     visible: isOpen
     z: 140
@@ -15,6 +16,8 @@ Item {
     property string noteContextHtml: ""
     property bool isGenerating: false
     property var chatHistory: []
+    property var blockApplyHandler: null
+    property int requestGeneration: 0
     property string aiReply: ""
     property string previewHtml: ""
     property string previewDiffHtml: ""
@@ -24,9 +27,11 @@ Item {
     signal insertTextRequested(string text)
     signal closed()
 
-    function openModal(selection, fullHtml) {
+    function openModal(selection, fullHtml, applyHandler) {
+        requestGeneration++
         selectedText = String(selection || "")
         noteContextHtml = String(fullHtml || "")
+        blockApplyHandler = typeof applyHandler === "function" ? applyHandler : null
         chatHistory = []
         aiReply = ""
         previewHtml = ""
@@ -37,18 +42,53 @@ Item {
         customInput.forceActiveFocus()
     }
 
+    function closeModal() {
+        requestGeneration++
+        isGenerating = false
+        isOpen = false
+        blockApplyHandler = null
+        closed()
+    }
+
+    function applyResponse() {
+        if (!isOpen || isGenerating || aiReply.length === 0) return false
+        var response = previewHtml.length > 0 ? previewHtml : aiReply
+        if (typeof blockApplyHandler === "function") {
+            var applied = false
+            try {
+                applied = Boolean(blockApplyHandler.call(null, response, previewHtml.length > 0))
+            } catch (error) {
+                console.error("[Notes:BlockAI] Could not apply the response to its source block:", error)
+            }
+            if (!applied) {
+                errorText = qsTr("Não foi possível aplicar a proposta. O bloco pode ter mudado ou a resposta ser incompatível.")
+                return false
+            }
+            closeModal()
+            return true
+        }
+        if (previewHtml.length > 0) applyHtmlRequested(previewHtml)
+        else insertTextRequested(aiReply)
+        closeModal()
+        return true
+    }
+
     function runPrompt(instruction) {
         if (isGenerating || !instruction.trim()) return
         isGenerating = true
         errorText = ""
         previewHtml = ""
         previewDiffHtml = ""
+        var generation = ++requestGeneration
 
         var baseText = selectedText.trim().length > 0
             ? selectedText
             : noteContextHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 3500)
 
-        var sysPrompt = "Você é um assistente de edição de notas no Synapse. Responda de forma clara e direta em português. Quando reescrever ou editar um trecho existente, devolva o novo texto limpo em HTML simples (<p>, <ul>, <li>, <strong>, <em>)."
+        var blockScoped = typeof blockApplyHandler === "function"
+        var sysPrompt = blockScoped
+            ? "Você é um assistente de edição do Synapse. Responda em português e trabalhe somente no conteúdo do bloco de referência. Não recrie a casca externa do bloco. Devolva a proposta em Markdown simples, sem explicações fora do conteúdo. Para mudar o título de um toggle, comece com 'Título: Novo título'."
+            : "Você é um assistente de edição de notas no Synapse. Responda de forma clara e direta em português. Quando reescrever ou editar um trecho existente, devolva o novo texto limpo em HTML simples (<p>, <ul>, <li>, <strong>, <em>)."
         var userPrompt = (chatHistory.length === 0 && baseText.length > 0)
             ? ("Instrução: " + instruction + "\n\nConteúdo de referência:\n" + baseText)
             : instruction
@@ -56,6 +96,7 @@ Item {
         var c = aiModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         var historySnapshot = chatHistory.slice()
         aiClient.promptText(sysPrompt, userPrompt, historySnapshot, function(ok, reply, err) {
+            if (!aiModalRoot.isOpen || generation !== aiModalRoot.requestGeneration) return
             aiModalRoot.isGenerating = false
             if (!ok) {
                 aiModalRoot.errorText = err || qsTr("Falha ao consultar IA.")
@@ -68,7 +109,7 @@ Item {
                 { role: "assistant", content: replyStr }
             ])
             customInput.text = ""
-            if (aiModalRoot.noteContextHtml.length > 0 && c && typeof c.applyNoteSearchReplace === "function") {
+            if (!blockScoped && aiModalRoot.noteContextHtml.length > 0 && c && typeof c.applyNoteSearchReplace === "function") {
                 var patched = c.applyNoteSearchReplace(aiModalRoot.noteContextHtml, replyStr)
                 if (patched && patched.success && patched.replacedCount > 0) {
                     aiModalRoot.previewHtml = patched.result
@@ -85,10 +126,17 @@ Item {
         dataController: aiModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
     }
 
+    Shortcut {
+        sequence: "Escape"
+        context: Qt.WindowShortcut
+        enabled: aiModalRoot.isOpen
+        onActivated: aiModalRoot.closeModal()
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "#b0000000"
-        MouseArea { anchors.fill: parent; onClicked: aiModalRoot.closed() }
+        MouseArea { anchors.fill: parent; onClicked: aiModalRoot.closeModal() }
     }
 
     Rectangle {
@@ -126,10 +174,11 @@ Item {
                     Layout.fillWidth: true
                 }
                 ToolButton {
+                    id: closeButton
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
-                    onClicked: aiModalRoot.closed()
-                    background: Rectangle { radius: 6; color: parent.hovered ? "#1affffff" : "transparent" }
+                    onClicked: aiModalRoot.closeModal()
+                    background: Rectangle { radius: 6; color: closeButton.hovered ? "#1affffff" : "transparent" }
                     contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 13; height: 13 }
                 }
             }
@@ -218,14 +267,13 @@ Item {
                 Button {
                     Layout.preferredHeight: 32
                     padding: 10
-                    onClicked: {
-                        if (aiModalRoot.previewHtml.length > 0) aiModalRoot.applyHtmlRequested(aiModalRoot.previewHtml)
-                        else aiModalRoot.insertTextRequested(aiModalRoot.aiReply)
-                        aiModalRoot.closed()
-                    }
+                    enabled: !aiModalRoot.isGenerating
+                    onClicked: aiModalRoot.applyResponse()
                     background: Rectangle { radius: 8; color: "#7c3aed" }
                     contentItem: Text {
-                        text: aiModalRoot.previewHtml.length > 0 ? qsTr("Aplicar alterações") : qsTr("Inserir na nota")
+                        text: typeof aiModalRoot.blockApplyHandler === "function"
+                            ? qsTr("Aplicar no bloco")
+                            : aiModalRoot.previewHtml.length > 0 ? qsTr("Aplicar alterações") : qsTr("Inserir na nota")
                         color: "#ffffff"
                         font.pixelSize: 12
                         font.bold: true
