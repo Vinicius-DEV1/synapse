@@ -345,5 +345,6 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [x] Verify the toggle assistant popup anchor points to the actual “Assistente de IA” action, not the adjacent convert-to-page action (`test_toggleAssistantAnchorPointsToItsAiAction`).
 - [x] Verify toggle and blockquote-toggle AI buttons create stable block callbacks through `BlockListEditor`, replace their own title/body, and preserve callout type and accent color. Production `PageView` routes remain an open gate.
 - [x] Match the React Apply action label casing, horizontal padding, radius and normal violet/emerald colors; assert target labels and base colors in the modal QML suite.
-- [ ] Compare Apply hover rendering plus Diff/Insert/Copy hover and disabled states in a real matched-viewport capture; the offscreen QML runner does not establish pointer hover appearance.
+- [x] Match the React Diff glyph path with the dedicated `file-diff` canvas icon; verify the selected icon mapping in the modal QML suite.
+- [ ] Compare the Diff glyph stroke weight and Apply/Diff/Insert/Copy hover and disabled states against React in a real matched-viewport capture; the offscreen QML runner does not establish pointer hover appearance.
 - [ ] Extend the production editor regression to toggle and blockquote-toggle targets, and verify removal/page switching during generation cannot mutate or append to another page. See QT-NOTES-110.
