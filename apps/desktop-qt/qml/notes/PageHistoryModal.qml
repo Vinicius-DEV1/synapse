@@ -27,6 +27,13 @@ Rectangle {
         return selectedIndex + 1 < history.length ? history[selectedIndex + 1] : null
     }
 
+    function restoreSelectedRevision() {
+        var entry = selectedEntry()
+        if (!entry || typeof entry.content !== "string") return
+        restoreRevisionRequested(entry.content)
+        closeRequested()
+    }
+
     function isHtmlDocument(value) {
         return /<[a-z][^>]*>/i.test(value || "")
     }
@@ -119,9 +126,10 @@ Rectangle {
                 }
 
                 Button {
+                    objectName: "historyDiffToggleButton"
                     text: historyRoot.showDiff ? qsTr("Modo Diff Ativo ✓") : qsTr("Ver Diff")
                     flat: true
-                    visible: historyRoot.previousEntry() !== null
+                    visible: historyRoot.width >= 640 && historyRoot.previousEntry() !== null
                     onClicked: historyRoot.showDiff = !historyRoot.showDiff
                     contentItem: Text {
                         text: parent.text
@@ -131,22 +139,28 @@ Rectangle {
                 }
 
                 Button {
+                    objectName: "historyRestoreButton"
                     text: qsTr("Restaurar Esta Versão")
                     flat: true
-                    visible: historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
-                    onClicked: {
-                        var entry = historyRoot.selectedEntry()
-                        if (entry && typeof entry.content === "string") {
-                            historyRoot.restoreRevisionRequested(entry.content)
-                            historyRoot.closeRequested()
-                        }
-                    }
+                    visible: historyRoot.width >= 640 && historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
+                    onClicked: historyRoot.restoreSelectedRevision()
                     contentItem: Text {
                         text: parent.text
                         color: "#a78bfa"
                         font.pixelSize: 11
                         font.bold: true
                     }
+                }
+
+                ToolButton {
+                    objectName: "historyHeaderOverflowButton"
+                    visible: historyRoot.width < 640
+                    text: "⋯"
+                    Accessible.name: qsTr("Mais ações do histórico")
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    onClicked: historyHeaderOverflowMenu.open()
+                    background: Rectangle { radius: 7; color: parent.hovered ? "#14ffffff" : "transparent" }
                 }
 
                 ToolButton {
@@ -172,6 +186,23 @@ Rectangle {
                         }
                     }
                 }
+            }
+        }
+
+        Menu {
+            id: historyHeaderOverflowMenu
+            objectName: "historyHeaderOverflowMenu"
+            MenuItem {
+                objectName: "historyDiffMenuItem"
+                text: historyRoot.showDiff ? qsTr("Desativar diff") : qsTr("Ativar diff")
+                enabled: historyRoot.previousEntry() !== null
+                onTriggered: historyRoot.showDiff = !historyRoot.showDiff
+            }
+            MenuItem {
+                objectName: "historyRestoreMenuItem"
+                text: qsTr("Restaurar esta versão")
+                enabled: historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
+                onTriggered: historyRoot.restoreSelectedRevision()
             }
         }
 
