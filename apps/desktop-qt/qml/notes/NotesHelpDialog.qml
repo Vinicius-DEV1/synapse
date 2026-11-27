@@ -25,6 +25,7 @@ Dialog {
             Button { Layout.fillWidth: true; text: qsTr("Close"); onClicked: helpRoot.close() }
         }
         Text {
+            objectName: "notesHelpContent"
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: "#fffffe"
