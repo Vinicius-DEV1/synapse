@@ -59,6 +59,11 @@ Dialog {
         return false
     }
 
+    function isCurrentParentTarget(targetId) {
+        var source = pageIndex[sourcePageId]
+        return normalizedId(targetId) === normalizedId(source ? source.parent_id : "")
+    }
+
     function breadcrumbFor(pageId) {
         var path = []
         var cur = normalizedId(pageId)
@@ -282,10 +287,13 @@ Dialog {
             }
             Button {
                 id: confirmMoveBtn
+                objectName: "confirmMoveButton"
                 text: moveDialog.isSubmitting ? qsTr("Movendo...") : qsTr("Mover Aqui")
-                enabled: !moveDialog.isSubmitting && moveDialog.sourcePageId.length > 0 && !moveDialog.isInvalidTarget(moveDialog.selectedTargetId)
+                enabled: !moveDialog.isSubmitting && moveDialog.sourcePageId.length > 0
+                         && !moveDialog.isInvalidTarget(moveDialog.selectedTargetId)
+                         && !moveDialog.isCurrentParentTarget(moveDialog.selectedTargetId)
                 onClicked: {
-                    if (!moveDialog.hierarchyActions) return
+                    if (!moveDialog.hierarchyActions || moveDialog.isCurrentParentTarget(moveDialog.selectedTargetId)) return
                     moveDialog.errorMessage = ""
                     moveDialog.isSubmitting = true
                     if (moveDialog.hierarchyActions.move(moveDialog.sourcePageId, moveDialog.selectedTargetId)) {
