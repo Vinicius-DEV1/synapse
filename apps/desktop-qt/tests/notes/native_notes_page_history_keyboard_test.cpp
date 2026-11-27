@@ -56,6 +56,8 @@ private slots:
         QTRY_VERIFY(window.isVisible());
         QSignalSpy closeRequested(modal.data(), SIGNAL(closeRequested()));
         QVERIFY(closeRequested.isValid());
+        QSignalSpy restoreRequested(modal.data(), SIGNAL(restoreRevisionRequested(QString)));
+        QVERIFY(restoreRequested.isValid());
 
         QQuickItem *currentRevision = nullptr;
         QTRY_VERIFY((currentRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-0"))));
@@ -125,11 +127,17 @@ private slots:
         QVERIFY(!restoreAction->property("enabled").toBool());
         modal->setProperty("selectedIndex", 1);
         QTRY_VERIFY(restoreAction->property("enabled").toBool());
-
-        QMetaObject::invokeMethod(overflowMenu, "close");
+        QTest::keyClick(&window, Qt::Key_Down);
+        QTest::keyClick(&window, Qt::Key_Return);
+        QTRY_COMPARE(restoreRequested.count(), 1);
+        QCOMPARE(restoreRequested.first().first().toString(), QStringLiteral("<p>Older revision</p>"));
+        QTRY_COMPARE(closeRequested.count(), 2);
+        modal->setProperty("visible", false);
+        QTRY_VERIFY(focusReturnTarget->hasActiveFocus());
         window.resize(639, 900);
         QTRY_COMPARE(qRound(modalItem->width()), 639);
-        QVERIFY(overflowButton->isVisible());
+        modal->setProperty("visible", true);
+        QTRY_VERIFY(overflowButton->isVisible());
         QVERIFY(!diffButton->isVisible());
         QVERIFY(!restoreButton->isVisible());
         QQuickItem *revisionCount = findVisualItem(modalItem, QStringLiteral("historyRevisionCount"));
