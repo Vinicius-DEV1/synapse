@@ -907,6 +907,17 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Production component tests verify header role/name and Space activation; a visible-window history test verifies initial revision focus, Escape while focused, and focus return to a supplied trigger. Run the actual PageHeader-to-modal signal path in the desktop app and check screen-reader announcements and matched-viewport focus visuals.
 - **Fix status:** Added `PageHeaderActionButton.qml` and `PageHistoryFocusManager.qml`; the active history target is passed through `PageView.qml`, `PageViewModalsHost.qml` and `NotesEditorModalsHost.qml`. Focused production-component tests cover accessible header activation, automatic current-revision focus, Escape dismissal and focus restoration to the supplied opener. The live app signal path, screen-reader announcement and matched-viewport visuals remain open; see [07-verification.md](07-verification.md).
 
+
+## QT-NOTES-094: Page-history close control does not match React
+
+- **Severity:** Low; the Qt close control used a text glyph at 20 px with a 32 px target and no explicit accessible name. React uses an 18 px X icon in a 34 px button with a 10% white hover surface and an Escape hint.
+- **Evidence:** React `PageHistoryModal.tsx` renders Lucide `X` at size 18 in a `p-2` button with `rounded-lg`, `hover:bg-white/10`, and title `Fechar (Esc)`. Qt `PageHistoryModal.qml` used the `×` character at 20 px, a 32 px target and `#14ffffff` hover color.
+- **Reproduction:** Compare the close button at the same viewport; inspect its target bounds, glyph size, hover tint and accessible name.
+- **Root cause:** Qt used a quick text glyph and a custom compact hit target instead of the project's shared vector icon and React dimensions.
+- **Required fix:** Use the shared 18 px `close` icon, a 34 px target, 8 px corners, 10% white hover surface, Escape tooltip and explicit Portuguese accessible name.
+- **Acceptance:** Production modal test checks Button role/name, 34×34 target and 18×18 icon. Compare hover rendering and icon stroke at a matched viewport.
+- **Fix status:** The close button now uses the shared 18 px icon, 34×34 target, 8 px corner radius, `#1affffff` hover, `Fechar (Esc)` tooltip and `Fechar histórico de edições` accessible name. A visible-window test verifies role/name and dimensions. Exact hover/stroke comparison remains open; see [07-verification.md](07-verification.md).
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; help instructions against visible QML, and dynamic widget color alpha conversion for valid hex, named, and legacy palette values. Then complete [07-verification.md](07-verification.md).
