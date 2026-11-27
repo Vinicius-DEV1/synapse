@@ -241,6 +241,9 @@ TestCase {
         compare(modal.copiedMessageIndex, 1)
 
         var olderDiff = findChild(firstAssistant, "notesAiDiffMessage")
+        var olderDiffIcon = findChild(olderDiff, "notesAiDiffIcon")
+        verify(olderDiffIcon !== null)
+        compare(olderDiffIcon.name, "file-diff")
         olderDiff.clicked()
         compare(modal.diffMessageIndex, 1)
         verify(findChild(firstAssistant, "notesAiDiffHeader") !== null)

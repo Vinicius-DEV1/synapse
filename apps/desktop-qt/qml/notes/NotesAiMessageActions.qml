@@ -83,7 +83,8 @@ Flow {
             anchors.centerIn: parent
             spacing: 4
             AppIcon {
-                name: "file-symlink"
+                objectName: "notesAiDiffIcon"
+                name: "file-diff"
                 color: actionsRoot.diffMessageIndex === actionsRoot.messageIndex ? "#fcd34d" : "#a7a9be"
                 width: 11
                 height: 11
