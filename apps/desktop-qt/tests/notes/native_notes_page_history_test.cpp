@@ -77,6 +77,15 @@ private:
 class NativeNotesPageHistoryTest final : public QObject {
     Q_OBJECT
 
+    static QQuickItem *findVisualItem(QQuickItem *root, const QString &objectName) {
+        if (!root) return nullptr;
+        for (QQuickItem *child : root->childItems()) {
+            if (child->objectName() == objectName) return child;
+            if (QQuickItem *match = findVisualItem(child, objectName)) return match;
+        }
+        return nullptr;
+    }
+
 private slots:
     void failedRestoreSaveKeepsRevisionDirtyForRetry() {
         QQmlEngine engine;
@@ -209,6 +218,25 @@ private slots:
         QCOMPARE(bodyFont.pixelSize(), 16);
         const QColor bodyColor = qvariant_cast<QColor>(revisionContent->property("color"));
         QCOMPARE(bodyColor, QColor(QStringLiteral("#e4e4e7")));
+        QQuickItem *revisionCard = findVisualItem(modalItem, QStringLiteral("historyRevisionCard"));
+        QVERIFY(revisionCard);
+        QQuickItem *revisionTitle = findVisualItem(modalItem, QStringLiteral("historyRevisionTitle"));
+        QQuickItem *revisionTimestamp = findVisualItem(modalItem, QStringLiteral("historyRevisionTimestamp"));
+        QVERIFY(revisionTitle && revisionTimestamp);
+        QVERIFY(revisionTitle->parentItem());
+        QCOMPARE(qRound(revisionTitle->parentItem()->x()), 14);
+        QCOMPARE(qRound(revisionTitle->parentItem()->y()), 14);
+        QCOMPARE(qRound(revisionCard->height()), qRound(revisionTitle->parentItem()->height() + 28));
+        QCOMPARE(qvariant_cast<QFont>(revisionTitle->property("font")).pixelSize(), 12);
+        QCOMPARE(qvariant_cast<QFont>(revisionTimestamp->property("font")).pixelSize(), 11);
+
+        modal->setProperty("history", QVariant::fromValue(QVariantList{}));
+        QQuickItem *emptyState = modal->findChild<QQuickItem *>(QStringLiteral("historyEmptyState"));
+        QTRY_VERIFY(emptyState && emptyState->isVisible());
+        QQuickItem *listArea = modal->findChild<QQuickItem *>(QStringLiteral("historyRevisionListArea"));
+        QVERIFY(listArea);
+        QCOMPARE(qRound(emptyState->x() + emptyState->width() / 2), qRound(listArea->width() / 2));
+        QCOMPARE(qRound(emptyState->y() + emptyState->height() / 2), qRound(listArea->height() / 2));
     }
 };
 

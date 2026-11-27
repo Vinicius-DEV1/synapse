@@ -110,7 +110,6 @@ Rectangle {
                     }
                 }
 
-                // Diff View Toggle
                 Button {
                     text: historyRoot.showDiff ? qsTr("Modo Diff Ativo ✓") : qsTr("Ver Diff")
                     flat: true
@@ -123,7 +122,6 @@ Rectangle {
                     }
                 }
 
-                // Restore Button
                 Button {
                     text: qsTr("Restaurar Esta Versão")
                     flat: true
@@ -170,42 +168,50 @@ Rectangle {
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 6
-                    ListView {
-                        id: revisionList
+                    Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        clip: true
-                        spacing: 4
-                        model: historyRoot.history
-                        delegate: Rectangle {
-                            required property var modelData
-                            required property int index
-                            width: revisionList.width
-                            height: 58
-                            radius: 9
-                            color: historyRoot.selectedIndex === index ? "#1affffff" : revisionMouse.containsMouse ? "#0affffff" : "transparent"
-                            border.color: historyRoot.selectedIndex === index ? "#26ffffff" : "transparent"
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                spacing: 4
-                                Text { text: index === 0 ? "Versão atual" : "Revisão " + (historyRoot.history.length - index); color: historyRoot.selectedIndex === index ? theme.textDark : theme.textSubtext; font.pixelSize: 10; font.bold: true }
-                                Text { text: historyRoot.formatTimestamp(modelData.created_at); color: theme.textMuted; font.pixelSize: 9; font.family: theme.fontMono }
-                            }
-                            MouseArea {
-                                id: revisionMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: historyRoot.selectedIndex = index
+                        objectName: "historyRevisionListArea"
+                        ListView {
+                            id: revisionList
+                            anchors.fill: parent
+                            visible: historyRoot.history.length > 0
+                            clip: true
+                            spacing: 6
+                            model: historyRoot.history
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                width: revisionList.width
+                                height: revisionCardContent.implicitHeight + 28
+                                objectName: "historyRevisionCard"
+                                radius: 12
+                                color: historyRoot.selectedIndex === index ? "#1affffff" : revisionMouse.containsMouse ? "#0dffffff" : "transparent"
+                                border.color: historyRoot.selectedIndex === index ? "#26ffffff" : "transparent"
+                                ColumnLayout {
+                                    id: revisionCardContent
+                                    anchors.fill: parent
+                                    anchors.margins: 14
+                                    spacing: 4
+                                    Text { objectName: "historyRevisionTitle"; text: index === 0 ? "Versão Atual" : "Revisão " + (historyRoot.history.length - index); color: historyRoot.selectedIndex === index ? theme.textDark : "#a1a1aa"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                                    Text { objectName: "historyRevisionTimestamp"; text: historyRoot.formatTimestamp(modelData.created_at); color: historyRoot.selectedIndex === index ? "#d4d4d8" : theme.textMuted; font.pixelSize: 11; font.family: theme.fontMono }
+                                }
+                                MouseArea {
+                                    id: revisionMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: historyRoot.selectedIndex = index
+                                }
                             }
                         }
-                        footer: ColumnLayout {
-                            width: revisionList.width
+                        ColumnLayout {
+                            id: historyEmptyState
+                            objectName: "historyEmptyState"
+                            anchors.centerIn: parent
                             visible: historyRoot.history.length === 0
                             spacing: 8
-                            Item { Layout.fillWidth: true; height: 90 }
-                            AppIcon { Layout.alignment: Qt.AlignHCenter; width: 26; height: 26; name: "clock"; color: theme.textMuted }
-                            Text { Layout.fillWidth: true; text: "Nenhum histórico encontrado."; color: theme.textMuted; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap }
+                            AppIcon { objectName: "historyEmptyIcon"; Layout.alignment: Qt.AlignHCenter; width: 28; height: 28; name: "alert-circle"; color: theme.textMuted; opacity: 0.6 }
+                            Text { Layout.maximumWidth: revisionList.width - 24; Layout.alignment: Qt.AlignHCenter; text: "Nenhum histórico encontrado."; color: theme.textMuted; font.pixelSize: 12; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; opacity: 0.6 }
                         }
                     }
                 }
