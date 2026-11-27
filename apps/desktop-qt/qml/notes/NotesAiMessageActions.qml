@@ -23,32 +23,44 @@ Flow {
     spacing: 4
 
     Button {
+        id: applyButton
         objectName: "notesAiApplyMessage"
         visible: Boolean(actionsRoot.proposal)
         enabled: !actionsRoot.isGenerating
+        hoverEnabled: true
         padding: 2
-        leftPadding: 6
-        rightPadding: 6
+        leftPadding: 8
+        rightPadding: 8
+        ToolTip.visible: hovered
+        ToolTip.text: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace
+            ? qsTr("Aplicar cirurgicamente (%1 alteração(ões))").arg(actionsRoot.proposal.searchReplaceCount)
+            : actionsRoot.blockType === "codeBlock" ? qsTr("Substituir código atual") : qsTr("Substituir conteúdo do bloco")
         onClicked: actionsRoot.applyRequested(actionsRoot.message, Boolean(actionsRoot.proposal.valid))
         background: Rectangle {
-            radius: 5
-            color: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#3334d399" : "#337c3aed"
-            border.color: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#554ade80" : "#557c3aed"
+            radius: 4
+            color: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace
+                ? (applyButton.hovered ? "#6610b981" : "#3310b981")
+                : (applyButton.hovered ? "#668b5cf6" : "#338b5cf6")
+            border.color: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#4d10b981" : "#4d8b5cf6"
+            Behavior on color { ColorAnimation { duration: 120 } }
         }
         contentItem: Row {
             anchors.centerIn: parent
             spacing: 4
             AppIcon {
                 name: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "sparkles" : "check"
-                color: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#6ee7b7" : "#c4b5fd"
+                color: applyButton.hovered ? "#ffffff"
+                    : actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#6ee7b7" : "#c4b5fd"
                 width: 11
                 height: 11
             }
             Text {
+                objectName: "notesAiApplyMessageLabel"
                 text: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace
-                    ? qsTr("Aplicar cirurgicamente (%1)").arg(actionsRoot.proposal.searchReplaceCount)
+                    ? qsTr("Aplicar Cirurgicamente (%1)").arg(actionsRoot.proposal.searchReplaceCount)
                     : actionsRoot.blockType === "codeBlock" ? qsTr("Substituir Código") : qsTr("Substituir no Bloco")
-                color: actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#6ee7b7" : "#c4b5fd"
+                color: applyButton.hovered ? "#ffffff"
+                    : actionsRoot.proposal && actionsRoot.proposal.isSearchReplace ? "#6ee7b7" : "#c4b5fd"
                 font.pixelSize: 11
                 font.weight: Font.Medium
             }

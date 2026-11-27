@@ -228,6 +228,13 @@ TestCase {
         }
 
         var firstAssistant = repeater.itemAt(1)
+        var firstApply = findChild(firstAssistant, "notesAiApplyMessage")
+        var firstApplyLabel = findChild(firstApply, "notesAiApplyMessageLabel")
+        verify(firstApplyLabel !== null)
+        compare(firstApplyLabel.text, "Substituir Código")
+        compare(firstApply.background.radius, 4)
+        compare(firstApply.background.color.toString(), "#338b5cf6")
+
         var olderCopy = findChild(firstAssistant, "notesAiCopyMessage")
         olderCopy.clicked()
         compare(copiedText, "const newValue = 2;")
@@ -286,5 +293,7 @@ TestCase {
         compare(header.height, 18)
         compare(findChild(row, "notesAiDiffCountText").text, "1 cirúrgica(s)")
         verify(findChild(row, "notesAiDiffViewer").height <= 220)
+        compare(findChild(row, "notesAiApplyMessageLabel").text, "Aplicar Cirurgicamente (1)")
+        compare(findChild(row, "notesAiApplyMessage").background.color.toString(), "#3310b981")
     }
 }
