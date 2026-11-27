@@ -15,6 +15,7 @@ TestCase {
     property var parsedBlocks: []
     property var serializedBlocks: []
     property var capturedApplyHandler: null
+    property string capturedAiSelection: ""
     property int htmlChangeCount: 0
     property var editor: null
     property var toggle: null
@@ -65,6 +66,7 @@ TestCase {
                           html: "<div data-type=\"toggle-block\"><pre><code>old</code></pre></div>",
                           innerHtml: "<pre><code>old</code></pre>" })
             onAskAiRequested: function(selection, blockHtml, applyBlockResult) {
+                testCase.capturedAiSelection = selection
                 testCase.capturedApplyHandler = applyBlockResult
             }
         }
@@ -75,6 +77,7 @@ TestCase {
         parsedBlocks = []
         serializedBlocks = []
         capturedApplyHandler = null
+        capturedAiSelection = ""
         htmlChangeCount = 0
         toggle = null
         editor = createTemporaryObject(editorComponent, testCase)
@@ -181,6 +184,17 @@ TestCase {
         compare(serializedBlocks.length, 1)
         compare(serializedBlocks[0].id, "nested-code")
         compare(serializedBlocks[0].attrs.code, "const nested = 3;")
+    }
+
+    function test_toggleAssistantAnchorPointsToItsAiAction() {
+        toggle = createTemporaryObject(toggleComponent, testCase)
+        verify(toggle !== null)
+        var aiButton = findChild(toggle, "notesToggleBlockAiButton")
+        verify(aiButton !== null)
+        compare(toggle.aiButtonItem, aiButton)
+
+        aiButton.clicked()
+        compare(capturedAiSelection, "Nested\nold")
     }
 
     function test_coreParsedResultMustRemainTheSameBlockType() {

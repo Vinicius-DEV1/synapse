@@ -293,7 +293,7 @@ Rectangle {
                     spacing: 2
 
                     ToolButton {
-                        id: aiPromptButton
+                        id: convertToSubPageButton
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: 22
                         focusPolicy: Qt.NoFocus
@@ -305,6 +305,8 @@ Rectangle {
                     }
 
                     ToolButton {
+                        id: aiPromptButton
+                        objectName: "notesToggleBlockAiButton"
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: 22
                         focusPolicy: Qt.NoFocus
