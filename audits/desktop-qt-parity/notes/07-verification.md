@@ -858,4 +858,14 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_question_block_loading.qml` | Passed: 3 behavior cases (5 results including setup/cleanup) | Confirms a matching `quizQuestionsChanged` signal refreshes an expanded question block from Core and ignores changes for another battery. Uses a mock controller. |
 | Focused `qmllint --ignore-settings -s` for the Markdown AI components, parser/prompt JS, `QuestionBlock.qml` and harness | Passed with no diagnostics | Checks QML/JS syntax and bindings; not a visual acceptance run. |
 | `git diff --check` | Passed | No whitespace errors in the implementation and documentation updates. |
-| Live Gemini response, actual controller-driven vault lock, semantic duplicate rejection, attachment reopen, diff color/typography parity and matched-viewport visual/focus/accessibility comparison | Not run | Keep QT-NOTES-081 partial. The modal's `filePreviewsInvalidated` handler is tested with a mock signal. Existing battery questions are sent as reference and the model is asked not to repeat them; Core does not enforce semantic deduplication. |
+| Live Gemini response, actual controller-driven vault lock, semantic paraphrase detection, attachment reopen, diff color/typography parity and matched-viewport visual/focus/accessibility comparison | Not run | Keep QT-NOTES-081 partial. The modal's `filePreviewsInvalidated` handler is tested with a mock signal. Existing battery questions are sent as reference and the model is asked not to repeat them; Core separately rejects exact prompts after case/whitespace normalization. |
+
+### Notes Markdown AI duplicate prompt guard (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo test -p synapse-core assistant_actions_tests -- --nocapture` | Passed: 5 focused tests | Verifies assistant create/edit/delete/reorder behavior, rejection of case/whitespace-normalized duplicate prompts, full batch rollback when one proposed create duplicates an active same-battery question, and independence across batteries. This guards exact normalized wording only; semantic paraphrase detection is not implemented. |
+| `cargo check -p synapse-bridge-qt` | Passed | Confirms the Qt bridge still compiles against the Core assistant-action API; no bridge contract changed. |
+| `rustfmt --edition 2021 --check` for changed Core modules | Passed | Checked `assistant_actions.rs`, its focused tests, and `prompt_duplicates.rs`; `mod.rs` was checked with child traversal disabled. |
+| `git diff --check` | Passed | No whitespace errors. |
+| Live model paraphrases, deleted-question re-use, and real Notes Markdown assistant insertion | Not run | Do not claim semantic deduplication or full UI acceptance. The Core guard rejects exact prompts after lowercasing and whitespace collapse, within the active target battery only. |
