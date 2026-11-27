@@ -32,6 +32,23 @@ private:
         return nullptr;
     }
 
+    static QObject *findBlockListWithId(QObject *root, const QString &blockId, int &blockIndex) {
+        if (!root) return nullptr;
+        if (root->metaObject()->indexOfProperty("blocks") >= 0) {
+            const QVariantList blocks = root->property("blocks").toList();
+            for (int i = 0; i < blocks.size(); ++i) {
+                if (blocks.at(i).toMap().value(QStringLiteral("id")).toString() == blockId) {
+                    blockIndex = i;
+                    return root;
+                }
+            }
+        }
+        for (QObject *child : root->children()) {
+            if (QObject *match = findBlockListWithId(child, blockId, blockIndex)) return match;
+        }
+        return nullptr;
+    }
+
     static bool applyProposal(QObject *button, QObject *modal, const QString &proposal) {
         if (!button || !modal) return false;
         if (!QMetaObject::invokeMethod(button, "clicked", Qt::DirectConnection)) return false;
@@ -168,6 +185,68 @@ private slots:
         QVERIFY2(originalPageAfterStaleApply.contains(QStringLiteral("Simple body from AI")),
                  qPrintable(originalPageAfterStaleApply));
         QVERIFY(!originalPageAfterStaleApply.contains(QStringLiteral("Must not reach another page")));
+
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "selectPage", Q_RETURN_ARG(QVariant, pageChangeResult),
+                                          Q_ARG(QVariant, QVariant(pageId))));
+        QVERIFY(pageChangeResult.toBool());
+        QTest::qWait(350);
+        modal = pageView->findChild<QObject *>(QStringLiteral("notesAiPromptModal"));
+        QVERIFY(modal);
+        modal->setProperty("aiClientOverride", QVariant::fromValue(promptClient.data()));
+        simpleToggle = findToggle(rootItem, false);
+        QVERIFY(simpleToggle);
+        const QString removedBlockId = simpleToggle->property("blockData").toMap()
+                                           .value(QStringLiteral("id")).toString();
+        QVERIFY(!removedBlockId.isEmpty());
+        simpleButton = simpleToggle->property("aiButtonItem").value<QObject *>();
+        QVERIFY(simpleButton);
+        QVERIFY(QMetaObject::invokeMethod(simpleButton, "clicked", Qt::DirectConnection));
+        QVERIFY(QMetaObject::invokeMethod(modal, "runPrompt", Qt::DirectConnection,
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("Request before block deletion")))));
+        QVERIFY(modal->property("isGenerating").toBool());
+        QTRY_VERIFY(promptClient->property("pendingCallback").isValid());
+
+        int blockIndex = -1;
+        QObject *blockList = findBlockListWithId(rootItem, removedBlockId, blockIndex);
+        QVERIFY(blockList);
+        QVERIFY(blockIndex >= 0);
+        savedSpy.clear();
+        QVERIFY(QMetaObject::invokeMethod(blockList, "requestBlockDeletion", Qt::DirectConnection,
+                                          Q_ARG(QVariant, QVariant(blockIndex)), Q_ARG(QVariant, QVariant())));
+        QTRY_VERIFY_WITH_TIMEOUT(savedSpy.count() >= 1, 2500);
+        QTest::qWait(250);
+        const QString contentAfterRemoval = controller.getPage(pageId).value(QStringLiteral("content")).toString();
+        QVERIFY2(!contentAfterRemoval.contains(QStringLiteral("Simple body from AI")), qPrintable(contentAfterRemoval));
+        QVERIFY(contentAfterRemoval.contains(QStringLiteral("Callout body from AI")));
+
+        QVERIFY(QMetaObject::invokeMethod(promptClient.data(), "complete", Qt::DirectConnection,
+                                          Q_ARG(QVariant, QVariant(true)),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("Title: Removed target edit\nMust not return"))),
+                                          Q_ARG(QVariant, QVariant(QString()))));
+        QCOMPARE(promptClient->property("completionCount").toInt(), 2);
+        QObject *modalAfterRemoval = pageView->findChild<QObject *>(QStringLiteral("notesAiPromptModal"));
+        if (modalAfterRemoval && modalAfterRemoval->property("isOpen").toBool()) {
+            const QVariantMap removedReply{
+                {QStringLiteral("role"), QStringLiteral("assistant")},
+                {QStringLiteral("content"), QStringLiteral("Title: Removed target edit\nMust not return")},
+            };
+            QVariant removedApplyResult;
+            QVERIFY(QMetaObject::invokeMethod(modalAfterRemoval, "applyMessageProposal", Qt::DirectConnection,
+                                              Q_RETURN_ARG(QVariant, removedApplyResult),
+                                              Q_ARG(QVariant, QVariant(removedReply)),
+                                              Q_ARG(QVariant, QVariant(true))));
+            QVERIFY(!removedApplyResult.toBool());
+        } else {
+            QVERIFY(promptClient->property("abortCount").toInt() > 0);
+        }
+        if (modalAfterRemoval) {
+            QMetaObject::invokeMethod(modalAfterRemoval, "closeModal", Qt::DirectConnection);
+            modalAfterRemoval->setProperty("aiClientOverride", QVariant());
+        }
+        const QString contentAfterLateRemovalReply = controller.getPage(pageId).value(QStringLiteral("content")).toString();
+        QVERIFY2(contentAfterLateRemovalReply.contains(QStringLiteral("Callout body from AI")),
+                 qPrintable(contentAfterLateRemovalReply));
+        QVERIFY(!contentAfterLateRemovalReply.contains(QStringLiteral("Must not return")));
     }
 };
 
