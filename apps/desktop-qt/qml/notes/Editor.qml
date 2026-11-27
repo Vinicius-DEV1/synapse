@@ -32,6 +32,19 @@ ColumnLayout {
     property int pendingFileDropSourceOffset: -1
     property int fileImportRequestSequence: 0
     property string fileDropFeedback: ""
+    onPageIdChanged: {
+        if (pendingFileDropRequestId || pendingFileDropQueue.length > 0) {
+            pendingFileDropQueue = []
+            pendingFileDropWidgets = []
+            pendingFileDropRequestId = ""
+            pendingFileDropPageId = ""
+            pendingFileDropBlockId = ""
+            pendingFileDropBlockHtml = ""
+            pendingFileDropCursorPosition = -1
+            pendingFileDropSourceOffset = -1
+            fileDropFeedback = ""
+        }
+    }
     readonly property string lastSlashQuery: blockListEditor.lastSlashQuery
     readonly property bool hasPendingRichEdits: false
     readonly property bool hasContentFocus: blockListEditor.hasActiveRichFocus
