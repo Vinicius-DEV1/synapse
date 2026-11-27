@@ -937,8 +937,8 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Reproduction:** Mount PageView at 1280×900, open history from its header action, and inspect host/modal dimensions. Before the fix, the modal was logically open but invisible/unusable due to zero geometry.
 - **Root cause:** `PageViewModalsHost.qml` was nested as an unanchored child; its overlay children derived their viewport size from that zero-sized parent.
 - **Required fix:** Make the modal host fill the PageView parent and verify the production modal receives the complete viewport while preserving all other PageView modal routes.
-- **Acceptance:** A production-tree visible-window test verifies host and modal dimensions at 1280×900, opens history through the actual header button with Space, verifies revision data/focus, dismisses with Escape and checks focus return. Recheck sibling modal sizing and matched-viewport visual behavior.
-- **Fix status:** Added `anchors.fill: parent` to the host. The PageView history integration test now proves the host and modal are both 1280×900 and the history flow is keyboard usable. Focused page-switch and history regression suites pass; sibling overlay routes and matched-viewport screenshots remain open; see [07-verification.md](07-verification.md).
+- **Acceptance:** A production-tree visible-window test verifies host and modal dimensions at 1280×900, opens history through the actual header button with Space, verifies revision data/focus, dismisses with Escape and checks focus return. Verify a second production modal route and compare all sibling overlays at matched viewports.
+- **Fix status:** Added `anchors.fill: parent` to the host. The PageView history integration test proves the host and history modal are both 1280×900 and the history flow is keyboard usable; it also opens the production MovePageModal through the same host and verifies it is visible with non-zero dimensions. Focused page-switch and history regression suites pass; remaining sibling overlay routes and matched-viewport screenshots remain open; see [07-verification.md](07-verification.md).
 
 ## Second-pass review
 
