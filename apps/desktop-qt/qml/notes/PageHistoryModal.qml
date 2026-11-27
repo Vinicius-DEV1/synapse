@@ -326,6 +326,7 @@ Rectangle {
                             font.pixelSize: 14
                             wrapMode: Text.Wrap
                             Accessible.role: Accessible.AlertMessage
+                            Accessible.name: text
                         }
                         Text {
                             objectName: "historyRevisionContent"
