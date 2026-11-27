@@ -172,6 +172,37 @@ TestCase {
         compare(modal.aiReply, "")
     }
 
+    function test_clearingConversationAbortsPendingRequestAndDoesNotRestoreOldMessages() {
+        var capturedCallback = null
+        var abortCount = 0
+        var sessionId = "page-clear::block-clear"
+        var handler = function() { return true }
+        handler.sessionId = sessionId
+        modal.aiClientOverride = {
+            promptText: function(systemPrompt, userPrompt, history, callback) {
+                capturedCallback = callback
+                return { abort: function() { abortCount++ } }
+            }
+        }
+        modal.openModal("selected", "source", handler)
+        modal.chatHistory = [
+            { role: "user", content: "Existing request" },
+            { role: "assistant", content: "Existing response" }
+        ]
+        modal.runPrompt("Follow-up while clearing")
+        verify(modal.isGenerating)
+
+        modal.clearBlockConversation()
+
+        compare(abortCount, 1)
+        verify(!modal.isGenerating)
+        compare(modal.chatHistory.length, 0)
+        compare(BlockAiSession.load(sessionId).length, 0)
+        capturedCallback(true, "Late response after clear", "")
+        compare(modal.chatHistory.length, 0)
+        compare(modal.aiReply, "")
+    }
+
     function test_blockAssistantClampsToViewportAndRestoresItsConversation() {
         var sessionId = "page-ai::block-ai"
         BlockAiSession.save(sessionId, [

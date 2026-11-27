@@ -149,6 +149,9 @@ Item {
 
     function clearBlockConversation() {
         if (!blockScoped) return
+        requestGeneration++
+        cancelActiveRequest()
+        isGenerating = false
         BlockAiSession.clear(blockApplyHandler.sessionId)
         chatHistory = []
         aiReply = ""
