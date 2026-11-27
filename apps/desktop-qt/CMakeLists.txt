@@ -184,6 +184,8 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_shortcuts_test.cpp
         tests/notes/native_notes_assistant_actions_test.cpp
         tests/notes/native_notes_page_switch_test.cpp
+        tests/notes/native_notes_page_switch_core_test.cpp
+        tests/notes/native_notes_page_switch_test_support.h
         tests/notes/native_notes_link_vault_test.cpp
         tests/notes/native_notes_rich_images_test.cpp
         tests/notes/native_notes_rich_image_clipboard_test.cpp

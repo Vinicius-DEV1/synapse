@@ -6,6 +6,7 @@ int runNativeNotesOpenAnswerControllerTest(int argc, char **argv);
 int runNativeNotesShortcutsTest(int argc, char **argv);
 int runNativeNotesAssistantActionsTest(int argc, char **argv);
 int runNativeNotesPageSwitchTest(int argc, char **argv);
+int runNativeNotesPageSwitchCoreTest(int argc, char **argv);
 int runNativeNotesLinkVaultTest(int argc, char **argv);
 int runNativeNotesRichImagesTest(int argc, char **argv);
 int runNativeNotesRichImageClipboardTest(int argc, char **argv);
@@ -55,7 +56,9 @@ int main(int argc, char **argv) {
         return runNativeNotesAssistantActionsTest(argc - 1, argv + 1);
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-page-switch") == 0) {
-        return runNativeNotesPageSwitchTest(argc - 1, argv + 1);
+        int result = runNativeNotesPageSwitchTest(argc - 1, argv + 1);
+        result |= runNativeNotesPageSwitchCoreTest(argc - 1, argv + 1);
+        return result;
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=files") == 0) {
         return runNativeFilesTest(argc - 1, argv + 1);
@@ -70,6 +73,7 @@ int main(int argc, char **argv) {
     result |= runNativeNotesShortcutsTest(argc, argv);
     result |= runNativeNotesAssistantActionsTest(argc, argv);
     result |= runNativeNotesPageSwitchTest(argc, argv);
+    result |= runNativeNotesPageSwitchCoreTest(argc, argv);
     result |= runNativeNotesLinkVaultTest(argc, argv);
     result |= runNativeNotesRichImagesTest(argc, argv);
     result |= runNativeNotesRichImageClipboardTest(argc, argv);
