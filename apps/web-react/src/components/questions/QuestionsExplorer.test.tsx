@@ -152,8 +152,8 @@ describe('QuestionsExplorer Component', () => {
     expect(onNavigate).toHaveBeenCalledWith('page-1');
   });
 
-  it('expands battery questions when toggled', () => {
-    const { getByText, queryByText, getAllByTitle } = renderWithI18n(
+  it('opens battery detail modal on card click instead of expanding inline', () => {
+    const { getByText, queryByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={mockBatteries}
         onPlayBattery={vi.fn()}
@@ -166,14 +166,13 @@ describe('QuestionsExplorer Component', () => {
 
     expect(queryByText('Qual a porta do DNS?')).toBeNull();
 
-    // Click expand button
-    const expandBtn = getAllByTitle('Expandir questões')[0];
-    fireEvent.click(expandBtn);
+    // Click battery card to open detail modal
+    fireEvent.click(getByText('Bateria de Redes'));
 
     expect(getByText('Qual a porta do DNS?')).toBeDefined();
   });
 
-  it('renders large expanded question lists on-demand in chunks of 20', () => {
+  it('renders large question lists on-demand in chunks of 20 inside the detail modal', () => {
     const manyQuestionsBattery: BatteryWithQuestions[] = [
       {
         id: 'bat-many',
@@ -202,7 +201,7 @@ describe('QuestionsExplorer Component', () => {
       },
     ];
 
-    const { getByText, queryByText, getByTitle } = renderWithI18n(
+    const { getByText, queryByText } = renderWithI18n(
       <QuestionsExplorer
         batteries={manyQuestionsBattery}
         onPlayBattery={vi.fn()}
@@ -213,7 +212,7 @@ describe('QuestionsExplorer Component', () => {
       />
     );
 
-    fireEvent.click(getByTitle('Expandir questões'));
+    fireEvent.click(getByText('Bateria Grande'));
 
     expect(getByText('Enunciado da questão 1')).toBeDefined();
     expect(getByText('Enunciado da questão 20')).toBeDefined();

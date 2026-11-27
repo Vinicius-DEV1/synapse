@@ -1,9 +1,6 @@
 import React from 'react';
 import {
   Folder,
-  FolderOpen,
-  ChevronDown,
-  ChevronRight,
   Plus,
   Play,
   Edit3,
@@ -12,14 +9,14 @@ import {
   ExternalLink,
   Zap,
   FolderInput,
+  ChevronRight,
 } from 'lucide-react';
-import { BatteryQuestionsPreview } from './BatteryQuestionsPreview';
 import type { BatteryTreeNode, BatteryWithQuestions } from '../../types/quiz';
 import { useI18n } from '../../i18n';
 
 interface BatteryTreeItemProps {
   node: BatteryTreeNode;
-  depth?: number;
+  onInspectBattery: (node: BatteryTreeNode) => void;
   onPlayBattery: (battery: BatteryWithQuestions) => void;
   onEditBattery: (battery: BatteryWithQuestions) => void;
   onDeleteBattery: (batteryId: string) => void;
@@ -28,13 +25,11 @@ interface BatteryTreeItemProps {
   onOpenMoveModal?: (battery: BatteryWithQuestions) => void;
   getPageTitle?: (pageId: string) => string | null;
   highlightedBatteryId?: string;
-  expandedBatteryIds: Set<string>;
-  onToggleExpand: (batteryId: string) => void;
 }
 
 export const BatteryTreeItem = React.memo(function BatteryTreeItem({
   node,
-  depth = 0,
+  onInspectBattery,
   onPlayBattery,
   onEditBattery,
   onDeleteBattery,
@@ -43,12 +38,9 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
   onOpenMoveModal,
   getPageTitle,
   highlightedBatteryId,
-  expandedBatteryIds,
-  onToggleExpand,
 }: BatteryTreeItemProps) {
   const { t } = useI18n();
   const hasChildren = node.children.length > 0;
-  const isExpanded = expandedBatteryIds.has(node.id);
   const isHighlighted = node.id === highlightedBatteryId;
 
   // Stats calculation: single-pass without array allocations
@@ -77,104 +69,103 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
       : 0;
 
   return (
-    <div className="w-full contain-list-item">
+    <div className="w-full contain-list-item cv-auto-row">
       <div
         id={`battery-card-${node.id}`}
-        className={`group rounded-2xl p-4 sm:p-5 transition-colors duration-150 shadow-sm ${
+        role="button"
+        tabIndex={0}
+        onClick={() => onInspectBattery(node)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onInspectBattery(node);
+          }
+        }}
+        className={`group rounded-xl px-4 py-3.5 transition-colors duration-150 cursor-pointer ${
           isHighlighted
             ? 'bg-dark-card border border-brand-500/50 ring-1 ring-brand-500/40'
-            : hasChildren
-              ? 'bg-dark-card/80 hover:bg-dark-card border border-white/[0.08] hover:border-brand-500/30'
-              : 'bg-dark-card/60 hover:bg-dark-card/90 border border-white/5 hover:border-brand-500/30'
+            : 'bg-dark-card/60 hover:bg-dark-card border border-white/5 hover:border-brand-500/30'
         }`}
       >
-        {/* Header Row */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            {/* Expand / Collapse Button */}
-            <button
-              onClick={() => onToggleExpand(node.id)}
-              className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 transition-colors mt-0.5 cursor-pointer shrink-0"
-              title={isExpanded ? t('questions.explorer.collapseQuestions') : t('questions.explorer.expandQuestions')}
-            >
-              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
-
-            {/* Folder Icon for Groups with children */}
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: Clean Identity & Compact Metadata */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             {hasChildren && (
-              <div className="p-2 rounded-xl bg-brand-500/15 border border-brand-500/25 text-brand-300 shrink-0 mt-0.5">
-                {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
+              <div className="p-1.5 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-400 shrink-0">
+                <Folder size={15} />
               </div>
             )}
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h4 className="text-sm sm:text-base font-semibold text-zinc-100 truncate">
+                <h4 className="text-sm font-semibold text-dark-text truncate">
                   {node.title}
                 </h4>
-
-                {hasChildren ? (
-                  <>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/15 border border-brand-500/30 text-brand-300 shrink-0">
-                      {node.children.length} {node.children.length === 1 ? t('questions.explorer.subgroup') : t('questions.explorer.subgroups')}
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                      {totalQuestions} {totalQuestions === 1 ? t('questions.explorer.question') : t('questions.explorer.questions')}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                    {totalQuestions} {totalQuestions === 1 ? t('questions.explorer.question') : t('questions.explorer.questions')}
+                <span className="text-[11px] font-mono text-dark-subtext shrink-0">
+                  {totalQuestions} {totalQuestions === 1 ? t('questions.explorer.question') : t('questions.explorer.questions')}
+                </span>
+                {hasChildren && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-brand-500/10 text-brand-300 border border-brand-500/20 shrink-0">
+                    {node.children.length} {node.children.length === 1 ? t('questions.explorer.subgroup') : t('questions.explorer.subgroups')}
                   </span>
                 )}
               </div>
 
-              {node.description && (
-                <p className="text-xs text-zinc-400 mt-1 line-clamp-1">{node.description}</p>
-              )}
-
-              {/* Origin Pages & Tags Row */}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                {/* Page Link */}
+              <div className="flex flex-wrap items-center gap-2.5 mt-1 text-[11px] text-dark-subtext">
                 {node.linkedPages && node.linkedPages.length > 0 ? (
-                  node.linkedPages.map((p) => {
+                  node.linkedPages.slice(0, 1).map((p) => {
                     const pageTitle = getPageTitle?.(p.id) || p.title || 'Caderno';
                     return (
                       <button
                         key={p.id}
-                        onClick={() => onNavigateToPage(p.id)}
-                        className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigateToPage(p.id);
+                        }}
+                        className="font-medium text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors cursor-pointer"
                         title={`Abrir página "${pageTitle}" no Caderno`}
                       >
                         <FileText size={11} />
-                        <span className="truncate max-w-xs">{pageTitle}</span>
+                        <span className="truncate max-w-[180px]">{pageTitle}</span>
                         <ExternalLink size={10} className="opacity-70" />
                       </button>
                     );
                   })
                 ) : node.page_id ? (
                   <button
-                    onClick={() => onNavigateToPage(node.page_id!)}
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/25 flex items-center gap-1 transition-colors cursor-pointer"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNavigateToPage(node.page_id!);
+                    }}
+                    className="font-medium text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors cursor-pointer"
                     title={`Abrir página "${getPageTitle?.(node.page_id) || 'Caderno'}" no Caderno`}
                   >
                     <FileText size={11} />
-                    <span className="truncate max-w-xs">{getPageTitle?.(node.page_id) || 'Caderno'}</span>
+                    <span className="truncate max-w-[180px]">{getPageTitle?.(node.page_id) || 'Caderno'}</span>
                     <ExternalLink size={10} className="opacity-70" />
                   </button>
                 ) : (
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-dark-subtext/80">
                     <Zap size={10} className="text-amber-400" />
                     <span>{t('questions.explorer.standaloneBattery')}</span>
                   </span>
                 )}
 
-                {/* Tags */}
-                {(node.tags || []).slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400"
-                  >
+                {totalQuestions > 0 && (
+                  <span className="font-mono text-dark-subtext/80">
+                    • {answeredCount}/{totalQuestions} {t('questions.explorer.answered')}
+                    {answeredCount > 0 && (
+                      <span className={`ml-1.5 ${accuracy >= 70 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        ({accuracy}%)
+                      </span>
+                    )}
+                  </span>
+                )}
+
+                {(node.tags || []).slice(0, 2).map((tag) => (
+                  <span key={tag} className="text-[10px] text-dark-subtext/70">
                     #{tag}
                   </span>
                 ))}
@@ -182,103 +173,79 @@ export const BatteryTreeItem = React.memo(function BatteryTreeItem({
             </div>
           </div>
 
-          {/* Actions (Right) */}
-          <div className="flex items-center gap-1.5 shrink-0 relative">
-            {/* Quick Add Subgroup Button */}
-            {onCreateSubgroup && (
-              <button
-                onClick={() => onCreateSubgroup(node.id)}
-                className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-xs active:scale-95"
-                title={t('questions.explorer.addSubgroupTitle', { title: node.title })}
-              >
-                <Plus size={13} className="text-brand-400" />
-                <span className="hidden sm:inline">{t('questions.explorer.addSubgroup')}</span>
-              </button>
-            )}
+          {/* Right: Clean Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity duration-150">
+              {onCreateSubgroup && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCreateSubgroup(node.id);
+                  }}
+                  className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors cursor-pointer"
+                  title={t('questions.explorer.addSubgroupTitle', { title: node.title })}
+                >
+                  <Plus size={14} className="text-brand-400" />
+                </button>
+              )}
 
-            {/* Play Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditBattery(node);
+                }}
+                className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors cursor-pointer"
+                title={t('questions.explorer.editBattery')}
+              >
+                <Edit3 size={14} />
+              </button>
+
+              {onOpenMoveModal && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenMoveModal(node);
+                  }}
+                  className="p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-colors cursor-pointer"
+                  title={t('questions.explorer.moveBattery')}
+                >
+                  <FolderInput size={14} />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteBattery(node.id);
+                }}
+                className="p-1.5 rounded-lg text-dark-subtext hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                title={t('questions.explorer.moveToTrash')}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+
             <button
-              onClick={() => onPlayBattery(node)}
-              className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlayBattery(node);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 hover:border-brand-500/50 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95"
               title={hasChildren ? t('questions.explorer.practiceAllDesc') : t('questions.explorer.practiceDesc')}
             >
-              <Play size={13} className="fill-brand-300" />
+              <Play size={12} className="fill-brand-300" />
               <span className="hidden sm:inline">{hasChildren ? t('questions.explorer.practiceAll') : t('questions.explorer.practice')}</span>
             </button>
 
-            {/* Edit Button */}
-            <button
-              onClick={() => onEditBattery(node)}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
-              title={t('questions.explorer.editBattery')}
-            >
-              <Edit3 size={15} />
-            </button>
-
-            {/* Move Button */}
-            {onOpenMoveModal && (
-              <button
-                onClick={() => onOpenMoveModal(node)}
-                className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/5 transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
-                title={t('questions.explorer.moveBattery')}
-              >
-                <FolderInput size={15} />
-              </button>
-            )}
-
-            {/* Delete Button */}
-            <button
-              onClick={() => onDeleteBattery(node.id)}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-white/5 transition-colors cursor-pointer opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
-              title={t('questions.explorer.moveToTrash')}
-            >
-              <Trash2 size={15} />
-            </button>
+            <ChevronRight size={15} className="text-dark-subtext/50 group-hover:text-dark-subtext transition-colors hidden sm:block" />
           </div>
         </div>
-
-        {/* Progress Mini Bar */}
-        {totalQuestions > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center justify-between text-xs font-mono text-zinc-400">
-            <div className="flex items-center gap-3">
-              <span>
-                {answeredCount}/{totalQuestions} {t('questions.explorer.answered')}
-              </span>
-              {answeredCount > 0 && (
-                <span className={accuracy >= 70 ? 'text-emerald-400' : 'text-amber-400'}>
-                  • {accuracy}% {t('questions.explorer.accuracy')}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Expanded Questions Details for this battery (if it has own questions) */}
-        {isExpanded && <BatteryQuestionsPreview node={node} />}
       </div>
-
-      {/* Recursive Children Container with elegant Guide Lines */}
-      {isExpanded && hasChildren && (
-        <div className="mt-3 ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-2 border-brand-500/20 space-y-3 animate-fade-in">
-          {node.children.map((child) => (
-            <BatteryTreeItem
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              onPlayBattery={onPlayBattery}
-              onEditBattery={onEditBattery}
-              onDeleteBattery={onDeleteBattery}
-              onNavigateToPage={onNavigateToPage}
-              onCreateSubgroup={onCreateSubgroup}
-              onOpenMoveModal={onOpenMoveModal}
-              getPageTitle={getPageTitle}
-              highlightedBatteryId={highlightedBatteryId}
-              expandedBatteryIds={expandedBatteryIds}
-              onToggleExpand={onToggleExpand}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 });

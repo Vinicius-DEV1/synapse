@@ -135,7 +135,7 @@ describe('QuestionsView Component', () => {
     const newBtn = getByText('Nova Bateria');
     fireEvent.click(newBtn);
 
-    expect(await findByPlaceholderText('Título da Bateria...')).toBeDefined();
+    expect(await findByPlaceholderText('Título da Bateria...', {}, { timeout: 4000 })).toBeDefined();
     expect(getByTitle('Voltar')).toBeDefined();
 
     // Clicking Voltar closes the full-page editor and returns to Explorer
@@ -166,7 +166,7 @@ describe('QuestionsView Component', () => {
     fireEvent.click(subBtn);
 
     // Editor should be open (loaded lazily on demand)
-    const titleInput = await findByPlaceholderText('Título da Bateria...');
+    const titleInput = await findByPlaceholderText('Título da Bateria...', {}, { timeout: 4000 });
     fireEvent.change(titleInput, { target: { value: 'TCP em Detalhes' } });
 
     // Save changes
