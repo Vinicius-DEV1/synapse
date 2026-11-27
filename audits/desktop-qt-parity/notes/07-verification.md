@@ -1,5 +1,12 @@
 # Caderno Verification Plan
 
+### Performance benchmark baseline iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Built `synapse-desktop-tests` with `native_notes_performance_benchmark_test.cpp`. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-benchmark` | Passed: 3 passed, 0 failed (`initTestCase`, `measureBlockParseSerializeSaveAndLoadAcrossScales`, `cleanupTestCase`) | Qt 6.10.2, x86_64, Ubuntu 26.04.1 LTS, release build, offscreen. Recorded 100/500/1000 mixed-block Core/SQLite timings (`parse<=20ms`, `serialize<=25ms`, `savePage=0ms`, `getPage<=2ms`), 200×5 table (`parseCols=0ms`, `validate=0ms`, `filterView=1ms`), 20 rich images (`loadSource=8ms`), and `PageView` 100-block mount (`2310ms`). Keystroke latency, scroll pacing, and peak RSS remain open. |
+
 ### File-widget nested lookup, sibling sync, restore & deferred local Trash iteration (2026-11-27)
 
 | Check | Result | Scope and limits |

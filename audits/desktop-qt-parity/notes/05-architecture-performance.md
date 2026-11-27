@@ -41,3 +41,18 @@ Qt and React do not currently share a live Yjs editor implementation. Qt must no
 ## Performance budgets to record
 
 Measure startup-to-editor-ready, keystroke-to-frame latency, scroll frame pacing, filter evaluation, Core parse/serialize time, autosave duration, image import/resize, page switch with cache hit/miss, and peak memory for large notes. Record hardware, Qt version, build mode, note shape, block count and repeat count. A single screenshot or source-level intuition is not performance evidence.
+
+### Recorded baseline (`--suite=notes-benchmark`, 2026-11-27)
+
+Environment: `Qt=6.10.2` (release build), `Arch=x86_64`, `OS=Ubuntu 26.04.1 LTS`, `QT_QPA_PLATFORM=offscreen`.
+
+| Workload | Measured timings |
+| --- | --- |
+| 100 mixed blocks (Core/SQLite) | `parse=1ms`, `serialize=2ms`, `savePage=0ms`, `getPage=0ms` |
+| 500 mixed blocks (Core/SQLite) | `parse=13ms`, `serialize=12ms`, `savePage=0ms`, `getPage=1ms` |
+| 1,000 mixed blocks (Core/SQLite) | `parse=20ms`, `serialize=25ms`, `savePage=0ms`, `getPage=2ms` |
+| Large table (200 rows × 5 cols) | `parseCols=0ms`, `validate=0ms`, `filterView=1ms` |
+| Rich images (20 inline PNGs) | `loadSource=8ms` |
+| `PageView.qml` (100 mixed blocks) | `loadActivePage=2310ms` (eager `Repeater` delegate instantiation) |
+
+Keystroke-to-frame latency, scroll frame pacing, and peak RSS memory remain open for live-window profiling.
