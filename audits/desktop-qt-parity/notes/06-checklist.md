@@ -346,5 +346,6 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [x] Verify toggle and blockquote-toggle AI buttons create stable block callbacks through `BlockListEditor`, replace their own title/body, and preserve callout type and accent color. Production `PageView` routes remain an open gate.
 - [x] Match the React Apply action label casing, horizontal padding, radius and normal violet/emerald colors; assert target labels and base colors in the modal QML suite.
 - [x] Match the React Diff glyph path with the dedicated `file-diff` canvas icon; verify the selected icon mapping in the modal QML suite.
+- [x] Match React's 150 ms anchored assistant width transition when opening/closing a reply diff; the modal QML suite waits for the 370/420 px target widths.
 - [ ] Compare the Diff glyph stroke weight and Apply/Diff/Insert/Copy hover and disabled states against React in a real matched-viewport capture; the offscreen QML runner does not establish pointer hover appearance.
 - [ ] Extend the production editor regression to toggle and blockquote-toggle targets, and verify removal/page switching during generation cannot mutate or append to another page. See QT-NOTES-110.
