@@ -1103,3 +1103,13 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-ai-toggle-targets` | Passed: 3 QtTest results including setup/cleanup | Mounts production `PageView.qml` with the actual AI modal, nested block list and a temporary SQLite controller. Applies AI proposals through the simple-toggle and colored blockquote-toggle toolbar actions; verifies title/body updates, auto-save, preservation of the other toggle, and retention of the callout color. This closes live production apply-route coverage for all four supported block kinds when combined with `notes-ai-block-apply`. This test does not simulate a pending network generation followed by target removal, page switch, or app-process restart. |
 | Checklist and QT-NOTES-110 cross-review | Passed, partial status retained | Updated the active audit to mark both new production routes as evidenced and keep stale-generation cancellation, process restart, cross-client visibility, broad nested-container runtime coverage, and visual/interaction acceptance open. |
 | `git diff --check` | Passed | No whitespace errors in the test and audit updates. |
+
+### Notes AI follow-up history contract (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_block_ai_prompt.qml -import apps/desktop-qt/qml` | Passed: 6 QtTest rows, 0 failures | Covers role/content to role/messageText mapping, order preservation, unsupported-role filtering, and existing block context/system prompt rules. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_ai_prompt_modal_apply.qml -import apps/desktop-qt/qml` | Passed: 13 QtTest rows, 0 failures | The production modal `runPrompt()` path receives a stub client. It verifies both prior user and assistant messages are passed in the native adapter shape, the next response is appended, and the existing visible/persisted messages retain `{role, content}`. No live provider or API key is used. |
+| Focused `qmllint` on `NotesAiPromptModal.qml`, `NotesBlockAiPrompt.js`, and both prompt harnesses | Passed with no diagnostics | Confirms the Notes-only history adapter and modal test seam parse cleanly. |
+| Second-pass `AiClient.qml` contract review | Passed | Confirmed the native adapter reads `messageText`/`text` and maps `assistant` to provider role `model`; the Notes boundary now supplies those fields. |
+| `git diff --check` | Passed | No whitespace errors in the implementation, tests or audit updates. |
