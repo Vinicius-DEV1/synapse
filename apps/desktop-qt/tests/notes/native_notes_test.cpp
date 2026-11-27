@@ -6,6 +6,7 @@
 #include "controllers/notes/notes_rich_spoilers.h"
 #include "controllers/notes/notes_rich_task_markup.h"
 #include "controllers/notes/notes_rich_task_lists.h"
+#include "native_notes_page_switch_test_support.h"
 
 #include <QtCore/QObject>
 #include <QtCore/QPointer>
@@ -28,6 +29,7 @@
 #include <QtGui/QTextFragment>
 #include <QtGui/QTextLayout>
 #include <QtCore/QUrl>
+#include <functional>
 
 class NativeNotesTest final : public QObject {
     Q_OBJECT
@@ -1471,6 +1473,7 @@ private slots:
         QQmlEngine engine;
         engine.rootContext()->setContextProperty("dataController", &controller);
         engine.rootContext()->setContextProperty("notesTextOperations", &ops);
+        registerNotesPageSwitchTestTypes();
         QQmlComponent comp(&engine);
         comp.loadUrl(QUrl::fromLocalFile(QStringLiteral(
             SYNAPSE_DESKTOP_SOURCE_DIR "/qml/page-view/PageView.qml")));
@@ -1532,6 +1535,52 @@ private slots:
         const QString savedHtml = controller.getPage(colQuoteId).value("content").toString();
         QVERIFY2(savedHtml.contains("Col callout edited"), qPrintable(savedHtml));
         QVERIFY2(savedHtml.contains("const v = 42;"), qPrintable(savedHtml));
+
+        // Verify the block assistant updates its nested source block and the page auto-save persists it.
+        std::function<QQuickItem *(QQuickItem *, const QString &)> findItemByName =
+            [&](QQuickItem *item, const QString &objectName) -> QQuickItem * {
+                if (!item) return nullptr;
+                if (item->objectName() == objectName) return item;
+                for (QQuickItem *child : item->childItems()) {
+                    if (QQuickItem *match = findItemByName(child, objectName)) return match;
+                }
+                return nullptr;
+            };
+        QQuickItem *blockAiButton = findItemByName(rootItem, QStringLiteral("notesCodeBlockAiButton"));
+        QVERIFY(blockAiButton);
+        QVERIFY(QMetaObject::invokeMethod(blockAiButton, "clicked", Qt::DirectConnection));
+        QObject *blockAiModal = root->findChild<QObject *>(QStringLiteral("notesAiPromptModal"));
+        QVERIFY(blockAiModal);
+        QVERIFY(blockAiModal->property("isOpen").toBool());
+        const QVariantMap aiReply{
+            {QStringLiteral("role"), QStringLiteral("assistant")},
+            {QStringLiteral("content"), QStringLiteral("```typescript\nconst aiApplied = 9;\n```")},
+        };
+        QVariant applyResult;
+        QVERIFY(QMetaObject::invokeMethod(blockAiModal, "applyMessageProposal", Qt::DirectConnection,
+                                          Q_RETURN_ARG(QVariant, applyResult),
+                                          Q_ARG(QVariant, aiReply), Q_ARG(QVariant, QVariant(true))));
+        QVERIFY(applyResult.toBool());
+        QVERIFY(!blockAiModal->property("isOpen").toBool());
+        savedSpy.clear();
+        QTRY_VERIFY_WITH_TIMEOUT(savedSpy.count() >= 1, 2500);
+        QTest::qWait(250);
+        QCOMPARE(savedSpy.count(), 1);
+        QVERIFY(!root->property("isDirty").toBool());
+        QCOMPARE(root->property("saveStatus").toString(), QStringLiteral("saved"));
+        const QString aiSavedHtml = controller.getPage(colQuoteId).value("content").toString();
+        QVERIFY2(aiSavedHtml.contains("const aiApplied = 9;"), qPrintable(aiSavedHtml));
+        QVERIFY2(aiSavedHtml.contains("Col callout edited"), qPrintable(aiSavedHtml));
+        QVERIFY(!aiSavedHtml.contains("const v = 42;"));
+
+        QVariant pageChangeResult;
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_RETURN_ARG(QVariant, pageChangeResult),
+                                          Q_ARG(QVariant, QVariant(docPageId))));
+        QVERIFY(pageChangeResult.toBool());
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "selectPage", Q_RETURN_ARG(QVariant, pageChangeResult),
+                                          Q_ARG(QVariant, QVariant(colQuoteId))));
+        QVERIFY(pageChangeResult.toBool());
+        QTRY_VERIFY(root->property("activeContent").toString().contains("const aiApplied = 9;"));
 
         // Verify metadata update + subsequent save does not trigger a false conflict
         QSignalSpy conflictSpy(&controller, SIGNAL(pageConflictDetected(QString,QString)));

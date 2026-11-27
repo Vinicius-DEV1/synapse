@@ -177,6 +177,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     find_package(Qt6 6.2 REQUIRED COMPONENTS Test)
 
     add_executable(synapse-desktop-tests
+        tests/notes/native_notes_ai_session_test.cpp
         tests/native_test_main.cpp
         tests/crypto/native_vault_crypto_test.cpp
         tests/notes/native_notes_test.cpp

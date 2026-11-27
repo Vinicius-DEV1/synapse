@@ -5,6 +5,7 @@ int runNativeNotesTest(int argc, char **argv);
 int runNativeNotesOpenAnswerControllerTest(int argc, char **argv);
 int runNativeNotesShortcutsTest(int argc, char **argv);
 int runNativeNotesAssistantActionsTest(int argc, char **argv);
+int runNativeNotesAiSessionTest(int argc, char **argv);
 int runNativeNotesPageSwitchTest(int argc, char **argv);
 int runNativeNotesPageSwitchCoreTest(int argc, char **argv);
 int runNativeNotesPageHistoryTest(int argc, char **argv);
@@ -70,6 +71,14 @@ int main(int argc, char **argv) {
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-page-header-actions") == 0) {
         return runNativeNotesPageHeaderActionTest(argc - 1, argv + 1);
+    }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-ai-block-apply") == 0) {
+        char testName[] = "pageViewEditsFlushAndStateParity";
+        char *testArguments[] = {argv[0], testName};
+        return runNativeNotesTest(2, testArguments);
+    }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-ai-session") == 0) {
+        return runNativeNotesAiSessionTest(argc - 1, argv + 1);
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=files") == 0) {
         return runNativeFilesTest(argc - 1, argv + 1);
