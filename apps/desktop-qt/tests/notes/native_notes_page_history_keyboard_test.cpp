@@ -101,6 +101,10 @@ private slots:
         modal->setProperty("selectedIndex", 2);
         QQuickItem *decryptionError = findVisualItem(modalItem, QStringLiteral("historyDecryptionError"));
         QTRY_VERIFY(decryptionError && decryptionError->isVisible());
+        QAccessibleInterface *accessibleDecryptionError = QAccessible::queryAccessibleInterface(decryptionError);
+        QVERIFY(accessibleDecryptionError);
+        QCOMPARE(accessibleDecryptionError->role(), QAccessible::AlertMessage);
+        QVERIFY(accessibleDecryptionError->text(QAccessible::Name).contains(QStringLiteral("descriptografar")));
         QQuickItem *revisionContent = findVisualItem(modalItem, QStringLiteral("historyRevisionContent"));
         QVERIFY(revisionContent && !revisionContent->isVisible());
         QQuickItem *restoreButton = findVisualItem(modalItem, QStringLiteral("historyRestoreButton"));
@@ -143,6 +147,9 @@ private slots:
         QObject *restoreAction = overflowMenu->findChild<QObject *>(QStringLiteral("historyRestoreMenuItem"));
         QVERIFY(diffAction && restoreAction);
         QVERIFY(diffAction->property("enabled").toBool());
+        QVERIFY(!restoreAction->property("enabled").toBool());
+        modal->setProperty("selectedIndex", 2);
+        QVERIFY(!diffAction->property("enabled").toBool());
         QVERIFY(!restoreAction->property("enabled").toBool());
         modal->setProperty("selectedIndex", 1);
         QTRY_VERIFY(restoreAction->property("enabled").toBool());
