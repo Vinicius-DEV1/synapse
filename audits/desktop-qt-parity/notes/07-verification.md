@@ -1,5 +1,12 @@
 # Caderno Verification Plan
 
+### File-widget nested lookup, sibling sync, restore & deferred local Trash iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Built `synapse-desktop-tests` with `native_notes_file_widget_lifecycle_test.cpp`. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-file-widgets` | Passed: 3 passed, 0 failed (`initTestCase`, `fileWidgetNestedLookupRenameSiblingSyncRestoreAndDeferredTrash`, `cleanupTestCase`) | Qt 6.10.2, offscreen. Production `PageView.qml` + `SynapseDataController` + unlocked SQLite vault verifies nested-folder lookup, `deleteFile` + `restoreTrashItem` `filesChanged` refresh, basename selection on `startRename()`, Core rename + sibling widget sync, presentation-only `isSelected`, duplicate-reference preservation on local delete, save-conflict preservation, and post-conflict retry soft-delete. Nested-editor bubbling, undo, and same-viewport visuals remain open. |
+
 ### Empty-block colors, column metadata & table column movement iteration (2026-11-27)
 
 | Check | Result | Scope and limits |
