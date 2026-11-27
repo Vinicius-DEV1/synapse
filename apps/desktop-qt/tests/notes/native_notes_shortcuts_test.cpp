@@ -88,6 +88,21 @@ private slots:
 
         focusModal->forceActiveFocus();
         QTRY_VERIFY(!focusModalObject->property("openAnswerInputFocused").toBool());
+        focusModalObject->setProperty("requireFinishConfirmation", true);
+        QTest::keyClick(&window, Qt::Key_Left);
+        QCOMPARE(focusModalObject->property("currentIndex").toInt(), 0);
+        QTest::keyClick(&window, Qt::Key_Right);
+        QTRY_COMPARE(focusModalObject->property("currentIndex").toInt(), 1);
+        QTest::keyClick(&window, Qt::Key_Right);
+        QTRY_VERIFY(focusModalObject->property("showFinishConfirmation").toBool());
+        focusModalObject->setProperty("showFinishConfirmation", false);
+        QTest::keyClick(&window, Qt::Key_Left);
+        QTRY_COMPARE(focusModalObject->property("currentIndex").toInt(), 0);
+        QTest::keyClick(&window, Qt::Key_Greater);
+        QTRY_COMPARE(focusModalObject->property("currentIndex").toInt(), 1);
+        QTest::keyClick(&window, Qt::Key_Less);
+        QTRY_COMPARE(focusModalObject->property("currentIndex").toInt(), 0);
+
         QTest::keyClick(&window, Qt::Key_G);
         QTRY_VERIFY(focusModalObject->property("showExplanation").toBool());
         QTest::keyClick(&window, Qt::Key_Space);
