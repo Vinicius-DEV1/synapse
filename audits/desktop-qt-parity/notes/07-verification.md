@@ -1094,3 +1094,12 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | `git diff --check` | Passed | No whitespace errors in the current AI action, test and documentation changes. |
 | Same-viewport React/Qt block assistant capture | Not run | Qt now uses a viewport-clamped anchored popup with 370/420 px widths, separate conversation bubbles, basic assistant Markdown, bottom input and block actions, but screenshot comparison, backdrop/shadow/hover, focus/accessibility, narrow-height resizing and per-message action rendering remain unverified. |
 | `qmllint` on `NotesAiPromptModal.qml`, AI apply/session helpers and focused AI test harnesses | Passed with no diagnostics | Lint on the surrounding legacy Notes components still reports existing warnings; no module-wide lint-clean claim is made. |
+
+### Notes production toggle AI targets (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Reconfigured and linked the native test executable after adding the dedicated production-toggle target test. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-ai-toggle-targets` | Passed: 3 QtTest results including setup/cleanup | Mounts production `PageView.qml` with the actual AI modal, nested block list and a temporary SQLite controller. Applies AI proposals through the simple-toggle and colored blockquote-toggle toolbar actions; verifies title/body updates, auto-save, preservation of the other toggle, and retention of the callout color. This closes live production apply-route coverage for all four supported block kinds when combined with `notes-ai-block-apply`. This test does not simulate a pending network generation followed by target removal, page switch, or app-process restart. |
+| Checklist and QT-NOTES-110 cross-review | Passed, partial status retained | Updated the active audit to mark both new production routes as evidenced and keep stale-generation cancellation, process restart, cross-client visibility, broad nested-container runtime coverage, and visual/interaction acceptance open. |
+| `git diff --check` | Passed | No whitespace errors in the test and audit updates. |
