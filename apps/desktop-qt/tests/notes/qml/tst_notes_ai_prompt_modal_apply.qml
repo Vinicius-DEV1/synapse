@@ -140,6 +140,38 @@ TestCase {
         compare(modal.chatHistory[3].content, "Second response")
     }
 
+    function test_closeAndRetargetAbortPendingProviderRequestAndIgnoreLateReply() {
+        var capturedCallback = null
+        var abortCount = 0
+        modal.aiClientOverride = {
+            promptText: function(systemPrompt, userPrompt, history, callback) {
+                capturedCallback = callback
+                return { abort: function() { abortCount++ } }
+            }
+        }
+        modal.openModal("first target", "<p>first</p>", null)
+        modal.runPrompt("Request for the first target")
+        verify(modal.isGenerating)
+        verify(typeof capturedCallback === "function")
+
+        modal.openModal("second target", "<p>second</p>", null)
+        compare(abortCount, 1)
+        verify(modal.isOpen)
+        verify(!modal.isGenerating)
+        capturedCallback(true, "Late response for the first target", "")
+        compare(modal.chatHistory.length, 0)
+        compare(modal.aiReply, "")
+
+        modal.runPrompt("Request for the second target")
+        verify(modal.isGenerating)
+        modal.closeModal()
+        compare(abortCount, 2)
+        verify(!modal.isGenerating)
+        capturedCallback(true, "Late response after close", "")
+        compare(modal.chatHistory.length, 0)
+        compare(modal.aiReply, "")
+    }
+
     function test_blockAssistantClampsToViewportAndRestoresItsConversation() {
         var sessionId = "page-ai::block-ai"
         BlockAiSession.save(sessionId, [

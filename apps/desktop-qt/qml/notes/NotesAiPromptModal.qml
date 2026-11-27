@@ -16,6 +16,7 @@ Item {
 
     property var controller: null
     property var aiClientOverride: null
+    property var activeRequest: null
     property bool isOpen: false
     property string selectedText: ""
     property string noteContextHtml: ""
@@ -51,6 +52,17 @@ Item {
 
     function hasBlockInsertAction() {
         return blockScoped && blockApplyHandler && typeof blockApplyHandler.insertContent === "function"
+    }
+
+    function cancelActiveRequest() {
+        var request = activeRequest
+        activeRequest = null
+        if (!request || typeof request.abort !== "function") return
+        try {
+            request.abort()
+        } catch (error) {
+            console.error("[Notes:BlockAI] Could not abort the active provider request:", error)
+        }
     }
 
     function applyMessageProposal(message, isValid) {
@@ -101,6 +113,8 @@ Item {
 
     function openModal(selection, fullHtml, applyHandler) {
         requestGeneration++
+        cancelActiveRequest()
+        isGenerating = false
         selectedText = String(selection || "")
         noteContextHtml = String(fullHtml || "")
         blockApplyHandler = typeof applyHandler === "function" ? applyHandler : null
@@ -126,6 +140,7 @@ Item {
 
     function closeModal() {
         requestGeneration++
+        cancelActiveRequest()
         isGenerating = false
         isOpen = false
         blockApplyHandler = null
@@ -201,8 +216,9 @@ Item {
         var historySnapshot = chatHistory.slice()
         var providerHistory = BlockAiPrompt.providerHistory(historySnapshot)
         var promptClient = aiClientOverride || aiClient
-        promptClient.promptText(sysPrompt, userPrompt, providerHistory, function(ok, reply, err) {
+        var request = promptClient.promptText(sysPrompt, userPrompt, providerHistory, function(ok, reply, err) {
             if (!aiModalRoot.isOpen || generation !== aiModalRoot.requestGeneration) return
+            aiModalRoot.activeRequest = null
             aiModalRoot.isGenerating = false
             if (!ok) {
                 aiModalRoot.errorText = err || qsTr("Falha ao consultar IA.")
@@ -230,6 +246,7 @@ Item {
             }
             aiModalRoot.previewHtml = ""
         })
+        if (generation === requestGeneration && isGenerating) activeRequest = request
     }
 
     AiClient {
