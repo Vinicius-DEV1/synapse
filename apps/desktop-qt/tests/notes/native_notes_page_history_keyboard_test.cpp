@@ -123,6 +123,57 @@ private slots:
         QVERIFY(diffAction && restoreAction);
         QVERIFY(diffAction->property("enabled").toBool());
         QVERIFY(!restoreAction->property("enabled").toBool());
+        modal->setProperty("selectedIndex", 1);
+        QTRY_VERIFY(restoreAction->property("enabled").toBool());
+
+        QMetaObject::invokeMethod(overflowMenu, "close");
+        window.resize(639, 900);
+        QTRY_COMPARE(qRound(modalItem->width()), 639);
+        QVERIFY(overflowButton->isVisible());
+        QVERIFY(!diffButton->isVisible());
+        QVERIFY(!restoreButton->isVisible());
+        QQuickItem *revisionCount = findVisualItem(modalItem, QStringLiteral("historyRevisionCount"));
+        QVERIFY(revisionCount && !revisionCount->isVisible());
+        const QPointF closeAt639 = closeButton->mapToItem(modalItem, closeButton->width(), 0);
+        QVERIFY(closeAt639.x() <= modalItem->width() - 20);
+
+        modal->setProperty("selectedIndex", 0);
+        window.resize(640, 900);
+        QTRY_COMPARE(qRound(modalItem->width()), 640);
+        QVERIFY(overflowButton->isVisible());
+        QVERIFY(!diffButton->isVisible());
+        QVERIFY(!restoreButton->isVisible());
+        const QPointF closeAt640 = closeButton->mapToItem(modalItem, closeButton->width(), 0);
+        QVERIFY(closeAt640.x() <= modalItem->width() - 20);
+        QQuickItem *headerTitle = findVisualItem(modalItem, QStringLiteral("historyModalTitle"));
+        QVERIFY(headerTitle && revisionCount && revisionCount->isVisible());
+
+        window.resize(767, 900);
+        QTRY_COMPARE(qRound(modalItem->width()), 767);
+        QVERIFY(overflowButton->isVisible());
+        QVERIFY(!diffButton->isVisible());
+        QVERIFY(!restoreButton->isVisible());
+
+        window.resize(768, 900);
+        QTRY_COMPARE(qRound(modalItem->width()), 768);
+        QVERIFY(!overflowButton->isVisible());
+        QVERIFY(diffButton->isVisible());
+        const QPointF titlePosition = headerTitle->mapToItem(modalItem, 0, 0);
+        const QPointF countPosition = revisionCount->mapToItem(modalItem, 0, 0);
+        QVERIFY(titlePosition.x() + headerTitle->width() <= countPosition.x());
+        const QPointF diffPosition = diffButton->mapToItem(modalItem, 0, 0);
+        const QPointF closePosition = closeButton->mapToItem(modalItem, 0, 0);
+        QVERIFY(countPosition.x() + revisionCount->width() <= diffPosition.x());
+        QVERIFY(diffPosition.x() + diffButton->width() <= closePosition.x());
+
+        modal->setProperty("selectedIndex", 1);
+        QTRY_VERIFY(restoreButton->isVisible());
+        QVERIFY(!diffButton->isVisible());
+        QTRY_VERIFY(restoreButton->mapToItem(modalItem, 0, 0).x()
+                    >= countPosition.x() + revisionCount->width());
+        const QPointF restorePosition = restoreButton->mapToItem(modalItem, 0, 0);
+        QVERIFY(restorePosition.x() + restoreButton->width() <= closePosition.x());
+        QVERIFY(restorePosition.x() + restoreButton->width() <= closePosition.x());
     }
 };
 
