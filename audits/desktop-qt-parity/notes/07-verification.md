@@ -871,3 +871,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `rustfmt --edition 2021 --check` for changed Core modules | Passed | Checked `assistant_actions.rs`, its focused tests, and `prompt_duplicates.rs`; `mod.rs` was checked with child traversal disabled. |
 | `git diff --check` | Passed | No whitespace errors. |
 | Live model paraphrases, deleted-question re-use, and real Notes Markdown assistant insertion | Not run | Do not claim semantic deduplication or full UI acceptance. The Core guard rejects exact prompts after lowercasing and whitespace collapse, within the active target battery only. |
+
+### Notes page-switch save recovery (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Builds the new native Notes page-switch regression suite. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-page-switch` | Passed: 2 behavior tests (4 QtTest results including setup/cleanup) | Instantiates production `PageView.qml`. Covers failed dirty-page save blocking navigation while preserving selected page, editor content and dirty/error state; retry then permits navigation. Covers stale conflict blocking navigation, keeping local edits against the latest timestamp, and loading saved content before navigating. Uses a deterministic controller double and test-only audio/video player type stubs required by the complete PageView modal tree; does not exercise SQLite/Core writes, queued file-Trash reconciliation, encryption, OS keyboard/focus or screenshot parity. The final run had no Qt warnings. |
+| `git diff --check` | Passed | No whitespace errors in the test and documentation changes. |
+| Live Core conflict injection, document-bundle Trash queue, encrypted pages, modal keyboard/focus and matched-viewport visual comparison | Not run | Keep QT-NOTES-042 partial until the remaining native acceptance scenarios in [06-checklist.md](06-checklist.md) are completed. |

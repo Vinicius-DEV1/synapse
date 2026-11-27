@@ -1,6 +1,6 @@
 # Documentation Ownership and Current Status
 
-**Last reviewed:** 2026-11-26
+**Last reviewed:** 2026-11-27
 
 This page identifies the consolidated sources of truth across the repository. Active investigations and acceptance checklists live in the repository-root `audits/` directory; `docs/` contains stable architecture and current verified status. Revalidate historical counts and claims against current code before relying on them.
 
@@ -26,7 +26,7 @@ This page identifies the consolidated sources of truth across the repository. Ac
 | Engineering rules | [Root AGENTS.md](../AGENTS.md) and app-level `AGENTS.md` files | Required code, testing, documentation, and ownership rules |
 | Skill specifications | [Engineering skills index](../.agents/skills/README.md) | Agent playbooks; specifications are not implementation evidence |
 
-The Notes parity effort remains **Partial**. Recent source iterations fixed Qt color alpha conversion, palette idle polling, direct calendar event lookup/refresh wiring, default palette swatch styling, attachment routing, column-wrapper preservation during bundle absorption, typed table-column filter clearing, the table filter draft/apply lifecycle, request-correlated multi-file local imports with optional document bundling, separation of upload from existing-file selection, the explicit inline event Cancel action, the Notes focus setup field hierarchy, the Notes alarm setup hierarchy, Notes habit creation/link identity, and habit-picker keyboard logic/empty guidance. Same-viewport visual review, actual encrypted import, saved note round-trip, Drive upload parity, actual Qt key dispatch/focus verification, full modal inventory, and remaining Notes checklist items are still open. Active comparison evidence is maintained outside `docs/` until acceptance is complete.
+The Notes parity effort remains **Partial**. Recent source iterations fixed Qt color alpha conversion, palette idle polling, direct calendar event lookup/refresh wiring, default palette swatch styling, attachment routing, column-wrapper preservation during bundle absorption, typed table-column filter clearing, the table filter draft/apply lifecycle, request-correlated multi-file local imports with optional document bundling, separation of upload from existing-file selection, the explicit inline event Cancel action, the Notes focus setup field hierarchy, the Notes alarm setup hierarchy, Notes habit creation/link identity, habit-picker keyboard logic/empty guidance, and page-switch recovery after save failure or timestamp conflict. A focused QtTest covers the page-switch recovery choices using a controller double. Same-viewport visual review, actual encrypted import, saved note round-trip, Drive upload parity, actual Qt key dispatch/focus verification, full modal inventory, and remaining Notes checklist items are still open. Active comparison evidence is maintained outside `docs/` until acceptance is complete.
 
 ## Verified Project Status
 
