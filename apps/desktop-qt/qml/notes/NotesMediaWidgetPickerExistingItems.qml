@@ -85,7 +85,7 @@ ScrollView {
                             text: itemButton.modelData.name || itemButton.modelData.title || ""
                             color: "#fffffe"
                             font.pixelSize: existingItemsRoot.itemMode === "file-select" ? 12 : 14
-                            font.weight: Font.Medium
+                            font.weight: existingItemsRoot.itemMode === "file-select" ? Font.DemiBold : Font.Medium
                             elide: Text.ElideRight
                         }
                         Text {

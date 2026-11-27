@@ -47,7 +47,7 @@ Item {
         } else if (mode === "livro" && typeof c.getLibraryBooks === "function") {
             listItems = c.getLibraryBooks("") || []
         }
-        if (mode === "video" || mode === "livro" || mode === "file-select") {
+        if (mode === "video" || mode === "livro") {
             Qt.callLater(function() {
                 if (mediaPickerRoot.activeMode === mode && mediaSearchField.visible)
                     mediaSearchField.forceActiveFocus()
@@ -102,12 +102,15 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#80000000"
+        color: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+            ? "#80000000" : "#b0000000"
         MouseArea {
             anchors.fill: parent
             onClicked: {
                 if (mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro")
                     mediaSearchField.forceActiveFocus()
+                else
+                    mediaPickerRoot.close()
             }
         }
     }
@@ -169,7 +172,13 @@ Item {
                     enabled: !localFileUpload.busy
                     onClicked: mediaPickerRoot.close()
                     background: Rectangle { radius: 6; color: closeButton.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 16; height: 16 }
+                    contentItem: AppIcon {
+                        anchors.centerIn: parent
+                        name: "close"
+                        color: "#94a1b2"
+                        width: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro" ? 16 : 12
+                        height: width
+                    }
                 }
             }
 
@@ -211,8 +220,10 @@ Item {
                     placeholderText: mediaPickerRoot.activeMode === "file-select"
                         ? qsTr("Buscar arquivos...") : qsTr("Buscar...")
                     color: "#fffffe"
-                    font.pixelSize: 14
-                    leftPadding: 34
+                    font.pixelSize: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                        ? 14 : 12
+                    leftPadding: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
+                        ? 34 : 12
                     onTextEdited: mediaPickerRoot.searchFilter = text
                     background: Rectangle {
                         radius: 8
@@ -223,6 +234,7 @@ Item {
                             anchors.left: parent.left
                             anchors.leftMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
+                            visible: mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
                             name: "search"
                             color: "#a7a9be"
                             width: 16

@@ -239,6 +239,20 @@ TestCase {
         tryCompare(picker, "activeMode", "")
     }
 
+    function test_nonMediaPickerBackdropStillCloses() {
+        picker = createTemporaryObject(pickerComponent, null)
+        verify(picker !== null)
+        picker.parent = testCase.Window.window.contentItem
+
+        picker.openMode("file-select", "", false)
+        mouseClick(picker, 8, 8)
+        tryCompare(picker, "activeMode", "")
+
+        picker.openMode("documento", "", false)
+        mouseClick(picker, 8, 8)
+        tryCompare(picker, "activeMode", "")
+    }
+
     function test_pickerCannotCloseDuringEncryptedImport() {
         picker = createTemporaryObject(pickerComponent, testCase)
         verify(picker !== null)
