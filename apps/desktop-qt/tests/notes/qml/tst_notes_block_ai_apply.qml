@@ -111,6 +111,8 @@ TestCase {
         verify(aiButton.enabled)
         aiButton.clicked()
         verify(typeof capturedApplyHandler === "function")
+        compare(capturedApplyHandler.sessionId, "page-1::code-1")
+        compare(capturedApplyHandler.blockType, "codeBlock")
         verify(capturedApplyHandler.call(null, "```js\nconst fromAction = true;\n```", false))
         compare(editor.blocks[0].attrs.code, "const fromAction = true;")
         compare(editor.blocks[1].html, "<p>Neighbor</p>")
@@ -151,6 +153,14 @@ TestCase {
         compare(editor.createAiBlockApplyHandler(0), null)
         compare(editor.createAiBlockApplyHandler(1), null)
         verify(typeof editor.createAiBlockApplyHandler(2) === "function")
+    }
+
+    function test_insertActionAddsContentInsideTheSourceBlock() {
+        var insertHandler = editor.createAiBlockApplyHandler(0)
+        verify(typeof insertHandler.insertContent === "function")
+        verify(insertHandler.insertContent.call(null, "```js\nconst added = true;\n```"))
+        compare(editor.blocks[0].attrs.code, "old\nconst added = true;")
+        compare(editor.blocks[1].html, "<p>Neighbor</p>")
     }
 
     function test_nestedBlockCallbackSurvivesToggleForwarding() {

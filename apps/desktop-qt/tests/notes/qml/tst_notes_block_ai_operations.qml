@@ -29,6 +29,14 @@ TestCase {
         compare(result.attrs.language, "js")
     }
 
+    function test_codeFenceIsExtractedFromSurroundingExplanation() {
+        var block = { id: "code-4", blockType: "codeBlock", attrs: { code: "old", language: "auto" }, html: "", innerHtml: "old" }
+        var result = BlockAiOperations.replacementForBlock(
+            block, "Here is the corrected version:\n\n```rust\nfn main() {}\n```\n\nThis keeps the same behavior.")
+        compare(result.attrs.code, "fn main() {}")
+        compare(result.attrs.language, "rust")
+    }
+
     function test_plainReplyIsEscapedAndRetainsParagraphBreaks() {
         var block = { id: "quote-1", blockType: "blockquote", attrs: { color: "#123456" }, html: "", innerHtml: "old" }
         var result = BlockAiOperations.replacementForBlock(block, "First <unsafe>\nline two\n\nNext paragraph")
@@ -71,6 +79,18 @@ TestCase {
         compare(block.attrs.code, "const old = 1;")
         compare(BlockAiOperations.replacementForBlock(
             block, "<<<<<<< SEARCH\nmissing\n=======\nreplacement\n>>>>>>>") , null)
+    }
+
+    function test_generatedRichHtmlDropsActiveContentAndUnsafeAttributes() {
+        var block = { id: "quote-safe", blockType: "blockquote", attrs: {}, html: "", innerHtml: "old" }
+        var result = BlockAiOperations.replacementForBlock(block,
+            "<p onclick=\"run()\">Keep <script>run()</script><a href=\"javascript:run()\">unsafe</a>" +
+            "<a href=\"https://example.test/path\" target=\"_blank\">safe</a><img src=\"file:///secret\"/></p>")
+        compare(result.innerHtml,
+            "<p>Keep <a>unsafe</a><a href=\"https://example.test/path\">safe</a></p>")
+        verify(result.innerHtml.indexOf("script") < 0)
+        verify(result.innerHtml.indexOf("onclick") < 0)
+        verify(result.innerHtml.indexOf("file:") < 0)
     }
 
     function test_unsupportedWidgetsCannotReceiveBlockReplacement() {

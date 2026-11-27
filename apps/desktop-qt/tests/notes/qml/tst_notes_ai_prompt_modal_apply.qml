@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import "../../../qml/notes" as Notes
+import "../../../qml/notes/NotesBlockAiSession.js" as BlockAiSession
 
 TestCase {
     id: testCase
@@ -108,5 +109,37 @@ TestCase {
         verify(!modal.applyResponse())
         compare(callbackCount, 0)
         compare(closeCount, 1)
+    }
+
+    function test_blockAssistantClampsToViewportAndRestoresItsConversation() {
+        var sessionId = "page-ai::block-ai"
+        BlockAiSession.save(sessionId, [
+            { role: "user", content: "Improve this block" },
+            { role: "assistant", content: "Stored block proposal" }
+        ])
+        var handler = function() { return true }
+        handler.sessionId = sessionId
+        handler.blockType = "codeBlock"
+        handler.blockTitle = "IA • Bloco de Código"
+        handler.blockSubtitle = "example.js"
+        handler.anchorX = 630
+        handler.anchorY = 470
+        modal.openModal("selected", "old code", handler)
+
+        verify(modal.blockScoped)
+        compare(modal.aiReply, "Stored block proposal")
+        compare(modal.chatHistory.length, 2)
+        var card = findChild(modal, "notesAiPromptCard")
+        verify(card !== null)
+        compare(card.width, 370)
+        verify(card.x >= 12 && card.x + card.width <= modal.width - 12)
+        verify(card.y >= 12 && card.y + card.height <= modal.height - 12)
+
+        modal.closeModal()
+        modal.openModal("selected", "old code", handler)
+        compare(modal.aiReply, "Stored block proposal")
+        modal.clearBlockConversation()
+        compare(modal.chatHistory.length, 0)
+        compare(BlockAiSession.load(sessionId).length, 0)
     }
 }
