@@ -10,6 +10,7 @@
 #include <QtGui/QColor>
 #include <QtGui/QFont>
 #include <QtQuick/QQuickItem>
+#include <QtQuick/QQuickWindow>
 #include <QtTest/QtTest>
 
 class NotesPageHistoryController final : public QObject {
@@ -218,8 +219,8 @@ private slots:
         QCOMPARE(bodyFont.pixelSize(), 16);
         const QColor bodyColor = qvariant_cast<QColor>(revisionContent->property("color"));
         QCOMPARE(bodyColor, QColor(QStringLiteral("#e4e4e7")));
-        QQuickItem *revisionCard = findVisualItem(modalItem, QStringLiteral("historyRevisionCard"));
-        QVERIFY(revisionCard);
+        QQuickItem *revisionCard = nullptr;
+        QTRY_VERIFY((revisionCard = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-0"))));
         QQuickItem *revisionTitle = findVisualItem(modalItem, QStringLiteral("historyRevisionTitle"));
         QQuickItem *revisionTimestamp = findVisualItem(modalItem, QStringLiteral("historyRevisionTimestamp"));
         QVERIFY(revisionTitle && revisionTimestamp);
@@ -237,6 +238,54 @@ private slots:
         QVERIFY(listArea);
         QCOMPARE(qRound(emptyState->x() + emptyState->width() / 2), qRound(listArea->width() / 2));
         QCOMPARE(qRound(emptyState->y() + emptyState->height() / 2), qRound(listArea->height() / 2));
+    }
+
+    void historyRevisionButtonsRespondToKeyboard() {
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), QVariantMap{
+            {QStringLiteral("textSubtext"), QStringLiteral("#a7a9be")},
+            {QStringLiteral("textDark"), QStringLiteral("#fffffe")},
+            {QStringLiteral("textMuted"), QStringLiteral("#71717a")},
+            {QStringLiteral("fontMono"), QStringLiteral("monospace")},
+        });
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
+                                             + QStringLiteral("/qml/notes/PageHistoryModal.qml")));
+        QScopedPointer<QObject> modal(component.create());
+        QVERIFY2(modal, qPrintable(component.errorString()));
+        auto *modalItem = qobject_cast<QQuickItem *>(modal.data());
+        QVERIFY(modalItem);
+        QQuickWindow window;
+        window.resize(1280, 900);
+        modalItem->setParentItem(window.contentItem());
+        modal->setProperty("history", QVariant::fromValue(QVariantList{
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("current")},
+                        {QStringLiteral("content"), QStringLiteral("<p>Current revision</p>")},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-09-02T18:00:00Z")}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
+                        {QStringLiteral("content"), QStringLiteral("<p>Older revision</p>")},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-09-01T18:00:00Z")}},
+        }));
+        modal->setProperty("visible", true);
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+
+        QQuickItem *currentRevision = nullptr;
+        QTRY_VERIFY((currentRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-0"))));
+        QQuickItem *olderRevision = nullptr;
+        QTRY_VERIFY((olderRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-1"))));
+        currentRevision->forceActiveFocus();
+        QVERIFY(currentRevision->hasActiveFocus());
+        QCOMPARE(qvariant_cast<QColor>(currentRevision->property("revisionBorderColor")), QColor(QStringLiteral("#6d28d9")));
+        QTest::keyClick(&window, Qt::Key_Tab);
+        QTRY_VERIFY(olderRevision->hasActiveFocus());
+        QTest::keyClick(&window, Qt::Key_Return);
+        QTRY_COMPARE(modal->property("selectedIndex").toInt(), 1);
+
+        currentRevision->forceActiveFocus();
+        QVERIFY(currentRevision->hasActiveFocus());
+        QTest::keyClick(&window, Qt::Key_Space);
+        QTRY_COMPARE(modal->property("selectedIndex").toInt(), 0);
     }
 };
 

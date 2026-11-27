@@ -179,29 +179,12 @@ Rectangle {
                             clip: true
                             spacing: 6
                             model: historyRoot.history
-                            delegate: Rectangle {
-                                required property var modelData
-                                required property int index
+                            delegate: PageHistoryRevisionButton {
                                 width: revisionList.width
-                                height: revisionCardContent.implicitHeight + 28
-                                objectName: "historyRevisionCard"
-                                radius: 12
-                                color: historyRoot.selectedIndex === index ? "#1affffff" : revisionMouse.containsMouse ? "#0dffffff" : "transparent"
-                                border.color: historyRoot.selectedIndex === index ? "#26ffffff" : "transparent"
-                                ColumnLayout {
-                                    id: revisionCardContent
-                                    anchors.fill: parent
-                                    anchors.margins: 14
-                                    spacing: 4
-                                    Text { objectName: "historyRevisionTitle"; text: index === 0 ? "Versão Atual" : "Revisão " + (historyRoot.history.length - index); color: historyRoot.selectedIndex === index ? theme.textDark : "#a1a1aa"; font.pixelSize: 12; font.weight: Font.DemiBold }
-                                    Text { objectName: "historyRevisionTimestamp"; text: historyRoot.formatTimestamp(modelData.created_at); color: historyRoot.selectedIndex === index ? "#d4d4d8" : theme.textMuted; font.pixelSize: 11; font.family: theme.fontMono }
-                                }
-                                MouseArea {
-                                    id: revisionMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: historyRoot.selectedIndex = index
-                                }
+                                selectedIndex: historyRoot.selectedIndex
+                                historyCount: historyRoot.history.length
+                                timestampText: historyRoot.formatTimestamp(modelData.created_at)
+                                onRevisionSelected: function(index) { historyRoot.selectedIndex = index }
                             }
                         }
                         ColumnLayout {
